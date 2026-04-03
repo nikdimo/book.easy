@@ -1,4 +1,4 @@
-# BookEasy.mk -- User Stories & Product Requirements
+# book.easy.mk — User Stories & Product Requirements
 
 ## 1. User Roles
 

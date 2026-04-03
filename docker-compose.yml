@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: bookeasy-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: bookeasy
+    ports:
+      - "5432:5432"
+    volumes:
+      - bookeasy_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bookeasy"]
+      interval: 3s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  bookeasy_pgdata:

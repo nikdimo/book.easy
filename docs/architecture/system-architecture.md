@@ -1,8 +1,8 @@
-# BookEasy.mk -- System Architecture
+# book.easy.mk — System Architecture
 
 ## 1. Architecture Overview
 
-BookEasy.mk is a two-sided property marketplace built as a modular monolith within a single Next.js application. The architecture prioritizes clean domain boundaries, ownership-scoped data access, and extensibility for future marketplace features, while avoiding premature complexity.
+book.easy.mk (Book) is a two-sided property marketplace built as a modular monolith within a single Next.js application. The architecture prioritizes clean domain boundaries, ownership-scoped data access, and extensibility for future marketplace features, while avoiding premature complexity.
 
 ### Architecture Style: Modular Monolith
 

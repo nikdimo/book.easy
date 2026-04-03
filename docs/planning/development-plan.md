@@ -1,8 +1,8 @@
-# BookEasy.mk -- Development Plan
+# book.easy.mk — Development Plan
 
 ## Overview
 
-This document outlines the phased development plan for BookEasy.mk, a two-sided property marketplace. The plan is structured to deliver a launchable MVP in Phase 1, then expand toward full marketplace functionality in subsequent phases.
+This document outlines the phased development plan for book.easy.mk (Book), a two-sided property marketplace in the easy.mk SaaS family. The plan is structured to deliver a launchable MVP in Phase 1, then expand toward full marketplace functionality in subsequent phases.
 
 ---
 
@@ -204,7 +204,7 @@ Foundation ──► Public Website ──► Booking Flow
 
 #### 3.1 Calendar Sync
 - Import external calendars (iCal format) to block dates
-- Export BookEasy calendar for use in other platforms
+- Export book.easy.mk calendar for use in other platforms
 - Periodic sync to keep availability current
 - Support for multi-platform hosts
 

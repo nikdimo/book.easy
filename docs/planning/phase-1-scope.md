@@ -1,4 +1,4 @@
-# BookEasy.mk -- Phase 1 Scope
+# book.easy.mk — Phase 1 Scope
 
 ## Objective
 
