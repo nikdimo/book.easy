@@ -12,6 +12,8 @@ export type ListingCardSerialized = {
     city: string;
     area?: string | null;
     propertyType: string;
+    latitude?: number | null;
+    longitude?: number | null;
   };
   images: { url: string; alt?: string | null }[];
   pricingRule: {
@@ -40,6 +42,8 @@ export function serializeListingCard(listing: ListingForCard): ListingCardSerial
       city: listing.property.city,
       area: listing.property.area,
       propertyType: listing.property.propertyType,
+      latitude: listing.property.latitude,
+      longitude: listing.property.longitude,
     },
     images: listing.images.map((img) => ({
       url: img.url,

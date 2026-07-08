@@ -12,11 +12,21 @@ export default async function NewListingPage() {
   const amenities = await db.amenity.findMany({
     orderBy: [{ category: "asc" }, { name: "asc" }],
   });
+  const cityRows = await db.property.findMany({
+    select: { city: true },
+    distinct: ["city"],
+    orderBy: { city: "asc" },
+  });
+  const availableCities = cityRows.map((row) => row.city);
 
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Create a New Listing</h1>
-      <ListingForm amenities={amenities} initialImageUrls={[]} />
+      <ListingForm
+        amenities={amenities}
+        availableCities={availableCities}
+        initialImageUrls={[]}
+      />
     </div>
   );
 }

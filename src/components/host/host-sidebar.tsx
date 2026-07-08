@@ -211,7 +211,7 @@ export function HostSidebar() {
   const [open, setOpen] = useState(false);
 
   return (
-    <>
+    <div className="flex shrink-0 flex-col md:w-56 md:border-r md:bg-background md:min-h-screen">
       <div className="md:hidden sticky top-0 z-40 flex items-center justify-between gap-3 border-b bg-background/95 backdrop-blur px-4 py-3">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
@@ -219,11 +219,16 @@ export function HostSidebar() {
               <Menu className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-72 p-4 flex flex-col">
+          <SheetContent
+            side="left"
+            className="w-72 p-0 flex flex-col overflow-hidden"
+          >
             <SheetHeader className="sr-only">
               <SheetTitle>Hosting menu</SheetTitle>
             </SheetHeader>
-            <SidebarContent onNavigate={() => setOpen(false)} />
+            <div className="overflow-y-auto flex-1 min-h-0 p-4">
+              <SidebarContent onNavigate={() => setOpen(false)} />
+            </div>
           </SheetContent>
         </Sheet>
         <Link href="/" className="flex items-center gap-1 min-w-0">
@@ -233,11 +238,11 @@ export function HostSidebar() {
             <span className="text-muted-foreground font-normal">.{PRODUCT_FAMILY}</span>
           </span>
         </Link>
-    </div>
+      </div>
 
-      <aside className="hidden md:flex flex-col w-56 shrink-0 border-r bg-background min-h-[calc(100vh-0px)] sticky top-0 self-start p-4">
+      <aside className="hidden md:flex flex-col w-full min-h-0 flex-1 p-4 overflow-y-auto">
         <SidebarContent />
       </aside>
-    </>
+    </div>
   );
 }

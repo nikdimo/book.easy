@@ -7,6 +7,8 @@ import { AdminListingActions } from "@/components/admin/admin-listing-actions";
 import { PropertyAvailabilityCalendar } from "@/components/shared/property-availability-calendar";
 import { LISTING_STATUSES, PROPERTY_TYPES } from "@/lib/constants";
 import { formatDate, formatPrice } from "@/lib/utils/format";
+import { ymdToDbDate } from "@/lib/utils/date-only";
+import { format } from "date-fns";
 
 interface AdminListingDetailProps {
   params: Promise<{ id: string }>;
@@ -30,16 +32,18 @@ export default async function AdminListingDetailPage({ params }: AdminListingDet
 
   if (!listing) notFound();
 
+  const today = ymdToDbDate(format(new Date(), "yyyy-MM-dd"));
+
   const [availabilityBlocks, datePrices] = await Promise.all([
     db.availabilityBlock.findMany({
-      where: { listingId: listing.id, endDate: { gte: new Date() } },
+      where: { listingId: listing.id, endDate: { gte: today } },
       include: {
         booking: { select: { id: true, guest: { select: { name: true } }, status: true } },
       },
       orderBy: { startDate: "asc" },
     }),
     db.listingDatePrice.findMany({
-      where: { listingId: listing.id, date: { gte: new Date() } },
+      where: { listingId: listing.id, date: { gte: today } },
       orderBy: { date: "asc" },
     }),
   ]);

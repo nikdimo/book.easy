@@ -15,12 +15,18 @@ import type { HostListingFormData } from "@/lib/serializers/host-listing-form";
 
 interface ListingFormProps {
   amenities: { id: string; name: string; category: string }[];
+  availableCities?: string[];
   initialImageUrls?: string[];
   /** Serialized from the server (no Prisma Decimal). */
   listing?: HostListingFormData;
 }
 
-export function ListingForm({ amenities, listing, initialImageUrls = [] }: ListingFormProps) {
+export function ListingForm({
+  amenities,
+  availableCities = [],
+  listing,
+  initialImageUrls = [],
+}: ListingFormProps) {
   const isEditing = !!listing;
   const selectedAmenityIds = listing?.amenities.map((a) => a.amenityId) || [];
 
@@ -88,7 +94,18 @@ export function ListingForm({ amenities, listing, initialImageUrls = [] }: Listi
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="city">City</Label>
-              <Input id="city" name="city" defaultValue={listing?.property.city} required />
+              <Input
+                id="city"
+                name="city"
+                defaultValue={listing?.property.city}
+                list="available-cities"
+                required
+              />
+              <datalist id="available-cities">
+                {availableCities.map((city) => (
+                  <option key={city} value={city} />
+                ))}
+              </datalist>
             </div>
             <div className="space-y-2">
               <Label htmlFor="area">Area / Neighbourhood</Label>

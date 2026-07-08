@@ -22,7 +22,7 @@ export function CategoryScroll() {
           return (
             <Link
               key={type.value}
-              href={`/properties?propertyType=${type.value}`}
+              href={`/properties?propertyTypes=${encodeURIComponent(type.value)}`}
               className="flex flex-col items-center gap-2 min-w-[64px] group"
             >
               <Icon className="h-7 w-7 text-muted-foreground group-hover:text-foreground opacity-80 group-hover:opacity-100 transition-opacity shrink-0" />

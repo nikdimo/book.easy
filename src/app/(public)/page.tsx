@@ -2,30 +2,25 @@ import Link from "next/link";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { Button } from "@/components/ui/button";
 import { PropertyCard } from "@/components/public/property-card";
-import { getFeaturedListings, getAvailableCities } from "@/lib/services/search.service";
+import { getFeaturedListings } from "@/lib/services/search.service";
 import { ListingCarousel } from "@/components/public/listing-carousel";
 
 const CAROUSEL_COUNT = 8;
 
 async function loadHomeData() {
   try {
-    const [listings, cities] = await Promise.all([
-      getFeaturedListings(24),
-      getAvailableCities(),
-    ]);
-    return { listings, cities, dbError: null as string | null };
+    const listings = await getFeaturedListings(24);
+    return { listings, dbError: null as string | null };
   } catch (e) {
     if (e instanceof PrismaClientKnownRequestError && e.code === "P5010") {
       return {
         listings: [],
-        cities: [],
         dbError:
           "Database unreachable (P5010). For local dev use DATABASE_URL=postgresql://… pointing at Postgres on your machine.",
       };
     }
     return {
       listings: [],
-      cities: [],
       dbError:
         "Could not load listings. Start PostgreSQL, run prisma db push && prisma db seed, and check DATABASE_URL in .env.",
     };
@@ -33,7 +28,7 @@ async function loadHomeData() {
 }
 
 export default async function HomePage() {
-  const { listings, cities, dbError } = await loadHomeData();
+  const { listings, dbError } = await loadHomeData();
   const carouselListings = listings.slice(0, CAROUSEL_COUNT);
   const gridListings = listings.slice(CAROUSEL_COUNT);
 
@@ -46,30 +41,6 @@ export default async function HomePage() {
       )}
 
       <h1 className="sr-only">Find places to stay in North Macedonia</h1>
-
-      {cities.length > 0 && (
-        <section className="max-w-[1760px] mx-auto px-4 md:px-8 pt-4 pb-3">
-          <p className="text-sm font-semibold text-foreground mb-2">
-            Popular destinations
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {cities.map((city) => (
-              <Link
-                key={city}
-                href={`/properties?city=${encodeURIComponent(city)}`}
-              >
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="rounded-full font-normal text-xs h-7"
-                >
-                  {city}
-                </Button>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
 
       {carouselListings.length > 0 && (
         <section className="max-w-[1760px] mx-auto px-4 md:px-8 pt-4 pb-2">
@@ -94,7 +65,7 @@ export default async function HomePage() {
           <h2 className="text-base md:text-lg font-semibold tracking-tight mb-4">
             More places to stay
           </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-4 gap-y-6">
+          <div className="grid grid-cols-1 min-[420px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-4 gap-y-6">
             {gridListings.map((listing) => (
               <PropertyCard key={listing.id} listing={listing} />
             ))}

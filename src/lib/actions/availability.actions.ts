@@ -4,7 +4,13 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { BlockType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
-import { parseLocalYmd } from "@/lib/utils/stay-pricing";
+import {
+  compareYmd,
+  dbDateToYmd,
+  eachYmdExclusive,
+  ymdToDbDate,
+} from "@/lib/utils/date-only";
+import { format } from "date-fns";
 
 async function getListingForManager(userId: string, role: string, listingId: string) {
   const listing = await db.listing.findUnique({
@@ -23,10 +29,34 @@ function revalidateListingPaths(listingId: string, slug?: string | null) {
   if (slug) revalidatePath(`/properties/${slug}`);
 }
 
-export async function blockDates(formData: FormData) {
+async function requireManagedListing(listingId: string) {
   const session = await auth();
-  if (!session?.user?.id) return { error: "Not authorized" };
+  if (!session?.user?.id) return { error: "Not authorized" as const };
+  const listing = await getListingForManager(
+    session.user.id,
+    session.user.role,
+    listingId
+  );
+  if (!listing) return { error: "Listing not found" as const };
+  return { listing };
+}
 
+function validateRange(startDate: string, endDate: string) {
+  try {
+    const start = ymdToDbDate(startDate);
+    const end = ymdToDbDate(endDate);
+
+    if (compareYmd(endDate, startDate) <= 0) {
+      return { error: "End date must be after start date" as const };
+    }
+
+    return { startDate, endDate, start, end };
+  } catch {
+    return { error: "Invalid date range" as const };
+  }
+}
+
+export async function blockDates(formData: FormData) {
   const listingId = formData.get("listingId") as string;
   const startDate = formData.get("startDate") as string;
   const endDate = formData.get("endDate") as string;
@@ -36,16 +66,13 @@ export async function blockDates(formData: FormData) {
     return { error: "Missing required fields" };
   }
 
-  const listing = await getListingForManager(
-    session.user.id,
-    session.user.role,
-    listingId
-  );
-  if (!listing) return { error: "Listing not found" };
+  const listingResult = await requireManagedListing(listingId);
+  if ("error" in listingResult) return { error: listingResult.error };
+  const listing = listingResult.listing;
 
-  const start = parseLocalYmd(startDate);
-  const end = parseLocalYmd(endDate);
-  if (end <= start) return { error: "End date must be after start date" };
+  const range = validateRange(startDate, endDate);
+  if ("error" in range) return { error: range.error };
+  const { start, end } = range;
 
   const overlap = await db.availabilityBlock.findFirst({
     where: {
@@ -101,6 +128,162 @@ export async function unblockDates(blockId: string) {
   return { success: true };
 }
 
+export async function unblockDateRange(formData: FormData) {
+  const listingId = formData.get("listingId") as string;
+  const startDate = formData.get("startDate") as string;
+  const endDate = formData.get("endDate") as string;
+  if (!listingId || !startDate || !endDate) {
+    return { error: "Missing required fields" };
+  }
+
+  const listingResult = await requireManagedListing(listingId);
+  if ("error" in listingResult) return { error: listingResult.error };
+  const listing = listingResult.listing;
+
+  const range = validateRange(startDate, endDate);
+  if ("error" in range) return { error: range.error };
+  const { startDate: rangeStartYmd, endDate: rangeEndYmd, start, end } = range;
+
+  await db.$transaction(async (tx) => {
+    const overlapping = await tx.availabilityBlock.findMany({
+      where: {
+        listingId,
+        blockType: BlockType.MANUAL_BLOCK,
+        startDate: { lt: end },
+        endDate: { gt: start },
+      },
+      orderBy: { startDate: "asc" },
+    });
+
+    for (const block of overlapping) {
+      const blockStartYmd = dbDateToYmd(block.startDate);
+      const blockEndYmd = dbDateToYmd(block.endDate);
+      const removeWhole =
+        compareYmd(rangeStartYmd, blockStartYmd) <= 0 &&
+        compareYmd(rangeEndYmd, blockEndYmd) >= 0;
+      const trimStart =
+        compareYmd(rangeStartYmd, blockStartYmd) <= 0 &&
+        compareYmd(rangeEndYmd, blockEndYmd) < 0;
+      const trimEnd =
+        compareYmd(rangeStartYmd, blockStartYmd) > 0 &&
+        compareYmd(rangeEndYmd, blockEndYmd) >= 0;
+      const split =
+        compareYmd(rangeStartYmd, blockStartYmd) > 0 &&
+        compareYmd(rangeEndYmd, blockEndYmd) < 0;
+
+      if (removeWhole) {
+        await tx.availabilityBlock.delete({ where: { id: block.id } });
+      } else if (trimStart) {
+        await tx.availabilityBlock.update({
+          where: { id: block.id },
+          data: { startDate: ymdToDbDate(rangeEndYmd) },
+        });
+      } else if (trimEnd) {
+        await tx.availabilityBlock.update({
+          where: { id: block.id },
+          data: { endDate: ymdToDbDate(rangeStartYmd) },
+        });
+      } else if (split) {
+        await tx.availabilityBlock.update({
+          where: { id: block.id },
+          data: { endDate: ymdToDbDate(rangeStartYmd) },
+        });
+        await tx.availabilityBlock.create({
+          data: {
+            listingId,
+            startDate: ymdToDbDate(rangeEndYmd),
+            endDate: ymdToDbDate(blockEndYmd),
+            blockType: BlockType.MANUAL_BLOCK,
+            reason: block.reason,
+          },
+        });
+      }
+    }
+  });
+
+  revalidateListingPaths(listingId, listing.slug);
+  return { success: true };
+}
+
+export async function blockAllFutureDates(listingId: string) {
+  if (!listingId) return { error: "Missing listing id" };
+  const listingResult = await requireManagedListing(listingId);
+  if ("error" in listingResult) return { error: listingResult.error };
+  const listing = listingResult.listing;
+
+  const startDate = format(new Date(), "yyyy-MM-dd");
+  const endDate = "2100-01-01";
+  const start = ymdToDbDate(startDate);
+
+  await db.$transaction(async (tx) => {
+    const existing = await tx.availabilityBlock.findMany({
+      where: {
+        listingId,
+        endDate: { gt: start },
+      },
+      orderBy: { startDate: "asc" },
+      select: { startDate: true, endDate: true },
+    });
+
+    let cursorYmd = startDate;
+    for (const b of existing) {
+      const blockStartYmd = dbDateToYmd(b.startDate);
+      const blockEndYmd = dbDateToYmd(b.endDate);
+
+      if (compareYmd(blockStartYmd, cursorYmd) > 0) {
+        await tx.availabilityBlock.create({
+          data: {
+            listingId,
+            startDate: ymdToDbDate(cursorYmd),
+            endDate: ymdToDbDate(blockStartYmd),
+            blockType: BlockType.MANUAL_BLOCK,
+            reason: "Bulk blocked from calendar",
+          },
+        });
+      }
+
+      if (compareYmd(blockEndYmd, cursorYmd) > 0) {
+        cursorYmd = blockEndYmd;
+      }
+      if (compareYmd(cursorYmd, endDate) >= 0) break;
+    }
+
+    if (compareYmd(cursorYmd, endDate) < 0) {
+      await tx.availabilityBlock.create({
+        data: {
+          listingId,
+          startDate: ymdToDbDate(cursorYmd),
+          endDate: ymdToDbDate(endDate),
+          blockType: BlockType.MANUAL_BLOCK,
+          reason: "Bulk blocked from calendar",
+        },
+      });
+    }
+  });
+
+  revalidateListingPaths(listingId, listing.slug);
+  return { success: true };
+}
+
+export async function makeAllFutureDatesAvailable(listingId: string) {
+  if (!listingId) return { error: "Missing listing id" };
+  const listingResult = await requireManagedListing(listingId);
+  if ("error" in listingResult) return { error: listingResult.error };
+  const listing = listingResult.listing;
+  const today = ymdToDbDate(format(new Date(), "yyyy-MM-dd"));
+
+  await db.availabilityBlock.deleteMany({
+    where: {
+      listingId,
+      blockType: BlockType.MANUAL_BLOCK,
+      endDate: { gte: today },
+    },
+  });
+
+  revalidateListingPaths(listingId, listing.slug);
+  return { success: true };
+}
+
 export async function upsertListingDatePrice(formData: FormData) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Not authorized" };
@@ -124,7 +307,13 @@ export async function upsertListingDatePrice(formData: FormData) {
   if (!listing || !listing.pricingRule) return { error: "Listing not found" };
 
   const base = Number(listing.pricingRule.baseNightlyRate);
-  const day = parseLocalYmd(dateStr);
+  let day: Date;
+
+  try {
+    day = ymdToDbDate(dateStr);
+  } catch {
+    return { error: "Invalid date" };
+  }
 
   if (Math.abs(rate - base) < 0.005) {
     await db.listingDatePrice.deleteMany({
@@ -143,6 +332,54 @@ export async function upsertListingDatePrice(formData: FormData) {
       update: { nightlyRate: rate },
     });
   }
+
+  revalidateListingPaths(listingId, listing.slug);
+  return { success: true };
+}
+
+export async function upsertListingDatePriceRange(formData: FormData) {
+  const listingId = formData.get("listingId") as string;
+  const startDate = formData.get("startDate") as string;
+  const endDate = formData.get("endDate") as string;
+  const nightlyRateRaw = formData.get("nightlyRate") as string;
+
+  if (!listingId || !startDate || !endDate) {
+    return { error: "Missing required fields" };
+  }
+
+  const rate = parseFloat(nightlyRateRaw);
+  if (!Number.isFinite(rate) || rate <= 0) {
+    return { error: "Enter a valid nightly price greater than zero" };
+  }
+
+  const listingResult = await requireManagedListing(listingId);
+  if ("error" in listingResult) return { error: listingResult.error };
+  const listing = listingResult.listing;
+  if (!listing.pricingRule) return { error: "Listing pricing is missing" };
+
+  const range = validateRange(startDate, endDate);
+  if ("error" in range) return { error: range.error };
+  const { startDate: rangeStartYmd, endDate: rangeEndYmd } = range;
+  const nights = eachYmdExclusive(rangeStartYmd, rangeEndYmd);
+  const base = Number(listing.pricingRule.baseNightlyRate);
+
+  await db.$transaction(async (tx) => {
+    for (const nightYmd of nights) {
+      const day = ymdToDbDate(nightYmd);
+
+      if (Math.abs(rate - base) < 0.005) {
+        await tx.listingDatePrice.deleteMany({
+          where: { listingId, date: day },
+        });
+      } else {
+        await tx.listingDatePrice.upsert({
+          where: { listingId_date: { listingId, date: day } },
+          create: { listingId, date: day, nightlyRate: rate },
+          update: { nightlyRate: rate },
+        });
+      }
+    }
+  });
 
   revalidateListingPaths(listingId, listing.slug);
   return { success: true };

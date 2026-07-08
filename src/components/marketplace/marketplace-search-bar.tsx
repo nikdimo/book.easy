@@ -1,13 +1,130 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
-import { useState, FormEvent, useEffect } from "react";
-import { Search, MapPin, CalendarRange, Users } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState, type FormEvent } from "react";
+import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { MarketplaceStayDatePicker } from "@/components/marketplace/marketplace-stay-date-picker";
+import { MarketplacePlaceSelector } from "@/components/marketplace/marketplace-place-selector";
+import {
+  MarketplaceGuestSelector,
+  countsToGuestsParam,
+  guestsParamToCounts,
+  type GuestCounts,
+} from "@/components/marketplace/marketplace-guest-selector";
+import {
+  parsePropertyTypesFromSearchParams,
+  stringifyPropertyTypesParam,
+} from "@/lib/property-type-filter";
 
-type Variant = "hero" | "compact";
+type Variant = "hero" | "compact" | "pill";
+
+type SearchBarState = {
+  city: string;
+  checkIn: string;
+  checkOut: string;
+  guestCounts: GuestCounts;
+  dateFlexibility: number;
+  propertyTypes: string[];
+};
+
+let rememberedSearchState: SearchBarState | null = null;
+
+function parseDateFlexibility(value: string | null): number {
+  const parsed = Number(value);
+  return [0, 1, 2, 3, 7, 14].includes(parsed) ? parsed : 0;
+}
+
+function resolveStringValue(
+  explicitValue: string | undefined,
+  searchParamValue: string | null,
+  rememberedValue: string | undefined,
+  allowRememberedFallback: boolean
+): string {
+  if (explicitValue && explicitValue.length > 0) return explicitValue;
+  if (searchParamValue !== null) return searchParamValue;
+  if (allowRememberedFallback && rememberedValue) return rememberedValue;
+  return "";
+}
+
+function getInitialSearchBarState(args: {
+  pathname: string;
+  searchParams: ReturnType<typeof useSearchParams>;
+  defaultCity: string;
+  defaultCheckIn: string;
+  defaultCheckOut: string;
+  defaultGuests: string;
+}): SearchBarState {
+  const {
+    pathname,
+    searchParams,
+    defaultCity,
+    defaultCheckIn,
+    defaultCheckOut,
+    defaultGuests,
+  } = args;
+  const allowRememberedFallback = pathname !== "/properties";
+
+  const city = resolveStringValue(
+    defaultCity,
+    searchParams.get("city"),
+    rememberedSearchState?.city,
+    allowRememberedFallback
+  );
+  const checkIn = resolveStringValue(
+    defaultCheckIn,
+    searchParams.get("checkIn"),
+    rememberedSearchState?.checkIn,
+    allowRememberedFallback
+  );
+  const checkOut = resolveStringValue(
+    defaultCheckOut,
+    searchParams.get("checkOut"),
+    rememberedSearchState?.checkOut,
+    allowRememberedFallback
+  );
+  const guests = resolveStringValue(
+    defaultGuests,
+    searchParams.get("guests"),
+    rememberedSearchState
+      ? countsToGuestsParam(rememberedSearchState.guestCounts)
+      : undefined,
+    allowRememberedFallback
+  );
+  const propertyTypes =
+    searchParams.get("propertyTypes") !== null
+      ? parsePropertyTypesFromSearchParams(searchParams)
+      : allowRememberedFallback && rememberedSearchState
+        ? rememberedSearchState.propertyTypes
+        : [];
+  const dateFlexibility =
+    searchParams.get("dateFlexibility") !== null
+      ? parseDateFlexibility(searchParams.get("dateFlexibility"))
+      : allowRememberedFallback && rememberedSearchState
+        ? rememberedSearchState.dateFlexibility
+        : 0;
+
+  return {
+    city,
+    checkIn,
+    checkOut,
+    guestCounts: guestsParamToCounts(guests),
+    dateFlexibility,
+    propertyTypes,
+  };
+}
+
+function hasSearchBarState(state: SearchBarState): boolean {
+  return Boolean(
+    state.city ||
+      state.checkIn ||
+      state.checkOut ||
+      countsToGuestsParam(state.guestCounts) ||
+      state.dateFlexibility > 0 ||
+      state.propertyTypes.length > 0
+  );
+}
 
 export function MarketplaceSearchBar({
   variant = "hero",
@@ -15,153 +132,286 @@ export function MarketplaceSearchBar({
   defaultCheckIn = "",
   defaultCheckOut = "",
   defaultGuests = "",
+  popularCities = [],
+  availablePropertyTypesByCity = {},
 }: {
   variant?: Variant;
   defaultCity?: string;
   defaultCheckIn?: string;
   defaultCheckOut?: string;
   defaultGuests?: string;
+  popularCities?: string[];
+  availablePropertyTypesByCity?: Record<string, string[]>;
 }) {
-  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [city, setCity] = useState(
-    () => defaultCity ?? searchParams.get("city") ?? ""
-  );
-  const [checkIn, setCheckIn] = useState(
-    () => defaultCheckIn ?? searchParams.get("checkIn") ?? ""
-  );
-  const [checkOut, setCheckOut] = useState(
-    () => defaultCheckOut ?? searchParams.get("checkOut") ?? ""
-  );
-  const [guests, setGuests] = useState(
-    () => defaultGuests ?? searchParams.get("guests") ?? ""
-  );
+  const initialState = getInitialSearchBarState({
+    pathname,
+    searchParams,
+    defaultCity,
+    defaultCheckIn,
+    defaultCheckOut,
+    defaultGuests,
+  });
+  const showPropertyTypesInWhere = true;
 
   useEffect(() => {
-    setCity(defaultCity ?? searchParams.get("city") ?? "");
-    setCheckIn(defaultCheckIn ?? searchParams.get("checkIn") ?? "");
-    setCheckOut(defaultCheckOut ?? searchParams.get("checkOut") ?? "");
-    setGuests(defaultGuests ?? searchParams.get("guests") ?? "");
-  }, [searchParams, defaultCity, defaultCheckIn, defaultCheckOut, defaultGuests]);
+    if (pathname !== "/properties") return;
+    rememberedSearchState = hasSearchBarState(initialState) ? initialState : null;
+  }, [initialState, pathname]);
 
-  function onSubmit(e: FormEvent) {
-    e.preventDefault();
+  const routeKey = [
+    pathname,
+    searchParams.toString(),
+    defaultCity,
+    defaultCheckIn,
+    defaultCheckOut,
+    defaultGuests,
+  ].join("|");
+
+  return (
+    <MarketplaceSearchBarInner
+      key={routeKey}
+      variant={variant}
+      initialState={initialState}
+      showPropertyTypesInWhere={showPropertyTypesInWhere}
+      popularCities={popularCities}
+      availablePropertyTypesByCity={availablePropertyTypesByCity}
+    />
+  );
+}
+
+function MarketplaceSearchBarInner({
+  variant,
+  initialState,
+  showPropertyTypesInWhere,
+  popularCities,
+  availablePropertyTypesByCity,
+}: {
+  variant: Variant;
+  initialState: SearchBarState;
+  showPropertyTypesInWhere: boolean;
+  popularCities: string[];
+  availablePropertyTypesByCity: Record<string, string[]>;
+}) {
+  const router = useRouter();
+  const [city, setCity] = useState(initialState.city);
+  const [checkIn, setCheckIn] = useState(initialState.checkIn);
+  const [checkOut, setCheckOut] = useState(initialState.checkOut);
+  const [guestCounts, setGuestCounts] = useState(initialState.guestCounts);
+  const [placeSelectorOpen, setPlaceSelectorOpen] = useState(false);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [datePickerCanReturnToPlace, setDatePickerCanReturnToPlace] =
+    useState(false);
+  const [datePickerInitialSegment, setDatePickerInitialSegment] = useState<
+    "checkin" | "checkout"
+  >("checkin");
+  const [guestSelectorOpen, setGuestSelectorOpen] = useState(false);
+  const [dateFlexibility, setDateFlexibility] = useState(
+    initialState.dateFlexibility
+  );
+  const [propertyTypes, setPropertyTypes] = useState(initialState.propertyTypes);
+
+  const submitQuery = () => {
     const p = new URLSearchParams();
     if (city.trim()) p.set("city", city.trim());
     if (checkIn) p.set("checkIn", checkIn);
     if (checkOut) p.set("checkOut", checkOut);
-    if (guests) p.set("guests", guests);
+    const guestsParam = countsToGuestsParam(guestCounts);
+    if (guestsParam) p.set("guests", guestsParam);
+    if (dateFlexibility > 0) {
+      p.set("dateFlexibility", String(dateFlexibility));
+    }
+    p.delete("propertyType");
+    const typesParam = stringifyPropertyTypesParam(propertyTypes);
+    if (typesParam) p.set("propertyTypes", typesParam);
+
+    rememberedSearchState = {
+      city: city.trim(),
+      checkIn,
+      checkOut,
+      guestCounts,
+      dateFlexibility,
+      propertyTypes,
+    };
+
     const q = p.toString();
     router.push(q ? `/properties?${q}` : "/properties");
+  };
+
+  function onSubmit(e: FormEvent) {
+    e.preventDefault();
+    submitQuery();
   }
 
   const isCompact = variant === "compact";
+  const isPill = variant === "pill";
+
+  if (isPill) {
+    return (
+      <form
+        onSubmit={onSubmit}
+        className="flex w-full max-w-2xl items-center divide-x divide-border/70 rounded-full border border-border/70 bg-background px-2 py-2 shadow-[0_12px_30px_rgba(15,23,42,0.08)] transition-shadow hover:shadow-[0_16px_38px_rgba(15,23,42,0.12)]"
+      >
+        <MarketplacePlaceSelector
+          layout="pill"
+          city={city}
+          selectedPropertyTypes={propertyTypes}
+          onPropertyTypesChange={setPropertyTypes}
+          onCityChange={setCity}
+          open={placeSelectorOpen}
+          onOpenChange={setPlaceSelectorOpen}
+          onNextToDates={() => {
+            setDatePickerCanReturnToPlace(true);
+            setDatePickerInitialSegment("checkin");
+            setDatePickerOpen(true);
+          }}
+          popularCities={popularCities}
+          availablePropertyTypesByCity={availablePropertyTypesByCity}
+          showPropertyTypes={showPropertyTypesInWhere}
+          className="flex flex-1 min-w-0"
+        />
+        <MarketplaceStayDatePicker
+          layout="pill"
+          checkIn={checkIn}
+          checkOut={checkOut}
+          guestCounts={guestCounts}
+          dateFlexibility={dateFlexibility}
+          open={datePickerOpen}
+          onOpenChange={(nextOpen) => {
+            setDatePickerOpen(nextOpen);
+            if (!nextOpen) {
+              setDatePickerCanReturnToPlace(false);
+            }
+          }}
+          initialSegment={datePickerInitialSegment}
+          showBackToPlace={datePickerCanReturnToPlace}
+          onRangeStringsChange={({ checkIn: ci, checkOut: co }) => {
+            setCheckIn(ci);
+            setCheckOut(co);
+          }}
+          onGuestCountsChange={setGuestCounts}
+          onDateFlexibilityChange={setDateFlexibility}
+          onBackToPlace={() => {
+            setDatePickerCanReturnToPlace(false);
+            setDatePickerOpen(false);
+            setPlaceSelectorOpen(true);
+          }}
+          onSearchRequest={submitQuery}
+          className="flex flex-1 min-w-0"
+        />
+        <div className="flex min-w-0 shrink-0 items-center gap-1 pl-2 pr-1">
+          <MarketplaceGuestSelector
+            layout="pill"
+            value={guestCounts}
+            onChange={setGuestCounts}
+            open={guestSelectorOpen}
+            onOpenChange={setGuestSelectorOpen}
+            className="flex min-w-0 max-w-[6rem] sm:max-w-none"
+          />
+          <Button
+            type="submit"
+            className="h-9 shrink-0 gap-2 rounded-full px-4 font-semibold shadow-none"
+            aria-label="Search"
+          >
+            <Search className="h-4 w-4" strokeWidth={2.5} />
+            <span className="hidden min-[480px]:inline">Search</span>
+          </Button>
+        </div>
+      </form>
+    );
+  }
 
   return (
     <form
       onSubmit={onSubmit}
       className={cn(
-        "w-full bg-background shadow-lg border border-border/80",
-        isCompact ? "rounded-full max-w-2xl" : "rounded-full max-w-4xl mx-auto"
+        "w-full border border-border/70 bg-background shadow-[0_18px_46px_rgba(15,23,42,0.1)] transition-all duration-200 ease-out",
+        isCompact
+          ? "max-w-2xl rounded-[2rem] p-2 md:rounded-full md:p-0"
+          : "mx-auto max-w-4xl rounded-3xl md:rounded-full"
       )}
     >
       <div
         className={cn(
-          "flex flex-col md:flex-row md:items-stretch divide-y md:divide-y-0 md:divide-x divide-border/80",
+          isCompact
+            ? "flex flex-col gap-2 md:flex-row md:items-stretch md:gap-0 md:divide-x md:divide-border/80"
+            : "flex flex-col divide-y divide-border/80 md:flex-row md:items-stretch md:divide-y-0 md:divide-x",
           isCompact && "md:flex-nowrap"
         )}
       >
-        <label
-          className={cn(
-            "flex-1 flex gap-3 px-4 py-3 md:py-2.5 cursor-text rounded-t-full md:rounded-l-full md:rounded-t-none hover:bg-muted/50 transition-colors",
-            !isCompact && "md:pl-8 md:py-4"
-          )}
-        >
-          <MapPin className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-          <div className="min-w-0 flex-1 text-left">
-            <span className="text-xs font-semibold tracking-wide block">Where</span>
-            <Input
-              name="city"
-              placeholder="Search destinations"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              className="border-0 shadow-none h-7 px-0 text-sm md:text-base focus-visible:ring-0 placeholder:text-muted-foreground/70"
-            />
-          </div>
-        </label>
+        <MarketplacePlaceSelector
+          layout={isCompact ? "compact" : "hero"}
+          city={city}
+          selectedPropertyTypes={propertyTypes}
+          onPropertyTypesChange={setPropertyTypes}
+          onCityChange={setCity}
+          open={placeSelectorOpen}
+          onOpenChange={setPlaceSelectorOpen}
+          onNextToDates={() => {
+            setDatePickerCanReturnToPlace(true);
+            setDatePickerInitialSegment("checkin");
+            setDatePickerOpen(true);
+          }}
+          popularCities={popularCities}
+          availablePropertyTypesByCity={availablePropertyTypesByCity}
+          showPropertyTypes={showPropertyTypesInWhere}
+          className="flex min-w-0 flex-1"
+        />
+
+        <MarketplaceStayDatePicker
+          layout={isCompact ? "compact" : "hero"}
+          checkIn={checkIn}
+          checkOut={checkOut}
+          guestCounts={guestCounts}
+          dateFlexibility={dateFlexibility}
+          open={datePickerOpen}
+          onOpenChange={(nextOpen) => {
+            setDatePickerOpen(nextOpen);
+            if (!nextOpen) {
+              setDatePickerCanReturnToPlace(false);
+            }
+          }}
+          initialSegment={datePickerInitialSegment}
+          showBackToPlace={datePickerCanReturnToPlace}
+          onRangeStringsChange={({ checkIn: ci, checkOut: co }) => {
+            setCheckIn(ci);
+            setCheckOut(co);
+          }}
+          onGuestCountsChange={setGuestCounts}
+          onDateFlexibilityChange={setDateFlexibility}
+          onBackToPlace={() => {
+            setDatePickerCanReturnToPlace(false);
+            setDatePickerOpen(false);
+            setPlaceSelectorOpen(true);
+          }}
+          onSearchRequest={submitQuery}
+          className="flex min-w-0 flex-1"
+        />
+
+        <MarketplaceGuestSelector
+          layout={isCompact ? "compact" : "hero"}
+          value={guestCounts}
+          onChange={setGuestCounts}
+          open={guestSelectorOpen}
+          onOpenChange={setGuestSelectorOpen}
+          className="flex min-w-0 flex-1 md:min-w-[148px]"
+        />
 
         <div
           className={cn(
-            "flex flex-1 min-w-0 divide-x divide-border/80",
-            isCompact && "flex-row"
-          )}
-        >
-          <label
-            className={cn(
-              "flex-1 flex gap-2 px-4 py-3 md:py-2.5 cursor-pointer hover:bg-muted/50 transition-colors",
-              !isCompact && "md:py-4 md:px-5"
-            )}
-          >
-            <CalendarRange className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5 hidden sm:block" />
-            <div className="min-w-0 flex-1">
-              <span className="text-xs font-semibold tracking-wide block">Check in</span>
-              <Input
-                type="date"
-                value={checkIn}
-                onChange={(e) => setCheckIn(e.target.value)}
-                className="border-0 shadow-none h-7 px-0 text-sm focus-visible:ring-0"
-              />
-            </div>
-          </label>
-          <label
-            className={cn(
-              "flex-1 flex gap-2 px-4 py-3 md:py-2.5 cursor-pointer hover:bg-muted/50 transition-colors",
-              !isCompact && "md:py-4 md:px-5"
-            )}
-          >
-            <div className="min-w-0 flex-1 sm:pl-0">
-              <span className="text-xs font-semibold tracking-wide block">Check out</span>
-              <Input
-                type="date"
-                value={checkOut}
-                onChange={(e) => setCheckOut(e.target.value)}
-                className="border-0 shadow-none h-7 px-0 text-sm focus-visible:ring-0"
-              />
-            </div>
-          </label>
-        </div>
-
-        <label
-          className={cn(
-            "flex gap-3 px-4 py-3 md:py-2.5 cursor-text md:rounded-r-full hover:bg-muted/50 transition-colors flex items-center",
-            !isCompact && "md:py-4 md:px-6 md:min-w-[140px]"
-          )}
-        >
-          <Users className="h-5 w-5 text-muted-foreground shrink-0 hidden sm:block" />
-          <div className="min-w-0 flex-1">
-            <span className="text-xs font-semibold tracking-wide block">Who</span>
-            <Input
-              type="number"
-              min={1}
-              placeholder="Guests"
-              value={guests}
-              onChange={(e) => setGuests(e.target.value)}
-              className="border-0 shadow-none h-7 px-0 text-sm md:text-base focus-visible:ring-0"
-            />
-          </div>
-        </label>
-
-        <div
-          className={cn(
-            "p-2 flex items-center justify-center md:justify-end",
-            isCompact ? "md:pr-2" : "md:pr-2"
+            "flex items-center justify-center",
+            isCompact ? "px-1 pb-1 pt-0" : "p-2 md:justify-end md:pr-2"
           )}
         >
           <Button
             type="submit"
             size={isCompact ? "default" : "lg"}
             className={cn(
-              "rounded-full w-full md:w-auto shadow-md",
+              "w-full shadow-none md:w-auto",
+              isCompact
+                ? "h-14 rounded-[1.6rem] text-base font-semibold"
+                : "rounded-full",
               !isCompact && "px-8"
             )}
           >

@@ -49,3 +49,9 @@ test-users.txt
 next-env.d.ts
 
 /src/generated/prisma
+
+# local tooling scratch (not part of the app)
+/.codex-backups/
+/.tmp.driveupload/
+/Listing-Explorer/
+/.claude/

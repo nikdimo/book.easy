@@ -1,30 +1,44 @@
 "use client";
 
-import { useActionState, useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { format, startOfToday } from "date-fns";
-import { Calendar as CalendarIcon, Trash2 } from "lucide-react";
+import { useMemo, useState, useTransition } from "react";
+import { format } from "date-fns";
+import { ShieldAlert } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Calendar } from "@/components/ui/calendar";
 import {
   blockDates,
-  unblockDates,
-  upsertListingDatePrice,
-  removeListingDatePrice,
+  blockAllFutureDates,
+  makeAllFutureDatesAvailable,
+  unblockDateRange,
+  upsertListingDatePriceRange,
 } from "@/lib/actions/availability.actions";
-import { dateKey } from "@/lib/utils/stay-pricing";
+import { dateKey, parseLocalYmd } from "@/lib/utils/stay-pricing";
+import {
+  addDaysToYmd,
+  dbDateToYmd,
+  eachYmdExclusive,
+  eachYmdInclusive,
+} from "@/lib/utils/date-only";
 import { formatPrice } from "@/lib/utils/format";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { MarketplaceStayDatePicker } from "@/components/marketplace/marketplace-stay-date-picker";
 import { cn } from "@/lib/utils";
 
 interface Block {
   id: string;
-  startDate: Date;
-  endDate: Date;
+  startDate: Date | string;
+  endDate: Date | string;
   blockType: string;
   reason?: string | null;
   booking?: { id: string; guest: { name: string }; status: string } | null;
@@ -32,7 +46,7 @@ interface Block {
 
 interface DatePriceRow {
   id: string;
-  date: Date;
+  date: Date | string;
   nightlyRate: unknown;
 }
 
@@ -44,18 +58,29 @@ interface PropertyAvailabilityCalendarProps {
   existingBlocks: Block[];
 }
 
-function dayKeyInBlockRange(key: string, start: Date, end: Date): boolean {
-  const s = dateKey(start);
-  const e = dateKey(end);
-  return key >= s && key < e;
+interface GroupedPriceRange {
+  start: string;
+  end: string;
+  nightlyRate: number;
+  days: number;
 }
 
-function findBlockForDay(blocks: Block[], dayKey: string): Block | undefined {
-  return blocks.find((b) => dayKeyInBlockRange(dayKey, new Date(b.startDate), new Date(b.endDate)));
+type ActivityFilter = "ALL" | "MANUAL_BLOCK" | "BOOKING_HOLD" | "CUSTOM_PRICE";
+
+interface UpcomingException {
+  id: string;
+  start: string;
+  end: string;
+  kind: Exclude<ActivityFilter, "ALL">;
+  title: string;
+  detail: string;
+  badge: string;
 }
 
-function findPriceForDay(rows: DatePriceRow[], dayKey: string): DatePriceRow | undefined {
-  return rows.find((r) => dateKey(new Date(r.date)) === dayKey);
+interface PendingAction {
+  title: string;
+  description: string;
+  run: () => Promise<void>;
 }
 
 export function PropertyAvailabilityCalendar({
@@ -65,283 +90,607 @@ export function PropertyAvailabilityCalendar({
   datePrices,
   existingBlocks,
 }: PropertyAvailabilityCalendarProps) {
-  const router = useRouter();
-  const [selected, setSelected] = useState<Date | undefined>();
+  const [checkIn, setCheckIn] = useState("");
+  const [checkOut, setCheckOut] = useState("");
   const [priceInput, setPriceInput] = useState("");
+  const [reasonInput, setReasonInput] = useState("");
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  const [priceDialogOpen, setPriceDialogOpen] = useState(false);
+  const [activityFilter, setActivityFilter] = useState<ActivityFilter>("ALL");
   const [pending, startTransition] = useTransition();
 
-  const today = startOfToday();
+  const compactPriceFormatter = useMemo(
+    () =>
+      new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency,
+        currencyDisplay: "narrowSymbol",
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }),
+    [currency]
+  );
+
+  const rangeParts =
+    checkIn
+      ? {
+          startDate: checkIn,
+          endDate: addDaysToYmd(checkOut || checkIn, 1),
+          displayEndDate: checkOut || checkIn,
+        }
+      : null;
+  const selectedLabel = rangeParts
+    ? rangeParts.startDate === rangeParts.displayEndDate
+      ? rangeParts.startDate
+      : `${rangeParts.startDate} to ${rangeParts.displayEndDate}`
+    : "Select a date range";
 
   const { manualKeys, bookingKeys, priceByKey } = useMemo(() => {
     const manual = new Set<string>();
     const booking = new Set<string>();
-    for (const b of existingBlocks) {
-      const cur = new Date(b.startDate);
-      const end = new Date(b.endDate);
-      while (cur < end) {
-        const k = dateKey(cur);
-        if (b.blockType === "MANUAL_BLOCK") manual.add(k);
-        else booking.add(k);
-        cur.setDate(cur.getDate() + 1);
+
+    for (const block of existingBlocks) {
+      const keys = eachYmdExclusive(
+        dbDateToYmd(block.startDate),
+        dbDateToYmd(block.endDate)
+      );
+
+      for (const key of keys) {
+        if (block.blockType === "MANUAL_BLOCK") {
+          manual.add(key);
+        } else {
+          booking.add(key);
+        }
       }
     }
+
     const prices = new Map<string, number>();
-    for (const r of datePrices) {
-      prices.set(dateKey(new Date(r.date)), Number(r.nightlyRate));
+    for (const row of datePrices) {
+      prices.set(dbDateToYmd(row.date), Number(row.nightlyRate));
     }
+
     return { manualKeys: manual, bookingKeys: booking, priceByKey: prices };
-  }, [existingBlocks, datePrices]);
+  }, [datePrices, existingBlocks]);
 
-  const selectedKey = selected ? dateKey(selected) : null;
-  const blockForDay = selectedKey ? findBlockForDay(existingBlocks, selectedKey) : undefined;
-  const priceRow = selectedKey ? findPriceForDay(datePrices, selectedKey) : undefined;
+  const selectedRangeKeys = useMemo(() => {
+    if (!checkIn) return [];
+    if (!checkOut) return [checkIn];
+    if (checkOut < checkIn) return [];
+    return eachYmdInclusive(checkIn, checkOut);
+  }, [checkIn, checkOut]);
 
-  const isPast = selected ? selected < today : false;
-  const isManualBlock = selectedKey ? manualKeys.has(selectedKey) : false;
-  const isBooking = selectedKey ? bookingKeys.has(selectedKey) : false;
+  const selectedUniformRate = useMemo(() => {
+    if (selectedRangeKeys.length === 0) return null;
 
-  function refresh() {
-    router.refresh();
+    const uniqueRates = new Set(
+      selectedRangeKeys.map((key) => priceByKey.get(key) ?? baseNightlyRate)
+    );
+
+    return uniqueRates.size === 1 ? [...uniqueRates][0] : null;
+  }, [baseNightlyRate, priceByKey, selectedRangeKeys]);
+
+  const selectedStats = useMemo(() => {
+    const manualDays = selectedRangeKeys.filter((key) => manualKeys.has(key)).length;
+    const bookingDays = selectedRangeKeys.filter((key) => bookingKeys.has(key)).length;
+    const customPriceDays = selectedRangeKeys.filter((key) => priceByKey.has(key)).length;
+
+    return {
+      totalDays: selectedRangeKeys.length,
+      manualDays,
+      bookingDays,
+      customPriceDays,
+      hasCustomPrice: customPriceDays > 0,
+    };
+  }, [bookingKeys, manualKeys, priceByKey, selectedRangeKeys]);
+
+  const groupedPriceRanges = useMemo(() => {
+    const rows = [...datePrices]
+      .map((row) => ({
+        key: dbDateToYmd(row.date),
+        nightlyRate: Number(row.nightlyRate),
+      }))
+      .sort((a, b) => a.key.localeCompare(b.key));
+    const grouped: GroupedPriceRange[] = [];
+
+    for (const row of rows) {
+      const previous = grouped[grouped.length - 1];
+
+      if (!previous) {
+        grouped.push({
+          start: row.key,
+          end: row.key,
+          nightlyRate: row.nightlyRate,
+          days: 1,
+        });
+        continue;
+      }
+
+      if (
+        previous.nightlyRate === row.nightlyRate &&
+        addDaysToYmd(previous.end, 1) === row.key
+      ) {
+        previous.end = row.key;
+        previous.days += 1;
+      } else {
+        grouped.push({
+          start: row.key,
+          end: row.key,
+          nightlyRate: row.nightlyRate,
+          days: 1,
+        });
+      }
+    }
+
+    return grouped;
+  }, [datePrices]);
+
+  const upcomingExceptions = useMemo<UpcomingException[]>(() => {
+    const blockEvents = existingBlocks.map((block) => {
+      const start = dbDateToYmd(block.startDate);
+      const end = addDaysToYmd(dbDateToYmd(block.endDate), -1);
+      const isManualBlock = block.blockType === "MANUAL_BLOCK";
+
+      return {
+        id: block.id,
+        start,
+        end,
+        kind: isManualBlock ? "MANUAL_BLOCK" : "BOOKING_HOLD",
+        title: isManualBlock ? "Manual block" : "Booking hold",
+        detail: isManualBlock
+          ? block.reason?.trim() || "No reason added"
+          : block.booking
+            ? `${block.booking.guest.name} | ${block.booking.status}`
+            : "Reserved dates",
+        badge: isManualBlock ? "Blocked" : "Booked",
+      } satisfies UpcomingException;
+    });
+
+    const priceEvents: UpcomingException[] = groupedPriceRanges.map((range, index) => ({
+      id: `price-${range.start}-${range.end}-${index}`,
+      start: range.start,
+      end: range.end,
+      kind: "CUSTOM_PRICE",
+      title: "Custom price",
+      detail: `${formatPrice(range.nightlyRate, currency)} / night | ${range.days} day${
+        range.days === 1 ? "" : "s"
+      }`,
+      badge: "Price override",
+    }));
+
+    return [...blockEvents, ...priceEvents].sort((left, right) => {
+      if (left.start !== right.start) return left.start.localeCompare(right.start);
+      return left.kind.localeCompare(right.kind);
+    });
+  }, [currency, existingBlocks, groupedPriceRanges]);
+
+  const filteredUpcomingExceptions = useMemo(() => {
+    if (activityFilter === "ALL") return upcomingExceptions;
+    return upcomingExceptions.filter((item) => item.kind === activityFilter);
+  }, [activityFilter, upcomingExceptions]);
+
+  function requestConfirm(title: string, description: string, run: () => Promise<void>) {
+    setPendingAction({ title, description, run });
   }
 
-  function handleApplyPrice() {
-    if (!selectedKey) return;
-    const v = parseFloat(priceInput.replace(",", "."));
-    if (!Number.isFinite(v) || v <= 0) {
-      toast.error("Enter a valid nightly price");
+  function runConfirmed(action: PendingAction) {
+    startTransition(async () => {
+      await action.run();
+      setPendingAction(null);
+    });
+  }
+
+  function openPriceDialog() {
+    if (!rangeParts) return;
+    setPriceInput(selectedUniformRate != null ? String(selectedUniformRate) : "");
+    setPriceDialogOpen(true);
+  }
+
+  async function runResetCustomPrice() {
+    if (!rangeParts) return;
+
+    const fd = new FormData();
+    fd.set("listingId", listingId);
+    fd.set("startDate", rangeParts.startDate);
+    fd.set("endDate", rangeParts.endDate);
+    fd.set("nightlyRate", String(baseNightlyRate));
+
+    const res = await upsertListingDatePriceRange(fd);
+    if (res?.success) {
+      toast.success("Custom price cleared");
+      setPriceDialogOpen(false);
+    } else if (res?.error) {
+      toast.error(res.error);
+    }
+  }
+
+  async function runBlockRange() {
+    if (!rangeParts) return;
+
+    const fd = new FormData();
+    fd.set("listingId", listingId);
+    fd.set("startDate", rangeParts.startDate);
+    fd.set("endDate", rangeParts.endDate);
+    if (reasonInput.trim()) {
+      fd.set("reason", reasonInput.trim());
+    }
+
+    const res = await blockDates(fd);
+    if (res?.success) {
+      toast.success("Range blocked");
+    } else if (res?.error) {
+      toast.error(res.error);
+    }
+  }
+
+  async function runMakeRangeAvailable() {
+    if (!rangeParts) return;
+
+    const fd = new FormData();
+    fd.set("listingId", listingId);
+    fd.set("startDate", rangeParts.startDate);
+    fd.set("endDate", rangeParts.endDate);
+
+    const res = await unblockDateRange(fd);
+    if (res?.success) {
+      toast.success("Range marked available");
+    } else if (res?.error) {
+      toast.error(res.error);
+    }
+  }
+
+  async function runSetCustomPrice() {
+    if (!rangeParts) return;
+
+    const value = parseFloat(priceInput.replace(",", "."));
+    if (!Number.isFinite(value) || value <= 0) {
+      toast.error("Enter a valid custom price");
       return;
     }
-    startTransition(async () => {
-      const fd = new FormData();
-      fd.set("listingId", listingId);
-      fd.set("date", selectedKey);
-      fd.set("nightlyRate", String(v));
-      const res = await upsertListingDatePrice(fd);
-      if (res?.success) {
-        toast.success("Price updated for this date");
-        setPriceInput("");
-        refresh();
-      } else if (res?.error) toast.error(res.error);
-    });
+
+    const fd = new FormData();
+    fd.set("listingId", listingId);
+    fd.set("startDate", rangeParts.startDate);
+    fd.set("endDate", rangeParts.endDate);
+    fd.set("nightlyRate", String(value));
+
+    const res = await upsertListingDatePriceRange(fd);
+    if (res?.success) {
+      toast.success("Custom price applied");
+      setPriceDialogOpen(false);
+    } else if (res?.error) {
+      toast.error(res.error);
+    }
   }
 
-  function handleRemovePrice() {
-    if (!priceRow) return;
-    startTransition(async () => {
-      const res = await removeListingDatePrice(priceRow.id);
-      if (res?.success) {
-        toast.success("Custom price removed");
-        refresh();
-      } else if (res?.error) toast.error(res.error);
-    });
+  async function runFutureBlockAll() {
+    const res = await blockAllFutureDates(listingId);
+    if (res?.success) {
+      toast.success("All future dates blocked");
+    } else if (res?.error) {
+      toast.error(res.error);
+    }
   }
 
-  function handleUnblock() {
-    if (!blockForDay || blockForDay.blockType !== "MANUAL_BLOCK") return;
-    startTransition(async () => {
-      const res = await unblockDates(blockForDay.id);
-      if (res?.success) {
-        toast.success("Block removed");
-        refresh();
-      } else if (res?.error) toast.error(res.error);
-    });
+  async function runFutureMakeAvailableAll() {
+    const res = await makeAllFutureDatesAvailable(listingId);
+    if (res?.success) {
+      toast.success("All future manual blocks removed");
+    } else if (res?.error) {
+      toast.error(res.error);
+    }
   }
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Calendar</CardTitle>
-            <p className="text-sm text-muted-foreground font-normal">
-              Click a date to set a custom nightly rate or manage blocks. Past dates are disabled.
-            </p>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center sm:items-start">
-            <div className="flex flex-wrap gap-4 text-xs text-muted-foreground mb-4">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="size-3 rounded-sm bg-muted border" /> Manual block
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="size-3 rounded-sm bg-destructive/25 border border-destructive/30" />{" "}
-                Booking
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="size-3 rounded-sm ring-2 ring-primary ring-inset" /> Custom price
-              </span>
-            </div>
-            <Calendar
-              mode="single"
-              selected={selected}
-              onSelect={setSelected}
-              numberOfMonths={2}
-              disabled={{ before: today }}
-              defaultMonth={today}
-              modifiers={{
-                manualBlock: (d) => manualKeys.has(dateKey(d)),
-                bookingHold: (d) => bookingKeys.has(dateKey(d)),
-                customPrice: (d) =>
-                  priceByKey.has(dateKey(d)) &&
-                  !manualKeys.has(dateKey(d)) &&
-                  !bookingKeys.has(dateKey(d)),
+    <div className="space-y-5">
+      <Card className="border-border/70 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Calendar</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Select a date range, then apply availability or pricing actions.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="size-3 rounded-sm bg-muted border" /> Manual block
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="size-3 rounded-sm bg-destructive/25 border border-destructive/30" />{" "}
+              Booking
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="size-3 rounded-sm ring-2 ring-primary ring-inset" /> Custom price
+            </span>
+          </div>
+
+          <div className="rounded-xl border bg-card p-3">
+            <MarketplaceStayDatePicker
+              layout="compact"
+              checkIn={checkIn}
+              checkOut={checkOut}
+              showDateFlexibility={false}
+              showGuestStep={false}
+              finalActionLabel="Done"
+              dateDialogTitle="Availability"
+              dateDialogDescription="Select dates to block, reopen, or adjust nightly price."
+              hideDateSegmentCards
+              dayVariant="availability"
+              dayMeta={(day) => {
+                const key = dateKey(day);
+                return {
+                  sublabel: compactPriceFormatter.format(
+                    priceByKey.get(key) ?? baseNightlyRate
+                  ),
+                  isCustomPrice:
+                    priceByKey.has(key) &&
+                    !manualKeys.has(key) &&
+                    !bookingKeys.has(key),
+                };
               }}
-              modifiersClassNames={{
-                manualBlock: cn("bg-muted text-foreground hover:bg-muted"),
-                bookingHold: cn("bg-destructive/25 text-foreground hover:bg-destructive/30"),
-                customPrice: cn("ring-2 ring-primary ring-inset font-medium"),
+              dateModifiers={{
+                manualBlock: (day) => manualKeys.has(dateKey(day)),
+                bookingHold: (day) => bookingKeys.has(dateKey(day)),
+                customPrice: (day) => {
+                  const key = dateKey(day);
+                  return (
+                    priceByKey.has(key) &&
+                    !manualKeys.has(key) &&
+                    !bookingKeys.has(key)
+                  );
+                },
               }}
-              className="rounded-lg border p-2"
-            />
-          </CardContent>
-        </Card>
+              dateModifiersClassNames={{
+                manualBlock: cn(
+                  "bg-muted text-foreground hover:bg-muted",
+                  "after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:bg-[repeating-linear-gradient(-45deg,rgba(15,23,42,0.09)_0,rgba(15,23,42,0.09)_4px,transparent_4px,transparent_8px)]"
+                ),
+                bookingHold: cn(
+                  "bg-destructive/25 text-foreground hover:bg-destructive/30"
+                ),
+                customPrice: cn("ring-2 ring-primary/40 ring-inset font-medium"),
+              }}
+              renderDateFooter={({ closePicker }) => (
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                    <div className="flex-1 space-y-3">
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium text-foreground">{selectedLabel}</p>
+                        {rangeParts ? (
+                          <div className="flex flex-wrap gap-2">
+                            <Badge variant="secondary">
+                              {selectedStats.totalDays} day{selectedStats.totalDays === 1 ? "" : "s"}
+                            </Badge>
+                            <Badge variant="outline">
+                              {selectedUniformRate != null
+                                ? `${compactPriceFormatter.format(selectedUniformRate)} / night`
+                                : "Mixed prices"}
+                            </Badge>
+                            {selectedStats.customPriceDays > 0 ? (
+                              <Badge variant="outline">
+                                {selectedStats.customPriceDays} custom price day
+                                {selectedStats.customPriceDays === 1 ? "" : "s"}
+                              </Badge>
+                            ) : null}
+                            {selectedStats.manualDays > 0 ? (
+                              <Badge variant="outline">
+                                {selectedStats.manualDays} blocked day
+                                {selectedStats.manualDays === 1 ? "" : "s"}
+                              </Badge>
+                            ) : null}
+                            {selectedStats.bookingDays > 0 ? (
+                              <Badge variant="outline">
+                                {selectedStats.bookingDays} booked day
+                                {selectedStats.bookingDays === 1 ? "" : "s"}
+                              </Badge>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
 
-        <Card className="h-fit">
-          <CardHeader>
-            <CardTitle className="text-lg">Selected date</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {!selected && (
-              <p className="text-sm text-muted-foreground">Choose a day on the calendar.</p>
-            )}
-            {selected && isPast && (
-              <p className="text-sm text-muted-foreground">Past dates cannot be edited.</p>
-            )}
-            {selected && !isPast && (
-              <>
-                <p className="font-medium">{format(selected, "EEEE, MMM d, yyyy")}</p>
-                <div className="flex flex-wrap gap-2">
-                  {isBooking && <Badge>Booked</Badge>}
-                  {isManualBlock && !isBooking && <Badge variant="secondary">Blocked</Badge>}
-                  {!isManualBlock && !isBooking && <Badge variant="outline">Available</Badge>}
-                </div>
-
-                {isBooking && blockForDay?.booking && (
-                  <p className="text-sm text-muted-foreground">
-                    Guest: {blockForDay.booking.guest.name} ({blockForDay.booking.status})
-                  </p>
-                )}
-
-                {isManualBlock && !isBooking && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={pending}
-                    onClick={handleUnblock}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2 text-destructive" />
-                    Remove block
-                  </Button>
-                )}
-
-                {!isManualBlock && !isBooking && (
-                  <div className="space-y-3">
-                    <div className="text-sm text-muted-foreground">
-                      Base rate: {formatPrice(baseNightlyRate, currency)} / night
+                      <div className="max-w-sm space-y-2">
+                        <Label htmlFor="availability-reason" className="text-xs text-muted-foreground">
+                          Block reason (optional)
+                        </Label>
+                        <Input
+                          id="availability-reason"
+                          value={reasonInput}
+                          onChange={(e) => setReasonInput(e.target.value)}
+                          placeholder="e.g. Maintenance, private stay"
+                        />
+                      </div>
                     </div>
-                    {priceRow && (
-                      <div className="flex items-center justify-between gap-2 rounded-md border p-3">
-                        <div>
-                          <p className="text-xs text-muted-foreground">Custom rate</p>
-                          <p className="font-semibold">
-                            {formatPrice(Number(priceRow.nightlyRate), currency)} / night
-                          </p>
-                        </div>
+
+                    <div className="flex w-full flex-wrap items-center justify-end gap-3 lg:w-auto">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="min-w-[7rem] rounded-full"
+                        onClick={closePicker}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="min-w-[7rem] rounded-full"
+                        disabled={!rangeParts || pending}
+                        onClick={() => {
+                          openPriceDialog();
+                        }}
+                      >
+                        Edit price
+                      </Button>
+                      {selectedStats.hasCustomPrice ? (
                         <Button
                           type="button"
-                          variant="ghost"
-                          size="sm"
-                          disabled={pending}
-                          onClick={handleRemovePrice}
+                          variant="outline"
+                          className="min-w-[7rem] rounded-full"
+                          disabled={!rangeParts || pending}
+                          onClick={() => startTransition(runResetCustomPrice)}
                         >
-                          Clear
+                          Reset price
                         </Button>
-                      </div>
-                    )}
-                    <div className="space-y-2">
-                      <Label htmlFor="dayPrice">Custom nightly price ({currency})</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          id="dayPrice"
-                          inputMode="decimal"
-                          placeholder={String(baseNightlyRate)}
-                          value={priceInput}
-                          onChange={(e) => setPriceInput(e.target.value)}
-                        />
-                        <Button type="button" disabled={pending} onClick={handleApplyPrice}>
-                          Save
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Set the same value as the base rate to clear a custom price.
-                      </p>
+                      ) : null}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="min-w-[8rem] rounded-full"
+                        disabled={!rangeParts || pending}
+                        onClick={() =>
+                          requestConfirm(
+                            "Make selected range available",
+                            `This removes manual blocks in ${selectedLabel}. Booking holds stay untouched.`,
+                            runMakeRangeAvailable
+                          )
+                        }
+                      >
+                        Make available
+                      </Button>
+                      <Button
+                        type="button"
+                        className="min-w-[7rem] rounded-full"
+                        disabled={!rangeParts || pending}
+                        onClick={() =>
+                          requestConfirm(
+                            "Block selected range",
+                            `This will block ${selectedLabel} for booking requests.`,
+                            runBlockRange
+                          )
+                        }
+                      >
+                        Block
+                      </Button>
                     </div>
                   </div>
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Block a date range</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <BlockRangeForm listingId={listingId} minDate={format(today, "yyyy-MM-dd")} />
+                </div>
+              )}
+              onRangeStringsChange={({ checkIn: nextIn, checkOut: nextOut }) => {
+                setCheckIn(nextIn);
+                setCheckOut(nextOut);
+              }}
+            />
+          </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Blocked & booked ranges</CardTitle>
+      <Card className="border-border/70 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Bulk Future Actions</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            These actions affect all future dates and stay separate from the date-by-date calendar workflow.
+          </p>
         </CardHeader>
         <CardContent>
-          {existingBlocks.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No upcoming blocks or bookings.</p>
+          <div className="grid gap-3 md:grid-cols-2">
+            <Button
+              type="button"
+              variant="default"
+              className="w-full"
+              disabled={pending}
+              onClick={() =>
+                requestConfirm(
+                  "Block all future dates",
+                  "This will block every currently available future date. Existing booking holds remain as-is.",
+                  runFutureBlockAll
+                )
+              }
+            >
+              Block all future
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              disabled={pending}
+              onClick={() =>
+                requestConfirm(
+                  "Make all future dates available",
+                  "This will remove all manual future blocks. Confirmed/pending booking holds are kept.",
+                  runFutureMakeAvailableAll
+                )
+              }
+            >
+              Make all future available
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/70 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Upcoming Exceptions</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Review the upcoming blocked dates, bookings, and custom price periods in one timeline.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap gap-2">
+            {[
+              { value: "ALL", label: `All (${upcomingExceptions.length})` },
+              {
+                value: "MANUAL_BLOCK",
+                label: `Blocks (${upcomingExceptions.filter((item) => item.kind === "MANUAL_BLOCK").length})`,
+              },
+              {
+                value: "BOOKING_HOLD",
+                label: `Bookings (${upcomingExceptions.filter((item) => item.kind === "BOOKING_HOLD").length})`,
+              },
+              {
+                value: "CUSTOM_PRICE",
+                label: `Prices (${upcomingExceptions.filter((item) => item.kind === "CUSTOM_PRICE").length})`,
+              },
+            ].map((filterOption) => (
+              <Button
+                key={filterOption.value}
+                type="button"
+                variant={activityFilter === filterOption.value ? "default" : "outline"}
+                className="rounded-full"
+                onClick={() => setActivityFilter(filterOption.value as ActivityFilter)}
+              >
+                {filterOption.label}
+              </Button>
+            ))}
+          </div>
+
+          {filteredUpcomingExceptions.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No upcoming exceptions for the selected filter.
+            </p>
           ) : (
-            <div className="space-y-3">
-              {existingBlocks.map((block) => (
-                <div key={block.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <p className="text-sm font-medium">
-                      {format(new Date(block.startDate), "MMM d, yyyy")} –{" "}
-                      {format(new Date(block.endDate), "MMM d, yyyy")}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      <Badge variant={block.blockType === "MANUAL_BLOCK" ? "secondary" : "default"}>
-                        {block.blockType === "MANUAL_BLOCK" ? "Manual block" : "Booking hold"}
+            <div className="space-y-2">
+              {filteredUpcomingExceptions.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex flex-col gap-3 rounded-xl border px-4 py-3 md:flex-row md:items-center md:justify-between"
+                >
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-medium text-foreground">{item.title}</p>
+                      <Badge
+                        variant={
+                          item.kind === "BOOKING_HOLD"
+                            ? "default"
+                            : item.kind === "MANUAL_BLOCK"
+                              ? "secondary"
+                              : "outline"
+                        }
+                      >
+                        {item.badge}
                       </Badge>
-                      {block.reason && (
-                        <span className="text-xs text-muted-foreground">{block.reason}</span>
-                      )}
-                      {block.booking && (
-                        <span className="text-xs text-muted-foreground">
-                          Guest: {block.booking.guest.name}
-                        </span>
-                      )}
                     </div>
+                    <p className="text-sm text-muted-foreground">
+                      {format(parseLocalYmd(item.start)!, "MMM d, yyyy")} -{" "}
+                      {format(parseLocalYmd(item.end)!, "MMM d, yyyy")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{item.detail}</p>
                   </div>
-                  {block.blockType === "MANUAL_BLOCK" && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      disabled={pending}
-                      onClick={() => {
-                        startTransition(async () => {
-                          const result = await unblockDates(block.id);
-                          if (result?.success) {
-                            toast.success("Block removed");
-                            refresh();
-                          }
-                          if (result?.error) toast.error(result.error);
-                        });
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  )}
+                  <div className="text-xs text-muted-foreground">
+                    {item.kind === "CUSTOM_PRICE"
+                      ? "Price override"
+                      : item.kind === "BOOKING_HOLD"
+                        ? "Booking protection"
+                        : "Manual availability block"}
+                  </div>
                 </div>
               ))}
             </div>
@@ -349,100 +698,70 @@ export function PropertyAvailabilityCalendar({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Custom nightly prices</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {datePrices.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No date-specific prices. Use the calendar to add them.
+      <Dialog open={priceDialogOpen} onOpenChange={setPriceDialogOpen}>
+        <DialogContent showCloseButton={false} className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Edit price</DialogTitle>
+            <DialogDescription>
+              {rangeParts
+                ? `Set a nightly rate for ${selectedLabel}.`
+                : "Select a date range first."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="range-price">Nightly price</Label>
+              <Input
+                id="range-price"
+                inputMode="decimal"
+                placeholder={String(selectedUniformRate ?? baseNightlyRate)}
+                value={priceInput}
+                onChange={(e) => setPriceInput(e.target.value)}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Base rate: {formatPrice(baseNightlyRate, currency)}
             </p>
-          ) : (
-            <ul className="divide-y rounded-md border">
-              {datePrices.map((row) => (
-                <li
-                  key={row.id}
-                  className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
-                >
-                  <span>{format(new Date(row.date), "MMM d, yyyy")}</span>
-                  <span className="font-medium">{formatPrice(Number(row.nightlyRate), currency)}</span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="shrink-0"
-                    disabled={pending}
-                    onClick={() => {
-                      startTransition(async () => {
-                        const res = await removeListingDatePrice(row.id);
-                        if (res?.success) {
-                          toast.success("Removed");
-                          refresh();
-                        } else if (res?.error) toast.error(res.error);
-                      });
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPriceDialogOpen(false)}>
+              Cancel
+            </Button>
+            {selectedStats.hasCustomPrice ? (
+              <Button
+                variant="outline"
+                disabled={!rangeParts || pending}
+                onClick={() => startTransition(runResetCustomPrice)}
+              >
+                Use base price
+              </Button>
+            ) : null}
+            <Button disabled={!rangeParts || pending} onClick={() => startTransition(runSetCustomPrice)}>
+              Save price
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={Boolean(pendingAction)} onOpenChange={(open) => !open && setPendingAction(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4" />
+              {pendingAction?.title}
+            </DialogTitle>
+            <DialogDescription>{pendingAction?.description}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingAction(null)}>
+              Cancel
+            </Button>
+            <Button disabled={pending || !pendingAction} onClick={() => pendingAction && runConfirmed(pendingAction)}>
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
-  );
-}
-
-function BlockRangeForm({ listingId, minDate }: { listingId: string; minDate: string }) {
-  const router = useRouter();
-  const [state, formAction, isPending] = useActionState(
-    async (_prev: { error?: string; success?: boolean } | undefined, formData: FormData) => {
-      formData.set("listingId", listingId);
-      const result = await blockDates(formData);
-      if (result?.success) {
-        toast.success("Dates blocked");
-        router.refresh();
-      }
-      if (result?.error) toast.error(result.error);
-      return result;
-    },
-    undefined
-  );
-
-  return (
-    <form className="space-y-4" action={formAction}>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="startDate">Start date</Label>
-          <Input id="startDate" name="startDate" type="date" required min={minDate} />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="endDate">End date</Label>
-          <Input
-            id="endDate"
-            name="endDate"
-            type="date"
-            required
-            min={minDate}
-            title="Last night blocked is the day before this checkout-style end date"
-          />
-        </div>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="reason">Reason (optional)</Label>
-        <Input id="reason" name="reason" placeholder="e.g., Personal use, Maintenance" />
-      </div>
-      <p className="text-xs text-muted-foreground">
-        End date is exclusive (same as guest checkout day): nights blocked are from start up to — but
-        not including — the end date.
-      </p>
-      {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
-      <Button type="submit" disabled={isPending}>
-        <CalendarIcon className="h-4 w-4 mr-2" />
-        {isPending ? "Blocking..." : "Block dates"}
-      </Button>
-    </form>
   );
 }

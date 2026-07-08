@@ -76,13 +76,24 @@ export function Footer() {
           </div>
         </div>
       </div>
-      <div className="border-t bg-foreground text-background">
-        <div className="max-w-[1760px] mx-auto px-4 md:px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs md:text-sm">
-          <p className="opacity-90">© {new Date().getFullYear()} {SITE_DOMAIN}</p>
-          <div className="flex flex-wrap gap-6 justify-center opacity-90">
-            <span className="cursor-default">Privacy</span>
-            <span className="cursor-default">Terms</span>
-            <span className="cursor-default">Support</span>
+      <div className="border-t bg-background py-8">
+        <div className="container mx-auto px-4 md:px-8 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground max-w-[1760px]">
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <span>© {new Date().getFullYear()} book.easy, Inc.</span>
+            <Link href="/" className="hover:text-foreground transition-colors">
+              Terms
+            </Link>
+            <Link href="/" className="hover:text-foreground transition-colors">
+              Privacy
+            </Link>
+          </div>
+          <div className="flex items-center gap-4 font-medium">
+            <span className="hover:text-foreground transition-colors cursor-default">
+              € EUR
+            </span>
+            <span className="hover:text-foreground transition-colors cursor-default">
+              English (US)
+            </span>
           </div>
         </div>
       </div>

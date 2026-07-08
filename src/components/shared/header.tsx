@@ -13,20 +13,24 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
-  Menu,
   User,
   Home,
   LogOut,
   LayoutDashboard,
-  Building2,
   CalendarDays,
   ShieldCheck,
-  Globe,
+  SlidersHorizontal,
 } from "lucide-react";
 import { MarketplaceSearchBar } from "@/components/marketplace/marketplace-search-bar";
-import { PRODUCT_FAMILY, PRODUCT_NAME, SITE_DOMAIN } from "@/lib/branding";
+import { SITE_DOMAIN } from "@/lib/branding";
 
-export function Header() {
+export function Header({
+  popularCities = [],
+  availablePropertyTypesByCity = {},
+}: {
+  popularCities?: string[];
+  availablePropertyTypesByCity?: Record<string, string[]>;
+}) {
   const router = useRouter();
   const { data: session, update } = useSession();
   const user = session?.user;
@@ -37,7 +41,12 @@ export function Header() {
     .toUpperCase()
     .slice(0, 2);
 
-  const searchDefaults = { city: "", checkIn: "", checkOut: "", guests: "" };
+  const searchDefaults = {
+    city: "",
+    checkIn: "",
+    checkOut: "",
+    guests: "",
+  };
 
   async function handleLogout() {
     await signOut({ redirect: false });
@@ -46,57 +55,68 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      <div
-        className="mx-auto flex h-[72px] items-center gap-4 px-4 md:px-6 lg:px-8 max-w-[1760px]"
-      >
-        <Link href="/" className="flex items-center gap-1 shrink-0" title={SITE_DOMAIN}>
-          <Building2 className="h-8 w-8 text-primary" />
-          <span className="text-lg font-semibold tracking-tight text-foreground">
-            {PRODUCT_NAME}
-            <span className="text-muted-foreground font-normal">
-              .{PRODUCT_FAMILY}
+    <header className="w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container mx-auto px-4 md:px-8 h-20 flex items-center justify-between gap-4 max-w-[1760px]">
+        <div className="flex-1 shrink-0 flex items-center min-w-0">
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-primary font-bold text-xl tracking-tight shrink-0"
+            title={SITE_DOMAIN}
+          >
+            <span className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center text-primary-foreground text-sm font-bold">
+              b.
             </span>
-          </span>
-        </Link>
-
-        <div className="hidden md:flex flex-1 justify-center min-w-0 px-2">
-          <MarketplaceSearchBar variant="compact" {...searchDefaults} />
+            <span className="hidden min-[400px]:inline">
+              book
+              <span className="text-foreground">.easy</span>
+              <span className="text-muted-foreground font-semibold text-lg">
+                .mk
+              </span>
+            </span>
+          </Link>
         </div>
 
-        <nav className="hidden lg:flex items-center gap-1 shrink-0 ml-auto">
-          <Button variant="ghost" size="sm" className="rounded-full font-medium" asChild>
-            <Link href="/properties">Stays</Link>
-          </Button>
+        <div className="hidden md:flex flex-[2] items-center justify-center max-w-2xl min-w-0 px-2">
+          <MarketplaceSearchBar
+            variant="pill"
+            {...searchDefaults}
+            popularCities={popularCities}
+            availablePropertyTypesByCity={availablePropertyTypesByCity}
+          />
+        </div>
+
+        <div className="flex-1 shrink-0 flex items-center justify-end gap-2">
           {user?.isHost ? (
-            <Button variant="ghost" size="sm" className="rounded-full font-medium" asChild>
+            <Button
+              variant="ghost"
+              className="hidden sm:flex rounded-full text-sm font-medium"
+              asChild
+            >
               <Link href="/host">Switch to hosting</Link>
             </Button>
           ) : (
-            <Button variant="ghost" size="sm" className="rounded-full font-medium" asChild>
-              <Link href="/account/become-host">Become a host</Link>
+            <Button
+              variant="ghost"
+              className="hidden sm:flex rounded-full text-sm font-medium"
+              asChild
+            >
+              <Link href="/account/become-host">List your property</Link>
             </Button>
           )}
-        </nav>
-
-        <div className="flex items-center gap-2 shrink-0 ml-auto md:ml-0">
-          <Button variant="ghost" size="icon" className="rounded-full hidden sm:flex" aria-label="Language">
-            <Globe className="h-5 w-5" />
-          </Button>
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="flex items-center gap-2 rounded-full pl-3 pr-1 py-1 h-auto border-border shadow-sm hover:shadow-md transition-shadow"
+                <button
+                  type="button"
+                  className="flex items-center gap-2 border rounded-full p-1.5 pl-3 hover:shadow-md transition-shadow cursor-pointer bg-background text-left"
                 >
-                  <Menu className="h-4 w-4 ml-1" />
+                  <SlidersHorizontal className="h-4 w-4 text-muted-foreground shrink-0" />
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+                    <AvatarFallback className="text-xs bg-muted text-foreground">
                       {initials}
                     </AvatarFallback>
                   </Avatar>
-                </Button>
+                </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <div className="px-2 py-1.5">
@@ -104,6 +124,12 @@ export function Header() {
                   <p className="text-xs text-muted-foreground">{user.email}</p>
                 </div>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link href="/properties">
+                    <Home className="mr-2 h-4 w-4" />
+                    Stays
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/account/bookings">
                     <CalendarDays className="mr-2 h-4 w-4" />
@@ -178,8 +204,13 @@ export function Header() {
         </div>
       </div>
 
-      <div className="md:hidden border-t px-4 py-3 bg-muted/30">
-        <MarketplaceSearchBar variant="compact" {...searchDefaults} />
+      <div className="md:hidden border-t px-4 py-3 bg-background">
+        <MarketplaceSearchBar
+          variant="compact"
+          {...searchDefaults}
+          popularCities={popularCities}
+          availablePropertyTypesByCity={availablePropertyTypesByCity}
+        />
       </div>
     </header>
   );

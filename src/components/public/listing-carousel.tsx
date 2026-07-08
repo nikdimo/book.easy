@@ -72,7 +72,7 @@ export function ListingCarousel({
           <div
             key={listing.id}
             data-carousel-card
-            className="flex-none w-[85%] sm:w-[47%] md:w-[32%] lg:w-[24%] xl:w-[19%] snap-start"
+            className="flex-none w-full sm:w-[47%] md:w-[32%] lg:w-[24%] xl:w-[19%] snap-start"
           >
             <PropertyCard listing={listing} />
           </div>
