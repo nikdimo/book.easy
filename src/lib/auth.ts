@@ -1,3 +1,4 @@
+import { createTransport } from "nodemailer";
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Nodemailer from "next-auth/providers/nodemailer";
@@ -5,6 +6,8 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import type { Adapter } from "next-auth/adapters";
 import { db } from "@/lib/db";
 import { authConfig } from "@/lib/auth.config";
+import { rateLimit } from "@/lib/rate-limit";
+import { SITE_DOMAIN } from "@/lib/branding";
 
 // Magic-link sign-ins only carry an email, but `name` is required on User.
 // Fall back to the local part of the email so the account still gets a display name.
@@ -40,6 +43,27 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         },
       },
       from: process.env.EMAIL_FROM,
+      // Rate-limit per recipient before sending — otherwise this endpoint lets anyone
+      // email-bomb an arbitrary address (no auth required to request a magic link) and
+      // burns SMTP sender reputation. The UI already has a 30s resend cooldown, but
+      // that's client-state only and doesn't stop a scripted caller.
+      async sendVerificationRequest({ identifier: email, url, provider }) {
+        const limit = rateLimit(`magic-link:${email.toLowerCase()}`, 5, 15 * 60 * 1000);
+        if (!limit.success) {
+          throw new Error(
+            "Too many sign-in attempts for this email. Please wait a few minutes and try again."
+          );
+        }
+
+        const transport = createTransport(provider.server);
+        await transport.sendMail({
+          to: email,
+          from: provider.from,
+          subject: `Sign in to ${SITE_DOMAIN}`,
+          text: `Sign in to ${SITE_DOMAIN}\n${url}\n\nIf you didn't request this, you can ignore this email.`,
+          html: `<p>Sign in to <strong>${SITE_DOMAIN}</strong></p><p><a href="${url}">Click here to sign in</a></p><p>If you didn't request this, you can ignore this email.</p>`,
+        });
+      },
     }),
   ],
 });

@@ -1,3 +1,4 @@
+import "server-only";
 import { addDays } from "date-fns";
 import { db } from "@/lib/db";
 

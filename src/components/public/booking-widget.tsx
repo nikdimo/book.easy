@@ -24,7 +24,7 @@ interface BookingWidgetProps {
   cleaningFee: number;
   currency: string;
   minNights: number;
-  disabledDates: Date[];
+  disabledDateRanges: { from: Date; to: Date }[];
   /** yyyy-MM-dd → override nightly rate for that night */
   priceOverrides?: { date: string; rate: number }[];
 }
@@ -36,7 +36,7 @@ export function BookingWidget({
   cleaningFee,
   currency,
   minNights,
-  disabledDates,
+  disabledDateRanges,
   priceOverrides = [],
 }: BookingWidgetProps) {
   const { data: session } = useSession();
@@ -122,7 +122,7 @@ export function BookingWidget({
           <DateRangePicker
             value={dateRange}
             onChange={setDateRange}
-            disabledDates={disabledDates}
+            disabledDateRanges={disabledDateRanges}
             className="w-full"
           />
         </div>

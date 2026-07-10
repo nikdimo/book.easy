@@ -46,7 +46,7 @@ Generate a secret: `openssl rand -base64 32`
 
 ```bash
 npx prisma generate
-npx prisma db push
+npx prisma migrate deploy
 ```
 
 ### 4. Seed demo data
@@ -150,6 +150,10 @@ src/
 | `npm run build` | Production build |
 | `npm run start` | Start production server |
 | `npm run db:generate` | Generate Prisma client |
-| `npm run db:push` | Push schema to database |
+| `npm run db:migrate` | Create a new migration from schema changes (dev) |
+| `npm run db:migrate:deploy` | Apply pending migrations (prod/CI) |
+| `npm run db:push` | Push schema without a migration (prototyping only — do not use against production) |
 | `npm run db:seed` | Seed demo data |
 | `npm run db:studio` | Open Prisma Studio |
+| `npm run typecheck` | Type-check without emitting |
+| `npm test` | Run the test suite (integration tests — needs the local DB running, `npm run db:docker`) |

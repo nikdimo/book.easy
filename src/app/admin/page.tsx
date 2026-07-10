@@ -1,10 +1,12 @@
 import { db } from "@/lib/db";
+import { completePastBookings } from "@/lib/services/booking.service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Home, Users, CalendarDays, Clock, CheckCircle, AlertTriangle } from "lucide-react";
 
 export const metadata = { title: "Admin Dashboard" };
 
 export default async function AdminDashboardPage() {
+  await completePastBookings();
   const [
     totalUsers, totalHosts, totalListings, pendingListings,
     approvedListings, totalBookings, pendingBookings, confirmedBookings,

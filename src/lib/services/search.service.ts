@@ -1,8 +1,19 @@
+import { unstable_cache } from "next/cache";
 import { db } from "@/lib/db";
 import { ListingStatus, Prisma, PropertyType } from "@prisma/client";
 import { ITEMS_PER_PAGE } from "@/lib/constants";
 import { sortPropertyTypesInDisplayOrder } from "@/lib/property-type-filter";
-import { serializeListingCard } from "@/lib/serializers/listing-card";
+import { serializeListingCard, listingCardSelect } from "@/lib/serializers/listing-card";
+
+/** Invalidated on-demand (via revalidateTag) whenever a listing's public visibility
+ * changes — see approveListing/suspendListing in lib/actions/admin.actions.ts — with a
+ * time-based fallback so it's never wrong for more than a few minutes either way. */
+export const PUBLIC_HEADER_DATA_TAG = "public-header-data";
+
+/** Grid/search cards show at most a handful of photos (hover carousel) — fetching all
+ * of a listing's images per card (previously up to 8) is wasted payload for a list
+ * view; the full gallery loads on the listing detail page instead. */
+const CARD_IMAGE_LIMIT = 4;
 
 export interface SearchFilters {
   city?: string;
@@ -64,11 +75,12 @@ function buildListingWhere(filters: SearchFilters): Prisma.ListingWhereInput {
   }
 
   if (filters.amenities && filters.amenities.length > 0) {
-    where.amenities = {
-      some: {
-        amenity: { name: { in: filters.amenities } },
-      },
-    };
+    // Must have ALL selected amenities (US-05.05 / phase-1-scope.md technical
+    // acceptance criteria), not just any one of them — one `some` clause per amenity,
+    // ANDed together.
+    where.AND = filters.amenities.map((name) => ({
+      amenities: { some: { amenity: { name } } },
+    }));
   }
 
   if (filters.checkIn && filters.checkOut) {
@@ -104,11 +116,13 @@ export async function searchListings(filters: SearchFilters) {
   const [listings, total] = await Promise.all([
     db.listing.findMany({
       where,
-      include: {
-        property: true,
-        images: { orderBy: { displayOrder: "asc" }, take: 8 },
-        pricingRule: true,
-        amenities: { include: { amenity: true } },
+      select: {
+        ...listingCardSelect,
+        images: {
+          select: { url: true, alt: true },
+          orderBy: { displayOrder: "asc" },
+          take: CARD_IMAGE_LIMIT,
+        },
       },
       orderBy,
       skip,
@@ -128,10 +142,13 @@ export async function searchListings(filters: SearchFilters) {
 export async function getFeaturedListings(limit = 6) {
   const rows = await db.listing.findMany({
     where: { status: ListingStatus.APPROVED },
-    include: {
-      property: true,
-      images: { orderBy: { displayOrder: "asc" }, take: 8 },
-      pricingRule: true,
+    select: {
+      ...listingCardSelect,
+      images: {
+        select: { url: true, alt: true },
+        orderBy: { displayOrder: "asc" },
+        take: CARD_IMAGE_LIMIT,
+      },
     },
     orderBy: { createdAt: "desc" },
     take: limit,
@@ -152,26 +169,15 @@ export async function getAvailableAmenityNames(filters: SearchFilters) {
     amenities: undefined,
   });
 
-  const listings = await db.listing.findMany({
-    where,
-    select: {
-      amenities: {
-        select: {
-          amenity: {
-            select: {
-              name: true,
-            },
-          },
-        },
-      },
-    },
+  // Ask the DB for distinct amenity names directly instead of fetching every matching
+  // listing's full amenity list and deduping in Node.
+  const rows = await db.amenity.findMany({
+    where: { listings: { some: { listing: where } } },
+    select: { name: true },
+    orderBy: { name: "asc" },
   });
 
-  return [...new Set(
-    listings.flatMap((listing) =>
-      listing.amenities.map(({ amenity }) => amenity.name)
-    )
-  )].sort((a, b) => a.localeCompare(b));
+  return rows.map((r) => r.name);
 }
 
 export async function getAvailablePropertyTypes(filters: SearchFilters) {
@@ -181,20 +187,12 @@ export async function getAvailablePropertyTypes(filters: SearchFilters) {
     propertyTypes: undefined,
   });
 
-  const listings = await db.listing.findMany({
-    where,
-    select: {
-      property: {
-        select: {
-          propertyType: true,
-        },
-      },
-    },
+  const rows = await db.property.groupBy({
+    by: ["propertyType"],
+    where: { listings: { some: where } },
   });
 
-  return collectAvailablePropertyTypes(
-    listings.map((listing) => listing.property.propertyType)
-  );
+  return collectAvailablePropertyTypes(rows.map((r) => r.propertyType));
 }
 
 export async function getSearchFilterPreview(
@@ -223,29 +221,14 @@ export async function getSearchFilterPreview(
   const [totalCount, propertyTypeRows, amenityRows, bedroomStats] =
     await Promise.all([
       db.listing.count({ where: totalWhere }),
-      db.listing.findMany({
-        where: propertyTypesWhere,
-        select: {
-          property: {
-            select: {
-              propertyType: true,
-            },
-          },
-        },
+      db.property.groupBy({
+        by: ["propertyType"],
+        where: { listings: { some: propertyTypesWhere } },
       }),
-      db.listing.findMany({
-        where: amenitiesWhere,
-        select: {
-          amenities: {
-            select: {
-              amenity: {
-                select: {
-                  name: true,
-                },
-              },
-            },
-          },
-        },
+      db.amenity.findMany({
+        where: { listings: { some: { listing: amenitiesWhere } } },
+        select: { name: true },
+        orderBy: { name: "asc" },
       }),
       db.listing.aggregate({
         where: bedroomsWhere,
@@ -258,64 +241,72 @@ export async function getSearchFilterPreview(
   return {
     totalCount,
     availablePropertyTypes: collectAvailablePropertyTypes(
-      propertyTypeRows.map((listing) => listing.property.propertyType)
+      propertyTypeRows.map((r) => r.propertyType)
     ),
-    availableAmenities: [...new Set(
-      amenityRows.flatMap((listing) =>
-        listing.amenities.map(({ amenity }) => amenity.name)
-      )
-    )].sort((a, b) => a.localeCompare(b)),
+    availableAmenities: amenityRows.map((r) => r.name),
     maxBedrooms: bedroomStats._max.bedrooms ?? 0,
   };
 }
 
-export async function getAvailableCities() {
-  const properties = await db.property.findMany({
-    where: { listings: { some: { status: ListingStatus.APPROVED } } },
-    select: { city: true },
-    distinct: ["city"],
-    orderBy: { city: "asc" },
-  });
-  const seen = new Set<string>();
-
-  return properties
-    .map((p) => p.city.trim())
-    .filter((city) => city.length > 0)
-    .filter((city) => {
-      const key = city.toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
+// Read on every public page (the header's location/type autocomplete), so this is
+// cached rather than hitting the DB per navigation — bounded by a 5 minute fallback and
+// invalidated on-demand when a listing's approval/suspension status changes.
+export const getAvailableCities = unstable_cache(
+  async (): Promise<string[]> => {
+    const properties = await db.property.findMany({
+      where: { listings: { some: { status: ListingStatus.APPROVED } } },
+      select: { city: true },
+      distinct: ["city"],
+      orderBy: { city: "asc" },
     });
-}
+    const seen = new Set<string>();
 
-export async function getAvailablePropertyTypesByCity() {
-  const properties = await db.property.findMany({
-    where: { listings: { some: { status: ListingStatus.APPROVED } } },
-    select: { city: true, propertyType: true },
-    orderBy: [{ city: "asc" }, { propertyType: "asc" }],
-  });
+    return properties
+      .map((p) => p.city.trim())
+      .filter((city) => city.length > 0)
+      .filter((city) => {
+        const key = city.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  },
+  ["available-cities"],
+  { revalidate: 300, tags: [PUBLIC_HEADER_DATA_TAG] }
+);
 
-  const canonicalCityByKey = new Map<string, string>();
-  const propertyTypesByCity = new Map<string, string[]>();
+export const getAvailablePropertyTypesByCity = unstable_cache(
+  async (): Promise<Record<string, string[]>> => {
+    // Distinct (city, propertyType) pairs computed by the DB instead of fetching every
+    // approved property and deduping in Node.
+    const rows = await db.property.groupBy({
+      by: ["city", "propertyType"],
+      where: { listings: { some: { status: ListingStatus.APPROVED } } },
+    });
 
-  for (const property of properties) {
-    const city = property.city.trim();
-    if (!city) continue;
+    const canonicalCityByKey = new Map<string, string>();
+    const propertyTypesByCity = new Map<string, string[]>();
 
-    const cityKey = city.toLowerCase();
-    const canonicalCity = canonicalCityByKey.get(cityKey) ?? city;
-    canonicalCityByKey.set(cityKey, canonicalCity);
+    for (const row of rows) {
+      const city = row.city.trim();
+      if (!city) continue;
 
-    const current = propertyTypesByCity.get(canonicalCity) ?? [];
-    current.push(property.propertyType);
-    propertyTypesByCity.set(canonicalCity, current);
-  }
+      const cityKey = city.toLowerCase();
+      const canonicalCity = canonicalCityByKey.get(cityKey) ?? city;
+      canonicalCityByKey.set(cityKey, canonicalCity);
 
-  return Object.fromEntries(
-    [...propertyTypesByCity.entries()].map(([city, propertyTypes]) => [
-      city,
-      collectAvailablePropertyTypes(propertyTypes),
-    ])
-  );
-}
+      const current = propertyTypesByCity.get(canonicalCity) ?? [];
+      current.push(row.propertyType);
+      propertyTypesByCity.set(canonicalCity, current);
+    }
+
+    return Object.fromEntries(
+      [...propertyTypesByCity.entries()].map(([city, propertyTypes]) => [
+        city,
+        collectAvailablePropertyTypes(propertyTypes),
+      ])
+    );
+  },
+  ["available-property-types-by-city"],
+  { revalidate: 300, tags: [PUBLIC_HEADER_DATA_TAG] }
+);

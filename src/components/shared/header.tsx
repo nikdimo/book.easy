@@ -76,7 +76,7 @@ export function Header({
           </Link>
         </div>
 
-        <div className="hidden md:flex flex-[2] items-center justify-center max-w-2xl min-w-0 px-2">
+        <div className="hidden 2xl:flex flex-[2] items-center justify-center max-w-3xl min-w-0 px-2">
           <MarketplaceSearchBar
             variant="pill"
             {...searchDefaults}
@@ -89,7 +89,7 @@ export function Header({
           {user?.isHost ? (
             <Button
               variant="ghost"
-              className="hidden sm:flex rounded-full text-sm font-medium"
+              className="hidden 2xl:flex rounded-full text-sm font-medium"
               asChild
             >
               <Link href="/host">Switch to hosting</Link>
@@ -97,7 +97,7 @@ export function Header({
           ) : (
             <Button
               variant="ghost"
-              className="hidden sm:flex rounded-full text-sm font-medium"
+              className="hidden 2xl:flex rounded-full text-sm font-medium"
               asChild
             >
               <Link href="/account/become-host">List your property</Link>
@@ -204,9 +204,9 @@ export function Header({
         </div>
       </div>
 
-      <div className="md:hidden border-t px-4 py-3 bg-background">
+      <div className="2xl:hidden border-t px-4 py-3 bg-background">
         <MarketplaceSearchBar
-          variant="compact"
+          variant="summary"
           {...searchDefaults}
           popularCities={popularCities}
           availablePropertyTypesByCity={availablePropertyTypesByCity}

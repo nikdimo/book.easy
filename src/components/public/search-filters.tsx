@@ -303,6 +303,24 @@ function SearchFiltersInner({
     selectedAmenities.length > 0;
 
   useEffect(() => {
+    // Nothing has changed from the server-rendered starting point yet — the preview
+    // state already equals initialPreview, so there's nothing to refetch. Guards the
+    // common case of the effect re-running on mount/focus-section changes with no
+    // actual filter edit.
+    const matchesInitial =
+      initialPreview != null &&
+      bedrooms === initialState.bedrooms &&
+      priceRange[0] === initialState.priceRange[0] &&
+      priceRange[1] === initialState.priceRange[1] &&
+      propertyTypes.length === initialState.propertyTypes.length &&
+      propertyTypes.every((t) => initialState.propertyTypes.includes(t)) &&
+      selectedAmenities.length === initialState.selectedAmenities.length &&
+      selectedAmenities.every((a) => initialState.selectedAmenities.includes(a));
+
+    if (matchesInitial) {
+      return;
+    }
+
     const controller = new AbortController();
     const timeoutId = window.setTimeout(async () => {
       try {
@@ -343,7 +361,7 @@ function SearchFiltersInner({
       } finally {
         setIsPreviewLoading(false);
       }
-    }, 150);
+    }, 350);
 
     return () => {
       controller.abort();
@@ -359,6 +377,8 @@ function SearchFiltersInner({
     priceRange,
     propertyTypes,
     selectedAmenities,
+    initialState,
+    initialPreview,
   ]);
 
   function buildFilteredParams() {

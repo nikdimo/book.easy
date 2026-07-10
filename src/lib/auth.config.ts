@@ -22,13 +22,21 @@ function authSecret(): string {
 export const authConfig: NextAuthConfig = {
   secret: authSecret(),
   trustHost: true,
-  session: { strategy: "jwt" },
+  session: { strategy: "jwt", maxAge: 60 * 60 * 24 },
   pages: {
     signIn: "/login",
     verifyRequest: "/login/check-email",
   },
   providers: [],
   callbacks: {
+    async signIn({ user }) {
+      // Deactivated accounts (admin.actions.ts `deactivateUser`) must not be able to
+      // sign in again, even though their existing session/JWT may still be valid.
+      if ((user as { isActive?: boolean }).isActive === false) {
+        return false;
+      }
+      return true;
+    },
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;

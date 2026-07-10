@@ -17,8 +17,14 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-/** Avoid Prisma/data access during `next build` static generation when DB is unavailable. */
-export const dynamic = "force-dynamic";
+// Was `force-dynamic` (disabling all static/PPR optimization app-wide, including pages
+// with no per-request data needs). Pages that genuinely need per-request freshness
+// already get it on their own merits: `(public)/properties` reads `searchParams`
+// (auto-dynamic), and admin/host/account pages read the session (auto-dynamic). A
+// bounded ISR window is a safer default for the rest — bounds staleness instead of
+// removing caching entirely. Build-time DB unavailability is handled per-page (see
+// `(public)/page.tsx`'s try/catch), not by this flag.
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: {

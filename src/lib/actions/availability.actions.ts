@@ -10,6 +10,7 @@ import {
   eachYmdExclusive,
   ymdToDbDate,
 } from "@/lib/utils/date-only";
+import { isAvailabilityOverlapConstraintError } from "@/lib/utils/db-errors";
 import { format } from "date-fns";
 
 async function getListingForManager(userId: string, role: string, listingId: string) {
@@ -74,27 +75,40 @@ export async function blockDates(formData: FormData) {
   if ("error" in range) return { error: range.error };
   const { start, end } = range;
 
-  const overlap = await db.availabilityBlock.findFirst({
-    where: {
-      listingId,
-      startDate: { lt: end },
-      endDate: { gt: start },
-    },
-  });
+  try {
+    await db.$transaction(async (tx) => {
+      // Same lock key as createBooking's transaction so a manual block and a concurrent
+      // booking request for this listing can't both pass their overlap check at once.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${listingId}))`;
 
-  if (overlap) {
-    return { error: "These dates overlap with an existing block or booking" };
+      const overlap = await tx.availabilityBlock.findFirst({
+        where: {
+          listingId,
+          startDate: { lt: end },
+          endDate: { gt: start },
+        },
+      });
+
+      if (overlap) {
+        throw new Error("These dates overlap with an existing block or booking");
+      }
+
+      await tx.availabilityBlock.create({
+        data: {
+          listingId,
+          startDate: start,
+          endDate: end,
+          blockType: BlockType.MANUAL_BLOCK,
+          reason: reason || null,
+        },
+      });
+    });
+  } catch (error) {
+    if (isAvailabilityOverlapConstraintError(error)) {
+      return { error: "These dates overlap with an existing block or booking" };
+    }
+    return { error: error instanceof Error ? error.message : "Failed to block dates" };
   }
-
-  await db.availabilityBlock.create({
-    data: {
-      listingId,
-      startDate: start,
-      endDate: end,
-      blockType: BlockType.MANUAL_BLOCK,
-      reason: reason || null,
-    },
-  });
 
   revalidateListingPaths(listingId, listing.slug);
   return { success: true };

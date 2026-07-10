@@ -1,0 +1,111 @@
+⚠ Attempted to load @next/swc-win32-x64-msvc, but an error occurred: \\?\C:\Users\Nikola Dimovski\book.easy.mk\node_modules\@next\swc-win32-x64-msvc\next-swc.win32-x64-msvc.node is not a valid Win32 application.
+\\?\C:\Users\Nikola Dimovski\book.easy.mk\node_modules\@next\swc-win32-x64-msvc\next-swc.win32-x64-msvc.node
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+⨯ Error: ENOENT: no such file or directory, open 'C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\server\app-paths-manifest.json'
+    at ignore-listed frames {
+  errno: -4058,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: 'C:\\Users\\Nikola Dimovski\\book.easy.mk\\.next\\dev\\server\\app-paths-manifest.json',
+  page: '/'
+}
+⨯ Error: ENOENT: no such file or directory, open 'C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\server\app-paths-manifest.json'
+    at ignore-listed frames {
+  errno: -4058,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: 'C:\\Users\\Nikola Dimovski\\book.easy.mk\\.next\\dev\\server\\app-paths-manifest.json',
+  page: '/'
+}
+⨯ Error: Cannot find module './vendor-chunks/@radix-ui.js'
+Require stack:
+- C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\server\webpack-runtime.js
+- C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\server\app\(public)\properties\[slug]\page.js
+- C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\require.js
+- C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\load-components.js
+- C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\dev\static-paths-worker.js
+- C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\compiled\jest-worker\processChild.js
+    at ignore-listed frames {
+  type: 'Error',
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    'C:\\Users\\Nikola Dimovski\\book.easy.mk\\.next\\dev\\server\\webpack-runtime.js',
+    'C:\\Users\\Nikola Dimovski\\book.easy.mk\\.next\\dev\\server\\app\\(public)\\properties\\[slug]\\page.js',
+    'C:\\Users\\Nikola Dimovski\\book.easy.mk\\node_modules\\next\\dist\\server\\require.js',
+    'C:\\Users\\Nikola Dimovski\\book.easy.mk\\node_modules\\next\\dist\\server\\load-components.js',
+    'C:\\Users\\Nikola Dimovski\\book.easy.mk\\node_modules\\next\\dist\\server\\dev\\static-paths-worker.js',
+    'C:\\Users\\Nikola Dimovski\\book.easy.mk\\node_modules\\next\\dist\\compiled\\jest-worker\\processChild.js'
+  ],
+  page: '/properties/charming-lakeside-villa-ohrid'
+}
+⨯ Error: Cannot find module './vendor-chunks/@radix-ui.js'
+Require stack:
+- C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\server\webpack-runtime.js
+- C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\server\app\(public)\properties\[slug]\page.js
+- C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\require.js
+- C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\load-components.js
+- C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\dev\static-paths-worker.js
+- C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\compiled\jest-worker\processChild.js
+    at ignore-listed frames {
+  type: 'Error',
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    'C:\\Users\\Nikola Dimovski\\book.easy.mk\\.next\\dev\\server\\webpack-runtime.js',
+    'C:\\Users\\Nikola Dimovski\\book.easy.mk\\.next\\dev\\server\\app\\(public)\\properties\\[slug]\\page.js',
+    'C:\\Users\\Nikola Dimovski\\book.easy.mk\\node_modules\\next\\dist\\server\\require.js',
+    'C:\\Users\\Nikola Dimovski\\book.easy.mk\\node_modules\\next\\dist\\server\\load-components.js',
+    'C:\\Users\\Nikola Dimovski\\book.easy.mk\\node_modules\\next\\dist\\server\\dev\\static-paths-worker.js',
+    'C:\\Users\\Nikola Dimovski\\book.easy.mk\\node_modules\\next\\dist\\compiled\\jest-worker\\processChild.js'
+  ],
+  page: '/properties/charming-lakeside-villa-ohrid'
+}
+⨯ Error: Cannot find module './vendor-chunks/@radix-ui.js'
+Require stack:
+- C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\server\webpack-runtime.js
+- C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\server\app\(public)\properties\[slug]\page.js
+- C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\require.js
+- C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\load-components.js
+- C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\dev\static-paths-worker.js
+- C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\compiled\jest-worker\processChild.js
+    at ignore-listed frames {
+  type: 'Error',
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    'C:\\Users\\Nikola Dimovski\\book.easy.mk\\.next\\dev\\server\\webpack-runtime.js',
+    'C:\\Users\\Nikola Dimovski\\book.easy.mk\\.next\\dev\\server\\app\\(public)\\properties\\[slug]\\page.js',
+    'C:\\Users\\Nikola Dimovski\\book.easy.mk\\node_modules\\next\\dist\\server\\require.js',
+    'C:\\Users\\Nikola Dimovski\\book.easy.mk\\node_modules\\next\\dist\\server\\load-components.js',
+    'C:\\Users\\Nikola Dimovski\\book.easy.mk\\node_modules\\next\\dist\\server\\dev\\static-paths-worker.js',
+    'C:\\Users\\Nikola Dimovski\\book.easy.mk\\node_modules\\next\\dist\\compiled\\jest-worker\\processChild.js'
+  ],
+  page: '/properties/charming-lakeside-villa-ohrid'
+}
+⨯ Error: Cannot find module './vendor-chunks/@radix-ui.js'
+Require stack:
+- C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\server\webpack-runtime.js
+- C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\server\app\(public)\properties\[slug]\page.js
+- C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\require.js
+- C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\load-components.js
+- C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\dev\static-paths-worker.js
+- C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\compiled\jest-worker\processChild.js
+    at ignore-listed frames {
+  type: 'Error',
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    'C:\\Users\\Nikola Dimovski\\book.easy.mk\\.next\\dev\\server\\webpack-runtime.js',
+    'C:\\Users\\Nikola Dimovski\\book.easy.mk\\.next\\dev\\server\\app\\(public)\\properties\\[slug]\\page.js',
+    'C:\\Users\\Nikola Dimovski\\book.easy.mk\\node_modules\\next\\dist\\server\\require.js',
+    'C:\\Users\\Nikola Dimovski\\book.easy.mk\\node_modules\\next\\dist\\server\\load-components.js',
+    'C:\\Users\\Nikola Dimovski\\book.easy.mk\\node_modules\\next\\dist\\server\\dev\\static-paths-worker.js',
+    'C:\\Users\\Nikola Dimovski\\book.easy.mk\\node_modules\\next\\dist\\compiled\\jest-worker\\processChild.js'
+  ],
+  page: '/properties/charming-lakeside-villa-ohrid'
+}
+[browser] Uncaught Error: Cannot find module './vendor-chunks/@radix-ui.js'
+Require stack:
+- C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\server\webpack-runtime.js
+- C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\server\app\(public)\properties\[slug]\page.js
+- C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\require.js
+- C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\load-components.js
+- C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\dev\static-paths-worker.js
+- C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\compiled\jest-worker\processChild.js

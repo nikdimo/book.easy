@@ -1,0 +1,10 @@
+[Unit]
+Description=Run book.easy.mk database backup nightly
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+RandomizedDelaySec=600
+Persistent=true
+
+[Install]
+WantedBy=timers.target

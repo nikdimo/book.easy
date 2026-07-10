@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { LayoutDashboard, Home, CalendarDays, Users, FileText, ShieldCheck } from "lucide-react";
+import { requireAdminPage } from "@/lib/auth-helpers";
 
 const adminNav = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -9,7 +10,11 @@ const adminNav = [
   { href: "/admin/audit-log", label: "Audit Log", icon: FileText },
 ];
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  // Defense in depth: middleware already gates `/admin/:path*`, but every admin page's
+  // data queries should not run on the strength of the middleware matcher alone.
+  await requireAdminPage();
+
   return (
     <div className="min-h-screen flex">
       <aside className="w-60 border-r bg-muted/30 p-4 shrink-0">

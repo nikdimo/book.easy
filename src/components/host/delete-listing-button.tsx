@@ -20,8 +20,10 @@ export function DeleteListingButton({
 
     startTransition(async () => {
       const result = await deleteListing(listingId);
-      if (result.error) {
+      if ("error" in result) {
         toast.error(result.error);
+      } else if (result.outcome === "archived") {
+        toast.success("Listing archived (it has past bookings, so it's kept for your records)");
       } else {
         toast.success("Listing deleted");
       }

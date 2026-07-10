@@ -1,5 +1,5 @@
 import { writeFile, mkdir, unlink } from "fs/promises";
-import { join } from "path";
+import { basename, join } from "path";
 import { existsSync } from "fs";
 import type { StorageAdapter } from "./index";
 
@@ -18,7 +18,10 @@ export class LocalStorageAdapter implements StorageAdapter {
       await mkdir(dir, { recursive: true });
     }
 
-    const uniqueName = `${Date.now()}-${filename}`;
+    // Defense in depth: strip any directory components even though callers are expected
+    // to pass an already-safe, server-generated filename (see api/upload/route.ts).
+    const safeInput = basename(filename);
+    const uniqueName = `${Date.now()}-${safeInput}`;
     const filePath = join(dir, uniqueName);
     await writeFile(filePath, file);
 
@@ -26,7 +29,8 @@ export class LocalStorageAdapter implements StorageAdapter {
   }
 
   async delete(path: string): Promise<void> {
-    const filePath = join(this.uploadDir, path.replace("/uploads/", ""));
+    const safeName = basename(path);
+    const filePath = join(this.uploadDir, safeName);
     try {
       await unlink(filePath);
     } catch {

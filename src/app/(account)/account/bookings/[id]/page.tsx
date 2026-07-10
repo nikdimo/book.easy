@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Calendar, MapPin, Users, ArrowLeft } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { completePastBookings } from "@/lib/services/booking.service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
   if (!session?.user) redirect("/login");
 
   const { id } = await params;
+  await completePastBookings();
   const booking = await db.booking.findFirst({
     where: { id, guestId: session.user.id },
     include: {

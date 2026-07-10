@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Local tooling scratch / generated output — not part of the app (see .gitignore).
+    ".codex-backups/**",
+    ".tmp.driveupload/**",
+    "Listing-Explorer/**",
+    "src/generated/**",
   ]),
 ]);
 

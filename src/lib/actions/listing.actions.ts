@@ -4,7 +4,10 @@ import type { PropertyType } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { listingFormSchema } from "@/lib/validations/listing.schema";
-import { generateUniqueSlug } from "@/lib/services/listing.service";
+import { generateUniqueSlug, archiveOrDeleteListing } from "@/lib/services/listing.service";
+import { getStorageAdapter } from "@/lib/storage";
+import { isLocalUploadUrl } from "@/lib/utils/upload-url";
+import { revalidatePublicListingCaches } from "@/lib/utils/revalidate-public-listing-caches";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { firstZodMessage } from "@/lib/utils/zod-error";
@@ -166,8 +169,16 @@ export async function updateListing(listingId: string, formData: FormData) {
       bedrooms: data.bedrooms,
       bathrooms: data.bathrooms,
       beds: data.beds,
+      // Editing a live listing must send it back through moderation (US-03.02) —
+      // otherwise an approved listing could be swapped for arbitrary content post-review.
+      ...(listing.status === "APPROVED" ? { status: "PENDING_REVIEW" as const } : {}),
     },
   });
+
+  if (listing.status === "APPROVED") {
+    // Just lost public visibility as a side effect of the edit above.
+    revalidatePublicListingCaches();
+  }
 
   await db.pricingRule.upsert({
     where: { listingId },
@@ -191,6 +202,15 @@ export async function updateListing(listingId: string, formData: FormData) {
     });
   }
 
+  const existingImages = await db.listingImage.findMany({
+    where: { listingId },
+    select: { url: true },
+  });
+  const keptUrls = new Set(imageUrls);
+  const removedUrls = existingImages
+    .map((img) => img.url)
+    .filter((url) => !keptUrls.has(url));
+
   await db.listingImage.deleteMany({ where: { listingId } });
   if (imageUrls.length > 0) {
     await db.listingImage.createMany({
@@ -201,6 +221,12 @@ export async function updateListing(listingId: string, formData: FormData) {
         isPrimary: i === 0,
       })),
     });
+  }
+
+  const removedLocalUrls = removedUrls.filter(isLocalUploadUrl);
+  if (removedLocalUrls.length > 0) {
+    const storage = getStorageAdapter();
+    await Promise.all(removedLocalUrls.map((url) => storage.delete(url)));
   }
 
   revalidatePath(`/host/listings/${listingId}/edit`);
@@ -219,8 +245,12 @@ export async function submitForReview(listingId: string) {
 
   if (!listing) return { error: "Listing not found" };
 
-  if (listing.status !== "DRAFT" && listing.status !== "REJECTED") {
-    return { error: "Only draft or rejected listings can be submitted for review" };
+  if (
+    listing.status !== "DRAFT" &&
+    listing.status !== "REJECTED" &&
+    listing.status !== "UNPUBLISHED"
+  ) {
+    return { error: "Only draft, rejected, or unpublished listings can be submitted for review" };
   }
 
   if (!listing.pricingRule) return { error: "Please set pricing before submitting" };
@@ -254,45 +284,22 @@ export async function unpublishListing(listingId: string) {
   });
 
   revalidatePath("/host/listings");
+  revalidatePublicListingCaches();
   return { success: true };
 }
 
-export async function deleteListing(listingId: string) {
+export async function deleteListing(
+  listingId: string
+): Promise<{ success: true; outcome: "archived" | "deleted" } | { error: string }> {
   const session = await auth();
   if (!session?.user?.id || !session.user.isHost) {
     return { error: "Not authorized" };
   }
 
-  const listing = await db.listing.findFirst({
-    where: { id: listingId, hostId: session.user.id },
-    include: {
-      bookings: {
-        where: { status: { in: ["PENDING", "CONFIRMED"] } },
-        select: { id: true },
-      },
-    },
-  });
-
-  if (!listing) return { error: "Listing not found" };
-
-  if (listing.bookings.length > 0) {
-    return {
-      error:
-        "Cannot delete a listing with active bookings. Cancel or complete pending bookings first.",
-    };
-  }
-
-  const propertyId = listing.propertyId;
-
-  await db.booking.deleteMany({ where: { listingId } });
-  await db.listing.delete({ where: { id: listingId } });
-
-  const siblingCount = await db.listing.count({ where: { propertyId } });
-  if (siblingCount === 0) {
-    await db.property.delete({ where: { id: propertyId } });
-  }
+  const result = await archiveOrDeleteListing(listingId, session.user.id);
+  if ("error" in result) return result;
 
   revalidatePath("/host/listings");
-  revalidatePath("/");
-  return { success: true };
+  revalidatePublicListingCaches();
+  return { success: true, outcome: result.outcome };
 }

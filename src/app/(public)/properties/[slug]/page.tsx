@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { MapPin, Users, BedDouble, Bath, Bed, Star } from "lucide-react";
+import { MapPin, Users, BedDouble, Bath, Bed } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,7 @@ import { AmenityList } from "@/components/public/amenity-list";
 import { BookingWidget } from "@/components/public/booking-widget";
 import { ListingActions } from "@/components/public/listing-actions";
 import { getListingBySlug } from "@/lib/services/property.service";
-import { getBlockedDatesForListing } from "@/lib/services/availability.service";
+import { getBlockedDateRangesForListing } from "@/lib/services/availability.service";
 import { getFutureDatePriceRowsForListing } from "@/lib/services/pricing.service";
 import { dateKey } from "@/lib/utils/stay-pricing";
 import { PROPERTY_TYPES } from "@/lib/constants";
@@ -16,14 +16,6 @@ import type { Metadata } from "next";
 
 interface ListingPageProps {
   params: Promise<{ slug: string }>;
-}
-
-function guestRatingPreview(listingId: string): { score: string; reviews: number } {
-  let h = 0;
-  for (let i = 0; i < listingId.length; i++) h = (h * 31 + listingId.charCodeAt(i)) >>> 0;
-  const score = (4.7 + (h % 30) / 100).toFixed(2);
-  const reviews = 20 + (h % 180);
-  return { score, reviews };
 }
 
 export async function generateMetadata({ params }: ListingPageProps): Promise<Metadata> {
@@ -48,7 +40,7 @@ export default async function ListingDetailPage({ params }: ListingPageProps) {
 
   if (!listing) notFound();
 
-  const disabledDates = await getBlockedDatesForListing(listing.id);
+  const disabledDateRanges = await getBlockedDateRangesForListing(listing.id);
   const priceOverrides = listing.pricingRule
     ? (
         await getFutureDatePriceRowsForListing(listing.id)
@@ -70,8 +62,6 @@ export default async function ListingDetailPage({ params }: ListingPageProps) {
     .filter(Boolean)
     .join(", ");
 
-  const { score, reviews } = guestRatingPreview(listing.id);
-
   return (
     <div className="max-w-[1120px] mx-auto px-4 md:px-6 py-6 md:py-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between gap-y-4 mb-6">
@@ -80,12 +70,6 @@ export default async function ListingDetailPage({ params }: ListingPageProps) {
             {listing.title}
           </h1>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-sm">
-            <span className="flex items-center gap-1 font-medium">
-              <Star className="h-4 w-4 fill-foreground shrink-0" />
-              {score}
-              <span className="text-muted-foreground font-normal">· {reviews} reviews</span>
-            </span>
-            <span className="text-muted-foreground">·</span>
             <span className="flex items-center gap-1 text-muted-foreground">
               <MapPin className="h-4 w-4 shrink-0" />
               {locationLine}
@@ -163,7 +147,7 @@ export default async function ListingDetailPage({ params }: ListingPageProps) {
               cleaningFee={Number(listing.pricingRule.cleaningFee)}
               currency={listing.pricingRule.currency}
               minNights={listing.pricingRule.minNights}
-              disabledDates={disabledDates}
+              disabledDateRanges={disabledDateRanges}
               priceOverrides={priceOverrides}
             />
           )}

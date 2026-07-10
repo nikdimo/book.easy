@@ -6,10 +6,14 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(process.cwd()),
   serverExternalPackages: ["@prisma/client", "prisma"],
   images: {
+    // Real listing photos are same-origin (`/uploads/...`) and don't need a remote
+    // pattern at all. `picsum.photos` is allowlisted only because prisma/seed.ts still
+    // seeds demo listings with it — drop this entry once seed data is replaced with
+    // real content (see docs/planning/phase-1-scope.md launch checklist).
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "**",
+        hostname: "picsum.photos",
       },
     ],
   },

@@ -1,18 +1,11 @@
 "use server";
 
-import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth-helpers";
 import { createAuditLog } from "@/lib/services/audit.service";
 import { cancelBooking } from "@/lib/services/booking.service";
+import { revalidatePublicListingCaches } from "@/lib/utils/revalidate-public-listing-caches";
 import { revalidatePath } from "next/cache";
-
-async function requireAdmin() {
-  const session = await auth();
-  if (!session?.user?.id || session.user.role !== "ADMIN") {
-    throw new Error("Unauthorized");
-  }
-  return session.user;
-}
 
 export async function approveListing(listingId: string) {
   const admin = await requireAdmin();
@@ -41,6 +34,7 @@ export async function approveListing(listingId: string) {
   });
 
   revalidatePath("/admin/listings");
+  revalidatePublicListingCaches();
   return { success: true };
 }
 
@@ -95,6 +89,7 @@ export async function suspendListing(listingId: string, reason: string) {
   });
 
   revalidatePath("/admin/listings");
+  revalidatePublicListingCaches();
   return { success: true };
 }
 

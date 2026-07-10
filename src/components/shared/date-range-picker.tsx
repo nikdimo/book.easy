@@ -12,7 +12,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 interface DateRangePickerProps {
   value?: DateRange;
   onChange: (range: DateRange | undefined) => void;
-  disabledDates?: Date[];
+  /** Ranges of blocked days (each inclusive of both ends) — cheaper to pass and match
+   * than expanding every blocked day individually, especially for long/indefinite
+   * host blocks. */
+  disabledDateRanges?: { from: Date; to: Date }[];
   className?: string;
   placeholder?: string;
 }
@@ -20,17 +23,17 @@ interface DateRangePickerProps {
 export function DateRangePicker({
   value,
   onChange,
-  disabledDates = [],
+  disabledDateRanges = [],
   className,
   placeholder = "Select dates",
 }: DateRangePickerProps) {
   const disabledMatcher = React.useMemo(() => {
-    const matchers: Array<Date | { before: Date }> = [
+    const matchers: Array<{ before: Date } | DateRange> = [
       { before: new Date() },
-      ...disabledDates,
+      ...disabledDateRanges,
     ];
     return matchers;
-  }, [disabledDates]);
+  }, [disabledDateRanges]);
 
   return (
     <Popover>

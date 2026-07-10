@@ -78,8 +78,12 @@ const FLEXIBILITY_OPTIONS = [
   { value: 14, label: "+- 14 days" },
 ] as const;
 
-const INITIAL_MOBILE_MONTH_COUNT = 6;
-const INITIAL_DESKTOP_MONTH_COUNT = 8;
+// Rendering many months of custom day-buttons up front was the single biggest
+// contributor to date-picker open latency (each cell carries context reads, date
+// formatting, modifiers, and pointer handlers). Start small; MONTH_LOAD_STEP lets the
+// user explicitly load more.
+const INITIAL_MOBILE_MONTH_COUNT = 2;
+const INITIAL_DESKTOP_MONTH_COUNT = 2;
 const MONTH_LOAD_STEP = 4;
 const MAX_MONTH_COUNT = 24;
 const EMPTY_GUEST_COUNTS: GuestCounts = {

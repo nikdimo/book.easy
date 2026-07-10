@@ -69,7 +69,9 @@ export default async function EditListingPage({ params }: EditListingPageProps) 
         initialImageUrls={initialImageUrls}
       />
 
-      {(listing.status === "DRAFT" || listing.status === "REJECTED") && (
+      {(listing.status === "DRAFT" ||
+        listing.status === "REJECTED" ||
+        listing.status === "UNPUBLISHED") && (
         <div className="mt-6 pt-6 border-t">
           <SubmitForReviewButton listingId={listing.id} />
         </div>

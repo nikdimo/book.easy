@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSearchFilterPreview, type SearchFilters } from "@/lib/services/search.service";
+import { rateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
 
 function parseNumber(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value) ? value : undefined;
@@ -22,6 +23,12 @@ function parseStringArray(value: unknown): string[] | undefined {
 }
 
 export async function POST(req: Request) {
+  const ip = clientIpFromHeaders(req.headers);
+  const limit = rateLimit(`filter-preview:${ip}`, 120, 5 * 60 * 1000);
+  if (!limit.success) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   try {
     const body = (await req.json()) as Record<string, unknown>;
 

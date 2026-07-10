@@ -5,24 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Check, X } from "lucide-react";
 import { toast } from "sonner";
-
-async function confirmBookingAction(bookingId: string) {
-  const res = await fetch("/api/host/bookings/confirm", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ bookingId }),
-  });
-  return res.json();
-}
-
-async function rejectBookingAction(bookingId: string) {
-  const res = await fetch("/api/host/bookings/reject", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ bookingId }),
-  });
-  return res.json();
-}
+import { confirmBookingAction, rejectBookingAction } from "@/lib/actions/booking.actions";
 
 export function HostBookingActions({ bookingId }: { bookingId: string }) {
   const router = useRouter();

@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
+import { format } from "date-fns";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -18,7 +19,7 @@ import {
   stringifyPropertyTypesParam,
 } from "@/lib/property-type-filter";
 
-type Variant = "hero" | "compact" | "pill";
+type Variant = "hero" | "compact" | "pill" | "summary";
 
 type SearchBarState = {
   city: string;
@@ -124,6 +125,28 @@ function hasSearchBarState(state: SearchBarState): boolean {
       state.dateFlexibility > 0 ||
       state.propertyTypes.length > 0
   );
+}
+
+function parseLocalYmd(s: string): Date | undefined {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return undefined;
+  const [y, m, d] = s.split("-").map(Number);
+  const dt = new Date(y, m - 1, d);
+  return Number.isNaN(dt.getTime()) ? undefined : dt;
+}
+
+function formatDateSummary(checkIn: string, checkOut: string): string {
+  const from = parseLocalYmd(checkIn);
+  const to = parseLocalYmd(checkOut);
+
+  if (from && to) return `${format(from, "MMM d")} - ${format(to, "MMM d")}`;
+  if (from) return format(from, "MMM d");
+  return "Any dates";
+}
+
+function formatGuestSummary(guestCounts: GuestCounts): string {
+  const guestsParam = countsToGuestsParam(guestCounts);
+  if (!guestsParam) return "Add guests";
+  return guestsParam === "1" ? "1 guest" : `${guestsParam} guests`;
 }
 
 export function MarketplaceSearchBar({
@@ -246,6 +269,84 @@ function MarketplaceSearchBarInner({
 
   const isCompact = variant === "compact";
   const isPill = variant === "pill";
+  const isSummary = variant === "summary";
+
+  if (isSummary) {
+    const citySummary = city || "Where to?";
+    const dateSummary = formatDateSummary(checkIn, checkOut);
+    const guestSummary = formatGuestSummary(guestCounts);
+
+    return (
+      <div className="w-full">
+        <button
+          type="button"
+          className="flex h-14 w-full items-center gap-3 rounded-full border border-border/70 bg-background px-3 text-left shadow-[0_10px_26px_rgba(15,23,42,0.08)] transition-shadow hover:shadow-[0_14px_32px_rgba(15,23,42,0.12)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          onClick={() => setPlaceSelectorOpen(true)}
+          aria-label="Open search"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+            <Search className="h-4 w-4" strokeWidth={2.5} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-semibold text-foreground">
+              {citySummary}
+            </span>
+            <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+              {dateSummary} · {guestSummary}
+            </span>
+          </span>
+        </button>
+
+        <div className="hidden">
+          <MarketplacePlaceSelector
+            layout="compact"
+            city={city}
+            selectedPropertyTypes={propertyTypes}
+            onPropertyTypesChange={setPropertyTypes}
+            onCityChange={setCity}
+            open={placeSelectorOpen}
+            onOpenChange={setPlaceSelectorOpen}
+            onNextToDates={() => {
+              setDatePickerCanReturnToPlace(true);
+              setDatePickerInitialSegment("checkin");
+              setDatePickerOpen(true);
+            }}
+            popularCities={popularCities}
+            availablePropertyTypesByCity={availablePropertyTypesByCity}
+            showPropertyTypes={showPropertyTypesInWhere}
+          />
+          <MarketplaceStayDatePicker
+            layout="compact"
+            checkIn={checkIn}
+            checkOut={checkOut}
+            guestCounts={guestCounts}
+            dateFlexibility={dateFlexibility}
+            open={datePickerOpen}
+            onOpenChange={(nextOpen) => {
+              setDatePickerOpen(nextOpen);
+              if (!nextOpen) {
+                setDatePickerCanReturnToPlace(false);
+              }
+            }}
+            initialSegment={datePickerInitialSegment}
+            showBackToPlace={datePickerCanReturnToPlace}
+            onRangeStringsChange={({ checkIn: ci, checkOut: co }) => {
+              setCheckIn(ci);
+              setCheckOut(co);
+            }}
+            onGuestCountsChange={setGuestCounts}
+            onDateFlexibilityChange={setDateFlexibility}
+            onBackToPlace={() => {
+              setDatePickerCanReturnToPlace(false);
+              setDatePickerOpen(false);
+              setPlaceSelectorOpen(true);
+            }}
+            onSearchRequest={submitQuery}
+          />
+        </div>
+      </div>
+    );
+  }
 
   if (isPill) {
     return (

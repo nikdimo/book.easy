@@ -22,13 +22,31 @@ export type ListingCardSerialized = {
   } | null;
 };
 
-type ListingForCard = Prisma.ListingGetPayload<{
-  include: {
-    property: true;
-    images: true;
-    pricingRule: true;
-  };
-}>;
+/** Single source of truth for exactly the columns a listing card needs — reused by
+ * every query that feeds serializeListingCard so the query and the type can't drift
+ * apart. No amenities (the card doesn't render them) and callers should override
+ * `images` with a small `take` (the card shows at most a handful of photos). */
+export const listingCardSelect = {
+  id: true,
+  slug: true,
+  title: true,
+  maxGuests: true,
+  bedrooms: true,
+  bathrooms: true,
+  property: {
+    select: {
+      city: true,
+      area: true,
+      propertyType: true,
+      latitude: true,
+      longitude: true,
+    },
+  },
+  images: { select: { url: true, alt: true } },
+  pricingRule: { select: { baseNightlyRate: true, currency: true } },
+} satisfies Prisma.ListingSelect;
+
+type ListingForCard = Prisma.ListingGetPayload<{ select: typeof listingCardSelect }>;
 
 export function serializeListingCard(listing: ListingForCard): ListingCardSerialized {
   return {

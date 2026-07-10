@@ -30,5 +30,11 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "Listing-Explorer"]
+  "exclude": [
+    "node_modules",
+    "Listing-Explorer",
+    ".codex-backups",
+    ".tmp.driveupload",
+    "src/generated"
+  ]
 }

@@ -1,0 +1,10 @@
+[Unit]
+Description=book.easy.mk nightly database backup
+After=network.target postgresql.service
+
+[Service]
+Type=oneshot
+# TODO: set this to the real deploy path on the VPS (matches scripts/deploy-remote.sh's
+# APP_DIR — that script resolves it dynamically, but this unit file needs a fixed path).
+WorkingDirectory=/opt/book.easy.mk
+ExecStart=/opt/book.easy.mk/scripts/backup-db.sh

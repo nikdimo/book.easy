@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { HostBookingActions } from "@/components/host/host-booking-actions";
+import { HostCancelBookingButton } from "@/components/host/host-cancel-booking-button";
 import { formatDate, formatPrice } from "@/lib/utils/format";
 import { BOOKING_STATUSES } from "@/lib/constants";
 
@@ -66,6 +67,9 @@ export default async function HostBookingsPage() {
                 )}
                 {booking.status === "PENDING" && (
                   <HostBookingActions bookingId={booking.id} />
+                )}
+                {booking.status === "CONFIRMED" && (
+                  <HostCancelBookingButton bookingId={booking.id} />
                 )}
               </CardContent>
             </Card>
