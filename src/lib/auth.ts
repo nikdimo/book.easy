@@ -1,83 +1,45 @@
 import NextAuth from "next-auth";
-import Credentials from "next-auth/providers/credentials";
-import { compare } from "bcryptjs";
+import Google from "next-auth/providers/google";
+import Nodemailer from "next-auth/providers/nodemailer";
+import { PrismaAdapter } from "@auth/prisma-adapter";
+import type { Adapter } from "next-auth/adapters";
+import { db } from "@/lib/db";
+import { authConfig } from "@/lib/auth.config";
 
-function authSecret(): string {
-  const fromEnv = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
-  const placeholder =
-    "generate-a-random-secret-with-openssl-rand-base64-32";
-  if (fromEnv && fromEnv !== placeholder) {
-    return fromEnv;
-  }
-  if (process.env.NODE_ENV !== "production") {
-    return "dev-only-auth-secret-not-for-production";
-  }
-  throw new Error(
-    "Set AUTH_SECRET in .env (use a long random string; openssl rand -base64 32)"
-  );
-}
+// Magic-link sign-ins only carry an email, but `name` is required on User.
+// Fall back to the local part of the email so the account still gets a display name.
+const baseAdapter = PrismaAdapter(db);
+const adapter = {
+  ...baseAdapter,
+  createUser: (data: { name?: string | null; email?: string | null }) =>
+    (baseAdapter.createUser as (u: unknown) => unknown)({
+      ...data,
+      name: data.name ?? data.email?.split("@")[0] ?? "New user",
+    }),
+} as unknown as Adapter;
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  secret: authSecret(),
-  trustHost: true,
-  session: { strategy: "jwt" },
-  pages: {
-    signIn: "/login",
-  },
+  ...authConfig,
+  adapter,
   providers: [
-    Credentials({
-      name: "credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      // Both providers verify the email address, so it's safe to merge
+      // a Google sign-in into an existing magic-link account of the same email.
+      allowDangerousEmailAccountLinking: true,
+    }),
+    Nodemailer({
+      server: {
+        host: process.env.EMAIL_SERVER_HOST,
+        port: Number(process.env.EMAIL_SERVER_PORT ?? 465),
+        secure: Number(process.env.EMAIL_SERVER_PORT ?? 465) === 465,
+        auth: {
+          user: process.env.EMAIL_SERVER_USER,
+          pass: process.env.EMAIL_SERVER_PASSWORD,
+        },
       },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
-
-        const { db } = await import("@/lib/db");
-        const user = await db.user.findUnique({
-          where: { email: credentials.email as string },
-        });
-
-        if (!user || !user.isActive) return null;
-
-        const isValid = await compare(
-          credentials.password as string,
-          user.passwordHash
-        );
-
-        if (!isValid) return null;
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          role: user.role,
-          isHost: user.isHost,
-        };
-      },
+      from: process.env.EMAIL_FROM,
     }),
   ],
-  callbacks: {
-    async jwt({ token, user, trigger, session }) {
-      if (user) {
-        token.id = user.id;
-        token.role = user.role;
-        token.isHost = user.isHost;
-      }
-      if (trigger === "update" && session) {
-        token.isHost = session.isHost ?? token.isHost;
-        token.name = session.name ?? token.name;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as string;
-        session.user.isHost = token.isHost as boolean;
-      }
-      return session;
-    },
-  },
 });

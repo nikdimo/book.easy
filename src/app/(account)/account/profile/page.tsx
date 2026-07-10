@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { ProfileForm } from "@/components/account/profile-form";
-import { PasswordChangeForm } from "@/components/account/password-change-form";
 
 export const metadata = { title: "My Profile" };
 
@@ -27,7 +26,6 @@ export default async function ProfilePage() {
           bio: user.profile?.bio || "",
         }}
       />
-      <PasswordChangeForm />
     </div>
   );
 }

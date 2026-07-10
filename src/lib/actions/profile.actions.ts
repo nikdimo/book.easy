@@ -3,9 +3,6 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import { compare, hash } from "bcryptjs";
-import { changePasswordSchema } from "@/lib/validations/auth.schema";
-import { firstZodMessage } from "@/lib/utils/zod-error";
 
 export async function updateProfile(formData: FormData) {
   const session = await auth();
@@ -63,41 +60,5 @@ export async function becomeHost(formData: FormData) {
   });
 
   revalidatePath("/");
-  return { success: true };
-}
-
-export async function changePassword(formData: FormData) {
-  const session = await auth();
-  if (!session?.user?.id) return { error: "Not authenticated" };
-
-  const raw = {
-    currentPassword: formData.get("currentPassword") as string,
-    newPassword: formData.get("newPassword") as string,
-    confirmPassword: formData.get("confirmPassword") as string,
-  };
-
-  const parsed = changePasswordSchema.safeParse(raw);
-  if (!parsed.success) {
-    return { error: firstZodMessage(parsed.error) };
-  }
-
-  const user = await db.user.findUnique({
-    where: { id: session.user.id },
-    select: { passwordHash: true },
-  });
-  if (!user) return { error: "User not found" };
-
-  const ok = await compare(parsed.data.currentPassword, user.passwordHash);
-  if (!ok) {
-    return { error: "Current password is incorrect" };
-  }
-
-  const passwordHash = await hash(parsed.data.newPassword, 12);
-  await db.user.update({
-    where: { id: session.user.id },
-    data: { passwordHash },
-  });
-
-  revalidatePath("/account/profile");
   return { success: true };
 }

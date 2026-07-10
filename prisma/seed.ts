@@ -1,5 +1,4 @@
 import { PrismaClient, ListingStatus, BookingStatus, BlockType, PropertyType } from "@prisma/client";
-import { hash } from "bcryptjs";
 
 const prisma = new PrismaClient();
 
@@ -19,14 +18,11 @@ async function main() {
   await prisma.profile.deleteMany();
   await prisma.user.deleteMany();
 
-  const passwordHash = await hash("password123", 12);
-
   // ─── Users ──────────────────────────────────────────────────────────────────
   const admin = await prisma.user.create({
     data: {
       email: "admin@bookeasy.mk",
       name: "Platform Admin",
-      passwordHash,
       role: "ADMIN",
       isHost: false,
       profile: { create: { bio: "Platform administrator" } },
@@ -37,7 +33,6 @@ async function main() {
     data: {
       email: "elena@example.com",
       name: "Elena Kostadinova",
-      passwordHash,
       role: "USER",
       isHost: true,
       profile: {
@@ -55,7 +50,6 @@ async function main() {
     data: {
       email: "marko@example.com",
       name: "Marko Petrovski",
-      passwordHash,
       role: "USER",
       isHost: true,
       profile: {
@@ -73,7 +67,6 @@ async function main() {
     data: {
       email: "guest@example.com",
       name: "Sarah Johnson",
-      passwordHash,
       role: "USER",
       profile: { create: { bio: "Love exploring the Balkans!" } },
     },
@@ -83,7 +76,6 @@ async function main() {
     data: {
       email: "traveler@example.com",
       name: "James Wilson",
-      passwordHash,
       role: "USER",
       profile: { create: {} },
     },
@@ -595,7 +587,7 @@ async function main() {
 
   console.log("Seed completed successfully!");
   console.log("──────────────────────────────────────");
-  console.log("Test accounts (password: password123):");
+  console.log("Test accounts (sign in with Google or a magic link to these emails):");
   console.log("  Admin:  admin@bookeasy.mk");
   console.log("  Host 1: elena@example.com");
   console.log("  Host 2: marko@example.com");
