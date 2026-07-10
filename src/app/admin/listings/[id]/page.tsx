@@ -75,8 +75,25 @@ export default async function AdminListingDetailPage({ params }: AdminListingDet
                 </>
               )}
               <Separator />
-              <div className="text-sm">
-                <span className="text-muted-foreground">Photos: </span>{listing.images.length} uploaded
+              <div>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Photos ({listing.images.length})
+                </p>
+                {listing.images.length > 0 ? (
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                    {listing.images.map((image, index) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        key={image.id}
+                        src={image.url}
+                        alt={`${listing.title} photo ${index + 1}`}
+                        className="aspect-[4/3] w-full rounded-md border object-cover"
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No photos uploaded</p>
+                )}
               </div>
             </CardContent>
           </Card>
