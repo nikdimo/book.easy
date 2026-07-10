@@ -68,6 +68,10 @@ export function MarketplacePlaceSelector({
 
   React.useEffect(() => {
     if (!open) return;
+    // Reset the draft fields to the committed values every time the dialog opens
+    // (e.g. re-opening after a prior edit was cancelled). Intentional reset-on-open,
+    // not derived state that belongs in render.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDraftCity(city);
     setDraftPropertyTypes(selectedPropertyTypes);
   }, [open, city, selectedPropertyTypes]);
@@ -121,6 +125,10 @@ export function MarketplacePlaceSelector({
 
   React.useEffect(() => {
     if (!showPropertyTypes || !open || !selectedCity) return;
+    // Prunes previously-selected property types that no longer apply once the
+    // available set changes for the newly selected city. Intentional sync with
+    // an external-ish derived list, not plain derived render state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setDraftPropertyTypes((current) =>
       sortPropertyTypesInDisplayOrder(
         current.filter((value) => availablePropertyTypes.includes(value))

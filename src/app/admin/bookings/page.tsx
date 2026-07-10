@@ -1,5 +1,4 @@
-import { db } from "@/lib/db";
-import { completePastBookings } from "@/lib/services/booking.service";
+import { getAllBookingsForAdmin } from "@/lib/services/admin.service";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AdminCancelBookingButton } from "@/components/admin/admin-cancel-booking-button";
@@ -9,14 +8,7 @@ import { BOOKING_STATUSES } from "@/lib/constants";
 export const metadata = { title: "Admin - Bookings" };
 
 export default async function AdminBookingsPage() {
-  await completePastBookings();
-  const bookings = await db.booking.findMany({
-    include: {
-      listing: { include: { property: { select: { city: true } } } },
-      guest: { select: { name: true, email: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  const bookings = await getAllBookingsForAdmin();
 
   return (
     <div>

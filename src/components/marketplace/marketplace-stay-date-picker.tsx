@@ -398,6 +398,10 @@ export function MarketplaceStayDatePicker({
 
   React.useEffect(() => {
     if (!open || step !== "dates") return;
+    // Resets the visible month count each time the date step opens, so a prior
+    // "show more months" expansion doesn't leak into the next open. Intentional
+    // reset-on-open, not derived render state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setVisibleMonthCount(
       isMobile ? INITIAL_MOBILE_MONTH_COUNT : INITIAL_DESKTOP_MONTH_COUNT
     );

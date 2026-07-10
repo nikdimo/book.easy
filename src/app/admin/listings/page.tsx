@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { db } from "@/lib/db";
+import { getAllListingsForAdmin } from "@/lib/services/admin.service";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -9,17 +9,7 @@ import { formatDate } from "@/lib/utils/format";
 export const metadata = { title: "Admin - Listings" };
 
 export default async function AdminListingsPage() {
-  const listings = await db.listing.findMany({
-    include: {
-      property: { select: { city: true } },
-      host: { select: { name: true, email: true } },
-      _count: { select: { bookings: true } },
-    },
-    orderBy: [
-      { status: "asc" },
-      { updatedAt: "desc" },
-    ],
-  });
+  const listings = await getAllListingsForAdmin();
 
   const pending = listings.filter((l) => l.status === "PENDING_REVIEW");
   const rest = listings.filter((l) => l.status !== "PENDING_REVIEW");

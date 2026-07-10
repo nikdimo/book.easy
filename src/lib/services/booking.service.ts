@@ -32,6 +32,51 @@ export async function completePastBookings(): Promise<void> {
   });
 }
 
+export async function getGuestBookings(guestId: string) {
+  await completePastBookings();
+  return db.booking.findMany({
+    where: { guestId },
+    include: {
+      listing: {
+        include: {
+          property: true,
+          images: { where: { isPrimary: true }, take: 1 },
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export async function getGuestBookingWithHost(bookingId: string, guestId: string) {
+  await completePastBookings();
+  return db.booking.findFirst({
+    where: { id: bookingId, guestId },
+    include: {
+      listing: {
+        include: {
+          property: true,
+          host: { include: { profile: true } },
+        },
+      },
+    },
+  });
+}
+
+export async function getGuestBookingForConfirmation(bookingId: string, guestId: string) {
+  return db.booking.findFirst({
+    where: { id: bookingId, guestId },
+    include: {
+      listing: {
+        include: {
+          property: true,
+          images: { where: { isPrimary: true }, take: 1 },
+        },
+      },
+    },
+  });
+}
+
 interface CreateBookingInput {
   listingId: string;
   guestId: string;

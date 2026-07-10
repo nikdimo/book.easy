@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { getAllUsersForAdmin } from "@/lib/services/admin.service";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AdminUserActions } from "@/components/admin/admin-user-actions";
@@ -7,12 +7,7 @@ import { formatDate } from "@/lib/utils/format";
 export const metadata = { title: "Admin - Users" };
 
 export default async function AdminUsersPage() {
-  const users = await db.user.findMany({
-    include: {
-      _count: { select: { bookings: true, listings: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  const users = await getAllUsersForAdmin();
 
   return (
     <div>

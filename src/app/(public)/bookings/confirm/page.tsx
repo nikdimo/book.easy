@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { getGuestBookingForConfirmation } from "@/lib/services/booking.service";
 import { formatDate, formatPrice, formatGuestCount } from "@/lib/utils/format";
 
 interface ConfirmPageProps {
@@ -24,17 +24,7 @@ export default async function BookingConfirmPage({ searchParams }: ConfirmPagePr
   const { id } = await searchParams;
   if (!id) redirect("/");
 
-  const booking = await db.booking.findFirst({
-    where: { id, guestId: session.user.id },
-    include: {
-      listing: {
-        include: {
-          property: true,
-          images: { where: { isPrimary: true }, take: 1 },
-        },
-      },
-    },
-  });
+  const booking = await getGuestBookingForConfirmation(id, session.user.id);
 
   if (!booking) redirect("/");
 

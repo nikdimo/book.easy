@@ -2,8 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Calendar, MapPin } from "lucide-react";
 import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { completePastBookings } from "@/lib/services/booking.service";
+import { getGuestBookings } from "@/lib/services/booking.service";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,19 +16,7 @@ export default async function MyBookingsPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  await completePastBookings();
-  const bookings = await db.booking.findMany({
-    where: { guestId: session.user.id },
-    include: {
-      listing: {
-        include: {
-          property: true,
-          images: { where: { isPrimary: true }, take: 1 },
-        },
-      },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  const bookings = await getGuestBookings(session.user.id);
 
   if (bookings.length === 0) {
     return (

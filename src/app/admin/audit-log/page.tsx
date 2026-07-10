@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { getAuditLogs } from "@/lib/services/admin.service";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -6,13 +6,7 @@ import { format } from "date-fns";
 export const metadata = { title: "Admin - Audit Log" };
 
 export default async function AuditLogPage() {
-  const logs = await db.auditLog.findMany({
-    include: {
-      user: { select: { name: true, email: true } },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
+  const logs = await getAuditLogs();
 
   return (
     <div>

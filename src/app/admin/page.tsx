@@ -1,25 +1,14 @@
-import { db } from "@/lib/db";
-import { completePastBookings } from "@/lib/services/booking.service";
+import { getAdminDashboardStats } from "@/lib/services/admin.service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Home, Users, CalendarDays, Clock, CheckCircle, AlertTriangle } from "lucide-react";
 
 export const metadata = { title: "Admin Dashboard" };
 
 export default async function AdminDashboardPage() {
-  await completePastBookings();
-  const [
+  const {
     totalUsers, totalHosts, totalListings, pendingListings,
     approvedListings, totalBookings, pendingBookings, confirmedBookings,
-  ] = await Promise.all([
-    db.user.count(),
-    db.user.count({ where: { isHost: true } }),
-    db.listing.count(),
-    db.listing.count({ where: { status: "PENDING_REVIEW" } }),
-    db.listing.count({ where: { status: "APPROVED" } }),
-    db.booking.count(),
-    db.booking.count({ where: { status: "PENDING" } }),
-    db.booking.count({ where: { status: "CONFIRMED" } }),
-  ]);
+  } = await getAdminDashboardStats();
 
   const stats = [
     { label: "Total Users", value: totalUsers, icon: Users },

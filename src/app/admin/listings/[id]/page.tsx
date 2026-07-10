@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { db } from "@/lib/db";
+import { getListingForAdminReview } from "@/lib/services/admin.service";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -7,8 +7,6 @@ import { AdminListingActions } from "@/components/admin/admin-listing-actions";
 import { PropertyAvailabilityCalendar } from "@/components/shared/property-availability-calendar";
 import { LISTING_STATUSES, PROPERTY_TYPES } from "@/lib/constants";
 import { formatDate, formatPrice } from "@/lib/utils/format";
-import { ymdToDbDate } from "@/lib/utils/date-only";
-import { format } from "date-fns";
 
 interface AdminListingDetailProps {
   params: Promise<{ id: string }>;
@@ -18,35 +16,10 @@ export const metadata = { title: "Admin - Review Listing" };
 
 export default async function AdminListingDetailPage({ params }: AdminListingDetailProps) {
   const { id } = await params;
-  const listing = await db.listing.findUnique({
-    where: { id },
-    include: {
-      property: true,
-      host: { include: { profile: true } },
-      images: { orderBy: { displayOrder: "asc" } },
-      pricingRule: true,
-      amenities: { include: { amenity: true } },
-      _count: { select: { bookings: true } },
-    },
-  });
+  const result = await getListingForAdminReview(id);
 
-  if (!listing) notFound();
-
-  const today = ymdToDbDate(format(new Date(), "yyyy-MM-dd"));
-
-  const [availabilityBlocks, datePrices] = await Promise.all([
-    db.availabilityBlock.findMany({
-      where: { listingId: listing.id, endDate: { gte: today } },
-      include: {
-        booking: { select: { id: true, guest: { select: { name: true } }, status: true } },
-      },
-      orderBy: { startDate: "asc" },
-    }),
-    db.listingDatePrice.findMany({
-      where: { listingId: listing.id, date: { gte: today } },
-      orderBy: { date: "asc" },
-    }),
-  ]);
+  if (!result) notFound();
+  const { listing, availabilityBlocks, datePrices } = result;
 
   const statusConfig = LISTING_STATUSES.find((s) => s.value === listing.status);
   const typeLabel = PROPERTY_TYPES.find((t) => t.value === listing.property.propertyType)?.label;
