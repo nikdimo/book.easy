@@ -1,3 +1,4 @@
+import "server-only";
 import { unstable_cache } from "next/cache";
 import { db } from "@/lib/db";
 import { ListingStatus, Prisma, PropertyType } from "@prisma/client";

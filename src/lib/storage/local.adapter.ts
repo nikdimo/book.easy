@@ -1,3 +1,4 @@
+import "server-only";
 import { writeFile, mkdir, unlink } from "fs/promises";
 import { basename, join } from "path";
 import { existsSync } from "fs";

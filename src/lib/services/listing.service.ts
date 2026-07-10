@@ -1,3 +1,4 @@
+import "server-only";
 import { db } from "@/lib/db";
 import { ListingStatus } from "@prisma/client";
 import slugify from "slugify";

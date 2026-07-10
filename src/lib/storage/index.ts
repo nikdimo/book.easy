@@ -1,3 +1,5 @@
+import "server-only";
+
 export interface StorageAdapter {
   upload(file: Buffer, filename: string, mimeType: string): Promise<string>;
   delete(path: string): Promise<void>;

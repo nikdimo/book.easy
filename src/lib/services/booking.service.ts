@@ -1,3 +1,4 @@
+import "server-only";
 import { db } from "@/lib/db";
 import { BookingStatus, BlockType } from "@prisma/client";
 import { differenceInDays } from "date-fns";
