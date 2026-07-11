@@ -199,12 +199,28 @@ function GuestRow({
 export function GuestCountsStep({
   guestCounts,
   onGuestCountsChange,
+  maxOccupancy,
   className,
 }: {
   guestCounts: GuestCounts;
   onGuestCountsChange: (next: GuestCounts) => void;
+  /** Adults and children consume listing capacity; infants and pets do not. */
+  maxOccupancy?: number;
   className?: string;
 }) {
+  const setAdults = (adults: number) => {
+    const available = maxOccupancy === undefined
+      ? adults
+      : Math.max(0, maxOccupancy - guestCounts.children);
+    onGuestCountsChange({ ...guestCounts, adults: Math.min(adults, available) });
+  };
+  const setChildren = (children: number) => {
+    const available = maxOccupancy === undefined
+      ? children
+      : Math.max(0, maxOccupancy - guestCounts.adults);
+    onGuestCountsChange({ ...guestCounts, children: Math.min(children, available) });
+  };
+
   return (
     <div
       className={cn(
@@ -216,15 +232,13 @@ export function GuestCountsStep({
         title="Adults"
         subtitle="Ages 13 or above"
         value={guestCounts.adults}
-        onChange={(adults) => onGuestCountsChange({ ...guestCounts, adults })}
+        onChange={setAdults}
       />
       <GuestRow
         title="Children"
         subtitle="Ages 2 - 12"
         value={guestCounts.children}
-        onChange={(children) =>
-          onGuestCountsChange({ ...guestCounts, children })
-        }
+        onChange={setChildren}
       />
       <GuestRow
         title="Infants"
@@ -377,6 +391,7 @@ export function DateRangeCalendarStep({
   dayVariant = "default",
   dateModifiers,
   dateModifiersClassNames,
+  fitViewport = false,
 }: {
   active: boolean;
   selected: DateRange | undefined;
@@ -387,10 +402,14 @@ export function DateRangeCalendarStep({
   dayVariant?: "default" | "availability";
   dateModifiers?: React.ComponentProps<typeof Calendar>["modifiers"];
   dateModifiersClassNames?: React.ComponentProps<typeof Calendar>["modifiersClassNames"];
+  fitViewport?: boolean;
 }) {
   const [isMobile, setIsMobile] = React.useState(false);
   const [visibleMonthCount, setVisibleMonthCount] = React.useState(
     INITIAL_DESKTOP_MONTH_COUNT
+  );
+  const [displayMonth, setDisplayMonth] = React.useState(() =>
+    startOfMonth(selected?.from ?? new Date())
   );
   const [dragDisplayRange, setDragDisplayRange] = React.useState<
     DateRange | undefined
@@ -424,9 +443,16 @@ export function DateRangeCalendarStep({
     // prior "show more months" expansion doesn't leak into the next open.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setVisibleMonthCount(
-      isMobile ? INITIAL_MOBILE_MONTH_COUNT : INITIAL_DESKTOP_MONTH_COUNT
+      fitViewport
+        ? INITIAL_DESKTOP_MONTH_COUNT
+        : isMobile
+          ? INITIAL_MOBILE_MONTH_COUNT
+          : INITIAL_DESKTOP_MONTH_COUNT
     );
-  }, [active, isMobile]);
+    if (fitViewport) {
+      setDisplayMonth(startOfMonth(selected?.from ?? new Date()));
+    }
+  }, [active, fitViewport, isMobile, selected?.from]);
 
   React.useEffect(() => {
     return () => {
@@ -589,6 +615,7 @@ export function DateRangeCalendarStep({
       <div
         ref={bodyScrollRef}
         onScroll={(e) => {
+          if (fitViewport) return;
           const el = e.currentTarget;
           if (el.scrollTop + el.clientHeight >= el.scrollHeight - 320) {
             setVisibleMonthCount((current) =>
@@ -597,7 +624,9 @@ export function DateRangeCalendarStep({
           }
         }}
         className={cn(
-          "flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain px-4 py-5 md:px-6 md:py-6",
+          fitViewport
+            ? "shrink-0 overflow-hidden px-5 py-5 md:px-7 md:py-6"
+            : "flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain px-4 py-5 md:px-6 md:py-6",
           isDragging && "cursor-grabbing select-none"
         )}
       >
@@ -609,6 +638,8 @@ export function DateRangeCalendarStep({
             selected={calendarSelected}
             onSelect={(range) => commitRange(range)}
             numberOfMonths={visibleMonthCount}
+            month={fitViewport ? displayMonth : undefined}
+            onMonthChange={fitViewport ? setDisplayMonth : undefined}
             disabled={disabledMatcher}
             defaultMonth={calendarStartMonth}
             showOutsideDays={false}
@@ -618,7 +649,9 @@ export function DateRangeCalendarStep({
               "mx-auto bg-transparent p-0",
               dayVariant === "availability"
                 ? "[--cell-size:3rem] md:[--cell-size:3.25rem]"
-                : "[--cell-size:2.15rem] md:[--cell-size:2.8rem]"
+                : fitViewport
+                  ? "[--cell-size:2.15rem] md:[--cell-size:2.55rem]"
+                  : "[--cell-size:2.15rem] md:[--cell-size:2.8rem]"
             )}
             classNames={{
               root: "mx-auto w-full",
@@ -634,9 +667,17 @@ export function DateRangeCalendarStep({
                   ? "md:w-[23rem] md:max-w-none"
                   : "md:w-[20rem] md:max-w-none"
               ),
-              nav: "hidden",
+              nav: fitViewport
+                ? "absolute inset-x-0 top-0 z-10 flex items-center justify-between px-1"
+                : "hidden",
+              button_previous: fitViewport
+                ? "flex h-8 w-8 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted"
+                : "hidden",
+              button_next: fitViewport
+                ? "flex h-8 w-8 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted"
+                : "hidden",
               month_caption:
-                "mb-3 flex h-8 w-full items-center justify-center text-lg font-bold text-foreground md:mb-4",
+                "mb-3 flex h-8 w-full items-center justify-center text-base font-semibold text-foreground md:mb-4",
               table: "mx-auto w-full border-collapse",
               weekdays: "flex w-full",
               weekday:
@@ -645,6 +686,8 @@ export function DateRangeCalendarStep({
               day: cn(
                 dayVariant === "availability"
                   ? "group/day relative h-[3.2rem] min-w-0 flex-1 p-0 text-center md:h-[3.6rem] md:w-[3.25rem] md:flex-none"
+                : fitViewport
+                  ? "group/day relative h-[2.2rem] min-w-0 flex-1 p-0 text-center md:h-10 md:w-10 md:flex-none"
                   : "group/day relative h-[2.2rem] min-w-0 flex-1 p-0 text-center md:h-11 md:w-11 md:flex-none",
                 "[&:first-child[data-range-end=true]]:rounded-l-full",
                 "[&:last-child[data-range-start=true]]:rounded-r-full"
@@ -732,6 +775,7 @@ export function MarketplaceStayDatePicker({
   }) => React.ReactNode;
   className?: string;
 }) {
+  const isPillLayout = layout === "pill";
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
   const [step, setStep] = React.useState<Step>("dates");
   const [activeSegment, setActiveSegment] = React.useState<
@@ -744,13 +788,13 @@ export function MarketplaceStayDatePicker({
   const setOpen = onOpenChange ?? setUncontrolledOpen;
 
   React.useEffect(() => {
-    if (!open) return;
+    if (!open || (isPillLayout && window.innerWidth >= 768)) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [open]);
+  }, [isPillLayout, open]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -848,10 +892,10 @@ export function MarketplaceStayDatePicker({
 
   const pillSeg = (seg: "checkin" | "checkout") =>
     cn(
-      "flex-1 min-w-0 rounded-full px-3 py-1.5 text-left outline-none transition-all duration-200 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+    "flex-1 min-w-0 rounded-full px-6 py-2.5 text-left outline-none transition-[background-color,box-shadow,transform] duration-200 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
       segmentActive(seg)
-        ? "bg-background shadow-[0_10px_24px_rgba(15,23,42,0.08)]"
-        : "hover:bg-muted/25"
+        ? "bg-white shadow-[0_2px_10px_rgba(15,23,42,0.12)]"
+        : "hover:bg-black/[0.035]"
     );
 
   const heroSeg = (seg: "checkin" | "checkout") =>
@@ -888,47 +932,38 @@ export function MarketplaceStayDatePicker({
           </span>
         </button>
       ) : layout === "pill" ? (
-        <div className="flex flex-1 min-w-0 items-stretch divide-x divide-border">
+        <div className="flex flex-1 min-w-0 items-stretch">
           <button
             type="button"
-            className={cn(pillSeg("checkin"), "sm:hidden")}
+            className={cn(pillSeg("checkin"), "relative sm:hidden")}
             onClick={() => openSegment("checkin")}
             aria-expanded={open}
             aria-haspopup="dialog"
           >
-            <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Dates
+            <span className="block text-[0.72rem] font-semibold leading-4 text-foreground">
+              When
             </span>
-            <span className="block text-sm font-medium truncate">
+            <span className="mt-px block truncate text-sm leading-5 font-normal">
               {mobileDatesLabel}
             </span>
           </button>
           <button
             type="button"
-            className={cn(pillSeg("checkin"), "hidden sm:block")}
+            className={cn(
+              pillSeg("checkin"),
+              "relative hidden sm:block after:absolute after:right-0 after:top-1/2 after:h-8 after:w-px after:-translate-y-1/2 after:bg-black/8 after:transition-opacity",
+              segmentActive("checkin") && "after:opacity-0",
+              segmentActive("checkout") && "after:opacity-0"
+            )}
             onClick={() => openSegment("checkin")}
             aria-expanded={open}
             aria-haspopup="dialog"
           >
-            <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:text-[11px]">
-              Check in
+            <span className="block text-[0.72rem] font-semibold leading-4 text-foreground">
+              When
             </span>
-            <span className="block text-sm font-medium truncate">
-              {checkInLabel}
-            </span>
-          </button>
-          <button
-            type="button"
-            className={cn(pillSeg("checkout"), "hidden sm:block")}
-            onClick={() => openSegment("checkout")}
-            aria-expanded={open}
-            aria-haspopup="dialog"
-          >
-            <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:text-[11px]">
-              Check out
-            </span>
-            <span className="block text-sm font-medium truncate">
-              {checkOutLabel}
+            <span className="mt-px block truncate text-sm leading-5 font-normal">
+              {summaryText}
             </span>
           </button>
         </div>
@@ -990,6 +1025,7 @@ export function MarketplaceStayDatePicker({
   return (
     <DialogPrimitive.Root
       open={open}
+      modal={!isPillLayout}
       onOpenChange={(nextOpen) => {
         if (nextOpen) setOpen(true);
         else closePicker();
@@ -998,14 +1034,25 @@ export function MarketplaceStayDatePicker({
       <div className={cn("min-w-0", className)}>{triggers}</div>
 
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/10 supports-backdrop-filter:backdrop-blur-xs" />
+        <DialogPrimitive.Overlay
+          className={cn(
+            "fixed inset-0 z-50",
+            isPillLayout
+              ? "bg-transparent"
+              : "bg-black/10 supports-backdrop-filter:backdrop-blur-xs"
+          )}
+        />
         <DialogPrimitive.Content
           className={cn(
-            "fixed z-50 flex flex-col overflow-hidden border border-border/60 bg-background text-popover-foreground shadow-2xl outline-none",
+            "fixed z-50 flex flex-col overflow-hidden border border-border/60 bg-background text-popover-foreground shadow-[0_10px_32px_rgba(0,0,0,0.16)] outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-2",
             "left-3 right-3 top-4 bottom-4 h-auto max-h-[calc(100dvh-2rem)] rounded-[2rem]",
-            dayVariant === "availability"
-              ? "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-[50rem] md:max-h-[calc(100dvh-5rem)] md:w-[58rem] md:max-w-[calc(100vw-4rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[2rem]"
-              : "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-[50rem] md:max-h-[calc(100dvh-5rem)] md:w-[44rem] md:max-w-[calc(100vw-6rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[2rem]"
+            isPillLayout
+              ? dayVariant === "availability"
+                ? "md:left-1/2 md:right-auto md:top-[5.75rem] md:bottom-auto md:h-auto md:max-h-[min(44rem,calc(100dvh-7rem))] md:w-[58rem] md:max-w-[calc(100vw-4rem)] md:-translate-x-1/2 md:rounded-[2rem]"
+                : "md:left-1/2 md:right-auto md:top-[5.75rem] md:bottom-auto md:h-auto md:max-h-[min(35rem,calc(100dvh-7rem))] md:w-[45rem] md:max-w-[calc(100vw-2rem)] md:-translate-x-1/2 md:rounded-[1.75rem]"
+              : dayVariant === "availability"
+                ? "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-[50rem] md:max-h-[calc(100dvh-5rem)] md:w-[58rem] md:max-w-[calc(100vw-4rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[2rem]"
+                : "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-[50rem] md:max-h-[calc(100dvh-5rem)] md:w-[44rem] md:max-w-[calc(100vw-6rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[2rem]"
           )}
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
@@ -1020,6 +1067,7 @@ export function MarketplaceStayDatePicker({
             </DialogPrimitive.Description>
           </div>
 
+          {!isPillLayout ? (
           <div className="border-b border-border/70 bg-background px-4 pt-4 pb-4 md:px-6 md:pt-5">
             <div className="mb-4 flex items-start justify-between gap-4">
               <p className="text-lg font-semibold text-foreground md:text-2xl">
@@ -1101,6 +1149,7 @@ export function MarketplaceStayDatePicker({
               </div>
             )}
           </div>
+          ) : null}
 
           {step === "dates" ? (
             <>
@@ -1114,6 +1163,7 @@ export function MarketplaceStayDatePicker({
                 dayVariant={dayVariant}
                 dateModifiers={dateModifiers}
                 dateModifiersClassNames={dateModifiersClassNames}
+                fitViewport={isPillLayout}
               />
 
               <div className="shrink-0 border-t border-border bg-background">
@@ -1126,64 +1176,66 @@ export function MarketplaceStayDatePicker({
                   </div>
                 ) : null}
 
-                <div
-                  className={cn(
-                    "bg-background px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:px-6 md:pb-4",
-                    showDateFlexibility && "border-t border-border"
-                  )}
-                >
-                  {renderDateFooter ? (
-                    renderDateFooter({
-                      canGoNext,
-                      closePicker,
-                      resetDates,
-                      summaryText,
-                    })
-                  ) : (
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="self-start rounded-full sm:min-w-[7rem]"
-                        onClick={resetDates}
-                      >
-                        Reset
-                      </Button>
-                      <div className="flex w-full items-center justify-end gap-3 sm:w-auto">
-                        {showBackToPlace ? (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            className="min-w-[7rem] rounded-full"
-                            onClick={onBackToPlace}
-                          >
-                            Back
-                          </Button>
-                        ) : null}
+                {!isPillLayout ? (
+                  <div
+                    className={cn(
+                      "bg-background px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:px-6 md:pb-4",
+                      showDateFlexibility && "border-t border-border"
+                    )}
+                  >
+                    {renderDateFooter ? (
+                      renderDateFooter({
+                        canGoNext,
+                        closePicker,
+                        resetDates,
+                        summaryText,
+                      })
+                    ) : (
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <Button
                           type="button"
-                          className="min-w-[7rem] rounded-full"
-                          disabled={!canGoNext}
-                          onClick={() => {
-                            if (showGuestStep) {
-                              setStep("guests");
-                              return;
-                            }
-
-                            if (onFinalAction) {
-                              onFinalAction();
-                            } else {
-                              onSearchRequest();
-                            }
-                            closePicker();
-                          }}
+                          variant="outline"
+                          className="self-start rounded-full sm:min-w-[7rem]"
+                          onClick={resetDates}
                         >
-                          {showGuestStep ? "Next" : finalActionLabel}
+                          Reset
                         </Button>
+                        <div className="flex w-full items-center justify-end gap-3 sm:w-auto">
+                          {showBackToPlace ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="min-w-[7rem] rounded-full"
+                              onClick={onBackToPlace}
+                            >
+                              Back
+                            </Button>
+                          ) : null}
+                          <Button
+                            type="button"
+                            className="min-w-[7rem] rounded-full"
+                            disabled={!canGoNext}
+                            onClick={() => {
+                              if (showGuestStep) {
+                                setStep("guests");
+                                return;
+                              }
+
+                              if (onFinalAction) {
+                                onFinalAction();
+                              } else {
+                                onSearchRequest();
+                              }
+                              closePicker();
+                            }}
+                          >
+                            {showGuestStep ? "Next" : finalActionLabel}
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
+                ) : null}
               </div>
             </>
           ) : (
@@ -1198,43 +1250,45 @@ export function MarketplaceStayDatePicker({
                 />
               </div>
 
-              <div className="shrink-0 border-t border-border bg-background px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:px-6 md:pb-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="self-start rounded-full sm:min-w-[7rem]"
-                    onClick={resetGuests}
-                  >
-                    Reset
-                  </Button>
-                  <div className="flex w-full items-center justify-end gap-3 sm:w-auto">
+              {!isPillLayout ? (
+                <div className="shrink-0 border-t border-border bg-background px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:px-6 md:pb-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <Button
                       type="button"
                       variant="outline"
-                      className="min-w-[7rem] rounded-full"
-                      onClick={() => setStep("dates")}
+                      className="self-start rounded-full sm:min-w-[7rem]"
+                      onClick={resetGuests}
                     >
-                      Back
+                      Reset
                     </Button>
-                    <Button
-                      type="button"
-                      className="min-w-[7rem] rounded-full"
-                      onClick={() => {
-                        if (onFinalAction) {
-                          onFinalAction();
-                        } else {
-                          onSearchRequest();
-                        }
-                        closePicker();
-                      }}
-                    >
-                      <Search className="mr-2 h-4 w-4" />
-                      {finalActionLabel}
-                    </Button>
+                    <div className="flex w-full items-center justify-end gap-3 sm:w-auto">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="min-w-[7rem] rounded-full"
+                        onClick={() => setStep("dates")}
+                      >
+                        Back
+                      </Button>
+                      <Button
+                        type="button"
+                        className="min-w-[7rem] rounded-full"
+                        onClick={() => {
+                          if (onFinalAction) {
+                            onFinalAction();
+                          } else {
+                            onSearchRequest();
+                          }
+                          closePicker();
+                        }}
+                      >
+                        <Search className="mr-2 h-4 w-4" />
+                        {finalActionLabel}
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : null}
             </>
           )}
         </DialogPrimitive.Content>

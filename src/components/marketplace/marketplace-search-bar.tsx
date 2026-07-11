@@ -12,6 +12,7 @@ import { MarketplaceSearchFlowDialog } from "@/components/marketplace/marketplac
 import {
   MarketplaceGuestSelector,
   countsToGuestsParam,
+  formatGuestSummary,
   guestsParamToCounts,
   guestCountsFromParams,
   guestCountsToParams,
@@ -156,12 +157,6 @@ function formatDateSummary(checkIn: string, checkOut: string): string {
   return "Any dates";
 }
 
-function formatGuestSummary(guestCounts: GuestCounts): string {
-  const guestsParam = countsToGuestsParam(guestCounts);
-  if (!guestsParam) return "Add guests";
-  return guestsParam === "1" ? "1 guest" : `${guestsParam} guests`;
-}
-
 export function MarketplaceSearchBar({
   variant = "hero",
   defaultCity = "",
@@ -268,6 +263,7 @@ function MarketplaceSearchBarInner({
     initialState.dateFlexibility
   );
   const [propertyTypes, setPropertyTypes] = useState(initialState.propertyTypes);
+  const anyDesktopPillPanelOpen = placeSelectorOpen || datePickerOpen;
 
   const submitQuery = () => {
     const p = new URLSearchParams();
@@ -308,8 +304,30 @@ function MarketplaceSearchBarInner({
   }
 
   const openGuestsStep = () => {
+    setPlaceSelectorOpen(false);
+    // The current popover dismisses on pointer-down. Reopen on the next frame so
+    // the guest request always wins over that close event in a single click.
+    setDatePickerOpen(false);
     setDatePickerInitialStep("guests");
-    setDatePickerOpen(true);
+    window.requestAnimationFrame(() => setDatePickerOpen(true));
+  };
+
+  const handlePlaceOpenChange = (nextOpen: boolean) => {
+    setPlaceSelectorOpen(nextOpen);
+    if (nextOpen) {
+      setDatePickerOpen(false);
+      setDatePickerCanReturnToPlace(false);
+    }
+  };
+
+  const handleDatePickerOpenChange = (nextOpen: boolean) => {
+    setDatePickerOpen(nextOpen);
+    if (nextOpen) {
+      setPlaceSelectorOpen(false);
+    } else {
+      setDatePickerCanReturnToPlace(false);
+      setDatePickerInitialStep("dates");
+    }
   };
 
   const isCompact = variant === "compact";
@@ -396,7 +414,7 @@ function MarketplaceSearchBarInner({
     return (
       <form
         onSubmit={onSubmit}
-        className="flex w-full max-w-2xl items-center divide-x divide-border/70 rounded-full border border-border/70 bg-background px-2 py-2 shadow-[0_12px_30px_rgba(15,23,42,0.08)] transition-shadow hover:shadow-[0_16px_38px_rgba(15,23,42,0.12)]"
+        className="relative z-[60] flex w-full max-w-[64rem] items-center rounded-full border border-black/10 bg-[#f7f7f7] p-1 shadow-[0_1px_2px_rgba(0,0,0,0.08),0_8px_24px_rgba(0,0,0,0.08)] transition-shadow duration-200 hover:shadow-[0_2px_4px_rgba(0,0,0,0.10),0_10px_28px_rgba(0,0,0,0.10)]"
       >
         <MarketplacePlaceSelector
           layout="pill"
@@ -405,7 +423,7 @@ function MarketplaceSearchBarInner({
           onPropertyTypesChange={setPropertyTypes}
           onCityChange={setCity}
           open={placeSelectorOpen}
-          onOpenChange={setPlaceSelectorOpen}
+          onOpenChange={handlePlaceOpenChange}
           onNextToDates={() => {
             setDatePickerCanReturnToPlace(true);
             setDatePickerInitialSegment("checkin");
@@ -418,19 +436,14 @@ function MarketplaceSearchBarInner({
           className="flex flex-1 min-w-0"
         />
         <MarketplaceStayDatePicker
+          key={datePickerInitialStep}
           layout="pill"
           checkIn={checkIn}
           checkOut={checkOut}
           guestCounts={guestCounts}
           dateFlexibility={dateFlexibility}
           open={datePickerOpen}
-          onOpenChange={(nextOpen) => {
-            setDatePickerOpen(nextOpen);
-            if (!nextOpen) {
-              setDatePickerCanReturnToPlace(false);
-              setDatePickerInitialStep("dates");
-            }
-          }}
+          onOpenChange={handleDatePickerOpenChange}
           initialSegment={datePickerInitialSegment}
           initialStep={datePickerInitialStep}
           showBackToPlace={datePickerCanReturnToPlace}
@@ -448,21 +461,33 @@ function MarketplaceSearchBarInner({
           onSearchRequest={submitQuery}
           className="flex flex-1 min-w-0"
         />
-        <div className="flex min-w-0 shrink-0 items-center gap-1 pl-2 pr-1">
+        <div className="flex min-w-0 shrink-0 items-center pl-0.5 pr-0.5">
           <MarketplaceGuestSelector
             layout="pill"
             value={guestCounts}
-            active={datePickerOpen}
+            active={datePickerOpen && datePickerInitialStep === "guests"}
             onOpenRequest={openGuestsStep}
-            className="flex min-w-0 max-w-[6rem] sm:max-w-none"
+            className="min-w-[14rem] flex-1"
           />
           <Button
             type="submit"
-            className="h-9 shrink-0 gap-2 rounded-full px-4 font-semibold shadow-none"
+            className={cn(
+              "ml-1 h-11 shrink-0 rounded-full bg-primary px-4 text-primary-foreground shadow-none transition-all duration-200 hover:bg-primary/95",
+              anyDesktopPillPanelOpen ? "gap-2 px-5" : "w-11 px-0"
+            )}
             aria-label="Search"
           >
             <Search className="h-4 w-4" strokeWidth={2.5} />
-            <span className="hidden min-[480px]:inline">Search</span>
+            <span
+              className={cn(
+                "overflow-hidden whitespace-nowrap font-semibold transition-[max-width,opacity] duration-200",
+                anyDesktopPillPanelOpen
+                  ? "max-w-20 opacity-100"
+                  : "max-w-0 opacity-0"
+              )}
+            >
+              Search
+            </span>
           </Button>
         </div>
       </form>
@@ -494,7 +519,7 @@ function MarketplaceSearchBarInner({
           onPropertyTypesChange={setPropertyTypes}
           onCityChange={setCity}
           open={placeSelectorOpen}
-          onOpenChange={setPlaceSelectorOpen}
+          onOpenChange={handlePlaceOpenChange}
           onNextToDates={() => {
             setDatePickerCanReturnToPlace(true);
             setDatePickerInitialSegment("checkin");
@@ -508,19 +533,14 @@ function MarketplaceSearchBarInner({
         />
 
         <MarketplaceStayDatePicker
+          key={datePickerInitialStep}
           layout={isCompact ? "compact" : "hero"}
           checkIn={checkIn}
           checkOut={checkOut}
           guestCounts={guestCounts}
           dateFlexibility={dateFlexibility}
           open={datePickerOpen}
-          onOpenChange={(nextOpen) => {
-            setDatePickerOpen(nextOpen);
-            if (!nextOpen) {
-              setDatePickerCanReturnToPlace(false);
-              setDatePickerInitialStep("dates");
-            }
-          }}
+          onOpenChange={handleDatePickerOpenChange}
           initialSegment={datePickerInitialSegment}
           initialStep={datePickerInitialStep}
           showBackToPlace={datePickerCanReturnToPlace}
@@ -542,7 +562,7 @@ function MarketplaceSearchBarInner({
         <MarketplaceGuestSelector
           layout={isCompact ? "compact" : "hero"}
           value={guestCounts}
-          active={datePickerOpen}
+          active={datePickerOpen && datePickerInitialStep === "guests"}
           onOpenRequest={openGuestsStep}
           className="flex min-w-0 flex-1 md:min-w-[148px]"
         />

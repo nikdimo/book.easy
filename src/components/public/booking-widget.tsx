@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { MarketplaceStayDatePicker } from "@/components/marketplace/marketplace-stay-date-picker";
-import { GuestCounter } from "@/components/shared/guest-counter";
+import { GuestCountsStep } from "@/components/marketplace/marketplace-stay-date-picker";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { formatPrice } from "@/lib/utils/format";
@@ -30,6 +31,25 @@ interface BookingWidgetProps {
   initialCheckIn?: string;
   initialCheckOut?: string;
   initialGuests?: number;
+  initialGuestDetails?: GuestDetails;
+}
+
+type GuestDetails = {
+  adults: number;
+  children: number;
+  infants: number;
+  pets: number;
+};
+
+function formatGuestDetails(details: GuestDetails): string {
+  const parts = [
+    details.adults > 0 && `${details.adults} adult${details.adults === 1 ? "" : "s"}`,
+    details.children > 0 && `${details.children} child${details.children === 1 ? "" : "ren"}`,
+    details.infants > 0 && `${details.infants} infant${details.infants === 1 ? "" : "s"}`,
+    details.pets > 0 && `${details.pets} pet${details.pets === 1 ? "" : "s"}`,
+  ].filter(Boolean);
+
+  return parts.join(", ") || "Add guests";
 }
 
 export function BookingWidget({
@@ -44,15 +64,22 @@ export function BookingWidget({
   initialCheckIn = "",
   initialCheckOut = "",
   initialGuests,
+  initialGuestDetails = { adults: 0, children: 0, infants: 0, pets: 0 },
 }: BookingWidgetProps) {
   const { data: session } = useSession();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [checkInStr, setCheckInStr] = useState(initialCheckIn);
   const [checkOutStr, setCheckOutStr] = useState(initialCheckOut);
-  const [guests, setGuests] = useState(() =>
-    initialGuests ? Math.min(Math.max(initialGuests, 1), maxGuests) : 1
-  );
+  const [guestDetails, setGuestDetails] = useState(() => {
+    const occupancy = initialGuestDetails.adults + initialGuestDetails.children;
+    if (occupancy > 0) return initialGuestDetails;
+    return {
+      ...initialGuestDetails,
+      adults: initialGuests ? Math.min(Math.max(initialGuests, 1), maxGuests) : 1,
+    };
+  });
+  const [guestEditorOpen, setGuestEditorOpen] = useState(false);
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -75,6 +102,8 @@ export function BookingWidget({
   const subtotal = stayPricing?.subtotal ?? 0;
   const total = subtotal + cleaningFee;
   const hasVariableRates = priceOverrides.length > 0;
+
+  const guests = guestDetails.adults + guestDetails.children;
 
   function handleSubmit() {
     setError(null);
@@ -145,7 +174,45 @@ export function BookingWidget({
           />
         </div>
 
-        <GuestCounter value={guests} onChange={setGuests} max={maxGuests} />
+        <div className="space-y-2">
+          <Label>Guests</Label>
+          <Dialog open={guestEditorOpen} onOpenChange={setGuestEditorOpen}>
+            <button
+              type="button"
+              className="flex w-full items-center justify-between gap-3 rounded-xl border border-input bg-background px-3.5 py-3 text-left transition-colors hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              onClick={() => setGuestEditorOpen(true)}
+            >
+              <span className="min-w-0 truncate text-sm text-foreground">
+                {formatGuestDetails(guestDetails)}
+              </span>
+              <span className="shrink-0 text-sm font-medium text-primary">Edit</span>
+            </button>
+
+            <DialogContent className="max-w-[calc(100%-2rem)] gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-md">
+              <div className="border-b px-5 py-4 pr-12">
+                <DialogTitle className="text-lg">Guests</DialogTitle>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Choose who is coming with you.
+                </p>
+              </div>
+              <GuestCountsStep
+                guestCounts={guestDetails}
+                onGuestCountsChange={setGuestDetails}
+                maxOccupancy={maxGuests}
+                className="rounded-none border-0 px-5"
+              />
+              <div className="border-t p-4">
+                <Button
+                  type="button"
+                  className="w-full rounded-xl"
+                  onClick={() => setGuestEditorOpen(false)}
+                >
+                  Done
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
 
         <div className="space-y-2">
           <Label>Message to host (optional)</Label>

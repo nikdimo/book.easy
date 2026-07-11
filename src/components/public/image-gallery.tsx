@@ -116,8 +116,8 @@ export function ImageGallery({ images }: ImageGalleryProps) {
 
           {activeIndex === null ? (
             /* Grid overview, like a Google Photos shared album */
-            <div className="flex h-full flex-col">
-              <div className="flex items-center justify-between border-b px-4 py-3 sm:px-6">
+            <div className="flex h-full min-h-0 flex-col">
+              <div className="flex shrink-0 items-center justify-between border-b px-4 py-3 sm:px-6">
                 <span className="font-heading text-sm font-medium">
                   {images.length} photo{images.length !== 1 ? "s" : ""}
                 </span>
@@ -126,7 +126,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
                   <span className="sr-only">Close</span>
                 </Button>
               </div>
-              <div className="flex-1 overflow-y-auto p-2 sm:p-4">
+              <div className="min-h-0 flex-1 overflow-y-auto p-2 pb-4 sm:p-4">
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
                   {images.map((img, i) => (
                     <button
@@ -145,6 +145,12 @@ export function ImageGallery({ images }: ImageGalleryProps) {
                     </button>
                   ))}
                 </div>
+              </div>
+              <div className="flex shrink-0 justify-center border-t bg-background px-4 py-3 sm:py-4">
+                <Button variant="outline" className="rounded-full" onClick={closeAll}>
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to property
+                </Button>
               </div>
             </div>
           ) : (

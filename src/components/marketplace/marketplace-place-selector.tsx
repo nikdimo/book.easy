@@ -59,6 +59,7 @@ export function MarketplacePlaceSelector({
   onOpenChange?: (open: boolean) => void;
   className?: string;
 }) {
+  const isPillLayout = layout === "pill";
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
   const open = controlledOpen ?? uncontrolledOpen;
   const setOpen = onOpenChange ?? setUncontrolledOpen;
@@ -86,13 +87,13 @@ export function MarketplacePlaceSelector({
   }, [open]);
 
   React.useEffect(() => {
-    if (!open) return;
+    if (!open || (isPillLayout && window.innerWidth >= 768)) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [open]);
+  }, [isPillLayout, open]);
 
   const filteredCities = React.useMemo(() => {
     const q = draftCity.trim().toLowerCase();
@@ -153,11 +154,12 @@ export function MarketplacePlaceSelector({
   const currentLabel = city || "Search destinations";
 
   const pillFieldClass = cn(
-    "flex flex-1 min-w-0 cursor-pointer items-center gap-2 rounded-l-full px-3 py-1.5 text-left transition-all duration-200 ease-out",
+    "relative flex flex-1 min-w-0 cursor-pointer items-center rounded-full px-6 py-2.5 text-left transition-[background-color,box-shadow,transform] duration-200 ease-out",
     "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+    "after:absolute after:right-0 after:top-1/2 after:h-8 after:w-px after:-translate-y-1/2 after:bg-black/8 after:transition-opacity",
     triggerActive
-      ? "bg-background shadow-[0_10px_24px_rgba(15,23,42,0.08)]"
-      : "hover:bg-muted/25"
+      ? "bg-white shadow-[0_2px_10px_rgba(15,23,42,0.12)] after:opacity-0"
+      : "hover:bg-black/[0.035]"
   );
 
   const heroFieldClass = cn(
@@ -186,14 +188,7 @@ export function MarketplacePlaceSelector({
     );
   };
 
-  const handleReset = () => {
-    setDraftCity("");
-    if (showPropertyTypes) {
-      setDraftPropertyTypes([]);
-    }
-  };
-
-  const handleNext = () => {
+  const commitDraftSelection = React.useCallback(() => {
     onCityChange(draftCity.trim());
     if (showPropertyTypes) {
       onPropertyTypesChange(
@@ -205,6 +200,29 @@ export function MarketplacePlaceSelector({
         )
       );
     }
+  }, [
+    allPropertyTypeValues,
+    availablePropertyTypes,
+    draftCity,
+    draftPropertyTypes,
+    onCityChange,
+    onPropertyTypesChange,
+    showPropertyTypes,
+  ]);
+
+  const handleReset = () => {
+    setDraftCity("");
+    if (showPropertyTypes) {
+      setDraftPropertyTypes([]);
+    }
+    if (isPillLayout) {
+      onCityChange("");
+      onPropertyTypesChange([]);
+    }
+  };
+
+  const handleNext = () => {
+    commitDraftSelection();
     setOpen(false);
     onNextToDates?.();
   };
@@ -214,16 +232,16 @@ export function MarketplacePlaceSelector({
       <MapPin
         className={cn(
           "shrink-0 text-muted-foreground",
-          layout === "pill" ? "hidden h-4 w-4 sm:block" : "mt-0.5 h-5 w-5"
+          layout === "pill" ? "hidden" : "mt-0.5 h-5 w-5"
         )}
         aria-hidden
       />
       <div className="min-w-0 flex-1">
         <span
           className={cn(
-            "block font-semibold tracking-wide text-muted-foreground",
+            "block font-semibold tracking-wide text-foreground",
             layout === "pill"
-              ? "text-[10px] uppercase sm:text-[11px]"
+              ? "text-[0.72rem] leading-4"
               : "text-xs tracking-wide"
           )}
         >
@@ -231,7 +249,8 @@ export function MarketplacePlaceSelector({
         </span>
         <span
           className={cn(
-            "block truncate text-sm font-medium md:text-base",
+            "mt-px block truncate md:text-base",
+            layout === "pill" ? "text-sm leading-5 font-normal" : "text-sm font-medium",
             !city && "text-muted-foreground"
           )}
         >
@@ -242,7 +261,16 @@ export function MarketplacePlaceSelector({
   );
 
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
+    <DialogPrimitive.Root
+      open={open}
+      modal={!isPillLayout}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen && isPillLayout) {
+          commitDraftSelection();
+        }
+        setOpen(nextOpen);
+      }}
+    >
       <div className={cn("min-w-0", className)}>
         {layout === "pill" ? (
           <button
@@ -268,12 +296,21 @@ export function MarketplacePlaceSelector({
       </div>
 
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/10 supports-backdrop-filter:backdrop-blur-xs" />
+        <DialogPrimitive.Overlay
+          className={cn(
+            "fixed inset-0 z-50",
+            isPillLayout
+              ? "bg-transparent"
+              : "bg-black/10 supports-backdrop-filter:backdrop-blur-xs"
+          )}
+        />
         <DialogPrimitive.Content
           className={cn(
-            "fixed z-50 flex flex-col overflow-hidden border border-border/60 bg-background text-popover-foreground shadow-2xl outline-none",
+            "fixed z-50 flex flex-col overflow-hidden border border-border/60 bg-background text-popover-foreground shadow-[0_10px_32px_rgba(0,0,0,0.16)] outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-2",
             "left-3 right-3 top-4 bottom-4 h-auto max-h-[calc(100dvh-2rem)] rounded-[2rem]",
-            "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-[50rem] md:max-h-[calc(100dvh-5rem)] md:w-[44rem] md:max-w-[calc(100vw-6rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[2rem]"
+            isPillLayout
+              ? "md:left-[max(1rem,calc(50%-24rem))] md:right-auto md:top-[5.75rem] md:bottom-auto md:h-auto md:max-h-[min(38rem,calc(100dvh-7rem))] md:w-[26rem] md:max-w-[calc(100vw-2rem)] md:rounded-[1.75rem]"
+              : "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-[50rem] md:max-h-[calc(100dvh-5rem)] md:w-[44rem] md:max-w-[calc(100vw-6rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[2rem]"
           )}
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
@@ -291,7 +328,12 @@ export function MarketplacePlaceSelector({
               </p>
               <button
                 type="button"
-                onClick={() => setOpen(false)}
+                onClick={() => {
+                  if (isPillLayout) {
+                    commitDraftSelection();
+                  }
+                  setOpen(false);
+                }}
                 className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 aria-label="Close destination picker"
               >
@@ -341,7 +383,25 @@ export function MarketplacePlaceSelector({
                                 ? "border-foreground bg-muted/40"
                                 : "border-transparent hover:bg-muted/50"
                             )}
-                            onClick={() => setDraftCity(name)}
+                            onClick={() => {
+                              setDraftCity(name);
+                              if (isPillLayout) {
+                                onCityChange(name);
+                                if (showPropertyTypes) {
+                                  onPropertyTypesChange(
+                                    sortPropertyTypesInDisplayOrder(
+                                      draftPropertyTypes.filter((value) =>
+                                        (
+                                          availablePropertyTypesByCity[name] ?? []
+                                        ).includes(value)
+                                      ),
+                                      allPropertyTypeValues
+                                    )
+                                  );
+                                }
+                                setOpen(false);
+                              }
+                            }}
                           >
                             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
                               <MapPin className="h-5 w-5" strokeWidth={1.75} />
@@ -407,27 +467,29 @@ export function MarketplacePlaceSelector({
             </div>
           </div>
 
-          <div className="shrink-0 border-t border-border bg-background px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:px-6 md:pb-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <Button
-                type="button"
-                variant="outline"
-                className="self-start rounded-full sm:min-w-[7rem]"
-                onClick={handleReset}
-              >
-                Reset
-              </Button>
-              <div className="flex w-full items-center justify-end gap-3 sm:w-auto">
+          {!isPillLayout ? (
+            <div className="shrink-0 border-t border-border bg-background px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:px-6 md:pb-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <Button
                   type="button"
-                  className="min-w-[7rem] rounded-full"
-                  onClick={handleNext}
+                  variant="outline"
+                  className="self-start rounded-full sm:min-w-[7rem]"
+                  onClick={handleReset}
                 >
-                  Next
+                  Reset
                 </Button>
+                <div className="flex w-full items-center justify-end gap-3 sm:w-auto">
+                  <Button
+                    type="button"
+                    className="min-w-[7rem] rounded-full"
+                    onClick={handleNext}
+                  >
+                    Next
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
+          ) : null}
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

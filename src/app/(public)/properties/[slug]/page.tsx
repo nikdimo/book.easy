@@ -44,7 +44,19 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
 
   const initialCheckIn = typeof search.checkIn === "string" ? search.checkIn : undefined;
   const initialCheckOut = typeof search.checkOut === "string" ? search.checkOut : undefined;
-  const initialGuests = search.guests ? Number(search.guests) : undefined;
+  const toGuestCount = (value: string | string[] | undefined) => {
+    const count = typeof value === "string" ? Number(value) : 0;
+    return Number.isFinite(count) && count > 0 ? Math.floor(count) : 0;
+  };
+  const initialGuestDetails = {
+    adults: toGuestCount(search.adults),
+    children: toGuestCount(search.children),
+    infants: toGuestCount(search.infants),
+    pets: toGuestCount(search.pets),
+  };
+  const initialGuests = search.guests
+    ? Number(search.guests)
+    : initialGuestDetails.adults + initialGuestDetails.children || undefined;
 
   const disabledDateRanges = await getBlockedDateRangesForListing(listing.id);
   const priceOverrides = listing.pricingRule
@@ -158,6 +170,7 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
               initialCheckIn={initialCheckIn}
               initialCheckOut={initialCheckOut}
               initialGuests={initialGuests}
+              initialGuestDetails={initialGuestDetails}
             />
           )}
         </div>

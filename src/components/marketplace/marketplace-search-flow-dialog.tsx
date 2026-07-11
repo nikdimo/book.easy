@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 import { sortPropertyTypesInDisplayOrder } from "@/lib/property-type-filter";
 import {
-  countsToGuestsParam,
+  formatGuestSummary,
   type GuestCounts,
 } from "@/components/marketplace/marketplace-guest-selector";
 import {
@@ -55,12 +55,6 @@ function formatDateSummary(checkIn: string, checkOut: string): string {
   if (from && to) return `${format(from, "MMM d")} - ${format(to, "MMM d")}`;
   if (from) return format(from, "MMM d");
   return "Any dates";
-}
-
-function formatGuestSummary(guestCounts: GuestCounts): string {
-  const guestsParam = countsToGuestsParam(guestCounts);
-  if (!guestsParam) return "Add guests";
-  return guestsParam === "1" ? "1 guest" : `${guestsParam} guests`;
 }
 
 function getWhereSummary(city: string): string {

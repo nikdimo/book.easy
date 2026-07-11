@@ -16,11 +16,21 @@ function totalParty(c: GuestCounts) {
   return c.adults + c.children;
 }
 
-function summaryLabel(c: GuestCounts): string {
-  const n = totalParty(c);
-  if (n === 0) return "Add guests";
-  if (n === 1) return "1 guest";
-  return `${n} guests`;
+export function formatGuestSummary(c: GuestCounts): string {
+  const guestTotal = totalParty(c);
+  const parts: string[] = [];
+
+  if (guestTotal > 0) {
+    parts.push(guestTotal === 1 ? "1 guest" : `${guestTotal} guests`);
+  }
+  if (c.infants > 0) {
+    parts.push(c.infants === 1 ? "1 infant" : `${c.infants} infants`);
+  }
+  if (c.pets > 0) {
+    parts.push(c.pets === 1 ? "1 pet" : `${c.pets} pets`);
+  }
+
+  return parts.join(", ") || "Add guests";
 }
 
 /**
@@ -44,11 +54,11 @@ export function MarketplaceGuestSelector({
   const triggerActive = active;
 
   const pillClass = cn(
-    "flex items-center gap-2 min-w-0 px-3 py-1.5 text-left rounded-full outline-none transition-all duration-200 ease-out",
+    "flex min-w-0 items-center rounded-full px-6 py-2.5 text-left outline-none transition-[background-color,box-shadow,transform] duration-200 ease-out",
     "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
     triggerActive
-      ? "bg-background shadow-[0_10px_24px_rgba(15,23,42,0.08)]"
-      : "hover:bg-muted/25"
+      ? "bg-white shadow-[0_2px_10px_rgba(15,23,42,0.12)]"
+      : "hover:bg-black/[0.035]"
   );
 
   const heroClass = cn(
@@ -71,18 +81,17 @@ export function MarketplaceGuestSelector({
       aria-haspopup="dialog"
       onClick={onOpenRequest}
     >
-      <Users className="h-4 w-4 text-muted-foreground shrink-0 hidden md:block" />
       <span className="min-w-0 flex-1 text-left">
-        <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground md:text-[11px]">
+          <span className="block text-[0.72rem] font-semibold leading-4 text-foreground">
           Who
         </span>
         <span
           className={cn(
-            "block text-sm font-medium truncate",
+            "mt-px block truncate text-sm leading-5 font-normal",
             totalParty(value) === 0 && "text-muted-foreground"
           )}
         >
-          {summaryLabel(value)}
+          {formatGuestSummary(value)}
         </span>
       </span>
     </button>
@@ -103,7 +112,7 @@ export function MarketplaceGuestSelector({
             totalParty(value) === 0 && "text-muted-foreground"
           )}
         >
-          {summaryLabel(value)}
+          {formatGuestSummary(value)}
         </span>
       </div>
     </button>
