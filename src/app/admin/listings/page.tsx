@@ -8,19 +8,47 @@ import { formatDate } from "@/lib/utils/format";
 
 export const metadata = { title: "Admin - Listings" };
 
-export default async function AdminListingsPage() {
+interface AdminListingsPageProps {
+  searchParams?: Promise<{ status?: string }>;
+}
+
+export default async function AdminListingsPage({
+  searchParams,
+}: AdminListingsPageProps) {
+  const { status } = (await searchParams) ?? {};
   const listings = await getAllListingsForAdmin();
 
+  const validStatus = LISTING_STATUSES.some((s) => s.value === status)
+    ? status
+    : null;
+  const filteredListings = validStatus
+    ? listings.filter((l) => l.status === validStatus)
+    : listings;
   const pending = listings.filter((l) => l.status === "PENDING_REVIEW");
-  const rest = listings.filter((l) => l.status !== "PENDING_REVIEW");
+  const rest = filteredListings.filter((l) => l.status !== "PENDING_REVIEW");
+  const activeLabel = validStatus
+    ? LISTING_STATUSES.find((s) => s.value === validStatus)?.label
+    : null;
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Listings Management</h1>
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold">
+          {activeLabel ? `${activeLabel} Listings` : "Listings Management"}
+        </h1>
+        {validStatus && (
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/admin/listings">Show all listings</Link>
+          </Button>
+        )}
+      </div>
 
-      {pending.length > 0 && (
+      {!validStatus && pending.length > 0 && (
         <div className="mb-8">
-          <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+          <h2
+            id="pending-review"
+            className="text-lg font-semibold mb-3 flex items-center gap-2 scroll-mt-8"
+          >
             Pending Review
             <Badge variant="secondary">{pending.length}</Badge>
           </h2>
@@ -28,8 +56,10 @@ export default async function AdminListingsPage() {
         </div>
       )}
 
-      <h2 className="text-lg font-semibold mb-3">All Listings</h2>
-      <ListingsTable listings={rest} />
+      <h2 className="text-lg font-semibold mb-3">
+        {activeLabel ? activeLabel : "All Listings"}
+      </h2>
+      <ListingsTable listings={validStatus === "PENDING_REVIEW" ? filteredListings : rest} />
     </div>
   );
 }

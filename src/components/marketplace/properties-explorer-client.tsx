@@ -20,8 +20,8 @@ import {
   SearchFilters,
   type SearchFiltersSection,
 } from "@/components/public/search-filters";
-import { PROPERTY_TYPES } from "@/lib/constants";
-import type { SearchFilterPreview } from "@/lib/services/search.service";
+import type { SearchFilterPreview } from "@/lib/types/search";
+import type { PropertyTypeOption } from "@/lib/types/property-type";
 import {
   isAllPropertyTypesSelected,
   parsePropertyTypesFromSearchParams,
@@ -34,10 +34,6 @@ import {
 } from "@/lib/search-filter-config";
 import { cn } from "@/lib/utils";
 import { PropertiesMap, type MapPin } from "@/components/marketplace/properties-map";
-
-const propertyTypeLabelByValue = new Map<string, string>(
-  PROPERTY_TYPES.map(({ value, label }) => [value, label] as const)
-);
 
 function QuickFilterButton({
   active = false,
@@ -183,6 +179,7 @@ function PriceFilterPopover({
 
 export function PropertiesExplorerClient({
   amenities,
+  propertyTypes,
   availablePropertyTypes,
   initialFilterPreview,
   children,
@@ -191,6 +188,7 @@ export function PropertiesExplorerClient({
   mapPins,
 }: {
   amenities: { id: string; name: string; category: string }[];
+  propertyTypes: PropertyTypeOption[];
   availablePropertyTypes: string[];
   initialFilterPreview: SearchFilterPreview;
   children: React.ReactNode;
@@ -205,12 +203,21 @@ export function PropertiesExplorerClient({
   const [focusedSection, setFocusedSection] =
     useState<SearchFiltersSection | null>(null);
 
+  const allPropertyTypeValues = useMemo(
+    () => propertyTypes.map((t) => t.value),
+    [propertyTypes]
+  );
+  const propertyTypeLabelByValue = useMemo(
+    () => new Map(propertyTypes.map(({ value, label }) => [value, label] as const)),
+    [propertyTypes]
+  );
+
   const params = useMemo(() => {
     const minPrice = searchParams.get("minPrice");
     const maxPrice = searchParams.get("maxPrice");
     return {
       city: searchParams.get("city") ?? "",
-      selectedPropertyTypes: parsePropertyTypesFromSearchParams(searchParams),
+      selectedPropertyTypes: parsePropertyTypesFromSearchParams(searchParams, allPropertyTypeValues),
       selectedAmenities: searchParams.getAll("amenities"),
       minPrice: minPrice ? Number(minPrice) : undefined,
       maxPrice: maxPrice ? Number(maxPrice) : undefined,
@@ -218,7 +225,7 @@ export function PropertiesExplorerClient({
         ? Number(searchParams.get("bedrooms"))
         : undefined,
     };
-  }, [searchParams]);
+  }, [searchParams, allPropertyTypeValues]);
 
   const mutateQuery = useCallback(
     (mutator: (params: URLSearchParams) => void) => {
@@ -272,7 +279,8 @@ export function PropertiesExplorerClient({
   };
 
   const propertyTypeActive = !isAllPropertyTypesSelected(
-    params.selectedPropertyTypes
+    params.selectedPropertyTypes,
+    allPropertyTypeValues
   );
   const hasPriceFilter =
     params.minPrice !== undefined || params.maxPrice !== undefined;
@@ -292,7 +300,7 @@ export function PropertiesExplorerClient({
       );
     }
     return `${params.selectedPropertyTypes.length} types`;
-  }, [params.selectedPropertyTypes, propertyTypeActive]);
+  }, [params.selectedPropertyTypes, propertyTypeActive, propertyTypeLabelByValue]);
 
   const bedroomsLabel = params.bedrooms
     ? `${params.bedrooms}+ bedrooms`
@@ -431,6 +439,7 @@ export function PropertiesExplorerClient({
             <div className="min-h-0 flex-1 overflow-hidden">
               <SearchFilters
                 amenities={amenities}
+                propertyTypeOptions={propertyTypes}
                 availablePropertyTypes={availablePropertyTypes}
                 initialPreview={initialFilterPreview}
                 variant="embedded"

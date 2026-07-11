@@ -15,6 +15,8 @@ export type HostListingFormData = {
     city: string;
     area?: string | null;
     country: string;
+    latitude?: number | null;
+    longitude?: number | null;
   };
   pricingRule: {
     baseNightlyRate: number;
@@ -50,6 +52,8 @@ export function serializeHostListingForForm(
       city: listing.property.city,
       area: listing.property.area,
       country: listing.property.country,
+      latitude: listing.property.latitude,
+      longitude: listing.property.longitude,
     },
     pricingRule: listing.pricingRule
       ? {

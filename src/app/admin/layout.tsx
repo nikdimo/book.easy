@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { LayoutDashboard, Home, CalendarDays, Users, FileText, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Home, CalendarDays, Users, FileText, ShieldCheck, Lightbulb } from "lucide-react";
 import { requireAdminPage } from "@/lib/auth-helpers";
 
 const adminNav = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/listings", label: "Listings", icon: Home },
+  { href: "/admin/suggestions", label: "Suggestions", icon: Lightbulb },
   { href: "/admin/bookings", label: "Bookings", icon: CalendarDays },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/audit-log", label: "Audit Log", icon: FileText },

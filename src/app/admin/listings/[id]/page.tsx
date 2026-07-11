@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { AdminListingActions } from "@/components/admin/admin-listing-actions";
 import { PropertyAvailabilityCalendar } from "@/components/shared/property-availability-calendar";
-import { LISTING_STATUSES, PROPERTY_TYPES } from "@/lib/constants";
+import { LISTING_STATUSES } from "@/lib/constants";
+import { getPropertyTypeLabel } from "@/lib/services/property-type.service";
 import { formatDate, formatPrice } from "@/lib/utils/format";
 
 interface AdminListingDetailProps {
@@ -22,7 +23,7 @@ export default async function AdminListingDetailPage({ params }: AdminListingDet
   const { listing, availabilityBlocks, datePrices } = result;
 
   const statusConfig = LISTING_STATUSES.find((s) => s.value === listing.status);
-  const typeLabel = PROPERTY_TYPES.find((t) => t.value === listing.property.propertyType)?.label;
+  const typeLabel = await getPropertyTypeLabel(listing.property.propertyType);
 
   return (
     <div className="max-w-4xl">

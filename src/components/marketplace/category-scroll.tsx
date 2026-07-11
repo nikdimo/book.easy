@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { Building2, Home, Castle, TreePine, Warehouse, Tent } from "lucide-react";
-import { PROPERTY_TYPES } from "@/lib/constants";
+import { getActivePropertyTypes } from "@/lib/services/property-type.service";
 
 const iconMap: Record<string, typeof Home> = {
   APARTMENT: Building2,
   HOUSE: Home,
+  DETACHED_HOUSE: Home,
+  ROW_HOUSE: Building2,
+  HOUSE_FLOOR: Building2,
   VILLA: Castle,
   STUDIO: Warehouse,
   CABIN: TreePine,
@@ -13,11 +16,12 @@ const iconMap: Record<string, typeof Home> = {
   OTHER: Home,
 };
 
-export function CategoryScroll() {
+export async function CategoryScroll() {
+  const propertyTypes = await getActivePropertyTypes();
   return (
     <div className="w-full overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin">
       <div className="flex gap-8 md:gap-10 min-w-max justify-center md:justify-start md:px-2">
-        {PROPERTY_TYPES.map((type) => {
+        {propertyTypes.map((type) => {
           const Icon = iconMap[type.value] ?? Home;
           return (
             <Link

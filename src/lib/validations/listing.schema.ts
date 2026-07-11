@@ -8,6 +8,8 @@ export const listingFormSchema = z.object({
   city: z.string().min(2, "City is required"),
   area: z.string().optional(),
   country: z.string().default("North Macedonia"),
+  latitude: z.coerce.number().min(-90).max(90).optional(),
+  longitude: z.coerce.number().min(-180).max(180).optional(),
   maxGuests: z.coerce.number().int().min(1).max(20),
   bedrooms: z.coerce.number().int().min(0).max(20),
   bathrooms: z.coerce.number().int().min(0).max(20),

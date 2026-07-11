@@ -1,5 +1,7 @@
+import Link from "next/link";
 import { getAllBookingsForAdmin } from "@/lib/services/admin.service";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AdminCancelBookingButton } from "@/components/admin/admin-cancel-booking-button";
 import { formatDate, formatPrice } from "@/lib/utils/format";
@@ -7,12 +9,37 @@ import { BOOKING_STATUSES } from "@/lib/constants";
 
 export const metadata = { title: "Admin - Bookings" };
 
-export default async function AdminBookingsPage() {
+interface AdminBookingsPageProps {
+  searchParams?: Promise<{ status?: string }>;
+}
+
+export default async function AdminBookingsPage({
+  searchParams,
+}: AdminBookingsPageProps) {
+  const { status } = (await searchParams) ?? {};
   const bookings = await getAllBookingsForAdmin();
+  const validStatus = BOOKING_STATUSES.some((s) => s.value === status)
+    ? status
+    : null;
+  const filteredBookings = validStatus
+    ? bookings.filter((booking) => booking.status === validStatus)
+    : bookings;
+  const activeLabel = validStatus
+    ? BOOKING_STATUSES.find((s) => s.value === validStatus)?.label
+    : null;
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">All Bookings</h1>
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold">
+          {activeLabel ? `${activeLabel} Bookings` : "All Bookings"}
+        </h1>
+        {validStatus && (
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/admin/bookings">Show all bookings</Link>
+          </Button>
+        )}
+      </div>
       <div className="border rounded-lg">
         <Table>
           <TableHeader>
@@ -26,7 +53,7 @@ export default async function AdminBookingsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {bookings.map((booking) => {
+            {filteredBookings.map((booking) => {
               const statusConfig = BOOKING_STATUSES.find((s) => s.value === booking.status);
               const canCancel = booking.status === "PENDING" || booking.status === "CONFIRMED";
               return (

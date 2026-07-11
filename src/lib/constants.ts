@@ -1,14 +1,3 @@
-export const PROPERTY_TYPES = [
-  { value: "APARTMENT", label: "Apartment" },
-  { value: "HOUSE", label: "House" },
-  { value: "VILLA", label: "Villa" },
-  { value: "STUDIO", label: "Studio" },
-  { value: "CABIN", label: "Cabin" },
-  { value: "COTTAGE", label: "Cottage" },
-  { value: "LOFT", label: "Loft" },
-  { value: "OTHER", label: "Other" },
-] as const;
-
 export const LISTING_STATUSES = [
   { value: "DRAFT", label: "Draft", color: "secondary" },
   { value: "PENDING_REVIEW", label: "Pending Review", color: "warning" },

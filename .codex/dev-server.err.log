@@ -1,0 +1,741 @@
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+[browser] Uncaught TypeError: network error
+TypeError: network error
+[31m[auth][error][0m Verification: Read more at https://errors.authjs.dev#verification
+    at Module.callback (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/actions/callback/index.js:164:23)
+    at async AuthInternal (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/index.js:43:24)
+    at async Auth (webpack-internal:///(rsc)/./node_modules/@auth/core/index.js:130:34)
+    at async AppRouteRouteModule.do (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:5:40115)
+    at async AppRouteRouteModule.handle (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:5:47321)
+    at async responseGenerator (webpack-internal:///(rsc)/./node_modules/next/dist/build/webpack/loaders/next-app-loader/index.js?name=app%2Fapi%2Fauth%2F%5B...nextauth%5D%2Froute&page=%2Fapi%2Fauth%2F%5B...nextauth%5D%2Froute&appPaths=&allNormalizedAppPaths=&pagePath=private-next-app-dir%2Fapi%2Fauth%2F%5B...nextauth%5D%2Froute.ts&appDir=C%3A%5CUsers%5CNikola%20Dimovski%5Cbook.easy.mk%5Csrc%5Capp&pageExtensions=tsx&pageExtensions=ts&pageExtensions=jsx&pageExtensions=js&rootDir=C%3A%5CUsers%5CNikola%20Dimovski%5Cbook.easy.mk&isDev=true&tsconfigPath=&basePath=&assetPrefix=&nextConfigOutput=&preferredRegion=&middlewareConfig=e30%3D&isGlobalNotFoundEnabled=!:250:38)
+    at async AppRouteRouteModule.handleResponse (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:1:227141)
+    at async handleResponse (webpack-internal:///(rsc)/./node_modules/next/dist/build/webpack/loaders/next-app-loader/index.js?name=app%2Fapi%2Fauth%2F%5B...nextauth%5D%2Froute&page=%2Fapi%2Fauth%2F%5B...nextauth%5D%2Froute&appPaths=&allNormalizedAppPaths=&pagePath=private-next-app-dir%2Fapi%2Fauth%2F%5B...nextauth%5D%2Froute.ts&appDir=C%3A%5CUsers%5CNikola%20Dimovski%5Cbook.easy.mk%5Csrc%5Capp&pageExtensions=tsx&pageExtensions=ts&pageExtensions=jsx&pageExtensions=js&rootDir=C%3A%5CUsers%5CNikola%20Dimovski%5Cbook.easy.mk&isDev=true&tsconfigPath=&basePath=&assetPrefix=&nextConfigOutput=&preferredRegion=&middlewareConfig=e30%3D&isGlobalNotFoundEnabled=!:313:32)
+    at async Module.handler (webpack-internal:///(rsc)/./node_modules/next/dist/build/webpack/loaders/next-app-loader/index.js?name=app%2Fapi%2Fauth%2F%5B...nextauth%5D%2Froute&page=%2Fapi%2Fauth%2F%5B...nextauth%5D%2Froute&appPaths=&allNormalizedAppPaths=&pagePath=private-next-app-dir%2Fapi%2Fauth%2F%5B...nextauth%5D%2Froute.ts&appDir=C%3A%5CUsers%5CNikola%20Dimovski%5Cbook.easy.mk%5Csrc%5Capp&pageExtensions=tsx&pageExtensions=ts&pageExtensions=jsx&pageExtensions=js&rootDir=C%3A%5CUsers%5CNikola%20Dimovski%5Cbook.easy.mk&isDev=true&tsconfigPath=&basePath=&assetPrefix=&nextConfigOutput=&preferredRegion=&middlewareConfig=e30%3D&isGlobalNotFoundEnabled=!:368:13)
+    at async DevServer.renderToResponseWithComponentsImpl (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\base-server.js:1454:9)
+    at async DevServer.renderPageComponent (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\base-server.js:1506:24)
+    at async DevServer.renderToResponseImpl (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\base-server.js:1556:32)
+    at async DevServer.pipeImpl (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\base-server.js:1043:25)
+    at async NextNodeServer.handleCatchallRenderRequest (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\next-server.js:338:17)
+    at async DevServer.handleRequestImpl (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\base-server.js:934:17)
+    at async C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\dev\next-dev-server.js:394:20
+    at async Span.traceAsyncFn (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\trace\trace.js:164:20)
+    at async DevServer.handleRequest (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\dev\next-dev-server.js:390:24)
+    at async invokeRender (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\lib\router-server.js:266:21)
+    at async handleRequest (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\lib\router-server.js:465:24)
+    at async requestHandlerImpl (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\lib\router-server.js:514:13)
+    at async Server.requestListener (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\lib\start-server.js:225:13)
+[31m[auth][error][0m Verification: Read more at https://errors.authjs.dev#verification
+    at Module.callback (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/actions/callback/index.js:164:23)
+    at async AuthInternal (webpack-internal:///(rsc)/./node_modules/@auth/core/lib/index.js:43:24)
+    at async Auth (webpack-internal:///(rsc)/./node_modules/@auth/core/index.js:130:34)
+    at async AppRouteRouteModule.do (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:5:40115)
+    at async AppRouteRouteModule.handle (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:5:47321)
+    at async responseGenerator (webpack-internal:///(rsc)/./node_modules/next/dist/build/webpack/loaders/next-app-loader/index.js?name=app%2Fapi%2Fauth%2F%5B...nextauth%5D%2Froute&page=%2Fapi%2Fauth%2F%5B...nextauth%5D%2Froute&appPaths=&allNormalizedAppPaths=&pagePath=private-next-app-dir%2Fapi%2Fauth%2F%5B...nextauth%5D%2Froute.ts&appDir=C%3A%5CUsers%5CNikola%20Dimovski%5Cbook.easy.mk%5Csrc%5Capp&pageExtensions=tsx&pageExtensions=ts&pageExtensions=jsx&pageExtensions=js&rootDir=C%3A%5CUsers%5CNikola%20Dimovski%5Cbook.easy.mk&isDev=true&tsconfigPath=&basePath=&assetPrefix=&nextConfigOutput=&preferredRegion=&middlewareConfig=e30%3D&isGlobalNotFoundEnabled=!:250:38)
+    at async AppRouteRouteModule.handleResponse (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\compiled\next-server\app-route.runtime.dev.js:1:227141)
+    at async handleResponse (webpack-internal:///(rsc)/./node_modules/next/dist/build/webpack/loaders/next-app-loader/index.js?name=app%2Fapi%2Fauth%2F%5B...nextauth%5D%2Froute&page=%2Fapi%2Fauth%2F%5B...nextauth%5D%2Froute&appPaths=&allNormalizedAppPaths=&pagePath=private-next-app-dir%2Fapi%2Fauth%2F%5B...nextauth%5D%2Froute.ts&appDir=C%3A%5CUsers%5CNikola%20Dimovski%5Cbook.easy.mk%5Csrc%5Capp&pageExtensions=tsx&pageExtensions=ts&pageExtensions=jsx&pageExtensions=js&rootDir=C%3A%5CUsers%5CNikola%20Dimovski%5Cbook.easy.mk&isDev=true&tsconfigPath=&basePath=&assetPrefix=&nextConfigOutput=&preferredRegion=&middlewareConfig=e30%3D&isGlobalNotFoundEnabled=!:313:32)
+    at async Module.handler (webpack-internal:///(rsc)/./node_modules/next/dist/build/webpack/loaders/next-app-loader/index.js?name=app%2Fapi%2Fauth%2F%5B...nextauth%5D%2Froute&page=%2Fapi%2Fauth%2F%5B...nextauth%5D%2Froute&appPaths=&allNormalizedAppPaths=&pagePath=private-next-app-dir%2Fapi%2Fauth%2F%5B...nextauth%5D%2Froute.ts&appDir=C%3A%5CUsers%5CNikola%20Dimovski%5Cbook.easy.mk%5Csrc%5Capp&pageExtensions=tsx&pageExtensions=ts&pageExtensions=jsx&pageExtensions=js&rootDir=C%3A%5CUsers%5CNikola%20Dimovski%5Cbook.easy.mk&isDev=true&tsconfigPath=&basePath=&assetPrefix=&nextConfigOutput=&preferredRegion=&middlewareConfig=e30%3D&isGlobalNotFoundEnabled=!:368:13)
+    at async DevServer.renderToResponseWithComponentsImpl (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\base-server.js:1454:9)
+    at async DevServer.renderPageComponent (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\base-server.js:1506:24)
+    at async DevServer.renderToResponseImpl (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\base-server.js:1556:32)
+    at async DevServer.pipeImpl (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\base-server.js:1043:25)
+    at async NextNodeServer.handleCatchallRenderRequest (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\next-server.js:338:17)
+    at async DevServer.handleRequestImpl (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\base-server.js:934:17)
+    at async C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\dev\next-dev-server.js:394:20
+    at async Span.traceAsyncFn (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\trace\trace.js:164:20)
+    at async DevServer.handleRequest (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\dev\next-dev-server.js:390:24)
+    at async invokeRender (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\lib\router-server.js:266:21)
+    at async handleRequest (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\lib\router-server.js:465:24)
+    at async requestHandlerImpl (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\lib\router-server.js:514:13)
+    at async Server.requestListener (C:\Users\Nikola Dimovski\book.easy.mk\node_modules\next\dist\server\lib\start-server.js:225:13)
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+[browser] ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx 
+[browser] ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx 
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+[browser] Uncaught ModuleBuildError: Module build failed (from ./node_modules/next/dist/build/webpack/loaders/next-swc-loader.js):
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+[browser] Uncaught ModuleBuildError: Module build failed (from ./node_modules/next/dist/build/webpack/loaders/next-swc-loader.js):
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+[browser] ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `---- 
+[browser] ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `---- 
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\cache\webpack\client-development-fallback\0.pack.gz_' -> 'C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\cache\webpack\client-development-fallback\0.pack.gz'
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\cache\webpack\client-development-fallback\0.pack.gz_' -> 'C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\cache\webpack\client-development-fallback\0.pack.gz'
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\cache\webpack\client-development-fallback\0.pack.gz_' -> 'C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\cache\webpack\client-development-fallback\0.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\cache\webpack\client-development-fallback\0.pack.gz_' -> 'C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\cache\webpack\client-development-fallback\0.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\cache\webpack\client-development-fallback\0.pack.gz_' -> 'C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\cache\webpack\client-development-fallback\0.pack.gz'
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+ 4 | import type { PropertyTypeOption } from "@/lib/types/property-type";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+ 4 | import type { PropertyTypeOption } from "@/lib/types/property-type";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+ 4 | import type { PropertyTypeOption } from "@/lib/types/property-type";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+ 4 | import type { PropertyTypeOption } from "@/lib/types/property-type";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⨯ ./src/lib/services/property-type.service.ts
+Error:   x You're importing a module that depends on "server-only". This API is only available in Server Components in the App Router, but you are using it in the Pages Router.
+  | Learn more: https://nextjs.org/docs/app/building-your-application/rendering/server-components
+  |
+
+   ,-[C:\Users\Nikola Dimovski\book.easy.mk\src\lib\services\property-type.service.ts:1:1]
+ 1 | import "server-only";
+   : ^^^^^^^^^^^^^^^^^^^^^
+ 2 | import { unstable_cache } from "next/cache";
+ 3 | import { db } from "@/lib/db";
+ 4 | import type { PropertyTypeOption } from "@/lib/types/property-type";
+   `----
+
+Import trace for requested module:
+./src/lib/services/property-type.service.ts
+./src/components/public/property-card.tsx
+./src/components/public/listing-carousel.tsx
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+[browser] Image with src "https://picsum.photos/seed/bookeasy-l7-a/1200/800" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+[browser] Image with src "https://picsum.photos/seed/bookeasy-l2-a/1200/800" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+[browser] Image with src "https://picsum.photos/seed/bookeasy-l1-a/1200/800" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\cache\webpack\client-development-fallback\0.pack.gz_' -> 'C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\cache\webpack\client-development-fallback\0.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\cache\webpack\client-development-fallback\0.pack.gz_' -> 'C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\cache\webpack\client-development-fallback\0.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\cache\webpack\client-development-fallback\0.pack.gz_' -> 'C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\cache\webpack\client-development-fallback\0.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\cache\webpack\client-development-fallback\0.pack.gz_' -> 'C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\cache\webpack\client-development-fallback\0.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename 'C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\cache\webpack\client-development-fallback\0.pack.gz_' -> 'C:\Users\Nikola Dimovski\book.easy.mk\.next\dev\cache\webpack\client-development-fallback\0.pack.gz'

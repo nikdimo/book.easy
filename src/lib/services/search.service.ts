@@ -1,10 +1,15 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
 import { db } from "@/lib/db";
-import { ListingStatus, Prisma, PropertyType } from "@prisma/client";
+import { ListingStatus, Prisma } from "@prisma/client";
 import { ITEMS_PER_PAGE } from "@/lib/constants";
 import { sortPropertyTypesInDisplayOrder } from "@/lib/property-type-filter";
+import { getActivePropertyTypes } from "@/lib/services/property-type.service";
 import { serializeListingCard, listingCardSelect } from "@/lib/serializers/listing-card";
+import type {
+  SearchFilterPreview,
+  SearchFilters,
+} from "@/lib/types/search";
 
 /** Invalidated on-demand (via revalidateTag) whenever a listing's public visibility
  * changes — see approveListing/suspendListing in lib/actions/admin.actions.ts — with a
@@ -15,28 +20,6 @@ export const PUBLIC_HEADER_DATA_TAG = "public-header-data";
  * of a listing's images per card (previously up to 8) is wasted payload for a list
  * view; the full gallery loads on the listing detail page instead. */
 const CARD_IMAGE_LIMIT = 4;
-
-export interface SearchFilters {
-  city?: string;
-  checkIn?: string;
-  checkOut?: string;
-  guests?: number;
-  minPrice?: number;
-  maxPrice?: number;
-  bedrooms?: number;
-  amenities?: string[];
-  /** Subset of Prisma `PropertyType`; omit or empty means no type restriction. */
-  propertyTypes?: string[];
-  page?: number;
-  sort?: "price_asc" | "price_desc" | "newest";
-}
-
-export interface SearchFilterPreview {
-  totalCount: number;
-  availablePropertyTypes: string[];
-  availableAmenities: string[];
-  maxBedrooms: number;
-}
 
 function buildListingWhere(filters: SearchFilters): Prisma.ListingWhereInput {
   const where: Prisma.ListingWhereInput = {
@@ -64,7 +47,7 @@ function buildListingWhere(filters: SearchFilters): Prisma.ListingWhereInput {
   if (filters.propertyTypes && filters.propertyTypes.length > 0) {
     where.property = {
       ...(where.property as Prisma.PropertyWhereInput),
-      propertyType: { in: filters.propertyTypes as PropertyType[] },
+      propertyType: { in: filters.propertyTypes },
     };
   }
 
@@ -96,10 +79,12 @@ function buildListingWhere(filters: SearchFilters): Prisma.ListingWhereInput {
   return where;
 }
 
-function collectAvailablePropertyTypes(
-  values: readonly (string | PropertyType)[]
-): string[] {
-  return sortPropertyTypesInDisplayOrder([...new Set(values.map(String))]);
+async function collectAvailablePropertyTypes(
+  values: readonly string[]
+): Promise<string[]> {
+  const allTypes = await getActivePropertyTypes();
+  const allValues = allTypes.map((t) => t.value);
+  return sortPropertyTypesInDisplayOrder([...new Set(values)], allValues);
 }
 
 export async function searchListings(filters: SearchFilters) {
@@ -241,7 +226,7 @@ export async function getSearchFilterPreview(
 
   return {
     totalCount,
-    availablePropertyTypes: collectAvailablePropertyTypes(
+    availablePropertyTypes: await collectAvailablePropertyTypes(
       propertyTypeRows.map((r) => r.propertyType)
     ),
     availableAmenities: amenityRows.map((r) => r.name),
@@ -301,12 +286,13 @@ export const getAvailablePropertyTypesByCity = unstable_cache(
       propertyTypesByCity.set(canonicalCity, current);
     }
 
-    return Object.fromEntries(
-      [...propertyTypesByCity.entries()].map(([city, propertyTypes]) => [
-        city,
-        collectAvailablePropertyTypes(propertyTypes),
-      ])
+    const entries = await Promise.all(
+      [...propertyTypesByCity.entries()].map(
+        async ([city, propertyTypes]) =>
+          [city, await collectAvailablePropertyTypes(propertyTypes)] as const
+      )
     );
+    return Object.fromEntries(entries);
   },
   ["available-property-types-by-city"],
   { revalidate: 300, tags: [PUBLIC_HEADER_DATA_TAG] }

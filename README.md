@@ -8,7 +8,7 @@
 - **Language**: TypeScript
 - **UI**: React 19, Tailwind CSS v4, shadcn/ui (Radix Nova)
 - **Database**: PostgreSQL via Prisma 7
-- **Auth**: Auth.js v5 (credentials provider, JWT sessions)
+- **Auth**: Auth.js v5 (Google + email magic links, JWT sessions)
 - **Validation**: Zod v4
 
 ## Getting Started
@@ -65,11 +65,11 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Test Accounts
 
-All accounts use password: `password123`
+Sign in with Google or request an email magic link for the account email.
 
 | Role | Email | Capabilities |
 |------|-------|-------------|
-| Admin | admin@bookeasy.mk | Full platform access |
+| Admin | dimovski.niko@outlook.com | Full platform access |
 | Host | elena@example.com | Host dashboard, listing management |
 | Host | marko@example.com | Host dashboard, listing management |
 | Guest | guest@example.com | Browse, book, manage bookings |

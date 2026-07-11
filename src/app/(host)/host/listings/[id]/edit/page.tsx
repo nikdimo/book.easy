@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CalendarDays } from "lucide-react";
 import { LISTING_STATUSES } from "@/lib/constants";
+import { getActivePropertyTypes, getPropertyTypeLabel } from "@/lib/services/property-type.service";
 
 interface EditListingPageProps {
   params: Promise<{ id: string }>;
@@ -28,9 +29,27 @@ export default async function EditListingPage({ params }: EditListingPageProps) 
   const listingForm = serializeHostListingForForm(listing);
   const initialImageUrls = listing.images.map((img) => img.url);
 
-  const amenities = await db.amenity.findMany({
+  const activeAmenities = await db.amenity.findMany({
+    where: { isActive: true },
     orderBy: [{ category: "asc" }, { name: "asc" }],
   });
+  // A "this listing only" suggestion approval creates an inactive amenity/type that's
+  // not offered to other hosts — but this listing is still using it, so the picker must
+  // include it here or saving the form would silently drop it.
+  const usedInactiveAmenities = listing.amenities
+    .map((a) => a.amenity)
+    .filter((a) => !a.isActive && !activeAmenities.some((active) => active.id === a.id));
+  const amenities = [...activeAmenities, ...usedInactiveAmenities];
+
+  const activePropertyTypes = await getActivePropertyTypes();
+  const currentPropertyType = listing.property.propertyType;
+  const propertyTypes = activePropertyTypes.some((t) => t.value === currentPropertyType)
+    ? activePropertyTypes
+    : [
+        ...activePropertyTypes,
+        { value: currentPropertyType, label: await getPropertyTypeLabel(currentPropertyType) },
+      ];
+
   const cityRows = await db.property.findMany({
     select: { city: true },
     distinct: ["city"],
@@ -64,6 +83,7 @@ export default async function EditListingPage({ params }: EditListingPageProps) 
 
       <ListingForm
         amenities={amenities}
+        propertyTypes={propertyTypes}
         availableCities={availableCities}
         listing={listingForm}
         initialImageUrls={initialImageUrls}

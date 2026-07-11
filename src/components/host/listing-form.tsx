@@ -11,14 +11,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { PROPERTY_TYPES } from "@/lib/constants";
 import { formatPrice } from "@/lib/utils/format";
 import { toast } from "sonner";
 import { ListingImagesField } from "@/components/host/listing-images-field";
+import { ListingLocationField } from "@/components/host/listing-location-field";
+import { SuggestMissingOption } from "@/components/host/suggest-missing-option";
 import type { HostListingFormData } from "@/lib/serializers/host-listing-form";
+import type { PropertyTypeOption } from "@/lib/types/property-type";
 
 interface ListingFormProps {
   amenities: { id: string; name: string; category: string }[];
+  propertyTypes: PropertyTypeOption[];
   availableCities?: string[];
   initialImageUrls?: string[];
   /** Serialized from the server (no Prisma Decimal). */
@@ -88,6 +91,7 @@ function FieldSection({
 
 export function ListingForm({
   amenities,
+  propertyTypes,
   availableCities = [],
   listing,
   initialImageUrls = [],
@@ -141,7 +145,7 @@ export function ListingForm({
     );
   }
 
-  const typeLabel = PROPERTY_TYPES.find((type) => type.value === values.propertyType)?.label;
+  const typeLabel = propertyTypes.find((type) => type.value === values.propertyType)?.label;
   const guests = toPositiveNumber(values.maxGuests, 2);
   const bedrooms = toPositiveNumber(values.bedrooms, 1);
   const beds = toPositiveNumber(values.beds, 1);
@@ -204,12 +208,18 @@ export function ListingForm({
                 className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
               >
                 <option value="">Select type</option>
-                {PROPERTY_TYPES.map((type) => (
+                {propertyTypes.map((type) => (
                   <option key={type.value} value={type.value}>
                     {type.label}
                   </option>
                 ))}
               </select>
+              <SuggestMissingOption
+                kind="PROPERTY_TYPE"
+                listingId={listing?.id}
+                label="Don't see your property type? Suggest it"
+                placeholder="e.g. Houseboat"
+              />
             </div>
           </FieldSection>
 
@@ -255,6 +265,10 @@ export function ListingForm({
               </div>
             </div>
             <input type="hidden" name="country" value={listing?.property.country || "North Macedonia"} />
+            <ListingLocationField
+              initialLat={listing?.property.latitude}
+              initialLng={listing?.property.longitude}
+            />
           </FieldSection>
 
           <FieldSection title="Photos">
@@ -348,6 +362,12 @@ export function ListingForm({
                   </div>
                 </div>
               ))}
+              <SuggestMissingOption
+                kind="AMENITY"
+                listingId={listing?.id}
+                label="Don't see an amenity? Suggest it"
+                placeholder="e.g. Rooftop terrace"
+              />
             </div>
           </FieldSection>
         </div>

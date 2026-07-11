@@ -5,23 +5,29 @@ import {
   getAvailableCities,
   getAvailablePropertyTypesByCity,
 } from "@/lib/services/search.service";
+import { getActivePropertyTypes } from "@/lib/services/property-type.service";
+import type { PropertyTypeOption } from "@/lib/types/property-type";
 
 async function HeaderWithPopularCities() {
   let popularCities: string[] = [];
   let availablePropertyTypesByCity: Record<string, string[]> = {};
+  let propertyTypes: PropertyTypeOption[] = [];
   try {
-    [popularCities, availablePropertyTypesByCity] = await Promise.all([
+    [popularCities, availablePropertyTypesByCity, propertyTypes] = await Promise.all([
       getAvailableCities(),
       getAvailablePropertyTypesByCity(),
+      getActivePropertyTypes(),
     ]);
   } catch {
     popularCities = [];
     availablePropertyTypesByCity = {};
+    propertyTypes = [];
   }
   return (
     <Header
       popularCities={popularCities}
       availablePropertyTypesByCity={availablePropertyTypesByCity}
+      propertyTypes={propertyTypes}
     />
   );
 }

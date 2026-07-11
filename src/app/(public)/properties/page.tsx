@@ -9,6 +9,7 @@ import {
   getAvailableAmenities,
   getSearchFilterPreview,
 } from "@/lib/services/search.service";
+import { getActivePropertyTypes } from "@/lib/services/property-type.service";
 import {
   parsePropertyTypesSelectionFromParams,
   propertyTypesForSearchQuery,
@@ -31,9 +32,12 @@ export const metadata = {
 export default async function PropertiesPage({ searchParams }: SearchPageProps) {
   const params = await searchParams;
 
-  const selectedPropertyTypes = parsePropertyTypesSelectionFromParams(params);
-  const propertyTypesFilter = propertyTypesForSearchQuery(selectedPropertyTypes);
-  const propertyTypesQuery = stringifyPropertyTypesParam(selectedPropertyTypes);
+  const propertyTypes = await getActivePropertyTypes();
+  const allPropertyTypeValues = propertyTypes.map((t) => t.value);
+
+  const selectedPropertyTypes = parsePropertyTypesSelectionFromParams(params, allPropertyTypeValues);
+  const propertyTypesFilter = propertyTypesForSearchQuery(selectedPropertyTypes, allPropertyTypeValues);
+  const propertyTypesQuery = stringifyPropertyTypesParam(selectedPropertyTypes, allPropertyTypeValues);
 
   const filters = {
     city: typeof params.city === "string" ? params.city : undefined,
@@ -111,6 +115,7 @@ export default async function PropertiesPage({ searchParams }: SearchPageProps) 
         <Suspense fallback={<div className="animate-pulse h-40 bg-muted mb-8 mx-4 md:mx-8 rounded-xl" />}>
           <PropertiesExplorerClient
             amenities={amenities}
+            propertyTypes={propertyTypes}
             availablePropertyTypes={filterPreview.availablePropertyTypes}
             initialFilterPreview={filterPreview}
             totalLabel={totalLabel}

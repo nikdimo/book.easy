@@ -12,7 +12,7 @@ import {
   Warehouse,
   X,
 } from "lucide-react";
-import { PROPERTY_TYPES } from "@/lib/constants";
+import type { PropertyTypeOption } from "@/lib/types/property-type";
 import { cn } from "@/lib/utils";
 import { sortPropertyTypesInDisplayOrder } from "@/lib/property-type-filter";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,7 @@ export function MarketplacePlaceSelector({
   onNextToDates,
   popularCities = [],
   availablePropertyTypesByCity = {},
+  propertyTypes,
   showPropertyTypes = false,
   open: controlledOpen,
   onOpenChange,
@@ -52,6 +53,7 @@ export function MarketplacePlaceSelector({
   onNextToDates?: () => void;
   popularCities?: string[];
   availablePropertyTypesByCity?: Record<string, string[]>;
+  propertyTypes: PropertyTypeOption[];
   showPropertyTypes?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -122,6 +124,10 @@ export function MarketplacePlaceSelector({
     if (!selectedCity) return [];
     return availablePropertyTypesByCity[selectedCity] ?? [];
   }, [availablePropertyTypesByCity, selectedCity]);
+  const allPropertyTypeValues = React.useMemo(
+    () => [...new Set(Object.values(availablePropertyTypesByCity).flat())],
+    [availablePropertyTypesByCity]
+  );
 
   React.useEffect(() => {
     if (!showPropertyTypes || !open || !selectedCity) return;
@@ -131,10 +137,17 @@ export function MarketplacePlaceSelector({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setDraftPropertyTypes((current) =>
       sortPropertyTypesInDisplayOrder(
-        current.filter((value) => availablePropertyTypes.includes(value))
+        current.filter((value) => availablePropertyTypes.includes(value)),
+        allPropertyTypeValues
       )
     );
-  }, [availablePropertyTypes, open, selectedCity, showPropertyTypes]);
+  }, [
+    allPropertyTypeValues,
+    availablePropertyTypes,
+    open,
+    selectedCity,
+    showPropertyTypes,
+  ]);
 
   const triggerActive = open;
   const currentLabel = city || "Search destinations";
@@ -168,7 +181,9 @@ export function MarketplacePlaceSelector({
     } else {
       next.add(value);
     }
-    setDraftPropertyTypes(sortPropertyTypesInDisplayOrder([...next]));
+    setDraftPropertyTypes(
+      sortPropertyTypesInDisplayOrder([...next], allPropertyTypeValues)
+    );
   };
 
   const handleReset = () => {
@@ -185,7 +200,8 @@ export function MarketplacePlaceSelector({
         sortPropertyTypesInDisplayOrder(
           draftPropertyTypes.filter((value) =>
             availablePropertyTypes.includes(value)
-          )
+          ),
+          allPropertyTypeValues
         )
       );
     }
@@ -356,7 +372,7 @@ export function MarketplacePlaceSelector({
                     </p>
                   ) : (
                     <div className="flex flex-wrap gap-2 pb-1">
-                      {PROPERTY_TYPES.filter(({ value }) =>
+                      {propertyTypes.filter(({ value }) =>
                         availablePropertyTypes.includes(value)
                       ).map(({ value, label }) => {
                         const Icon =

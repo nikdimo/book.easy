@@ -102,6 +102,22 @@ export async function getListingForAdminReview(id: string) {
   return { listing, availabilityBlocks, datePrices };
 }
 
+export async function getSuggestionsForAdmin() {
+  const suggestions = await db.suggestion.findMany({
+    include: {
+      host: { select: { name: true, email: true } },
+      reviewedBy: { select: { name: true } },
+      listing: { select: { id: true, title: true, slug: true } },
+    },
+    orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+  });
+
+  return {
+    pending: suggestions.filter((s) => s.status === "PENDING"),
+    reviewed: suggestions.filter((s) => s.status !== "PENDING"),
+  };
+}
+
 export async function getAuditLogs(limit = 100) {
   return db.auditLog.findMany({
     include: {

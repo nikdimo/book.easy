@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/utils/format";
-import { PROPERTY_TYPES } from "@/lib/constants";
+import { getPropertyTypeLabel } from "@/lib/services/property-type.service";
 import { format, parseISO, isValid } from "date-fns";
 import { PropertyCardGallery } from "@/components/public/property-card-gallery";
 
@@ -30,13 +30,9 @@ interface PropertyCardProps {
   nightCount?: number;
 }
 
-function propertyTypeLabel(value: string) {
-  return PROPERTY_TYPES.find((t) => t.value === value)?.label ?? value;
-}
-
 /** Server component — only the photo gallery and save button need client interactivity
  * (see PropertyCardGallery); everything else here ships zero client JS. */
-export function PropertyCard({
+export async function PropertyCard({
   listing,
   checkIn,
   checkOut,
@@ -45,7 +41,7 @@ export function PropertyCard({
   const { slug, title, property, images, pricingRule } = listing;
   const displayImages = images.filter((img) => img.url?.trim());
   const city = property.city;
-  const typeLabel = propertyTypeLabel(property.propertyType);
+  const typeLabel = await getPropertyTypeLabel(property.propertyType);
   const headline = `${typeLabel} in ${city}`;
 
   const showTrip =

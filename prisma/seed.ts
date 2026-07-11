@@ -1,4 +1,4 @@
-import { PrismaClient, ListingStatus, BookingStatus, BlockType, PropertyType } from "@prisma/client";
+import { PrismaClient, ListingStatus, BookingStatus, BlockType } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -21,7 +21,7 @@ async function main() {
   // ─── Users ──────────────────────────────────────────────────────────────────
   const admin = await prisma.user.create({
     data: {
-      email: "admin@bookeasy.mk",
+      email: "dimovski.niko@outlook.com",
       name: "Platform Admin",
       role: "ADMIN",
       isHost: false,
@@ -117,7 +117,7 @@ async function main() {
     data: {
       ownerId: host1.id,
       name: "Lakeside Villa Ohrid",
-      propertyType: PropertyType.VILLA,
+      propertyType: "VILLA",
       address: "ul. Kej Maršal Tito 25",
       city: "Ohrid",
       area: "Old Town",
@@ -168,7 +168,7 @@ async function main() {
     data: {
       ownerId: host1.id,
       name: "Ohrid Studio",
-      propertyType: PropertyType.STUDIO,
+      propertyType: "STUDIO",
       address: "ul. Car Samoil 14",
       city: "Ohrid",
       area: "Center",
@@ -217,7 +217,7 @@ async function main() {
     data: {
       ownerId: host1.id,
       name: "Ohrid Beach House",
-      propertyType: PropertyType.HOUSE,
+      propertyType: "HOUSE",
       address: "ul. Turistička bb",
       city: "Ohrid",
       area: "Kaneo",
@@ -246,7 +246,7 @@ async function main() {
     data: {
       ownerId: host2.id,
       name: "Skopje Penthouse",
-      propertyType: PropertyType.APARTMENT,
+      propertyType: "APARTMENT",
       address: "bul. Partizanski Odredi 42",
       city: "Skopje",
       area: "City Center",
@@ -296,7 +296,7 @@ async function main() {
     data: {
       ownerId: host2.id,
       name: "Old Bazaar Apartment",
-      propertyType: PropertyType.APARTMENT,
+      propertyType: "APARTMENT",
       address: "ul. Bitpazarska 8",
       city: "Skopje",
       area: "Old Bazaar",
@@ -345,7 +345,7 @@ async function main() {
     data: {
       ownerId: host2.id,
       name: "Mavrovo Cabin",
-      propertyType: PropertyType.CABIN,
+      propertyType: "CABIN",
       address: "Mavrovo Village",
       city: "Mavrovo",
       area: "National Park",
@@ -389,7 +389,7 @@ async function main() {
     data: {
       ownerId: host1.id,
       name: "Bitola Heritage House",
-      propertyType: PropertyType.HOUSE,
+      propertyType: "HOUSE",
       address: "ul. Širok Sokak 15",
       city: "Bitola",
       area: "Center",
@@ -588,7 +588,7 @@ async function main() {
   console.log("Seed completed successfully!");
   console.log("──────────────────────────────────────");
   console.log("Test accounts (sign in with Google or a magic link to these emails):");
-  console.log("  Admin:  admin@bookeasy.mk");
+  console.log("  Admin:  dimovski.niko@outlook.com");
   console.log("  Host 1: elena@example.com");
   console.log("  Host 2: marko@example.com");
   console.log("  Guest:  guest@example.com");

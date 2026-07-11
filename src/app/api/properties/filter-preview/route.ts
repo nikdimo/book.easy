@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getSearchFilterPreview, type SearchFilters } from "@/lib/services/search.service";
+import { getSearchFilterPreview } from "@/lib/services/search.service";
+import type { SearchFilters } from "@/lib/types/search";
 import { rateLimit, clientIpFromHeaders } from "@/lib/rate-limit";
 
 function parseNumber(value: unknown): number | undefined {

@@ -1,16 +1,38 @@
 "use client";
 
 import { useState } from "react";
+import type { ChangeEvent, DragEvent } from "react";
+import {
+  closestCenter,
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  type DragEndEvent,
+  type DragStartEvent,
+  type UniqueIdentifier,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  rectSortingStrategy,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { GripVertical, ImagePlus, Loader2, Trash2, Upload } from "lucide-react";
+import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import { GripVertical, ImagePlus, Loader2, Trash2, Upload } from "lucide-react";
-import { toast } from "sonner";
 
 interface ListingImagesFieldProps {
   initialUrls?: string[];
   urls?: string[];
-  onUrlsChange?: (urls: string[]) => void;
+  onUrlsChange?: (next: string[] | ((current: string[]) => string[])) => void;
 }
 
 export function ListingImagesField({
@@ -21,14 +43,27 @@ export function ListingImagesField({
   const [internalUrls, setInternalUrls] = useState<string[]>(initialUrls);
   const [uploading, setUploading] = useState(false);
   const [dropActive, setDropActive] = useState(false);
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
 
   const imageUrls = urls ?? internalUrls;
+  const sortableItems = imageUrls.map((url, index) => ({
+    id: `${url}-${index}`,
+    url,
+    index,
+  }));
+  const activeItem = sortableItems.find((item) => item.id === activeId) ?? null;
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   function updateUrls(next: string[] | ((current: string[]) => string[])) {
-    const resolved = typeof next === "function" ? next(imageUrls) : next;
-    if (urls === undefined) setInternalUrls(resolved);
-    onUrlsChange?.(resolved);
+    if (urls === undefined) setInternalUrls(next);
+    onUrlsChange?.(next);
   }
 
   async function uploadFiles(files: FileList | File[]) {
@@ -59,7 +94,7 @@ export function ListingImagesField({
     }
   }
 
-  async function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function onFileChange(e: ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
     if (!files?.length) return;
 
@@ -78,14 +113,28 @@ export function ListingImagesField({
     if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
     updateUrls((prev) => {
       if (fromIndex >= prev.length || toIndex >= prev.length) return prev;
-      const next = [...prev];
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, moved);
-      return next;
+      return arrayMove(prev, fromIndex, toIndex);
     });
   }
 
-  function onDropFiles(e: React.DragEvent<HTMLDivElement>) {
+  function handleDragStart(event: DragStartEvent) {
+    setActiveId(event.active.id);
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    setActiveId(null);
+
+    if (!over || active.id === over.id) return;
+
+    const fromIndex = sortableItems.findIndex((item) => item.id === active.id);
+    const toIndex = sortableItems.findIndex((item) => item.id === over.id);
+    if (fromIndex === -1 || toIndex === -1) return;
+
+    moveImage(fromIndex, toIndex);
+  }
+
+  function onDropFiles(e: DragEvent<HTMLDivElement>) {
     e.preventDefault();
     setDropActive(false);
     if (e.dataTransfer.files.length > 0) {
@@ -117,13 +166,13 @@ export function ListingImagesField({
             <div>
               <Label className="text-sm font-medium">Photos</Label>
               <p className="mt-1 text-sm text-muted-foreground">
-                Drop JPEG, PNG, or WebP files here. The first photo is the cover.
+                Drop JPEG, PNG, WebP, or iPhone HEIC files here. The first photo is the cover.
               </p>
             </div>
           </div>
           <input
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
             multiple
             id="listing-photo-upload"
             className="sr-only"
@@ -156,57 +205,37 @@ export function ListingImagesField({
       </div>
 
       {imageUrls.length > 0 ? (
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {imageUrls.map((url, index) => (
-            <li
-              key={`${url}-${index}`}
-              draggable
-              onDragStart={(e) => {
-                setDraggedIndex(index);
-                e.dataTransfer.effectAllowed = "move";
-                e.dataTransfer.setData("text/plain", String(index));
-              }}
-              onDragEnd={() => setDraggedIndex(null)}
-              onDragOver={(e) => {
-                e.preventDefault();
-                e.dataTransfer.dropEffect = "move";
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                const fromIndex = draggedIndex ?? Number(e.dataTransfer.getData("text/plain"));
-                moveImage(fromIndex, index);
-                setDraggedIndex(null);
-              }}
-              className={cn(
-                "group relative aspect-[4/3] cursor-grab overflow-hidden rounded-lg border bg-muted active:cursor-grabbing",
-                draggedIndex === index && "opacity-50"
-              )}
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt="" className="object-cover w-full h-full" />
-              <div className="absolute left-1 top-1 flex items-center gap-1 rounded-md bg-background/90 px-1.5 py-1 text-[10px] font-medium shadow-sm">
-                <GripVertical className="h-3 w-3" />
-                Drag
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragCancel={() => setActiveId(null)}
+        >
+          <SortableContext items={sortableItems.map((item) => item.id)} strategy={rectSortingStrategy}>
+            <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {sortableItems.map(({ id, url }, index) => (
+                <SortableImageTile
+                  key={id}
+                  id={id}
+                  url={url}
+                  index={index}
+                  isCover={index === 0}
+                  onRemove={() => removeAt(index)}
+                />
+              ))}
+            </ul>
+          </SortableContext>
+
+          <DragOverlay>
+            {activeItem ? (
+              <div className="aspect-[4/3] w-40 overflow-hidden rounded-lg border border-border bg-muted shadow-2xl">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={activeItem.url} alt="" className="h-full w-full object-cover" />
               </div>
-              <div className="absolute right-1 top-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="destructive"
-                  className="h-7 w-7"
-                  onClick={() => removeAt(index)}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </div>
-              {index === 0 && (
-                <span className="absolute bottom-1 left-1 rounded bg-background/90 px-1.5 py-0.5 text-[10px] font-medium shadow-sm">
-                  Cover
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       ) : (
         <div className="flex aspect-[4/3] items-center justify-center rounded-lg border bg-muted/30 text-sm text-muted-foreground sm:aspect-[16/5]">
           Add photos to build the guest gallery.
@@ -217,5 +246,73 @@ export function ListingImagesField({
         <input key={`imageUrls-${i}`} type="hidden" name="imageUrls" value={url} />
       ))}
     </div>
+  );
+}
+
+function SortableImageTile({
+  id,
+  url,
+  index,
+  isCover,
+  onRemove,
+}: {
+  id: string;
+  url: string;
+  index: number;
+  isCover: boolean;
+  onRemove: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  return (
+    <li
+      ref={setNodeRef}
+      className={cn(
+        "group relative aspect-[4/3] overflow-hidden rounded-lg border bg-muted transition-shadow",
+        isDragging && "z-10 shadow-2xl"
+      )}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+      }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={url} alt="" className="h-full w-full object-cover" />
+      <button
+        type="button"
+        ref={setActivatorNodeRef}
+        {...attributes}
+        {...listeners}
+        aria-label={`Reorder photo ${index + 1}`}
+        className="absolute left-1 top-1 inline-flex touch-none cursor-grab select-none items-center gap-1 rounded-md bg-background/90 px-1.5 py-1 text-[10px] font-medium shadow-sm transition-transform hover:scale-[1.02] active:cursor-grabbing"
+      >
+        <GripVertical className="h-3 w-3" />
+        Drag
+      </button>
+      <div className="absolute right-1 top-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+        <Button
+          type="button"
+          size="icon"
+          variant="destructive"
+          className="h-7 w-7"
+          onClick={onRemove}
+        >
+          <Trash2 className="h-3 w-3" />
+        </Button>
+      </div>
+      {isCover && (
+        <span className="absolute bottom-1 left-1 rounded bg-background/90 px-1.5 py-0.5 text-[10px] font-medium shadow-sm">
+          Cover
+        </span>
+      )}
+    </li>
   );
 }

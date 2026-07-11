@@ -14,15 +14,20 @@ enum UserRole {
   ADMIN
 }
 
-enum PropertyType {
-  APARTMENT
-  HOUSE
-  VILLA
-  STUDIO
-  CABIN
-  COTTAGE
-  LOFT
-  OTHER
+enum SuggestionKind {
+  PROPERTY_TYPE
+  AMENITY
+}
+
+enum SuggestionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum SuggestionScope {
+  GLOBAL
+  LISTING_ONLY
 }
 
 enum ListingStatus {
@@ -64,13 +69,15 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  profile    Profile?
-  properties Property[]
-  listings   Listing[]
-  bookings   Booking[]
-  auditLogs  AuditLog[]
-  accounts   Account[]
-  sessions   Session[]
+  profile             Profile?
+  properties          Property[]
+  listings            Listing[]
+  bookings            Booking[]
+  auditLogs           AuditLog[]
+  accounts            Account[]
+  sessions            Session[]
+  suggestions         Suggestion[] @relation("SuggestionHost")
+  reviewedSuggestions Suggestion[] @relation("SuggestionReviewer")
 
   @@index([email])
   @@index([role])
@@ -130,26 +137,50 @@ model Profile {
 
 // ─── Property & Listing ─────────────────────────────────────────────────────────
 
+/**
+ * Admin-manageable property types (e.g. "Detached House", "Row House"). Used to be a
+ * Prisma enum, but that required a code migration + deploy every time a new type was
+ * needed. Now a table so admins can approve host-suggested types at runtime (see
+ * Suggestion below). `value` keeps the old enum's UPPER_SNAKE_CASE codes so existing
+ * data/URLs/filters didn't need to change.
+ */
+model PropertyType {
+  id        String   @id @default(cuid())
+  value     String   @unique
+  label     String
+  /** false = not offered in pickers/filters going forward, but still valid for any
+   *  property already using it (e.g. a "this listing only" suggestion approval). */
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  properties Property[]
+
+  @@index([isActive])
+}
+
 model Property {
-  id           String       @id @default(cuid())
-  ownerId      String
-  name         String
-  propertyType PropertyType
-  address      String
-  city         String
-  area         String?
-  country      String       @default("North Macedonia")
-  postalCode   String?
-  latitude     Float?
-  longitude    Float?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id               String   @id @default(cuid())
+  ownerId          String
+  name             String
+  propertyType     String
+  propertyTypeInfo PropertyType @relation(fields: [propertyType], references: [value])
+  address          String
+  city             String
+  area             String?
+  country          String   @default("North Macedonia")
+  postalCode       String?
+  latitude         Float?
+  longitude        Float?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   owner    User      @relation(fields: [ownerId], references: [id])
   listings Listing[]
 
   @@index([ownerId])
   @@index([city])
+  @@index([propertyType])
 }
 
 model Listing {
@@ -178,6 +209,7 @@ model Listing {
   datePrices         ListingDatePrice[]
   availabilityBlocks AvailabilityBlock[]
   bookings           Booking[]
+  suggestions        Suggestion[]
 
   @@index([hostId])
   @@index([status])
@@ -206,9 +238,42 @@ model Amenity {
   name      String   @unique
   category  String
   icon      String?
+  /** false = not offered in the general amenity picker, but still valid for any
+   *  listing already using it (e.g. a "this listing only" suggestion approval). */
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
   listings ListingAmenity[]
+
+  @@index([isActive])
+}
+
+/**
+ * Host-submitted "you're missing an option" requests for a property type or amenity
+ * not in the current catalog. An admin can edit the label, then approve it either
+ * GLOBAL (added to the catalog for all future listings) or LISTING_ONLY (usable just
+ * on the listing that requested it, without polluting the catalog for everyone else).
+ */
+model Suggestion {
+  id           String            @id @default(cuid())
+  kind         SuggestionKind
+  label        String
+  note         String?
+  status       SuggestionStatus  @default(PENDING)
+  scope        SuggestionScope?
+  listingId    String?
+  hostId       String
+  reviewedById String?
+  reviewedAt   DateTime?
+  adminNote    String?
+  createdAt    DateTime          @default(now())
+
+  listing    Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  host       User     @relation("SuggestionHost", fields: [hostId], references: [id])
+  reviewedBy User?    @relation("SuggestionReviewer", fields: [reviewedById], references: [id])
+
+  @@index([status])
+  @@index([hostId])
 }
 
 model ListingAmenity {

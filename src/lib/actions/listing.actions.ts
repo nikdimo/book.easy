@@ -1,6 +1,5 @@
 "use server";
 
-import type { PropertyType } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { listingFormSchema } from "@/lib/validations/listing.schema";
@@ -11,6 +10,39 @@ import { revalidatePublicListingCaches } from "@/lib/utils/revalidate-public-lis
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { firstZodMessage } from "@/lib/utils/zod-error";
+import { isShortMapsLink, parseCoordsFromMapsText } from "@/lib/utils/parse-maps-link";
+
+/**
+ * Short Google Maps links (goo.gl) don't carry coordinates until resolved — the pin
+ * lives in the redirect chain, not the short URL itself. Resolves server-side (fetch
+ * follows redirects) and only ever accepts a goo.gl host to avoid this becoming an
+ * open SSRF proxy for arbitrary hosts.
+ */
+export async function resolveMapsLink(
+  url: string
+): Promise<{ lat: number; lng: number } | { error: string }> {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Not authorized" };
+
+  const direct = parseCoordsFromMapsText(url);
+  if (direct) return direct;
+
+  if (!isShortMapsLink(url)) {
+    return { error: "Couldn't find coordinates in that link" };
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(url.trim(), { redirect: "follow", signal: controller.signal });
+    clearTimeout(timeout);
+    const resolved = parseCoordsFromMapsText(res.url);
+    if (resolved) return resolved;
+    return { error: "Couldn't find coordinates in that link" };
+  } catch {
+    return { error: "Couldn't resolve that link" };
+  }
+}
 
 function parseImageUrlsFromForm(formData: FormData): string[] {
   const raw = formData.getAll("imageUrls").filter((v): v is string => typeof v === "string");
@@ -37,6 +69,8 @@ export async function createListing(formData: FormData) {
     city: formData.get("city"),
     area: formData.get("area") || undefined,
     country: formData.get("country") || "North Macedonia",
+    latitude: formData.get("latitude") || undefined,
+    longitude: formData.get("longitude") || undefined,
     maxGuests: formData.get("maxGuests"),
     bedrooms: formData.get("bedrooms"),
     bathrooms: formData.get("bathrooms"),
@@ -60,11 +94,13 @@ export async function createListing(formData: FormData) {
     data: {
       ownerId: session.user.id,
       name: data.title,
-      propertyType: data.propertyType as PropertyType,
+      propertyType: data.propertyType,
       address: data.address,
       city: data.city,
       area: data.area,
       country: data.country,
+      latitude: data.latitude,
+      longitude: data.longitude,
     },
   });
 
@@ -131,6 +167,8 @@ export async function updateListing(listingId: string, formData: FormData) {
     city: formData.get("city"),
     area: formData.get("area") || undefined,
     country: formData.get("country") || "North Macedonia",
+    latitude: formData.get("latitude") || undefined,
+    longitude: formData.get("longitude") || undefined,
     maxGuests: formData.get("maxGuests"),
     bedrooms: formData.get("bedrooms"),
     bathrooms: formData.get("bathrooms"),
@@ -152,11 +190,13 @@ export async function updateListing(listingId: string, formData: FormData) {
   await db.property.update({
     where: { id: listing.propertyId },
     data: {
-      propertyType: data.propertyType as PropertyType,
+      propertyType: data.propertyType,
       address: data.address,
       city: data.city,
       area: data.area,
       country: data.country,
+      latitude: data.latitude,
+      longitude: data.longitude,
     },
   });
 

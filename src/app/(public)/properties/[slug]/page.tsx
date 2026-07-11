@@ -11,7 +11,7 @@ import { getListingBySlug } from "@/lib/services/property.service";
 import { getBlockedDateRangesForListing } from "@/lib/services/availability.service";
 import { getFutureDatePriceRowsForListing } from "@/lib/services/pricing.service";
 import { dateKey } from "@/lib/utils/stay-pricing";
-import { PROPERTY_TYPES } from "@/lib/constants";
+import { getPropertyTypeLabel } from "@/lib/services/property-type.service";
 import type { Metadata } from "next";
 
 interface ListingPageProps {
@@ -53,7 +53,7 @@ export default async function ListingDetailPage({ params }: ListingPageProps) {
   const hostInitials = listing.host.profile?.hostDisplayName?.[0] ||
     listing.host.name.split(" ").map((n) => n[0]).join("").slice(0, 2);
   const hostName = listing.host.profile?.hostDisplayName || listing.host.name.split(" ")[0];
-  const typeLabel = PROPERTY_TYPES.find((t) => t.value === listing.property.propertyType)?.label;
+  const typeLabel = await getPropertyTypeLabel(listing.property.propertyType);
   const locationLine = [
     listing.property.area,
     listing.property.city,

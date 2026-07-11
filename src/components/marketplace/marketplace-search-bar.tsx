@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MarketplaceStayDatePicker } from "@/components/marketplace/marketplace-stay-date-picker";
 import { MarketplacePlaceSelector } from "@/components/marketplace/marketplace-place-selector";
+import { MarketplaceSearchFlowDialog } from "@/components/marketplace/marketplace-search-flow-dialog";
 import {
   MarketplaceGuestSelector,
   countsToGuestsParam,
@@ -18,6 +19,7 @@ import {
   parsePropertyTypesFromSearchParams,
   stringifyPropertyTypesParam,
 } from "@/lib/property-type-filter";
+import type { PropertyTypeOption } from "@/lib/types/property-type";
 
 type Variant = "hero" | "compact" | "pill" | "summary";
 
@@ -56,6 +58,7 @@ function getInitialSearchBarState(args: {
   defaultCheckIn: string;
   defaultCheckOut: string;
   defaultGuests: string;
+  allPropertyTypeValues: string[];
 }): SearchBarState {
   const {
     pathname,
@@ -64,6 +67,7 @@ function getInitialSearchBarState(args: {
     defaultCheckIn,
     defaultCheckOut,
     defaultGuests,
+    allPropertyTypeValues,
   } = args;
   const allowRememberedFallback = pathname !== "/properties";
 
@@ -95,7 +99,7 @@ function getInitialSearchBarState(args: {
   );
   const propertyTypes =
     searchParams.get("propertyTypes") !== null
-      ? parsePropertyTypesFromSearchParams(searchParams)
+      ? parsePropertyTypesFromSearchParams(searchParams, allPropertyTypeValues)
       : allowRememberedFallback && rememberedSearchState
         ? rememberedSearchState.propertyTypes
         : [];
@@ -157,6 +161,7 @@ export function MarketplaceSearchBar({
   defaultGuests = "",
   popularCities = [],
   availablePropertyTypesByCity = {},
+  propertyTypes = [],
 }: {
   variant?: Variant;
   defaultCity?: string;
@@ -165,9 +170,13 @@ export function MarketplaceSearchBar({
   defaultGuests?: string;
   popularCities?: string[];
   availablePropertyTypesByCity?: Record<string, string[]>;
+  propertyTypes?: PropertyTypeOption[];
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const allPropertyTypeValues = getAvailablePropertyTypeValues(
+    availablePropertyTypesByCity
+  );
   const initialState = getInitialSearchBarState({
     pathname,
     searchParams,
@@ -175,6 +184,7 @@ export function MarketplaceSearchBar({
     defaultCheckIn,
     defaultCheckOut,
     defaultGuests,
+    allPropertyTypeValues,
   });
   const showPropertyTypesInWhere = true;
 
@@ -200,8 +210,16 @@ export function MarketplaceSearchBar({
       showPropertyTypesInWhere={showPropertyTypesInWhere}
       popularCities={popularCities}
       availablePropertyTypesByCity={availablePropertyTypesByCity}
+      propertyTypes={propertyTypes}
+      allPropertyTypeValues={allPropertyTypeValues}
     />
   );
+}
+
+function getAvailablePropertyTypeValues(
+  availablePropertyTypesByCity: Record<string, string[]>
+): string[] {
+  return [...new Set(Object.values(availablePropertyTypesByCity).flat())];
 }
 
 function MarketplaceSearchBarInner({
@@ -210,12 +228,16 @@ function MarketplaceSearchBarInner({
   showPropertyTypesInWhere,
   popularCities,
   availablePropertyTypesByCity,
+  propertyTypes: propertyTypeOptions,
+  allPropertyTypeValues,
 }: {
   variant: Variant;
   initialState: SearchBarState;
   showPropertyTypesInWhere: boolean;
   popularCities: string[];
   availablePropertyTypesByCity: Record<string, string[]>;
+  propertyTypes: PropertyTypeOption[];
+  allPropertyTypeValues: string[];
 }) {
   const router = useRouter();
   const [city, setCity] = useState(initialState.city);
@@ -230,6 +252,7 @@ function MarketplaceSearchBarInner({
     "checkin" | "checkout"
   >("checkin");
   const [guestSelectorOpen, setGuestSelectorOpen] = useState(false);
+  const [searchFlowOpen, setSearchFlowOpen] = useState(false);
   const [dateFlexibility, setDateFlexibility] = useState(
     initialState.dateFlexibility
   );
@@ -246,7 +269,10 @@ function MarketplaceSearchBarInner({
       p.set("dateFlexibility", String(dateFlexibility));
     }
     p.delete("propertyType");
-    const typesParam = stringifyPropertyTypesParam(propertyTypes);
+    const typesParam = stringifyPropertyTypesParam(
+      propertyTypes,
+      allPropertyTypeValues
+    );
     if (typesParam) p.set("propertyTypes", typesParam);
 
     rememberedSearchState = {
@@ -281,7 +307,7 @@ function MarketplaceSearchBarInner({
         <button
           type="button"
           className="flex h-14 w-full items-center gap-3 rounded-full border border-border/70 bg-background px-3 text-left shadow-[0_10px_26px_rgba(15,23,42,0.08)] transition-shadow hover:shadow-[0_14px_32px_rgba(15,23,42,0.12)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-          onClick={() => setPlaceSelectorOpen(true)}
+          onClick={() => setSearchFlowOpen(true)}
           aria-label="Open search"
         >
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
@@ -297,53 +323,49 @@ function MarketplaceSearchBarInner({
           </span>
         </button>
 
-        <div className="hidden">
-          <MarketplacePlaceSelector
-            layout="compact"
-            city={city}
-            selectedPropertyTypes={propertyTypes}
-            onPropertyTypesChange={setPropertyTypes}
-            onCityChange={setCity}
-            open={placeSelectorOpen}
-            onOpenChange={setPlaceSelectorOpen}
-            onNextToDates={() => {
-              setDatePickerCanReturnToPlace(true);
-              setDatePickerInitialSegment("checkin");
-              setDatePickerOpen(true);
-            }}
-            popularCities={popularCities}
-            availablePropertyTypesByCity={availablePropertyTypesByCity}
-            showPropertyTypes={showPropertyTypesInWhere}
-          />
-          <MarketplaceStayDatePicker
-            layout="compact"
-            checkIn={checkIn}
-            checkOut={checkOut}
-            guestCounts={guestCounts}
-            dateFlexibility={dateFlexibility}
-            open={datePickerOpen}
-            onOpenChange={(nextOpen) => {
-              setDatePickerOpen(nextOpen);
-              if (!nextOpen) {
-                setDatePickerCanReturnToPlace(false);
-              }
-            }}
-            initialSegment={datePickerInitialSegment}
-            showBackToPlace={datePickerCanReturnToPlace}
-            onRangeStringsChange={({ checkIn: ci, checkOut: co }) => {
-              setCheckIn(ci);
-              setCheckOut(co);
-            }}
-            onGuestCountsChange={setGuestCounts}
-            onDateFlexibilityChange={setDateFlexibility}
-            onBackToPlace={() => {
-              setDatePickerCanReturnToPlace(false);
-              setDatePickerOpen(false);
-              setPlaceSelectorOpen(true);
-            }}
-            onSearchRequest={submitQuery}
-          />
-        </div>
+        <MarketplaceSearchFlowDialog
+          open={searchFlowOpen}
+          onOpenChange={setSearchFlowOpen}
+          initialState={{
+            city,
+            checkIn,
+            checkOut,
+            guestCounts,
+            dateFlexibility,
+            propertyTypes,
+          }}
+          popularCities={popularCities}
+          availablePropertyTypesByCity={availablePropertyTypesByCity}
+          propertyTypes={propertyTypeOptions}
+          showPropertyTypes={showPropertyTypesInWhere}
+          onApplySearch={(next) => {
+            setCity(next.city);
+            setCheckIn(next.checkIn);
+            setCheckOut(next.checkOut);
+            setGuestCounts(next.guestCounts);
+            setDateFlexibility(next.dateFlexibility);
+            setPropertyTypes(next.propertyTypes);
+
+            rememberedSearchState = next;
+            const p = new URLSearchParams();
+            if (next.city.trim()) p.set("city", next.city.trim());
+            if (next.checkIn) p.set("checkIn", next.checkIn);
+            if (next.checkOut) p.set("checkOut", next.checkOut);
+            const guestsParam = countsToGuestsParam(next.guestCounts);
+            if (guestsParam) p.set("guests", guestsParam);
+            if (next.dateFlexibility > 0) {
+              p.set("dateFlexibility", String(next.dateFlexibility));
+            }
+            const typesParam = stringifyPropertyTypesParam(
+              next.propertyTypes,
+              allPropertyTypeValues
+            );
+            if (typesParam) p.set("propertyTypes", typesParam);
+
+            const q = p.toString();
+            router.push(q ? `/properties?${q}` : "/properties");
+          }}
+        />
       </div>
     );
   }
@@ -369,6 +391,7 @@ function MarketplaceSearchBarInner({
           }}
           popularCities={popularCities}
           availablePropertyTypesByCity={availablePropertyTypesByCity}
+          propertyTypes={propertyTypeOptions}
           showPropertyTypes={showPropertyTypesInWhere}
           className="flex flex-1 min-w-0"
         />
@@ -456,6 +479,7 @@ function MarketplaceSearchBarInner({
           }}
           popularCities={popularCities}
           availablePropertyTypesByCity={availablePropertyTypesByCity}
+          propertyTypes={propertyTypeOptions}
           showPropertyTypes={showPropertyTypesInWhere}
           className="flex min-w-0 flex-1"
         />

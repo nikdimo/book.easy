@@ -23,9 +23,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { PROPERTY_TYPES } from "@/lib/constants";
 import {
-  ALL_PROPERTY_TYPE_VALUES,
   isAllPropertyTypesSelected,
   parsePropertyTypesFromSearchParams,
   sortPropertyTypesInDisplayOrder,
@@ -37,7 +35,8 @@ import {
   PRICE_RANGE_STEP,
   resolvePriceRange,
 } from "@/lib/search-filter-config";
-import type { SearchFilterPreview } from "@/lib/services/search.service";
+import type { SearchFilterPreview } from "@/lib/types/search";
+import type { PropertyTypeOption } from "@/lib/types/property-type";
 import { cn } from "@/lib/utils";
 
 const PROPERTY_TYPE_ICONS = {
@@ -59,6 +58,9 @@ export type SearchFiltersSection =
 
 interface SearchFiltersProps {
   amenities: { id: string; name: string; category: string }[];
+  /** Catalog of selectable types (admin-managed) — distinct from the currently
+   *  *selected* type values, which live in `SearchFiltersState.propertyTypes`. */
+  propertyTypeOptions: PropertyTypeOption[];
   availablePropertyTypes?: string[];
   initialPreview?: SearchFilterPreview;
   variant?: "sidebar" | "embedded";
@@ -176,6 +178,7 @@ function SectionHeading({
 
 export function SearchFilters({
   amenities,
+  propertyTypeOptions,
   availablePropertyTypes = [],
   initialPreview,
   variant = "sidebar",
@@ -183,6 +186,10 @@ export function SearchFilters({
   focusSection,
 }: SearchFiltersProps) {
   const searchParams = useSearchParams();
+  const allPropertyTypeValues = useMemo(
+    () => propertyTypeOptions.map((t) => t.value),
+    [propertyTypeOptions]
+  );
 
   const initialState = useMemo<SearchFiltersState>(
     () => ({
@@ -200,16 +207,17 @@ export function SearchFilters({
           ? Number(searchParams.get("maxPrice"))
           : undefined
       ),
-      propertyTypes: parsePropertyTypesFromSearchParams(searchParams),
+      propertyTypes: parsePropertyTypesFromSearchParams(searchParams, allPropertyTypeValues),
       selectedAmenities: searchParams.getAll("amenities"),
     }),
-    [searchParams]
+    [searchParams, allPropertyTypeValues]
   );
 
   return (
     <SearchFiltersInner
       key={searchParams.toString()}
       amenities={amenities}
+      propertyTypeOptions={propertyTypeOptions}
       availablePropertyTypes={availablePropertyTypes}
       initialPreview={initialPreview}
       baseSearchParamsString={searchParams.toString()}
@@ -223,6 +231,7 @@ export function SearchFilters({
 
 function SearchFiltersInner({
   amenities,
+  propertyTypeOptions,
   availablePropertyTypes,
   initialPreview,
   baseSearchParamsString,
@@ -236,6 +245,10 @@ function SearchFiltersInner({
   baseSearchParamsString: string;
   initialState: SearchFiltersState;
 }) {
+  const allPropertyTypeValues = useMemo(
+    () => propertyTypeOptions.map((t) => t.value),
+    [propertyTypeOptions]
+  );
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const city = initialState.city;
@@ -295,7 +308,7 @@ function SearchFiltersInner({
 
   const isPriceFiltered =
     priceRange[0] > PRICE_RANGE_MIN || priceRange[1] < PRICE_RANGE_MAX;
-  const typeFilterActive = !isAllPropertyTypesSelected(propertyTypes);
+  const typeFilterActive = !isAllPropertyTypesSelected(propertyTypes, allPropertyTypeValues);
   const hasFilters =
     bedrooms > 0 ||
     isPriceFiltered ||
@@ -403,7 +416,8 @@ function SearchFiltersInner({
     const types = stringifyPropertyTypesParam(
       availablePropertyTypes.length > 0
         ? propertyTypes.filter((value) => availablePropertyTypes.includes(value))
-        : propertyTypes
+        : propertyTypes,
+      allPropertyTypeValues
     );
     if (types) {
       params.set("propertyTypes", types);
@@ -428,7 +442,7 @@ function SearchFiltersInner({
   function clearFilters() {
     setBedrooms(0);
     setPriceRange([PRICE_RANGE_MIN, PRICE_RANGE_MAX]);
-    setPropertyTypes([...ALL_PROPERTY_TYPE_VALUES]);
+    setPropertyTypes([...allPropertyTypeValues]);
     setSelectedAmenities([]);
 
     startTransition(() => {
@@ -453,7 +467,7 @@ function SearchFiltersInner({
       } else {
         next.add(value);
       }
-      return sortPropertyTypesInDisplayOrder([...next]);
+      return sortPropertyTypesInDisplayOrder([...next], allPropertyTypeValues);
     });
   }
 
@@ -562,7 +576,7 @@ function SearchFiltersInner({
               description="Use the same rounded cards language as the search."
             />
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {PROPERTY_TYPES.map(({ value, label }) => {
+              {propertyTypeOptions.map(({ value, label }) => {
                 const Icon =
                   PROPERTY_TYPE_ICONS[
                     value as keyof typeof PROPERTY_TYPE_ICONS

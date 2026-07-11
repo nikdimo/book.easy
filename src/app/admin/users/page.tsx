@@ -1,17 +1,37 @@
+import Link from "next/link";
 import { getAllUsersForAdmin } from "@/lib/services/admin.service";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AdminUserActions } from "@/components/admin/admin-user-actions";
 import { formatDate } from "@/lib/utils/format";
 
 export const metadata = { title: "Admin - Users" };
 
-export default async function AdminUsersPage() {
+interface AdminUsersPageProps {
+  searchParams?: Promise<{ type?: string }>;
+}
+
+export default async function AdminUsersPage({ searchParams }: AdminUsersPageProps) {
+  const { type } = (await searchParams) ?? {};
   const users = await getAllUsersForAdmin();
+  const showingHosts = type === "hosts";
+  const filteredUsers = showingHosts
+    ? users.filter((user) => user.isHost)
+    : users;
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">User Management</h1>
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold">
+          {showingHosts ? "Hosts" : "User Management"}
+        </h1>
+        {showingHosts && (
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/admin/users">Show all users</Link>
+          </Button>
+        )}
+      </div>
       <div className="border rounded-lg">
         <Table>
           <TableHeader>
@@ -28,7 +48,7 @@ export default async function AdminUsersPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {users.map((user) => (
+            {filteredUsers.map((user) => (
               <TableRow key={user.id}>
                 <TableCell className="font-medium">{user.name}</TableCell>
                 <TableCell className="text-sm">{user.email}</TableCell>

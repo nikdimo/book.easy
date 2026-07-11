@@ -23,13 +23,16 @@ import {
 } from "lucide-react";
 import { MarketplaceSearchBar } from "@/components/marketplace/marketplace-search-bar";
 import { SITE_DOMAIN } from "@/lib/branding";
+import type { PropertyTypeOption } from "@/lib/types/property-type";
 
 export function Header({
   popularCities = [],
   availablePropertyTypesByCity = {},
+  propertyTypes = [],
 }: {
   popularCities?: string[];
   availablePropertyTypesByCity?: Record<string, string[]>;
+  propertyTypes?: PropertyTypeOption[];
 }) {
   const router = useRouter();
   const { data: session, update } = useSession();
@@ -82,6 +85,7 @@ export function Header({
             {...searchDefaults}
             popularCities={popularCities}
             availablePropertyTypesByCity={availablePropertyTypesByCity}
+            propertyTypes={propertyTypes}
           />
         </div>
 
@@ -210,6 +214,7 @@ export function Header({
           {...searchDefaults}
           popularCities={popularCities}
           availablePropertyTypesByCity={availablePropertyTypesByCity}
+          propertyTypes={propertyTypes}
         />
       </div>
     </header>
