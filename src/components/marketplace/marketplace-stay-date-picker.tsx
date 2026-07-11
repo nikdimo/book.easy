@@ -50,7 +50,7 @@ function suppressNextClick() {
   };
 }
 
-type Layout = "pill" | "hero" | "compact";
+type Layout = "pill" | "hero" | "compact" | "field";
 type Step = "dates" | "guests";
 
 type MarketplaceDayMeta = {
@@ -69,7 +69,7 @@ type DragCtx = {
   dayVariant?: "default" | "availability";
 };
 
-const FLEXIBILITY_OPTIONS = [
+export const FLEXIBILITY_OPTIONS = [
   { value: 0, label: "Exact dates" },
   { value: 1, label: "+- 1 day" },
   { value: 2, label: "+- 2 days" },
@@ -77,6 +77,34 @@ const FLEXIBILITY_OPTIONS = [
   { value: 7, label: "+- 7 days" },
   { value: 14, label: "+- 14 days" },
 ] as const;
+
+export function DateFlexibilityRow({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (next: number) => void;
+}) {
+  return (
+    <div className="flex w-max gap-2 whitespace-nowrap pr-4 md:pr-6">
+      {FLEXIBILITY_OPTIONS.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          onClick={() => onChange(option.value)}
+          className={cn(
+            "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
+            value === option.value
+              ? "border-foreground bg-background text-foreground"
+              : "border-border bg-background text-foreground hover:bg-muted/40"
+          )}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 // Rendering many months of custom day-buttons up front was the single biggest
 // contributor to date-picker open latency (each cell carries context reads, date
@@ -159,6 +187,58 @@ function GuestRow({
           +
         </button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * The single shared Adults/Children/Infants/Pets editor — reused by the stay date
+ * picker's own "guests" step, the mobile Where/When/Who search flow, and the header's
+ * guest popover, so the guest-count UI can't drift into three different components.
+ */
+export function GuestCountsStep({
+  guestCounts,
+  onGuestCountsChange,
+  className,
+}: {
+  guestCounts: GuestCounts;
+  onGuestCountsChange: (next: GuestCounts) => void;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "mx-auto w-full max-w-2xl rounded-[1.75rem] border border-border bg-background px-4 md:px-6",
+        className
+      )}
+    >
+      <GuestRow
+        title="Adults"
+        subtitle="Ages 13 or above"
+        value={guestCounts.adults}
+        onChange={(adults) => onGuestCountsChange({ ...guestCounts, adults })}
+      />
+      <GuestRow
+        title="Children"
+        subtitle="Ages 2 - 12"
+        value={guestCounts.children}
+        onChange={(children) =>
+          onGuestCountsChange({ ...guestCounts, children })
+        }
+      />
+      <GuestRow
+        title="Infants"
+        subtitle="Under 2"
+        value={guestCounts.infants}
+        onChange={(infants) => onGuestCountsChange({ ...guestCounts, infants })}
+      />
+      <GuestRow
+        title="Pets"
+        subtitle=""
+        linkText="Bringing a service animal?"
+        value={guestCounts.pets}
+        onChange={(pets) => onGuestCountsChange({ ...guestCounts, pets })}
+      />
     </div>
   );
 }
@@ -282,73 +362,32 @@ function MarketplaceRangeDayButton({
   );
 }
 
-export function MarketplaceStayDatePicker({
-  layout,
-  checkIn,
-  checkOut,
-  guestCounts = EMPTY_GUEST_COUNTS,
-  dateFlexibility = 0,
-  open: controlledOpen,
-  onOpenChange,
-  initialSegment = "checkin",
-  showBackToPlace = false,
-  showDateFlexibility = true,
-  showGuestStep = true,
-  finalActionLabel = showGuestStep ? "Search" : "Done",
-  onRangeStringsChange,
-  onGuestCountsChange = () => undefined,
-  onDateFlexibilityChange = () => undefined,
-  onBackToPlace,
-  onFinalAction,
-  onSearchRequest = () => undefined,
-  dateDialogTitle = "Choose dates",
-  dateDialogDescription = "Choose your check-in and check-out dates.",
-  hideDateSegmentCards = false,
+/**
+ * The single shared calendar surface for picking a stay date range — drag-to-resize
+ * endpoints, lazy month loading, matching visuals — reused by both the standalone
+ * date-picker dialog and the combined search-flow dialog so they never drift apart.
+ */
+export function DateRangeCalendarStep({
+  active,
+  selected,
+  onRangeChange,
+  onFromOnlySelected,
+  disabledDateRanges = [],
   dayMeta,
   dayVariant = "default",
   dateModifiers,
   dateModifiersClassNames,
-  renderDateFooter,
-  className,
 }: {
-  layout: Layout;
-  checkIn: string;
-  checkOut: string;
-  guestCounts?: GuestCounts;
-  dateFlexibility?: number;
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
-  initialSegment?: "checkin" | "checkout";
-  showBackToPlace?: boolean;
-  showDateFlexibility?: boolean;
-  showGuestStep?: boolean;
-  finalActionLabel?: string;
-  onRangeStringsChange: (next: { checkIn: string; checkOut: string }) => void;
-  onGuestCountsChange?: (next: GuestCounts) => void;
-  onDateFlexibilityChange?: (next: number) => void;
-  onBackToPlace?: () => void;
-  onFinalAction?: () => void;
-  onSearchRequest?: () => void;
-  dateDialogTitle?: string;
-  dateDialogDescription?: string;
-  hideDateSegmentCards?: boolean;
+  active: boolean;
+  selected: DateRange | undefined;
+  onRangeChange: (range: DateRange | undefined) => void;
+  onFromOnlySelected?: () => void;
+  disabledDateRanges?: { from: Date; to: Date }[];
   dayMeta?: (date: Date) => MarketplaceDayMeta | undefined;
   dayVariant?: "default" | "availability";
   dateModifiers?: React.ComponentProps<typeof Calendar>["modifiers"];
   dateModifiersClassNames?: React.ComponentProps<typeof Calendar>["modifiersClassNames"];
-  renderDateFooter?: (controls: {
-    canGoNext: boolean;
-    closePicker: () => void;
-    resetDates: () => void;
-    summaryText: string;
-  }) => React.ReactNode;
-  className?: string;
 }) {
-  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
-  const [step, setStep] = React.useState<Step>("dates");
-  const [activeSegment, setActiveSegment] = React.useState<
-    "checkin" | "checkout"
-  >("checkin");
   const [isMobile, setIsMobile] = React.useState(false);
   const [visibleMonthCount, setVisibleMonthCount] = React.useState(
     INITIAL_DESKTOP_MONTH_COUNT
@@ -360,8 +399,6 @@ export function MarketplaceStayDatePicker({
   const bodyScrollRef = React.useRef<HTMLDivElement>(null);
   const dragFrameRef = React.useRef<number | null>(null);
   const pendingDragDateRef = React.useRef<Date | null>(null);
-  const previousOpenRef = React.useRef(false);
-  const openingFromTriggerRef = React.useRef(false);
 
   const dragRef = React.useRef<{
     edge: "from" | "to";
@@ -371,8 +408,6 @@ export function MarketplaceStayDatePicker({
     startY: number;
     moved: boolean;
   } | null>(null);
-  const open = controlledOpen ?? uncontrolledOpen;
-  const setOpen = onOpenChange ?? setUncontrolledOpen;
 
   React.useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -383,41 +418,15 @@ export function MarketplaceStayDatePicker({
   }, []);
 
   React.useEffect(() => {
-    if (!open) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [open]);
-
-  React.useEffect(() => {
-    if (!open) return;
+    if (!active) return;
     bodyScrollRef.current?.scrollTo({ top: 0 });
-  }, [open, step]);
-
-  React.useEffect(() => {
-    if (!open || step !== "dates") return;
-    // Resets the visible month count each time the date step opens, so a prior
-    // "show more months" expansion doesn't leak into the next open. Intentional
-    // reset-on-open, not derived render state.
+    // Resets the visible month count each time this step becomes active, so a
+    // prior "show more months" expansion doesn't leak into the next open.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setVisibleMonthCount(
       isMobile ? INITIAL_MOBILE_MONTH_COUNT : INITIAL_DESKTOP_MONTH_COUNT
     );
-  }, [open, step, isMobile]);
-
-  React.useEffect(() => {
-    if (open && !previousOpenRef.current) {
-      setStep("dates");
-      if (openingFromTriggerRef.current) {
-        openingFromTriggerRef.current = false;
-      } else {
-        setActiveSegment(initialSegment);
-      }
-    }
-    previousOpenRef.current = open;
-  }, [open, initialSegment]);
+  }, [active, isMobile]);
 
   React.useEffect(() => {
     return () => {
@@ -427,42 +436,21 @@ export function MarketplaceStayDatePicker({
     };
   }, []);
 
-  const selectedRange = React.useMemo<DateRange | undefined>(() => {
-    const from = parseLocalYmd(checkIn);
-    const to = parseLocalYmd(checkOut);
-    if (!from && !to) return undefined;
-    if (from && to) return { from, to };
-    if (from) return { from, to: undefined };
-    return undefined;
-  }, [checkIn, checkOut]);
+  const hasRange = Boolean(selected?.from && selected?.to);
 
-  const hasRange = Boolean(
-    selectedRange?.from && selectedRange?.to && checkIn && checkOut
-  );
   const calendarStartMonth = React.useMemo(() => {
     if (dayVariant === "availability") {
       return startOfMonth(startOfToday());
     }
-
-    return startOfMonth(selectedRange?.from ?? new Date());
-  }, [dayVariant, selectedRange?.from]);
+    return startOfMonth(selected?.from ?? new Date());
+  }, [dayVariant, selected?.from]);
 
   const commitRange = React.useCallback(
     (range: DateRange | undefined) => {
-      if (!range?.from) {
-        onRangeStringsChange({ checkIn: "", checkOut: "" });
-        return;
-      }
-      if (!range.to) {
-        onRangeStringsChange({ checkIn: toYmd(range.from), checkOut: "" });
-        return;
-      }
-      onRangeStringsChange({
-        checkIn: toYmd(range.from),
-        checkOut: toYmd(range.to),
-      });
+      onRangeChange(range);
+      if (range?.from && !range?.to) onFromOnlySelected?.();
     },
-    [onRangeStringsChange]
+    [onRangeChange, onFromOnlySelected]
   );
 
   const handleEndpointPointerDown = React.useCallback(
@@ -471,8 +459,8 @@ export function MarketplaceStayDatePicker({
       date: Date,
       e: React.PointerEvent<HTMLButtonElement>
     ) => {
-      const from = selectedRange?.from;
-      const to = selectedRange?.to;
+      const from = selected?.from;
+      const to = selected?.to;
       if (!from || !to) return;
 
       dragRef.current = {
@@ -570,7 +558,6 @@ export function MarketplaceStayDatePicker({
           commitRange({ from: dr.currentFrom, to: dr.currentTo });
         } else {
           commitRange({ from: date, to: undefined });
-          setActiveSegment("checkout");
         }
       };
 
@@ -578,7 +565,7 @@ export function MarketplaceStayDatePicker({
       document.addEventListener("pointerup", onUp);
       document.addEventListener("pointercancel", onUp);
     },
-    [selectedRange, commitRange]
+    [selected, commitRange]
   );
 
   const dragCtx = React.useMemo<DragCtx>(
@@ -591,7 +578,224 @@ export function MarketplaceStayDatePicker({
     [dayMeta, dayVariant, hasRange, handleEndpointPointerDown]
   );
 
-  const calendarSelected = dragDisplayRange ?? selectedRange;
+  const calendarSelected = dragDisplayRange ?? selected;
+  const disabledMatcher = React.useMemo(
+    () => [{ before: startOfToday() }, ...disabledDateRanges],
+    [disabledDateRanges]
+  );
+
+  return (
+    <DragContext.Provider value={dragCtx}>
+      <div
+        ref={bodyScrollRef}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          if (el.scrollTop + el.clientHeight >= el.scrollHeight - 320) {
+            setVisibleMonthCount((current) =>
+              Math.min(MAX_MONTH_COUNT, current + MONTH_LOAD_STEP)
+            );
+          }
+        }}
+        className={cn(
+          "flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain px-4 py-5 md:px-6 md:py-6",
+          isDragging && "cursor-grabbing select-none"
+        )}
+      >
+        <div className="mx-auto w-full">
+          <Calendar
+            mode="range"
+            required={false}
+            resetOnSelect
+            selected={calendarSelected}
+            onSelect={(range) => commitRange(range)}
+            numberOfMonths={visibleMonthCount}
+            disabled={disabledMatcher}
+            defaultMonth={calendarStartMonth}
+            showOutsideDays={false}
+            modifiers={dateModifiers}
+            modifiersClassNames={dateModifiersClassNames}
+            className={cn(
+              "mx-auto bg-transparent p-0",
+              dayVariant === "availability"
+                ? "[--cell-size:3rem] md:[--cell-size:3.25rem]"
+                : "[--cell-size:2.15rem] md:[--cell-size:2.8rem]"
+            )}
+            classNames={{
+              root: "mx-auto w-full",
+              months: cn(
+                "mx-auto grid w-full grid-cols-1 justify-center gap-y-8 md:gap-y-10",
+                dayVariant === "availability"
+                  ? "md:grid-cols-2 md:gap-x-6"
+                  : "md:w-fit md:grid-cols-2 md:gap-x-8"
+              ),
+              month: cn(
+                "mx-auto w-full max-w-[19rem]",
+                dayVariant === "availability"
+                  ? "md:w-[23rem] md:max-w-none"
+                  : "md:w-[20rem] md:max-w-none"
+              ),
+              nav: "hidden",
+              month_caption:
+                "mb-3 flex h-8 w-full items-center justify-center text-lg font-bold text-foreground md:mb-4",
+              table: "mx-auto w-full border-collapse",
+              weekdays: "flex w-full",
+              weekday:
+                "flex-1 text-center text-[0.68rem] font-medium uppercase text-muted-foreground select-none md:text-[0.72rem]",
+              week: "mt-2 flex w-full",
+              day: cn(
+                dayVariant === "availability"
+                  ? "group/day relative h-[3.2rem] min-w-0 flex-1 p-0 text-center md:h-[3.6rem] md:w-[3.25rem] md:flex-none"
+                  : "group/day relative h-[2.2rem] min-w-0 flex-1 p-0 text-center md:h-11 md:w-11 md:flex-none",
+                "[&:first-child[data-range-end=true]]:rounded-l-full",
+                "[&:last-child[data-range-start=true]]:rounded-r-full"
+              ),
+              range_start:
+                "rounded-l-full bg-[hsl(220_12%_86%)] hover:bg-[hsl(220_12%_80%)] [&_button]:rounded-full",
+              range_middle:
+                "rounded-none bg-[hsl(220_12%_86%)] hover:bg-[hsl(220_12%_80%)] [&_button]:bg-transparent",
+              range_end:
+                "rounded-r-full bg-[hsl(220_12%_86%)] hover:bg-[hsl(220_12%_80%)] [&_button]:rounded-full",
+              outside: "opacity-0 pointer-events-none",
+              hidden: "invisible",
+            }}
+            components={{ DayButton: MarketplaceRangeDayButton }}
+          />
+        </div>
+      </div>
+    </DragContext.Provider>
+  );
+}
+
+export function MarketplaceStayDatePicker({
+  layout,
+  checkIn,
+  checkOut,
+  guestCounts = EMPTY_GUEST_COUNTS,
+  dateFlexibility = 0,
+  open: controlledOpen,
+  onOpenChange,
+  initialSegment = "checkin",
+  initialStep = "dates",
+  showBackToPlace = false,
+  showDateFlexibility = true,
+  showGuestStep = true,
+  finalActionLabel = showGuestStep ? "Search" : "Done",
+  onRangeStringsChange,
+  onGuestCountsChange = () => undefined,
+  onDateFlexibilityChange = () => undefined,
+  onBackToPlace,
+  onFinalAction,
+  onSearchRequest = () => undefined,
+  dateDialogTitle = "Choose dates",
+  dateDialogDescription = "Choose your check-in and check-out dates.",
+  hideDateSegmentCards = false,
+  disabledDateRanges = [],
+  dayMeta,
+  dayVariant = "default",
+  dateModifiers,
+  dateModifiersClassNames,
+  renderDateFooter,
+  className,
+}: {
+  layout: Layout;
+  checkIn: string;
+  checkOut: string;
+  guestCounts?: GuestCounts;
+  dateFlexibility?: number;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  initialSegment?: "checkin" | "checkout";
+  initialStep?: Step;
+  showBackToPlace?: boolean;
+  showDateFlexibility?: boolean;
+  showGuestStep?: boolean;
+  finalActionLabel?: string;
+  onRangeStringsChange: (next: { checkIn: string; checkOut: string }) => void;
+  onGuestCountsChange?: (next: GuestCounts) => void;
+  onDateFlexibilityChange?: (next: number) => void;
+  onBackToPlace?: () => void;
+  onFinalAction?: () => void;
+  onSearchRequest?: () => void;
+  dateDialogTitle?: string;
+  dateDialogDescription?: string;
+  hideDateSegmentCards?: boolean;
+  disabledDateRanges?: { from: Date; to: Date }[];
+  dayMeta?: (date: Date) => MarketplaceDayMeta | undefined;
+  dayVariant?: "default" | "availability";
+  dateModifiers?: React.ComponentProps<typeof Calendar>["modifiers"];
+  dateModifiersClassNames?: React.ComponentProps<typeof Calendar>["modifiersClassNames"];
+  renderDateFooter?: (controls: {
+    canGoNext: boolean;
+    closePicker: () => void;
+    resetDates: () => void;
+    summaryText: string;
+  }) => React.ReactNode;
+  className?: string;
+}) {
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
+  const [step, setStep] = React.useState<Step>("dates");
+  const [activeSegment, setActiveSegment] = React.useState<
+    "checkin" | "checkout"
+  >("checkin");
+  const bodyScrollRef = React.useRef<HTMLDivElement>(null);
+  const previousOpenRef = React.useRef(false);
+  const openingFromTriggerRef = React.useRef(false);
+  const open = controlledOpen ?? uncontrolledOpen;
+  const setOpen = onOpenChange ?? setUncontrolledOpen;
+
+  React.useEffect(() => {
+    if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open]);
+
+  React.useEffect(() => {
+    if (!open) return;
+    bodyScrollRef.current?.scrollTo({ top: 0 });
+  }, [open, step]);
+
+  React.useEffect(() => {
+    if (open && !previousOpenRef.current) {
+      setStep(initialStep);
+      if (openingFromTriggerRef.current) {
+        openingFromTriggerRef.current = false;
+      } else {
+        setActiveSegment(initialSegment);
+      }
+    }
+    previousOpenRef.current = open;
+  }, [open, initialSegment, initialStep]);
+
+  const selectedRange = React.useMemo<DateRange | undefined>(() => {
+    const from = parseLocalYmd(checkIn);
+    const to = parseLocalYmd(checkOut);
+    if (!from && !to) return undefined;
+    if (from && to) return { from, to };
+    if (from) return { from, to: undefined };
+    return undefined;
+  }, [checkIn, checkOut]);
+
+  const commitRange = React.useCallback(
+    (range: DateRange | undefined) => {
+      if (!range?.from) {
+        onRangeStringsChange({ checkIn: "", checkOut: "" });
+        return;
+      }
+      if (!range.to) {
+        onRangeStringsChange({ checkIn: toYmd(range.from), checkOut: "" });
+        return;
+      }
+      onRangeStringsChange({
+        checkIn: toYmd(range.from),
+        checkOut: toYmd(range.to),
+      });
+    },
+    [onRangeStringsChange]
+  );
+
   const checkInLabel =
     selectedRange?.from && checkIn
       ? format(selectedRange.from, "MMM d")
@@ -605,16 +809,16 @@ export function MarketplaceStayDatePicker({
       ? `${format(selectedRange.from, "MMM d")} - ${format(selectedRange.to, "MMM d")}`
       : "Add dates";
   const summaryText =
-    calendarSelected?.from && calendarSelected?.to
-      ? `${format(calendarSelected.from, "MMM d")} - ${format(calendarSelected.to, "MMM d")}`
-      : calendarSelected?.from
-        ? format(calendarSelected.from, "MMM d")
+    selectedRange?.from && selectedRange?.to
+      ? `${format(selectedRange.from, "MMM d")} - ${format(selectedRange.to, "MMM d")}`
+      : selectedRange?.from
+        ? format(selectedRange.from, "MMM d")
         : "Add dates";
-  const nightCount = getNightCount(calendarSelected);
+  const nightCount = getNightCount(selectedRange);
   const canGoNext =
     dayVariant === "availability"
-      ? Boolean(calendarSelected?.from)
-      : Boolean(calendarSelected?.from && calendarSelected?.to);
+      ? Boolean(selectedRange?.from)
+      : Boolean(selectedRange?.from && selectedRange?.to);
 
   const segmentActive = (seg: "checkin" | "checkout") =>
     open && step === "dates" && activeSegment === seg;
@@ -665,7 +869,25 @@ export function MarketplaceStayDatePicker({
 
   const triggers = (
     <>
-      {layout === "pill" ? (
+      {layout === "field" ? (
+        <button
+          type="button"
+          className="flex w-full items-center gap-3 rounded-xl border border-input bg-background px-3.5 py-2.5 text-left transition-colors outline-none hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          onClick={() => openSegment("checkin")}
+          aria-expanded={open}
+          aria-haspopup="dialog"
+        >
+          <CalendarRange className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <span
+            className={cn(
+              "truncate text-sm font-medium",
+              !(checkIn && checkOut) && "text-muted-foreground"
+            )}
+          >
+            {mobileDatesLabel}
+          </span>
+        </button>
+      ) : layout === "pill" ? (
         <div className="flex flex-1 min-w-0 items-stretch divide-x divide-border">
           <button
             type="button"
@@ -882,113 +1104,25 @@ export function MarketplaceStayDatePicker({
 
           {step === "dates" ? (
             <>
-              <DragContext.Provider value={dragCtx}>
-                <div
-                  ref={bodyScrollRef}
-                  onScroll={(e) => {
-                    const el = e.currentTarget;
-                    if (
-                      el.scrollTop + el.clientHeight >=
-                      el.scrollHeight - 320
-                    ) {
-                      setVisibleMonthCount((current) =>
-                        Math.min(MAX_MONTH_COUNT, current + MONTH_LOAD_STEP)
-                      );
-                    }
-                  }}
-                  className={cn(
-                    "flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain px-4 py-5 md:px-6 md:py-6",
-                    isDragging && "cursor-grabbing select-none"
-                  )}
-                >
-                  <div className="mx-auto w-full">
-                    <Calendar
-                      mode="range"
-                      required={false}
-                      resetOnSelect
-                      selected={calendarSelected}
-                      onSelect={(range) => {
-                        commitRange(range);
-                        if (range?.from && !range?.to) {
-                          setActiveSegment("checkout");
-                        }
-                      }}
-                      numberOfMonths={visibleMonthCount}
-                      disabled={{ before: startOfToday() }}
-                      defaultMonth={calendarStartMonth}
-                      showOutsideDays={false}
-                      modifiers={dateModifiers}
-                      modifiersClassNames={dateModifiersClassNames}
-                      className={cn(
-                        "mx-auto bg-transparent p-0",
-                        dayVariant === "availability"
-                          ? "[--cell-size:3rem] md:[--cell-size:3.25rem]"
-                          : "[--cell-size:2.15rem] md:[--cell-size:2.8rem]"
-                      )}
-                      classNames={{
-                        root: "mx-auto w-full",
-                        months: cn(
-                          "mx-auto grid w-full grid-cols-1 justify-center gap-y-8 md:gap-y-10",
-                          dayVariant === "availability"
-                            ? "md:grid-cols-2 md:gap-x-6"
-                            : "md:w-fit md:grid-cols-2 md:gap-x-8"
-                        ),
-                        month: cn(
-                          "mx-auto w-full max-w-[19rem]",
-                          dayVariant === "availability"
-                            ? "md:w-[23rem] md:max-w-none"
-                            : "md:w-[20rem] md:max-w-none"
-                        ),
-                        nav: "hidden",
-                        month_caption:
-                          "mb-3 flex h-8 w-full items-center justify-center text-lg font-bold text-foreground md:mb-4",
-                        table: "mx-auto w-full border-collapse",
-                        weekdays: "flex w-full",
-                        weekday:
-                          "flex-1 text-center text-[0.68rem] font-medium uppercase text-muted-foreground select-none md:text-[0.72rem]",
-                        week: "mt-2 flex w-full",
-                        day: cn(
-                          dayVariant === "availability"
-                            ? "group/day relative h-[3.2rem] min-w-0 flex-1 p-0 text-center md:h-[3.6rem] md:w-[3.25rem] md:flex-none"
-                            : "group/day relative h-[2.2rem] min-w-0 flex-1 p-0 text-center md:h-11 md:w-11 md:flex-none",
-                          "[&:first-child[data-range-end=true]]:rounded-l-full",
-                          "[&:last-child[data-range-start=true]]:rounded-r-full"
-                        ),
-                        range_start:
-                          "rounded-l-full bg-[hsl(220_12%_86%)] hover:bg-[hsl(220_12%_80%)] [&_button]:rounded-full",
-                        range_middle:
-                          "rounded-none bg-[hsl(220_12%_86%)] hover:bg-[hsl(220_12%_80%)] [&_button]:bg-transparent",
-                        range_end:
-                          "rounded-r-full bg-[hsl(220_12%_86%)] hover:bg-[hsl(220_12%_80%)] [&_button]:rounded-full",
-                        outside: "opacity-0 pointer-events-none",
-                        hidden: "invisible",
-                      }}
-                      components={{ DayButton: MarketplaceRangeDayButton }}
-                    />
-                  </div>
-                </div>
-              </DragContext.Provider>
+              <DateRangeCalendarStep
+                active={open && step === "dates"}
+                selected={selectedRange}
+                onRangeChange={commitRange}
+                onFromOnlySelected={() => setActiveSegment("checkout")}
+                disabledDateRanges={disabledDateRanges}
+                dayMeta={dayMeta}
+                dayVariant={dayVariant}
+                dateModifiers={dateModifiers}
+                dateModifiersClassNames={dateModifiersClassNames}
+              />
 
               <div className="shrink-0 border-t border-border bg-background">
                 {showDateFlexibility ? (
                   <div className="overflow-x-auto overflow-y-hidden px-4 py-3 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x md:px-6">
-                    <div className="flex w-max gap-2 whitespace-nowrap pr-4 md:pr-6">
-                      {FLEXIBILITY_OPTIONS.map((option) => (
-                        <button
-                          key={option.value}
-                          type="button"
-                          onClick={() => onDateFlexibilityChange(option.value)}
-                          className={cn(
-                            "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
-                            dateFlexibility === option.value
-                              ? "border-foreground bg-background text-foreground"
-                              : "border-border bg-background text-foreground hover:bg-muted/40"
-                          )}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
+                    <DateFlexibilityRow
+                      value={dateFlexibility}
+                      onChange={onDateFlexibilityChange}
+                    />
                   </div>
                 ) : null}
 
@@ -1058,41 +1192,10 @@ export function MarketplaceStayDatePicker({
                 ref={bodyScrollRef}
                 className="flex-1 min-h-0 overflow-y-auto px-4 py-5 md:px-6 md:py-6"
               >
-                <div className="mx-auto w-full max-w-2xl rounded-[1.75rem] border border-border bg-background px-4 md:px-6">
-                  <GuestRow
-                    title="Adults"
-                    subtitle="Ages 13 or above"
-                    value={guestCounts.adults}
-                    onChange={(adults) =>
-                      onGuestCountsChange({ ...guestCounts, adults })
-                    }
-                  />
-                  <GuestRow
-                    title="Children"
-                    subtitle="Ages 2 - 12"
-                    value={guestCounts.children}
-                    onChange={(children) =>
-                      onGuestCountsChange({ ...guestCounts, children })
-                    }
-                  />
-                  <GuestRow
-                    title="Infants"
-                    subtitle="Under 2"
-                    value={guestCounts.infants}
-                    onChange={(infants) =>
-                      onGuestCountsChange({ ...guestCounts, infants })
-                    }
-                  />
-                  <GuestRow
-                    title="Pets"
-                    subtitle=""
-                    linkText="Bringing a service animal?"
-                    value={guestCounts.pets}
-                    onChange={(pets) =>
-                      onGuestCountsChange({ ...guestCounts, pets })
-                    }
-                  />
-                </div>
+                <GuestCountsStep
+                  guestCounts={guestCounts}
+                  onGuestCountsChange={onGuestCountsChange}
+                />
               </div>
 
               <div className="shrink-0 border-t border-border bg-background px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:px-6 md:pb-4">

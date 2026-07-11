@@ -78,6 +78,7 @@ model User {
   sessions            Session[]
   suggestions         Suggestion[] @relation("SuggestionHost")
   reviewedSuggestions Suggestion[] @relation("SuggestionReviewer")
+  listingDrafts       ListingDraft[]
 
   @@index([email])
   @@index([role])
@@ -214,6 +215,26 @@ model Listing {
   @@index([hostId])
   @@index([status])
   @@index([slug])
+}
+
+/**
+ * A new listing's form state, autosaved on field blur before it satisfies the strict
+ * validation a real Listing/Property row requires (title length, required fields,
+ * etc.) — so it can hold partial/incomplete data without needing those columns to be
+ * nullable. Submitting for review validates this data in full, creates the real
+ * Property/Listing/PricingRule rows from it, and deletes this row. Never surfaced
+ * publicly — purely a host-side "resume where I left off" mechanism.
+ */
+model ListingDraft {
+  id        String   @id @default(cuid())
+  hostId    String
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  host User @relation(fields: [hostId], references: [id], onDelete: Cascade)
+
+  @@index([hostId])
 }
 
 model ListingImage {
@@ -365,6 +386,19 @@ model Booking {
   @@index([listingId, status])
   @@index([guestId])
   @@index([listingId, checkIn, checkOut])
+}
+
+// ─── Settings ───────────────────────────────────────────────────────────────────
+
+model Language {
+  code      String   @id // ISO 639-1, e.g. "mk", "en"
+  name      String
+  isDefault Boolean  @default(false)
+  isEnabled Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([isEnabled])
 }
 
 // ─── Audit ──────────────────────────────────────────────────────────────────────

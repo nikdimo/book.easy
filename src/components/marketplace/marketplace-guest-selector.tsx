@@ -1,13 +1,7 @@
 "use client";
 
-import * as React from "react";
-import { Minus, Plus, Users } from "lucide-react";
+import { Users } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 
 type Layout = "pill" | "hero" | "compact";
 
@@ -17,72 +11,6 @@ export type GuestCounts = {
   infants: number;
   pets: number;
 };
-
-const MAX_PER_CATEGORY = 16;
-
-function StepperRow({
-  title,
-  subtitle,
-  value,
-  onChange,
-  min = 0,
-  max = MAX_PER_CATEGORY,
-  subtitleExtra,
-}: {
-  title: string;
-  subtitle: string;
-  value: number;
-  onChange: (n: number) => void;
-  min?: number;
-  max?: number;
-  subtitleExtra?: React.ReactNode;
-}) {
-  const dec = () => onChange(Math.max(min, value - 1));
-  const inc = () => onChange(Math.min(max, value + 1));
-
-  return (
-    <div className="flex items-center justify-between gap-4 py-4 first:pt-1 last:pb-1">
-      <div className="min-w-0 pr-2">
-        <p className="font-semibold text-foreground">{title}</p>
-        {subtitle ? (
-          <p className="mt-0.5 text-sm text-muted-foreground">{subtitle}</p>
-        ) : null}
-        {subtitleExtra ? <div className="mt-1">{subtitleExtra}</div> : null}
-      </div>
-      <div className="flex shrink-0 items-center gap-3">
-        <button
-          type="button"
-          onClick={dec}
-          disabled={value <= min}
-          className={cn(
-            "flex h-8 w-8 items-center justify-center rounded-full border border-border bg-muted/80 text-muted-foreground transition-colors",
-            "hover:bg-muted hover:text-foreground",
-            "disabled:pointer-events-none disabled:opacity-35"
-          )}
-          aria-label={`Decrease ${title}`}
-        >
-          <Minus className="h-4 w-4" strokeWidth={2} />
-        </button>
-        <span className="min-w-[1.25rem] text-center text-sm font-semibold tabular-nums">
-          {value}
-        </span>
-        <button
-          type="button"
-          onClick={inc}
-          disabled={value >= max}
-          className={cn(
-            "flex h-8 w-8 items-center justify-center rounded-full border border-border bg-muted/80 text-muted-foreground transition-colors",
-            "hover:bg-muted hover:text-foreground",
-            "disabled:pointer-events-none disabled:opacity-35"
-          )}
-          aria-label={`Increase ${title}`}
-        >
-          <Plus className="h-4 w-4" strokeWidth={2} />
-        </button>
-      </div>
-    </div>
-  );
-}
 
 function totalParty(c: GuestCounts) {
   return c.adults + c.children;
@@ -95,25 +23,25 @@ function summaryLabel(c: GuestCounts): string {
   return `${n} guests`;
 }
 
+/**
+ * Just the "Who" trigger — clicking it opens the same dialog/step that
+ * MarketplaceStayDatePicker uses for its own guests step (via onOpenRequest), so there is
+ * only one guest-editing surface instead of a second, separately-shelled popover.
+ */
 export function MarketplaceGuestSelector({
   layout,
   value,
-  onChange,
-  open: controlledOpen,
-  onOpenChange,
+  active = false,
+  onOpenRequest,
   className,
 }: {
   layout: Layout;
   value: GuestCounts;
-  onChange: (next: GuestCounts) => void;
-  open?: boolean;
-  onOpenChange?: (open: boolean) => void;
+  active?: boolean;
+  onOpenRequest: () => void;
   className?: string;
 }) {
-  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
-  const open = controlledOpen ?? uncontrolledOpen;
-  const setOpen = onOpenChange ?? setUncontrolledOpen;
-  const triggerActive = open;
+  const triggerActive = active;
 
   const pillClass = cn(
     "flex items-center gap-2 min-w-0 px-3 py-1.5 text-left rounded-full outline-none transition-all duration-200 ease-out",
@@ -135,105 +63,50 @@ export function MarketplaceGuestSelector({
         : "hover:bg-muted/25"
   );
 
-  const set = (patch: Partial<GuestCounts>) =>
-    onChange({ ...value, ...patch });
-
-  return (
-    <Popover open={open} onOpenChange={setOpen} modal={false}>
-      <PopoverTrigger asChild>
-        {layout === "pill" ? (
-          <button
-            type="button"
-            className={cn(pillClass, className)}
-            aria-expanded={open}
-            aria-haspopup="dialog"
-          >
-            <Users className="h-4 w-4 text-muted-foreground shrink-0 hidden md:block" />
-            <span className="min-w-0 flex-1 text-left">
-              <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground md:text-[11px]">
-                Who
-              </span>
-              <span
-                className={cn(
-                  "block text-sm font-medium truncate",
-                  totalParty(value) === 0 && "text-muted-foreground"
-                )}
-              >
-                {summaryLabel(value)}
-              </span>
-            </span>
-          </button>
-        ) : (
-          <button
-            type="button"
-            className={cn(heroClass, className)}
-            aria-expanded={open}
-            aria-haspopup="dialog"
-          >
-            <Users className="h-5 w-5 text-muted-foreground shrink-0 hidden sm:block" />
-            <div className="min-w-0 flex-1">
-              <span className="text-xs font-semibold tracking-wide block">
-                Who
-              </span>
-              <span
-                className={cn(
-                  "text-sm md:text-base font-medium",
-                  totalParty(value) === 0 && "text-muted-foreground"
-                )}
-              >
-                {summaryLabel(value)}
-              </span>
-            </div>
-          </button>
-        )}
-      </PopoverTrigger>
-      <PopoverContent
-        align="end"
-        sideOffset={12}
-        collisionPadding={16}
-        className={cn(
-          "w-[min(100vw-1.5rem,22rem)] rounded-3xl border border-border/60 bg-background p-0 shadow-xl ring-0",
-          "data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95"
-        )}
-        onOpenAutoFocus={(e) => e.preventDefault()}
-      >
-        <div className="px-4 py-2 divide-y divide-border">
-          <StepperRow
-            title="Adults"
-            subtitle="Ages 13 or above"
-            value={value.adults}
-            onChange={(adults) => set({ adults })}
-            min={0}
-          />
-          <StepperRow
-            title="Children"
-            subtitle="Ages 2 – 12"
-            value={value.children}
-            onChange={(children) => set({ children })}
-          />
-          <StepperRow
-            title="Infants"
-            subtitle="Under 2"
-            value={value.infants}
-            onChange={(infants) => set({ infants })}
-          />
-          <StepperRow
-            title="Pets"
-            subtitle=""
-            value={value.pets}
-            onChange={(pets) => set({ pets })}
-            subtitleExtra={
-              <button
-                type="button"
-                className="mt-1 block text-left text-sm font-normal text-foreground underline underline-offset-2 hover:text-foreground/80"
-              >
-                Bringing a service animal?
-              </button>
-            }
-          />
-        </div>
-      </PopoverContent>
-    </Popover>
+  return layout === "pill" ? (
+    <button
+      type="button"
+      className={cn(pillClass, className)}
+      aria-expanded={active}
+      aria-haspopup="dialog"
+      onClick={onOpenRequest}
+    >
+      <Users className="h-4 w-4 text-muted-foreground shrink-0 hidden md:block" />
+      <span className="min-w-0 flex-1 text-left">
+        <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground md:text-[11px]">
+          Who
+        </span>
+        <span
+          className={cn(
+            "block text-sm font-medium truncate",
+            totalParty(value) === 0 && "text-muted-foreground"
+          )}
+        >
+          {summaryLabel(value)}
+        </span>
+      </span>
+    </button>
+  ) : (
+    <button
+      type="button"
+      className={cn(heroClass, className)}
+      aria-expanded={active}
+      aria-haspopup="dialog"
+      onClick={onOpenRequest}
+    >
+      <Users className="h-5 w-5 text-muted-foreground shrink-0 hidden sm:block" />
+      <div className="min-w-0 flex-1">
+        <span className="text-xs font-semibold tracking-wide block">Who</span>
+        <span
+          className={cn(
+            "text-sm md:text-base font-medium",
+            totalParty(value) === 0 && "text-muted-foreground"
+          )}
+        >
+          {summaryLabel(value)}
+        </span>
+      </div>
+    </button>
   );
 }
 
@@ -250,4 +123,43 @@ export function guestsParamToCounts(guestsParam: string): GuestCounts {
 export function countsToGuestsParam(c: GuestCounts): string {
   const n = totalParty(c);
   return n > 0 ? String(n) : "";
+}
+
+/**
+ * Full adults/children/infants/pets breakdown as separate query params, so a search
+ * carries its exact composition through the URL instead of collapsing to a single
+ * "guests" total that `guestsParamToCounts` can only re-expand as all-adults.
+ */
+export function guestCountsToParams(c: GuestCounts): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (c.adults > 0) out.adults = String(c.adults);
+  if (c.children > 0) out.children = String(c.children);
+  if (c.infants > 0) out.infants = String(c.infants);
+  if (c.pets > 0) out.pets = String(c.pets);
+  return out;
+}
+
+/** Reads the breakdown params back; returns null when none are present (e.g. a link
+ * that only carries the plain `guests` total), so callers can fall back appropriately. */
+export function guestCountsFromParams(
+  get: (key: string) => string | null
+): GuestCounts | null {
+  const raw = {
+    adults: get("adults"),
+    children: get("children"),
+    infants: get("infants"),
+    pets: get("pets"),
+  };
+  if (Object.values(raw).every((v) => v === null)) return null;
+
+  const toCount = (v: string | null) => {
+    const n = Number.parseInt(v ?? "", 10);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
+  };
+  return {
+    adults: toCount(raw.adults),
+    children: toCount(raw.children),
+    infants: toCount(raw.infants),
+    pets: toCount(raw.pets),
+  };
 }

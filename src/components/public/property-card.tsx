@@ -28,6 +28,8 @@ interface PropertyCardProps {
   checkIn?: string;
   checkOut?: string;
   nightCount?: number;
+  /** Query string (no leading "?") carrying the current search's dates/guests to the listing page. */
+  searchQuery?: string;
 }
 
 /** Server component — only the photo gallery and save button need client interactivity
@@ -37,12 +39,14 @@ export async function PropertyCard({
   checkIn,
   checkOut,
   nightCount,
+  searchQuery,
 }: PropertyCardProps) {
   const { slug, title, property, images, pricingRule } = listing;
   const displayImages = images.filter((img) => img.url?.trim());
   const city = property.city;
   const typeLabel = await getPropertyTypeLabel(property.propertyType);
   const headline = `${typeLabel} in ${city}`;
+  const href = `/properties/${slug}${searchQuery ? `?${searchQuery}` : ""}`;
 
   const showTrip =
     checkIn &&
@@ -60,10 +64,10 @@ export async function PropertyCard({
 
   return (
     <div className="flex flex-col gap-3">
-      <PropertyCardGallery slug={slug} title={title} images={displayImages} />
+      <PropertyCardGallery href={href} title={title} images={displayImages} />
 
       <Link
-        href={`/properties/${slug}`}
+        href={href}
         className="flex flex-col gap-1 px-0.5 group/link"
       >
         <div className="flex items-start justify-between gap-3">

@@ -2,11 +2,10 @@
 
 import * as React from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
-import { format, startOfMonth, startOfToday } from "date-fns";
+import { format } from "date-fns";
 import type { DateRange } from "react-day-picker";
 import { CalendarRange, MapPin, Search, Users, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 import { sortPropertyTypesInDisplayOrder } from "@/lib/property-type-filter";
@@ -14,6 +13,11 @@ import {
   countsToGuestsParam,
   type GuestCounts,
 } from "@/components/marketplace/marketplace-guest-selector";
+import {
+  DateFlexibilityRow,
+  DateRangeCalendarStep,
+  GuestCountsStep,
+} from "@/components/marketplace/marketplace-stay-date-picker";
 
 type SearchFlowStep = "where" | "when" | "who";
 
@@ -25,15 +29,6 @@ type SearchFlowState = {
   dateFlexibility: number;
   propertyTypes: string[];
 };
-
-const FLEXIBILITY_OPTIONS = [
-  { value: 0, label: "Exact dates" },
-  { value: 1, label: "+- 1 day" },
-  { value: 2, label: "+- 2 days" },
-  { value: 3, label: "+- 3 days" },
-  { value: 7, label: "+- 7 days" },
-  { value: 14, label: "+- 14 days" },
-] as const;
 
 const PROPERTY_TYPE_ICONS = {
   APARTMENT: "Building2",
@@ -70,63 +65,6 @@ function formatGuestSummary(guestCounts: GuestCounts): string {
 
 function getWhereSummary(city: string): string {
   return city.trim() || "Anywhere";
-}
-
-function GuestRow({
-  title,
-  subtitle,
-  value,
-  onChange,
-  linkText,
-}: {
-  title: string;
-  subtitle: string;
-  value: number;
-  onChange: (next: number) => void;
-  linkText?: string;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4 border-b border-border/80 py-5 last:border-b-0">
-      <div className="min-w-0 pr-2">
-        <p className="text-base font-semibold text-foreground md:text-lg">
-          {title}
-        </p>
-        {subtitle ? (
-          <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
-        ) : null}
-        {linkText ? (
-          <button
-            type="button"
-            className="mt-1 text-sm text-muted-foreground underline underline-offset-4"
-          >
-            {linkText}
-          </button>
-        ) : null}
-      </div>
-      <div className="flex shrink-0 items-center gap-3 md:gap-4">
-        <button
-          type="button"
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/60 text-xl text-foreground disabled:opacity-35"
-          onClick={() => onChange(Math.max(0, value - 1))}
-          disabled={value === 0}
-          aria-label={`Decrease ${title}`}
-        >
-          -
-        </button>
-        <span className="min-w-[1.5rem] text-center text-xl text-foreground tabular-nums md:text-2xl">
-          {value}
-        </span>
-        <button
-          type="button"
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/60 text-xl text-foreground"
-          onClick={() => onChange(Math.min(16, value + 1))}
-          aria-label={`Increase ${title}`}
-        >
-          +
-        </button>
-      </div>
-    </div>
-  );
 }
 
 export function MarketplaceSearchFlowDialog({
@@ -434,6 +372,32 @@ export function MarketplaceSearchFlowDialog({
             </div>
           </div>
 
+          {step === "when" ? (
+            <>
+              <DateRangeCalendarStep
+                active={open && step === "when"}
+                selected={selectedRange}
+                onRangeChange={(range) => {
+                  if (!range?.from) {
+                    setDraftCheckIn("");
+                    setDraftCheckOut("");
+                    return;
+                  }
+
+                  setDraftCheckIn(format(range.from, "yyyy-MM-dd"));
+                  setDraftCheckOut(
+                    range.to ? format(range.to, "yyyy-MM-dd") : ""
+                  );
+                }}
+              />
+              <div className="shrink-0 border-t border-border bg-background px-4 py-3 md:px-6">
+                <DateFlexibilityRow
+                  value={draftDateFlexibility}
+                  onChange={setDraftDateFlexibility}
+                />
+              </div>
+            </>
+          ) : (
           <div
             ref={bodyScrollRef}
             className="flex-1 min-h-0 overflow-y-auto px-4 py-5 md:px-6 md:py-6"
@@ -537,111 +501,14 @@ export function MarketplaceSearchFlowDialog({
                   </div>
                 )}
               </div>
-            ) : step === "when" ? (
-              <div className="mx-auto w-full">
-                <Calendar
-                  mode="range"
-                  required={false}
-                  numberOfMonths={2}
-                  selected={selectedRange}
-                  onSelect={(range) => {
-                    if (!range?.from) {
-                      setDraftCheckIn("");
-                      setDraftCheckOut("");
-                      return;
-                    }
-
-                    setDraftCheckIn(format(range.from, "yyyy-MM-dd"));
-                    setDraftCheckOut(
-                      range.to ? format(range.to, "yyyy-MM-dd") : ""
-                    );
-                  }}
-                  disabled={{ before: startOfToday() }}
-                  defaultMonth={startOfMonth(selectedRange?.from ?? new Date())}
-                  showOutsideDays={false}
-                  className="mx-auto bg-transparent p-0 [--cell-size:2.15rem] md:[--cell-size:2.8rem]"
-                  classNames={{
-                    root: "mx-auto w-full",
-                    months: "mx-auto grid w-full grid-cols-1 justify-center gap-y-8 md:w-fit md:grid-cols-2 md:gap-x-8 md:gap-y-10",
-                    month: "mx-auto w-full max-w-[19rem] md:w-[20rem] md:max-w-none",
-                    nav: "hidden",
-                    month_caption:
-                      "mb-3 flex h-8 w-full items-center justify-center text-lg font-bold text-foreground md:mb-4",
-                    table: "mx-auto w-full border-collapse",
-                    weekdays: "flex w-full",
-                    weekday:
-                      "flex-1 text-center text-[0.68rem] font-medium uppercase text-muted-foreground select-none md:text-[0.72rem]",
-                    week: "mt-2 flex w-full",
-                    day: "group/day relative h-[2.2rem] min-w-0 flex-1 p-0 text-center md:h-11 md:w-11 md:flex-none",
-                    range_start:
-                      "rounded-l-full bg-[hsl(220_12%_86%)] hover:bg-[hsl(220_12%_80%)] [&_button]:rounded-full",
-                    range_middle:
-                      "rounded-none bg-[hsl(220_12%_86%)] hover:bg-[hsl(220_12%_80%)] [&_button]:bg-transparent",
-                    range_end:
-                      "rounded-r-full bg-[hsl(220_12%_86%)] hover:bg-[hsl(220_12%_80%)] [&_button]:rounded-full",
-                    outside: "opacity-0 pointer-events-none",
-                    hidden: "invisible",
-                  }}
-                />
-
-                <div className="mt-6 overflow-x-auto overflow-y-hidden [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  <div className="flex w-max gap-2 whitespace-nowrap pb-1">
-                    {FLEXIBILITY_OPTIONS.map((option) => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => setDraftDateFlexibility(option.value)}
-                        className={cn(
-                          "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
-                          draftDateFlexibility === option.value
-                            ? "border-foreground bg-background text-foreground"
-                            : "border-border bg-background text-foreground hover:bg-muted/40"
-                        )}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
             ) : (
-              <div className="mx-auto w-full max-w-2xl rounded-[1.75rem] border border-border bg-background px-4 md:px-6">
-                <GuestRow
-                  title="Adults"
-                  subtitle="Ages 13 or above"
-                  value={draftGuestCounts.adults}
-                  onChange={(adults) =>
-                    setDraftGuestCounts({ ...draftGuestCounts, adults })
-                  }
-                />
-                <GuestRow
-                  title="Children"
-                  subtitle="Ages 2 - 12"
-                  value={draftGuestCounts.children}
-                  onChange={(children) =>
-                    setDraftGuestCounts({ ...draftGuestCounts, children })
-                  }
-                />
-                <GuestRow
-                  title="Infants"
-                  subtitle="Under 2"
-                  value={draftGuestCounts.infants}
-                  onChange={(infants) =>
-                    setDraftGuestCounts({ ...draftGuestCounts, infants })
-                  }
-                />
-                <GuestRow
-                  title="Pets"
-                  subtitle=""
-                  linkText="Bringing a service animal?"
-                  value={draftGuestCounts.pets}
-                  onChange={(pets) =>
-                    setDraftGuestCounts({ ...draftGuestCounts, pets })
-                  }
-                />
-              </div>
+              <GuestCountsStep
+                guestCounts={draftGuestCounts}
+                onGuestCountsChange={setDraftGuestCounts}
+              />
             )}
           </div>
+          )}
 
           <div className="shrink-0 border-t border-border bg-background px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:px-6 md:pb-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

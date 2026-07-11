@@ -13,6 +13,8 @@ import {
   MarketplaceGuestSelector,
   countsToGuestsParam,
   guestsParamToCounts,
+  guestCountsFromParams,
+  guestCountsToParams,
   type GuestCounts,
 } from "@/components/marketplace/marketplace-guest-selector";
 import {
@@ -97,6 +99,13 @@ function getInitialSearchBarState(args: {
       : undefined,
     allowRememberedFallback
   );
+  // Prefer the full adults/children/infants/pets breakdown carried in the URL; only
+  // collapse to all-adults from the plain `guests` total when no breakdown is present
+  // (e.g. a link that only ever set `guests`, like a property card).
+  const guestCounts =
+    guestCountsFromParams((key) => searchParams.get(key)) ??
+    (allowRememberedFallback ? rememberedSearchState?.guestCounts : undefined) ??
+    guestsParamToCounts(guests);
   const propertyTypes =
     searchParams.get("propertyTypes") !== null
       ? parsePropertyTypesFromSearchParams(searchParams, allPropertyTypeValues)
@@ -114,7 +123,7 @@ function getInitialSearchBarState(args: {
     city,
     checkIn,
     checkOut,
-    guestCounts: guestsParamToCounts(guests),
+    guestCounts,
     dateFlexibility,
     propertyTypes,
   };
@@ -251,7 +260,9 @@ function MarketplaceSearchBarInner({
   const [datePickerInitialSegment, setDatePickerInitialSegment] = useState<
     "checkin" | "checkout"
   >("checkin");
-  const [guestSelectorOpen, setGuestSelectorOpen] = useState(false);
+  const [datePickerInitialStep, setDatePickerInitialStep] = useState<
+    "dates" | "guests"
+  >("dates");
   const [searchFlowOpen, setSearchFlowOpen] = useState(false);
   const [dateFlexibility, setDateFlexibility] = useState(
     initialState.dateFlexibility
@@ -265,6 +276,9 @@ function MarketplaceSearchBarInner({
     if (checkOut) p.set("checkOut", checkOut);
     const guestsParam = countsToGuestsParam(guestCounts);
     if (guestsParam) p.set("guests", guestsParam);
+    Object.entries(guestCountsToParams(guestCounts)).forEach(([key, value]) =>
+      p.set(key, value)
+    );
     if (dateFlexibility > 0) {
       p.set("dateFlexibility", String(dateFlexibility));
     }
@@ -292,6 +306,11 @@ function MarketplaceSearchBarInner({
     e.preventDefault();
     submitQuery();
   }
+
+  const openGuestsStep = () => {
+    setDatePickerInitialStep("guests");
+    setDatePickerOpen(true);
+  };
 
   const isCompact = variant === "compact";
   const isPill = variant === "pill";
@@ -353,6 +372,9 @@ function MarketplaceSearchBarInner({
             if (next.checkOut) p.set("checkOut", next.checkOut);
             const guestsParam = countsToGuestsParam(next.guestCounts);
             if (guestsParam) p.set("guests", guestsParam);
+            Object.entries(guestCountsToParams(next.guestCounts)).forEach(
+              ([key, value]) => p.set(key, value)
+            );
             if (next.dateFlexibility > 0) {
               p.set("dateFlexibility", String(next.dateFlexibility));
             }
@@ -406,9 +428,11 @@ function MarketplaceSearchBarInner({
             setDatePickerOpen(nextOpen);
             if (!nextOpen) {
               setDatePickerCanReturnToPlace(false);
+              setDatePickerInitialStep("dates");
             }
           }}
           initialSegment={datePickerInitialSegment}
+          initialStep={datePickerInitialStep}
           showBackToPlace={datePickerCanReturnToPlace}
           onRangeStringsChange={({ checkIn: ci, checkOut: co }) => {
             setCheckIn(ci);
@@ -428,9 +452,8 @@ function MarketplaceSearchBarInner({
           <MarketplaceGuestSelector
             layout="pill"
             value={guestCounts}
-            onChange={setGuestCounts}
-            open={guestSelectorOpen}
-            onOpenChange={setGuestSelectorOpen}
+            active={datePickerOpen}
+            onOpenRequest={openGuestsStep}
             className="flex min-w-0 max-w-[6rem] sm:max-w-none"
           />
           <Button
@@ -495,9 +518,11 @@ function MarketplaceSearchBarInner({
             setDatePickerOpen(nextOpen);
             if (!nextOpen) {
               setDatePickerCanReturnToPlace(false);
+              setDatePickerInitialStep("dates");
             }
           }}
           initialSegment={datePickerInitialSegment}
+          initialStep={datePickerInitialStep}
           showBackToPlace={datePickerCanReturnToPlace}
           onRangeStringsChange={({ checkIn: ci, checkOut: co }) => {
             setCheckIn(ci);
@@ -517,9 +542,8 @@ function MarketplaceSearchBarInner({
         <MarketplaceGuestSelector
           layout={isCompact ? "compact" : "hero"}
           value={guestCounts}
-          onChange={setGuestCounts}
-          open={guestSelectorOpen}
-          onOpenChange={setGuestSelectorOpen}
+          active={datePickerOpen}
+          onOpenRequest={openGuestsStep}
           className="flex min-w-0 flex-1 md:min-w-[148px]"
         />
 

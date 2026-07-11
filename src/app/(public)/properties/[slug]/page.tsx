@@ -16,6 +16,7 @@ import type { Metadata } from "next";
 
 interface ListingPageProps {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 export async function generateMetadata({ params }: ListingPageProps): Promise<Metadata> {
@@ -34,11 +35,16 @@ export async function generateMetadata({ params }: ListingPageProps): Promise<Me
   };
 }
 
-export default async function ListingDetailPage({ params }: ListingPageProps) {
+export default async function ListingDetailPage({ params, searchParams }: ListingPageProps) {
   const { slug } = await params;
+  const search = await searchParams;
   const listing = await getListingBySlug(slug);
 
   if (!listing) notFound();
+
+  const initialCheckIn = typeof search.checkIn === "string" ? search.checkIn : undefined;
+  const initialCheckOut = typeof search.checkOut === "string" ? search.checkOut : undefined;
+  const initialGuests = search.guests ? Number(search.guests) : undefined;
 
   const disabledDateRanges = await getBlockedDateRangesForListing(listing.id);
   const priceOverrides = listing.pricingRule
@@ -149,6 +155,9 @@ export default async function ListingDetailPage({ params }: ListingPageProps) {
               minNights={listing.pricingRule.minNights}
               disabledDateRanges={disabledDateRanges}
               priceOverrides={priceOverrides}
+              initialCheckIn={initialCheckIn}
+              initialCheckOut={initialCheckOut}
+              initialGuests={initialGuests}
             />
           )}
         </div>

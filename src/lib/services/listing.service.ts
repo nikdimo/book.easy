@@ -31,6 +31,17 @@ export async function getHostListing(listingId: string, hostId: string) {
   });
 }
 
+export async function getHostListingDrafts(hostId: string) {
+  return db.listingDraft.findMany({
+    where: { hostId },
+    orderBy: { updatedAt: "desc" },
+  });
+}
+
+export async function getHostListingDraft(draftId: string, hostId: string) {
+  return db.listingDraft.findFirst({ where: { id: draftId, hostId } });
+}
+
 export async function getHostBookings(hostId: string) {
   await completePastBookings();
   return db.booking.findMany({

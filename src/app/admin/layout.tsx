@@ -1,6 +1,17 @@
 import Link from "next/link";
-import { LayoutDashboard, Home, CalendarDays, Users, FileText, ShieldCheck, Lightbulb } from "lucide-react";
+import {
+  CalendarDays,
+  FileText,
+  Home,
+  LayoutDashboard,
+  Lightbulb,
+  Settings,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
+import { GoogleTranslateWidget } from "@/components/shared/google-translate-widget";
 import { requireAdminPage } from "@/lib/auth-helpers";
+import { getEnabledLanguages } from "@/lib/services/language.service";
 
 const adminNav = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -9,12 +20,18 @@ const adminNav = [
   { href: "/admin/bookings", label: "Bookings", icon: CalendarDays },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/audit-log", label: "Audit Log", icon: FileText },
+  { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   // Defense in depth: middleware already gates `/admin/:path*`, but every admin page's
   // data queries should not run on the strength of the middleware matcher alone.
   await requireAdminPage();
+  const languages = await getEnabledLanguages();
 
   return (
     <div className="min-h-screen flex">
@@ -40,11 +57,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             href="/"
             className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
           >
-            ← Back to site
+            Back to site
           </Link>
         </div>
       </aside>
-      <main className="flex-1 p-8">{children}</main>
+      <div className="flex min-h-screen flex-1 flex-col">
+        <div className="flex items-center justify-end border-b bg-background px-8 py-4">
+          <GoogleTranslateWidget languages={languages} />
+        </div>
+        <main className="flex-1 p-8">{children}</main>
+      </div>
     </div>
   );
 }

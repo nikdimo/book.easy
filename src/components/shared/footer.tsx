@@ -8,15 +8,33 @@ export function Footer() {
       <div className="max-w-[1760px] mx-auto px-4 md:px-8 py-12 md:py-14">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
           <div>
-            <Link href="/" className="flex items-center gap-2 mb-4" title={SITE_DOMAIN}>
+            <Link
+              href="/"
+              className="notranslate flex items-center gap-2 mb-4"
+              title={SITE_DOMAIN}
+              translate="no"
+            >
               <Building2 className="h-6 w-6 text-primary" />
-              <span className="font-semibold text-lg">
+              <span className="notranslate font-semibold text-lg" translate="no">
                 {PRODUCT_NAME}
-                <span className="text-muted-foreground font-normal">.{PRODUCT_FAMILY}</span>
+                <span
+                  className="notranslate text-muted-foreground font-normal"
+                  translate="no"
+                >
+                  .{PRODUCT_FAMILY}
+                </span>
               </span>
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Stays and bookings on {SITE_DOMAIN} — part of the {PRODUCT_FAMILY} suite of tools.
+              Stays and bookings on{" "}
+              <span className="notranslate" translate="no">
+                {SITE_DOMAIN}
+              </span>{" "}
+              - part of the{" "}
+              <span className="notranslate" translate="no">
+                {PRODUCT_FAMILY}
+              </span>{" "}
+              suite of tools.
             </p>
           </div>
           <div>
@@ -79,7 +97,9 @@ export function Footer() {
       <div className="border-t bg-background py-8">
         <div className="container mx-auto px-4 md:px-8 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground max-w-[1760px]">
           <div className="flex flex-wrap items-center justify-center gap-4">
-            <span>© {new Date().getFullYear()} book.easy, Inc.</span>
+            <span className="notranslate" translate="no">
+              Copyright {new Date().getFullYear()} book.easy, Inc.
+            </span>
             <Link href="/" className="hover:text-foreground transition-colors">
               Terms
             </Link>
@@ -89,7 +109,7 @@ export function Footer() {
           </div>
           <div className="flex items-center gap-4 font-medium">
             <span className="hover:text-foreground transition-colors cursor-default">
-              € EUR
+              EUR
             </span>
             <span className="hover:text-foreground transition-colors cursor-default">
               English (US)

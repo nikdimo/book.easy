@@ -22,6 +22,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { MarketplaceSearchBar } from "@/components/marketplace/marketplace-search-bar";
+import { GoogleTranslateWidget } from "@/components/shared/google-translate-widget";
 import { SITE_DOMAIN } from "@/lib/branding";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 
@@ -29,10 +30,12 @@ export function Header({
   popularCities = [],
   availablePropertyTypesByCity = {},
   propertyTypes = [],
+  languages = [],
 }: {
   popularCities?: string[];
   availablePropertyTypesByCity?: Record<string, string[]>;
   propertyTypes?: PropertyTypeOption[];
+  languages?: { code: string; name: string; isDefault: boolean }[];
 }) {
   const router = useRouter();
   const { data: session, update } = useSession();
@@ -63,16 +66,25 @@ export function Header({
         <div className="flex-1 shrink-0 flex items-center min-w-0">
           <Link
             href="/"
-            className="flex items-center gap-2 text-primary font-bold text-xl tracking-tight shrink-0"
+            className="notranslate flex items-center gap-2 text-primary font-bold text-xl tracking-tight shrink-0"
             title={SITE_DOMAIN}
+            translate="no"
           >
-            <span className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center text-primary-foreground text-sm font-bold">
+            <span
+              className="notranslate w-8 h-8 rounded-xl bg-primary flex items-center justify-center text-primary-foreground text-sm font-bold"
+              translate="no"
+            >
               b.
             </span>
-            <span className="hidden min-[400px]:inline">
+            <span className="notranslate hidden min-[400px]:inline" translate="no">
               book
-              <span className="text-foreground">.easy</span>
-              <span className="text-muted-foreground font-semibold text-lg">
+              <span className="notranslate text-foreground" translate="no">
+                .easy
+              </span>
+              <span
+                className="notranslate text-muted-foreground font-semibold text-lg"
+                translate="no"
+              >
                 .mk
               </span>
             </span>
@@ -90,6 +102,7 @@ export function Header({
         </div>
 
         <div className="flex-1 shrink-0 flex items-center justify-end gap-2">
+          <GoogleTranslateWidget languages={languages} />
           {user?.isHost ? (
             <Button
               variant="ghost"

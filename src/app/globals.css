@@ -147,3 +147,21 @@
     @apply font-sans;
   }
 }
+
+/* Suppress Google Translate's default chrome so our own dropdown drives it */
+.goog-te-banner-frame,
+#goog-gt-tt,
+.goog-te-balloon-frame,
+.skiptranslate:not(#google_translate_element) {
+  display: none !important;
+}
+body {
+  top: 0 !important;
+}
+.goog-text-highlight {
+  background: none !important;
+  box-shadow: none !important;
+}
+#google_translate_element {
+  display: none !important;
+}

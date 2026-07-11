@@ -3,13 +3,12 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { DateRange } from "react-day-picker";
-import { differenceInDays, format } from "date-fns";
-import { computeStayPricing } from "@/lib/utils/stay-pricing";
+import { differenceInDays } from "date-fns";
+import { computeStayPricing, parseLocalYmd } from "@/lib/utils/stay-pricing";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { DateRangePicker } from "@/components/shared/date-range-picker";
+import { MarketplaceStayDatePicker } from "@/components/marketplace/marketplace-stay-date-picker";
 import { GuestCounter } from "@/components/shared/guest-counter";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -27,6 +26,10 @@ interface BookingWidgetProps {
   disabledDateRanges: { from: Date; to: Date }[];
   /** yyyy-MM-dd → override nightly rate for that night */
   priceOverrides?: { date: string; rate: number }[];
+  /** Seeds the widget from the search the guest arrived with (checkIn/checkOut/guests query params). */
+  initialCheckIn?: string;
+  initialCheckOut?: string;
+  initialGuests?: number;
 }
 
 export function BookingWidget({
@@ -38,17 +41,23 @@ export function BookingWidget({
   minNights,
   disabledDateRanges,
   priceOverrides = [],
+  initialCheckIn = "",
+  initialCheckOut = "",
+  initialGuests,
 }: BookingWidgetProps) {
   const { data: session } = useSession();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [dateRange, setDateRange] = useState<DateRange | undefined>();
-  const [guests, setGuests] = useState(1);
+  const [checkInStr, setCheckInStr] = useState(initialCheckIn);
+  const [checkOutStr, setCheckOutStr] = useState(initialCheckOut);
+  const [guests, setGuests] = useState(() =>
+    initialGuests ? Math.min(Math.max(initialGuests, 1), maxGuests) : 1
+  );
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const checkIn = dateRange?.from;
-  const checkOut = dateRange?.to;
+  const checkIn = checkInStr ? parseLocalYmd(checkInStr) : undefined;
+  const checkOut = checkOutStr ? parseLocalYmd(checkOutStr) : undefined;
   const nights = checkIn && checkOut ? differenceInDays(checkOut, checkIn) : 0;
 
   const overrideMap = useMemo(() => {
@@ -88,8 +97,8 @@ export function BookingWidget({
     startTransition(async () => {
       const formData = new FormData();
       formData.set("listingId", listingId);
-      formData.set("checkIn", format(checkIn, "yyyy-MM-dd"));
-      formData.set("checkOut", format(checkOut, "yyyy-MM-dd"));
+      formData.set("checkIn", checkInStr);
+      formData.set("checkOut", checkOutStr);
       formData.set("guestCount", String(guests));
       if (note) formData.set("guestNote", note);
 
@@ -119,10 +128,19 @@ export function BookingWidget({
       <CardContent className="space-y-4 pt-0">
         <div className="space-y-2">
           <Label>Dates</Label>
-          <DateRangePicker
-            value={dateRange}
-            onChange={setDateRange}
+          <MarketplaceStayDatePicker
+            layout="field"
+            checkIn={checkInStr}
+            checkOut={checkOutStr}
+            showDateFlexibility={false}
+            showGuestStep={false}
+            dateDialogTitle="Choose dates"
+            dateDialogDescription="Choose your check-in and check-out dates."
             disabledDateRanges={disabledDateRanges}
+            onRangeStringsChange={({ checkIn: ci, checkOut: co }) => {
+              setCheckInStr(ci);
+              setCheckOutStr(co);
+            }}
             className="w-full"
           />
         </div>

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface PropertyCardGalleryProps {
-  slug: string;
+  href: string;
   title: string;
   images: { url: string; alt?: string | null }[];
 }
@@ -16,7 +16,7 @@ interface PropertyCardGalleryProps {
 /** The only genuinely interactive part of a property card — hover-cycling photos, a
  * save/heart toggle — split out so the rest of the card (headline, price, badges) can
  * be a server component with no client JS shipped for it. */
-export function PropertyCardGallery({ slug, title, images }: PropertyCardGalleryProps) {
+export function PropertyCardGallery({ href, title, images }: PropertyCardGalleryProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [saved, setSaved] = useState(false);
 
@@ -26,7 +26,7 @@ export function PropertyCardGallery({ slug, title, images }: PropertyCardGallery
 
   return (
     <div className="group relative aspect-[20/19] overflow-hidden rounded-xl bg-muted sm:aspect-[4/3]">
-      <Link href={`/properties/${slug}`} className="absolute inset-0 z-0">
+      <Link href={href} className="absolute inset-0 z-0">
         {cover ? (
           <Image
             src={cover.url}

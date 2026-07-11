@@ -57,6 +57,16 @@ export default async function PropertiesPage({ searchParams }: SearchPageProps) 
     page: params.page ? Number(params.page) : 1,
   };
 
+  // Adults/children/infants/pets breakdown, carried through as opaque passthrough
+  // params (not used for filtering — search.service only needs the `guests` total)
+  // so the header's guest selector doesn't collapse back to an all-adults count when
+  // the user paginates or clicks into a listing and back.
+  const guestBreakdownParams: Record<string, string> = {};
+  for (const key of ["adults", "children", "infants", "pets"] as const) {
+    const value = params[key];
+    if (typeof value === "string" && value) guestBreakdownParams[key] = value;
+  }
+
   const [
     results,
     amenities,
@@ -73,6 +83,7 @@ export default async function PropertiesPage({ searchParams }: SearchPageProps) 
     if (filters.checkIn) p.set("checkIn", filters.checkIn);
     if (filters.checkOut) p.set("checkOut", filters.checkOut);
     if (filters.guests) p.set("guests", String(filters.guests));
+    Object.entries(guestBreakdownParams).forEach(([key, value]) => p.set(key, value));
     if (filters.minPrice) p.set("minPrice", String(filters.minPrice));
     if (filters.maxPrice) p.set("maxPrice", String(filters.maxPrice));
     if (filters.bedrooms) p.set("bedrooms", String(filters.bedrooms));
@@ -92,6 +103,15 @@ export default async function PropertiesPage({ searchParams }: SearchPageProps) 
       ? Math.max(1, getNightCount(filters.checkIn, filters.checkOut))
       : undefined;
 
+  const listingQuery = new URLSearchParams();
+  if (filters.checkIn) listingQuery.set("checkIn", filters.checkIn);
+  if (filters.checkOut) listingQuery.set("checkOut", filters.checkOut);
+  if (filters.guests) listingQuery.set("guests", String(filters.guests));
+  Object.entries(guestBreakdownParams).forEach(([key, value]) =>
+    listingQuery.set(key, value)
+  );
+  const listingQueryString = listingQuery.toString();
+
   const mapPins: MapPin[] = results.listings.map((l) => {
     const { lat, lng } = getMapCoordinatesForListing(l);
     let label = "—";
@@ -103,7 +123,7 @@ export default async function PropertiesPage({ searchParams }: SearchPageProps) 
           ? formatPrice(nightly * nightCount, cur)
           : formatPrice(nightly, cur);
     }
-    return { id: l.id, slug: l.slug, lat, lng, label };
+    return { id: l.id, slug: l.slug, lat, lng, label, query: listingQueryString };
   });
 
   return (
@@ -132,6 +152,7 @@ export default async function PropertiesPage({ searchParams }: SearchPageProps) 
                       checkIn={filters.checkIn}
                       checkOut={filters.checkOut}
                       nightCount={nightCount}
+                      searchQuery={listingQueryString}
                     />
                   ))}
                 </div>

@@ -1,5 +1,6 @@
 "use server";
 
+import type { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { listingFormSchema } from "@/lib/validations/listing.schema";
@@ -8,9 +9,82 @@ import { getStorageAdapter } from "@/lib/storage";
 import { isLocalUploadUrl } from "@/lib/utils/upload-url";
 import { revalidatePublicListingCaches } from "@/lib/utils/revalidate-public-listing-caches";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { firstZodMessage } from "@/lib/utils/zod-error";
 import { isShortMapsLink, parseCoordsFromMapsText } from "@/lib/utils/parse-maps-link";
+
+/**
+ * Silently persists a new listing's in-progress form state before it's complete enough
+ * to satisfy the real Property/Listing schema (title length, required fields, etc.) —
+ * see ListingDraft in schema.prisma for why this is a separate table rather than
+ * relaxing those columns. Called on field blur while filling out a new listing; not
+ * validated at all, since partial/empty values are expected.
+ */
+function draftDataFromForm(formData: FormData): Prisma.InputJsonValue {
+  const str = (key: string) => {
+    const v = formData.get(key);
+    return typeof v === "string" ? v : "";
+  };
+
+  return {
+    title: str("title"),
+    description: str("description"),
+    propertyType: str("propertyType"),
+    address: str("address"),
+    city: str("city"),
+    area: str("area"),
+    latitude: str("latitude"),
+    longitude: str("longitude"),
+    maxGuests: str("maxGuests"),
+    bedrooms: str("bedrooms"),
+    bathrooms: str("bathrooms"),
+    beds: str("beds"),
+    baseNightlyRate: str("baseNightlyRate"),
+    cleaningFee: str("cleaningFee"),
+    minNights: str("minNights"),
+    imageUrls: formData.getAll("imageUrls").filter((v): v is string => typeof v === "string"),
+    amenityIds: formData.getAll("amenityIds").filter((v): v is string => typeof v === "string"),
+  };
+}
+
+export async function saveListingDraft(
+  draftId: string | null,
+  formData: FormData
+): Promise<{ draftId: string } | { error: string }> {
+  const session = await auth();
+  if (!session?.user?.id || !session.user.isHost) {
+    return { error: "Not authorized" };
+  }
+
+  const jsonData = draftDataFromForm(formData);
+
+  if (draftId) {
+    const existing = await db.listingDraft.findFirst({
+      where: { id: draftId, hostId: session.user.id },
+      select: { id: true },
+    });
+    if (!existing) return { error: "Draft not found" };
+    await db.listingDraft.update({ where: { id: draftId }, data: { data: jsonData } });
+    return { draftId };
+  }
+
+  const created = await db.listingDraft.create({
+    data: { hostId: session.user.id, data: jsonData },
+  });
+  return { draftId: created.id };
+}
+
+export async function deleteListingDraft(draftId: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Not authorized" };
+
+  const result = await db.listingDraft.deleteMany({
+    where: { id: draftId, hostId: session.user.id },
+  });
+  if (result.count === 0) return { error: "Draft not found" };
+
+  revalidatePath("/host/listings");
+  return { success: true };
+}
 
 /**
  * Short Google Maps links (goo.gl) don't carry coordinates until resolved — the pin
@@ -55,7 +129,17 @@ function parseImageUrlsFromForm(formData: FormData): string[] {
   });
 }
 
-export async function createListing(formData: FormData) {
+/**
+ * Creates a new listing and sends it straight to review in one step — there's no
+ * intermediate "created but not submitted" state a real Listing row can be in; that's
+ * what ListingDraft (see saveListingDraft above) is for, before this is called. Deletes
+ * the originating draft row on success, since its job is done. Returns rather than
+ * redirecting so the caller can show a confirmation dialog first.
+ */
+export async function submitNewListing(
+  formData: FormData,
+  draftId?: string | null
+): Promise<{ error: string } | { success: true; listingId: string }> {
   const session = await auth();
   if (!session?.user?.id || !session.user.isHost) {
     return { error: "Not authorized" };
@@ -88,6 +172,10 @@ export async function createListing(formData: FormData) {
 
   const data = parsed.data;
   const imageUrls = parseImageUrlsFromForm(formData);
+  if (imageUrls.length === 0) {
+    return { error: "Add at least one photo before submitting for review" };
+  }
+
   const slug = await generateUniqueSlug(data.title);
 
   const property = await db.property.create({
@@ -111,6 +199,7 @@ export async function createListing(formData: FormData) {
       title: data.title,
       slug,
       description: data.description,
+      status: "PENDING_REVIEW",
       maxGuests: data.maxGuests,
       bedrooms: data.bedrooms,
       bathrooms: data.bathrooms,
@@ -129,22 +218,22 @@ export async function createListing(formData: FormData) {
             },
           }
         : {}),
+      images: {
+        create: imageUrls.map((url, i) => ({
+          url,
+          displayOrder: i,
+          isPrimary: i === 0,
+        })),
+      },
     },
   });
 
-  if (imageUrls.length > 0) {
-    await db.listingImage.createMany({
-      data: imageUrls.map((url, i) => ({
-        listingId: listing.id,
-        url,
-        displayOrder: i,
-        isPrimary: i === 0,
-      })),
-    });
+  if (draftId) {
+    await db.listingDraft.deleteMany({ where: { id: draftId, hostId: session.user.id } });
   }
 
   revalidatePath("/host/listings");
-  redirect(`/host/listings/${listing.id}/edit`);
+  return { success: true, listingId: listing.id };
 }
 
 export async function updateListing(listingId: string, formData: FormData) {

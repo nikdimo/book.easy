@@ -21,6 +21,8 @@ export type MapPin = {
   lat: number;
   lng: number;
   label: string;
+  /** Query string (no leading "?") carrying the current search's dates/guests to the listing page. */
+  query?: string;
 };
 
 function FitBounds({ positions }: { positions: [number, number][] }) {
@@ -117,7 +119,7 @@ export default function PropertiesMapInner({
               <span className="text-sm font-semibold">{pin.label}</span>
               <div className="mt-1">
                 <Link
-                  href={`/properties/${pin.slug}`}
+                  href={`/properties/${pin.slug}${pin.query ? `?${pin.query}` : ""}`}
                   className="text-sm text-primary underline underline-offset-2"
                 >
                   View listing

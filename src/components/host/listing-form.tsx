@@ -1,9 +1,16 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useMemo, useRef, useState, useTransition } from "react";
 import type { ReactNode } from "react";
+import { useRouter } from "next/navigation";
 import { Bath, Bed, BedDouble, MapPin, ShieldCheck, Users } from "lucide-react";
-import { createListing, updateListing } from "@/lib/actions/listing.actions";
+import {
+  saveListingDraft,
+  submitNewListing,
+  updateListing,
+} from "@/lib/actions/listing.actions";
+import { listingFormSchema } from "@/lib/validations/listing.schema";
+import { zodFieldErrors } from "@/lib/utils/zod-error";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -11,6 +18,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { formatPrice } from "@/lib/utils/format";
 import { toast } from "sonner";
 import { ListingImagesField } from "@/components/host/listing-images-field";
@@ -18,6 +32,7 @@ import { ListingLocationField } from "@/components/host/listing-location-field";
 import { SuggestMissingOption } from "@/components/host/suggest-missing-option";
 import type { HostListingFormData } from "@/lib/serializers/host-listing-form";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
+import type { ListingDraftData } from "@/lib/types/listing-draft";
 
 interface ListingFormProps {
   amenities: { id: string; name: string; category: string }[];
@@ -26,6 +41,9 @@ interface ListingFormProps {
   initialImageUrls?: string[];
   /** Serialized from the server (no Prisma Decimal). */
   listing?: HostListingFormData;
+  /** Resuming an autosaved in-progress draft of a listing that was never submitted. */
+  draftId?: string;
+  initialDraft?: ListingDraftData;
 }
 
 type ListingFormValues = {
@@ -54,23 +72,57 @@ function toPositiveNumber(value: string, fallback: number) {
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 }
 
-function listingInitialValues(listing?: HostListingFormData): ListingFormValues {
+function listingInitialValues(
+  listing?: HostListingFormData,
+  draft?: ListingDraftData
+): ListingFormValues {
+  if (listing) {
+    return {
+      title: listing.title,
+      description: listing.description,
+      propertyType: listing.property.propertyType,
+      address: listing.property.address,
+      city: listing.property.city,
+      area: listing.property.area ?? "",
+      maxGuests: String(listing.maxGuests),
+      bedrooms: String(listing.bedrooms),
+      beds: String(listing.beds),
+      bathrooms: String(listing.bathrooms),
+      baseNightlyRate: listing.pricingRule ? String(listing.pricingRule.baseNightlyRate) : "",
+      cleaningFee: listing.pricingRule ? String(listing.pricingRule.cleaningFee) : "0",
+      minNights: listing.pricingRule ? String(listing.pricingRule.minNights) : "1",
+    };
+  }
+
   return {
-    title: listing?.title ?? "",
-    description: listing?.description ?? "",
-    propertyType: listing?.property.propertyType ?? "",
-    address: listing?.property.address ?? "",
-    city: listing?.property.city ?? "",
-    area: listing?.property.area ?? "",
-    maxGuests: String(listing?.maxGuests ?? 2),
-    bedrooms: String(listing?.bedrooms ?? 1),
-    beds: String(listing?.beds ?? 1),
-    bathrooms: String(listing?.bathrooms ?? 1),
-    baseNightlyRate: listing?.pricingRule ? String(listing.pricingRule.baseNightlyRate) : "",
-    cleaningFee: listing?.pricingRule ? String(listing.pricingRule.cleaningFee) : "0",
-    minNights: listing?.pricingRule ? String(listing.pricingRule.minNights) : "1",
+    title: draft?.title ?? "",
+    description: draft?.description ?? "",
+    propertyType: draft?.propertyType ?? "",
+    address: draft?.address ?? "",
+    city: draft?.city ?? "",
+    area: draft?.area ?? "",
+    maxGuests: draft?.maxGuests || "2",
+    bedrooms: draft?.bedrooms || "1",
+    beds: draft?.beds || "1",
+    bathrooms: draft?.bathrooms || "1",
+    baseNightlyRate: draft?.baseNightlyRate ?? "",
+    cleaningFee: draft?.cleaningFee || "0",
+    minNights: draft?.minNights || "1",
   };
 }
+
+/** Subset of listingFormSchema's rules worth showing inline, as-you-go, rather than
+ * only after a full submit attempt. */
+const FIELD_VALIDATORS: Partial<Record<keyof ListingFormValues, (value: string) => string | null>> = {
+  title: (v) => (v.trim().length < 5 ? "Title must be at least 5 characters" : null),
+  description: (v) =>
+    v.trim().length < 20 ? "Description must be at least 20 characters" : null,
+  propertyType: (v) => (v ? null : "Property type is required"),
+  address: (v) => (v.trim().length < 3 ? "Address is required" : null),
+  city: (v) => (v.trim().length < 2 ? "City is required" : null),
+  baseNightlyRate: (v) =>
+    !v || Number(v) < 1 ? "Nightly rate is required" : null,
+};
 
 function FieldSection({
   title,
@@ -95,27 +147,49 @@ export function ListingForm({
   availableCities = [],
   listing,
   initialImageUrls = [],
+  draftId: initialDraftId,
+  initialDraft,
 }: ListingFormProps) {
   const isEditing = !!listing;
-  const [values, setValues] = useState<ListingFormValues>(() => listingInitialValues(listing));
-  const [imageUrls, setImageUrls] = useState<string[]>(initialImageUrls);
-  const [selectedAmenityIds, setSelectedAmenityIds] = useState<string[]>(
-    () => listing?.amenities.map((a) => a.amenityId) ?? []
+  const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
+  const [values, setValues] = useState<ListingFormValues>(() =>
+    listingInitialValues(listing, initialDraft)
   );
+  const [imageUrls, setImageUrls] = useState<string[]>(
+    initialImageUrls.length > 0 ? initialImageUrls : (initialDraft?.imageUrls ?? [])
+  );
+  const [selectedAmenityIds, setSelectedAmenityIds] = useState<string[]>(
+    () => listing?.amenities.map((a) => a.amenityId) ?? initialDraft?.amenityIds ?? []
+  );
+  const [draftId, setDraftId] = useState<string | null>(initialDraftId ?? null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [submittedListingId, setSubmittedListingId] = useState<string | null>(null);
+  const [isSubmittingNew, startSubmitNewTransition] = useTransition();
 
   const [state, formAction, isPending] = useActionState(
     async (_prev: { error?: string; success?: boolean } | undefined, formData: FormData) => {
-      const result = isEditing
-        ? await updateListing(listing!.id, formData)
-        : await createListing(formData);
+      const result = await updateListing(listing!.id, formData);
       if (result && "success" in result && result.success) {
-        toast.success(isEditing ? "Listing updated" : "Listing created");
+        toast.success("Listing updated");
       }
       if (result && "error" in result) toast.error(result.error);
       return result;
     },
     undefined
   );
+
+  // Silently persists in-progress form state for a listing that hasn't been submitted
+  // yet, so leaving the page (or the tab crashing) doesn't lose it. Not validated —
+  // partial/empty values are expected. No-op once editing a real listing, which is
+  // already persisted.
+  function autosaveDraft() {
+    if (isEditing || !formRef.current) return;
+    const fd = new FormData(formRef.current);
+    void saveListingDraft(draftId, fd).then((result) => {
+      if (result && "draftId" in result) setDraftId(result.draftId);
+    });
+  }
 
   const groupedAmenities = useMemo(
     () =>
@@ -139,10 +213,45 @@ export function ListingForm({
     setValues((current) => ({ ...current, [field]: value }));
   }
 
+  function validateFieldOnBlur(field: keyof ListingFormValues, value: string) {
+    const validator = FIELD_VALIDATORS[field];
+    if (!validator) return;
+    const message = validator(value);
+    setFieldErrors((current) => {
+      if (!message) {
+        if (!(field in current)) return current;
+        const next = { ...current };
+        delete next[field];
+        return next;
+      }
+      return { ...current, [field]: message };
+    });
+  }
+
+  function handleBlur(field: keyof ListingFormValues) {
+    validateFieldOnBlur(field, values[field]);
+    autosaveDraft();
+  }
+
+  function handleImageUrlsChange(next: string[] | ((current: string[]) => string[])) {
+    setImageUrls(next);
+    setFieldErrors((current) => {
+      if (!("images" in current)) return current;
+      const rest = { ...current };
+      delete rest.images;
+      return rest;
+    });
+    // Runs after the state update above has been queued — imageUrls changes come from
+    // discrete user actions (upload/remove/reorder), not continuous typing, so saving
+    // immediately (rather than waiting for some unrelated field's blur) is appropriate.
+    setTimeout(autosaveDraft, 0);
+  }
+
   function toggleAmenity(amenityId: string, checked: boolean) {
     setSelectedAmenityIds((current) =>
       checked ? [...current, amenityId] : current.filter((id) => id !== amenityId)
     );
+    setTimeout(autosaveDraft, 0);
   }
 
   const typeLabel = propertyTypes.find((type) => type.value === values.propertyType)?.label;
@@ -157,8 +266,56 @@ export function ListingForm({
     .filter(Boolean)
     .join(", ");
 
+  function handleSubmitForReview() {
+    if (!formRef.current) return;
+
+    const parsed = listingFormSchema.safeParse({
+      title: values.title,
+      description: values.description,
+      propertyType: values.propertyType,
+      address: values.address,
+      city: values.city,
+      area: values.area || undefined,
+      country: "North Macedonia",
+      maxGuests: values.maxGuests,
+      bedrooms: values.bedrooms,
+      bathrooms: values.bathrooms,
+      beds: values.beds,
+      baseNightlyRate: values.baseNightlyRate,
+      cleaningFee: values.cleaningFee || "0",
+      minNights: values.minNights || "1",
+    });
+
+    const errors = parsed.success ? {} : zodFieldErrors(parsed.error);
+    if (imageUrls.length === 0) {
+      errors.images = "Add at least one photo before submitting for review";
+    }
+    setFieldErrors(errors);
+
+    const firstErrorField = Object.keys(errors)[0];
+    if (firstErrorField) {
+      toast.error(errors[firstErrorField]);
+      const el =
+        firstErrorField === "images"
+          ? document.getElementById("listing-photo-upload")
+          : document.getElementById(firstErrorField);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+
+    const fd = new FormData(formRef.current);
+    startSubmitNewTransition(async () => {
+      const result = await submitNewListing(fd, draftId);
+      if ("error" in result) {
+        toast.error(result.error);
+      } else {
+        setSubmittedListingId(result.listingId);
+      }
+    });
+  }
+
   return (
-    <form action={formAction} className="space-y-6">
+    <form ref={formRef} action={isEditing ? formAction : undefined} className="space-y-6">
       {state?.error && (
         <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
           {state.error}
@@ -181,9 +338,11 @@ export function ListingForm({
                 name="title"
                 value={values.title}
                 onChange={(event) => setField("title", event.target.value)}
+                onBlur={() => handleBlur("title")}
                 required
                 placeholder="Modern apartment near the center"
               />
+              <FieldError message={fieldErrors.title} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
@@ -192,10 +351,23 @@ export function ListingForm({
                 name="description"
                 value={values.description}
                 onChange={(event) => setField("description", event.target.value)}
+                onBlur={() => handleBlur("description")}
                 required
                 rows={7}
                 placeholder="Describe the stay, layout, neighborhood, and what makes it easy to book."
               />
+              <div className="flex items-center justify-between">
+                <FieldError message={fieldErrors.description} />
+                <span
+                  className={
+                    values.description.trim().length < 20
+                      ? "text-xs text-destructive"
+                      : "text-xs text-muted-foreground"
+                  }
+                >
+                  {values.description.trim().length}/20 min
+                </span>
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="propertyType">Property type</Label>
@@ -204,6 +376,7 @@ export function ListingForm({
                 name="propertyType"
                 value={values.propertyType}
                 onChange={(event) => setField("propertyType", event.target.value)}
+                onBlur={() => handleBlur("propertyType")}
                 required
                 className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
               >
@@ -214,6 +387,7 @@ export function ListingForm({
                   </option>
                 ))}
               </select>
+              <FieldError message={fieldErrors.propertyType} />
               <SuggestMissingOption
                 kind="PROPERTY_TYPE"
                 listingId={listing?.id}
@@ -231,9 +405,11 @@ export function ListingForm({
                 name="address"
                 value={values.address}
                 onChange={(event) => setField("address", event.target.value)}
+                onBlur={() => handleBlur("address")}
                 required
                 placeholder="Street and building number"
               />
+              <FieldError message={fieldErrors.address} />
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
@@ -243,10 +419,12 @@ export function ListingForm({
                   name="city"
                   value={values.city}
                   onChange={(event) => setField("city", event.target.value)}
+                  onBlur={() => handleBlur("city")}
                   list="available-cities"
                   required
                   placeholder="Skopje"
                 />
+                <FieldError message={fieldErrors.city} />
                 <datalist id="available-cities">
                   {availableCities.map((city) => (
                     <option key={city} value={city} />
@@ -260,19 +438,21 @@ export function ListingForm({
                   name="area"
                   value={values.area}
                   onChange={(event) => setField("area", event.target.value)}
+                  onBlur={() => handleBlur("area")}
                   placeholder="Debar Maalo"
                 />
               </div>
             </div>
             <input type="hidden" name="country" value={listing?.property.country || "North Macedonia"} />
             <ListingLocationField
-              initialLat={listing?.property.latitude}
-              initialLng={listing?.property.longitude}
+              initialLat={listing?.property.latitude ?? parseFloatOrUndefined(initialDraft?.latitude)}
+              initialLng={listing?.property.longitude ?? parseFloatOrUndefined(initialDraft?.longitude)}
             />
           </FieldSection>
 
           <FieldSection title="Photos">
-            <ListingImagesField urls={imageUrls} onUrlsChange={setImageUrls} />
+            <ListingImagesField urls={imageUrls} onUrlsChange={handleImageUrlsChange} />
+            <FieldError message={fieldErrors.images} />
           </FieldSection>
 
           <FieldSection title="Capacity">
@@ -283,6 +463,7 @@ export function ListingForm({
                 value={values.maxGuests}
                 min={1}
                 onChange={(value) => setField("maxGuests", value)}
+                onBlur={autosaveDraft}
               />
               <NumberField
                 id="bedrooms"
@@ -290,6 +471,7 @@ export function ListingForm({
                 value={values.bedrooms}
                 min={0}
                 onChange={(value) => setField("bedrooms", value)}
+                onBlur={autosaveDraft}
               />
               <NumberField
                 id="beds"
@@ -297,6 +479,7 @@ export function ListingForm({
                 value={values.beds}
                 min={0}
                 onChange={(value) => setField("beds", value)}
+                onBlur={autosaveDraft}
               />
               <NumberField
                 id="bathrooms"
@@ -304,20 +487,25 @@ export function ListingForm({
                 value={values.bathrooms}
                 min={0}
                 onChange={(value) => setField("bathrooms", value)}
+                onBlur={autosaveDraft}
               />
             </div>
           </FieldSection>
 
           <FieldSection title="Pricing">
             <div className="grid gap-4 md:grid-cols-3">
-              <NumberField
-                id="baseNightlyRate"
-                label="Nightly rate (EUR)"
-                value={values.baseNightlyRate}
-                min={1}
-                step="0.01"
-                onChange={(value) => setField("baseNightlyRate", value)}
-              />
+              <div>
+                <NumberField
+                  id="baseNightlyRate"
+                  label="Nightly rate (EUR)"
+                  value={values.baseNightlyRate}
+                  min={1}
+                  step="0.01"
+                  onChange={(value) => setField("baseNightlyRate", value)}
+                  onBlur={() => handleBlur("baseNightlyRate")}
+                />
+                <FieldError message={fieldErrors.baseNightlyRate} />
+              </div>
               <NumberField
                 id="cleaningFee"
                 label="Cleaning fee (EUR)"
@@ -325,6 +513,7 @@ export function ListingForm({
                 min={0}
                 step="0.01"
                 onChange={(value) => setField("cleaningFee", value)}
+                onBlur={autosaveDraft}
               />
               <NumberField
                 id="minNights"
@@ -332,6 +521,7 @@ export function ListingForm({
                 value={values.minNights}
                 min={1}
                 onChange={(value) => setField("minNights", value)}
+                onBlur={autosaveDraft}
               />
             </div>
           </FieldSection>
@@ -400,18 +590,65 @@ export function ListingForm({
       </div>
 
       <div className="sticky bottom-0 z-10 -mx-4 border-t bg-background/95 px-4 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:static sm:mx-0 sm:border-t-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none">
-        <Button type="submit" size="lg" disabled={isPending} className="w-full sm:w-auto">
-          {isPending
-            ? isEditing
-              ? "Saving..."
-              : "Creating..."
-            : isEditing
-              ? "Save changes"
-              : "Create listing"}
-        </Button>
+        {isEditing ? (
+          <Button type="submit" size="lg" disabled={isPending} className="w-full sm:w-auto">
+            {isPending ? "Saving..." : "Save changes"}
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            size="lg"
+            disabled={isSubmittingNew}
+            onClick={handleSubmitForReview}
+            className="w-full sm:w-auto"
+          >
+            {isSubmittingNew ? "Submitting..." : "Submit for Review"}
+          </Button>
+        )}
       </div>
+
+      <Dialog
+        open={!!submittedListingId}
+        onOpenChange={(open) => {
+          if (!open && submittedListingId) {
+            router.push(`/host/listings/${submittedListingId}/edit`);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Submitted for review</DialogTitle>
+            <DialogDescription className="pt-2 text-foreground">
+              Thanks! Your listing has been sent for review — this usually takes 1 to 24
+              hours. Questions? Contact{" "}
+              <a href="mailto:hello@book.easy.mk" className="underline underline-offset-2">
+                hello@book.easy.mk
+              </a>
+              .
+            </DialogDescription>
+          </DialogHeader>
+          <Button
+            onClick={() => {
+              if (submittedListingId) router.push(`/host/listings/${submittedListingId}/edit`);
+            }}
+          >
+            Got it
+          </Button>
+        </DialogContent>
+      </Dialog>
     </form>
   );
+}
+
+function parseFloatOrUndefined(value: string | undefined): number | undefined {
+  if (!value) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+  return <p className="text-xs text-destructive">{message}</p>;
 }
 
 function NumberField({
@@ -421,6 +658,7 @@ function NumberField({
   min,
   step,
   onChange,
+  onBlur,
 }: {
   id: keyof ListingFormValues;
   label: string;
@@ -428,6 +666,7 @@ function NumberField({
   min: number;
   step?: string;
   onChange: (value: string) => void;
+  onBlur?: () => void;
 }) {
   return (
     <div className="space-y-2">
@@ -440,6 +679,7 @@ function NumberField({
         step={step}
         value={value}
         onChange={(event) => onChange(event.target.value)}
+        onBlur={onBlur}
         required={id !== "cleaningFee"}
       />
     </div>
