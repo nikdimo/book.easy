@@ -1,10 +1,26 @@
 import "server-only";
 import { writeFile, mkdir, unlink } from "fs/promises";
-import { basename, join } from "path";
+import { basename, join, isAbsolute, resolve } from "path";
 import { existsSync } from "fs";
 import type { StorageAdapter } from "./index";
 
-const UPLOAD_DIR = process.env.UPLOAD_DIR || "./public/uploads";
+// A relative UPLOAD_DIR (the default) would otherwise resolve against
+// `process.cwd()` at the moment each fs call runs — which depends on how the process
+// was launched (e.g. a systemd unit's `WorkingDirectory`) and isn't guaranteed to match
+// the project root that Next.js serves `public/` from. Anchoring to `process.cwd()`
+// once, right here, at least makes that resolution explicit and consistent for every
+// call below, instead of relying on each fs function's own implicit relative handling.
+const RAW_UPLOAD_DIR = process.env.UPLOAD_DIR || "./public/uploads";
+const UPLOAD_DIR = isAbsolute(RAW_UPLOAD_DIR)
+  ? RAW_UPLOAD_DIR
+  : resolve(process.cwd(), RAW_UPLOAD_DIR);
+
+/** Used by the `/uploads/[filename]` route handler, which reads files directly from
+ * disk on every request rather than relying on Next's static `public/` serving (see
+ * that route for why). */
+export function getUploadDir(): string {
+  return UPLOAD_DIR;
+}
 
 export class LocalStorageAdapter implements StorageAdapter {
   private uploadDir: string;
