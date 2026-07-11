@@ -177,6 +177,8 @@ if "%MSG%"=="" (
     exit /b 1
 )
 echo.
+powershell -NoProfile -Command "$cred = cmdkey /list | Select-String -Context 0,2 'git:https://github.com'; if ($cred -and (($cred | Out-String) -match 'octabimdev')) { cmdkey /delete:LegacyGeneric:target=git:https://github.com | Out-Null; Write-Host '  Cleared a stale GitHub login (was cached as the wrong account) - you may be prompted to sign in again.' }"
+echo.
 powershell -Command "& { $all = git log --oneline | Measure-Object -Line | Select-Object -ExpandProperty Lines; $nextV = $all + 1; $tag = 'V' + $nextV; git add .; git commit -m ('feat: V' + $nextV + ' - %MSG%'); git tag $tag; git push; git push origin $tag; if ($LASTEXITCODE -eq 0) { Write-Host (''); Write-Host ('  SUCCESS - V' + $nextV + ' saved to GitHub.'); exit 0 } else { Write-Host ('  ERROR - Push failed. Check output above.'); exit 1 } }"
 exit /b %ERRORLEVEL%
 
