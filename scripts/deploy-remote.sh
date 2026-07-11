@@ -23,7 +23,13 @@ git fetch origin
 git reset --hard origin/main
 
 echo "[deploy] Installing dependencies"
-npm ci
+# Deliberately `npm install`, not `npm ci`: some transitive dependency in this
+# project's tree (@emnapi/* optional native bindings, pulled in indirectly) isn't
+# cleanly pinned, so npm resolves slightly different exact versions across
+# platforms/runs. `npm ci` fails hard on any such lock-file drift; `npm install`
+# reconciles it automatically instead. Trades a little reproducibility strictness
+# for not repeatedly breaking deploys over a dependency we don't directly control.
+npm install
 
 echo "[deploy] Clearing stale .next/ before typecheck"
 # tsconfig.json's `include` covers .next/types/**/*.ts — Next.js-generated shims that
