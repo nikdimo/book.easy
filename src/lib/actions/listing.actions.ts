@@ -1,6 +1,6 @@
 "use server";
 
-import type { Prisma } from "@prisma/client";
+import type { ListingMediaType, Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { listingFormSchema } from "@/lib/validations/listing.schema";
@@ -11,6 +11,7 @@ import { revalidatePublicListingCaches } from "@/lib/utils/revalidate-public-lis
 import { revalidatePath } from "next/cache";
 import { firstZodMessage } from "@/lib/utils/zod-error";
 import { isShortMapsLink, parseCoordsFromMapsText } from "@/lib/utils/parse-maps-link";
+import type { ListingMediaItem } from "@/lib/types/listing-media";
 
 /**
  * Silently persists a new listing's in-progress form state before it's complete enough
@@ -41,9 +42,9 @@ function draftDataFromForm(formData: FormData): Prisma.InputJsonValue {
     baseNightlyRate: str("baseNightlyRate"),
     cleaningFee: str("cleaningFee"),
     minNights: str("minNights"),
-    imageUrls: formData.getAll("imageUrls").filter((v): v is string => typeof v === "string"),
+    mediaItems: parseMediaItemsFromForm(formData) as unknown as Prisma.InputJsonValue,
     amenityIds: formData.getAll("amenityIds").filter((v): v is string => typeof v === "string"),
-  };
+  } as Prisma.InputJsonValue;
 }
 
 export async function saveListingDraft(
@@ -118,23 +119,50 @@ export async function resolveMapsLink(
   }
 }
 
-function parseImageUrlsFromForm(formData: FormData): string[] {
-  const raw = formData.getAll("imageUrls").filter((v): v is string => typeof v === "string");
-  return raw.filter((url) => {
-    const t = url.trim();
-    return (
-      t.length > 0 &&
-      (t.startsWith("/") || t.startsWith("https://") || t.startsWith("http://"))
-    );
+function isValidUploadUrl(url: string): boolean {
+  const t = url.trim();
+  return t.length > 0 && (t.startsWith("/") || t.startsWith("https://") || t.startsWith("http://"));
+}
+
+function parseLegacyImageUrlsFromForm(formData: FormData): ListingMediaItem[] {
+  return formData
+    .getAll("imageUrls")
+    .filter((v): v is string => typeof v === "string")
+    .map((url) => url.trim())
+    .filter(isValidUploadUrl)
+    .map((url) => ({ url, mediaType: "IMAGE" }));
+}
+
+function parseMediaItemsFromForm(formData: FormData): ListingMediaItem[] {
+  const raw = formData.getAll("mediaItems").filter((v): v is string => typeof v === "string");
+  if (raw.length === 0) {
+    return parseLegacyImageUrlsFromForm(formData);
+  }
+
+  return raw.flatMap((value) => {
+    try {
+      const parsed = JSON.parse(value) as { url?: unknown; mediaType?: unknown };
+      const url = typeof parsed.url === "string" ? parsed.url.trim() : "";
+      const mediaType = parsed.mediaType === "VIDEO" ? "VIDEO" : parsed.mediaType === "IMAGE" ? "IMAGE" : null;
+      if (!mediaType || !isValidUploadUrl(url)) return [];
+      return [{ url, mediaType }];
+    } catch {
+      return [];
+    }
   });
 }
 
+function firstImageIndex(mediaItems: ListingMediaItem[]): number {
+  return mediaItems.findIndex((item) => item.mediaType === "IMAGE");
+}
+
 /**
- * Creates a new listing and sends it straight to review in one step — there's no
- * intermediate "created but not submitted" state a real Listing row can be in; that's
- * what ListingDraft (see saveListingDraft above) is for, before this is called. Deletes
- * the originating draft row on success, since its job is done. Returns rather than
- * redirecting so the caller can show a confirmation dialog first.
+ * Creates a new listing and publishes it immediately — there's no intermediate
+ * "created but not submitted" state a real Listing row can be in; that's what
+ * ListingDraft (see saveListingDraft above) is for, before this is called. Sets
+ * `needsReview` so it still surfaces in the admin review queue after going live.
+ * Deletes the originating draft row on success, since its job is done. Returns rather
+ * than redirecting so the caller can show a confirmation dialog first.
  */
 export async function submitNewListing(
   formData: FormData,
@@ -171,8 +199,9 @@ export async function submitNewListing(
   }
 
   const data = parsed.data;
-  const imageUrls = parseImageUrlsFromForm(formData);
-  if (imageUrls.length === 0) {
+  const mediaItems = parseMediaItemsFromForm(formData);
+  const primaryImageIndex = firstImageIndex(mediaItems);
+  if (primaryImageIndex === -1) {
     return { error: "Add at least one photo before submitting for review" };
   }
 
@@ -199,7 +228,10 @@ export async function submitNewListing(
       title: data.title,
       slug,
       description: data.description,
-      status: "PENDING_REVIEW",
+      status: "APPROVED",
+      needsReview: true,
+      approvedAt: new Date(),
+      publishedAt: new Date(),
       maxGuests: data.maxGuests,
       bedrooms: data.bedrooms,
       bathrooms: data.bathrooms,
@@ -219,10 +251,11 @@ export async function submitNewListing(
           }
         : {}),
       images: {
-        create: imageUrls.map((url, i) => ({
-          url,
+        create: mediaItems.map((item, i) => ({
+          url: item.url,
+          mediaType: item.mediaType as ListingMediaType,
           displayOrder: i,
-          isPrimary: i === 0,
+          isPrimary: i === primaryImageIndex,
         })),
       },
     },
@@ -233,6 +266,7 @@ export async function submitNewListing(
   }
 
   revalidatePath("/host/listings");
+  revalidatePublicListingCaches();
   return { success: true, listingId: listing.id };
 }
 
@@ -274,7 +308,8 @@ export async function updateListing(listingId: string, formData: FormData) {
   }
 
   const data = parsed.data;
-  const imageUrls = parseImageUrlsFromForm(formData);
+  const mediaItems = parseMediaItemsFromForm(formData);
+  const primaryImageIndex = firstImageIndex(mediaItems);
 
   await db.property.update({
     where: { id: listing.propertyId },
@@ -298,14 +333,14 @@ export async function updateListing(listingId: string, formData: FormData) {
       bedrooms: data.bedrooms,
       bathrooms: data.bathrooms,
       beds: data.beds,
-      // Editing a live listing must send it back through moderation (US-03.02) —
-      // otherwise an approved listing could be swapped for arbitrary content post-review.
-      ...(listing.status === "APPROVED" ? { status: "PENDING_REVIEW" as const } : {}),
+      // Editing a live listing stays live (listings publish immediately), but flags it
+      // for admin re-review since the content just changed post-approval.
+      ...(listing.status === "APPROVED" ? { needsReview: true } : {}),
     },
   });
 
   if (listing.status === "APPROVED") {
-    // Just lost public visibility as a side effect of the edit above.
+    // Public-facing content (title, price, photos, etc.) just changed on a live listing.
     revalidatePublicListingCaches();
   }
 
@@ -335,19 +370,20 @@ export async function updateListing(listingId: string, formData: FormData) {
     where: { listingId },
     select: { url: true },
   });
-  const keptUrls = new Set(imageUrls);
+  const keptUrls = new Set(mediaItems.map((item) => item.url));
   const removedUrls = existingImages
     .map((img) => img.url)
     .filter((url) => !keptUrls.has(url));
 
   await db.listingImage.deleteMany({ where: { listingId } });
-  if (imageUrls.length > 0) {
+  if (mediaItems.length > 0) {
     await db.listingImage.createMany({
-      data: imageUrls.map((url, i) => ({
+      data: mediaItems.map((item, i) => ({
         listingId,
-        url,
+        url: item.url,
+        mediaType: item.mediaType as ListingMediaType,
         displayOrder: i,
-        isPrimary: i === 0,
+        isPrimary: i === primaryImageIndex,
       })),
     });
   }
@@ -384,16 +420,22 @@ export async function submitForReview(listingId: string) {
 
   if (!listing.pricingRule) return { error: "Please set pricing before submitting" };
 
-  if (listing.images.length === 0) {
+  if (!listing.images.some((item) => item.mediaType === "IMAGE")) {
     return { error: "Add at least one photo before submitting for review" };
   }
 
   await db.listing.update({
     where: { id: listingId },
-    data: { status: "PENDING_REVIEW" },
+    data: {
+      status: "APPROVED",
+      needsReview: true,
+      approvedAt: new Date(),
+      publishedAt: new Date(),
+    },
   });
 
   revalidatePath("/host/listings");
+  revalidatePublicListingCaches();
   return { success: true };
 }
 

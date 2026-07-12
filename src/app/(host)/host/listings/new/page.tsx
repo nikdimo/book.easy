@@ -40,7 +40,7 @@ export default async function NewListingPage({ searchParams }: NewListingPagePro
         amenities={amenities}
         propertyTypes={propertyTypes}
         availableCities={availableCities}
-        initialImageUrls={[]}
+        initialMediaItems={[]}
         draftId={draft?.id}
         initialDraft={draft?.data as ListingDraftData | undefined}
       />

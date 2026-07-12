@@ -30,7 +30,7 @@ export default async function AdminBookingsPage({
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between gap-4">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">
           {activeLabel ? `${activeLabel} Bookings` : "All Bookings"}
         </h1>
@@ -40,7 +40,32 @@ export default async function AdminBookingsPage({
           </Button>
         )}
       </div>
-      <div className="border rounded-lg">
+      <div className="space-y-3 md:hidden">
+        {filteredBookings.map((booking) => {
+          const statusConfig = BOOKING_STATUSES.find((s) => s.value === booking.status);
+          const canCancel = booking.status === "PENDING" || booking.status === "CONFIRMED";
+          return (
+            <article key={booking.id} className="rounded-xl border bg-card p-4 shadow-sm">
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="line-clamp-2 font-semibold">{booking.listing.title}</h2>
+                  <p className="text-sm text-muted-foreground">{booking.listing.property.city}</p>
+                </div>
+                <Badge variant={booking.status === "CONFIRMED" ? "default" : "secondary"}>
+                  {statusConfig?.label || booking.status}
+                </Badge>
+              </div>
+              <dl className="mt-4 space-y-2 text-sm">
+                <div><dt className="text-muted-foreground">Guest</dt><dd>{booking.guest.name}</dd><dd className="break-all text-xs text-muted-foreground">{booking.guest.email}</dd></div>
+                <div><dt className="text-muted-foreground">Dates</dt><dd>{formatDate(booking.checkIn)} – {formatDate(booking.checkOut)}</dd></div>
+                <div><dt className="text-muted-foreground">Total</dt><dd className="font-medium">{formatPrice(Number(booking.totalPrice))}</dd></div>
+              </dl>
+              {canCancel && <div className="mt-4 border-t pt-3"><AdminCancelBookingButton bookingId={booking.id} /></div>}
+            </article>
+          );
+        })}
+      </div>
+      <div className="hidden border rounded-lg md:block">
         <Table>
           <TableHeader>
             <TableRow>

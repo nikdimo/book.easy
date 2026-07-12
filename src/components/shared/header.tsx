@@ -25,6 +25,8 @@ import { MarketplaceSearchBar } from "@/components/marketplace/marketplace-searc
 import { GoogleTranslateWidget } from "@/components/shared/google-translate-widget";
 import { SITE_DOMAIN } from "@/lib/branding";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
+import type { PlaceOption } from "@/lib/utils/place";
+import { BrandLogo } from "@/components/shared/brand-logo";
 
 export function Header({
   popularCities = [],
@@ -32,7 +34,7 @@ export function Header({
   propertyTypes = [],
   languages = [],
 }: {
-  popularCities?: string[];
+  popularCities?: PlaceOption[];
   availablePropertyTypesByCity?: Record<string, string[]>;
   propertyTypes?: PropertyTypeOption[];
   languages?: { code: string; name: string; isDefault: boolean }[];
@@ -49,6 +51,7 @@ export function Header({
 
   const searchDefaults = {
     city: "",
+    country: "",
     checkIn: "",
     checkOut: "",
     guests: "",
@@ -66,28 +69,12 @@ export function Header({
         <div className="flex-1 shrink-0 flex items-center min-w-0">
           <Link
             href="/"
-            className="notranslate flex items-center gap-2 text-primary font-bold text-xl tracking-tight shrink-0"
+            className="notranslate flex items-center shrink-0"
             title={SITE_DOMAIN}
             translate="no"
           >
-            <span
-              className="notranslate w-8 h-8 rounded-xl bg-primary flex items-center justify-center text-primary-foreground text-sm font-bold"
-              translate="no"
-            >
-              b.
-            </span>
-            <span className="notranslate hidden min-[400px]:inline" translate="no">
-              book
-              <span className="notranslate text-foreground" translate="no">
-                .easy
-              </span>
-              <span
-                className="notranslate text-muted-foreground font-semibold text-lg"
-                translate="no"
-              >
-                .mk
-              </span>
-            </span>
+            <BrandLogo compact className="h-11 min-[400px]:hidden" />
+            <BrandLogo className="hidden h-[58px] min-[400px]:block" />
           </Link>
         </div>
 
@@ -210,11 +197,8 @@ export function Header({
             </DropdownMenu>
           ) : (
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="sm" className="rounded-full font-medium" asChild>
-                <Link href="/login">Log in</Link>
-              </Button>
               <Button size="sm" className="rounded-full font-medium" asChild>
-                <Link href="/register">Sign up</Link>
+                <Link href="/login">Log in</Link>
               </Button>
             </div>
           )}

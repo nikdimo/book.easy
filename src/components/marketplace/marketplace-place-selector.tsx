@@ -15,6 +15,7 @@ import {
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 import { cn } from "@/lib/utils";
 import { sortPropertyTypesInDisplayOrder } from "@/lib/property-type-filter";
+import { placeKey, placeLabel, type PlaceOption } from "@/lib/utils/place";
 import { Button } from "@/components/ui/button";
 
 type Layout = "pill" | "hero" | "compact";
@@ -33,9 +34,10 @@ const PROPERTY_TYPE_ICONS = {
 export function MarketplacePlaceSelector({
   layout,
   city,
+  country = "",
   selectedPropertyTypes,
   onPropertyTypesChange,
-  onCityChange,
+  onPlaceChange,
   onNextToDates,
   popularCities = [],
   availablePropertyTypesByCity = {},
@@ -47,11 +49,14 @@ export function MarketplacePlaceSelector({
 }: {
   layout: Layout;
   city: string;
+  /** Only set when `city` is a known exact match (picked from the list), so two
+   * same-named cities in different countries aren't conflated. */
+  country?: string;
   selectedPropertyTypes: string[];
   onPropertyTypesChange: (types: string[]) => void;
-  onCityChange: (value: string) => void;
+  onPlaceChange: (next: { city: string; country: string }) => void;
   onNextToDates?: () => void;
-  popularCities?: string[];
+  popularCities?: PlaceOption[];
   availablePropertyTypesByCity?: Record<string, string[]>;
   propertyTypes: PropertyTypeOption[];
   showPropertyTypes?: boolean;
@@ -97,41 +102,48 @@ export function MarketplacePlaceSelector({
 
   const filteredCities = React.useMemo(() => {
     const q = draftCity.trim().toLowerCase();
-    const sorted = [...popularCities].sort((a, b) => a.localeCompare(b));
+    const sorted = [...popularCities].sort((a, b) => a.city.localeCompare(b.city));
 
     if (!q) return sorted;
 
     return sorted
-      .filter((name) => name.toLowerCase().includes(q))
+      .filter(
+        (place) =>
+          place.city.toLowerCase().includes(q) ||
+          place.country.toLowerCase().includes(q)
+      )
       .sort((a, b) => {
-        const aStarts = a.toLowerCase().startsWith(q) ? 0 : 1;
-        const bStarts = b.toLowerCase().startsWith(q) ? 0 : 1;
-        return aStarts - bStarts || a.localeCompare(b);
+        const aStarts = a.city.toLowerCase().startsWith(q) ? 0 : 1;
+        const bStarts = b.city.toLowerCase().startsWith(q) ? 0 : 1;
+        return aStarts - bStarts || a.city.localeCompare(b.city);
       });
   }, [draftCity, popularCities]);
 
-  const selectedCity = React.useMemo(() => {
+  // Exact match by city name only — ambiguous if the same city name exists in more
+  // than one country; disambiguation happens by picking a specific row instead (see
+  // the list's onClick, which carries the full place object).
+  const selectedPlace = React.useMemo(() => {
     const normalizedDraftCity = draftCity.trim().toLowerCase();
     if (!normalizedDraftCity) return null;
 
     return (
       popularCities.find(
-        (candidate) => candidate.toLowerCase() === normalizedDraftCity
+        (candidate) => candidate.city.toLowerCase() === normalizedDraftCity
       ) ?? null
     );
   }, [draftCity, popularCities]);
 
   const availablePropertyTypes = React.useMemo(() => {
-    if (!selectedCity) return [];
-    return availablePropertyTypesByCity[selectedCity] ?? [];
-  }, [availablePropertyTypesByCity, selectedCity]);
+    if (!selectedPlace) return [];
+    return availablePropertyTypesByCity[placeKey(selectedPlace)] ?? [];
+  }, [availablePropertyTypesByCity, selectedPlace]);
   const allPropertyTypeValues = React.useMemo(
     () => [...new Set(Object.values(availablePropertyTypesByCity).flat())],
     [availablePropertyTypesByCity]
   );
 
   React.useEffect(() => {
-    if (!showPropertyTypes || !open || !selectedCity) return;
+    if (!showPropertyTypes || !open || !selectedPlace) return;
     // Prunes previously-selected property types that no longer apply once the
     // available set changes for the newly selected city. Intentional sync with
     // an external-ish derived list, not plain derived render state.
@@ -146,12 +158,16 @@ export function MarketplacePlaceSelector({
     allPropertyTypeValues,
     availablePropertyTypes,
     open,
-    selectedCity,
+    selectedPlace,
     showPropertyTypes,
   ]);
 
   const triggerActive = open;
-  const currentLabel = city || "Search destinations";
+  const currentLabel = city
+    ? country
+      ? placeLabel({ city, country })
+      : city
+    : "Search destinations";
 
   const pillFieldClass = cn(
     "relative flex flex-1 min-w-0 cursor-pointer items-center rounded-full px-6 py-2.5 text-left transition-[background-color,box-shadow,transform] duration-200 ease-out",
@@ -189,7 +205,10 @@ export function MarketplacePlaceSelector({
   };
 
   const commitDraftSelection = React.useCallback(() => {
-    onCityChange(draftCity.trim());
+    onPlaceChange({
+      city: draftCity.trim(),
+      country: selectedPlace?.country ?? "",
+    });
     if (showPropertyTypes) {
       onPropertyTypesChange(
         sortPropertyTypesInDisplayOrder(
@@ -205,8 +224,9 @@ export function MarketplacePlaceSelector({
     availablePropertyTypes,
     draftCity,
     draftPropertyTypes,
-    onCityChange,
+    onPlaceChange,
     onPropertyTypesChange,
+    selectedPlace,
     showPropertyTypes,
   ]);
 
@@ -216,7 +236,7 @@ export function MarketplacePlaceSelector({
       setDraftPropertyTypes([]);
     }
     if (isPillLayout) {
-      onCityChange("");
+      onPlaceChange({ city: "", country: "" });
       onPropertyTypesChange([]);
     }
   };
@@ -371,10 +391,11 @@ export function MarketplacePlaceSelector({
                       No listing cities match that search
                     </li>
                   ) : (
-                    filteredCities.map((name) => {
-                      const selected = draftCity.trim().toLowerCase() === name.toLowerCase();
+                    filteredCities.map((place) => {
+                      const selected =
+                        draftCity.trim().toLowerCase() === place.city.toLowerCase();
                       return (
-                        <li key={name}>
+                        <li key={placeKey(place)}>
                           <button
                             type="button"
                             className={cn(
@@ -384,15 +405,20 @@ export function MarketplacePlaceSelector({
                                 : "border-transparent hover:bg-muted/50"
                             )}
                             onClick={() => {
-                              setDraftCity(name);
+                              setDraftCity(place.city);
                               if (isPillLayout) {
-                                onCityChange(name);
+                                onPlaceChange({
+                                  city: place.city,
+                                  country: place.country,
+                                });
                                 if (showPropertyTypes) {
                                   onPropertyTypesChange(
                                     sortPropertyTypesInDisplayOrder(
                                       draftPropertyTypes.filter((value) =>
                                         (
-                                          availablePropertyTypesByCity[name] ?? []
+                                          availablePropertyTypesByCity[
+                                            placeKey(place)
+                                          ] ?? []
                                         ).includes(value)
                                       ),
                                       allPropertyTypeValues
@@ -407,7 +433,7 @@ export function MarketplacePlaceSelector({
                               <MapPin className="h-5 w-5" strokeWidth={1.75} />
                             </span>
                             <span className="block min-w-0 font-semibold text-foreground">
-                              {name}
+                              {placeLabel(place)}
                             </span>
                           </button>
                         </li>
@@ -422,13 +448,13 @@ export function MarketplacePlaceSelector({
                   <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     Property type
                   </p>
-                  {!selectedCity ? (
+                  {!selectedPlace ? (
                     <p className="text-sm text-muted-foreground">
                       Select a city first to see available property types.
                     </p>
                   ) : availablePropertyTypes.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
-                      No property types are available in {selectedCity}.
+                      No property types are available in {selectedPlace.city}.
                     </p>
                   ) : (
                     <div className="flex flex-wrap gap-2 pb-1">

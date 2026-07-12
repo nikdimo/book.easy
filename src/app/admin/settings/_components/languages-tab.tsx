@@ -210,7 +210,7 @@ export function LanguagesTab({ languages }: { languages: LanguageRow[] }) {
               Search and add a language
             </Button>
           </PopoverTrigger>
-          <PopoverContent align="start" className="w-[380px] p-0">
+          <PopoverContent align="start" className="w-[calc(100vw-2rem)] max-w-[380px] p-0">
             <Command shouldFilter={false}>
               <CommandInput
                 value={query}
@@ -330,7 +330,7 @@ function SortableLanguageRow({
 
 function LanguageDragPreview({ language }: { language: LanguageRow }) {
   return (
-    <div className="flex min-w-[320px] items-center justify-between rounded-[1.25rem] border border-primary/25 bg-background/95 px-4 py-3 shadow-[0_30px_80px_-24px_rgba(15,23,42,0.58)] backdrop-blur">
+    <div className="flex w-[calc(100vw-2rem)] max-w-[380px] items-center justify-between rounded-[1.25rem] border border-primary/25 bg-background/95 px-4 py-3 shadow-[0_30px_80px_-24px_rgba(15,23,42,0.58)] backdrop-blur">
       <div className="flex min-w-0 items-center gap-3">
         <div className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-muted/60 text-muted-foreground">
           <GripVertical className="h-4 w-4" />

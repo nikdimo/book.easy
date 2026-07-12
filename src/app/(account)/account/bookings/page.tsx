@@ -45,8 +45,8 @@ export default async function MyBookingsPage() {
               <Card className="hover:shadow-md transition-shadow">
                 <CardContent className="flex gap-4 p-4">
                   <div className="flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <h3 className="font-semibold">{booking.listing.title}</h3>
+                    <div className="flex flex-wrap items-start justify-between gap-2 mb-1">
+                      <h3 className="min-w-0 flex-1 font-semibold">{booking.listing.title}</h3>
                       <Badge variant={booking.status === "CONFIRMED" ? "default" : "secondary"}>
                         {statusConfig?.label || booking.status}
                       </Badge>
@@ -55,7 +55,7 @@ export default async function MyBookingsPage() {
                       <MapPin className="h-3 w-3" />
                       {booking.listing.property.city}
                     </p>
-                    <div className="flex items-center gap-4 mt-2 text-sm">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-sm">
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
                         {formatDate(booking.checkIn)} – {formatDate(booking.checkOut)}

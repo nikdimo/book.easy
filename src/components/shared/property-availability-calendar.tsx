@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { format } from "date-fns";
-import { ShieldAlert } from "lucide-react";
+import { ShieldAlert, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import {
   makeAllFutureDatesAvailable,
   unblockDateRange,
   upsertListingDatePriceRange,
+  removeListingDatePriceRange,
 } from "@/lib/actions/availability.actions";
 import { dateKey, parseLocalYmd } from "@/lib/utils/stay-pricing";
 import {
@@ -47,7 +48,7 @@ interface Block {
 interface DatePriceRow {
   id: string;
   date: Date | string;
-  nightlyRate: unknown;
+  nightlyRate: number;
 }
 
 interface PropertyAvailabilityCalendarProps {
@@ -357,6 +358,20 @@ export function PropertyAvailabilityCalendar({
     if (res?.success) {
       toast.success("Custom price applied");
       setPriceDialogOpen(false);
+    } else if (res?.error) {
+      toast.error(res.error);
+    }
+  }
+
+  async function runRemovePriceOverride(start: string, end: string) {
+    const fd = new FormData();
+    fd.set("listingId", listingId);
+    fd.set("startDate", start);
+    fd.set("endDate", end);
+
+    const res = await removeListingDatePriceRange(fd);
+    if (res?.success) {
+      toast.success("Custom price removed");
     } else if (res?.error) {
       toast.error(res.error);
     }
@@ -684,12 +699,38 @@ export function PropertyAvailabilityCalendar({
                     </p>
                     <p className="text-xs text-muted-foreground">{item.detail}</p>
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {item.kind === "CUSTOM_PRICE"
-                      ? "Price override"
-                      : item.kind === "BOOKING_HOLD"
-                        ? "Booking protection"
-                        : "Manual availability block"}
+                  <div className="flex items-center gap-3">
+                    <div className="text-xs text-muted-foreground">
+                      {item.kind === "CUSTOM_PRICE"
+                        ? "Price override"
+                        : item.kind === "BOOKING_HOLD"
+                          ? "Booking protection"
+                          : "Manual availability block"}
+                    </div>
+                    {item.kind === "CUSTOM_PRICE" ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 text-muted-foreground hover:text-destructive"
+                        disabled={pending}
+                        onClick={() =>
+                          requestConfirm(
+                            "Remove custom price",
+                            `This removes the price override for ${format(
+                              parseLocalYmd(item.start)!,
+                              "MMM d, yyyy"
+                            )} - ${format(
+                              parseLocalYmd(item.end)!,
+                              "MMM d, yyyy"
+                            )}. Nights will revert to the base price.`,
+                            () => runRemovePriceOverride(item.start, item.end)
+                          )
+                        }
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
               ))}

@@ -57,7 +57,10 @@ export default async function AvailabilityPage({ params }: AvailabilityPageProps
           listingId={listing.id}
           baseNightlyRate={base}
           currency={currency}
-          datePrices={datePrices}
+          datePrices={datePrices.map((row) => ({
+            ...row,
+            nightlyRate: Number(row.nightlyRate),
+          }))}
           existingBlocks={blocks}
         />
       ) : (

@@ -23,7 +23,7 @@ export default async function HostDashboardPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <h1 className="text-2xl font-bold">Host Dashboard</h1>
         <Button asChild>
           <Link href="/host/listings/new">Create Listing</Link>

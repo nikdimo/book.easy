@@ -1,15 +1,5 @@
-import { Suspense } from "react";
-import { RegisterForm } from "@/components/auth/register-form";
-
-export const metadata = {
-  title: "Create Account",
-  description: "Create your book.easy.mk account",
-};
+import { redirect } from "next/navigation";
 
 export default function RegisterPage() {
-  return (
-    <Suspense>
-      <RegisterForm />
-    </Suspense>
-  );
+  redirect("/login");
 }

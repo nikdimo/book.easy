@@ -34,11 +34,11 @@ export default async function AdminDashboardPage() {
       ariaLabel: `View all ${totalListings} listings`,
     },
     {
-      label: "Pending Review",
+      label: "Needs Review",
       value: pendingListings,
       icon: AlertTriangle,
-      href: "/admin/listings?status=PENDING_REVIEW",
-      ariaLabel: `${pendingListings} listings pending review`,
+      href: "/admin/listings#pending-review",
+      ariaLabel: `${pendingListings} listings needing review`,
     },
     {
       label: "Published Listings",

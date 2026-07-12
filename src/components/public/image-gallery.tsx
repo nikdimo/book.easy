@@ -5,10 +5,11 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ChevronLeft, ChevronRight, Grid, X } from "lucide-react";
+import type { ListingMediaItem } from "@/lib/types/listing-media";
 import { cn } from "@/lib/utils";
 
 interface ImageGalleryProps {
-  images: { id: string; url: string; alt?: string | null }[];
+  images: ListingMediaItem[];
 }
 
 export function ImageGallery({ images }: ImageGalleryProps) {
@@ -41,7 +42,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
   if (images.length === 0) {
     return (
       <div className="aspect-[16/9] bg-muted rounded-2xl flex items-center justify-center text-muted-foreground ring-1 ring-black/5">
-        No photos available
+        No media available
       </div>
     );
   }
@@ -65,14 +66,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
             )}
             onClick={() => { setGalleryOpen(true); setActiveIndex(0); }}
           >
-            <Image
-              src={mainImage.url}
-              alt={mainImage.alt || "Property photo"}
-              fill
-              className="object-cover"
-              priority
-              sizes="(max-width: 768px) 100vw, 50vw"
-            />
+            <GalleryMedia item={mainImage} fill preload sizes="(max-width: 768px) 100vw, 50vw" />
           </div>
           {gridImages.map((img, i) => (
             <div
@@ -80,13 +74,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
               className="relative cursor-pointer hidden md:block aspect-[4/3]"
               onClick={() => { setGalleryOpen(true); setActiveIndex(i + 1); }}
             >
-              <Image
-                src={img.url}
-                alt={img.alt || "Property photo"}
-                fill
-                className="object-cover"
-                sizes="25vw"
-              />
+              <GalleryMedia item={img} fill sizes="25vw" />
             </div>
           ))}
         </div>
@@ -98,7 +86,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
             onClick={() => { setGalleryOpen(true); setActiveIndex(null); }}
           >
             <Grid className="h-4 w-4 mr-2" />
-            Show all {images.length} photos
+            Show all {images.length} items
           </Button>
         )}
       </div>
@@ -106,12 +94,12 @@ export function ImageGallery({ images }: ImageGalleryProps) {
       <Dialog open={galleryOpen} onOpenChange={(open) => (open ? setGalleryOpen(true) : closeAll())}>
         <DialogContent
           showCloseButton={false}
-          className="max-w-none sm:max-w-none w-screen h-[100dvh] sm:h-[100dvh] rounded-none p-0 gap-0 bg-background top-0 left-0 translate-x-0 translate-y-0 sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2"
+          className="max-w-none sm:max-w-none w-screen h-[100dvh] sm:h-[100dvh] overflow-hidden rounded-none p-0 gap-0 bg-background top-0 left-0 translate-x-0 translate-y-0 sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2"
         >
           <DialogTitle className="sr-only">
             {activeIndex === null
-              ? `All ${images.length} photo${images.length !== 1 ? "s" : ""}`
-              : `Photo ${activeIndex + 1} of ${images.length}`}
+              ? `All ${images.length} media item${images.length !== 1 ? "s" : ""}`
+              : `Media item ${activeIndex + 1} of ${images.length}`}
           </DialogTitle>
 
           {activeIndex === null ? (
@@ -119,7 +107,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
             <div className="flex h-full min-h-0 flex-col">
               <div className="flex shrink-0 items-center justify-between border-b px-4 py-3 sm:px-6">
                 <span className="font-heading text-sm font-medium">
-                  {images.length} photo{images.length !== 1 ? "s" : ""}
+                  {images.length} item{images.length !== 1 ? "s" : ""}
                 </span>
                 <Button variant="ghost" size="icon-sm" onClick={closeAll}>
                   <X className="h-5 w-5" />
@@ -135,13 +123,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
                       className="relative aspect-square overflow-hidden rounded-lg ring-1 ring-black/5 transition hover:opacity-90"
                       onClick={() => setActiveIndex(i)}
                     >
-                      <Image
-                        src={img.url}
-                        alt={img.alt || "Property photo"}
-                        fill
-                        className="object-cover"
-                        sizes="(max-width: 640px) 50vw, 25vw"
-                      />
+                      <GalleryMedia item={img} fill sizes="(max-width: 640px) 50vw, 25vw" />
                     </button>
                   ))}
                 </div>
@@ -155,7 +137,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
             </div>
           ) : (
             /* Single photo viewer */
-            <div className="relative flex h-full flex-col bg-black">
+            <div className="relative flex h-full min-w-0 w-full flex-col overflow-hidden bg-black">
               <div className="absolute top-0 right-0 left-0 z-10 flex items-center justify-between bg-gradient-to-b from-black/60 to-transparent p-3 sm:p-4">
                 <Button
                   variant="ghost"
@@ -164,7 +146,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
                   onClick={() => setActiveIndex(null)}
                 >
                   <ArrowLeft className="h-5 w-5" />
-                  <span className="sr-only">Back to all photos</span>
+                  <span className="sr-only">Back to all media</span>
                 </Button>
                 <span className="text-sm text-white">
                   {activeIndex + 1} / {images.length}
@@ -180,14 +162,13 @@ export function ImageGallery({ images }: ImageGalleryProps) {
                 </Button>
               </div>
 
-              <div className="relative flex-1">
-                <Image
-                  src={images[activeIndex].url}
-                  alt={images[activeIndex].alt || "Property photo"}
+              <div className="relative min-w-0 w-full flex-1 overflow-hidden">
+                <GalleryMedia
+                  item={images[activeIndex]}
                   fill
-                  className="object-contain"
+                  contain
+                  preload
                   sizes="100vw"
-                  priority
                 />
 
                 {images.length > 1 && (
@@ -227,13 +208,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
                       )}
                       onClick={() => setActiveIndex(i)}
                     >
-                      <Image
-                        src={img.url}
-                        alt={img.alt || "Property photo"}
-                        fill
-                        className="object-cover"
-                        sizes="64px"
-                      />
+                      <GalleryMedia item={img} fill sizes="64px" />
                     </button>
                   ))}
                 </div>
@@ -243,5 +218,42 @@ export function ImageGallery({ images }: ImageGalleryProps) {
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+function GalleryMedia({
+  item,
+  fill,
+  preload,
+  sizes,
+  contain = false,
+}: {
+  item: ListingMediaItem;
+  fill?: boolean;
+  preload?: boolean;
+  sizes?: string;
+  contain?: boolean;
+}) {
+  if (item.mediaType === "VIDEO") {
+    return (
+      <video
+        src={item.url}
+        className={cn("h-full w-full", contain ? "object-contain" : "object-cover")}
+        controls
+        playsInline
+        preload="metadata"
+      />
+    );
+  }
+
+  return (
+    <Image
+      src={item.url}
+      alt={item.alt || "Property photo"}
+      fill={fill}
+      className={contain ? "object-contain" : "object-cover"}
+      preload={preload}
+      sizes={sizes}
+    />
   );
 }

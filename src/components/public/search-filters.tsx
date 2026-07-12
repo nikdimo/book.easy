@@ -70,6 +70,7 @@ interface SearchFiltersProps {
 
 type SearchFiltersState = {
   city: string;
+  country: string;
   checkIn: string;
   checkOut: string;
   guests: number;
@@ -194,6 +195,7 @@ export function SearchFilters({
   const initialState = useMemo<SearchFiltersState>(
     () => ({
       city: searchParams.get("city") ?? "",
+      country: searchParams.get("country") ?? "",
       checkIn: searchParams.get("checkIn") ?? "",
       checkOut: searchParams.get("checkOut") ?? "",
       guests: parsePositiveInt(searchParams.get("guests")),
@@ -252,6 +254,7 @@ function SearchFiltersInner({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const city = initialState.city;
+  const country = initialState.country;
   const checkIn = initialState.checkIn;
   const checkOut = initialState.checkOut;
   const guests = initialState.guests;
@@ -346,6 +349,7 @@ function SearchFiltersInner({
           },
           body: JSON.stringify({
             city: city.trim() || undefined,
+            country: country.trim() || undefined,
             checkIn: checkIn || undefined,
             checkOut: checkOut || undefined,
             guests: guests > 0 ? guests : undefined,
@@ -385,6 +389,7 @@ function SearchFiltersInner({
     checkIn,
     checkOut,
     city,
+    country,
     guests,
     isPriceFiltered,
     priceRange,

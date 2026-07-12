@@ -14,7 +14,7 @@ export function SubmitForReviewButton({ listingId }: { listingId: string }) {
   return (
     <div>
       <p className="text-sm text-muted-foreground mb-3">
-        Ready to go live? Submit your listing for platform review. Once approved, it will be visible to guests.
+        Ready to go live? Publishing makes your listing visible to guests immediately.
       </p>
       <Button
         disabled={isPending}
@@ -24,14 +24,14 @@ export function SubmitForReviewButton({ listingId }: { listingId: string }) {
             if (result?.error) {
               toast.error(result.error);
             } else {
-              toast.success("Listing submitted for review!");
+              toast.success("Listing published!");
               router.refresh();
             }
           });
         }}
       >
         <Send className="h-4 w-4 mr-2" />
-        {isPending ? "Submitting..." : "Submit for Review"}
+        {isPending ? "Publishing..." : "Publish Listing"}
       </Button>
     </div>
   );

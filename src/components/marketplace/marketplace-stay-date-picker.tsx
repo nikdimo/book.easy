@@ -108,11 +108,11 @@ export function DateFlexibilityRow({
 
 // Rendering many months of custom day-buttons up front was the single biggest
 // contributor to date-picker open latency (each cell carries context reads, date
-// formatting, modifiers, and pointer handlers). Start small; MONTH_LOAD_STEP lets the
-// user explicitly load more.
+// formatting, modifiers, and pointer handlers). Start small and append one desktop
+// row at a time so reaching the scroll boundary never creates a large render spike.
 const INITIAL_MOBILE_MONTH_COUNT = 2;
 const INITIAL_DESKTOP_MONTH_COUNT = 2;
-const MONTH_LOAD_STEP = 4;
+const MONTH_LOAD_STEP = 2;
 const MAX_MONTH_COUNT = 24;
 const EMPTY_GUEST_COUNTS: GuestCounts = {
   adults: 0,
@@ -264,6 +264,7 @@ function MarketplaceRangeDayButton({
   locale,
   onPointerDown,
   onClick: upstreamClick,
+  children,
   ...rest
 }: React.ComponentProps<typeof DayButton> & { locale?: Partial<Locale> }) {
   const ctx = React.useContext(DragContext);
@@ -274,7 +275,10 @@ function MarketplaceRangeDayButton({
   void onPointerDown;
 
   React.useEffect(() => {
-    if (modifiers.focused) ref.current?.focus();
+    // DayPicker may rebuild its month collection when lazy-loading. Keep its
+    // keyboard focus behavior without letting focus scroll an earlier selected
+    // day back into view.
+    if (modifiers.focused) ref.current?.focus({ preventScroll: true });
   }, [modifiers.focused]);
 
   const isEndpoint =
@@ -308,11 +312,11 @@ function MarketplaceRangeDayButton({
         onPointerDown={handlePointerDown}
         onClick={handleClick}
         className={cn(
-          "relative z-10 flex h-full size-auto w-full min-w-(--cell-size) flex-col items-center justify-start border-0 bg-transparent px-1 py-1 font-normal leading-none shadow-none",
+          "group/date relative z-10 flex h-full size-auto w-full min-w-(--cell-size) flex-col items-center justify-start border-0 bg-transparent px-1 py-1 font-normal leading-none shadow-none outline-none",
           "text-foreground hover:bg-transparent hover:text-foreground",
           modifiers.outside &&
             "text-muted-foreground/40 hover:text-muted-foreground/50",
-          modifiers.disabled && "opacity-40",
+          modifiers.disabled && "cursor-default opacity-40",
           modifiers.range_middle &&
             "rounded-none bg-transparent text-foreground hover:bg-transparent",
           ctx?.hasRange &&
@@ -325,10 +329,13 @@ function MarketplaceRangeDayButton({
       >
         <span
           className={cn(
-            "flex h-7 w-7 items-center justify-center rounded-full text-sm font-medium md:h-8 md:w-8",
+            "flex h-7 w-7 items-center justify-center rounded-full text-sm font-medium transition-[box-shadow,background-color,color,transform] duration-150 ease-out md:h-8 md:w-8",
             isEndpoint
-              ? "bg-[hsl(0_0%_13%)] text-white shadow-none"
-              : "text-foreground"
+              ? "bg-[hsl(0_0%_13%)] text-white shadow-[0_2px_8px_rgba(0,0,0,0.18)] group-hover/date:scale-[1.04]"
+              : "text-foreground",
+            !modifiers.disabled &&
+              !isEndpoint &&
+              "group-hover/date:shadow-[inset_0_0_0_1.5px_hsl(0_0%_12%)] group-focus-visible/date:shadow-[inset_0_0_0_2px_hsl(0_0%_12%)]"
           )}
         >
           {day.date.getDate()}
@@ -356,23 +363,34 @@ function MarketplaceRangeDayButton({
       onPointerDown={handlePointerDown}
       onClick={handleClick}
       className={cn(
-        "relative z-10 flex aspect-square size-auto w-full min-w-(--cell-size) items-center justify-center border-0 font-normal leading-none",
+        "group/date relative z-10 flex aspect-square size-auto w-full min-w-(--cell-size) items-center justify-center border-0 bg-transparent font-normal leading-none shadow-none outline-none",
         "text-foreground hover:bg-transparent hover:text-foreground",
         modifiers.outside &&
           "text-muted-foreground/40 hover:text-muted-foreground/50",
-        modifiers.disabled && "opacity-40",
+        modifiers.disabled && "cursor-default opacity-40",
         modifiers.range_middle &&
           "rounded-none bg-transparent text-foreground hover:bg-transparent",
-        isEndpoint &&
-          "rounded-full bg-[hsl(0_0%_13%)] text-white shadow-none hover:bg-[hsl(0_0%_18%)] hover:text-white",
         ctx?.hasRange &&
           (modifiers.range_start || modifiers.range_end) &&
-          "touch-none cursor-grab active:cursor-grabbing select-none",
+            "touch-none cursor-grab active:cursor-grabbing select-none",
         defaultClassNames.day,
         className
       )}
       {...rest}
-    />
+    >
+      <span
+        className={cn(
+          "flex size-full items-center justify-center rounded-full transition-[box-shadow,background-color,color,transform] duration-150 ease-out",
+          isEndpoint &&
+            "bg-[hsl(0_0%_13%)] text-white shadow-[0_2px_8px_rgba(0,0,0,0.18)] group-hover/date:scale-[1.04] group-hover/date:bg-[hsl(0_0%_18%)]",
+          !modifiers.disabled &&
+            !isEndpoint &&
+            "group-hover/date:shadow-[inset_0_0_0_1.5px_hsl(0_0%_12%)] group-focus-visible/date:shadow-[inset_0_0_0_2px_hsl(0_0%_12%)]"
+        )}
+      >
+        {children}
+      </span>
+    </Button>
   );
 }
 
@@ -415,8 +433,13 @@ export function DateRangeCalendarStep({
     DateRange | undefined
   >(undefined);
   const [isDragging, setIsDragging] = React.useState(false);
+  const [, startMonthAppendTransition] = React.useTransition();
   const bodyScrollRef = React.useRef<HTMLDivElement>(null);
+  const wasActiveRef = React.useRef(false);
+  const pendingMonthAppendScrollTopRef = React.useRef<number | null>(null);
   const dragFrameRef = React.useRef<number | null>(null);
+  const dragAutoScrollFrameRef = React.useRef<number | null>(null);
+  const dragPointerRef = React.useRef<{ x: number; y: number } | null>(null);
   const pendingDragDateRef = React.useRef<Date | null>(null);
 
   const dragRef = React.useRef<{
@@ -437,11 +460,15 @@ export function DateRangeCalendarStep({
   }, []);
 
   React.useEffect(() => {
-    if (!active) return;
+    const justOpened = active && !wasActiveRef.current;
+    wasActiveRef.current = active;
+    if (!justOpened) return;
+
     bodyScrollRef.current?.scrollTo({ top: 0 });
+    pendingMonthAppendScrollTopRef.current = null;
     // Resets the visible month count each time this step becomes active, so a
-    // prior "show more months" expansion doesn't leak into the next open.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // prior expansion doesn't leak into the next open. Selection changes must
+    // not reset this state: hosts often select dates in a lazily loaded month.
     setVisibleMonthCount(
       fitViewport
         ? INITIAL_DESKTOP_MONTH_COUNT
@@ -450,14 +477,31 @@ export function DateRangeCalendarStep({
           : INITIAL_DESKTOP_MONTH_COUNT
     );
     if (fitViewport) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDisplayMonth(startOfMonth(selected?.from ?? new Date()));
     }
   }, [active, fitViewport, isMobile, selected?.from]);
+
+  // react-day-picker recalculates its internal month collection when
+  // numberOfMonths changes. Restore the scroll offset in the same layout pass
+  // so appending months never produces a visible jump, even if the browser's
+  // scroll anchoring or the calendar's focus management tries to reposition it.
+  React.useLayoutEffect(() => {
+    const scrollTop = pendingMonthAppendScrollTopRef.current;
+    if (scrollTop === null) return;
+
+    const scrollContainer = bodyScrollRef.current;
+    if (scrollContainer) scrollContainer.scrollTop = scrollTop;
+    pendingMonthAppendScrollTopRef.current = null;
+  }, [visibleMonthCount]);
 
   React.useEffect(() => {
     return () => {
       if (dragFrameRef.current !== null) {
         window.cancelAnimationFrame(dragFrameRef.current);
+      }
+      if (dragAutoScrollFrameRef.current !== null) {
+        window.cancelAnimationFrame(dragAutoScrollFrameRef.current);
       }
     };
   }, []);
@@ -526,6 +570,57 @@ export function DateRangeCalendarStep({
         setDragDisplayRange({ from: dr.currentFrom, to: dr.currentTo });
       };
 
+      const updateDateUnderPointer = (clientX: number, clientY: number) => {
+        const element = document.elementFromPoint(clientX, clientY);
+        const ymd = element?.closest?.("[data-ymd]")?.getAttribute("data-ymd");
+        if (!ymd) return;
+
+        const nextDate = parseLocalYmd(ymd);
+        if (!nextDate) return;
+        const normalizedDate = startOfDay(nextDate);
+        if (isBefore(normalizedDate, startOfToday())) return;
+        pendingDragDateRef.current = normalizedDate;
+
+        if (dragFrameRef.current !== null) return;
+        dragFrameRef.current = window.requestAnimationFrame(() => {
+          dragFrameRef.current = null;
+          const pendingDate = pendingDragDateRef.current;
+          pendingDragDateRef.current = null;
+          if (pendingDate) updateDragPreview(pendingDate);
+        });
+      };
+
+      const runEdgeAutoScroll = () => {
+        dragAutoScrollFrameRef.current = null;
+        const pointer = dragPointerRef.current;
+        const scrollContainer = bodyScrollRef.current;
+        if (!dragRef.current || !pointer || !scrollContainer) return;
+
+        const bounds = scrollContainer.getBoundingClientRect();
+        const edgeZone = Math.min(72, bounds.height * 0.18);
+        let speed = 0;
+
+        if (pointer.y < bounds.top + edgeZone) {
+          speed = -14 * (1 - Math.max(0, pointer.y - bounds.top) / edgeZone);
+        } else if (pointer.y > bounds.bottom - edgeZone) {
+          speed = 14 * (1 - Math.max(0, bounds.bottom - pointer.y) / edgeZone);
+        }
+
+        if (Math.abs(speed) < 0.5) return;
+        const previousScrollTop = scrollContainer.scrollTop;
+        scrollContainer.scrollTop += speed;
+
+        if (scrollContainer.scrollTop !== previousScrollTop) {
+          updateDateUnderPointer(pointer.x, pointer.y);
+        }
+        // Keep the loop alive at the current boundary while lazy months render;
+        // once their height is committed, the same stationary pointer continues
+        // scrolling without needing a wiggle from the user.
+        dragAutoScrollFrameRef.current = window.requestAnimationFrame(
+          runEdgeAutoScroll
+        );
+      };
+
       const onMove = (ev: PointerEvent) => {
         const dr = dragRef.current;
         if (!dr) return;
@@ -538,25 +633,13 @@ export function DateRangeCalendarStep({
           setDragDisplayRange({ from: dr.currentFrom, to: dr.currentTo });
         }
 
-        const el = document.elementFromPoint(ev.clientX, ev.clientY);
-        const ymd = el?.closest?.("[data-ymd]")?.getAttribute("data-ymd");
-        if (!ymd) return;
-        const d = parseLocalYmd(ymd);
-        if (!d) return;
-        const d0 = startOfDay(d);
-        if (isBefore(d0, startOfToday())) return;
-        pendingDragDateRef.current = d0;
-
-        if (dragFrameRef.current !== null) return;
-
-        dragFrameRef.current = window.requestAnimationFrame(() => {
-          dragFrameRef.current = null;
-          const pendingDate = pendingDragDateRef.current;
-          pendingDragDateRef.current = null;
-          if (pendingDate) {
-            updateDragPreview(pendingDate);
-          }
-        });
+        dragPointerRef.current = { x: ev.clientX, y: ev.clientY };
+        updateDateUnderPointer(ev.clientX, ev.clientY);
+        if (dragAutoScrollFrameRef.current === null) {
+          dragAutoScrollFrameRef.current = window.requestAnimationFrame(
+            runEdgeAutoScroll
+          );
+        }
       };
 
       const onUp = () => {
@@ -568,6 +651,11 @@ export function DateRangeCalendarStep({
           window.cancelAnimationFrame(dragFrameRef.current);
           dragFrameRef.current = null;
         }
+        if (dragAutoScrollFrameRef.current !== null) {
+          window.cancelAnimationFrame(dragAutoScrollFrameRef.current);
+          dragAutoScrollFrameRef.current = null;
+        }
+        dragPointerRef.current = null;
         if (pendingDragDateRef.current) {
           updateDragPreview(pendingDragDateRef.current);
           pendingDragDateRef.current = null;
@@ -617,16 +705,23 @@ export function DateRangeCalendarStep({
         onScroll={(e) => {
           if (fitViewport) return;
           const el = e.currentTarget;
-          if (el.scrollTop + el.clientHeight >= el.scrollHeight - 320) {
-            setVisibleMonthCount((current) =>
-              Math.min(MAX_MONTH_COUNT, current + MONTH_LOAD_STEP)
-            );
+          if (
+            pendingMonthAppendScrollTopRef.current === null &&
+            visibleMonthCount < MAX_MONTH_COUNT &&
+            el.scrollTop + el.clientHeight >= el.scrollHeight - 320
+          ) {
+            pendingMonthAppendScrollTopRef.current = el.scrollTop;
+            startMonthAppendTransition(() => {
+              setVisibleMonthCount((current) =>
+                Math.min(MAX_MONTH_COUNT, current + MONTH_LOAD_STEP)
+              );
+            });
           }
         }}
         className={cn(
           fitViewport
             ? "shrink-0 overflow-hidden px-5 py-5 md:px-7 md:py-6"
-            : "flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain px-4 py-5 md:px-6 md:py-6",
+            : "flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain [overflow-anchor:none] px-4 py-5 md:px-6 md:py-6",
           isDragging && "cursor-grabbing select-none"
         )}
       >
@@ -692,12 +787,18 @@ export function DateRangeCalendarStep({
                 "[&:first-child[data-range-end=true]]:rounded-l-full",
                 "[&:last-child[data-range-start=true]]:rounded-r-full"
               ),
+              // Selection tint is painted via an inset box-shadow rather than a
+              // background-color utility. Blocked/booked days already carry their own
+              // background-color modifier class (manualBlock/bookingHold) on this same
+              // cell; box-shadow paints as a separate layer on top of that background,
+              // so the "this day is selected" tint stays visible instead of losing an
+              // unpredictable Tailwind class-order tie against the modifier's bg-*.
               range_start:
-                "rounded-l-full bg-[hsl(220_12%_86%)] hover:bg-[hsl(220_12%_80%)] [&_button]:rounded-full",
+                "rounded-l-full shadow-[inset_0_0_0_999px_hsl(220_12%_86%)] hover:shadow-[inset_0_0_0_999px_hsl(220_12%_80%)] [&_button]:rounded-full",
               range_middle:
-                "rounded-none bg-[hsl(220_12%_86%)] hover:bg-[hsl(220_12%_80%)] [&_button]:bg-transparent",
+                "rounded-none shadow-[inset_0_0_0_999px_hsl(220_12%_86%)] hover:shadow-[inset_0_0_0_999px_hsl(220_12%_80%)] [&_button]:bg-transparent",
               range_end:
-                "rounded-r-full bg-[hsl(220_12%_86%)] hover:bg-[hsl(220_12%_80%)] [&_button]:rounded-full",
+                "rounded-r-full shadow-[inset_0_0_0_999px_hsl(220_12%_86%)] hover:shadow-[inset_0_0_0_999px_hsl(220_12%_80%)] [&_button]:rounded-full",
               outside: "opacity-0 pointer-events-none",
               hidden: "invisible",
             }}

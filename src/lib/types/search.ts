@@ -1,5 +1,8 @@
 export interface SearchFilters {
   city?: string;
+  /** Only set when the exact (city, country) pair is known (e.g. picked from the
+   * autocomplete) — narrows the `city` match instead of the default fuzzy contains. */
+  country?: string;
   checkIn?: string;
   checkOut?: string;
   guests?: number;

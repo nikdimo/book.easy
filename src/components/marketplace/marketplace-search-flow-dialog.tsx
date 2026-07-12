@@ -18,11 +18,14 @@ import {
   DateRangeCalendarStep,
   GuestCountsStep,
 } from "@/components/marketplace/marketplace-stay-date-picker";
+import { placeKey, placeLabel, type PlaceOption } from "@/lib/utils/place";
 
 type SearchFlowStep = "where" | "when" | "who";
 
 type SearchFlowState = {
   city: string;
+  /** Only set when `city` is a known exact match (picked from the list). */
+  country: string;
   checkIn: string;
   checkOut: string;
   guestCounts: GuestCounts;
@@ -74,7 +77,7 @@ export function MarketplaceSearchFlowDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialState: SearchFlowState;
-  popularCities: string[];
+  popularCities: PlaceOption[];
   availablePropertyTypesByCity: Record<string, string[]>;
   propertyTypes: PropertyTypeOption[];
   showPropertyTypes: boolean;
@@ -133,40 +136,46 @@ export function MarketplaceSearchFlowDialog({
 
   const filteredCities = React.useMemo(() => {
     const q = draftCity.trim().toLowerCase();
-    const sorted = [...popularCities].sort((a, b) => a.localeCompare(b));
+    const sorted = [...popularCities].sort((a, b) => a.city.localeCompare(b.city));
     if (!q) return sorted;
 
     return sorted
-      .filter((name) => name.toLowerCase().includes(q))
+      .filter(
+        (place) =>
+          place.city.toLowerCase().includes(q) ||
+          place.country.toLowerCase().includes(q)
+      )
       .sort((a, b) => {
-        const aStarts = a.toLowerCase().startsWith(q) ? 0 : 1;
-        const bStarts = b.toLowerCase().startsWith(q) ? 0 : 1;
-        return aStarts - bStarts || a.localeCompare(b);
+        const aStarts = a.city.toLowerCase().startsWith(q) ? 0 : 1;
+        const bStarts = b.city.toLowerCase().startsWith(q) ? 0 : 1;
+        return aStarts - bStarts || a.city.localeCompare(b.city);
       });
   }, [draftCity, popularCities]);
 
-  const selectedCity = React.useMemo(() => {
+  // Exact match by city name only — ambiguous if the same city name exists in more
+  // than one country; disambiguation happens by picking a specific row instead.
+  const selectedPlace = React.useMemo(() => {
     const normalizedDraftCity = draftCity.trim().toLowerCase();
     if (!normalizedDraftCity) return null;
 
     return (
       popularCities.find(
-        (candidate) => candidate.toLowerCase() === normalizedDraftCity
+        (candidate) => candidate.city.toLowerCase() === normalizedDraftCity
       ) ?? null
     );
   }, [draftCity, popularCities]);
 
   const availablePropertyTypes = React.useMemo(() => {
-    if (!selectedCity) return [];
-    return availablePropertyTypesByCity[selectedCity] ?? [];
-  }, [availablePropertyTypesByCity, selectedCity]);
+    if (!selectedPlace) return [];
+    return availablePropertyTypesByCity[placeKey(selectedPlace)] ?? [];
+  }, [availablePropertyTypesByCity, selectedPlace]);
   const allPropertyTypeValues = React.useMemo(
     () => [...new Set(Object.values(availablePropertyTypesByCity).flat())],
     [availablePropertyTypesByCity]
   );
 
   React.useEffect(() => {
-    if (!showPropertyTypes || !open || !selectedCity) return;
+    if (!showPropertyTypes || !open || !selectedPlace) return;
     // Prunes any previously selected types that no longer belong to the
     // active city. This is an intentional sync against the city-specific list.
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -180,7 +189,7 @@ export function MarketplaceSearchFlowDialog({
     allPropertyTypeValues,
     availablePropertyTypes,
     open,
-    selectedCity,
+    selectedPlace,
     showPropertyTypes,
   ]);
 
@@ -245,6 +254,7 @@ export function MarketplaceSearchFlowDialog({
   const handleApplySearch = () => {
     onApplySearch({
       city: draftCity.trim(),
+      country: selectedPlace?.country ?? "",
       checkIn: draftCheckIn,
       checkOut: draftCheckOut,
       guestCounts: draftGuestCounts,
@@ -425,11 +435,11 @@ export function MarketplaceSearchFlowDialog({
                         No listing cities match that search
                       </li>
                     ) : (
-                      filteredCities.map((name) => {
+                      filteredCities.map((place) => {
                         const selected =
-                          draftCity.trim().toLowerCase() === name.toLowerCase();
+                          draftCity.trim().toLowerCase() === place.city.toLowerCase();
                         return (
-                          <li key={name}>
+                          <li key={placeKey(place)}>
                             <button
                               type="button"
                               className={cn(
@@ -438,13 +448,13 @@ export function MarketplaceSearchFlowDialog({
                                   ? "border-foreground bg-muted/40"
                                   : "border-transparent hover:bg-muted/50"
                               )}
-                              onClick={() => setDraftCity(name)}
+                              onClick={() => setDraftCity(place.city)}
                             >
                               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
                                 <MapPin className="h-5 w-5" strokeWidth={1.75} />
                               </span>
                               <span className="block min-w-0 font-semibold text-foreground">
-                                {name}
+                                {placeLabel(place)}
                               </span>
                             </button>
                           </li>
@@ -459,13 +469,13 @@ export function MarketplaceSearchFlowDialog({
                     <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                       Property type
                     </p>
-                    {!selectedCity ? (
+                    {!selectedPlace ? (
                       <p className="text-sm text-muted-foreground">
                         Select a city first to see available property types.
                       </p>
                     ) : availablePropertyTypes.length === 0 ? (
                       <p className="text-sm text-muted-foreground">
-                        No property types are available in {selectedCity}.
+                        No property types are available in {selectedPlace.city}.
                       </p>
                     ) : (
                       <div className="flex flex-wrap gap-2 pb-1">

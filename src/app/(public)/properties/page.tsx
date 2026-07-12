@@ -41,6 +41,7 @@ export default async function PropertiesPage({ searchParams }: SearchPageProps) 
 
   const filters = {
     city: typeof params.city === "string" ? params.city : undefined,
+    country: typeof params.country === "string" ? params.country : undefined,
     checkIn: typeof params.checkIn === "string" ? params.checkIn : undefined,
     checkOut: typeof params.checkOut === "string" ? params.checkOut : undefined,
     guests: params.guests ? Number(params.guests) : undefined,
@@ -80,6 +81,7 @@ export default async function PropertiesPage({ searchParams }: SearchPageProps) 
   function buildPageUrl(page: number) {
     const p = new URLSearchParams();
     if (filters.city) p.set("city", filters.city);
+    if (filters.country) p.set("country", filters.country);
     if (filters.checkIn) p.set("checkIn", filters.checkIn);
     if (filters.checkOut) p.set("checkOut", filters.checkOut);
     if (filters.guests) p.set("guests", String(filters.guests));
@@ -104,6 +106,8 @@ export default async function PropertiesPage({ searchParams }: SearchPageProps) 
       : undefined;
 
   const listingQuery = new URLSearchParams();
+  if (filters.city) listingQuery.set("city", filters.city);
+  if (filters.country) listingQuery.set("country", filters.country);
   if (filters.checkIn) listingQuery.set("checkIn", filters.checkIn);
   if (filters.checkOut) listingQuery.set("checkOut", filters.checkOut);
   if (filters.guests) listingQuery.set("guests", String(filters.guests));

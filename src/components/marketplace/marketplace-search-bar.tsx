@@ -23,11 +23,15 @@ import {
   stringifyPropertyTypesParam,
 } from "@/lib/property-type-filter";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
+import type { PlaceOption } from "@/lib/utils/place";
 
 type Variant = "hero" | "compact" | "pill" | "summary";
 
 type SearchBarState = {
   city: string;
+  /** Only set when `city` is a known exact match (picked from the list), so two
+   * same-named cities in different countries aren't conflated. */
+  country: string;
   checkIn: string;
   checkOut: string;
   guestCounts: GuestCounts;
@@ -58,6 +62,7 @@ function getInitialSearchBarState(args: {
   pathname: string;
   searchParams: ReturnType<typeof useSearchParams>;
   defaultCity: string;
+  defaultCountry: string;
   defaultCheckIn: string;
   defaultCheckOut: string;
   defaultGuests: string;
@@ -67,6 +72,7 @@ function getInitialSearchBarState(args: {
     pathname,
     searchParams,
     defaultCity,
+    defaultCountry,
     defaultCheckIn,
     defaultCheckOut,
     defaultGuests,
@@ -78,6 +84,12 @@ function getInitialSearchBarState(args: {
     defaultCity,
     searchParams.get("city"),
     rememberedSearchState?.city,
+    allowRememberedFallback
+  );
+  const country = resolveStringValue(
+    defaultCountry,
+    searchParams.get("country"),
+    rememberedSearchState?.country,
     allowRememberedFallback
   );
   const checkIn = resolveStringValue(
@@ -122,6 +134,7 @@ function getInitialSearchBarState(args: {
 
   return {
     city,
+    country,
     checkIn,
     checkOut,
     guestCounts,
@@ -133,6 +146,7 @@ function getInitialSearchBarState(args: {
 function hasSearchBarState(state: SearchBarState): boolean {
   return Boolean(
     state.city ||
+      state.country ||
       state.checkIn ||
       state.checkOut ||
       countsToGuestsParam(state.guestCounts) ||
@@ -160,6 +174,7 @@ function formatDateSummary(checkIn: string, checkOut: string): string {
 export function MarketplaceSearchBar({
   variant = "hero",
   defaultCity = "",
+  defaultCountry = "",
   defaultCheckIn = "",
   defaultCheckOut = "",
   defaultGuests = "",
@@ -169,10 +184,11 @@ export function MarketplaceSearchBar({
 }: {
   variant?: Variant;
   defaultCity?: string;
+  defaultCountry?: string;
   defaultCheckIn?: string;
   defaultCheckOut?: string;
   defaultGuests?: string;
-  popularCities?: string[];
+  popularCities?: PlaceOption[];
   availablePropertyTypesByCity?: Record<string, string[]>;
   propertyTypes?: PropertyTypeOption[];
 }) {
@@ -185,6 +201,7 @@ export function MarketplaceSearchBar({
     pathname,
     searchParams,
     defaultCity,
+    defaultCountry,
     defaultCheckIn,
     defaultCheckOut,
     defaultGuests,
@@ -201,6 +218,7 @@ export function MarketplaceSearchBar({
     pathname,
     searchParams.toString(),
     defaultCity,
+    defaultCountry,
     defaultCheckIn,
     defaultCheckOut,
     defaultGuests,
@@ -238,13 +256,14 @@ function MarketplaceSearchBarInner({
   variant: Variant;
   initialState: SearchBarState;
   showPropertyTypesInWhere: boolean;
-  popularCities: string[];
+  popularCities: PlaceOption[];
   availablePropertyTypesByCity: Record<string, string[]>;
   propertyTypes: PropertyTypeOption[];
   allPropertyTypeValues: string[];
 }) {
   const router = useRouter();
   const [city, setCity] = useState(initialState.city);
+  const [country, setCountry] = useState(initialState.country);
   const [checkIn, setCheckIn] = useState(initialState.checkIn);
   const [checkOut, setCheckOut] = useState(initialState.checkOut);
   const [guestCounts, setGuestCounts] = useState(initialState.guestCounts);
@@ -268,6 +287,7 @@ function MarketplaceSearchBarInner({
   const submitQuery = () => {
     const p = new URLSearchParams();
     if (city.trim()) p.set("city", city.trim());
+    if (country.trim()) p.set("country", country.trim());
     if (checkIn) p.set("checkIn", checkIn);
     if (checkOut) p.set("checkOut", checkOut);
     const guestsParam = countsToGuestsParam(guestCounts);
@@ -287,6 +307,7 @@ function MarketplaceSearchBarInner({
 
     rememberedSearchState = {
       city: city.trim(),
+      country: country.trim(),
       checkIn,
       checkOut,
       guestCounts,
@@ -365,6 +386,7 @@ function MarketplaceSearchBarInner({
           onOpenChange={setSearchFlowOpen}
           initialState={{
             city,
+            country,
             checkIn,
             checkOut,
             guestCounts,
@@ -377,6 +399,7 @@ function MarketplaceSearchBarInner({
           showPropertyTypes={showPropertyTypesInWhere}
           onApplySearch={(next) => {
             setCity(next.city);
+            setCountry(next.country);
             setCheckIn(next.checkIn);
             setCheckOut(next.checkOut);
             setGuestCounts(next.guestCounts);
@@ -386,6 +409,7 @@ function MarketplaceSearchBarInner({
             rememberedSearchState = next;
             const p = new URLSearchParams();
             if (next.city.trim()) p.set("city", next.city.trim());
+            if (next.country.trim()) p.set("country", next.country.trim());
             if (next.checkIn) p.set("checkIn", next.checkIn);
             if (next.checkOut) p.set("checkOut", next.checkOut);
             const guestsParam = countsToGuestsParam(next.guestCounts);
@@ -419,9 +443,13 @@ function MarketplaceSearchBarInner({
         <MarketplacePlaceSelector
           layout="pill"
           city={city}
+          country={country}
           selectedPropertyTypes={propertyTypes}
           onPropertyTypesChange={setPropertyTypes}
-          onCityChange={setCity}
+          onPlaceChange={({ city: c, country: co }) => {
+            setCity(c);
+            setCountry(co);
+          }}
           open={placeSelectorOpen}
           onOpenChange={handlePlaceOpenChange}
           onNextToDates={() => {
@@ -515,9 +543,13 @@ function MarketplaceSearchBarInner({
         <MarketplacePlaceSelector
           layout={isCompact ? "compact" : "hero"}
           city={city}
+          country={country}
           selectedPropertyTypes={propertyTypes}
           onPropertyTypesChange={setPropertyTypes}
-          onCityChange={setCity}
+          onPlaceChange={({ city: c, country: co }) => {
+            setCity(c);
+            setCountry(co);
+          }}
           open={placeSelectorOpen}
           onOpenChange={handlePlaceOpenChange}
           onNextToDates={() => {

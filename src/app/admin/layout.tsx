@@ -1,27 +1,7 @@
-import Link from "next/link";
-import {
-  CalendarDays,
-  FileText,
-  Home,
-  LayoutDashboard,
-  Lightbulb,
-  Settings,
-  ShieldCheck,
-  Users,
-} from "lucide-react";
+import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { GoogleTranslateWidget } from "@/components/shared/google-translate-widget";
 import { requireAdminPage } from "@/lib/auth-helpers";
 import { getEnabledLanguages } from "@/lib/services/language.service";
-
-const adminNav = [
-  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/listings", label: "Listings", icon: Home },
-  { href: "/admin/suggestions", label: "Suggestions", icon: Lightbulb },
-  { href: "/admin/bookings", label: "Bookings", icon: CalendarDays },
-  { href: "/admin/users", label: "Users", icon: Users },
-  { href: "/admin/audit-log", label: "Audit Log", icon: FileText },
-  { href: "/admin/settings", label: "Settings", icon: Settings },
-];
 
 export default async function AdminLayout({
   children,
@@ -34,38 +14,13 @@ export default async function AdminLayout({
   const languages = await getEnabledLanguages();
 
   return (
-    <div className="min-h-screen flex">
-      <aside className="w-60 border-r bg-muted/30 p-4 shrink-0">
-        <Link href="/admin" className="flex items-center gap-2 px-3 py-2 mb-6">
-          <ShieldCheck className="h-5 w-5 text-primary" />
-          <span className="font-bold">Admin Panel</span>
-        </Link>
-        <nav className="space-y-1">
-          {adminNav.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
-            >
-              <item.icon className="h-4 w-4" />
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-        <div className="mt-8 pt-4 border-t">
-          <Link
-            href="/"
-            className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
-          >
-            Back to site
-          </Link>
-        </div>
-      </aside>
-      <div className="flex min-h-screen flex-1 flex-col">
-        <div className="flex items-center justify-end border-b bg-background px-8 py-4">
+    <div className="flex min-h-screen flex-col md:flex-row">
+      <AdminSidebar languages={languages} />
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="hidden items-center justify-end border-b bg-background px-8 py-4 md:flex">
           <GoogleTranslateWidget languages={languages} />
         </div>
-        <main className="flex-1 p-8">{children}</main>
+        <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>
   );

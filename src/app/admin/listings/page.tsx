@@ -8,6 +8,8 @@ import { formatDate } from "@/lib/utils/format";
 
 export const metadata = { title: "Admin - Listings" };
 
+type AdminListing = Awaited<ReturnType<typeof getAllListingsForAdmin>>[number];
+
 interface AdminListingsPageProps {
   searchParams?: Promise<{ status?: string }>;
 }
@@ -24,15 +26,15 @@ export default async function AdminListingsPage({
   const filteredListings = validStatus
     ? listings.filter((l) => l.status === validStatus)
     : listings;
-  const pending = listings.filter((l) => l.status === "PENDING_REVIEW");
-  const rest = filteredListings.filter((l) => l.status !== "PENDING_REVIEW");
+  const pending = listings.filter((l) => l.needsReview);
+  const rest = validStatus ? filteredListings : filteredListings.filter((l) => !l.needsReview);
   const activeLabel = validStatus
     ? LISTING_STATUSES.find((s) => s.value === validStatus)?.label
     : null;
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between gap-4">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">
           {activeLabel ? `${activeLabel} Listings` : "Listings Management"}
         </h1>
@@ -49,7 +51,7 @@ export default async function AdminListingsPage({
             id="pending-review"
             className="text-lg font-semibold mb-3 flex items-center gap-2 scroll-mt-8"
           >
-            Pending Review
+            Needs Review
             <Badge variant="secondary">{pending.length}</Badge>
           </h2>
           <ListingsTable listings={pending} />
@@ -59,15 +61,49 @@ export default async function AdminListingsPage({
       <h2 className="text-lg font-semibold mb-3">
         {activeLabel ? activeLabel : "All Listings"}
       </h2>
-      <ListingsTable listings={validStatus === "PENDING_REVIEW" ? filteredListings : rest} />
+      <ListingsTable listings={rest} />
     </div>
   );
 }
 
-function ListingsTable({ listings }: { listings: typeof Array.prototype & { id: string; title: string; status: string; property: { city: string }; host: { name: string; email: string }; createdAt: Date; _count: { bookings: number } }[] }) {
+function ListingsTable({ listings }: { listings: AdminListing[] }) {
   return (
-    <div className="border rounded-lg">
-      <Table>
+    <>
+      <div className="space-y-3 md:hidden">
+        {listings.map((listing) => {
+          const statusConfig = LISTING_STATUSES.find((s) => s.value === listing.status);
+          return (
+            <article key={listing.id} className="rounded-xl border bg-card p-4 shadow-sm">
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="line-clamp-2 font-semibold">{listing.title}</h3>
+                  <p className="text-sm text-muted-foreground">{listing.property.city}</p>
+                </div>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <Badge variant={listing.status === "APPROVED" ? "default" : "secondary"}>
+                    {statusConfig?.label || listing.status}
+                  </Badge>
+                  {listing.needsReview && (
+                    <Badge variant="outline" className="border-amber-500 text-amber-600">
+                      Needs review
+                    </Badge>
+                  )}
+                </div>
+              </div>
+              <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                <div className="col-span-2"><dt className="text-muted-foreground">Host</dt><dd>{listing.host.name}</dd><dd className="break-all text-xs text-muted-foreground">{listing.host.email}</dd></div>
+                <div><dt className="text-muted-foreground">Bookings</dt><dd>{listing._count.bookings}</dd></div>
+                <div><dt className="text-muted-foreground">Created</dt><dd>{formatDate(listing.createdAt)}</dd></div>
+              </dl>
+              <Button variant="outline" size="sm" className="mt-4 w-full" asChild>
+                <Link href={`/admin/listings/${listing.id}`}>Review listing</Link>
+              </Button>
+            </article>
+          );
+        })}
+      </div>
+      <div className="hidden border rounded-lg md:block">
+        <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Title</TableHead>
@@ -80,7 +116,7 @@ function ListingsTable({ listings }: { listings: typeof Array.prototype & { id: 
           </TableRow>
         </TableHeader>
         <TableBody>
-          {listings.map((listing: { id: string; title: string; status: string; property: { city: string }; host: { name: string; email: string }; createdAt: Date; _count: { bookings: number } }) => {
+          {listings.map((listing) => {
             const statusConfig = LISTING_STATUSES.find((s) => s.value === listing.status);
             return (
               <TableRow key={listing.id}>
@@ -91,9 +127,16 @@ function ListingsTable({ listings }: { listings: typeof Array.prototype & { id: 
                 </TableCell>
                 <TableCell>{listing.property.city}</TableCell>
                 <TableCell>
-                  <Badge variant={listing.status === "APPROVED" ? "default" : "secondary"}>
-                    {statusConfig?.label || listing.status}
-                  </Badge>
+                  <div className="flex flex-wrap items-center gap-1">
+                    <Badge variant={listing.status === "APPROVED" ? "default" : "secondary"}>
+                      {statusConfig?.label || listing.status}
+                    </Badge>
+                    {listing.needsReview && (
+                      <Badge variant="outline" className="border-amber-500 text-amber-600">
+                        Needs review
+                      </Badge>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell>{listing._count.bookings}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{formatDate(listing.createdAt)}</TableCell>
@@ -106,7 +149,8 @@ function ListingsTable({ listings }: { listings: typeof Array.prototype & { id: 
             );
           })}
         </TableBody>
-      </Table>
-    </div>
+        </Table>
+      </div>
+    </>
   );
 }

@@ -35,6 +35,7 @@ export async function POST(req: Request) {
 
     const filters: SearchFilters = {
       city: parseString(body.city),
+      country: parseString(body.country),
       checkIn: parseString(body.checkIn),
       checkOut: parseString(body.checkOut),
       guests: parseNumber(body.guests),

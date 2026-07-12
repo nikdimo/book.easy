@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { CalendarDays } from "lucide-react";
 import { LISTING_STATUSES } from "@/lib/constants";
 import { getActivePropertyTypes, getPropertyTypeLabel } from "@/lib/services/property-type.service";
+import type { ListingMediaItem } from "@/lib/types/listing-media";
 
 interface EditListingPageProps {
   params: Promise<{ id: string }>;
@@ -27,7 +28,12 @@ export default async function EditListingPage({ params }: EditListingPageProps) 
   if (!listing) notFound();
 
   const listingForm = serializeHostListingForForm(listing);
-  const initialImageUrls = listing.images.map((img) => img.url);
+  const initialMediaItems: ListingMediaItem[] = listing.images.map((img) => ({
+    id: img.id,
+    url: img.url,
+    mediaType: img.mediaType,
+    alt: img.alt,
+  }));
 
   const activeAmenities = await db.amenity.findMany({
     where: { isActive: true },
@@ -86,7 +92,7 @@ export default async function EditListingPage({ params }: EditListingPageProps) 
         propertyTypes={propertyTypes}
         availableCities={availableCities}
         listing={listingForm}
-        initialImageUrls={initialImageUrls}
+        initialMediaItems={initialMediaItems}
       />
 
       {(listing.status === "DRAFT" ||

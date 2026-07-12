@@ -7,58 +7,25 @@ import { cancelBooking } from "@/lib/services/booking.service";
 import { revalidatePublicListingCaches } from "@/lib/utils/revalidate-public-listing-caches";
 import { revalidatePath } from "next/cache";
 
-export async function approveListing(listingId: string) {
+export async function markListingReviewed(listingId: string) {
   const admin = await requireAdmin();
 
   const listing = await db.listing.findUnique({ where: { id: listingId } });
-  if (!listing || listing.status !== "PENDING_REVIEW") {
-    return { error: "Listing not found or not pending review" };
+  if (!listing || !listing.needsReview) {
+    return { error: "Listing not found or already reviewed" };
   }
 
   await db.listing.update({
     where: { id: listingId },
-    data: {
-      status: "APPROVED",
-      approvedAt: new Date(),
-      publishedAt: new Date(),
-      moderationNote: null,
-    },
+    data: { needsReview: false, moderationNote: null },
   });
 
   await createAuditLog({
     userId: admin.id,
-    action: "listing.approve",
+    action: "listing.mark_reviewed",
     entityType: "Listing",
     entityId: listingId,
     metadata: { listingTitle: listing.title },
-  });
-
-  revalidatePath("/admin/listings");
-  revalidatePublicListingCaches();
-  return { success: true };
-}
-
-export async function rejectListing(listingId: string, reason: string) {
-  const admin = await requireAdmin();
-
-  if (!reason) return { error: "Rejection reason is required" };
-
-  const listing = await db.listing.findUnique({ where: { id: listingId } });
-  if (!listing || listing.status !== "PENDING_REVIEW") {
-    return { error: "Listing not found or not pending review" };
-  }
-
-  await db.listing.update({
-    where: { id: listingId },
-    data: { status: "REJECTED", moderationNote: reason },
-  });
-
-  await createAuditLog({
-    userId: admin.id,
-    action: "listing.reject",
-    entityType: "Listing",
-    entityId: listingId,
-    metadata: { listingTitle: listing.title, reason },
   });
 
   revalidatePath("/admin/listings");
@@ -77,7 +44,7 @@ export async function suspendListing(listingId: string, reason: string) {
 
   await db.listing.update({
     where: { id: listingId },
-    data: { status: "SUSPENDED", moderationNote: reason },
+    data: { status: "SUSPENDED", moderationNote: reason, needsReview: false },
   });
 
   await createAuditLog({

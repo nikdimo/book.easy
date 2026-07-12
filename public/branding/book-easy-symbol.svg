@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 150" role="img" aria-labelledby="title desc">
+  <title id="title">Book Easy symbol</title><desc id="desc">A lowercase b shaped as a location marker.</desc>
+  <path fill="#B84A24" fill-rule="evenodd" d="M28 8a10 10 0 0 1 20 0v34a44 44 0 1 1-20 37V8Zm44 53a20 20 0 1 0 0 40 20 20 0 0 0 0-40Z"/>
+  <path fill="#B84A24" d="m39 108 33 30 33-30Z"/>
+  <ellipse cx="72" cy="143" rx="27" ry="5" fill="#B84A24" opacity=".18"/>
+</svg>

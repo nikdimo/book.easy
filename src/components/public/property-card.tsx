@@ -71,7 +71,7 @@ export async function PropertyCard({
         className="flex flex-col gap-1 px-0.5 group/link"
       >
         <div className="flex items-start justify-between gap-3">
-          <h3 className="min-w-0 flex-1 font-semibold text-foreground leading-snug line-clamp-2 group-hover/link:underline underline-offset-2">
+          <h3 className="min-w-0 flex-1 text-[0.95rem] font-semibold text-foreground leading-snug line-clamp-2 group-hover/link:underline underline-offset-2">
             {headline}
           </h3>
           <Badge
@@ -82,24 +82,24 @@ export async function PropertyCard({
           </Badge>
         </div>
 
-        <p className="text-muted-foreground text-sm line-clamp-1">{title}</p>
+        <p className="text-muted-foreground text-[0.83rem] line-clamp-1">{title}</p>
 
         {dateLine ? (
-          <p className="text-muted-foreground text-sm">{dateLine}</p>
+          <p className="text-muted-foreground text-[0.83rem]">{dateLine}</p>
         ) : null}
 
         {pricingRule && tripTotal != null ? (
           <div className="mt-0.5">
-            <span className="font-semibold text-foreground">
+            <span className="text-sm font-semibold text-foreground">
               {formatPrice(tripTotal, pricingRule.currency)} total
             </span>
           </div>
         ) : pricingRule ? (
           <div className="mt-0.5 flex items-baseline gap-1">
-            <span className="font-semibold text-foreground">
+            <span className="text-sm font-semibold text-foreground">
               {formatPrice(nightly, pricingRule.currency)}
             </span>
-            <span className="text-muted-foreground text-sm">night</span>
+            <span className="text-muted-foreground text-[0.83rem]">night</span>
           </div>
         ) : null}
       </Link>

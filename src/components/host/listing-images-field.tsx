@@ -27,28 +27,31 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import type { ListingMediaItem } from "@/lib/types/listing-media";
 import { cn } from "@/lib/utils";
 
 interface ListingImagesFieldProps {
-  initialUrls?: string[];
-  urls?: string[];
-  onUrlsChange?: (next: string[] | ((current: string[]) => string[])) => void;
+  initialItems?: ListingMediaItem[];
+  items?: ListingMediaItem[];
+  onItemsChange?: (
+    next: ListingMediaItem[] | ((current: ListingMediaItem[]) => ListingMediaItem[])
+  ) => void;
 }
 
 export function ListingImagesField({
-  initialUrls = [],
-  urls,
-  onUrlsChange,
+  initialItems = [],
+  items,
+  onItemsChange,
 }: ListingImagesFieldProps) {
-  const [internalUrls, setInternalUrls] = useState<string[]>(initialUrls);
+  const [internalItems, setInternalItems] = useState<ListingMediaItem[]>(initialItems);
   const [uploading, setUploading] = useState(false);
   const [dropActive, setDropActive] = useState(false);
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
 
-  const imageUrls = urls ?? internalUrls;
-  const sortableItems = imageUrls.map((url, index) => ({
-    id: `${url}-${index}`,
-    url,
+  const mediaItems = items ?? internalItems;
+  const sortableItems = mediaItems.map((item, index) => ({
+    id: `${item.mediaType}-${item.url}-${index}`,
+    ...item,
     index,
   }));
   const activeItem = sortableItems.find((item) => item.id === activeId) ?? null;
@@ -61,9 +64,11 @@ export function ListingImagesField({
     })
   );
 
-  function updateUrls(next: string[] | ((current: string[]) => string[])) {
-    if (urls === undefined) setInternalUrls(next);
-    onUrlsChange?.(next);
+  function updateItems(
+    next: ListingMediaItem[] | ((current: ListingMediaItem[]) => ListingMediaItem[])
+  ) {
+    if (items === undefined) setInternalItems(next);
+    onItemsChange?.(next);
   }
 
   async function uploadFiles(files: FileList | File[]) {
@@ -85,8 +90,8 @@ export function ListingImagesField({
           toast.error(data.error || "Upload failed");
           continue;
         }
-        if (data.url) {
-          updateUrls((prev) => [...prev, data.url]);
+        if (data.url && (data.mediaType === "IMAGE" || data.mediaType === "VIDEO")) {
+          updateItems((prev) => [...prev, { url: data.url, mediaType: data.mediaType }]);
         }
       }
     } finally {
@@ -106,12 +111,12 @@ export function ListingImagesField({
   }
 
   function removeAt(index: number) {
-    updateUrls((prev) => prev.filter((_, i) => i !== index));
+    updateItems((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function moveImage(fromIndex: number, toIndex: number) {
+  function moveMedia(fromIndex: number, toIndex: number) {
     if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0) return;
-    updateUrls((prev) => {
+    updateItems((prev) => {
       if (fromIndex >= prev.length || toIndex >= prev.length) return prev;
       return arrayMove(prev, fromIndex, toIndex);
     });
@@ -131,7 +136,7 @@ export function ListingImagesField({
     const toIndex = sortableItems.findIndex((item) => item.id === over.id);
     if (fromIndex === -1 || toIndex === -1) return;
 
-    moveImage(fromIndex, toIndex);
+    moveMedia(fromIndex, toIndex);
   }
 
   function onDropFiles(e: DragEvent<HTMLDivElement>) {
@@ -164,17 +169,17 @@ export function ListingImagesField({
               <ImagePlus className="h-5 w-5 text-muted-foreground" />
             </div>
             <div>
-              <Label className="text-sm font-medium">Photos</Label>
+              <Label className="text-sm font-medium">Photos and videos</Label>
               <p className="mt-1 text-sm text-muted-foreground">
-                Drop JPEG, PNG, WebP, or iPhone HEIC files here. The first photo is the cover.
+                Drop JPEG, PNG, WebP, HEIC, MP4, MOV, or WebM files here. At least one photo is required for the cover.
               </p>
             </div>
           </div>
           <input
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif,video/mp4,video/quicktime,video/webm,.heic,.heif,.mp4,.mov,.webm"
             multiple
-            id="listing-photo-upload"
+            id="listing-media-upload"
             className="sr-only"
             onChange={onFileChange}
             disabled={uploading}
@@ -187,7 +192,7 @@ export function ListingImagesField({
             className={cn(uploading && "pointer-events-none opacity-50")}
             asChild
           >
-            <label htmlFor="listing-photo-upload" className="cursor-pointer">
+            <label htmlFor="listing-media-upload" className="cursor-pointer">
               {uploading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -204,7 +209,7 @@ export function ListingImagesField({
         </div>
       </div>
 
-      {imageUrls.length > 0 ? (
+      {mediaItems.length > 0 ? (
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -214,13 +219,13 @@ export function ListingImagesField({
         >
           <SortableContext items={sortableItems.map((item) => item.id)} strategy={rectSortingStrategy}>
             <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {sortableItems.map(({ id, url }, index) => (
+              {sortableItems.map(({ id, index, ...item }) => (
                 <SortableImageTile
                   key={id}
                   id={id}
-                  url={url}
+                  item={item}
                   index={index}
-                  isCover={index === 0}
+                  isCover={index === 0 && item.mediaType === "IMAGE"}
                   onRemove={() => removeAt(index)}
                 />
               ))}
@@ -230,20 +235,24 @@ export function ListingImagesField({
           <DragOverlay>
             {activeItem ? (
               <div className="aspect-[4/3] w-40 overflow-hidden rounded-lg border border-border bg-muted shadow-2xl">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={activeItem.url} alt="" className="h-full w-full object-cover" />
+                <MediaThumb item={activeItem} />
               </div>
             ) : null}
           </DragOverlay>
         </DndContext>
       ) : (
         <div className="flex aspect-[4/3] items-center justify-center rounded-lg border bg-muted/30 text-sm text-muted-foreground sm:aspect-[16/5]">
-          Add photos to build the guest gallery.
+          Add photos and videos to build the guest gallery.
         </div>
       )}
 
-      {imageUrls.map((url, i) => (
-        <input key={`imageUrls-${i}`} type="hidden" name="imageUrls" value={url} />
+      {mediaItems.map((item, i) => (
+        <input
+          key={`mediaItems-${item.mediaType}-${i}`}
+          type="hidden"
+          name="mediaItems"
+          value={JSON.stringify({ url: item.url, mediaType: item.mediaType })}
+        />
       ))}
     </div>
   );
@@ -251,13 +260,13 @@ export function ListingImagesField({
 
 function SortableImageTile({
   id,
-  url,
+  item,
   index,
   isCover,
   onRemove,
 }: {
   id: string;
-  url: string;
+  item: ListingMediaItem;
   index: number;
   isCover: boolean;
   onRemove: () => void;
@@ -284,14 +293,13 @@ function SortableImageTile({
         transition,
       }}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={url} alt="" className="h-full w-full object-cover" />
+      <MediaThumb item={item} />
       <button
         type="button"
         ref={setActivatorNodeRef}
         {...attributes}
         {...listeners}
-        aria-label={`Reorder photo ${index + 1}`}
+        aria-label={`Reorder media item ${index + 1}`}
         className="absolute left-1 top-1 inline-flex touch-none cursor-grab select-none items-center gap-1 rounded-md bg-background/90 px-1.5 py-1 text-[10px] font-medium shadow-sm transition-transform hover:scale-[1.02] active:cursor-grabbing"
       >
         <GripVertical className="h-3 w-3" />
@@ -314,5 +322,25 @@ function SortableImageTile({
         </span>
       )}
     </li>
+  );
+}
+
+function MediaThumb({ item }: { item: ListingMediaItem }) {
+  if (item.mediaType === "VIDEO") {
+    return (
+      <video
+        src={item.url}
+        className="h-full w-full object-cover"
+        controls
+        muted
+        playsInline
+        preload="metadata"
+      />
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={item.url} alt="" className="h-full w-full object-cover" />
   );
 }

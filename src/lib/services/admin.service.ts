@@ -17,7 +17,7 @@ export async function getAdminDashboardStats() {
     db.user.count(),
     db.user.count({ where: { isHost: true } }),
     db.listing.count(),
-    db.listing.count({ where: { status: "PENDING_REVIEW" } }),
+    db.listing.count({ where: { needsReview: true } }),
     db.listing.count({ where: { status: "APPROVED" } }),
     db.booking.count(),
     db.booking.count({ where: { status: "PENDING" } }),
@@ -115,6 +115,22 @@ export async function getSuggestionsForAdmin() {
   return {
     pending: suggestions.filter((s) => s.status === "PENDING"),
     reviewed: suggestions.filter((s) => s.status !== "PENDING"),
+  };
+}
+
+export async function getReportsForAdmin() {
+  const reports = await db.listingReport.findMany({
+    include: {
+      listing: { select: { id: true, title: true, slug: true, status: true } },
+      reporter: { select: { name: true, email: true } },
+      reviewedBy: { select: { name: true } },
+    },
+    orderBy: [{ status: "asc" }, { createdAt: "desc" }],
+  });
+
+  return {
+    pending: reports.filter((r) => r.status === "PENDING"),
+    reviewed: reports.filter((r) => r.status !== "PENDING"),
   };
 }
 

@@ -55,6 +55,17 @@ enum BlockType {
   BOOKING_HOLD
 }
 
+enum ListingMediaType {
+  IMAGE
+  VIDEO
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  DISMISSED
+}
+
 // ─── User & Profile ─────────────────────────────────────────────────────────────
 
 model User {
@@ -79,6 +90,8 @@ model User {
   suggestions         Suggestion[] @relation("SuggestionHost")
   reviewedSuggestions Suggestion[] @relation("SuggestionReviewer")
   listingDrafts       ListingDraft[]
+  listingReports         ListingReport[] @relation("ListingReportReporter")
+  reviewedListingReports ListingReport[] @relation("ListingReportReviewer")
 
   @@index([email])
   @@index([role])
@@ -197,6 +210,10 @@ model Listing {
   bathrooms      Int
   beds           Int
   moderationNote String?
+  /** True whenever the live content was created/edited since an admin last looked at
+   *  it — drives the admin "Pending Review" queue independently of `status`, since
+   *  listings are published immediately rather than gated behind approval. */
+  needsReview    Boolean       @default(false)
   approvedAt     DateTime?
   publishedAt    DateTime?
   createdAt      DateTime      @default(now())
@@ -211,6 +228,7 @@ model Listing {
   availabilityBlocks AvailabilityBlock[]
   bookings           Booking[]
   suggestions        Suggestion[]
+  reports            ListingReport[]
 
   @@index([hostId])
   @@index([status])
@@ -241,6 +259,7 @@ model ListingImage {
   id           String  @id @default(cuid())
   listingId    String
   url          String
+  mediaType    ListingMediaType @default(IMAGE)
   alt          String?
   displayOrder Int     @default(0)
   isPrimary    Boolean @default(false)
@@ -295,6 +314,30 @@ model Suggestion {
 
   @@index([status])
   @@index([hostId])
+}
+
+/**
+ * A visitor-submitted flag on a listing (e.g. "photos don't match", "price is wrong"),
+ * with an optional free-text message. `reporterId` is nullable since reporting doesn't
+ * require an account. An admin reviews it from /admin/reports and either dismisses it
+ * or removes the listing (suspends it), mirroring Suggestion's review pattern.
+ */
+model ListingReport {
+  id           String       @id @default(cuid())
+  listingId    String
+  reporterId   String?
+  message      String?
+  status       ReportStatus @default(PENDING)
+  reviewedById String?
+  reviewedAt   DateTime?
+  createdAt    DateTime     @default(now())
+
+  listing    Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  reporter   User?   @relation("ListingReportReporter", fields: [reporterId], references: [id], onDelete: SetNull)
+  reviewedBy User?   @relation("ListingReportReviewer", fields: [reviewedById], references: [id])
+
+  @@index([status])
+  @@index([listingId])
 }
 
 model ListingAmenity {

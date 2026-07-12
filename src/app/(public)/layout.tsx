@@ -8,9 +8,10 @@ import {
 import { getActivePropertyTypes } from "@/lib/services/property-type.service";
 import { getEnabledLanguages } from "@/lib/services/language.service";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
+import type { PlaceOption } from "@/lib/utils/place";
 
 async function HeaderWithPopularCities() {
-  let popularCities: string[] = [];
+  let popularCities: PlaceOption[] = [];
   let availablePropertyTypesByCity: Record<string, string[]> = {};
   let propertyTypes: PropertyTypeOption[] = [];
   let languages: Awaited<ReturnType<typeof getEnabledLanguages>> = [];

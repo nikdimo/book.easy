@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { Building2 } from "lucide-react";
-import { PRODUCT_FAMILY, PRODUCT_NAME, SITE_DOMAIN } from "@/lib/branding";
+import { BRAND_TAGLINE, PRODUCT_FAMILY, SITE_DOMAIN } from "@/lib/branding";
+import { BrandLogo } from "@/components/shared/brand-logo";
 
 export function Footer() {
   return (
@@ -14,19 +14,10 @@ export function Footer() {
               title={SITE_DOMAIN}
               translate="no"
             >
-              <Building2 className="h-6 w-6 text-primary" />
-              <span className="notranslate font-semibold text-lg" translate="no">
-                {PRODUCT_NAME}
-                <span
-                  className="notranslate text-muted-foreground font-normal"
-                  translate="no"
-                >
-                  .{PRODUCT_FAMILY}
-                </span>
-              </span>
+              <BrandLogo className="h-12" />
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Stays and bookings on{" "}
+              {BRAND_TAGLINE} Book stays on{" "}
               <span className="notranslate" translate="no">
                 {SITE_DOMAIN}
               </span>{" "}
@@ -83,11 +74,6 @@ export function Footer() {
               <li>
                 <Link href="/login" className="hover:text-foreground transition-colors">
                   Log in
-                </Link>
-              </li>
-              <li>
-                <Link href="/register" className="hover:text-foreground transition-colors">
-                  Sign up
                 </Link>
               </li>
             </ul>

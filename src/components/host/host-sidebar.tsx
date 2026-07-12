@@ -22,13 +22,15 @@ import {
   House,
   LogOut,
   LayoutDashboard,
-  Building2,
   CalendarDays,
   ShieldCheck,
   Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PRODUCT_FAMILY, PRODUCT_NAME, SITE_DOMAIN } from "@/lib/branding";
+import { SITE_DOMAIN } from "@/lib/branding";
+import { BrandLogo } from "@/components/shared/brand-logo";
+import { GoogleTranslateWidget } from "@/components/shared/google-translate-widget";
+import type { getEnabledLanguages } from "@/lib/services/language.service";
 
 const hostNav = [
   { href: "/host", label: "Dashboard", icon: LayoutDashboard },
@@ -99,11 +101,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         className="flex items-center gap-2 px-1 py-2 mb-4 shrink-0"
         title={SITE_DOMAIN}
       >
-        <Building2 className="h-8 w-8 text-primary shrink-0" />
-        <span className="text-lg font-semibold tracking-tight text-foreground truncate">
-          {PRODUCT_NAME}
-          <span className="text-muted-foreground font-normal">.{PRODUCT_FAMILY}</span>
-        </span>
+        <BrandLogo className="h-12 max-w-full" />
       </Link>
 
       <SidebarNavLinks onNavigate={onNavigate} />
@@ -190,14 +188,9 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           </DropdownMenu>
         ) : (
           <div className="flex flex-col gap-2">
-            <Button variant="outline" size="sm" asChild>
+            <Button size="sm" asChild>
               <Link href="/login" onClick={onNavigate}>
                 Log in
-              </Link>
-            </Button>
-            <Button size="sm" asChild>
-              <Link href="/register" onClick={onNavigate}>
-                Sign up
               </Link>
             </Button>
           </div>
@@ -207,37 +200,40 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-export function HostSidebar() {
+export function HostSidebar({
+  languages = [],
+}: {
+  languages?: Awaited<ReturnType<typeof getEnabledLanguages>>;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
     <div className="flex shrink-0 flex-col md:w-56 md:border-r md:bg-background md:min-h-screen">
       <div className="md:hidden sticky top-0 z-40 flex items-center justify-between gap-3 border-b bg-background/95 backdrop-blur px-4 py-3">
-        <Sheet open={open} onOpenChange={setOpen}>
-          <SheetTrigger asChild>
-            <Button variant="outline" size="icon" aria-label="Open menu">
-              <Menu className="h-5 w-5" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent
-            side="left"
-            className="w-72 p-0 flex flex-col overflow-hidden"
-          >
-            <SheetHeader className="sr-only">
-              <SheetTitle>Hosting menu</SheetTitle>
-            </SheetHeader>
-            <div className="overflow-y-auto flex-1 min-h-0 p-4">
-              <SidebarContent onNavigate={() => setOpen(false)} />
-            </div>
-          </SheetContent>
-        </Sheet>
-        <Link href="/" className="flex items-center gap-1 min-w-0">
-          <Building2 className="h-7 w-7 text-primary shrink-0" />
-          <span className="font-semibold truncate text-sm">
-            {PRODUCT_NAME}
-            <span className="text-muted-foreground font-normal">.{PRODUCT_FAMILY}</span>
-          </span>
-        </Link>
+        <div className="flex items-center gap-3 min-w-0">
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon" aria-label="Open menu">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent
+              side="left"
+              className="w-72 p-0 flex flex-col overflow-hidden"
+            >
+              <SheetHeader className="sr-only">
+                <SheetTitle>Hosting menu</SheetTitle>
+              </SheetHeader>
+              <div className="overflow-y-auto flex-1 min-h-0 p-4">
+                <SidebarContent onNavigate={() => setOpen(false)} />
+              </div>
+            </SheetContent>
+          </Sheet>
+          <Link href="/" className="flex items-center gap-1 min-w-0">
+            <BrandLogo className="h-10 max-w-36" />
+          </Link>
+        </div>
+        <GoogleTranslateWidget languages={languages} />
       </div>
 
       <aside className="hidden md:flex flex-col w-full min-h-0 flex-1 p-4 overflow-y-auto">

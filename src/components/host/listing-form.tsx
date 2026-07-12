@@ -31,6 +31,7 @@ import { ListingImagesField } from "@/components/host/listing-images-field";
 import { ListingLocationField } from "@/components/host/listing-location-field";
 import { SuggestMissingOption } from "@/components/host/suggest-missing-option";
 import type { HostListingFormData } from "@/lib/serializers/host-listing-form";
+import type { ListingMediaItem } from "@/lib/types/listing-media";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 import type { ListingDraftData } from "@/lib/types/listing-draft";
 
@@ -38,7 +39,7 @@ interface ListingFormProps {
   amenities: { id: string; name: string; category: string }[];
   propertyTypes: PropertyTypeOption[];
   availableCities?: string[];
-  initialImageUrls?: string[];
+  initialMediaItems?: ListingMediaItem[];
   /** Serialized from the server (no Prisma Decimal). */
   listing?: HostListingFormData;
   /** Resuming an autosaved in-progress draft of a listing that was never submitted. */
@@ -146,7 +147,7 @@ export function ListingForm({
   propertyTypes,
   availableCities = [],
   listing,
-  initialImageUrls = [],
+  initialMediaItems = [],
   draftId: initialDraftId,
   initialDraft,
 }: ListingFormProps) {
@@ -156,8 +157,11 @@ export function ListingForm({
   const [values, setValues] = useState<ListingFormValues>(() =>
     listingInitialValues(listing, initialDraft)
   );
-  const [imageUrls, setImageUrls] = useState<string[]>(
-    initialImageUrls.length > 0 ? initialImageUrls : (initialDraft?.imageUrls ?? [])
+  const [mediaItems, setMediaItems] = useState<ListingMediaItem[]>(
+    initialMediaItems.length > 0
+      ? initialMediaItems
+      : initialDraft?.mediaItems ??
+          (initialDraft?.imageUrls ?? []).map((url) => ({ url, mediaType: "IMAGE" as const }))
   );
   const [selectedAmenityIds, setSelectedAmenityIds] = useState<string[]>(
     () => listing?.amenities.map((a) => a.amenityId) ?? initialDraft?.amenityIds ?? []
@@ -233,15 +237,17 @@ export function ListingForm({
     autosaveDraft();
   }
 
-  function handleImageUrlsChange(next: string[] | ((current: string[]) => string[])) {
-    setImageUrls(next);
+  function handleMediaItemsChange(
+    next: ListingMediaItem[] | ((current: ListingMediaItem[]) => ListingMediaItem[])
+  ) {
+    setMediaItems(next);
     setFieldErrors((current) => {
-      if (!("images" in current)) return current;
+      if (!("media" in current)) return current;
       const rest = { ...current };
-      delete rest.images;
+      delete rest.media;
       return rest;
     });
-    // Runs after the state update above has been queued — imageUrls changes come from
+    // Runs after the state update above has been queued — media changes come from
     // discrete user actions (upload/remove/reorder), not continuous typing, so saving
     // immediately (rather than waiting for some unrelated field's blur) is appropriate.
     setTimeout(autosaveDraft, 0);
@@ -287,18 +293,17 @@ export function ListingForm({
     });
 
     const errors = parsed.success ? {} : zodFieldErrors(parsed.error);
-    if (imageUrls.length === 0) {
-      errors.images = "Add at least one photo before submitting for review";
+    if (!mediaItems.some((item) => item.mediaType === "IMAGE")) {
+      errors.media = "Add at least one photo before submitting for review";
     }
     setFieldErrors(errors);
 
     const firstErrorField = Object.keys(errors)[0];
     if (firstErrorField) {
       toast.error(errors[firstErrorField]);
-      const el =
-        firstErrorField === "images"
-          ? document.getElementById("listing-photo-upload")
-          : document.getElementById(firstErrorField);
+      const el = firstErrorField === "media"
+        ? document.getElementById("listing-media-upload")
+        : document.getElementById(firstErrorField);
       el?.scrollIntoView({ behavior: "smooth", block: "center" });
       return;
     }
@@ -450,9 +455,9 @@ export function ListingForm({
             />
           </FieldSection>
 
-          <FieldSection title="Photos">
-            <ListingImagesField urls={imageUrls} onUrlsChange={handleImageUrlsChange} />
-            <FieldError message={fieldErrors.images} />
+          <FieldSection title="Photos and videos">
+            <ListingImagesField items={mediaItems} onItemsChange={handleMediaItemsChange} />
+            <FieldError message={fieldErrors.media} />
           </FieldSection>
 
           <FieldSection title="Capacity">
@@ -576,7 +581,7 @@ export function ListingForm({
             description={values.description || FALLBACK_DESCRIPTION}
             typeLabel={typeLabel}
             locationLine={locationLine}
-            imageUrls={imageUrls}
+            mediaItems={mediaItems}
             guests={guests}
             bedrooms={bedrooms}
             beds={beds}
@@ -602,7 +607,7 @@ export function ListingForm({
             onClick={handleSubmitForReview}
             className="w-full sm:w-auto"
           >
-            {isSubmittingNew ? "Submitting..." : "Submit for Review"}
+            {isSubmittingNew ? "Publishing..." : "Publish Listing"}
           </Button>
         )}
       </div>
@@ -617,10 +622,10 @@ export function ListingForm({
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Submitted for review</DialogTitle>
+            <DialogTitle>Listing published</DialogTitle>
             <DialogDescription className="pt-2 text-foreground">
-              Thanks! Your listing has been sent for review — this usually takes 1 to 24
-              hours. Questions? Contact{" "}
+              Thanks! Your listing is live now. Our team will still review the content
+              shortly, so keep it accurate. Questions? Contact{" "}
               <a href="mailto:hello@book.easy.mk" className="underline underline-offset-2">
                 hello@book.easy.mk
               </a>
@@ -691,7 +696,7 @@ function ListingGuestPreview({
   description,
   typeLabel,
   locationLine,
-  imageUrls,
+  mediaItems,
   guests,
   bedrooms,
   beds,
@@ -705,7 +710,7 @@ function ListingGuestPreview({
   description: string;
   typeLabel?: string;
   locationLine: string;
-  imageUrls: string[];
+  mediaItems: ListingMediaItem[];
   guests: number;
   bedrooms: number;
   beds: number;
@@ -715,7 +720,7 @@ function ListingGuestPreview({
   minNights: number;
   amenities: { id: string; name: string; category: string }[];
 }) {
-  const displayedImages = imageUrls.slice(0, 5);
+  const displayedMedia = mediaItems.slice(0, 5);
   const sampleNights = Math.max(minNights, 2);
   const sampleSubtotal = nightlyRate * sampleNights;
   const sampleTotal = sampleSubtotal + cleaningFee;
@@ -745,7 +750,7 @@ function ListingGuestPreview({
           </Badge>
         </div>
 
-        <PreviewGallery imageUrls={displayedImages} />
+        <PreviewGallery mediaItems={displayedMedia} />
 
         <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px]">
           <div className="space-y-6">
@@ -860,31 +865,49 @@ function ListingGuestPreview({
   );
 }
 
-function PreviewGallery({ imageUrls }: { imageUrls: string[] }) {
-  if (imageUrls.length === 0) {
+function PreviewGallery({ mediaItems }: { mediaItems: ListingMediaItem[] }) {
+  if (mediaItems.length === 0) {
     return (
       <div className="flex aspect-[16/9] items-center justify-center rounded-xl bg-muted text-sm text-muted-foreground ring-1 ring-black/5">
-        Photos will appear here
+        Photos and videos will appear here
       </div>
     );
   }
 
-  const [cover, ...gridImages] = imageUrls;
+  const [cover, ...gridImages] = mediaItems;
 
   return (
     <div className="overflow-hidden rounded-xl ring-1 ring-black/5">
       <div className="grid max-h-[360px] grid-cols-1 gap-2 md:grid-cols-4 md:grid-rows-2">
         <div className="relative aspect-[4/3] overflow-hidden bg-muted md:col-span-2 md:row-span-2 md:aspect-auto">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={cover} alt="" className="h-full w-full object-cover" />
+          <PreviewMedia item={cover} />
         </div>
-        {gridImages.map((url, index) => (
-          <div key={`${url}-${index}`} className="relative hidden aspect-[4/3] overflow-hidden bg-muted md:block">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt="" className="h-full w-full object-cover" />
+        {gridImages.map((item, index) => (
+          <div key={`${item.mediaType}-${item.url}-${index}`} className="relative hidden aspect-[4/3] overflow-hidden bg-muted md:block">
+            <PreviewMedia item={item} />
           </div>
         ))}
       </div>
     </div>
+  );
+}
+
+function PreviewMedia({ item }: { item: ListingMediaItem }) {
+  if (item.mediaType === "VIDEO") {
+    return (
+      <video
+        src={item.url}
+        className="h-full w-full object-cover"
+        controls
+        muted
+        playsInline
+        preload="metadata"
+      />
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={item.url} alt="" className="h-full w-full object-cover" />
   );
 }

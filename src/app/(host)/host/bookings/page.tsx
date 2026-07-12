@@ -35,29 +35,29 @@ export default async function HostBookingsPage() {
           return (
             <Card key={booking.id}>
               <CardContent className="p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-semibold">{booking.listing.title}</h3>
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="break-words font-semibold">{booking.listing.title}</h3>
                     <p className="text-sm text-muted-foreground">{booking.listing.property.city}</p>
                   </div>
                   <Badge variant={booking.status === "CONFIRMED" ? "default" : "secondary"}>
                     {statusConfig?.label || booking.status}
                   </Badge>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-                  <div>
+                <div className="grid grid-cols-1 gap-3 text-sm min-[420px]:grid-cols-2 md:grid-cols-4">
+                  <div className="min-w-0">
                     <span className="text-muted-foreground">Guest: </span>
                     <span className="font-medium">{booking.guest.name}</span>
                   </div>
-                  <div>
+                  <div className="min-w-0 break-words">
                     <span className="text-muted-foreground">Dates: </span>
                     <span>{formatDate(booking.checkIn)} – {formatDate(booking.checkOut)}</span>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-muted-foreground">Guests: </span>
                     <span>{booking.guestCount}</span>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-muted-foreground">Total: </span>
                     <span className="font-medium">{formatPrice(Number(booking.totalPrice))}</span>
                   </div>

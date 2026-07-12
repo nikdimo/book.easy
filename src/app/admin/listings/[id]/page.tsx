@@ -8,6 +8,7 @@ import { PropertyAvailabilityCalendar } from "@/components/shared/property-avail
 import { LISTING_STATUSES } from "@/lib/constants";
 import { getPropertyTypeLabel } from "@/lib/services/property-type.service";
 import { formatDate, formatPrice } from "@/lib/utils/format";
+import type { ListingMediaItem } from "@/lib/types/listing-media";
 
 interface AdminListingDetailProps {
   params: Promise<{ id: string }>;
@@ -27,7 +28,7 @@ export default async function AdminListingDetailPage({ params }: AdminListingDet
 
   return (
     <div className="max-w-4xl">
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex flex-wrap items-center gap-3 mb-6">
         <h1 className="text-2xl font-bold">Review Listing</h1>
         <Badge variant={listing.status === "APPROVED" ? "default" : "secondary"}>
           {statusConfig?.label || listing.status}
@@ -48,7 +49,7 @@ export default async function AdminListingDetailPage({ params }: AdminListingDet
                 <p className="text-sm whitespace-pre-line">{listing.description}</p>
               </div>
               <Separator />
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 gap-4 text-sm min-[420px]:grid-cols-2">
                 <div><span className="text-muted-foreground">Type: </span>{typeLabel}</div>
                 <div><span className="text-muted-foreground">Location: </span>{listing.property.city}, {listing.property.area || ""}</div>
                 <div><span className="text-muted-foreground">Address: </span>{listing.property.address}</div>
@@ -68,7 +69,7 @@ export default async function AdminListingDetailPage({ params }: AdminListingDet
               {listing.pricingRule && (
                 <>
                   <Separator />
-                  <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div className="grid grid-cols-1 gap-4 text-sm min-[420px]:grid-cols-3">
                     <div><span className="text-muted-foreground">Nightly: </span>{formatPrice(Number(listing.pricingRule.baseNightlyRate))}</div>
                     <div><span className="text-muted-foreground">Cleaning: </span>{formatPrice(Number(listing.pricingRule.cleaningFee))}</div>
                     <div><span className="text-muted-foreground">Min nights: </span>{listing.pricingRule.minNights}</div>
@@ -78,22 +79,20 @@ export default async function AdminListingDetailPage({ params }: AdminListingDet
               <Separator />
               <div>
                 <p className="text-sm text-muted-foreground mb-2">
-                  Photos ({listing.images.length})
+                  Photos and videos ({listing.images.length})
                 </p>
                 {listing.images.length > 0 ? (
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     {listing.images.map((image, index) => (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <AdminMediaThumb
                         key={image.id}
-                        src={image.url}
-                        alt={`${listing.title} photo ${index + 1}`}
-                        className="aspect-[4/3] w-full rounded-md border object-cover"
+                        item={image}
+                        alt={`${listing.title} media ${index + 1}`}
                       />
                     ))}
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">No photos uploaded</p>
+                  <p className="text-sm text-muted-foreground">No media uploaded</p>
                 )}
               </div>
             </CardContent>
@@ -105,7 +104,7 @@ export default async function AdminListingDetailPage({ params }: AdminListingDet
             <CardHeader><CardTitle>Host</CardTitle></CardHeader>
             <CardContent className="text-sm space-y-2">
               <div><span className="text-muted-foreground">Name: </span>{listing.host.name}</div>
-              <div><span className="text-muted-foreground">Email: </span>{listing.host.email}</div>
+              <div className="break-all"><span className="text-muted-foreground">Email: </span>{listing.host.email}</div>
               {listing.host.profile?.phone && (
                 <div><span className="text-muted-foreground">Phone: </span>{listing.host.profile.phone}</div>
               )}
@@ -114,7 +113,7 @@ export default async function AdminListingDetailPage({ params }: AdminListingDet
             </CardContent>
           </Card>
 
-          <AdminListingActions listingId={listing.id} currentStatus={listing.status} />
+          <AdminListingActions listingId={listing.id} currentStatus={listing.status} needsReview={listing.needsReview} />
         </div>
       </div>
 
@@ -128,11 +127,34 @@ export default async function AdminListingDetailPage({ params }: AdminListingDet
             listingId={listing.id}
             baseNightlyRate={Number(listing.pricingRule.baseNightlyRate)}
             currency={listing.pricingRule.currency}
-            datePrices={datePrices}
+            datePrices={datePrices.map((row) => ({
+              ...row,
+              nightlyRate: Number(row.nightlyRate),
+            }))}
             existingBlocks={availabilityBlocks}
           />
         </div>
       )}
     </div>
+  );
+}
+
+function AdminMediaThumb({ item, alt }: { item: ListingMediaItem; alt: string }) {
+  if (item.mediaType === "VIDEO") {
+    return (
+      <video
+        src={item.url}
+        className="aspect-[4/3] w-full rounded-md border object-cover"
+        controls
+        playsInline
+        preload="metadata"
+        aria-label={alt}
+      />
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={item.url} alt={alt} className="aspect-[4/3] w-full rounded-md border object-cover" />
   );
 }

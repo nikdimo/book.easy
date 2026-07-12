@@ -5,25 +5,25 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { approveListing, rejectListing, suspendListing } from "@/lib/actions/admin.actions";
+import { markListingReviewed, suspendListing } from "@/lib/actions/admin.actions";
 import { toast } from "sonner";
-import { Check, X, Ban } from "lucide-react";
+import { Check, Ban } from "lucide-react";
 
 interface AdminListingActionsProps {
   listingId: string;
   currentStatus: string;
+  needsReview: boolean;
 }
 
-export function AdminListingActions({ listingId, currentStatus }: AdminListingActionsProps) {
+export function AdminListingActions({ listingId, currentStatus, needsReview }: AdminListingActionsProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [reason, setReason] = useState("");
 
-  const canApprove = currentStatus === "PENDING_REVIEW";
-  const canReject = currentStatus === "PENDING_REVIEW";
+  const canMarkReviewed = needsReview;
   const canSuspend = currentStatus === "APPROVED";
 
-  if (!canApprove && !canReject && !canSuspend) {
+  if (!canMarkReviewed && !canSuspend) {
     return (
       <Card>
         <CardContent className="pt-6">
@@ -39,9 +39,9 @@ export function AdminListingActions({ listingId, currentStatus }: AdminListingAc
         <CardTitle>Moderation Actions</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {(canReject || canSuspend) && (
+        {canSuspend && (
           <Textarea
-            placeholder="Reason (required for reject/suspend)"
+            placeholder="Reason (required to suspend)"
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             rows={3}
@@ -49,36 +49,19 @@ export function AdminListingActions({ listingId, currentStatus }: AdminListingAc
         )}
 
         <div className="flex flex-col gap-2">
-          {canApprove && (
+          {canMarkReviewed && (
             <Button
               disabled={isPending}
               onClick={() => {
                 startTransition(async () => {
-                  const result = await approveListing(listingId);
+                  const result = await markListingReviewed(listingId);
                   if (result?.error) toast.error(result.error);
-                  else { toast.success("Listing approved"); router.refresh(); }
+                  else { toast.success("Marked as reviewed"); router.refresh(); }
                 });
               }}
             >
               <Check className="h-4 w-4 mr-2" />
-              Approve Listing
-            </Button>
-          )}
-
-          {canReject && (
-            <Button
-              variant="destructive"
-              disabled={isPending || !reason.trim()}
-              onClick={() => {
-                startTransition(async () => {
-                  const result = await rejectListing(listingId, reason);
-                  if (result?.error) toast.error(result.error);
-                  else { toast.success("Listing rejected"); setReason(""); router.refresh(); }
-                });
-              }}
-            >
-              <X className="h-4 w-4 mr-2" />
-              Reject Listing
+              Mark Reviewed
             </Button>
           )}
 

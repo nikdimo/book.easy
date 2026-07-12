@@ -23,6 +23,7 @@ export async function generateMetadata({ params }: ListingPageProps): Promise<Me
   const { slug } = await params;
   const listing = await getListingBySlug(slug);
   if (!listing) return { title: "Not Found" };
+  const ogImage = listing.images.find((item) => item.mediaType === "IMAGE")?.url;
 
   return {
     title: listing.title,
@@ -30,7 +31,7 @@ export async function generateMetadata({ params }: ListingPageProps): Promise<Me
     openGraph: {
       title: listing.title,
       description: listing.description.slice(0, 160),
-      images: listing.images[0]?.url ? [listing.images[0].url] : [],
+      images: ogImage ? [ogImage] : [],
     },
   };
 }
@@ -102,7 +103,7 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
             )}
           </div>
         </div>
-        <ListingActions title={listing.title} />
+        <ListingActions title={listing.title} listingId={listing.id} />
       </div>
 
       <ImageGallery images={listing.images} />

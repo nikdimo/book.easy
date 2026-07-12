@@ -40,7 +40,7 @@ export default async function BookingConfirmPage({ searchParams }: ConfirmPagePr
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle className="text-lg">Booking Details</CardTitle>
             <Badge variant="secondary">Pending</Badge>
           </div>

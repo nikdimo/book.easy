@@ -399,6 +399,36 @@ export async function upsertListingDatePriceRange(formData: FormData) {
   return { success: true };
 }
 
+export async function removeListingDatePriceRange(formData: FormData) {
+  const listingId = formData.get("listingId") as string;
+  const startDate = formData.get("startDate") as string;
+  const endDate = formData.get("endDate") as string;
+
+  if (!listingId || !startDate || !endDate) {
+    return { error: "Missing required fields" };
+  }
+
+  const listingResult = await requireManagedListing(listingId);
+  if ("error" in listingResult) return { error: listingResult.error };
+  const listing = listingResult.listing;
+
+  let start: Date;
+  let end: Date;
+  try {
+    start = ymdToDbDate(startDate);
+    end = ymdToDbDate(endDate);
+  } catch {
+    return { error: "Invalid date range" };
+  }
+
+  await db.listingDatePrice.deleteMany({
+    where: { listingId, date: { gte: start, lte: end } },
+  });
+
+  revalidateListingPaths(listingId, listing.slug);
+  return { success: true };
+}
+
 export async function removeListingDatePrice(priceId: string) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Not authorized" };

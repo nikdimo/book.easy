@@ -42,7 +42,7 @@ export const listingCardSelect = {
       longitude: true,
     },
   },
-  images: { select: { url: true, alt: true } },
+  images: { where: { mediaType: "IMAGE" }, select: { url: true, alt: true } },
   pricingRule: { select: { baseNightlyRate: true, currency: true } },
 } satisfies Prisma.ListingSelect;
 

@@ -6,14 +6,16 @@ import { ITEMS_PER_PAGE } from "@/lib/constants";
 import { sortPropertyTypesInDisplayOrder } from "@/lib/property-type-filter";
 import { getActivePropertyTypes } from "@/lib/services/property-type.service";
 import { serializeListingCard, listingCardSelect } from "@/lib/serializers/listing-card";
+import { placeKey, type PlaceOption } from "@/lib/utils/place";
 import type {
   SearchFilterPreview,
   SearchFilters,
 } from "@/lib/types/search";
 
 /** Invalidated on-demand (via revalidateTag) whenever a listing's public visibility
- * changes — see approveListing/suspendListing in lib/actions/admin.actions.ts — with a
- * time-based fallback so it's never wrong for more than a few minutes either way. */
+ * changes — see submitNewListing/updateListing in lib/actions/listing.actions.ts and
+ * suspendListing in lib/actions/admin.actions.ts — with a time-based fallback so it's
+ * never wrong for more than a few minutes either way. */
 export const PUBLIC_HEADER_DATA_TAG = "public-header-data";
 
 /** Grid/search cards show at most a handful of photos (hover carousel) — fetching all
@@ -26,7 +28,14 @@ function buildListingWhere(filters: SearchFilters): Prisma.ListingWhereInput {
     status: ListingStatus.APPROVED,
   };
 
-  if (filters.city) {
+  if (filters.city && filters.country) {
+    // Exact (city, country) pair — known from the autocomplete — so two same-named
+    // cities in different countries don't get merged into one result set.
+    where.property = {
+      city: { equals: filters.city, mode: "insensitive" },
+      country: { equals: filters.country, mode: "insensitive" },
+    };
+  } else if (filters.city) {
     where.property = {
       OR: [
         { city: { contains: filters.city, mode: "insensitive" } },
@@ -105,6 +114,7 @@ export async function searchListings(filters: SearchFilters) {
       select: {
         ...listingCardSelect,
         images: {
+          where: { mediaType: "IMAGE" },
           select: { url: true, alt: true },
           orderBy: { displayOrder: "asc" },
           take: CARD_IMAGE_LIMIT,
@@ -131,6 +141,7 @@ export async function getFeaturedListings(limit = 6) {
     select: {
       ...listingCardSelect,
       images: {
+        where: { mediaType: "IMAGE" },
         select: { url: true, alt: true },
         orderBy: { displayOrder: "asc" },
         take: CARD_IMAGE_LIMIT,
@@ -238,24 +249,28 @@ export async function getSearchFilterPreview(
 // cached rather than hitting the DB per navigation — bounded by a 5 minute fallback and
 // invalidated on-demand when a listing's approval/suspension status changes.
 export const getAvailableCities = unstable_cache(
-  async (): Promise<string[]> => {
+  async (): Promise<PlaceOption[]> => {
     const properties = await db.property.findMany({
       where: { listings: { some: { status: ListingStatus.APPROVED } } },
-      select: { city: true },
-      distinct: ["city"],
-      orderBy: { city: "asc" },
+      select: { city: true, country: true },
+      distinct: ["city", "country"],
+      orderBy: [{ city: "asc" }, { country: "asc" }],
     });
     const seen = new Set<string>();
+    const result: PlaceOption[] = [];
 
-    return properties
-      .map((p) => p.city.trim())
-      .filter((city) => city.length > 0)
-      .filter((city) => {
-        const key = city.toLowerCase();
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
+    for (const p of properties) {
+      const city = p.city.trim();
+      const country = p.country.trim();
+      if (!city) continue;
+
+      const key = placeKey({ city, country });
+      if (seen.has(key)) continue;
+      seen.add(key);
+      result.push({ city, country });
+    }
+
+    return result;
   },
   ["available-cities"],
   { revalidate: 300, tags: [PUBLIC_HEADER_DATA_TAG] }
@@ -263,33 +278,36 @@ export const getAvailableCities = unstable_cache(
 
 export const getAvailablePropertyTypesByCity = unstable_cache(
   async (): Promise<Record<string, string[]>> => {
-    // Distinct (city, propertyType) pairs computed by the DB instead of fetching every
-    // approved property and deduping in Node.
+    // Distinct (city, country, propertyType) rows computed by the DB instead of
+    // fetching every approved property and deduping in Node. Keyed by `placeKey` (not
+    // bare city) so two same-named cities in different countries don't merge lists.
     const rows = await db.property.groupBy({
-      by: ["city", "propertyType"],
+      by: ["city", "country", "propertyType"],
       where: { listings: { some: { status: ListingStatus.APPROVED } } },
     });
 
-    const canonicalCityByKey = new Map<string, string>();
-    const propertyTypesByCity = new Map<string, string[]>();
+    const canonicalKeyByLookup = new Map<string, string>();
+    const propertyTypesByKey = new Map<string, string[]>();
 
     for (const row of rows) {
       const city = row.city.trim();
+      const country = row.country.trim();
       if (!city) continue;
 
-      const cityKey = city.toLowerCase();
-      const canonicalCity = canonicalCityByKey.get(cityKey) ?? city;
-      canonicalCityByKey.set(cityKey, canonicalCity);
+      const place = { city, country };
+      const lookup = placeKey(place);
+      const canonicalKey = canonicalKeyByLookup.get(lookup) ?? lookup;
+      canonicalKeyByLookup.set(lookup, canonicalKey);
 
-      const current = propertyTypesByCity.get(canonicalCity) ?? [];
+      const current = propertyTypesByKey.get(canonicalKey) ?? [];
       current.push(row.propertyType);
-      propertyTypesByCity.set(canonicalCity, current);
+      propertyTypesByKey.set(canonicalKey, current);
     }
 
     const entries = await Promise.all(
-      [...propertyTypesByCity.entries()].map(
-        async ([city, propertyTypes]) =>
-          [city, await collectAvailablePropertyTypes(propertyTypes)] as const
+      [...propertyTypesByKey.entries()].map(
+        async ([key, propertyTypes]) =>
+          [key, await collectAvailablePropertyTypes(propertyTypes)] as const
       )
     );
     return Object.fromEntries(entries);

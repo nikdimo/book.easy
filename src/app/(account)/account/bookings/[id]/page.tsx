@@ -40,7 +40,7 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle>Booking Details</CardTitle>
             <Badge variant={booking.status === "CONFIRMED" ? "default" : "secondary"}>
               {statusConfig?.label || booking.status}
