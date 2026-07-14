@@ -374,32 +374,9 @@ export function PropertiesExplorerClient({
             ) : null}
           </div>
 
-          <div className="flex shrink-0 items-center gap-3">
-            <p className="hidden max-w-[220px] truncate text-sm text-muted-foreground lg:block">
-              {totalLabel}
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-11 rounded-full px-4 lg:hidden"
-              type="button"
-              onClick={() =>
-                setMobileView((current) => (current === "list" ? "map" : "list"))
-              }
-            >
-              {mobileView === "list" ? (
-                <>
-                  <MapIcon className="mr-2 h-4 w-4" />
-                  Map
-                </>
-              ) : (
-                <>
-                  <ListIcon className="mr-2 h-4 w-4" />
-                  List
-                </>
-              )}
-            </Button>
-          </div>
+          <p className="hidden max-w-[220px] shrink-0 truncate text-sm text-muted-foreground lg:block">
+            {totalLabel}
+          </p>
         </div>
       </div>
 
@@ -463,10 +440,33 @@ export function PropertiesExplorerClient({
         </DialogPrimitive.Portal>
       </DialogPrimitive.Root>
 
-      <p className="container mx-auto mt-4 mb-2 flex items-center gap-2 px-4 text-sm text-muted-foreground md:px-8 lg:hidden">
-        <Search className="h-4 w-4 shrink-0 opacity-70" />
-        {totalLabel}
-      </p>
+      <div className="container mx-auto mt-4 mb-2 flex items-center justify-between gap-2 px-4 md:px-8 lg:hidden">
+        <p className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+          <Search className="h-4 w-4 shrink-0 opacity-70" />
+          {totalLabel}
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-9 shrink-0 rounded-full px-4"
+          type="button"
+          onClick={() =>
+            setMobileView((current) => (current === "list" ? "map" : "list"))
+          }
+        >
+          {mobileView === "list" ? (
+            <>
+              <MapIcon className="mr-2 h-4 w-4" />
+              Map
+            </>
+          ) : (
+            <>
+              <ListIcon className="mr-2 h-4 w-4" />
+              List
+            </>
+          )}
+        </Button>
+      </div>
 
       <div className="relative min-w-0 flex-1">
         <div className="lg:pr-[min(42vw,560px)] xl:pr-[min(45vw,640px)]">

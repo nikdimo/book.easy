@@ -8,6 +8,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight, Grid, X } from "lucide-react";
 import type { ListingMediaItem } from "@/lib/types/listing-media";
 import { cn } from "@/lib/utils";
 import { useSwipe } from "@/lib/hooks/use-swipe";
+import { useProgressivePreload } from "@/lib/hooks/use-progressive-preload";
 
 interface ImageGalleryProps {
   images: ListingMediaItem[];
@@ -20,6 +21,16 @@ function neighborIndices(index: number, length: number): number[] {
   const prev = (index - 1 + length) % length;
   const next = (index + 1) % length;
   return prev === next ? [prev] : [prev, next];
+}
+
+/** Immediate neighbors (highest priority) plus everything the background
+ * progressive loader has reached so far, minus whichever index is on screen. */
+function preloadIndicesFor(current: number, loadedUpTo: number, length: number): number[] {
+  const set = new Set(neighborIndices(current, length));
+  for (let i = 0; i < loadedUpTo; i++) {
+    if (i !== current) set.add(i);
+  }
+  return Array.from(set);
 }
 
 export function ImageGallery({ images }: ImageGalleryProps) {
@@ -60,6 +71,10 @@ export function ImageGallery({ images }: ImageGalleryProps) {
     () => setActiveIndex((i) => (i === null ? i : (i - 1 + images.length) % images.length))
   );
 
+  // First 3 photos load eagerly up front; the rest stream in first-to-last in
+  // the background so browsing further into the gallery is already instant.
+  const loadedUpTo = useProgressivePreload(images.length, 3);
+
   if (images.length === 0) {
     return (
       <div className="aspect-[16/9] bg-muted rounded-2xl flex items-center justify-center text-muted-foreground ring-1 ring-black/5">
@@ -83,7 +98,10 @@ export function ImageGallery({ images }: ImageGalleryProps) {
           onTouchEnd={heroSwipe.onTouchEnd}
         >
           <GalleryMedia item={images[heroIndex]} fill preload sizes="100vw" />
-          <PreloadNeighbors images={images} index={heroIndex} />
+          <PreloadImages
+            images={images}
+            indices={preloadIndicesFor(heroIndex, loadedUpTo, images.length)}
+          />
           {images.length > 1 && (
             <div className="pointer-events-none absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
               {images.map((_, i) => (
@@ -221,7 +239,11 @@ export function ImageGallery({ images }: ImageGalleryProps) {
                   preload
                   sizes="100vw"
                 />
-                <PreloadNeighbors images={images} index={activeIndex} contain />
+                <PreloadImages
+                  images={images}
+                  indices={preloadIndicesFor(activeIndex, loadedUpTo, images.length)}
+                  contain
+                />
 
                 {images.length > 1 && (
                   <>
@@ -315,21 +337,27 @@ function GalleryMedia({
   );
 }
 
-/** Invisible, non-interactive copies of the prev/next photos so the browser has
- * already fetched them by the time a swipe reveals them. */
-function PreloadNeighbors({
+/** Invisible, non-interactive copies of photos so the browser has already
+ * fetched them by the time they're swiped to. `pointer-events-none` is load
+ * bearing here — without it these stack on top of the visible photo and
+ * swallow every tap/click meant for it. */
+function PreloadImages({
   images,
-  index,
+  indices,
   contain = false,
 }: {
   images: ListingMediaItem[];
-  index: number;
+  indices: number[];
   contain?: boolean;
 }) {
   return (
     <>
-      {neighborIndices(index, images.length).map((i) => (
-        <div key={images[i].id} className="absolute inset-0 opacity-0" aria-hidden="true">
+      {indices.map((i) => (
+        <div
+          key={images[i].id}
+          className="pointer-events-none absolute inset-0 opacity-0"
+          aria-hidden="true"
+        >
           <GalleryMedia item={images[i]} fill eager contain={contain} sizes="100vw" />
         </div>
       ))}

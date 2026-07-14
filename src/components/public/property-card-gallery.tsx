@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { toggleFavorite } from "@/lib/actions/favorite.actions";
 import { toast } from "sonner";
 import { useSwipe } from "@/lib/hooks/use-swipe";
+import { useProgressivePreload } from "@/lib/hooks/use-progressive-preload";
 
 interface PropertyCardGalleryProps {
   href: string;
@@ -34,26 +35,42 @@ export function PropertyCardGallery({
   const router = useRouter();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [saved, setSaved] = useState(initialSaved);
+  const [hasBrowsedPhotos, setHasBrowsedPhotos] = useState(false);
   const [, startTransition] = useTransition();
 
   const safeIndex = Math.min(currentImageIndex, Math.max(0, images.length - 1));
   const cover = images[safeIndex];
   const hasMultiple = images.length > 1;
 
+  function goToImage(updater: (prev: number) => number) {
+    setHasBrowsedPhotos(true);
+    setCurrentImageIndex(updater);
+  }
+
   const swipe = useSwipe(
-    () => setCurrentImageIndex((p) => (p + 1) % Math.max(images.length, 1)),
-    () => setCurrentImageIndex((p) => (p - 1 + Math.max(images.length, 1)) % Math.max(images.length, 1))
+    () => goToImage((p) => (p + 1) % Math.max(images.length, 1)),
+    () => goToImage((p) => (p - 1 + Math.max(images.length, 1)) % Math.max(images.length, 1))
   );
 
-  // Prev/next photos, preloaded off-screen so a swipe shows them instantly
-  // instead of waiting on a fresh network fetch.
-  const neighborImages =
-    images.length > 1
-      ? [
-          images[(safeIndex - 1 + images.length) % images.length],
-          images[(safeIndex + 1) % images.length],
-        ]
-      : [];
+  // First 3 photos load eagerly up front. With a search page full of cards,
+  // warming a whole gallery per card would waste bandwidth on photos most
+  // users never see — so the rest only start streaming in once this card's
+  // photos have actually been browsed at least once.
+  const loadedUpTo = useProgressivePreload(images.length, 3, hasBrowsedPhotos);
+
+  // Immediate neighbors (highest priority) plus everything preloaded so far,
+  // preloaded off-screen so a swipe shows them instantly.
+  const preloadIndices = (() => {
+    if (images.length <= 1) return [];
+    const indices = new Set([
+      (safeIndex - 1 + images.length) % images.length,
+      (safeIndex + 1) % images.length,
+    ]);
+    for (let i = 0; i < loadedUpTo; i++) {
+      if (i !== safeIndex) indices.add(i);
+    }
+    return Array.from(indices);
+  })();
 
   function handleToggleSaved() {
     if (!isAuthenticated) {
@@ -94,10 +111,14 @@ export function PropertyCardGallery({
         )}
       </Link>
 
-      {neighborImages.map((img, i) => (
-        <div key={img.url + i} className="absolute inset-0 opacity-0" aria-hidden="true">
+      {preloadIndices.map((i) => (
+        <div
+          key={images[i].url + i}
+          className="pointer-events-none absolute inset-0 opacity-0"
+          aria-hidden="true"
+        >
           <Image
-            src={img.url}
+            src={images[i].url}
             alt=""
             fill
             loading="eager"
@@ -137,7 +158,7 @@ export function PropertyCardGallery({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              setCurrentImageIndex((p) => (p - 1 + images.length) % images.length);
+              goToImage((p) => (p - 1 + images.length) % images.length);
             }}
             className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/90 p-1.5 text-black opacity-0 shadow-sm transition-all hover:scale-105 hover:bg-white group-hover:opacity-100"
             aria-label="Previous photo"
@@ -149,7 +170,7 @@ export function PropertyCardGallery({
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              setCurrentImageIndex((p) => (p + 1) % images.length);
+              goToImage((p) => (p + 1) % images.length);
             }}
             className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/90 p-1.5 text-black opacity-0 shadow-sm transition-all hover:scale-105 hover:bg-white group-hover:opacity-100"
             aria-label="Next photo"
