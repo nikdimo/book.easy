@@ -45,6 +45,16 @@ export function PropertyCardGallery({
     () => setCurrentImageIndex((p) => (p - 1 + Math.max(images.length, 1)) % Math.max(images.length, 1))
   );
 
+  // Prev/next photos, preloaded off-screen so a swipe shows them instantly
+  // instead of waiting on a fresh network fetch.
+  const neighborImages =
+    images.length > 1
+      ? [
+          images[(safeIndex - 1 + images.length) % images.length],
+          images[(safeIndex + 1) % images.length],
+        ]
+      : [];
+
   function handleToggleSaved() {
     if (!isAuthenticated) {
       router.push("/login");
@@ -83,6 +93,19 @@ export function PropertyCardGallery({
           </div>
         )}
       </Link>
+
+      {neighborImages.map((img, i) => (
+        <div key={img.url + i} className="absolute inset-0 opacity-0" aria-hidden="true">
+          <Image
+            src={img.url}
+            alt=""
+            fill
+            loading="eager"
+            className="object-cover"
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 35vw"
+          />
+        </div>
+      ))}
 
       <Button
         type="button"

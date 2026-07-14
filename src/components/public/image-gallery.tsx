@@ -13,6 +13,15 @@ interface ImageGalleryProps {
   images: ListingMediaItem[];
 }
 
+/** Prev/next indices around `index`, so they can be preloaded and swiping
+ * to them is instant instead of waiting on a fresh network fetch. */
+function neighborIndices(index: number, length: number): number[] {
+  if (length <= 1) return [];
+  const prev = (index - 1 + length) % length;
+  const next = (index + 1) % length;
+  return prev === next ? [prev] : [prev, next];
+}
+
 export function ImageGallery({ images }: ImageGalleryProps) {
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -74,6 +83,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
           onTouchEnd={heroSwipe.onTouchEnd}
         >
           <GalleryMedia item={images[heroIndex]} fill preload sizes="100vw" />
+          <PreloadNeighbors images={images} index={heroIndex} />
           {images.length > 1 && (
             <div className="pointer-events-none absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
               {images.map((_, i) => (
@@ -211,6 +221,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
                   preload
                   sizes="100vw"
                 />
+                <PreloadNeighbors images={images} index={activeIndex} contain />
 
                 {images.length > 1 && (
                   <>
@@ -266,12 +277,16 @@ function GalleryMedia({
   item,
   fill,
   preload,
+  eager,
   sizes,
   contain = false,
 }: {
   item: ListingMediaItem;
   fill?: boolean;
   preload?: boolean;
+  /** Fetch immediately rather than waiting on lazy-load, for off-screen images
+   * being warmed up ahead of a swipe. */
+  eager?: boolean;
   sizes?: string;
   contain?: boolean;
 }) {
@@ -294,7 +309,30 @@ function GalleryMedia({
       fill={fill}
       className={contain ? "object-contain" : "object-cover"}
       preload={preload}
+      loading={eager ? "eager" : undefined}
       sizes={sizes}
     />
+  );
+}
+
+/** Invisible, non-interactive copies of the prev/next photos so the browser has
+ * already fetched them by the time a swipe reveals them. */
+function PreloadNeighbors({
+  images,
+  index,
+  contain = false,
+}: {
+  images: ListingMediaItem[];
+  index: number;
+  contain?: boolean;
+}) {
+  return (
+    <>
+      {neighborIndices(index, images.length).map((i) => (
+        <div key={images[i].id} className="absolute inset-0 opacity-0" aria-hidden="true">
+          <GalleryMedia item={images[i]} fill eager contain={contain} sizes="100vw" />
+        </div>
+      ))}
+    </>
   );
 }
