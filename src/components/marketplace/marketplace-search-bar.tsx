@@ -364,13 +364,10 @@ function MarketplaceSearchBarInner({
       <div className="w-full">
         <button
           type="button"
-          className="flex h-14 w-full items-center gap-3 rounded-full border border-border/70 bg-background px-3 text-left shadow-[0_10px_26px_rgba(15,23,42,0.08)] transition-shadow hover:shadow-[0_14px_32px_rgba(15,23,42,0.12)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="flex h-11 w-full items-center gap-2 rounded-full border border-border/70 bg-background px-3 text-left shadow-[0_10px_26px_rgba(15,23,42,0.08)] transition-shadow hover:shadow-[0_14px_32px_rgba(15,23,42,0.12)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           onClick={() => setSearchFlowOpen(true)}
           aria-label="Open search"
         >
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
-            <Search className="h-4 w-4" strokeWidth={2.5} />
-          </span>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-semibold text-foreground">
               {citySummary}
@@ -378,6 +375,9 @@ function MarketplaceSearchBarInner({
             <span className="mt-0.5 block truncate text-xs text-muted-foreground">
               {dateSummary} · {guestSummary}
             </span>
+          </span>
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+            <Search className="h-4 w-4" strokeWidth={2.5} />
           </span>
         </button>
 
@@ -394,9 +394,6 @@ function MarketplaceSearchBarInner({
             propertyTypes,
           }}
           popularCities={popularCities}
-          availablePropertyTypesByCity={availablePropertyTypesByCity}
-          propertyTypes={propertyTypeOptions}
-          showPropertyTypes={showPropertyTypesInWhere}
           onApplySearch={(next) => {
             setCity(next.city);
             setCountry(next.country);

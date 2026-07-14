@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Share, Heart, Flag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,14 +15,43 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { reportListing } from "@/lib/actions/report.actions";
+import { toggleFavorite } from "@/lib/actions/favorite.actions";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-export function ListingActions({ title, listingId }: { title: string; listingId: string }) {
-  const [saved, setSaved] = useState(false);
+export function ListingActions({
+  title,
+  listingId,
+  initialSaved = false,
+  isAuthenticated,
+}: {
+  title: string;
+  listingId: string;
+  initialSaved?: boolean;
+  isAuthenticated: boolean;
+}) {
+  const router = useRouter();
+  const [saved, setSaved] = useState(initialSaved);
+  const [, startTransition] = useTransition();
   const [reportOpen, setReportOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  function handleToggleSaved() {
+    if (!isAuthenticated) {
+      router.push("/login");
+      return;
+    }
+    const next = !saved;
+    setSaved(next);
+    startTransition(async () => {
+      const result = await toggleFavorite(listingId);
+      if (result?.error) {
+        setSaved(!next);
+        toast.error(result.error);
+      }
+    });
+  }
 
   async function share() {
     const url = typeof window !== "undefined" ? window.location.href : "";
@@ -75,7 +105,7 @@ export function ListingActions({ title, listingId }: { title: string; listingId:
         variant="ghost"
         size="sm"
         className="rounded-full gap-2 font-medium underline-offset-4 hover:underline"
-        onClick={() => setSaved((s) => !s)}
+        onClick={handleToggleSaved}
       >
         <Heart className={cn("h-4 w-4", saved && "fill-rose-600 text-rose-600")} />
         Save

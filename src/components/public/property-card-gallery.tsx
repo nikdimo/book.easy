@@ -2,30 +2,72 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 import { Heart, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { toggleFavorite } from "@/lib/actions/favorite.actions";
+import { toast } from "sonner";
+import { useSwipe } from "@/lib/hooks/use-swipe";
 
 interface PropertyCardGalleryProps {
   href: string;
   title: string;
   images: { url: string; alt?: string | null }[];
+  listingId: string;
+  initialSaved: boolean;
+  isAuthenticated: boolean;
 }
 
 /** The only genuinely interactive part of a property card — hover-cycling photos, a
  * save/heart toggle — split out so the rest of the card (headline, price, badges) can
  * be a server component with no client JS shipped for it. */
-export function PropertyCardGallery({ href, title, images }: PropertyCardGalleryProps) {
+export function PropertyCardGallery({
+  href,
+  title,
+  images,
+  listingId,
+  initialSaved,
+  isAuthenticated,
+}: PropertyCardGalleryProps) {
+  const router = useRouter();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState(initialSaved);
+  const [, startTransition] = useTransition();
 
   const safeIndex = Math.min(currentImageIndex, Math.max(0, images.length - 1));
   const cover = images[safeIndex];
   const hasMultiple = images.length > 1;
 
+  const swipe = useSwipe(
+    () => setCurrentImageIndex((p) => (p + 1) % Math.max(images.length, 1)),
+    () => setCurrentImageIndex((p) => (p - 1 + Math.max(images.length, 1)) % Math.max(images.length, 1))
+  );
+
+  function handleToggleSaved() {
+    if (!isAuthenticated) {
+      router.push("/login");
+      return;
+    }
+    const next = !saved;
+    setSaved(next);
+    startTransition(async () => {
+      const result = await toggleFavorite(listingId);
+      if (result?.error) {
+        setSaved(!next);
+        toast.error(result.error);
+      }
+    });
+  }
+
   return (
-    <div className="group relative aspect-[20/19] overflow-hidden rounded-xl bg-muted sm:aspect-[4/3]">
+    <div
+      className="group relative aspect-[20/19] touch-pan-y overflow-hidden rounded-xl bg-muted sm:aspect-[4/3]"
+      onClickCapture={swipe.onClickCapture}
+      onTouchStart={hasMultiple ? swipe.onTouchStart : undefined}
+      onTouchEnd={hasMultiple ? swipe.onTouchEnd : undefined}
+    >
       <Link href={href} className="absolute inset-0 z-0">
         {cover ? (
           <Image
@@ -53,7 +95,7 @@ export function PropertyCardGallery({ href, title, images }: PropertyCardGallery
         aria-label={saved ? "Remove from saved" : "Save listing"}
         onClick={(e) => {
           e.preventDefault();
-          setSaved((s) => !s);
+          handleToggleSaved();
         }}
       >
         <Heart

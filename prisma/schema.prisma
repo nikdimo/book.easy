@@ -92,6 +92,7 @@ model User {
   listingDrafts       ListingDraft[]
   listingReports         ListingReport[] @relation("ListingReportReporter")
   reviewedListingReports ListingReport[] @relation("ListingReportReviewer")
+  favorites           Favorite[]
 
   @@index([email])
   @@index([role])
@@ -229,6 +230,7 @@ model Listing {
   bookings           Booking[]
   suggestions        Suggestion[]
   reports            ListingReport[]
+  favorites          Favorite[]
 
   @@index([hostId])
   @@index([status])
@@ -337,6 +339,25 @@ model ListingReport {
   reviewedBy User?   @relation("ListingReportReviewer", fields: [reviewedById], references: [id])
 
   @@index([status])
+  @@index([listingId])
+}
+
+/**
+ * A user saving a listing for later (the heart/"Save" toggle on cards and the listing
+ * page). One row per user+listing so the saved state is the same everywhere it's shown
+ * and survives across devices/sessions, and shows up in /account/favorites.
+ */
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  listingId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, listingId])
+  @@index([userId])
   @@index([listingId])
 }
 

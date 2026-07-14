@@ -4,6 +4,7 @@ import { Dialog as DialogPrimitive } from "radix-ui";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import {
+  List as ListIcon,
   Map as MapIcon,
   Search,
   SlidersHorizontal,
@@ -202,6 +203,7 @@ export function PropertiesExplorerClient({
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [focusedSection, setFocusedSection] =
     useState<SearchFiltersSection | null>(null);
+  const [mobileView, setMobileView] = useState<"list" | "map">("list");
 
   const allPropertyTypeValues = useMemo(
     () => propertyTypes.map((t) => t.value),
@@ -382,13 +384,20 @@ export function PropertiesExplorerClient({
               className="h-11 rounded-full px-4 lg:hidden"
               type="button"
               onClick={() =>
-                document
-                  .getElementById("results-map-mobile")
-                  ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                setMobileView((current) => (current === "list" ? "map" : "list"))
               }
             >
-              <MapIcon className="mr-2 h-4 w-4" />
-              Map
+              {mobileView === "list" ? (
+                <>
+                  <MapIcon className="mr-2 h-4 w-4" />
+                  Map
+                </>
+              ) : (
+                <>
+                  <ListIcon className="mr-2 h-4 w-4" />
+                  List
+                </>
+              )}
             </Button>
           </div>
         </div>
@@ -461,7 +470,12 @@ export function PropertiesExplorerClient({
 
       <div className="relative min-w-0 flex-1">
         <div className="lg:pr-[min(42vw,560px)] xl:pr-[min(45vw,640px)]">
-          <div className="px-4 pt-2 pb-6 md:px-8">
+          <div
+            className={cn(
+              "px-4 pt-2 pb-6 md:px-8",
+              mobileView === "map" && "hidden lg:block"
+            )}
+          >
             {totalCount > 0 ? (
               <h2 className="mb-6 text-2xl font-semibold tracking-tight text-foreground">
                 Over {totalCount.toLocaleString()}{" "}
@@ -471,17 +485,14 @@ export function PropertiesExplorerClient({
             {children}
           </div>
 
-          <div
-            id="results-map-mobile"
-            className="scroll-mt-24 px-4 pb-8 md:px-8 lg:hidden"
-          >
-            <div className="h-[min(50vh,420px)] overflow-hidden rounded-2xl border border-border shadow-sm">
+          {mobileView === "map" ? (
+            <div className="fixed inset-x-0 top-[7.75rem] bottom-0 z-20 px-4 pb-4 lg:hidden">
               <PropertiesMap
                 pins={mapPins}
-                className="min-h-[320px] rounded-2xl border-0"
+                className="h-full rounded-2xl border-0"
               />
             </div>
-          </div>
+          ) : null}
         </div>
 
         <aside

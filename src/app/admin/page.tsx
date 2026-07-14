@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { getAdminDashboardStats } from "@/lib/services/admin.service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Home, Users, CalendarDays, Clock, CheckCircle, AlertTriangle } from "lucide-react";
+import { Home, Users, CalendarDays, Clock, CheckCircle, AlertTriangle, Lightbulb } from "lucide-react";
 
 export const metadata = { title: "Admin Dashboard" };
 
@@ -9,6 +9,7 @@ export default async function AdminDashboardPage() {
   const {
     totalUsers, totalHosts, totalListings, pendingListings,
     approvedListings, totalBookings, pendingBookings, confirmedBookings,
+    pendingSuggestions,
   } = await getAdminDashboardStats();
 
   const stats = [
@@ -67,6 +68,13 @@ export default async function AdminDashboardPage() {
       icon: CheckCircle,
       href: "/admin/bookings?status=CONFIRMED",
       ariaLabel: `View ${confirmedBookings} confirmed bookings`,
+    },
+    {
+      label: "Pending Suggestions",
+      value: pendingSuggestions,
+      icon: Lightbulb,
+      href: "/admin/settings?tab=suggestions",
+      ariaLabel: `${pendingSuggestions} host suggestions awaiting review`,
     },
   ];
 

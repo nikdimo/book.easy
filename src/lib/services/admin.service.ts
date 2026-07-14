@@ -13,6 +13,7 @@ export async function getAdminDashboardStats() {
     totalBookings,
     pendingBookings,
     confirmedBookings,
+    pendingSuggestions,
   ] = await Promise.all([
     db.user.count(),
     db.user.count({ where: { isHost: true } }),
@@ -22,6 +23,7 @@ export async function getAdminDashboardStats() {
     db.booking.count(),
     db.booking.count({ where: { status: "PENDING" } }),
     db.booking.count({ where: { status: "CONFIRMED" } }),
+    db.suggestion.count({ where: { status: "PENDING" } }),
   ]);
 
   return {
@@ -33,7 +35,12 @@ export async function getAdminDashboardStats() {
     totalBookings,
     pendingBookings,
     confirmedBookings,
+    pendingSuggestions,
   };
+}
+
+export async function getPendingSuggestionCount() {
+  return db.suggestion.count({ where: { status: "PENDING" } });
 }
 
 export async function getAllUsersForAdmin() {

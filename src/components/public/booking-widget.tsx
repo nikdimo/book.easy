@@ -11,11 +11,18 @@ import { Separator } from "@/components/ui/separator";
 import { MarketplaceStayDatePicker } from "@/components/marketplace/marketplace-stay-date-picker";
 import { GuestCountsStep } from "@/components/marketplace/marketplace-stay-date-picker";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { formatPrice } from "@/lib/utils/format";
 import { createBookingAction } from "@/lib/actions/booking.actions";
 import { toast } from "sonner";
+import { ChevronUp } from "lucide-react";
 
 interface BookingWidgetProps {
   listingId: string;
@@ -82,6 +89,7 @@ export function BookingWidget({
   const [guestEditorOpen, setGuestEditorOpen] = useState(false);
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [priceDetailsOpen, setPriceDetailsOpen] = useState(false);
 
   const checkIn = checkInStr ? parseLocalYmd(checkInStr) : undefined;
   const checkOut = checkOutStr ? parseLocalYmd(checkOutStr) : undefined;
@@ -114,12 +122,16 @@ export function BookingWidget({
     }
 
     if (!checkIn || !checkOut) {
-      setError("Please select check-in and check-out dates");
+      const message = "Please select check-in and check-out dates";
+      setError(message);
+      toast.error(message);
       return;
     }
 
     if (nights < minNights) {
-      setError(`Minimum stay is ${minNights} night${minNights > 1 ? "s" : ""}`);
+      const message = `Minimum stay is ${minNights} night${minNights > 1 ? "s" : ""}`;
+      setError(message);
+      toast.error(message);
       return;
     }
 
@@ -139,8 +151,68 @@ export function BookingWidget({
     });
   }
 
+  function renderPriceBreakdown() {
+    if (!(nights > 0 && stayPricing)) return null;
+    const breakdown = stayPricing.nightlyBreakdown;
+    const uniqueRates = new Set(breakdown.map((n) => n.rate)).size;
+    const showEachNight =
+      breakdown.length <= 7 ||
+      (hasVariableRates && uniqueRates > 1 && breakdown.length <= 14);
+
+    let subtotalLine;
+    if (showEachNight) {
+      subtotalLine = breakdown.map((n) => (
+        <div key={n.date} className="flex justify-between gap-2">
+          <span className="text-muted-foreground truncate">{n.date}</span>
+          <span>{formatPrice(n.rate, currency)}</span>
+        </div>
+      ));
+    } else if (uniqueRates > 1) {
+      subtotalLine = (
+        <div className="flex justify-between">
+          <span>
+            {nights} night{nights > 1 ? "s" : ""} (variable nightly rates)
+          </span>
+          <span>{formatPrice(subtotal, currency)}</span>
+        </div>
+      );
+    } else {
+      subtotalLine = (
+        <div className="flex justify-between">
+          <span>
+            {formatPrice(breakdown[0]?.rate ?? nightlyRate, currency)} × {nights} night
+            {nights > 1 ? "s" : ""}
+          </span>
+          <span>{formatPrice(subtotal, currency)}</span>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-2 text-sm">
+        {subtotalLine}
+        <div className="flex justify-between font-medium pt-1 border-t border-border/60">
+          <span>Subtotal (stay)</span>
+          <span>{formatPrice(subtotal, currency)}</span>
+        </div>
+        {cleaningFee > 0 && (
+          <div className="flex justify-between">
+            <span>Cleaning fee</span>
+            <span>{formatPrice(cleaningFee, currency)}</span>
+          </div>
+        )}
+        <Separator />
+        <div className="flex justify-between font-semibold">
+          <span>Total</span>
+          <span>{formatPrice(total, currency)}</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <Card className="sticky top-24 rounded-2xl border-2 border-border shadow-xl overflow-hidden">
+    <>
+      <Card className="rounded-2xl border-2 border-border shadow-xl overflow-hidden lg:sticky lg:top-24">
       <CardHeader className="pb-2">
         <CardTitle className="flex flex-col gap-1 font-normal">
           <div className="flex items-baseline gap-1">
@@ -225,12 +297,12 @@ export function BookingWidget({
         </div>
 
         {error && (
-          <p className="text-sm text-destructive">{error}</p>
+          <p className="hidden text-sm text-destructive lg:block">{error}</p>
         )}
 
         <Button
           onClick={handleSubmit}
-          className="w-full rounded-lg text-base font-semibold py-6"
+          className="hidden w-full rounded-lg text-base font-semibold py-6 lg:flex"
           size="lg"
           disabled={isPending || !checkIn || !checkOut}
         >
@@ -238,66 +310,68 @@ export function BookingWidget({
         </Button>
 
         {nights > 0 && stayPricing && (
-          <>
-            <Separator />
-            <div className="space-y-2 text-sm">
-              {(() => {
-                const breakdown = stayPricing.nightlyBreakdown;
-                const uniqueRates = new Set(breakdown.map((n) => n.rate)).size;
-                const showEachNight =
-                  breakdown.length <= 7 ||
-                  (hasVariableRates && uniqueRates > 1 && breakdown.length <= 14);
-                if (showEachNight) {
-                  return breakdown.map((n) => (
-                    <div key={n.date} className="flex justify-between gap-2">
-                      <span className="text-muted-foreground truncate">{n.date}</span>
-                      <span>{formatPrice(n.rate, currency)}</span>
-                    </div>
-                  ));
-                }
-                if (uniqueRates > 1) {
-                  return (
-                    <div className="flex justify-between">
-                      <span>
-                        {nights} night{nights > 1 ? "s" : ""} (variable nightly rates)
-                      </span>
-                      <span>{formatPrice(subtotal, currency)}</span>
-                    </div>
-                  );
-                }
-                const firstRate = breakdown[0]?.rate ?? nightlyRate;
-                return (
-                  <div className="flex justify-between">
-                    <span>
-                      {formatPrice(firstRate, currency)} × {nights} night{nights > 1 ? "s" : ""}
-                    </span>
-                    <span>{formatPrice(subtotal, currency)}</span>
-                  </div>
-                );
-              })()}
-              <div className="flex justify-between font-medium pt-1 border-t border-border/60">
-                <span>Subtotal (stay)</span>
-                <span>{formatPrice(subtotal, currency)}</span>
-              </div>
-              {cleaningFee > 0 && (
-                <div className="flex justify-between">
-                  <span>Cleaning fee</span>
-                  <span>{formatPrice(cleaningFee, currency)}</span>
-                </div>
-              )}
-              <Separator />
-              <div className="flex justify-between font-semibold">
-                <span>Total</span>
-                <span>{formatPrice(total, currency)}</span>
-              </div>
-            </div>
-          </>
+          <div className="hidden lg:block">
+            <Separator className="mb-4" />
+            {renderPriceBreakdown()}
+          </div>
         )}
 
-        <p className="text-xs text-muted-foreground text-center leading-relaxed">
+        <p className="hidden text-xs text-muted-foreground text-center leading-relaxed lg:block">
           You won&apos;t be charged yet. The host will approve or decline your request.
         </p>
       </CardContent>
     </Card>
+
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 px-4 pt-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 lg:hidden"
+        style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+      >
+        {error && <p className="mb-2 text-sm text-destructive">{error}</p>}
+        <div className="flex items-center justify-between gap-4">
+          <button
+            type="button"
+            className="flex min-w-0 flex-col items-start text-left disabled:pointer-events-none"
+            onClick={() => setPriceDetailsOpen(true)}
+            disabled={!(nights > 0 && stayPricing)}
+          >
+            {nights > 0 && stayPricing ? (
+              <>
+                <span className="text-base font-semibold">
+                  {formatPrice(total, currency)}
+                </span>
+                <span className="flex items-center gap-0.5 text-xs text-muted-foreground underline underline-offset-2">
+                  {nights} night{nights > 1 ? "s" : ""} · Price details
+                  <ChevronUp className="h-3 w-3" />
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="flex items-baseline gap-1 text-base font-semibold">
+                  {formatPrice(nightlyRate, currency)}
+                  <span className="text-xs font-normal text-muted-foreground">/ night</span>
+                </span>
+                <span className="text-xs text-muted-foreground">Add dates for total</span>
+              </>
+            )}
+          </button>
+          <Button
+            onClick={handleSubmit}
+            className="shrink-0 rounded-xl px-8 font-semibold"
+            size="lg"
+            disabled={isPending || !checkIn || !checkOut}
+          >
+            {isPending ? "Sending…" : "Reserve"}
+          </Button>
+        </div>
+      </div>
+
+      <Sheet open={priceDetailsOpen} onOpenChange={setPriceDetailsOpen}>
+        <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto rounded-t-2xl">
+          <SheetHeader>
+            <SheetTitle>Price details</SheetTitle>
+          </SheetHeader>
+          <div className="px-4 pb-4">{renderPriceBreakdown()}</div>
+        </SheetContent>
+      </Sheet>
+    </>
   );
 }

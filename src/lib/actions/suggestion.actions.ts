@@ -5,26 +5,9 @@ import { auth } from "@/lib/auth";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { createAuditLog } from "@/lib/services/audit.service";
 import { PROPERTY_TYPES_TAG } from "@/lib/services/property-type.service";
+import { AMENITIES_TAG } from "@/lib/services/amenity.service";
+import { uniquePropertyTypeValue } from "@/lib/utils/property-type";
 import { revalidateTag, revalidatePath } from "next/cache";
-
-/** Turns a free-text label into a stable UPPER_SNAKE_CASE code for PropertyType.value,
- * appending a numeric suffix on collision (e.g. a second "Loft" suggestion). */
-async function uniquePropertyTypeValue(label: string): Promise<string> {
-  const base =
-    label
-      .trim()
-      .toUpperCase()
-      .replace(/[^A-Z0-9]+/g, "_")
-      .replace(/^_+|_+$/g, "") || "TYPE";
-
-  let candidate = base;
-  let suffix = 2;
-  while (await db.propertyType.findUnique({ where: { value: candidate } })) {
-    candidate = `${base}_${suffix}`;
-    suffix += 1;
-  }
-  return candidate;
-}
 
 export async function createSuggestion(formData: FormData) {
   const session = await auth();
@@ -62,7 +45,7 @@ export async function createSuggestion(formData: FormData) {
     },
   });
 
-  revalidatePath("/admin/suggestions");
+  revalidatePath("/admin/settings");
   return { success: true };
 }
 
@@ -104,7 +87,7 @@ export async function reviewSuggestion(
       metadata: { kind: suggestion.kind, label: suggestion.label },
     });
 
-    revalidatePath("/admin/suggestions");
+    revalidatePath("/admin/settings");
     return { success: true };
   }
 
@@ -146,6 +129,8 @@ export async function reviewSuggestion(
       },
     });
 
+    if (scope === "GLOBAL") revalidateTag(AMENITIES_TAG, "max");
+
     if (suggestion.listingId) {
       await db.listingAmenity.upsert({
         where: {
@@ -180,7 +165,7 @@ export async function reviewSuggestion(
     metadata: { kind: suggestion.kind, label: finalLabel, scope },
   });
 
-  revalidatePath("/admin/suggestions");
+  revalidatePath("/admin/settings");
   if (suggestion.listingId) {
     revalidatePath(`/host/listings/${suggestion.listingId}/edit`);
   }

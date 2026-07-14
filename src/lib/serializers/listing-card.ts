@@ -19,6 +19,7 @@ export type ListingCardSerialized = {
   pricingRule: {
     baseNightlyRate: number;
     currency: string;
+    minNights: number;
   } | null;
 };
 
@@ -43,7 +44,7 @@ export const listingCardSelect = {
     },
   },
   images: { where: { mediaType: "IMAGE" }, select: { url: true, alt: true } },
-  pricingRule: { select: { baseNightlyRate: true, currency: true } },
+  pricingRule: { select: { baseNightlyRate: true, currency: true, minNights: true } },
 } satisfies Prisma.ListingSelect;
 
 type ListingForCard = Prisma.ListingGetPayload<{ select: typeof listingCardSelect }>;
@@ -71,6 +72,7 @@ export function serializeListingCard(listing: ListingForCard): ListingCardSerial
       ? {
           baseNightlyRate: Number(listing.pricingRule.baseNightlyRate),
           currency: listing.pricingRule.currency,
+          minNights: listing.pricingRule.minNights,
         }
       : null,
   };

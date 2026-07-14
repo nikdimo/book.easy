@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ImageGallery } from "@/components/public/image-gallery";
+import { ExpandableDescription } from "@/components/public/expandable-description";
 import { AmenityList } from "@/components/public/amenity-list";
 import { BookingWidget } from "@/components/public/booking-widget";
 import { ListingActions } from "@/components/public/listing-actions";
@@ -12,6 +13,8 @@ import { getBlockedDateRangesForListing } from "@/lib/services/availability.serv
 import { getFutureDatePriceRowsForListing } from "@/lib/services/pricing.service";
 import { dateKey } from "@/lib/utils/stay-pricing";
 import { getPropertyTypeLabel } from "@/lib/services/property-type.service";
+import { auth } from "@/lib/auth";
+import { getFavoriteListingIdSet } from "@/lib/services/favorite.service";
 import type { Metadata } from "next";
 
 interface ListingPageProps {
@@ -73,6 +76,10 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
     listing.host.name.split(" ").map((n) => n[0]).join("").slice(0, 2);
   const hostName = listing.host.profile?.hostDisplayName || listing.host.name.split(" ")[0];
   const typeLabel = await getPropertyTypeLabel(listing.property.propertyType);
+  const session = await auth();
+  const isSaved = session?.user
+    ? (await getFavoriteListingIdSet(session.user.id)).has(listing.id)
+    : false;
   const locationLine = [
     listing.property.area,
     listing.property.city,
@@ -82,7 +89,7 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
     .join(", ");
 
   return (
-    <div className="max-w-[1120px] mx-auto px-4 md:px-6 py-6 md:py-8">
+    <div className="max-w-[1120px] mx-auto px-4 md:px-6 pt-6 md:pt-8 pb-28 lg:pb-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between gap-y-4 mb-6">
         <div className="min-w-0 flex-1">
           <h1 className="text-xl md:text-[26px] font-semibold tracking-tight text-foreground leading-tight">
@@ -103,7 +110,12 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
             )}
           </div>
         </div>
-        <ListingActions title={listing.title} listingId={listing.id} />
+        <ListingActions
+          title={listing.title}
+          listingId={listing.id}
+          initialSaved={isSaved}
+          isAuthenticated={!!session?.user}
+        />
       </div>
 
       <ImageGallery images={listing.images} />
@@ -147,9 +159,7 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
 
           <div>
             <h2 className="text-xl font-semibold mb-4">About this space</h2>
-            <div className="text-muted-foreground whitespace-pre-line leading-relaxed">
-              {listing.description}
-            </div>
+            <ExpandableDescription text={listing.description} />
           </div>
 
           <Separator />

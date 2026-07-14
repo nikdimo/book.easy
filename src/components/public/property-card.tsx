@@ -4,6 +4,8 @@ import { formatPrice } from "@/lib/utils/format";
 import { getPropertyTypeLabel } from "@/lib/services/property-type.service";
 import { format, parseISO, isValid } from "date-fns";
 import { PropertyCardGallery } from "@/components/public/property-card-gallery";
+import { auth } from "@/lib/auth";
+import { getFavoriteListingIdSet } from "@/lib/services/favorite.service";
 
 interface PropertyCardProps {
   listing: {
@@ -22,6 +24,7 @@ interface PropertyCardProps {
     pricingRule?: {
       baseNightlyRate: number;
       currency: string;
+      minNights: number;
     } | null;
   };
   /** When set with checkOut, card shows trip dates and total price (Airbnb-style). */
@@ -48,6 +51,11 @@ export async function PropertyCard({
   const headline = `${typeLabel} in ${city}`;
   const href = `/properties/${slug}${searchQuery ? `?${searchQuery}` : ""}`;
 
+  const session = await auth();
+  const isSaved = session?.user
+    ? (await getFavoriteListingIdSet(session.user.id)).has(listing.id)
+    : false;
+
   const showTrip =
     checkIn &&
     checkOut &&
@@ -61,10 +69,19 @@ export async function PropertyCard({
 
   const nightly = pricingRule ? Number(pricingRule.baseNightlyRate) : 0;
   const tripTotal = showTrip && pricingRule ? nightly * nightCount! : null;
+  const belowMinStay =
+    showTrip && pricingRule != null && nightCount! < pricingRule.minNights;
 
   return (
     <div className="flex flex-col gap-3">
-      <PropertyCardGallery href={href} title={title} images={displayImages} />
+      <PropertyCardGallery
+        href={href}
+        title={title}
+        images={displayImages}
+        listingId={listing.id}
+        initialSaved={isSaved}
+        isAuthenticated={!!session?.user}
+      />
 
       <Link
         href={href}
@@ -74,12 +91,14 @@ export async function PropertyCard({
           <h3 className="min-w-0 flex-1 text-[0.95rem] font-semibold text-foreground leading-snug line-clamp-2 group-hover/link:underline underline-offset-2">
             {headline}
           </h3>
-          <Badge
-            variant="secondary"
-            className="shrink-0 font-medium text-xs rounded-md"
-          >
-            New
-          </Badge>
+          {belowMinStay ? (
+            <Badge
+              variant="secondary"
+              className="shrink-0 font-medium text-xs rounded-md"
+            >
+              {pricingRule!.minNights}-night min
+            </Badge>
+          ) : null}
         </div>
 
         <p className="text-muted-foreground text-[0.83rem] line-clamp-1">{title}</p>

@@ -20,6 +20,13 @@ export const getActivePropertyTypes = unstable_cache(
   { revalidate: 300, tags: [PROPERTY_TYPES_TAG] }
 );
 
+/** Full catalog including soft-hidden rows, for the admin Settings tab. */
+export async function getAllPropertyTypesForAdmin() {
+  return db.propertyType.findMany({
+    orderBy: { sortOrder: "asc" },
+  });
+}
+
 /** Label lookup that also covers inactive/listing-only types (e.g. a listing using a
  * type that was approved "this listing only" and never made it into the active list). */
 export async function getPropertyTypeLabel(value: string): Promise<string> {

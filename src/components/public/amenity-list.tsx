@@ -46,7 +46,7 @@ export function AmenityList({ amenities }: AmenityListProps) {
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold">What this place offers</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-x-6 gap-y-3">
         {amenities.map(({ amenity }) => {
           const Icon = amenity.icon ? iconMap[amenity.icon] : undefined;
           return (

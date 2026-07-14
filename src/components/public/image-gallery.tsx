@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, ChevronLeft, ChevronRight, Grid, X } from "lucide-react";
 import type { ListingMediaItem } from "@/lib/types/listing-media";
 import { cn } from "@/lib/utils";
+import { useSwipe } from "@/lib/hooks/use-swipe";
 
 interface ImageGalleryProps {
   images: ListingMediaItem[];
@@ -15,6 +16,7 @@ interface ImageGalleryProps {
 export function ImageGallery({ images }: ImageGalleryProps) {
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [heroIndex, setHeroIndex] = useState(0);
 
   const closeAll = () => {
     setGalleryOpen(false);
@@ -39,6 +41,16 @@ export function ImageGallery({ images }: ImageGalleryProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [activeIndex, images.length]);
 
+  const heroSwipe = useSwipe(
+    () => setHeroIndex((i) => (i + 1) % Math.max(images.length, 1)),
+    () => setHeroIndex((i) => (i - 1 + Math.max(images.length, 1)) % Math.max(images.length, 1))
+  );
+
+  const viewerSwipe = useSwipe(
+    () => setActiveIndex((i) => (i === null ? i : (i + 1) % images.length)),
+    () => setActiveIndex((i) => (i === null ? i : (i - 1 + images.length) % images.length))
+  );
+
   if (images.length === 0) {
     return (
       <div className="aspect-[16/9] bg-muted rounded-2xl flex items-center justify-center text-muted-foreground ring-1 ring-black/5">
@@ -53,9 +65,34 @@ export function ImageGallery({ images }: ImageGalleryProps) {
   return (
     <>
       <div className="relative rounded-2xl overflow-hidden ring-1 ring-black/5">
+        {/* Mobile: swipeable single-photo carousel */}
+        <div
+          className="relative aspect-[4/3] cursor-pointer touch-pan-y md:hidden"
+          onClick={() => { setGalleryOpen(true); setActiveIndex(heroIndex); }}
+          onClickCapture={heroSwipe.onClickCapture}
+          onTouchStart={heroSwipe.onTouchStart}
+          onTouchEnd={heroSwipe.onTouchEnd}
+        >
+          <GalleryMedia item={images[heroIndex]} fill preload sizes="100vw" />
+          {images.length > 1 && (
+            <div className="pointer-events-none absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
+              {images.map((_, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    "h-1.5 rounded-full bg-white transition-all",
+                    i === heroIndex ? "w-4 opacity-100" : "w-1.5 opacity-60"
+                  )}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Desktop: static photo grid */}
         <div
           className={cn(
-            "grid grid-cols-1 gap-2",
+            "hidden md:grid gap-2",
             gridImages.length > 0 && "md:grid-cols-4 md:grid-rows-2 max-h-[480px]"
           )}
         >
@@ -71,7 +108,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
           {gridImages.map((img, i) => (
             <div
               key={img.id}
-              className="relative cursor-pointer hidden md:block aspect-[4/3]"
+              className="relative cursor-pointer aspect-[4/3]"
               onClick={() => { setGalleryOpen(true); setActiveIndex(i + 1); }}
             >
               <GalleryMedia item={img} fill sizes="25vw" />
@@ -162,7 +199,11 @@ export function ImageGallery({ images }: ImageGalleryProps) {
                 </Button>
               </div>
 
-              <div className="relative min-w-0 w-full flex-1 overflow-hidden">
+              <div
+                className="relative min-w-0 w-full flex-1 touch-pan-y overflow-hidden"
+                onTouchStart={viewerSwipe.onTouchStart}
+                onTouchEnd={viewerSwipe.onTouchEnd}
+              >
                 <GalleryMedia
                   item={images[activeIndex]}
                   fill

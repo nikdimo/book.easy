@@ -26,6 +26,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatPrice } from "@/lib/utils/format";
+import { splitDescriptionPreview } from "@/lib/utils/description-preview";
 import { toast } from "sonner";
 import { ListingImagesField } from "@/components/host/listing-images-field";
 import { ListingLocationField } from "@/components/host/listing-location-field";
@@ -691,6 +692,36 @@ function NumberField({
   );
 }
 
+function DescriptionPreviewSplit({ description }: { description: string }) {
+  const { visible, hidden, truncated } = splitDescriptionPreview(description);
+
+  if (!truncated) {
+    return (
+      <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
+        {description}
+      </p>
+    );
+  }
+
+  return (
+    <div>
+      <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
+        {visible}…
+      </p>
+      <div className="my-4 flex items-center gap-3">
+        <span className="h-0 flex-1 border-t border-dashed border-muted-foreground/40" />
+        <span className="whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-muted-foreground/70">
+          Visible only after &quot;Show more&quot;
+        </span>
+        <span className="h-0 flex-1 border-t border-dashed border-muted-foreground/40" />
+      </div>
+      <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground/50">
+        {hidden}
+      </p>
+    </div>
+  );
+}
+
 function ListingGuestPreview({
   title,
   description,
@@ -787,9 +818,7 @@ function ListingGuestPreview({
 
             <div>
               <h4 className="mb-3 text-lg font-semibold">About this space</h4>
-              <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
-                {description}
-              </p>
+              <DescriptionPreviewSplit description={description} />
             </div>
 
             {amenities.length > 0 && (

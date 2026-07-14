@@ -8,7 +8,6 @@ import {
   Flag,
   Home,
   LayoutDashboard,
-  Lightbulb,
   Menu,
   Settings,
   ShieldCheck,
@@ -22,7 +21,6 @@ import type { getEnabledLanguages } from "@/lib/services/language.service";
 const adminNav = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/listings", label: "Listings", icon: Home },
-  { href: "/admin/suggestions", label: "Suggestions", icon: Lightbulb },
   { href: "/admin/reports", label: "Reports", icon: Flag },
   { href: "/admin/bookings", label: "Bookings", icon: CalendarDays },
   { href: "/admin/users", label: "Users", icon: Users },
@@ -32,7 +30,13 @@ const adminNav = [
 
 type Languages = Awaited<ReturnType<typeof getEnabledLanguages>>;
 
-function AdminNavigation({ onNavigate }: { onNavigate?: () => void }) {
+function AdminNavigation({
+  onNavigate,
+  pendingSuggestionCount,
+}: {
+  onNavigate?: () => void;
+  pendingSuggestionCount: number;
+}) {
   return (
     <div className="flex h-full flex-col">
       <Link href="/admin" onClick={onNavigate} className="mb-6 flex items-center gap-2 px-3 py-2">
@@ -49,6 +53,11 @@ function AdminNavigation({ onNavigate }: { onNavigate?: () => void }) {
           >
             <item.icon className="h-4 w-4" />
             {item.label}
+            {item.href === "/admin/settings" && pendingSuggestionCount > 0 && (
+              <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-medium text-primary-foreground">
+                {pendingSuggestionCount}
+              </span>
+            )}
           </Link>
         ))}
       </nav>
@@ -61,7 +70,13 @@ function AdminNavigation({ onNavigate }: { onNavigate?: () => void }) {
   );
 }
 
-export function AdminSidebar({ languages }: { languages: Languages }) {
+export function AdminSidebar({
+  languages,
+  pendingSuggestionCount = 0,
+}: {
+  languages: Languages;
+  pendingSuggestionCount?: number;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -76,7 +91,10 @@ export function AdminSidebar({ languages }: { languages: Languages }) {
             </SheetTrigger>
             <SheetContent side="left" className="w-72 p-4">
               <SheetHeader className="sr-only"><SheetTitle>Admin menu</SheetTitle></SheetHeader>
-              <AdminNavigation onNavigate={() => setOpen(false)} />
+              <AdminNavigation
+                onNavigate={() => setOpen(false)}
+                pendingSuggestionCount={pendingSuggestionCount}
+              />
             </SheetContent>
           </Sheet>
           <span className="truncate font-semibold">Admin Panel</span>
@@ -84,7 +102,7 @@ export function AdminSidebar({ languages }: { languages: Languages }) {
         <GoogleTranslateWidget languages={languages} />
       </header>
       <aside className="hidden min-h-screen w-60 shrink-0 border-r bg-muted/30 p-4 md:block">
-        <AdminNavigation />
+        <AdminNavigation pendingSuggestionCount={pendingSuggestionCount} />
       </aside>
     </>
   );

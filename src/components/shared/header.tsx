@@ -20,6 +20,7 @@ import {
   CalendarDays,
   ShieldCheck,
   SlidersHorizontal,
+  Heart,
 } from "lucide-react";
 import { MarketplaceSearchBar } from "@/components/marketplace/marketplace-search-bar";
 import { GoogleTranslateWidget } from "@/components/shared/google-translate-widget";
@@ -65,30 +66,42 @@ export function Header({
 
   return (
     <header className="w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto px-4 md:px-8 h-20 flex items-center justify-between gap-4 max-w-[1760px]">
-        <div className="flex-1 shrink-0 flex items-center min-w-0">
+      <div className="container mx-auto px-4 md:px-8 h-20 grid grid-cols-[auto_1fr_auto] items-center gap-4 max-w-[1760px]">
+        <div className="flex items-center min-w-0">
           <Link
             href="/"
             className="notranslate flex items-center shrink-0"
             title={SITE_DOMAIN}
             translate="no"
           >
-            <BrandLogo compact className="h-11 min-[400px]:hidden" />
-            <BrandLogo className="hidden h-[58px] min-[400px]:block" />
+            <BrandLogo compact className="h-11 2xl:hidden" />
+            <BrandLogo className="hidden h-[58px] 2xl:block" />
           </Link>
         </div>
 
-        <div className="hidden 2xl:flex flex-[2] items-center justify-center max-w-3xl min-w-0 px-2">
-          <MarketplaceSearchBar
-            variant="pill"
-            {...searchDefaults}
-            popularCities={popularCities}
-            availablePropertyTypesByCity={availablePropertyTypesByCity}
-            propertyTypes={propertyTypes}
-          />
+        <div className="flex items-center justify-center min-w-0 px-2">
+          <div className="hidden 2xl:flex w-full max-w-3xl items-center justify-center">
+            <MarketplaceSearchBar
+              variant="pill"
+              {...searchDefaults}
+              popularCities={popularCities}
+              availablePropertyTypesByCity={availablePropertyTypesByCity}
+              propertyTypes={propertyTypes}
+            />
+          </div>
+
+          <div className="flex 2xl:hidden w-full max-w-md items-center justify-center">
+            <MarketplaceSearchBar
+              variant="summary"
+              {...searchDefaults}
+              popularCities={popularCities}
+              availablePropertyTypesByCity={availablePropertyTypesByCity}
+              propertyTypes={propertyTypes}
+            />
+          </div>
         </div>
 
-        <div className="flex-1 shrink-0 flex items-center justify-end gap-2">
+        <div className="flex items-center justify-end gap-2 min-w-0">
           <GoogleTranslateWidget languages={languages} />
           {user?.isHost ? (
             <Button
@@ -138,6 +151,12 @@ export function Header({
                   <Link href="/account/bookings">
                     <CalendarDays className="mr-2 h-4 w-4" />
                     Trips
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/account/favorites">
+                    <Heart className="mr-2 h-4 w-4" />
+                    Favorites
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
@@ -203,16 +222,6 @@ export function Header({
             </div>
           )}
         </div>
-      </div>
-
-      <div className="2xl:hidden border-t px-4 py-3 bg-background">
-        <MarketplaceSearchBar
-          variant="summary"
-          {...searchDefaults}
-          popularCities={popularCities}
-          availablePropertyTypesByCity={availablePropertyTypesByCity}
-          propertyTypes={propertyTypes}
-        />
       </div>
     </header>
   );

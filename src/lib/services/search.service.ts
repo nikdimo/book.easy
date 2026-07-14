@@ -155,6 +155,7 @@ export async function getFeaturedListings(limit = 6) {
 
 export async function getAvailableAmenities() {
   return db.amenity.findMany({
+    where: { isActive: true },
     orderBy: [{ category: "asc" }, { name: "asc" }],
   });
 }
