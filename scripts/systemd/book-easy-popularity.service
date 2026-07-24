@@ -1,0 +1,11 @@
+[Unit]
+Description=book.easy.mk listing popularity recompute
+After=network.target postgresql.service
+
+[Service]
+Type=oneshot
+User=niki
+# Must match the checkout the book-easy-web unit runs from — the script reads
+# DATABASE_URL out of that directory's .env.
+WorkingDirectory=/home/niki/book-easy
+ExecStart=/usr/bin/npm run popularity:recompute

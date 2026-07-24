@@ -1,0 +1,12 @@
+[Unit]
+Description=Recompute book.easy.mk listing popularity hourly
+
+[Timer]
+# Hourly is far more often than the score meaningfully moves (its half-life is weeks),
+# but it's cheap and keeps a newly-booked listing from waiting a day to be reflected.
+OnCalendar=hourly
+RandomizedDelaySec=300
+Persistent=true
+
+[Install]
+WantedBy=timers.target

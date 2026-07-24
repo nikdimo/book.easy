@@ -3,12 +3,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/lib/i18n/client";
 
 export function ListingCarouselClient({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const i18n = useI18n();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -53,7 +55,7 @@ export function ListingCarouselClient({
             size="icon"
             className="h-8 w-8 rounded-full shadow-md bg-background/95 border-border/60 opacity-0 group-hover/carousel:opacity-100 transition-opacity"
             onClick={() => scroll("left")}
-            aria-label="Scroll left"
+            aria-label={i18n.resolve("carousel.scroll_left", "Scroll left").text}
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -74,7 +76,7 @@ export function ListingCarouselClient({
             size="icon"
             className="h-8 w-8 rounded-full shadow-md bg-background/95 border-border/60 opacity-0 group-hover/carousel:opacity-100 transition-opacity"
             onClick={() => scroll("right")}
-            aria-label="Scroll right"
+            aria-label={i18n.resolve("carousel.scroll_right", "Scroll right").text}
           >
             <ChevronRight className="h-4 w-4" />
           </Button>

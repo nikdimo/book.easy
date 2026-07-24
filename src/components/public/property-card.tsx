@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { formatPrice } from "@/lib/utils/format";
+import { formatDateShort, formatPrice } from "@/lib/utils/format";
 import { getPropertyTypeLabel } from "@/lib/services/property-type.service";
-import { format, parseISO, isValid } from "date-fns";
+import { parseISO, isValid } from "date-fns";
 import { PropertyCardGallery } from "@/components/public/property-card-gallery";
+import { LocalizedPrice } from "@/components/shared/localized-price";
 import { auth } from "@/lib/auth";
 import { getFavoriteListingIdSet } from "@/lib/services/favorite.service";
+import { getT, T, ti, tPlural } from "@/lib/i18n/t";
 
 interface PropertyCardProps {
   listing: {
@@ -21,6 +23,7 @@ interface PropertyCardProps {
       propertyType: string;
     };
     images: { url: string; alt?: string | null }[];
+    video?: { url: string } | null;
     pricingRule?: {
       baseNightlyRate: number;
       currency: string;
@@ -44,11 +47,12 @@ export async function PropertyCard({
   nightCount,
   searchQuery,
 }: PropertyCardProps) {
-  const { slug, title, property, images, pricingRule } = listing;
+  const t = await getT();
+  const { slug, title, property, images, video, pricingRule } = listing;
   const displayImages = images.filter((img) => img.url?.trim());
   const city = property.city;
   const typeLabel = await getPropertyTypeLabel(property.propertyType);
-  const headline = `${typeLabel} in ${city}`;
+  const headline = ti(t, "property_card.type_in_city", "{type} in {city}", { type: typeLabel, city });
   const href = `/properties/${slug}${searchQuery ? `?${searchQuery}` : ""}`;
 
   const session = await auth();
@@ -65,12 +69,20 @@ export async function PropertyCard({
     isValid(parseISO(checkOut));
   const dateLine =
     showTrip &&
-    `${format(parseISO(checkIn!), "MMM d")} – ${format(parseISO(checkOut!), "MMM d")}`;
+    `${formatDateShort(parseISO(checkIn!), t.locale)} – ${formatDateShort(parseISO(checkOut!), t.locale)}`;
 
   const nightly = pricingRule ? Number(pricingRule.baseNightlyRate) : 0;
   const tripTotal = showTrip && pricingRule ? nightly * nightCount! : null;
   const belowMinStay =
     showTrip && pricingRule != null && nightCount! < pricingRule.minNights;
+  const minimumStay = pricingRule
+    ? tPlural(t, "property_card.minimum_nights", pricingRule.minNights, "{n}-night minimum", "{n}-night minimum")
+    : null;
+  const totalPrice = pricingRule && tripTotal != null
+    ? ti(t, "property_card.price_total", "{price} total", {
+        price: formatPrice(tripTotal, pricingRule.currency, t.locale),
+      })
+    : null;
 
   return (
     <div className="flex flex-col gap-3">
@@ -78,6 +90,7 @@ export async function PropertyCard({
         href={href}
         title={title}
         images={displayImages}
+        videoUrl={video?.url}
         listingId={listing.id}
         initialSaved={isSaved}
         isAuthenticated={!!session?.user}
@@ -89,14 +102,14 @@ export async function PropertyCard({
       >
         <div className="flex items-start justify-between gap-3">
           <h3 className="min-w-0 flex-1 text-[0.95rem] font-semibold text-foreground leading-snug line-clamp-2 group-hover/link:underline underline-offset-2">
-            {headline}
+            <span className={headline.translated ? "notranslate" : undefined}>{headline.text}</span>
           </h3>
           {belowMinStay ? (
             <Badge
               variant="secondary"
               className="shrink-0 font-medium text-xs rounded-md"
             >
-              {pricingRule!.minNights}-night min
+              <span className={minimumStay?.translated ? "notranslate" : undefined}>{minimumStay?.text}</span>
             </Badge>
           ) : null}
         </div>
@@ -110,15 +123,18 @@ export async function PropertyCard({
         {pricingRule && tripTotal != null ? (
           <div className="mt-0.5">
             <span className="text-sm font-semibold text-foreground">
-              {formatPrice(tripTotal, pricingRule.currency)} total
+              <span className={totalPrice?.translated ? "notranslate" : undefined}>{totalPrice?.text}</span>
             </span>
           </div>
         ) : pricingRule ? (
           <div className="mt-0.5 flex items-baseline gap-1">
-            <span className="text-sm font-semibold text-foreground">
-              {formatPrice(nightly, pricingRule.currency)}
-            </span>
-            <span className="text-muted-foreground text-[0.83rem]">night</span>
+            <LocalizedPrice
+              amount={nightly}
+              currency={pricingRule.currency}
+              locale={t.locale}
+              className="text-sm font-semibold text-foreground"
+            />
+            <span className="text-muted-foreground text-[0.83rem]"><T t={t} k="property_card.per_night" source="night" /></span>
           </div>
         ) : null}
       </Link>

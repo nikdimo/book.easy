@@ -9,6 +9,7 @@ import type { ListingMediaItem } from "@/lib/types/listing-media";
 import { cn } from "@/lib/utils";
 import { useSwipe } from "@/lib/hooks/use-swipe";
 import { useProgressivePreload } from "@/lib/hooks/use-progressive-preload";
+import { Tx, useI18n } from "@/lib/i18n/client";
 
 interface ImageGalleryProps {
   images: ListingMediaItem[];
@@ -34,6 +35,7 @@ function preloadIndicesFor(current: number, loadedUpTo: number, length: number):
 }
 
 export function ImageGallery({ images }: ImageGalleryProps) {
+  const i18n = useI18n();
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [heroIndex, setHeroIndex] = useState(0);
@@ -78,7 +80,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
   if (images.length === 0) {
     return (
       <div className="aspect-[16/9] bg-muted rounded-2xl flex items-center justify-center text-muted-foreground ring-1 ring-black/5">
-        No media available
+        <Tx k="gallery.no_media" source="No media available" />
       </div>
     );
   }
@@ -151,7 +153,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
             onClick={() => { setGalleryOpen(true); setActiveIndex(null); }}
           >
             <Grid className="h-4 w-4 mr-2" />
-            Show all {images.length} items
+            {(() => { const value = i18n.plural("gallery.show_all", images.length, "Show all {n} item", "Show all {n} items"); return <span className={value.translated ? "notranslate" : undefined}>{value.text}</span>; })()}
           </Button>
         )}
       </div>
@@ -163,8 +165,8 @@ export function ImageGallery({ images }: ImageGalleryProps) {
         >
           <DialogTitle className="sr-only">
             {activeIndex === null
-              ? `All ${images.length} media item${images.length !== 1 ? "s" : ""}`
-              : `Media item ${activeIndex + 1} of ${images.length}`}
+              ? (() => { const value = i18n.plural("gallery.all_media", images.length, "All {n} media item", "All {n} media items"); return <span className={value.translated ? "notranslate" : undefined}>{value.text}</span>; })()
+              : (() => { const value = i18n.resolve("gallery.media_position", "Media item {current} of {total}"); const text = value.text.replace("{current}", String(activeIndex + 1)).replace("{total}", String(images.length)); return <span className={value.translated ? "notranslate" : undefined}>{text}</span>; })()}
           </DialogTitle>
 
           {activeIndex === null ? (
@@ -172,11 +174,11 @@ export function ImageGallery({ images }: ImageGalleryProps) {
             <div className="flex h-full min-h-0 flex-col">
               <div className="flex shrink-0 items-center justify-between border-b px-4 py-3 sm:px-6">
                 <span className="font-heading text-sm font-medium">
-                  {images.length} item{images.length !== 1 ? "s" : ""}
+                  {(() => { const value = i18n.plural("gallery.items", images.length, "{n} item", "{n} items"); return <span className={value.translated ? "notranslate" : undefined}>{value.text}</span>; })()}
                 </span>
                 <Button variant="ghost" size="icon-sm" onClick={closeAll}>
                   <X className="h-5 w-5" />
-                  <span className="sr-only">Close</span>
+                  <span className="sr-only"><Tx k="common.close" source="Close" /></span>
                 </Button>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto p-2 pb-4 sm:p-4">
@@ -196,7 +198,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
               <div className="flex shrink-0 justify-center border-t bg-background px-4 py-3 sm:py-4">
                 <Button variant="outline" className="rounded-full" onClick={closeAll}>
                   <ArrowLeft className="h-4 w-4" />
-                  Back to property
+                  <Tx k="gallery.back_property" source="Back to property" />
                 </Button>
               </div>
             </div>
@@ -211,7 +213,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
                   onClick={() => setActiveIndex(null)}
                 >
                   <ArrowLeft className="h-5 w-5" />
-                  <span className="sr-only">Back to all media</span>
+                  <span className="sr-only"><Tx k="gallery.back_all" source="Back to all media" /></span>
                 </Button>
                 <span className="text-sm text-white">
                   {activeIndex + 1} / {images.length}
@@ -223,7 +225,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
                   onClick={closeAll}
                 >
                   <X className="h-5 w-5" />
-                  <span className="sr-only">Close</span>
+                  <span className="sr-only"><Tx k="common.close" source="Close" /></span>
                 </Button>
               </div>
 
@@ -254,7 +256,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
                       onClick={() => setActiveIndex((i) => (i === null ? i : (i - 1 + images.length) % images.length))}
                     >
                       <ChevronLeft className="h-6 w-6" />
-                      <span className="sr-only">Previous photo</span>
+                      <span className="sr-only"><Tx k="gallery.previous" source="Previous photo" /></span>
                     </Button>
                     <Button
                       variant="ghost"
@@ -263,7 +265,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
                       onClick={() => setActiveIndex((i) => (i === null ? i : (i + 1) % images.length))}
                     >
                       <ChevronRight className="h-6 w-6" />
-                      <span className="sr-only">Next photo</span>
+                      <span className="sr-only"><Tx k="gallery.next" source="Next photo" /></span>
                     </Button>
                   </>
                 )}
@@ -312,6 +314,7 @@ function GalleryMedia({
   sizes?: string;
   contain?: boolean;
 }) {
+  const i18n = useI18n();
   if (item.mediaType === "VIDEO") {
     return (
       <video
@@ -327,7 +330,7 @@ function GalleryMedia({
   return (
     <Image
       src={item.url}
-      alt={item.alt || "Property photo"}
+      alt={item.alt || i18n.resolve("gallery.property_photo", "Property photo").text}
       fill={fill}
       className={contain ? "object-contain" : "object-cover"}
       preload={preload}

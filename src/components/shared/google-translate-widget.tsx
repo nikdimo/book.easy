@@ -9,6 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { recordLanguageSelection } from "@/lib/actions/language.actions";
 
 declare global {
   interface Window {
@@ -49,29 +50,37 @@ function subscribeToLanguageCookie() {
   return () => {};
 }
 
-function setLanguage(code: string, sourceLanguage: string) {
+async function setLanguage(code: string, sourceLanguage: string) {
   const hostname = window.location.hostname;
+  const secure = window.location.protocol === "https:" ? "; secure" : "";
+  const common = `; path=/; samesite=lax${secure}`;
   if (code === sourceLanguage) {
-    document.cookie = `${COOKIE_NAME}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC`;
-    document.cookie = `${COOKIE_NAME}=; path=/; domain=${hostname}; expires=Thu, 01 Jan 1970 00:00:00 UTC`;
+    document.cookie = `${COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 UTC${common}`;
+    document.cookie = `${COOKIE_NAME}=; domain=${hostname}; expires=Thu, 01 Jan 1970 00:00:00 UTC${common}`;
   } else {
     const value = `/${sourceLanguage}/${code}`;
-    document.cookie = `${COOKIE_NAME}=${value}; path=/`;
-    document.cookie = `${COOKIE_NAME}=${value}; path=/; domain=${hostname}`;
+    document.cookie = `${COOKIE_NAME}=${value}; max-age=31536000${common}`;
+    try {
+      await recordLanguageSelection(code);
+    } catch {
+      // Selection tracking is best-effort — never block switching the language on it.
+    }
   }
   window.location.reload();
 }
 
 export function GoogleTranslateWidget({
   languages,
+  currentLocale = FALLBACK_SOURCE_LANGUAGE,
 }: {
   languages: LanguageOption[];
+  currentLocale?: string;
 }) {
   const sourceLanguage = FALLBACK_SOURCE_LANGUAGE;
   const current = useSyncExternalStore(
     subscribeToLanguageCookie,
     () => readCurrentLanguage(sourceLanguage),
-    () => sourceLanguage
+    () => currentLocale
   );
 
   useEffect(() => {
@@ -126,7 +135,9 @@ export function GoogleTranslateWidget({
             <DropdownMenuItem
               key={lang.code}
               className="cursor-pointer"
-              onSelect={() => setLanguage(lang.code, sourceLanguage)}
+              onSelect={() => {
+                if (lang.code !== current) void setLanguage(lang.code, sourceLanguage);
+              }}
             >
               <span className={lang.code === current ? "font-semibold" : ""}>
                 {lang.name}

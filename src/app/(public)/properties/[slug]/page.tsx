@@ -8,6 +8,7 @@ import { ExpandableDescription } from "@/components/public/expandable-descriptio
 import { AmenityList } from "@/components/public/amenity-list";
 import { BookingWidget } from "@/components/public/booking-widget";
 import { ListingActions } from "@/components/public/listing-actions";
+import { ListingViewTracker } from "@/components/public/listing-view-tracker";
 import { getListingBySlug } from "@/lib/services/property.service";
 import { getBlockedDateRangesForListing } from "@/lib/services/availability.service";
 import { getFutureDatePriceRowsForListing } from "@/lib/services/pricing.service";
@@ -15,6 +16,7 @@ import { dateKey } from "@/lib/utils/stay-pricing";
 import { getPropertyTypeLabel } from "@/lib/services/property-type.service";
 import { auth } from "@/lib/auth";
 import { getFavoriteListingIdSet } from "@/lib/services/favorite.service";
+import { getT, T, ti, tPlural } from "@/lib/i18n/t";
 import type { Metadata } from "next";
 
 interface ListingPageProps {
@@ -76,6 +78,16 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
     listing.host.name.split(" ").map((n) => n[0]).join("").slice(0, 2);
   const hostName = listing.host.profile?.hostDisplayName || listing.host.name.split(" ")[0];
   const typeLabel = await getPropertyTypeLabel(listing.property.propertyType);
+  const t = await getT();
+  const reserveTooltip = t.resolve(
+    "booking_widget.reserve_tooltip",
+    "Send a booking request to the host — you won't be charged yet."
+  );
+  const guestCount = tPlural(t, "listing.guests", listing.maxGuests, "{n} guest", "{n} guests");
+  const bedroomCount = tPlural(t, "listing.bedrooms", listing.bedrooms, "{n} bedroom", "{n} bedrooms");
+  const bedCount = tPlural(t, "listing.beds", listing.beds, "{n} bed", "{n} beds");
+  const bathCount = tPlural(t, "listing.baths", listing.bathrooms, "{n} bath", "{n} baths");
+  const hostedBy = ti(t, "listing.hosted_by", "Hosted by {name}", { name: hostName });
   const session = await auth();
   const isSaved = session?.user
     ? (await getFavoriteListingIdSet(session.user.id)).has(listing.id)
@@ -90,6 +102,7 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
 
   return (
     <div className="max-w-[1120px] mx-auto px-4 md:px-6 pt-6 md:pt-8 pb-28 lg:pb-8">
+      <ListingViewTracker listingId={listing.id} />
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between gap-y-4 mb-6">
         <div className="min-w-0 flex-1">
           <h1 className="text-xl md:text-[26px] font-semibold tracking-tight text-foreground leading-tight">
@@ -125,19 +138,19 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground pb-2 border-b border-border/80">
             <span className="flex items-center gap-1.5">
               <Users className="h-4 w-4" />
-              {listing.maxGuests} guests
+              <span className={guestCount.translated ? "notranslate" : undefined}>{guestCount.text}</span>
             </span>
             <span className="flex items-center gap-1.5">
               <BedDouble className="h-4 w-4" />
-              {listing.bedrooms} bedrooms
+              <span className={bedroomCount.translated ? "notranslate" : undefined}>{bedroomCount.text}</span>
             </span>
             <span className="flex items-center gap-1.5">
               <Bed className="h-4 w-4" />
-              {listing.beds} beds
+              <span className={bedCount.translated ? "notranslate" : undefined}>{bedCount.text}</span>
             </span>
             <span className="flex items-center gap-1.5">
               <Bath className="h-4 w-4" />
-              {listing.bathrooms} baths
+              <span className={bathCount.translated ? "notranslate" : undefined}>{bathCount.text}</span>
             </span>
           </div>
 
@@ -146,7 +159,7 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
               <AvatarFallback className="text-lg font-medium">{hostInitials}</AvatarFallback>
             </Avatar>
             <div>
-              <p className="font-semibold">Hosted by {hostName}</p>
+              <p className={hostedBy.translated ? "notranslate font-semibold" : "font-semibold"}>{hostedBy.text}</p>
               {listing.host.profile?.hostBio && (
                 <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
                   {listing.host.profile.hostBio}
@@ -158,7 +171,7 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
           <Separator />
 
           <div>
-            <h2 className="text-xl font-semibold mb-4">About this space</h2>
+            <h2 className="text-xl font-semibold mb-4"><T t={t} k="listing.about" source="About this space" /></h2>
             <ExpandableDescription text={listing.description} />
           </div>
 
@@ -182,6 +195,7 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
               initialCheckOut={initialCheckOut}
               initialGuests={initialGuests}
               initialGuestDetails={initialGuestDetails}
+              reserveTooltip={reserveTooltip}
             />
           )}
         </div>

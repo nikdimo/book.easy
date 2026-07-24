@@ -1,9 +1,9 @@
-import { format, differenceInDays, parseISO } from "date-fns";
+import { differenceInDays, parseISO } from "date-fns";
 import { Decimal } from "@prisma/client/runtime/library";
 
-export function formatPrice(amount: number | Decimal | string, currency = "EUR"): string {
+export function formatPrice(amount: number | Decimal | string, currency = "EUR", locale = "en"): string {
   const num = typeof amount === "string" ? parseFloat(amount) : typeof amount === "number" ? amount : amount.toNumber();
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
     minimumFractionDigits: 0,
@@ -11,18 +11,18 @@ export function formatPrice(amount: number | Decimal | string, currency = "EUR")
   }).format(num);
 }
 
-export function formatDate(date: Date | string): string {
+export function formatDate(date: Date | string, locale = "en"): string {
   const d = typeof date === "string" ? parseISO(date) : date;
-  return format(d, "MMM d, yyyy");
+  return new Intl.DateTimeFormat(locale, { year: "numeric", month: "short", day: "numeric" }).format(d);
 }
 
-export function formatDateShort(date: Date | string): string {
+export function formatDateShort(date: Date | string, locale = "en"): string {
   const d = typeof date === "string" ? parseISO(date) : date;
-  return format(d, "MMM d");
+  return new Intl.DateTimeFormat(locale, { month: "short", day: "numeric" }).format(d);
 }
 
-export function formatDateRange(checkIn: Date | string, checkOut: Date | string): string {
-  return `${formatDateShort(checkIn)} - ${formatDateShort(checkOut)}`;
+export function formatDateRange(checkIn: Date | string, checkOut: Date | string, locale = "en"): string {
+  return `${formatDateShort(checkIn, locale)} - ${formatDateShort(checkOut, locale)}`;
 }
 
 export function getNightCount(checkIn: Date | string, checkOut: Date | string): number {

@@ -38,6 +38,8 @@ import {
 import type { SearchFilterPreview } from "@/lib/types/search";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 import { cn } from "@/lib/utils";
+import { Tx, useI18n } from "@/lib/i18n/client";
+import type { Resolved } from "@/lib/i18n/t";
 
 const PROPERTY_TYPE_ICONS = {
   APARTMENT: Building2,
@@ -86,12 +88,8 @@ function parsePositiveInt(value: string | null): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
-function formatPrice(value: number) {
-  return `\u20AC${value}`;
-}
-
-function formatResultsLabel(totalCount: number) {
-  return `Show ${totalCount} ${totalCount === 1 ? "place" : "places"}`;
+function formatPrice(value: number, locale: string) {
+  return new Intl.NumberFormat(locale, { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(value);
 }
 
 function parseDateFlexibility(value: string | null): number {
@@ -107,8 +105,8 @@ function CounterRow({
   min = 0,
   max = 16,
 }: {
-  title: string;
-  description: string;
+  title: Resolved;
+  description: Resolved;
   value: number;
   onChange: (value: number) => void;
   min?: number;
@@ -117,8 +115,8 @@ function CounterRow({
   return (
     <div className="flex items-center justify-between gap-4 py-2">
       <div className="min-w-0 pr-3">
-        <p className="text-base font-semibold text-foreground">{title}</p>
-        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+        <p className={cn("text-base font-semibold text-foreground", title.translated && "notranslate")}>{title.text}</p>
+        <p className={cn("mt-1 text-sm text-muted-foreground", description.translated && "notranslate")}>{description.text}</p>
       </div>
       <div className="flex shrink-0 items-center gap-3">
         <button
@@ -129,7 +127,7 @@ function CounterRow({
             "inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background text-foreground transition-colors",
             "hover:bg-muted/40 disabled:pointer-events-none disabled:opacity-35"
           )}
-          aria-label={`Decrease ${title}`}
+          aria-label={`− ${title.text}`}
         >
           <Minus className="h-4 w-4" />
         </button>
@@ -144,7 +142,7 @@ function CounterRow({
             "inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background text-foreground transition-colors",
             "hover:bg-muted/40 disabled:pointer-events-none disabled:opacity-35"
           )}
-          aria-label={`Increase ${title}`}
+          aria-label={`+ ${title.text}`}
         >
           <Plus className="h-4 w-4" />
         </button>
@@ -159,8 +157,8 @@ function SectionHeading({
   description,
 }: {
   icon: LucideIcon;
-  title: string;
-  description: string;
+  title: Resolved;
+  description: Resolved;
 }) {
   return (
     <div className="mb-5 flex items-start gap-3">
@@ -169,9 +167,9 @@ function SectionHeading({
       </span>
       <div className="min-w-0">
         <h3 className="text-2xl font-semibold tracking-tight text-foreground">
-          {title}
+          <span className={title.translated ? "notranslate" : undefined}>{title.text}</span>
         </h3>
-        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+        <p className={cn("mt-1 text-sm text-muted-foreground", description.translated && "notranslate")}>{description.text}</p>
       </div>
     </div>
   );
@@ -247,6 +245,7 @@ function SearchFiltersInner({
   baseSearchParamsString: string;
   initialState: SearchFiltersState;
 }) {
+  const i18n = useI18n();
   const allPropertyTypeValues = useMemo(
     () => propertyTypeOptions.map((t) => t.value),
     [propertyTypeOptions]
@@ -486,12 +485,12 @@ function SearchFiltersInner({
 
   function renderUnavailableWrapper(
     child: React.ReactNode,
-    message = "No properties match this filter yet."
+    message = i18n.resolve("filters.no_match", "No properties match this filter yet.")
   ) {
     return (
       <Tooltip>
         <TooltipTrigger asChild>{child}</TooltipTrigger>
-        <TooltipContent sideOffset={8}>{message}</TooltipContent>
+        <TooltipContent sideOffset={8} className={message.translated ? "notranslate" : undefined}>{message.text}</TooltipContent>
       </Tooltip>
     );
   }
@@ -509,8 +508,8 @@ function SearchFiltersInner({
           >
             <SectionHeading
               icon={Search}
-              title="Price range"
-              description="Nightly price, before taxes and fees."
+              title={i18n.resolve("filters.price_range", "Price range")}
+              description={i18n.resolve("filters.price_description", "Nightly price, before taxes and fees.")}
             />
             <div className="rounded-[1.75rem] border border-border/80 bg-background px-4 py-5 shadow-sm md:px-5">
               <Slider
@@ -529,18 +528,18 @@ function SearchFiltersInner({
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <div className="rounded-[1.25rem] border border-border bg-background px-4 py-3">
                   <span className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                    Minimum
+                    <Tx k="filters.minimum" source="Minimum" />
                   </span>
-                  <span className="mt-1 block text-base font-semibold text-foreground">
-                    {formatPrice(priceRange[0])}
+                  <span className="notranslate mt-1 block text-base font-semibold text-foreground" translate="no" suppressHydrationWarning>
+                    {formatPrice(priceRange[0], i18n.locale)}
                   </span>
                 </div>
                 <div className="rounded-[1.25rem] border border-border bg-background px-4 py-3">
                   <span className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                    Maximum
+                    <Tx k="filters.maximum" source="Maximum" />
                   </span>
-                  <span className="mt-1 block text-base font-semibold text-foreground">
-                    {formatPrice(priceRange[1])}
+                  <span className="notranslate mt-1 block text-base font-semibold text-foreground" translate="no" suppressHydrationWarning>
+                    {formatPrice(priceRange[1], i18n.locale)}
                   </span>
                 </div>
               </div>
@@ -555,13 +554,13 @@ function SearchFiltersInner({
           >
             <SectionHeading
               icon={BedDouble}
-              title="Bedrooms"
-              description="Require a minimum bedroom count."
+              title={i18n.resolve("filters.bedrooms", "Bedrooms")}
+              description={i18n.resolve("filters.bedrooms_description", "Require a minimum bedroom count.")}
             />
             <div className="rounded-[1.5rem] border border-border/80 bg-background px-4 py-4 shadow-sm md:px-5">
               <CounterRow
-                title="Minimum bedrooms"
-                description="Perfect when guests need a bit more privacy."
+                title={i18n.resolve("filters.minimum_bedrooms", "Minimum bedrooms")}
+                description={i18n.resolve("filters.minimum_bedrooms_description", "Perfect when guests need a bit more privacy.")}
                 value={bedrooms}
                 onChange={setBedrooms}
                 max={Math.max(maxBedrooms, 0)}
@@ -577,8 +576,8 @@ function SearchFiltersInner({
           >
             <SectionHeading
               icon={Home}
-              title="Property type"
-              description="Use the same rounded cards language as the search."
+              title={i18n.resolve("filters.property_type", "Property type")}
+              description={i18n.resolve("filters.property_type_description", "Choose one or more types of stay.")}
             />
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {propertyTypeOptions.map(({ value, label }) => {
@@ -627,10 +626,10 @@ function SearchFiltersInner({
                       </span>
                       <span className="mt-1 block text-sm text-muted-foreground">
                         {selected
-                          ? "Included in your search"
+                          ? <Tx k="filters.included" source="Included in your search" />
                           : unavailable
-                            ? "No properties available"
-                            : "Tap to include"}
+                            ? <Tx k="filters.unavailable" source="No properties available" />
+                            : <Tx k="filters.tap_include" source="Tap to include" />}
                       </span>
                     </span>
                   </button>
@@ -651,8 +650,8 @@ function SearchFiltersInner({
           >
             <SectionHeading
               icon={Search}
-              title="Amenities"
-              description="Pick the essentials you want to keep visible."
+              title={i18n.resolve("filters.amenities", "Amenities")}
+              description={i18n.resolve("filters.amenities_description", "Pick the essentials you want included.")}
             />
             <div className="space-y-6">
               {groupedAmenities.map(([category, items]) => (
@@ -709,7 +708,7 @@ function SearchFiltersInner({
             onClick={clearFilters}
             disabled={isPending || !hasFilters}
           >
-            Clear all
+            <Tx k="filters.clear_all" source="Clear all" />
           </Button>
           <Button
             type="button"
@@ -719,8 +718,8 @@ function SearchFiltersInner({
           >
             <Search className="mr-2 h-4 w-4" />
             {isPending || isPreviewLoading
-              ? "Updating..."
-              : formatResultsLabel(preview.totalCount)}
+              ? <Tx k="filters.updating" source="Updating..." />
+              : (() => { const value = i18n.plural("filters.show_places", preview.totalCount, "Show {n} place", "Show {n} places"); return <span className={value.translated ? "notranslate" : undefined}>{value.text}</span>; })()}
           </Button>
         </div>
       </div>

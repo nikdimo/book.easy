@@ -17,6 +17,9 @@ export default function Error({
         <p className="text-muted-foreground mb-6">
           An unexpected error occurred. Please try again.
         </p>
+        {error.digest ? (
+          <p className="mb-6 text-xs text-muted-foreground">Reference: {error.digest}</p>
+        ) : null}
         <Button onClick={() => reset()}>Try Again</Button>
       </div>
     </div>

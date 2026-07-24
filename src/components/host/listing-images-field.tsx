@@ -211,6 +211,7 @@ export function ListingImagesField({
 
       {mediaItems.length > 0 ? (
         <DndContext
+          id="listing-images-dnd"
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragStart={handleDragStart}

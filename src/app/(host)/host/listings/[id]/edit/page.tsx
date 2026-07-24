@@ -4,11 +4,6 @@ import { db } from "@/lib/db";
 import { getHostListing } from "@/lib/services/listing.service";
 import { serializeHostListingForForm } from "@/lib/serializers/host-listing-form";
 import { ListingForm } from "@/components/host/listing-form";
-import { SubmitForReviewButton } from "@/components/host/submit-for-review-button";
-import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { CalendarDays } from "lucide-react";
 import { LISTING_STATUSES } from "@/lib/constants";
 import { getActivePropertyTypes, getPropertyTypeLabel } from "@/lib/services/property-type.service";
 import type { ListingMediaItem } from "@/lib/types/listing-media";
@@ -66,42 +61,18 @@ export default async function EditListingPage({ params }: EditListingPageProps) 
   const statusConfig = LISTING_STATUSES.find((s) => s.value === listing.status);
 
   return (
-    <div>
-      <div className="flex flex-wrap items-center gap-3 mb-6">
-        <h1 className="text-2xl font-bold">Edit Listing</h1>
-        <Badge variant={listing.status === "APPROVED" ? "default" : "secondary"}>
-          {statusConfig?.label || listing.status}
-        </Badge>
-        <Button variant="outline" size="sm" className="ml-auto" asChild>
-          <Link href={`/host/listings/${listing.id}/availability`}>
-            <CalendarDays className="h-4 w-4 mr-2" />
-            Availability &amp; pricing
-          </Link>
-        </Button>
-      </div>
-
-      {listing.moderationNote && (
-        <div className="bg-destructive/10 text-destructive p-4 rounded-lg mb-6">
-          <p className="font-medium text-sm">Moderation feedback:</p>
-          <p className="text-sm mt-1">{listing.moderationNote}</p>
-        </div>
-      )}
-
+    <div className="host-split-view xl:h-full xl:overflow-hidden">
       <ListingForm
         amenities={amenities}
         propertyTypes={propertyTypes}
         availableCities={availableCities}
         listing={listingForm}
         initialMediaItems={initialMediaItems}
+        editStatusLabel={statusConfig?.label || listing.status}
+        editStatusApproved={listing.status === "APPROVED"}
+        availabilityHref={`/host/listings/${listing.id}/availability`}
+        moderationNote={listing.moderationNote}
       />
-
-      {(listing.status === "DRAFT" ||
-        listing.status === "REJECTED" ||
-        listing.status === "UNPUBLISHED") && (
-        <div className="mt-6 pt-6 border-t">
-          <SubmitForReviewButton listingId={listing.id} />
-        </div>
-      )}
     </div>
   );
 }

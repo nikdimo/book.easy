@@ -3,6 +3,7 @@ import {
   Coffee, Sun, Trees, Car, Waves, Bath, Flame, Shield, HeartPulse,
   Mountain, Building, Laptop, LucideIcon,
 } from "lucide-react";
+import { getT, T } from "@/lib/i18n/t";
 
 const iconMap: Record<string, LucideIcon> = {
   wifi: Wifi,
@@ -31,21 +32,15 @@ interface AmenityListProps {
   amenities: { amenity: { name: string; icon?: string | null; category: string } }[];
 }
 
-export function AmenityList({ amenities }: AmenityListProps) {
+export async function AmenityList({ amenities }: AmenityListProps) {
   if (amenities.length === 0) return null;
-
-  const grouped = amenities.reduce(
-    (acc, { amenity }) => {
-      if (!acc[amenity.category]) acc[amenity.category] = [];
-      acc[amenity.category].push(amenity);
-      return acc;
-    },
-    {} as Record<string, typeof amenities[0]["amenity"][]>
-  );
+  const t = await getT();
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-semibold">What this place offers</h2>
+      <h2 className="text-xl font-semibold">
+        <T t={t} k="listing.amenities_heading" source="What this place offers" />
+      </h2>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-x-6 gap-y-3">
         {amenities.map(({ amenity }) => {
           const Icon = amenity.icon ? iconMap[amenity.icon] : undefined;

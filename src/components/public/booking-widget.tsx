@@ -19,10 +19,17 @@ import {
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { formatPrice } from "@/lib/utils/format";
+import { LocalizedPrice } from "@/components/shared/localized-price";
 import { createBookingAction } from "@/lib/actions/booking.actions";
 import { toast } from "sonner";
 import { ChevronUp } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import type { Resolved } from "@/lib/i18n/t";
+import { Tx, useI18n } from "@/lib/i18n/client";
 
 interface BookingWidgetProps {
   listingId: string;
@@ -39,6 +46,7 @@ interface BookingWidgetProps {
   initialCheckOut?: string;
   initialGuests?: number;
   initialGuestDetails?: GuestDetails;
+  reserveTooltip: Resolved;
 }
 
 type GuestDetails = {
@@ -47,17 +55,6 @@ type GuestDetails = {
   infants: number;
   pets: number;
 };
-
-function formatGuestDetails(details: GuestDetails): string {
-  const parts = [
-    details.adults > 0 && `${details.adults} adult${details.adults === 1 ? "" : "s"}`,
-    details.children > 0 && `${details.children} child${details.children === 1 ? "" : "ren"}`,
-    details.infants > 0 && `${details.infants} infant${details.infants === 1 ? "" : "s"}`,
-    details.pets > 0 && `${details.pets} pet${details.pets === 1 ? "" : "s"}`,
-  ].filter(Boolean);
-
-  return parts.join(", ") || "Add guests";
-}
 
 export function BookingWidget({
   listingId,
@@ -72,7 +69,9 @@ export function BookingWidget({
   initialCheckOut = "",
   initialGuests,
   initialGuestDetails = { adults: 0, children: 0, infants: 0, pets: 0 },
+  reserveTooltip,
 }: BookingWidgetProps) {
+  const i18n = useI18n();
   const { data: session } = useSession();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -112,6 +111,16 @@ export function BookingWidget({
   const hasVariableRates = priceOverrides.length > 0;
 
   const guests = guestDetails.adults + guestDetails.children;
+  const guestParts = [
+    guestDetails.adults > 0 && i18n.plural("booking.adults", guestDetails.adults, "{n} adult", "{n} adults"),
+    guestDetails.children > 0 && i18n.plural("booking.children", guestDetails.children, "{n} child", "{n} children"),
+    guestDetails.infants > 0 && i18n.plural("booking.infants", guestDetails.infants, "{n} infant", "{n} infants"),
+    guestDetails.pets > 0 && i18n.plural("booking.pets", guestDetails.pets, "{n} pet", "{n} pets"),
+  ].filter((part): part is Resolved => Boolean(part));
+  const guestSummary: Resolved = guestParts.length
+    ? { text: guestParts.map((part) => part.text).join(", "), translated: guestParts.every((part) => part.translated) }
+    : i18n.resolve("booking.add_guests", "Add guests");
+  const nightLabel = i18n.plural("booking.nights", nights, "{n} night", "{n} nights");
 
   function handleSubmit() {
     setError(null);
@@ -122,14 +131,14 @@ export function BookingWidget({
     }
 
     if (!checkIn || !checkOut) {
-      const message = "Please select check-in and check-out dates";
+      const message = i18n.resolve("booking.select_dates_error", "Please select check-in and check-out dates").text;
       setError(message);
       toast.error(message);
       return;
     }
 
     if (nights < minNights) {
-      const message = `Minimum stay is ${minNights} night${minNights > 1 ? "s" : ""}`;
+      const message = i18n.plural("booking.minimum_stay", minNights, "Minimum stay is {n} night", "Minimum stay is {n} nights").text;
       setError(message);
       toast.error(message);
       return;
@@ -164,26 +173,25 @@ export function BookingWidget({
       subtotalLine = breakdown.map((n) => (
         <div key={n.date} className="flex justify-between gap-2">
           <span className="text-muted-foreground truncate">{n.date}</span>
-          <span>{formatPrice(n.rate, currency)}</span>
+          <LocalizedPrice amount={n.rate} currency={currency} locale={i18n.locale} />
         </div>
       ));
     } else if (uniqueRates > 1) {
       subtotalLine = (
         <div className="flex justify-between">
           <span>
-            {nights} night{nights > 1 ? "s" : ""} (variable nightly rates)
+            {(() => { const value = i18n.plural("booking.variable_rates", nights, "{n} night (variable nightly rates)", "{n} nights (variable nightly rates)"); return <span className={value.translated ? "notranslate" : undefined}>{value.text}</span>; })()}
           </span>
-          <span>{formatPrice(subtotal, currency)}</span>
+          <LocalizedPrice amount={subtotal} currency={currency} locale={i18n.locale} />
         </div>
       );
     } else {
       subtotalLine = (
         <div className="flex justify-between">
           <span>
-            {formatPrice(breakdown[0]?.rate ?? nightlyRate, currency)} × {nights} night
-            {nights > 1 ? "s" : ""}
+            <LocalizedPrice amount={breakdown[0]?.rate ?? nightlyRate} currency={currency} locale={i18n.locale} /> × <span className={nightLabel.translated ? "notranslate" : undefined}>{nightLabel.text}</span>
           </span>
-          <span>{formatPrice(subtotal, currency)}</span>
+          <LocalizedPrice amount={subtotal} currency={currency} locale={i18n.locale} />
         </div>
       );
     }
@@ -192,19 +200,19 @@ export function BookingWidget({
       <div className="space-y-2 text-sm">
         {subtotalLine}
         <div className="flex justify-between font-medium pt-1 border-t border-border/60">
-          <span>Subtotal (stay)</span>
-          <span>{formatPrice(subtotal, currency)}</span>
+          <span><Tx k="booking.subtotal" source="Subtotal (stay)" /></span>
+          <LocalizedPrice amount={subtotal} currency={currency} locale={i18n.locale} />
         </div>
         {cleaningFee > 0 && (
           <div className="flex justify-between">
-            <span>Cleaning fee</span>
-            <span>{formatPrice(cleaningFee, currency)}</span>
+            <span><Tx k="booking.cleaning_fee" source="Cleaning fee" /></span>
+            <LocalizedPrice amount={cleaningFee} currency={currency} locale={i18n.locale} />
           </div>
         )}
         <Separator />
         <div className="flex justify-between font-semibold">
-          <span>Total</span>
-          <span>{formatPrice(total, currency)}</span>
+          <span><Tx k="booking.total" source="Total" /></span>
+          <LocalizedPrice amount={total} currency={currency} locale={i18n.locale} />
         </div>
       </div>
     );
@@ -216,27 +224,30 @@ export function BookingWidget({
       <CardHeader className="pb-2">
         <CardTitle className="flex flex-col gap-1 font-normal">
           <div className="flex items-baseline gap-1">
-            <span className="text-2xl font-semibold">{formatPrice(nightlyRate, currency)}</span>
-            <span className="text-base font-normal text-muted-foreground">/ night</span>
+            <LocalizedPrice
+              amount={nightlyRate}
+              currency={currency}
+              locale={i18n.locale}
+              className="text-2xl font-semibold"
+            />
+            <span className="text-base font-normal text-muted-foreground">/ <Tx k="property_card.per_night" source="night" /></span>
           </div>
           {hasVariableRates && (
             <span className="text-xs font-normal text-muted-foreground">
-              Selected dates may use custom nightly rates shown in the breakdown below.
+              <Tx k="booking.variable_rate_notice" source="Selected dates may use custom nightly rates shown in the breakdown below." />
             </span>
           )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 pt-0">
         <div className="space-y-2">
-          <Label>Dates</Label>
+          <Label><Tx k="booking.dates" source="Dates" /></Label>
           <MarketplaceStayDatePicker
             layout="field"
             checkIn={checkInStr}
             checkOut={checkOutStr}
             showDateFlexibility={false}
             showGuestStep={false}
-            dateDialogTitle="Choose dates"
-            dateDialogDescription="Choose your check-in and check-out dates."
             disabledDateRanges={disabledDateRanges}
             onRangeStringsChange={({ checkIn: ci, checkOut: co }) => {
               setCheckInStr(ci);
@@ -247,7 +258,7 @@ export function BookingWidget({
         </div>
 
         <div className="space-y-2">
-          <Label>Guests</Label>
+          <Label><Tx k="booking.guests_label" source="Guests" /></Label>
           <Dialog open={guestEditorOpen} onOpenChange={setGuestEditorOpen}>
             <button
               type="button"
@@ -255,16 +266,16 @@ export function BookingWidget({
               onClick={() => setGuestEditorOpen(true)}
             >
               <span className="min-w-0 truncate text-sm text-foreground">
-                {formatGuestDetails(guestDetails)}
+                <span className={guestSummary.translated ? "notranslate" : undefined}>{guestSummary.text}</span>
               </span>
-              <span className="shrink-0 text-sm font-medium text-primary">Edit</span>
+              <span className="shrink-0 text-sm font-medium text-primary"><Tx k="common.edit" source="Edit" /></span>
             </button>
 
             <DialogContent className="max-w-[calc(100%-2rem)] gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-md">
               <div className="border-b px-5 py-4 pr-12">
-                <DialogTitle className="text-lg">Guests</DialogTitle>
+                <DialogTitle className="text-lg"><Tx k="booking.guests_label" source="Guests" /></DialogTitle>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Choose who is coming with you.
+                  <Tx k="booking.choose_guests" source="Choose who is coming with you." />
                 </p>
               </div>
               <GuestCountsStep
@@ -279,7 +290,7 @@ export function BookingWidget({
                   className="w-full rounded-xl"
                   onClick={() => setGuestEditorOpen(false)}
                 >
-                  Done
+                  <Tx k="common.done" source="Done" />
                 </Button>
               </div>
             </DialogContent>
@@ -287,9 +298,9 @@ export function BookingWidget({
         </div>
 
         <div className="space-y-2">
-          <Label>Message to host (optional)</Label>
+          <Label><Tx k="booking.message_optional" source="Message to host (optional)" /></Label>
           <Textarea
-            placeholder="Introduce yourself and share your travel plans..."
+            placeholder={i18n.resolve("booking.message_placeholder", "Introduce yourself and share your travel plans...").text}
             value={note}
             onChange={(e) => setNote(e.target.value)}
             rows={3}
@@ -300,14 +311,23 @@ export function BookingWidget({
           <p className="hidden text-sm text-destructive lg:block">{error}</p>
         )}
 
-        <Button
-          onClick={handleSubmit}
-          className="hidden w-full rounded-lg text-base font-semibold py-6 lg:flex"
-          size="lg"
-          disabled={isPending || !checkIn || !checkOut}
-        >
-          {isPending ? "Sending request…" : "Reserve"}
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              onClick={handleSubmit}
+              className="hidden w-full rounded-lg text-base font-semibold py-6 lg:flex"
+              size="lg"
+              disabled={isPending || !checkIn || !checkOut}
+            >
+              {isPending ? <Tx k="booking.sending_request" source="Sending request…" /> : <Tx k="booking.reserve" source="Reserve" />}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent
+            className={reserveTooltip.translated ? "notranslate" : undefined}
+          >
+            {reserveTooltip.text}
+          </TooltipContent>
+        </Tooltip>
 
         {nights > 0 && stayPricing && (
           <div className="hidden lg:block">
@@ -317,7 +337,7 @@ export function BookingWidget({
         )}
 
         <p className="hidden text-xs text-muted-foreground text-center leading-relaxed lg:block">
-          You won&apos;t be charged yet. The host will approve or decline your request.
+          <Tx k="booking.no_charge_notice" source="You won't be charged yet. The host will approve or decline your request." />
         </p>
       </CardContent>
     </Card>
@@ -335,21 +355,24 @@ export function BookingWidget({
           >
             {nights > 0 && stayPricing ? (
               <>
-                <span className="text-base font-semibold">
-                  {formatPrice(total, currency)}
-                </span>
+                <LocalizedPrice
+                  amount={total}
+                  currency={currency}
+                  locale={i18n.locale}
+                  className="text-base font-semibold"
+                />
                 <span className="flex items-center gap-0.5 text-xs text-muted-foreground underline underline-offset-2">
-                  {nights} night{nights > 1 ? "s" : ""} · Price details
+                  <span className={nightLabel.translated ? "notranslate" : undefined}>{nightLabel.text}</span> · <Tx k="booking.price_details" source="Price details" />
                   <ChevronUp className="h-3 w-3" />
                 </span>
               </>
             ) : (
               <>
                 <span className="flex items-baseline gap-1 text-base font-semibold">
-                  {formatPrice(nightlyRate, currency)}
-                  <span className="text-xs font-normal text-muted-foreground">/ night</span>
+                  <LocalizedPrice amount={nightlyRate} currency={currency} locale={i18n.locale} />
+                  <span className="text-xs font-normal text-muted-foreground">/ <Tx k="property_card.per_night" source="night" /></span>
                 </span>
-                <span className="text-xs text-muted-foreground">Add dates for total</span>
+                <span className="text-xs text-muted-foreground"><Tx k="booking.add_dates_total" source="Add dates for total" /></span>
               </>
             )}
           </button>
@@ -359,7 +382,7 @@ export function BookingWidget({
             size="lg"
             disabled={isPending || !checkIn || !checkOut}
           >
-            {isPending ? "Sending…" : "Reserve"}
+            {isPending ? <Tx k="booking.sending" source="Sending…" /> : <Tx k="booking.reserve" source="Reserve" />}
           </Button>
         </div>
       </div>
@@ -367,7 +390,7 @@ export function BookingWidget({
       <Sheet open={priceDetailsOpen} onOpenChange={setPriceDetailsOpen}>
         <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto rounded-t-2xl">
           <SheetHeader>
-            <SheetTitle>Price details</SheetTitle>
+            <SheetTitle><Tx k="booking.price_details" source="Price details" /></SheetTitle>
           </SheetHeader>
           <div className="px-4 pb-4">{renderPriceBreakdown()}</div>
         </SheetContent>

@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useMemo, useRef, useState, useTransition } from "react";
+import { useActionState, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Bath, Bed, BedDouble, MapPin, ShieldCheck, Users } from "lucide-react";
+import Link from "next/link";
+import { Bath, Bed, BedDouble, CalendarDays, ChevronLeft, ChevronRight, Eye, MapPin, ShieldCheck, Users } from "lucide-react";
 import {
   saveListingDraft,
   submitNewListing,
@@ -46,6 +47,10 @@ interface ListingFormProps {
   /** Resuming an autosaved in-progress draft of a listing that was never submitted. */
   draftId?: string;
   initialDraft?: ListingDraftData;
+  editStatusLabel?: string;
+  editStatusApproved?: boolean;
+  availabilityHref?: string;
+  moderationNote?: string | null;
 }
 
 type ListingFormValues = {
@@ -67,6 +72,28 @@ type ListingFormValues = {
 const FALLBACK_TITLE = "Your listing title";
 const FALLBACK_DESCRIPTION =
   "Describe the space, the neighborhood, and the details guests should know before booking.";
+
+const STEPS = [
+  { title: "Property type", description: "What kind of place will guests book?" },
+  { title: "Location", description: "Help guests understand where they will stay." },
+  { title: "Property details", description: "Set the capacity and sleeping arrangements." },
+  { title: "Amenities", description: "Choose what your property offers." },
+  { title: "Photos", description: "Add at least 3 photos and choose the best one first." },
+  { title: "Description", description: "Give guests a clear, inviting overview." },
+  { title: "Pricing", description: "Set the price and minimum stay, then publish." },
+] as const;
+
+const EDIT_SECTIONS = [
+  { id: "basics", label: "Basics" },
+  { id: "description", label: "Description" },
+  { id: "location", label: "Location" },
+  { id: "photos", label: "Photos" },
+  { id: "details", label: "Property details" },
+  { id: "pricing", label: "Pricing" },
+  { id: "amenities", label: "Amenities" },
+] as const;
+
+type SaveStatus = "saving" | "saved" | "error";
 
 function toPositiveNumber(value: string, fallback: number) {
   if (value.trim() === "") return fallback;
@@ -151,10 +178,16 @@ export function ListingForm({
   initialMediaItems = [],
   draftId: initialDraftId,
   initialDraft,
+  editStatusLabel,
+  editStatusApproved = false,
+  availabilityHref,
+  moderationNote,
 }: ListingFormProps) {
   const isEditing = !!listing;
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+  const editorScrollRef = useRef<HTMLDivElement>(null);
+  const [activeEditSection, setActiveEditSection] = useState("basics");
   const [values, setValues] = useState<ListingFormValues>(() =>
     listingInitialValues(listing, initialDraft)
   );
@@ -167,7 +200,12 @@ export function ListingForm({
   const [selectedAmenityIds, setSelectedAmenityIds] = useState<string[]>(
     () => listing?.amenities.map((a) => a.amenityId) ?? initialDraft?.amenityIds ?? []
   );
-  const [draftId, setDraftId] = useState<string | null>(initialDraftId ?? null);
+  const draftIdRef = useRef<string | null>(initialDraftId ?? null);
+  const saveRequestRef = useRef(0);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved");
+  const [currentStep, setCurrentStep] = useState(0);
+  const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
+  const [publishChecklistOpen, setPublishChecklistOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submittedListingId, setSubmittedListingId] = useState<string | null>(null);
   const [isSubmittingNew, startSubmitNewTransition] = useTransition();
@@ -188,13 +226,29 @@ export function ListingForm({
   // yet, so leaving the page (or the tab crashing) doesn't lose it. Not validated —
   // partial/empty values are expected. No-op once editing a real listing, which is
   // already persisted.
-  function autosaveDraft() {
-    if (isEditing || !formRef.current) return;
+  const autosaveDraft = useCallback(async () => {
+    if (isEditing || !formRef.current) return true;
+    const request = ++saveRequestRef.current;
+    setSaveStatus("saving");
     const fd = new FormData(formRef.current);
-    void saveListingDraft(draftId, fd).then((result) => {
-      if (result && "draftId" in result) setDraftId(result.draftId);
-    });
-  }
+    const result = await saveListingDraft(draftIdRef.current, fd);
+    if (result && "draftId" in result) {
+      draftIdRef.current = result.draftId;
+      if (request === saveRequestRef.current) setSaveStatus("saved");
+      return true;
+    } else if (request === saveRequestRef.current) {
+      setSaveStatus("error");
+    }
+    return false;
+  }, [isEditing]);
+
+  // Keep the preview instant while batching text edits into a quiet background save.
+  // Discrete controls also call autosaveDraft immediately below.
+  useEffect(() => {
+    if (isEditing) return;
+    const timeout = window.setTimeout(() => void autosaveDraft(), 900);
+    return () => window.clearTimeout(timeout);
+  }, [values, selectedAmenityIds, mediaItems, isEditing, autosaveDraft]);
 
   const groupedAmenities = useMemo(
     () =>
@@ -215,6 +269,7 @@ export function ListingForm({
   );
 
   function setField(field: keyof ListingFormValues, value: string) {
+    if (!isEditing) setSaveStatus("saving");
     setValues((current) => ({ ...current, [field]: value }));
   }
 
@@ -241,6 +296,7 @@ export function ListingForm({
   function handleMediaItemsChange(
     next: ListingMediaItem[] | ((current: ListingMediaItem[]) => ListingMediaItem[])
   ) {
+    if (!isEditing) setSaveStatus("saving");
     setMediaItems(next);
     setFieldErrors((current) => {
       if (!("media" in current)) return current;
@@ -251,14 +307,15 @@ export function ListingForm({
     // Runs after the state update above has been queued — media changes come from
     // discrete user actions (upload/remove/reorder), not continuous typing, so saving
     // immediately (rather than waiting for some unrelated field's blur) is appropriate.
-    setTimeout(autosaveDraft, 0);
+    setTimeout(() => void autosaveDraft(), 0);
   }
 
   function toggleAmenity(amenityId: string, checked: boolean) {
+    if (!isEditing) setSaveStatus("saving");
     setSelectedAmenityIds((current) =>
       checked ? [...current, amenityId] : current.filter((id) => id !== amenityId)
     );
-    setTimeout(autosaveDraft, 0);
+    setTimeout(() => void autosaveDraft(), 0);
   }
 
   const typeLabel = propertyTypes.find((type) => type.value === values.propertyType)?.label;
@@ -294,24 +351,20 @@ export function ListingForm({
     });
 
     const errors = parsed.success ? {} : zodFieldErrors(parsed.error);
-    if (!mediaItems.some((item) => item.mediaType === "IMAGE")) {
-      errors.media = "Add at least one photo before submitting for review";
+    if (mediaItems.filter((item) => item.mediaType === "IMAGE").length < 3) {
+      errors.media = "Add at least 3 photos before publishing";
     }
     setFieldErrors(errors);
 
     const firstErrorField = Object.keys(errors)[0];
     if (firstErrorField) {
-      toast.error(errors[firstErrorField]);
-      const el = firstErrorField === "media"
-        ? document.getElementById("listing-media-upload")
-        : document.getElementById(firstErrorField);
-      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setPublishChecklistOpen(true);
       return;
     }
 
     const fd = new FormData(formRef.current);
     startSubmitNewTransition(async () => {
-      const result = await submitNewListing(fd, draftId);
+      const result = await submitNewListing(fd, draftIdRef.current);
       if ("error" in result) {
         toast.error(result.error);
       } else {
@@ -320,24 +373,112 @@ export function ListingForm({
     });
   }
 
+  function scrollToEditSection(sectionId: string) {
+    const container = editorScrollRef.current;
+    const section = document.getElementById(`edit-section-${sectionId}`);
+    if (!container || !section) return;
+    const stickyHeader = container.querySelector<HTMLElement>("[data-edit-sticky-header]");
+    const containerTop = container.getBoundingClientRect().top;
+    const sectionTop = section.getBoundingClientRect().top;
+    const stickyOffset = (stickyHeader?.offsetHeight ?? 100) + 16;
+    container.scrollTo({
+      top: container.scrollTop + sectionTop - containerTop - stickyOffset,
+      behavior: "smooth",
+    });
+    setActiveEditSection(sectionId);
+  }
+
+  function updateActiveEditSection() {
+    const container = editorScrollRef.current;
+    if (!container) return;
+    if (container.scrollTop + container.clientHeight >= container.scrollHeight - 2) {
+      setActiveEditSection(EDIT_SECTIONS[EDIT_SECTIONS.length - 1].id);
+      return;
+    }
+    const stickyHeader = container.querySelector<HTMLElement>("[data-edit-sticky-header]");
+    const marker = container.getBoundingClientRect().top + (stickyHeader?.offsetHeight ?? 100) + 24;
+    let active: (typeof EDIT_SECTIONS)[number]["id"] = EDIT_SECTIONS[0].id;
+    for (const section of EDIT_SECTIONS) {
+      const element = document.getElementById(`edit-section-${section.id}`);
+      if (element && element.getBoundingClientRect().top <= marker) active = section.id;
+    }
+    setActiveEditSection(active);
+  }
+
   return (
-    <form ref={formRef} action={isEditing ? formAction : undefined} className="space-y-6">
-      {state?.error && (
+    <form ref={formRef} action={isEditing ? formAction : undefined} className={isEditing ? "xl:h-full xl:overflow-hidden" : "space-y-6"}>
+      {state?.error && !isEditing && (
         <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
           {state.error}
         </div>
       )}
 
-      <div className="grid gap-8 xl:grid-cols-[minmax(0,520px)_minmax(0,1fr)]">
-        <div className="space-y-6">
+      {!isEditing && (
+        <div className="sticky top-0 z-20 -mx-4 border-b bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Button type="button" variant="ghost" onClick={async () => {
+              const saved = await autosaveDraft();
+              if (saved) router.push("/host/listings");
+              else toast.error("Your latest changes could not be saved. Please retry before closing.");
+            }}>
+              Close
+            </Button>
+            <div className="flex items-center gap-3 text-sm">
+              <span className={saveStatus === "error" ? "text-destructive" : "text-muted-foreground"} aria-live="polite">
+                {saveStatus === "saving" ? "Saving…" : saveStatus === "error" ? "Save failed" : "Draft saved"}
+              </span>
+              {saveStatus === "error" && <Button type="button" variant="link" onClick={() => void autosaveDraft()}>Retry</Button>}
+              <Button type="button" disabled={isSubmittingNew} onClick={handleSubmitForReview}>
+                {isSubmittingNew ? "Publishing…" : "Publish"}
+              </Button>
+            </div>
+          </div>
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
+            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${((currentStep + 1) / STEPS.length) * 100}%` }} />
+          </div>
+        </div>
+      )}
+
+      <div className={isEditing ? "grid gap-0 xl:h-full xl:grid-cols-[minmax(420px,44%)_minmax(0,56%)]" : "grid gap-8 xl:grid-cols-[minmax(0,520px)_minmax(0,1fr)]"}>
+        <div ref={editorScrollRef} onScroll={isEditing ? updateActiveEditSection : undefined} className={isEditing ? "space-y-6 px-5 py-5 xl:h-full xl:overscroll-contain xl:overflow-y-auto xl:border-r xl:px-8 xl:py-0 xl:[scrollbar-gutter:stable]" : "space-y-6"}>
+          {isEditing && (
+            <div data-edit-sticky-header className="sticky top-0 z-20 -mx-5 -mt-5 border-b bg-background/95 px-5 pb-3 pt-5 backdrop-blur xl:-mx-8 xl:mt-0 xl:px-8 xl:pt-5">
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="text-2xl font-bold">Edit Listing</h1>
+                {editStatusLabel && <Badge variant={editStatusApproved ? "default" : "secondary"}>{editStatusLabel}</Badge>}
+                {availabilityHref && (
+                  <Button variant="outline" size="sm" className="ml-auto" asChild>
+                    <Link href={availabilityHref}><CalendarDays className="mr-2 h-4 w-4" />Availability &amp; pricing</Link>
+                  </Button>
+                )}
+                <Button type="button" variant="outline" size="sm" className="xl:hidden" onClick={() => setMobilePreviewOpen(true)}>
+                  <Eye className="mr-2 h-4 w-4" />Preview
+                </Button>
+              </div>
+              <nav className="mt-4 flex flex-wrap gap-1" aria-label="Listing sections">
+                {EDIT_SECTIONS.map((section) => (
+                  <button key={section.id} type="button" aria-current={activeEditSection === section.id ? "location" : undefined} onClick={() => scrollToEditSection(section.id)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${activeEditSection === section.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>
+                    {section.label}
+                  </button>
+                ))}
+              </nav>
+            </div>
+          )}
+          {isEditing && state?.error && (
+            <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{state.error}</div>
+          )}
+          {isEditing && moderationNote && (
+            <div className="rounded-lg bg-destructive/10 p-4 text-destructive"><p className="text-sm font-medium">Moderation feedback:</p><p className="mt-1 text-sm">{moderationNote}</p></div>
+          )}
           <div>
-            <p className="text-sm text-muted-foreground">
-              Build the listing exactly as guests will understand it.
-            </p>
+            {!isEditing && <p className="text-xs font-semibold uppercase tracking-wide text-primary">Step {currentStep + 1} of {STEPS.length}</p>}
+            <h2 className="mt-1 text-2xl font-semibold">{isEditing ? "Listing details" : STEPS[currentStep].title}</h2>
+            <p className="mt-1 text-sm text-muted-foreground">{isEditing ? "Build the listing exactly as guests will understand it." : STEPS[currentStep].description}</p>
           </div>
 
-          <FieldSection title="Guest-facing basics">
-            <div className="space-y-2">
+          <div id={isEditing ? "edit-section-basics" : undefined} className={isEditing || currentStep === 0 || currentStep === 5 ? "scroll-mt-32 block" : "hidden"}>
+          <FieldSection title={!isEditing && currentStep === 0 ? "Choose a property type" : "Guest-facing basics"}>
+            <div className={isEditing || currentStep === 5 ? "space-y-2" : "hidden"}>
               <Label htmlFor="title">Title</Label>
               <Input
                 id="title"
@@ -350,7 +491,7 @@ export function ListingForm({
               />
               <FieldError message={fieldErrors.title} />
             </div>
-            <div className="space-y-2">
+            <div id={isEditing ? "edit-section-description" : undefined} className={isEditing || currentStep === 5 ? "scroll-mt-32 space-y-2" : "hidden"}>
               <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
@@ -375,7 +516,7 @@ export function ListingForm({
                 </span>
               </div>
             </div>
-            <div className="space-y-2">
+            <div className={isEditing || currentStep === 0 ? "space-y-2" : "hidden"}>
               <Label htmlFor="propertyType">Property type</Label>
               <select
                 id="propertyType"
@@ -402,7 +543,9 @@ export function ListingForm({
               />
             </div>
           </FieldSection>
+          </div>
 
+          <div id={isEditing ? "edit-section-location" : undefined} className={isEditing || currentStep === 1 ? "scroll-mt-32 block" : "hidden"}>
           <FieldSection title="Location">
             <div className="space-y-2">
               <Label htmlFor="address">Address</Label>
@@ -455,12 +598,17 @@ export function ListingForm({
               initialLng={listing?.property.longitude ?? parseFloatOrUndefined(initialDraft?.longitude)}
             />
           </FieldSection>
+          </div>
 
+          <div id={isEditing ? "edit-section-photos" : undefined} className={isEditing || currentStep === 4 ? "scroll-mt-32 block" : "hidden"}>
           <FieldSection title="Photos and videos">
             <ListingImagesField items={mediaItems} onItemsChange={handleMediaItemsChange} />
+            <p className="text-sm text-muted-foreground">{mediaItems.filter((item) => item.mediaType === "IMAGE").length} of 3 required photos added</p>
             <FieldError message={fieldErrors.media} />
           </FieldSection>
+          </div>
 
+          <div id={isEditing ? "edit-section-details" : undefined} className={isEditing || currentStep === 2 ? "scroll-mt-32 block" : "hidden"}>
           <FieldSection title="Capacity">
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
               <NumberField
@@ -497,7 +645,9 @@ export function ListingForm({
               />
             </div>
           </FieldSection>
+          </div>
 
+          <div id={isEditing ? "edit-section-pricing" : undefined} className={isEditing || currentStep === 6 ? "scroll-mt-32 block" : "hidden"}>
           <FieldSection title="Pricing">
             <div className="grid gap-4 md:grid-cols-3">
               <div>
@@ -531,7 +681,9 @@ export function ListingForm({
               />
             </div>
           </FieldSection>
+          </div>
 
+          <div id={isEditing ? "edit-section-amenities" : undefined} className={isEditing || currentStep === 3 ? "scroll-mt-32 block" : "hidden"}>
           <FieldSection title="Amenities">
             <div className="space-y-5">
               {Object.entries(groupedAmenities).map(([category, items]) => (
@@ -566,10 +718,18 @@ export function ListingForm({
               />
             </div>
           </FieldSection>
+          </div>
+          {isEditing && (
+            <div className="sticky bottom-0 z-20 -mx-5 border-t bg-background/95 px-5 py-4 backdrop-blur xl:-mx-8 xl:px-8">
+              <Button type="submit" size="lg" disabled={isPending} className="w-full sm:w-auto">
+                {isPending ? "Saving..." : "Save changes"}
+              </Button>
+            </div>
+          )}
         </div>
 
-        <aside className="xl:sticky xl:top-24 xl:self-start">
-          <div className="mb-3 flex items-center justify-between gap-3">
+        <aside className={isEditing ? "hidden px-6 py-5 xl:block xl:h-full xl:overscroll-contain xl:overflow-y-auto xl:[scrollbar-gutter:stable]" : "hidden xl:sticky xl:top-24 xl:block xl:self-start"}>
+          <div className={isEditing ? "sticky top-0 z-10 -mx-6 -mt-5 mb-3 flex items-center justify-between gap-3 border-b bg-background/95 px-6 py-4 backdrop-blur" : "mb-3 flex items-center justify-between gap-3"}>
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Guest booking preview
             </h2>
@@ -595,23 +755,67 @@ export function ListingForm({
         </aside>
       </div>
 
-      <div className="sticky bottom-0 z-10 -mx-4 border-t bg-background/95 px-4 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:static sm:mx-0 sm:border-t-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none">
-        {isEditing ? (
-          <Button type="submit" size="lg" disabled={isPending} className="w-full sm:w-auto">
-            {isPending ? "Saving..." : "Save changes"}
-          </Button>
-        ) : (
-          <Button
-            type="button"
-            size="lg"
-            disabled={isSubmittingNew}
-            onClick={handleSubmitForReview}
-            className="w-full sm:w-auto"
-          >
-            {isSubmittingNew ? "Publishing..." : "Publish Listing"}
-          </Button>
-        )}
-      </div>
+      {!isEditing && <div className="sticky bottom-0 z-10 -mx-4 border-t bg-background/95 px-4 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:static sm:mx-0 sm:border-t-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none">
+          <div className="flex items-center justify-between gap-3">
+            <Button type="button" variant="outline" disabled={currentStep === 0} onClick={() => setCurrentStep((step) => Math.max(0, step - 1))}>
+              <ChevronLeft /> Back
+            </Button>
+            <Button type="button" variant="outline" className="xl:hidden" onClick={() => setMobilePreviewOpen(true)}><Eye /> Preview</Button>
+            {currentStep < STEPS.length - 1 ? (
+              <Button type="button" onClick={() => { void autosaveDraft(); setCurrentStep((step) => Math.min(STEPS.length - 1, step + 1)); }}>
+                Continue <ChevronRight />
+              </Button>
+            ) : (
+              <Button type="button" disabled={isSubmittingNew} onClick={handleSubmitForReview}>{isSubmittingNew ? "Publishing…" : "Publish"}</Button>
+            )}
+          </div>
+      </div>}
+
+      <Dialog open={mobilePreviewOpen} onOpenChange={setMobilePreviewOpen}>
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto xl:hidden">
+          <DialogHeader><DialogTitle>Guest booking preview</DialogTitle></DialogHeader>
+          <ListingGuestPreview
+            title={values.title || FALLBACK_TITLE}
+            description={values.description || FALLBACK_DESCRIPTION}
+            typeLabel={typeLabel}
+            locationLine={locationLine}
+            mediaItems={mediaItems}
+            guests={guests}
+            bedrooms={bedrooms}
+            beds={beds}
+            bathrooms={bathrooms}
+            nightlyRate={nightlyRate}
+            cleaningFee={cleaningFee}
+            minNights={minNights}
+            amenities={selectedAmenities}
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={publishChecklistOpen} onOpenChange={setPublishChecklistOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Finish your listing before publishing</DialogTitle>
+            <DialogDescription>Select an item to go directly to that step.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            {Object.entries(fieldErrors).map(([field, message]) => (
+              <button
+                key={field}
+                type="button"
+                className="flex w-full items-center justify-between rounded-lg border p-3 text-left text-sm transition-colors hover:bg-muted"
+                onClick={() => {
+                  const step = field === "propertyType" ? 0 : field === "address" || field === "city" ? 1 : ["maxGuests", "bedrooms", "beds", "bathrooms"].includes(field) ? 2 : field === "media" ? 4 : field === "title" || field === "description" ? 5 : 6;
+                  setCurrentStep(step);
+                  setPublishChecklistOpen(false);
+                }}
+              >
+                <span>{message}</span><ChevronRight className="h-4 w-4" />
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={!!submittedListingId}

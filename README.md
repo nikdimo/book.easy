@@ -7,7 +7,7 @@
 - **Framework**: Next.js 16 (App Router, Server Components, Server Actions)
 - **Language**: TypeScript
 - **UI**: React 19, Tailwind CSS v4, shadcn/ui (Radix Nova)
-- **Database**: PostgreSQL via Prisma 7
+- **Database**: PostgreSQL via Prisma 6
 - **Auth**: Auth.js v5 (Google + email magic links, JWT sessions)
 - **Validation**: Zod v4
 
@@ -156,4 +156,8 @@ src/
 | `npm run db:seed` | Seed demo data |
 | `npm run db:studio` | Open Prisma Studio |
 | `npm run typecheck` | Type-check without emitting |
+| `npm run i18n:extract` | Regenerate the fixed-UI translation catalog |
+| `npm run i18n:check` | Verify translated public copy and the generated catalog |
+| `npm run i18n:sync` | Sync missing/stale translations for enabled AI languages |
+| `npm run i18n:status` | Show translation completeness and review status |
 | `npm test` | Run the test suite (integration tests — needs the local DB running, `npm run db:docker`) |

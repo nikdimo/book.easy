@@ -71,7 +71,7 @@ export function ListingLocationField({
   return (
     <div className="space-y-3">
       <div className="space-y-2">
-        <Label htmlFor="maps-link">Google Maps link (optional)</Label>
+        <Label htmlFor="maps-link">Can&apos;t find the address? Set the exact location</Label>
         <div className="flex gap-2">
           <Input
             id="maps-link"
@@ -90,7 +90,7 @@ export function ListingLocationField({
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
-          Or click the map to drop a pin, or drag the pin to fine-tune it.
+          Paste a Google Maps link, click the map to place a pin, or drag the pin to fine-tune it.
         </p>
       </div>
 

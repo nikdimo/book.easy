@@ -165,3 +165,11 @@ body {
 #google_translate_element {
   display: none !important;
 }
+
+/* The listing editor owns both desktop scroll panes. Suppress the host page's
+   otherwise-useful main scrollbar so pane scrollbars remain in their own columns. */
+@media (min-width: 1280px) {
+  .host-main:has(> .host-split-view) {
+    overflow: hidden;
+  }
+}

@@ -8,9 +8,15 @@ export interface LanguageRecord {
   isDefault: boolean;
   isEnabled: boolean;
   sortOrder: number;
+  useAiTranslation: boolean;
+  selectionCount: number;
+  lastSelectedAt: Date | null;
 }
 
-const DEFAULT_LANGUAGES: readonly LanguageRecord[] = [
+const DEFAULT_LANGUAGES: readonly Omit<
+  LanguageRecord,
+  "useAiTranslation" | "selectionCount" | "lastSelectedAt"
+>[] = [
   { code: "en", name: "English", isDefault: true, isEnabled: true, sortOrder: 0 },
   { code: "mk", name: "Македонски", isDefault: false, isEnabled: true, sortOrder: 1 },
 ];
@@ -79,7 +85,7 @@ async function normalizeSourceLanguageWithDelegate(language: LanguageDelegate) {
 
 async function normalizeSourceLanguageWithSql() {
   const rows = await db.$queryRaw<LanguageRecord[]>`
-    SELECT "code", "name", "isDefault", "isEnabled", "sortOrder"
+    SELECT "code", "name", "isDefault", "isEnabled", "sortOrder", "useAiTranslation", "selectionCount", "lastSelectedAt"
     FROM "Language"
   `;
 
@@ -123,7 +129,7 @@ export async function getLanguages(enabledOnly = false): Promise<LanguageRecord[
     : Prisma.empty;
 
   return db.$queryRaw<LanguageRecord[]>`
-    SELECT "code", "name", "isDefault", "isEnabled", "sortOrder"
+    SELECT "code", "name", "isDefault", "isEnabled", "sortOrder", "useAiTranslation", "selectionCount", "lastSelectedAt"
     FROM "Language"
     ${where}
     ORDER BY "sortOrder" ASC
@@ -137,7 +143,7 @@ export async function getLanguageByCode(code: string): Promise<LanguageRecord | 
   }
 
   const rows = await db.$queryRaw<LanguageRecord[]>`
-    SELECT "code", "name", "isDefault", "isEnabled", "sortOrder"
+    SELECT "code", "name", "isDefault", "isEnabled", "sortOrder", "useAiTranslation", "selectionCount", "lastSelectedAt"
     FROM "Language"
     WHERE "code" = ${code}
     LIMIT 1
@@ -198,6 +204,38 @@ export async function deleteLanguageByCode(code: string) {
 
   await db.$executeRaw`
     DELETE FROM "Language"
+    WHERE "code" = ${code}
+  `;
+}
+
+export async function updateLanguageAiTranslation(code: string, useAiTranslation: boolean) {
+  const language = getLanguageDelegate();
+  if (language) {
+    return language.update({
+      where: { code },
+      data: { useAiTranslation },
+    });
+  }
+
+  await db.$executeRaw`
+    UPDATE "Language"
+    SET "useAiTranslation" = ${useAiTranslation}
+    WHERE "code" = ${code}
+  `;
+}
+
+export async function incrementLanguageSelection(code: string) {
+  const language = getLanguageDelegate();
+  if (language) {
+    return language.update({
+      where: { code },
+      data: { selectionCount: { increment: 1 }, lastSelectedAt: new Date() },
+    });
+  }
+
+  await db.$executeRaw`
+    UPDATE "Language"
+    SET "selectionCount" = "selectionCount" + 1, "lastSelectedAt" = now()
     WHERE "code" = ${code}
   `;
 }

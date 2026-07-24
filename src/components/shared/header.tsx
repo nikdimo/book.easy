@@ -24,21 +24,66 @@ import {
 } from "lucide-react";
 import { MarketplaceSearchBar } from "@/components/marketplace/marketplace-search-bar";
 import { GoogleTranslateWidget } from "@/components/shared/google-translate-widget";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { SITE_DOMAIN } from "@/lib/branding";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 import type { PlaceOption } from "@/lib/utils/place";
+import type { Resolved } from "@/lib/i18n/t";
 import { BrandLogo } from "@/components/shared/brand-logo";
+
+export interface HeaderNavLabels {
+  switchToHosting: Resolved;
+  stays: Resolved;
+  trips: Resolved;
+  favorites: Resolved;
+  account: Resolved;
+  hostingDashboard: Resolved;
+  yourListings: Resolved;
+  becomeAHost: Resolved;
+  admin: Resolved;
+  logOut: Resolved;
+  logIn: Resolved;
+}
+
+const DEFAULT_NAV_LABELS: HeaderNavLabels = {
+  switchToHosting: { text: "Switch to hosting", translated: false },
+  stays: { text: "Stays", translated: false },
+  trips: { text: "Trips", translated: false },
+  favorites: { text: "Favorites", translated: false },
+  account: { text: "Account", translated: false },
+  hostingDashboard: { text: "Hosting dashboard", translated: false },
+  yourListings: { text: "Your listings", translated: false },
+  becomeAHost: { text: "Become a host", translated: false },
+  admin: { text: "Admin", translated: false },
+  logOut: { text: "Log out", translated: false },
+  logIn: { text: "Log in", translated: false },
+};
 
 export function Header({
   popularCities = [],
   availablePropertyTypesByCity = {},
   propertyTypes = [],
   languages = [],
+  currentLocale = "en",
+  listYourProperty = { text: "List your property", translated: false },
+  listYourPropertyTooltip = {
+    text: "Start listing your property — takes about 10 minutes.",
+    translated: false,
+  },
+  navLabels = DEFAULT_NAV_LABELS,
 }: {
   popularCities?: PlaceOption[];
   availablePropertyTypesByCity?: Record<string, string[]>;
   propertyTypes?: PropertyTypeOption[];
+  listYourProperty?: Resolved;
+  listYourPropertyTooltip?: Resolved;
+  navLabels?: HeaderNavLabels;
   languages?: { code: string; name: string; isDefault: boolean }[];
+  currentLocale?: string;
 }) {
   const router = useRouter();
   const { data: session, update } = useSession();
@@ -102,23 +147,40 @@ export function Header({
         </div>
 
         <div className="flex items-center justify-end gap-2 min-w-0">
-          <GoogleTranslateWidget languages={languages} />
+          <GoogleTranslateWidget languages={languages} currentLocale={currentLocale} />
           {user?.isHost ? (
             <Button
               variant="ghost"
               className="hidden 2xl:flex rounded-full text-sm font-medium"
               asChild
             >
-              <Link href="/host">Switch to hosting</Link>
+              <Link href="/host">
+                <span className={navLabels.switchToHosting.translated ? "notranslate" : undefined}>
+                  {navLabels.switchToHosting.text}
+                </span>
+              </Link>
             </Button>
           ) : (
-            <Button
-              variant="ghost"
-              className="hidden 2xl:flex rounded-full text-sm font-medium"
-              asChild
-            >
-              <Link href="/account/become-host">List your property</Link>
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="hidden 2xl:flex rounded-full text-sm font-medium"
+                  asChild
+                >
+                  <Link href="/account/become-host">
+                    <span className={listYourProperty.translated ? "notranslate" : undefined}>
+                      {listYourProperty.text}
+                    </span>
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent
+                className={listYourPropertyTooltip.translated ? "notranslate" : undefined}
+              >
+                {listYourPropertyTooltip.text}
+              </TooltipContent>
+            </Tooltip>
           )}
           {user ? (
             <DropdownMenu>
@@ -144,25 +206,33 @@ export function Header({
                 <DropdownMenuItem asChild>
                   <Link href="/properties">
                     <Home className="mr-2 h-4 w-4" />
-                    Stays
+                    <span className={navLabels.stays.translated ? "notranslate" : undefined}>
+                      {navLabels.stays.text}
+                    </span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/account/bookings">
                     <CalendarDays className="mr-2 h-4 w-4" />
-                    Trips
+                    <span className={navLabels.trips.translated ? "notranslate" : undefined}>
+                      {navLabels.trips.text}
+                    </span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/account/favorites">
                     <Heart className="mr-2 h-4 w-4" />
-                    Favorites
+                    <span className={navLabels.favorites.translated ? "notranslate" : undefined}>
+                      {navLabels.favorites.text}
+                    </span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link href="/account/profile">
                     <User className="mr-2 h-4 w-4" />
-                    Account
+                    <span className={navLabels.account.translated ? "notranslate" : undefined}>
+                      {navLabels.account.text}
+                    </span>
                   </Link>
                 </DropdownMenuItem>
                 {user.isHost && (
@@ -171,13 +241,21 @@ export function Header({
                     <DropdownMenuItem asChild>
                       <Link href="/host">
                         <Home className="mr-2 h-4 w-4" />
-                        Hosting dashboard
+                        <span
+                          className={navLabels.hostingDashboard.translated ? "notranslate" : undefined}
+                        >
+                          {navLabels.hostingDashboard.text}
+                        </span>
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link href="/host/listings">
                         <LayoutDashboard className="mr-2 h-4 w-4" />
-                        Your listings
+                        <span
+                          className={navLabels.yourListings.translated ? "notranslate" : undefined}
+                        >
+                          {navLabels.yourListings.text}
+                        </span>
                       </Link>
                     </DropdownMenuItem>
                   </>
@@ -186,7 +264,9 @@ export function Header({
                   <DropdownMenuItem asChild>
                     <Link href="/account/become-host">
                       <Home className="mr-2 h-4 w-4" />
-                      Become a host
+                      <span className={navLabels.becomeAHost.translated ? "notranslate" : undefined}>
+                        {navLabels.becomeAHost.text}
+                      </span>
                     </Link>
                   </DropdownMenuItem>
                 )}
@@ -196,7 +276,9 @@ export function Header({
                     <DropdownMenuItem asChild>
                       <Link href="/admin">
                         <ShieldCheck className="mr-2 h-4 w-4" />
-                        Admin
+                        <span className={navLabels.admin.translated ? "notranslate" : undefined}>
+                          {navLabels.admin.text}
+                        </span>
                       </Link>
                     </DropdownMenuItem>
                   </>
@@ -210,14 +292,20 @@ export function Header({
                   }}
                 >
                   <LogOut className="mr-2 h-4 w-4" />
-                  Log out
+                  <span className={navLabels.logOut.translated ? "notranslate" : undefined}>
+                    {navLabels.logOut.text}
+                  </span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
             <div className="flex items-center gap-1">
               <Button size="sm" className="rounded-full font-medium" asChild>
-                <Link href="/login">Log in</Link>
+                <Link href="/login">
+                  <span className={navLabels.logIn.translated ? "notranslate" : undefined}>
+                    {navLabels.logIn.text}
+                  </span>
+                </Link>
               </Button>
             </div>
           )}

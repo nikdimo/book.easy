@@ -84,6 +84,17 @@ goto WAIT_DOCKER
 
 
 :PREVIEW_BODY
+rem Never start a second Next.js process against the same .next cache. Concurrent
+rem dev processes can corrupt Turbopack's persistent task state on Windows.
+powershell -NoProfile -Command "if (Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }"
+if not errorlevel 1 (
+    echo   The web app is already running at http://localhost:3000
+    start "" http://localhost:3000
+    echo   Stop the existing server before starting a fresh preview.
+    pause
+    goto MENU
+)
+
 echo [1/4] Starting Postgres (Docker)...
 docker compose up -d
 if errorlevel 1 (
@@ -110,12 +121,24 @@ if errorlevel 1 (
 
 echo.
 echo [4/4] Starting the web app...
+echo   Clearing generated development cache...
+if exist ".next\dev" rmdir /s /q ".next\dev"
+if exist ".next\dev" (
+    echo.
+    echo   ERROR - Could not clear .next\dev. Another Next.js process may still be running.
+    echo   Close any other book.easy.mk server windows and try again.
+    pause
+    goto MENU
+)
 echo   Opening http://localhost:3000
 echo   Press Ctrl+C in this window to stop.
 echo   (Postgres keeps running in Docker until you run "docker compose down" separately)
 echo.
-start /b cmd /c "timeout /t 3 /nobreak >nul && start "" http://localhost:3000"
-call npm run dev
+start "" /b powershell -NoProfile -WindowStyle Hidden -Command "$url='http://localhost:3000'; for ($i=0; $i -lt 90; $i++) { try { $response=Invoke-WebRequest -UseBasicParsing -Uri $url -TimeoutSec 2; if ($response.StatusCode -ge 200) { Start-Process $url; exit 0 } } catch {}; Start-Sleep -Seconds 1 }; Start-Process $url"
+rem Webpack is used for control-panel previews because Next 16.2.2 Turbopack can
+rem panic while restoring its Windows persistent cache. Production builds still use
+rem the default Turbopack build path.
+call npm run dev -- --webpack
 pause
 goto MENU
 

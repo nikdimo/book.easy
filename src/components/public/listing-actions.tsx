@@ -18,6 +18,7 @@ import { reportListing } from "@/lib/actions/report.actions";
 import { toggleFavorite } from "@/lib/actions/favorite.actions";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { Tx, useI18n } from "@/lib/i18n/client";
 
 export function ListingActions({
   title,
@@ -30,6 +31,7 @@ export function ListingActions({
   initialSaved?: boolean;
   isAuthenticated: boolean;
 }) {
+  const i18n = useI18n();
   const router = useRouter();
   const [saved, setSaved] = useState(initialSaved);
   const [, startTransition] = useTransition();
@@ -60,14 +62,14 @@ export function ListingActions({
         await navigator.share({ title, url });
       } else {
         await navigator.clipboard.writeText(url);
-        toast.success("Link copied to clipboard");
+        toast.success(i18n.resolve("listing.link_copied_clipboard", "Link copied to clipboard").text);
       }
     } catch {
       try {
         await navigator.clipboard.writeText(url);
-        toast.success("Link copied");
+        toast.success(i18n.resolve("listing.link_copied", "Link copied").text);
       } catch {
-        toast.error("Could not share");
+        toast.error(i18n.resolve("listing.share_failed", "Could not share").text);
       }
     }
   }
@@ -79,7 +81,7 @@ export function ListingActions({
       if (result?.error) {
         toast.error(result.error);
       } else {
-        toast.success("Report submitted, thank you");
+        toast.success(i18n.resolve("listing.report_submitted", "Report submitted, thank you").text);
         setMessage("");
         setReportOpen(false);
       }
@@ -98,7 +100,7 @@ export function ListingActions({
         onClick={() => void share()}
       >
         <Share className="h-4 w-4" />
-        Share
+        <Tx k="listing.share" source="Share" />
       </Button>
       <Button
         type="button"
@@ -108,7 +110,7 @@ export function ListingActions({
         onClick={handleToggleSaved}
       >
         <Heart className={cn("h-4 w-4", saved && "fill-rose-600 text-rose-600")} />
-        Save
+        <Tx k="listing.save" source="Save" />
       </Button>
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
         <DialogTrigger asChild>
@@ -119,25 +121,25 @@ export function ListingActions({
             className="rounded-full gap-2 font-medium underline-offset-4 hover:underline"
           >
             <Flag className="h-4 w-4" />
-            Report
+            <Tx k="listing.report" source="Report" />
           </Button>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Report this listing</DialogTitle>
+            <DialogTitle><Tx k="listing.report_title" source="Report this listing" /></DialogTitle>
             <DialogDescription>
-              Let us know what&apos;s wrong. Adding details is optional but helps us review it faster.
+              <Tx k="listing.report_description" source="Let us know what's wrong. Adding details is optional but helps us review it faster." />
             </DialogDescription>
           </DialogHeader>
           <Textarea
-            placeholder="What's wrong with this listing? (optional)"
+            placeholder={i18n.resolve("listing.report_placeholder", "What's wrong with this listing? (optional)").text}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             rows={4}
           />
           <DialogFooter>
             <Button disabled={submitting} onClick={() => void submitReport()}>
-              Submit report
+              <Tx k="listing.submit_report" source="Submit report" />
             </Button>
           </DialogFooter>
         </DialogContent>

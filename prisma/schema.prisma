@@ -220,6 +220,14 @@ model Listing {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
+  /** Time-decayed demand signal (views + heavily-weighted bookings) recomputed by a
+   *  scheduled job — see lib/services/popularity.service.ts. Denormalised onto the
+   *  listing so the home page can order by it with a plain indexed query instead of
+   *  aggregating the event tables on every request. 0 means "no signal yet", which is
+   *  what gates the public "Popular homes" section from appearing at all. */
+  popularityScore     Float     @default(0)
+  popularityUpdatedAt DateTime?
+
   property           Property           @relation(fields: [propertyId], references: [id])
   host               User               @relation(fields: [hostId], references: [id])
   images             ListingImage[]
@@ -231,10 +239,34 @@ model Listing {
   suggestions        Suggestion[]
   reports            ListingReport[]
   favorites          Favorite[]
+  views              ListingView[]
 
   @@index([hostId])
   @@index([status])
   @@index([slug])
+  @@index([status, popularityScore])
+}
+
+/**
+ * One row per visitor per listing per day — the raw signal behind popularityScore.
+ * Deduped by (listingId, visitorKey, viewedOn) so a guest refreshing a page twenty
+ * times counts once, which is what keeps "popular" from meaning "was already on the
+ * home page". `visitorKey` is a salted hash of IP + user agent, never the raw values,
+ * so no identifying data is stored; rows older than the scoring window are pruned by
+ * the recompute job.
+ */
+model ListingView {
+  id         String   @id @default(cuid())
+  listingId  String
+  visitorKey String
+  viewedOn   DateTime @db.Date
+  createdAt  DateTime @default(now())
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([listingId, visitorKey, viewedOn])
+  @@index([listingId, viewedOn])
+  @@index([viewedOn])
 }
 
 /**
@@ -455,14 +487,74 @@ model Booking {
 // ─── Settings ───────────────────────────────────────────────────────────────────
 
 model Language {
-  code      String   @id // ISO 639-1, e.g. "mk", "en"
-  name      String
-  isDefault Boolean  @default(false)
-  isEnabled Boolean  @default(true)
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
+  code             String    @id // ISO 639-1, e.g. "mk", "en"
+  name             String
+  isDefault        Boolean   @default(false)
+  isEnabled        Boolean   @default(true)
+  sortOrder        Int       @default(0)
+  /** Whether this language's fixed UI text gets real AI translation, vs. relying
+   *  entirely on the Google Translate widget like every language does today. */
+  useAiTranslation Boolean   @default(false)
+  selectionCount   Int       @default(0)
+  lastSelectedAt   DateTime?
+  createdAt        DateTime  @default(now())
+
+  translations UiTranslation[]
 
   @@index([isEnabled])
+}
+
+/** The master list of fixed UI strings found in the codebase by the extraction scan
+ *  (`scanUiStrings`). One row per `t()`/`<T>` key. */
+model UiString {
+  key        String   @id
+  sourceText String
+  filePath   String?
+  isActive   Boolean  @default(true)
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  translations UiTranslation[]
+
+  @@index([isActive])
+}
+
+/** AI-generated translation of a UiString for one locale. `sourceTextSnapshot` records
+ *  what the English text was at translation time, so we can detect drift when the
+ *  source text later changes without a re-sync. */
+model UiTranslation {
+  id                 String   @id @default(cuid())
+  locale             String
+  key                String
+  value              String
+  sourceTextSnapshot String
+  isManuallyEdited   Boolean  @default(false)
+  updatedAt          DateTime @updatedAt
+
+  language Language @relation(fields: [locale], references: [code], onDelete: Cascade)
+  uiString UiString @relation(fields: [key], references: [key], onDelete: Cascade)
+
+  @@unique([locale, key])
+  @@index([locale])
+}
+
+/**
+ * Single-row, cross-process lock guarding translation synchronization, so an
+ * admin-triggered sync and a deployment sync can't run concurrently.
+ *
+ * Deliberately a plain table rather than a Postgres advisory lock: the sync spans
+ * minutes of external Anthropic calls, and Prisma pools connections. A
+ * session-scoped advisory lock is bound to one connection and could be released on
+ * a different pooled connection (leaking the lock), while a transaction-scoped lock
+ * can't span the job at all without holding a transaction open across the API calls.
+ * An owner token plus an expiry gives safe release (only the holder can release) and
+ * crash recovery (a dead holder's lock frees itself once `expiresAt` passes).
+ */
+model TranslationSyncLock {
+  id        String   @id
+  owner     String
+  startedAt DateTime @default(now())
+  expiresAt DateTime
 }
 
 // ─── Audit ──────────────────────────────────────────────────────────────────────

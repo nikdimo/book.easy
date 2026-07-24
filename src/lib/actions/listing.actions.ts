@@ -201,8 +201,8 @@ export async function submitNewListing(
   const data = parsed.data;
   const mediaItems = parseMediaItemsFromForm(formData);
   const primaryImageIndex = firstImageIndex(mediaItems);
-  if (primaryImageIndex === -1) {
-    return { error: "Add at least one photo before submitting for review" };
+  if (mediaItems.filter((item) => item.mediaType === "IMAGE").length < 3) {
+    return { error: "Add at least 3 photos before publishing" };
   }
 
   const slug = await generateUniqueSlug(data.title);
@@ -420,8 +420,8 @@ export async function submitForReview(listingId: string) {
 
   if (!listing.pricingRule) return { error: "Please set pricing before submitting" };
 
-  if (!listing.images.some((item) => item.mediaType === "IMAGE")) {
-    return { error: "Add at least one photo before submitting for review" };
+  if (listing.images.filter((item) => item.mediaType === "IMAGE").length < 3) {
+    return { error: "Add at least 3 photos before publishing" };
   }
 
   await db.listing.update({

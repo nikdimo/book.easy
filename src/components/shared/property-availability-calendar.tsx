@@ -425,9 +425,12 @@ export function PropertyAvailabilityCalendar({
               checkOut={checkOut}
               showDateFlexibility={false}
               showGuestStep={false}
-              finalActionLabel="Done"
-              dateDialogTitle="Availability"
-              dateDialogDescription="Select dates to block, reopen, or adjust nightly price."
+              finalActionLabel={{ text: "Done", translated: false }}
+              dateDialogTitle={{ text: "Availability", translated: false }}
+              dateDialogDescription={{
+                text: "Select dates to block, reopen, or adjust nightly price.",
+                translated: false,
+              }}
               hideDateSegmentCards
               dayVariant="availability"
               dayMeta={(day) => {

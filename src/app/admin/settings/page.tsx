@@ -2,6 +2,7 @@ import { getAllLanguages } from "@/lib/services/language.service";
 import { getAllAmenitiesForAdmin } from "@/lib/services/amenity.service";
 import { getAllPropertyTypesForAdmin } from "@/lib/services/property-type.service";
 import { getSuggestionsForAdmin } from "@/lib/services/admin.service";
+import { getTranslationStatus } from "@/lib/services/ui-translation.service";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LanguagesTab } from "./_components/languages-tab";
 import { AmenitiesTab } from "./_components/amenities-tab";
@@ -22,15 +23,20 @@ export default async function AdminSettingsPage({ searchParams }: AdminSettingsP
     ? (tab as (typeof TAB_VALUES)[number])
     : "languages";
 
-  const [languages, amenities, propertyTypes, suggestions] = await Promise.all([
-    getAllLanguages(),
-    getAllAmenitiesForAdmin(),
-    getAllPropertyTypesForAdmin(),
-    getSuggestionsForAdmin(),
-  ]);
+  const [languages, amenities, propertyTypes, suggestions, translationStatus] =
+    await Promise.all([
+      getAllLanguages(),
+      getAllAmenitiesForAdmin(),
+      getAllPropertyTypesForAdmin(),
+      getSuggestionsForAdmin(),
+      getTranslationStatus(),
+    ]);
 
   const languagesKey = languages
-    .map((language) => `${language.code}:${language.sortOrder}:${language.isEnabled ? 1 : 0}`)
+    .map(
+      (language) =>
+        `${language.code}:${language.sortOrder}:${language.isEnabled ? 1 : 0}:${language.useAiTranslation ? 1 : 0}`
+    )
     .join("|");
 
   return (
@@ -48,7 +54,11 @@ export default async function AdminSettingsPage({ searchParams }: AdminSettingsP
           </TabsTrigger>
         </TabsList>
         <TabsContent value="languages" className="mt-6">
-          <LanguagesTab key={languagesKey} languages={languages} />
+          <LanguagesTab
+            key={languagesKey}
+            languages={languages}
+            translationStatus={translationStatus}
+          />
         </TabsContent>
         <TabsContent value="amenities" className="mt-6">
           <AmenitiesTab amenities={amenities} />

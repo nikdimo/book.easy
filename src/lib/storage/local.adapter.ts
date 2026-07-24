@@ -13,7 +13,7 @@ import type { StorageAdapter } from "./index";
 const RAW_UPLOAD_DIR = process.env.UPLOAD_DIR || "./public/uploads";
 const UPLOAD_DIR = isAbsolute(RAW_UPLOAD_DIR)
   ? RAW_UPLOAD_DIR
-  : resolve(process.cwd(), RAW_UPLOAD_DIR);
+  : resolve(/*turbopackIgnore: true*/ process.cwd(), RAW_UPLOAD_DIR);
 
 /** Used by the `/uploads/[filename]` route handler, which reads files directly from
  * disk on every request rather than relying on Next's static `public/` serving (see
@@ -30,6 +30,7 @@ export class LocalStorageAdapter implements StorageAdapter {
   }
 
   async upload(file: Buffer, filename: string, _mimeType: string): Promise<string> {
+    void _mimeType;
     const dir = this.uploadDir;
     if (!existsSync(dir)) {
       await mkdir(dir, { recursive: true });

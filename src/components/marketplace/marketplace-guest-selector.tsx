@@ -2,6 +2,10 @@
 
 import { Users } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { pluralText } from "@/lib/i18n/client";
+import { useSearchLabels } from "@/components/marketplace/search-labels";
+import type { SearchLabels } from "@/components/marketplace/search-labels";
+import type { Resolved } from "@/lib/i18n/t";
 
 type Layout = "pill" | "hero" | "compact";
 
@@ -16,21 +20,25 @@ function totalParty(c: GuestCounts) {
   return c.adults + c.children;
 }
 
-export function formatGuestSummary(c: GuestCounts): string {
+export function formatGuestSummary(c: GuestCounts, labels: SearchLabels): Resolved {
   const guestTotal = totalParty(c);
-  const parts: string[] = [];
+  const parts: Resolved[] = [];
 
   if (guestTotal > 0) {
-    parts.push(guestTotal === 1 ? "1 guest" : `${guestTotal} guests`);
+    parts.push(pluralText(labels.guest, guestTotal, labels.locale));
   }
   if (c.infants > 0) {
-    parts.push(c.infants === 1 ? "1 infant" : `${c.infants} infants`);
+    parts.push(pluralText(labels.infant, c.infants, labels.locale));
   }
   if (c.pets > 0) {
-    parts.push(c.pets === 1 ? "1 pet" : `${c.pets} pets`);
+    parts.push(pluralText(labels.pet, c.pets, labels.locale));
   }
 
-  return parts.join(", ") || "Add guests";
+  if (parts.length === 0) return labels.addGuests;
+  return {
+    text: parts.map((p) => p.text).join(", "),
+    translated: parts.every((p) => p.translated),
+  };
 }
 
 /**
@@ -51,6 +59,8 @@ export function MarketplaceGuestSelector({
   onOpenRequest: () => void;
   className?: string;
 }) {
+  const labels = useSearchLabels();
+  const summary = formatGuestSummary(value, labels);
   const triggerActive = active;
 
   const pillClass = cn(
@@ -82,16 +92,22 @@ export function MarketplaceGuestSelector({
       onClick={onOpenRequest}
     >
       <span className="min-w-0 flex-1 text-left">
-          <span className="block text-[0.72rem] font-semibold leading-4 text-foreground">
-          Who
+          <span
+          className={cn(
+            "block text-[0.72rem] font-semibold leading-4 text-foreground",
+            labels.who.translated && "notranslate"
+          )}
+        >
+          {labels.who.text}
         </span>
         <span
           className={cn(
             "mt-px block truncate text-sm leading-5 font-normal",
-            totalParty(value) === 0 && "text-muted-foreground"
+            totalParty(value) === 0 && "text-muted-foreground",
+            summary.translated && "notranslate"
           )}
         >
-          {formatGuestSummary(value)}
+          {summary.text}
         </span>
       </span>
     </button>
@@ -105,14 +121,22 @@ export function MarketplaceGuestSelector({
     >
       <Users className="h-5 w-5 text-muted-foreground shrink-0 hidden sm:block" />
       <div className="min-w-0 flex-1">
-        <span className="text-xs font-semibold tracking-wide block">Who</span>
+        <span
+          className={cn(
+            "text-xs font-semibold tracking-wide block",
+            labels.who.translated && "notranslate"
+          )}
+        >
+          {labels.who.text}
+        </span>
         <span
           className={cn(
             "text-sm md:text-base font-medium",
-            totalParty(value) === 0 && "text-muted-foreground"
+            totalParty(value) === 0 && "text-muted-foreground",
+            summary.translated && "notranslate"
           )}
         >
-          {formatGuestSummary(value)}
+          {summary.text}
         </span>
       </div>
     </button>

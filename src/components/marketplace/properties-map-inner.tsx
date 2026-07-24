@@ -14,6 +14,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Maximize2, Minimize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tx, useI18n } from "@/lib/i18n/client";
 
 export type MapPin = {
   id: string;
@@ -65,6 +66,7 @@ export default function PropertiesMapInner({
   pins: MapPin[];
   className?: string;
 }) {
+  const i18n = useI18n();
   const [expanded, setExpanded] = React.useState(false);
   const positions = React.useMemo(
     () => pins.map((p) => [p.lat, p.lng] as [number, number]),
@@ -86,7 +88,7 @@ export default function PropertiesMapInner({
         type="button"
         onClick={() => setExpanded((e) => !e)}
         className="absolute right-3 top-3 z-[1000] flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background shadow-md transition-colors hover:bg-muted"
-        aria-label={expanded ? "Exit full screen map" : "Expand map"}
+        aria-label={expanded ? i18n.resolve("map.exit_fullscreen", "Exit full screen map").text : i18n.resolve("map.expand", "Expand map").text}
       >
         {expanded ? (
           <Minimize2 className="h-4 w-4" />
@@ -122,7 +124,7 @@ export default function PropertiesMapInner({
                   href={`/properties/${pin.slug}${pin.query ? `?${pin.query}` : ""}`}
                   className="text-sm text-primary underline underline-offset-2"
                 >
-                  View listing
+                  <Tx k="map.view_listing" source="View listing" />
                 </Link>
               </div>
             </Popup>

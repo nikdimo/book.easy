@@ -5,7 +5,11 @@ import { ListingStatus, Prisma } from "@prisma/client";
 import { ITEMS_PER_PAGE } from "@/lib/constants";
 import { sortPropertyTypesInDisplayOrder } from "@/lib/property-type-filter";
 import { getActivePropertyTypes } from "@/lib/services/property-type.service";
-import { serializeListingCard, listingCardSelect } from "@/lib/serializers/listing-card";
+import {
+  serializeListingCard,
+  listingCardSelect,
+  getFirstVideoUrlsByListingIds,
+} from "@/lib/serializers/listing-card";
 import { placeKey, type PlaceOption } from "@/lib/utils/place";
 import type {
   SearchFilterPreview,
@@ -127,30 +131,63 @@ export async function searchListings(filters: SearchFilters) {
     db.listing.count({ where }),
   ]);
 
+  const videoUrls = await getFirstVideoUrlsByListingIds(listings.map((l) => l.id));
+
   return {
-    listings: listings.map(serializeListingCard),
+    listings: listings.map((l) => serializeListingCard(l, videoUrls.get(l.id))),
     total,
     page,
     totalPages: Math.ceil(total / ITEMS_PER_PAGE),
   };
 }
 
-export async function getFeaturedListings(limit = 6) {
+const cardSelectWithImages = {
+  ...listingCardSelect,
+  images: {
+    where: { mediaType: "IMAGE" as const },
+    select: { url: true, alt: true },
+    orderBy: { displayOrder: "asc" as const },
+    take: CARD_IMAGE_LIMIT,
+  },
+};
+
+/** Newest public listings. This is the honest default ordering for the home page —
+ *  see getPopularListings for the demand-ranked one. */
+export async function getFeaturedListings(limit = 6, excludeIds: string[] = []) {
   const rows = await db.listing.findMany({
-    where: { status: ListingStatus.APPROVED },
-    select: {
-      ...listingCardSelect,
-      images: {
-        where: { mediaType: "IMAGE" },
-        select: { url: true, alt: true },
-        orderBy: { displayOrder: "asc" },
-        take: CARD_IMAGE_LIMIT,
-      },
+    where: {
+      status: ListingStatus.APPROVED,
+      ...(excludeIds.length > 0 ? { id: { notIn: excludeIds } } : {}),
     },
+    select: cardSelectWithImages,
     orderBy: { createdAt: "desc" },
     take: limit,
   });
-  return rows.map(serializeListingCard);
+  const videoUrls = await getFirstVideoUrlsByListingIds(rows.map((r) => r.id));
+  return rows.map((r) => serializeListingCard(r, videoUrls.get(r.id)));
+}
+
+/**
+ * Listings ranked by the demand signal computed in lib/services/popularity.service.ts.
+ * Listings with a score of 0 have no signal yet and are excluded rather than filled in
+ * with an arbitrary ordering — if this returns fewer rows than asked for, the caller
+ * genuinely doesn't have enough data to label anything "popular".
+ */
+export async function getPopularListings(limit = 8) {
+  const rows = await db.listing.findMany({
+    where: { status: ListingStatus.APPROVED, popularityScore: { gt: 0 } },
+    select: cardSelectWithImages,
+    orderBy: [{ popularityScore: "desc" }, { createdAt: "desc" }],
+    take: limit,
+  });
+  const videoUrls = await getFirstVideoUrlsByListingIds(rows.map((r) => r.id));
+  return rows.map((r) => serializeListingCard(r, videoUrls.get(r.id)));
+}
+
+/** Total publicly visible listings — drives how much of the home page is worth
+ *  splitting into sections at all. */
+export async function countApprovedListings() {
+  return db.listing.count({ where: { status: ListingStatus.APPROVED } });
 }
 
 export async function getAvailableAmenities() {

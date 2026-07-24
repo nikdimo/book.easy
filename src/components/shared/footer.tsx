@@ -1,8 +1,36 @@
 import Link from "next/link";
 import { BRAND_TAGLINE, PRODUCT_FAMILY, SITE_DOMAIN } from "@/lib/branding";
 import { BrandLogo } from "@/components/shared/brand-logo";
+import { getAvailableCities } from "@/lib/services/search.service";
+import { getT, ti } from "@/lib/i18n/t";
+import { cn } from "@/lib/utils";
 
-export function Footer() {
+/** Cap the footer link list — once inventory spans many cities this stays a short,
+ * scannable list rather than growing without bound. */
+const MAX_FOOTER_CITIES = 5;
+
+export async function Footer() {
+  const [t, cities] = await Promise.all([getT(), getAvailableCities()]);
+  const footerCities = cities.slice(0, MAX_FOOTER_CITIES);
+
+  const productDescription = ti(
+    t,
+    "footer.product_description",
+    "Book stays on {site} — part of the {family} suite of tools.",
+    { site: SITE_DOMAIN, family: PRODUCT_FAMILY }
+  );
+  const discover = t.resolve("footer.discover", "Discover");
+  const exploreAll = t.resolve("footer.explore_all", "Explore all");
+  const hosting = t.resolve("footer.hosting", "Hosting");
+  const becomeAHost = t.resolve("footer.become_a_host", "Become a host");
+  const hostDashboard = t.resolve("footer.host_dashboard", "Host dashboard");
+  const account = t.resolve("footer.account", "Account");
+  const logIn = t.resolve("footer.log_in", "Log in");
+  const terms = t.resolve("footer.terms", "Terms");
+  const privacy = t.resolve("footer.privacy", "Privacy");
+  const eur = t.resolve("footer.eur", "EUR");
+  const englishUs = t.resolve("footer.english_us", "English (US)");
+
   return (
     <footer className="mt-auto border-t bg-muted/30">
       <div className="max-w-[1760px] mx-auto px-4 md:px-8 py-12 md:py-14">
@@ -17,63 +45,89 @@ export function Footer() {
               <BrandLogo className="h-12" />
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              {BRAND_TAGLINE} Book stays on{" "}
-              <span className="notranslate" translate="no">
-                {SITE_DOMAIN}
-              </span>{" "}
-              - part of the{" "}
-              <span className="notranslate" translate="no">
-                {PRODUCT_FAMILY}
-              </span>{" "}
-              suite of tools.
+              {BRAND_TAGLINE}{" "}
+              <span className={productDescription.translated ? "notranslate" : undefined}>
+                {productDescription.text}
+              </span>
             </p>
           </div>
           <div>
-            <h3 className="font-semibold text-sm mb-4">Discover</h3>
+            <h3
+              className={cn("font-semibold text-sm mb-4", discover.translated && "notranslate")}
+            >
+              {discover.text}
+            </h3>
             <ul className="space-y-3 text-sm text-muted-foreground">
+              {footerCities.map((place) => (
+                <li key={`${place.city}-${place.country}`}>
+                  <Link
+                    href={`/properties?city=${encodeURIComponent(place.city)}`}
+                    className="hover:text-foreground transition-colors"
+                  >
+                    {place.city}
+                  </Link>
+                </li>
+              ))}
               <li>
-                <Link href="/properties?city=Ohrid" className="hover:text-foreground transition-colors">
-                  Ohrid
-                </Link>
-              </li>
-              <li>
-                <Link href="/properties?city=Skopje" className="hover:text-foreground transition-colors">
-                  Skopje
-                </Link>
-              </li>
-              <li>
-                <Link href="/properties?city=Bitola" className="hover:text-foreground transition-colors">
-                  Bitola
-                </Link>
-              </li>
-              <li>
-                <Link href="/properties" className="hover:text-foreground transition-colors">
-                  Explore all
+                <Link
+                  href="/properties"
+                  className={cn(
+                    "hover:text-foreground transition-colors",
+                    exploreAll.translated && "notranslate"
+                  )}
+                >
+                  {exploreAll.text}
                 </Link>
               </li>
             </ul>
           </div>
           <div>
-            <h3 className="font-semibold text-sm mb-4">Hosting</h3>
+            <h3
+              className={cn("font-semibold text-sm mb-4", hosting.translated && "notranslate")}
+            >
+              {hosting.text}
+            </h3>
             <ul className="space-y-3 text-sm text-muted-foreground">
               <li>
-                <Link href="/account/become-host" className="hover:text-foreground transition-colors">
-                  Become a host
+                <Link
+                  href="/account/become-host"
+                  className={cn(
+                    "hover:text-foreground transition-colors",
+                    becomeAHost.translated && "notranslate"
+                  )}
+                >
+                  {becomeAHost.text}
                 </Link>
               </li>
               <li>
-                <Link href="/host" className="hover:text-foreground transition-colors">
-                  Host dashboard
+                <Link
+                  href="/host"
+                  className={cn(
+                    "hover:text-foreground transition-colors",
+                    hostDashboard.translated && "notranslate"
+                  )}
+                >
+                  {hostDashboard.text}
                 </Link>
               </li>
             </ul>
           </div>
           <div>
-            <h3 className="font-semibold text-sm mb-4">Account</h3>
+            <h3
+              className={cn("font-semibold text-sm mb-4", account.translated && "notranslate")}
+            >
+              {account.text}
+            </h3>
             <ul className="space-y-3 text-sm text-muted-foreground">
               <li>
-                <Link href="/login" className="hover:text-foreground transition-colors">
-                  Log in
+                <Link
+                  href="/login"
+                  className={cn(
+                    "hover:text-foreground transition-colors",
+                    logIn.translated && "notranslate"
+                  )}
+                >
+                  {logIn.text}
                 </Link>
               </li>
             </ul>
@@ -86,19 +140,41 @@ export function Footer() {
             <span className="notranslate" translate="no">
               Copyright {new Date().getFullYear()} book.easy, Inc.
             </span>
-            <Link href="/" className="hover:text-foreground transition-colors">
-              Terms
+            <Link
+              href="/"
+              className={cn(
+                "hover:text-foreground transition-colors",
+                terms.translated && "notranslate"
+              )}
+            >
+              {terms.text}
             </Link>
-            <Link href="/" className="hover:text-foreground transition-colors">
-              Privacy
+            <Link
+              href="/"
+              className={cn(
+                "hover:text-foreground transition-colors",
+                privacy.translated && "notranslate"
+              )}
+            >
+              {privacy.text}
             </Link>
           </div>
           <div className="flex items-center gap-4 font-medium">
-            <span className="hover:text-foreground transition-colors cursor-default">
-              EUR
+            <span
+              className={cn(
+                "hover:text-foreground transition-colors cursor-default",
+                eur.translated && "notranslate"
+              )}
+            >
+              {eur.text}
             </span>
-            <span className="hover:text-foreground transition-colors cursor-default">
-              English (US)
+            <span
+              className={cn(
+                "hover:text-foreground transition-colors cursor-default",
+                englishUs.translated && "notranslate"
+              )}
+            >
+              {englishUs.text}
             </span>
           </div>
         </div>

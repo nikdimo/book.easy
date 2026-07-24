@@ -61,6 +61,11 @@ npm run db:migrate:deploy
 echo "[deploy] Building"
 npm run build
 
+echo "[deploy] Syncing new and changed UI translations"
+# The build's prebuild hook regenerates the AST-validated catalog. Sync after a
+# successful build so new UI copy is translated before the new process is restarted.
+npm run i18n:sync
+
 # Deliberately not running `npm test` here: the test suite writes throwaway fixture
 # rows against whatever DATABASE_URL is active, which during a real deploy is
 # production. Run tests locally / in CI against a non-production database before

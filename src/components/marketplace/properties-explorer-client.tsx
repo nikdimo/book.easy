@@ -35,6 +35,8 @@ import {
 } from "@/lib/search-filter-config";
 import { cn } from "@/lib/utils";
 import { PropertiesMap, type MapPin } from "@/components/marketplace/properties-map";
+import { Tx, useI18n } from "@/lib/i18n/client";
+import type { Resolved } from "@/lib/i18n/t";
 
 function QuickFilterButton({
   active = false,
@@ -100,6 +102,7 @@ function PriceFilterPopover({
   onApply: (range: [number, number]) => void;
   onClear: () => void;
 }) {
+  const i18n = useI18n();
   const [priceRange, setPriceRange] = useState(initialRange);
 
   return (
@@ -115,10 +118,10 @@ function PriceFilterPopover({
         <div className="space-y-5">
           <div>
             <h3 className="text-lg font-semibold text-foreground">
-              Price range
+              <Tx k="filters.price_range" source="Price range" />
             </h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Nightly price, before taxes and fees.
+              <Tx k="filters.price_description" source="Nightly price, before taxes and fees." />
             </p>
           </div>
 
@@ -139,18 +142,18 @@ function PriceFilterPopover({
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-[1.25rem] border border-border bg-background px-4 py-3">
               <span className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Minimum
+                <Tx k="filters.minimum" source="Minimum" />
               </span>
-              <span className="mt-1 block text-base font-semibold text-foreground">
-                {`\u20AC${priceRange[0]}`}
+              <span className="notranslate mt-1 block text-base font-semibold text-foreground" translate="no" suppressHydrationWarning>
+                {new Intl.NumberFormat(i18n.locale, { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(priceRange[0])}
               </span>
             </div>
             <div className="rounded-[1.25rem] border border-border bg-background px-4 py-3">
               <span className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Maximum
+                <Tx k="filters.maximum" source="Maximum" />
               </span>
-              <span className="mt-1 block text-base font-semibold text-foreground">
-                {`\u20AC${priceRange[1]}`}
+              <span className="notranslate mt-1 block text-base font-semibold text-foreground" translate="no" suppressHydrationWarning>
+                {new Intl.NumberFormat(i18n.locale, { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(priceRange[1])}
               </span>
             </div>
           </div>
@@ -162,14 +165,14 @@ function PriceFilterPopover({
               className="rounded-full px-4 text-sm font-semibold underline underline-offset-4 hover:bg-transparent"
               onClick={onClear}
             >
-              Clear
+              <Tx k="filters.clear" source="Clear" />
             </Button>
             <Button
               type="button"
               className="h-10 rounded-full px-5 text-sm font-semibold shadow-none"
               onClick={() => onApply(priceRange)}
             >
-              Apply
+              <Tx k="filters.apply" source="Apply" />
             </Button>
           </div>
         </div>
@@ -193,10 +196,11 @@ export function PropertiesExplorerClient({
   availablePropertyTypes: string[];
   initialFilterPreview: SearchFilterPreview;
   children: React.ReactNode;
-  totalLabel: string;
+  totalLabel: Resolved;
   totalCount: number;
   mapPins: MapPin[];
 }) {
+  const i18n = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [priceOpen, setPriceOpen] = useState(false);
@@ -355,7 +359,7 @@ export function PropertiesExplorerClient({
               className="gap-2"
             >
               <SlidersHorizontal className="h-4 w-4" />
-              <span>All filters</span>
+              <span><Tx k="filters.all" source="All filters" /></span>
               {quickFilterCount > 0 ? (
                 <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-foreground px-1.5 text-xs font-semibold text-background">
                   {quickFilterCount}
@@ -369,13 +373,13 @@ export function PropertiesExplorerClient({
                 onClick={clearAllFilters}
                 className="shrink-0 text-sm font-medium text-foreground underline underline-offset-4 transition-colors hover:text-foreground/70"
               >
-                Clear all
+                <Tx k="filters.clear_all" source="Clear all" />
               </button>
             ) : null}
           </div>
 
           <p className="hidden max-w-[220px] shrink-0 truncate text-sm text-muted-foreground lg:block">
-            {totalLabel}
+            <span className={totalLabel.translated ? "notranslate" : undefined}>{totalLabel.text}</span>
           </p>
         </div>
       </div>
@@ -399,9 +403,9 @@ export function PropertiesExplorerClient({
             )}
           >
             <div className="sr-only">
-              <DialogPrimitive.Title>Filters</DialogPrimitive.Title>
+              <DialogPrimitive.Title><Tx k="filters.title" source="Filters" /></DialogPrimitive.Title>
               <DialogPrimitive.Description>
-                Refine your search with price, rooms, property type, and amenities.
+                <Tx k="filters.description" source="Refine your search with price, rooms, property type, and amenities." />
               </DialogPrimitive.Description>
             </div>
 
@@ -409,13 +413,13 @@ export function PropertiesExplorerClient({
               <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
                 <span />
                 <p className="text-center text-xl font-semibold text-foreground">
-                  Filters
+                  <Tx k="filters.title" source="Filters" />
                 </p>
                 <button
                   type="button"
                   onClick={() => setFiltersOpen(false)}
                   className="justify-self-end inline-flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  aria-label="Close filters"
+                  aria-label={i18n.resolve("filters.close", "Close filters").text}
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -443,7 +447,7 @@ export function PropertiesExplorerClient({
       <div className="container mx-auto mt-4 mb-2 flex items-center justify-between gap-2 px-4 md:px-8 lg:hidden">
         <p className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
           <Search className="h-4 w-4 shrink-0 opacity-70" />
-          {totalLabel}
+          <span className={totalLabel.translated ? "notranslate" : undefined}>{totalLabel.text}</span>
         </p>
         <Button
           variant="outline"
@@ -457,12 +461,12 @@ export function PropertiesExplorerClient({
           {mobileView === "list" ? (
             <>
               <MapIcon className="mr-2 h-4 w-4" />
-              Map
+              <Tx k="properties.map" source="Map" />
             </>
           ) : (
             <>
               <ListIcon className="mr-2 h-4 w-4" />
-              List
+              <Tx k="properties.list" source="List" />
             </>
           )}
         </Button>
@@ -478,8 +482,15 @@ export function PropertiesExplorerClient({
           >
             {totalCount > 0 ? (
               <h2 className="mb-6 text-2xl font-semibold tracking-tight text-foreground">
-                Over {totalCount.toLocaleString()}{" "}
-                {totalCount === 1 ? "home" : "homes"}
+                {(() => {
+                  const value = i18n.plural(
+                    "properties.over_results",
+                    totalCount,
+                    "Over {n} home",
+                    "Over {n} homes"
+                  );
+                  return <span className={value.translated ? "notranslate" : undefined}>{value.text}</span>;
+                })()}
               </h2>
             ) : null}
             {children}
@@ -497,7 +508,7 @@ export function PropertiesExplorerClient({
 
         <aside
           className="pointer-events-none fixed top-20 right-0 bottom-0 z-30 hidden w-[min(42vw,560px)] border-l border-border bg-muted/20 p-3 pl-2 lg:block xl:w-[min(45vw,640px)]"
-          aria-label="Map of listings"
+          aria-label={i18n.resolve("map.listings", "Map of listings").text}
         >
           <div className="pointer-events-auto h-[calc(100dvh-5rem-1.5rem)]">
             <PropertiesMap pins={mapPins} className="h-full rounded-2xl" />

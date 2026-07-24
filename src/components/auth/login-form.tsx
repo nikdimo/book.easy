@@ -1,19 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { Mail, MailCheck } from "lucide-react";
+import { MailCheck, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { BrandLogo } from "@/components/shared/brand-logo";
 import { emailSignInSchema } from "@/lib/validations/auth.schema";
 import { firstZodMessage } from "@/lib/utils/zod-error";
 
@@ -22,9 +17,13 @@ const RESEND_COOLDOWN_SECONDS = 30;
 export function AuthForm({
   heading,
   description,
+  onClose,
 }: {
   heading: string;
   description: string;
+  /** When set, the close (×) button calls this instead of linking home — used inside
+   * the intercepted-route modal to dismiss back to whatever page triggered it. */
+  onClose?: () => void;
 }) {
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/";
@@ -81,12 +80,35 @@ export function AuthForm({
   }
 
   return (
-    <Card className="border-border/60 shadow-xl shadow-black/[0.03] backdrop-blur-sm">
-      <CardHeader className="text-center pb-2">
-        <CardTitle className="text-2xl font-semibold tracking-tight">{heading}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6 pt-4">
+    <div className="relative rounded-3xl bg-card p-6 sm:p-8 shadow-2xl shadow-black/10 ring-1 ring-border/60">
+      {onClose ? (
+        <button
+          type="button"
+          aria-label="Close"
+          onClick={onClose}
+          className="absolute right-4 top-4 rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        >
+          <X className="size-5" />
+        </button>
+      ) : (
+        <Link
+          href="/"
+          aria-label="Close"
+          className="absolute right-4 top-4 rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        >
+          <X className="size-5" />
+        </Link>
+      )}
+
+      <div className="flex flex-col items-center gap-3 pb-6 text-center">
+        <BrandLogo compact className="h-10 w-auto" />
+        <div className="space-y-1">
+          <h1 className="text-xl font-semibold tracking-tight">{heading}</h1>
+          <p className="text-sm text-muted-foreground">{description}</p>
+        </div>
+      </div>
+
+      <div className="space-y-4">
         {error && (
           <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg">
             {error}
@@ -108,7 +130,7 @@ export function AuthForm({
             <Button
               type="button"
               variant="secondary"
-              className="w-full rounded-full"
+              className="w-full h-12 rounded-xl"
               disabled={cooldown > 0 || emailLoading}
               onClick={() => sendMagicLink(sentTo)}
             >
@@ -134,7 +156,7 @@ export function AuthForm({
             <Button
               type="button"
               variant="outline"
-              className="w-full rounded-full gap-2 font-medium"
+              className="w-full h-12 rounded-xl gap-2 font-medium"
               disabled={googleLoading}
               onClick={handleGoogle}
             >
@@ -151,34 +173,33 @@ export function AuthForm({
               </div>
             </div>
 
-            <form onSubmit={handleEmailSubmit} className="space-y-4">
+            <form onSubmit={handleEmailSubmit} className="space-y-3">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="you@example.com"
-                    required
-                    autoComplete="email"
-                    className="pl-9"
-                  />
-                </div>
+                <Label htmlFor="email" className="sr-only">
+                  Email
+                </Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="Email address"
+                  required
+                  autoComplete="email"
+                  className="h-12 rounded-xl px-4"
+                />
               </div>
               <Button
                 type="submit"
-                className="w-full rounded-full font-medium"
+                className="w-full h-12 rounded-xl font-medium"
                 disabled={emailLoading}
               >
-                {emailLoading ? "Sending…" : "Email me a sign-in link"}
+                {emailLoading ? "Sending…" : "Continue with email"}
               </Button>
             </form>
           </>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -208,8 +229,8 @@ function GoogleIcon({ className }: { className?: string }) {
 export function LoginForm() {
   return (
     <AuthForm
-      heading="Welcome back"
-      description="Log in to your book.easy.mk account"
+      heading="Log in or sign up"
+      description="Book unique stays across North Macedonia"
     />
   );
 }

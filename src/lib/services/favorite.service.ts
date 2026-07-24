@@ -1,7 +1,11 @@
 import "server-only";
 import { cache } from "react";
 import { db } from "@/lib/db";
-import { listingCardSelect, serializeListingCard } from "@/lib/serializers/listing-card";
+import {
+  listingCardSelect,
+  serializeListingCard,
+  getFirstVideoUrlsByListingIds,
+} from "@/lib/serializers/listing-card";
 
 /** Deduped per-request: many PropertyCards render in one page pass, and they all need
  *  the same user's favorite set — cache() collapses that to a single query per request
@@ -18,5 +22,6 @@ export async function getUserFavoriteListings(userId: string) {
     orderBy: { createdAt: "desc" },
   });
 
-  return favorites.map((f) => serializeListingCard(f.listing));
+  const videoUrls = await getFirstVideoUrlsByListingIds(favorites.map((f) => f.listing.id));
+  return favorites.map((f) => serializeListingCard(f.listing, videoUrls.get(f.listing.id)));
 }

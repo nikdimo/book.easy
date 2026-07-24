@@ -19,6 +19,7 @@ import { getMapCoordinatesForListing } from "@/lib/utils/listing-map-coords";
 import { formatPrice, getNightCount } from "@/lib/utils/format";
 import type { MapPin } from "@/components/marketplace/properties-map";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { getT, T, ti, tPlural } from "@/lib/i18n/t";
 
 interface SearchPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -30,6 +31,7 @@ export const metadata = {
 };
 
 export default async function PropertiesPage({ searchParams }: SearchPageProps) {
+  const t = await getT();
   const params = await searchParams;
 
   const propertyTypes = await getActivePropertyTypes();
@@ -96,9 +98,9 @@ export default async function PropertiesPage({ searchParams }: SearchPageProps) 
     return `/properties?${p.toString()}`;
   }
 
-  const totalLabel = `${results.total} ${results.total === 1 ? "home" : "homes"}${
-    filters.checkIn && filters.checkOut ? " · dates applied in filters" : ""
-  }`;
+  const totalLabel = filters.checkIn && filters.checkOut
+    ? tPlural(t, "properties.results_with_dates", results.total, "{n} home · dates applied in filters", "{n} homes · dates applied in filters")
+    : tPlural(t, "properties.results", results.total, "{n} home", "{n} homes");
 
   const nightCount =
     filters.checkIn && filters.checkOut
@@ -124,8 +126,8 @@ export default async function PropertiesPage({ searchParams }: SearchPageProps) 
       const cur = l.pricingRule.currency;
       label =
         nightCount != null
-          ? formatPrice(nightly * nightCount, cur)
-          : formatPrice(nightly, cur);
+          ? formatPrice(nightly * nightCount, cur, t.locale)
+          : formatPrice(nightly, cur, t.locale);
     }
     return { id: l.id, slug: l.slug, lat, lng, label, query: listingQueryString };
   });
@@ -133,7 +135,7 @@ export default async function PropertiesPage({ searchParams }: SearchPageProps) 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <h1 className="sr-only">
-        {filters.city ? `Stays in ${filters.city}` : "Explore properties"}
+        {filters.city ? (() => { const value = ti(t, "properties.stays_in_city", "Stays in {city}", { city: filters.city }); return <span className={value.translated ? "notranslate" : undefined}>{value.text}</span>; })() : <T t={t} k="properties.explore" source="Explore properties" />}
       </h1>
       <div className="flex-1 w-full">
         <Suspense fallback={<div className="animate-pulse h-40 bg-muted mb-8 mx-4 md:mx-8 rounded-xl" />}>
@@ -167,17 +169,17 @@ export default async function PropertiesPage({ searchParams }: SearchPageProps) 
                       <Button variant="outline" size="sm" asChild>
                         <Link href={buildPageUrl(results.page - 1)}>
                           <ChevronLeft className="h-4 w-4 mr-1" />
-                          Previous
+                          <T t={t} k="pagination.previous" source="Previous" />
                         </Link>
                       </Button>
                     )}
                     <span className="text-sm text-muted-foreground px-4">
-                      Page {results.page} of {results.totalPages}
+                      {(() => { const value = ti(t, "pagination.page_of", "Page {page} of {pages}", { page: results.page, pages: results.totalPages }); return <span className={value.translated ? "notranslate" : undefined}>{value.text}</span>; })()}
                     </span>
                     {results.page < results.totalPages && (
                       <Button variant="outline" size="sm" asChild>
                         <Link href={buildPageUrl(results.page + 1)}>
-                          Next
+                          <T t={t} k="pagination.next" source="Next" />
                           <ChevronRight className="h-4 w-4 ml-1" />
                         </Link>
                       </Button>
@@ -187,11 +189,11 @@ export default async function PropertiesPage({ searchParams }: SearchPageProps) 
               </>
             ) : (
               <EmptyState
-                title="No properties found"
-                description="Try adjusting your search filters or explore a different area."
+                title={t.resolve("properties.none_found", "No properties found")}
+                description={t.resolve("properties.none_description", "Try adjusting your search filters or explore a different area.")}
               >
                 <Button variant="outline" asChild>
-                  <Link href="/properties">Clear filters</Link>
+                  <Link href="/properties"><T t={t} k="properties.clear_filters" source="Clear filters" /></Link>
                 </Button>
               </EmptyState>
             )}

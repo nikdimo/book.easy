@@ -29,7 +29,7 @@ export function BecomeHostForm({ existingPhone, userName }: BecomeHostFormProps)
       if (result?.success) {
         toast.success("Welcome! You are now a host.");
         await update({ isHost: true });
-        router.push("/host");
+        router.push("/host/listings/new");
       }
       return result;
     },

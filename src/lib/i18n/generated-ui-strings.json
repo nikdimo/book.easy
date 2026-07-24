@@ -1,0 +1,1622 @@
+[
+  {
+    "key": "booking_widget.reserve_tooltip",
+    "sourceText": "Send a booking request to the host — you won't be charged yet.",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "booking.add_dates_total",
+    "sourceText": "Add dates for total",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.add_guests",
+    "sourceText": "Add guests",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.adults.few",
+    "sourceText": "{n} adults",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.adults.many",
+    "sourceText": "{n} adults",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.adults.one",
+    "sourceText": "{n} adult",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.adults.other",
+    "sourceText": "{n} adults",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.adults.two",
+    "sourceText": "{n} adults",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.adults.zero",
+    "sourceText": "{n} adults",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.check_in",
+    "sourceText": "Check-in",
+    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+  },
+  {
+    "key": "booking.check_out",
+    "sourceText": "Check-out",
+    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+  },
+  {
+    "key": "booking.children.few",
+    "sourceText": "{n} children",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.children.many",
+    "sourceText": "{n} children",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.children.one",
+    "sourceText": "{n} child",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.children.other",
+    "sourceText": "{n} children",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.children.two",
+    "sourceText": "{n} children",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.children.zero",
+    "sourceText": "{n} children",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.choose_guests",
+    "sourceText": "Choose who is coming with you.",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.cleaning_fee",
+    "sourceText": "Cleaning fee",
+    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+  },
+  {
+    "key": "booking.continue_browsing",
+    "sourceText": "Continue browsing",
+    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+  },
+  {
+    "key": "booking.dates",
+    "sourceText": "Dates",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.details",
+    "sourceText": "Booking details",
+    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+  },
+  {
+    "key": "booking.guests_label",
+    "sourceText": "Guests",
+    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+  },
+  {
+    "key": "booking.guests.few",
+    "sourceText": "{n} guests",
+    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+  },
+  {
+    "key": "booking.guests.many",
+    "sourceText": "{n} guests",
+    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+  },
+  {
+    "key": "booking.guests.one",
+    "sourceText": "{n} guest",
+    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+  },
+  {
+    "key": "booking.guests.other",
+    "sourceText": "{n} guests",
+    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+  },
+  {
+    "key": "booking.guests.two",
+    "sourceText": "{n} guests",
+    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+  },
+  {
+    "key": "booking.guests.zero",
+    "sourceText": "{n} guests",
+    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+  },
+  {
+    "key": "booking.infants.few",
+    "sourceText": "{n} infants",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.infants.many",
+    "sourceText": "{n} infants",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.infants.one",
+    "sourceText": "{n} infant",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.infants.other",
+    "sourceText": "{n} infants",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.infants.two",
+    "sourceText": "{n} infants",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.infants.zero",
+    "sourceText": "{n} infants",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.message_optional",
+    "sourceText": "Message to host (optional)",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.message_placeholder",
+    "sourceText": "Introduce yourself and share your travel plans...",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.minimum_stay.few",
+    "sourceText": "Minimum stay is {n} nights",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.minimum_stay.many",
+    "sourceText": "Minimum stay is {n} nights",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.minimum_stay.one",
+    "sourceText": "Minimum stay is {n} night",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.minimum_stay.other",
+    "sourceText": "Minimum stay is {n} nights",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.minimum_stay.two",
+    "sourceText": "Minimum stay is {n} nights",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.minimum_stay.zero",
+    "sourceText": "Minimum stay is {n} nights",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.nights_label",
+    "sourceText": "Nights",
+    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+  },
+  {
+    "key": "booking.nights.few",
+    "sourceText": "{n} nights",
+    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+  },
+  {
+    "key": "booking.nights.many",
+    "sourceText": "{n} nights",
+    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+  },
+  {
+    "key": "booking.nights.one",
+    "sourceText": "{n} night",
+    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+  },
+  {
+    "key": "booking.nights.other",
+    "sourceText": "{n} nights",
+    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+  },
+  {
+    "key": "booking.nights.two",
+    "sourceText": "{n} nights",
+    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+  },
+  {
+    "key": "booking.nights.zero",
+    "sourceText": "{n} nights",
+    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+  },
+  {
+    "key": "booking.no_charge_notice",
+    "sourceText": "You won't be charged yet. The host will approve or decline your request.",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.pending",
+    "sourceText": "Pending",
+    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+  },
+  {
+    "key": "booking.pets.few",
+    "sourceText": "{n} pets",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.pets.many",
+    "sourceText": "{n} pets",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.pets.one",
+    "sourceText": "{n} pet",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.pets.other",
+    "sourceText": "{n} pets",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.pets.two",
+    "sourceText": "{n} pets",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.pets.zero",
+    "sourceText": "{n} pets",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.price_details",
+    "sourceText": "Price details",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.reference",
+    "sourceText": "Booking reference: {reference}",
+    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+  },
+  {
+    "key": "booking.request_sent",
+    "sourceText": "Booking request sent!",
+    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+  },
+  {
+    "key": "booking.request_sent_description",
+    "sourceText": "Your booking request has been submitted. The host will review and respond.",
+    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+  },
+  {
+    "key": "booking.reserve",
+    "sourceText": "Reserve",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.select_dates_error",
+    "sourceText": "Please select check-in and check-out dates",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.sending",
+    "sourceText": "Sending…",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.sending_request",
+    "sourceText": "Sending request…",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.subtotal",
+    "sourceText": "Subtotal (stay)",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.total",
+    "sourceText": "Total",
+    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+  },
+  {
+    "key": "booking.variable_rate_notice",
+    "sourceText": "Selected dates may use custom nightly rates shown in the breakdown below.",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.variable_rates.few",
+    "sourceText": "{n} nights (variable nightly rates)",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.variable_rates.many",
+    "sourceText": "{n} nights (variable nightly rates)",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.variable_rates.one",
+    "sourceText": "{n} night (variable nightly rates)",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.variable_rates.other",
+    "sourceText": "{n} nights (variable nightly rates)",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.variable_rates.two",
+    "sourceText": "{n} nights (variable nightly rates)",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.variable_rates.zero",
+    "sourceText": "{n} nights (variable nightly rates)",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.view_bookings",
+    "sourceText": "View my bookings",
+    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+  },
+  {
+    "key": "carousel.scroll_left",
+    "sourceText": "Scroll left",
+    "filePath": "src/components/public/listing-carousel-client.tsx"
+  },
+  {
+    "key": "carousel.scroll_right",
+    "sourceText": "Scroll right",
+    "filePath": "src/components/public/listing-carousel-client.tsx"
+  },
+  {
+    "key": "common.close",
+    "sourceText": "Close",
+    "filePath": "src/components/public/image-gallery.tsx"
+  },
+  {
+    "key": "common.done",
+    "sourceText": "Done",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "common.edit",
+    "sourceText": "Edit",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "filters.all",
+    "sourceText": "All filters",
+    "filePath": "src/components/marketplace/properties-explorer-client.tsx"
+  },
+  {
+    "key": "filters.amenities",
+    "sourceText": "Amenities",
+    "filePath": "src/components/public/search-filters.tsx"
+  },
+  {
+    "key": "filters.amenities_description",
+    "sourceText": "Pick the essentials you want included.",
+    "filePath": "src/components/public/search-filters.tsx"
+  },
+  {
+    "key": "filters.apply",
+    "sourceText": "Apply",
+    "filePath": "src/components/marketplace/properties-explorer-client.tsx"
+  },
+  {
+    "key": "filters.bedrooms",
+    "sourceText": "Bedrooms",
+    "filePath": "src/components/public/search-filters.tsx"
+  },
+  {
+    "key": "filters.bedrooms_description",
+    "sourceText": "Require a minimum bedroom count.",
+    "filePath": "src/components/public/search-filters.tsx"
+  },
+  {
+    "key": "filters.clear",
+    "sourceText": "Clear",
+    "filePath": "src/components/marketplace/properties-explorer-client.tsx"
+  },
+  {
+    "key": "filters.clear_all",
+    "sourceText": "Clear all",
+    "filePath": "src/components/marketplace/properties-explorer-client.tsx"
+  },
+  {
+    "key": "filters.close",
+    "sourceText": "Close filters",
+    "filePath": "src/components/marketplace/properties-explorer-client.tsx"
+  },
+  {
+    "key": "filters.description",
+    "sourceText": "Refine your search with price, rooms, property type, and amenities.",
+    "filePath": "src/components/marketplace/properties-explorer-client.tsx"
+  },
+  {
+    "key": "filters.included",
+    "sourceText": "Included in your search",
+    "filePath": "src/components/public/search-filters.tsx"
+  },
+  {
+    "key": "filters.maximum",
+    "sourceText": "Maximum",
+    "filePath": "src/components/marketplace/properties-explorer-client.tsx"
+  },
+  {
+    "key": "filters.minimum",
+    "sourceText": "Minimum",
+    "filePath": "src/components/marketplace/properties-explorer-client.tsx"
+  },
+  {
+    "key": "filters.minimum_bedrooms",
+    "sourceText": "Minimum bedrooms",
+    "filePath": "src/components/public/search-filters.tsx"
+  },
+  {
+    "key": "filters.minimum_bedrooms_description",
+    "sourceText": "Perfect when guests need a bit more privacy.",
+    "filePath": "src/components/public/search-filters.tsx"
+  },
+  {
+    "key": "filters.no_match",
+    "sourceText": "No properties match this filter yet.",
+    "filePath": "src/components/public/search-filters.tsx"
+  },
+  {
+    "key": "filters.price_description",
+    "sourceText": "Nightly price, before taxes and fees.",
+    "filePath": "src/components/marketplace/properties-explorer-client.tsx"
+  },
+  {
+    "key": "filters.price_range",
+    "sourceText": "Price range",
+    "filePath": "src/components/marketplace/properties-explorer-client.tsx"
+  },
+  {
+    "key": "filters.property_type",
+    "sourceText": "Property type",
+    "filePath": "src/components/public/search-filters.tsx"
+  },
+  {
+    "key": "filters.property_type_description",
+    "sourceText": "Choose one or more types of stay.",
+    "filePath": "src/components/public/search-filters.tsx"
+  },
+  {
+    "key": "filters.show_places.few",
+    "sourceText": "Show {n} places",
+    "filePath": "src/components/public/search-filters.tsx"
+  },
+  {
+    "key": "filters.show_places.many",
+    "sourceText": "Show {n} places",
+    "filePath": "src/components/public/search-filters.tsx"
+  },
+  {
+    "key": "filters.show_places.one",
+    "sourceText": "Show {n} place",
+    "filePath": "src/components/public/search-filters.tsx"
+  },
+  {
+    "key": "filters.show_places.other",
+    "sourceText": "Show {n} places",
+    "filePath": "src/components/public/search-filters.tsx"
+  },
+  {
+    "key": "filters.show_places.two",
+    "sourceText": "Show {n} places",
+    "filePath": "src/components/public/search-filters.tsx"
+  },
+  {
+    "key": "filters.show_places.zero",
+    "sourceText": "Show {n} places",
+    "filePath": "src/components/public/search-filters.tsx"
+  },
+  {
+    "key": "filters.tap_include",
+    "sourceText": "Tap to include",
+    "filePath": "src/components/public/search-filters.tsx"
+  },
+  {
+    "key": "filters.title",
+    "sourceText": "Filters",
+    "filePath": "src/components/marketplace/properties-explorer-client.tsx"
+  },
+  {
+    "key": "filters.unavailable",
+    "sourceText": "No properties available",
+    "filePath": "src/components/public/search-filters.tsx"
+  },
+  {
+    "key": "filters.updating",
+    "sourceText": "Updating...",
+    "filePath": "src/components/public/search-filters.tsx"
+  },
+  {
+    "key": "footer.account",
+    "sourceText": "Account",
+    "filePath": "src/components/shared/footer.tsx"
+  },
+  {
+    "key": "footer.become_a_host",
+    "sourceText": "Become a host",
+    "filePath": "src/components/shared/footer.tsx"
+  },
+  {
+    "key": "footer.discover",
+    "sourceText": "Discover",
+    "filePath": "src/components/shared/footer.tsx"
+  },
+  {
+    "key": "footer.english_us",
+    "sourceText": "English (US)",
+    "filePath": "src/components/shared/footer.tsx"
+  },
+  {
+    "key": "footer.eur",
+    "sourceText": "EUR",
+    "filePath": "src/components/shared/footer.tsx"
+  },
+  {
+    "key": "footer.explore_all",
+    "sourceText": "Explore all",
+    "filePath": "src/components/shared/footer.tsx"
+  },
+  {
+    "key": "footer.host_dashboard",
+    "sourceText": "Host dashboard",
+    "filePath": "src/components/shared/footer.tsx"
+  },
+  {
+    "key": "footer.hosting",
+    "sourceText": "Hosting",
+    "filePath": "src/components/shared/footer.tsx"
+  },
+  {
+    "key": "footer.log_in",
+    "sourceText": "Log in",
+    "filePath": "src/components/shared/footer.tsx"
+  },
+  {
+    "key": "footer.privacy",
+    "sourceText": "Privacy",
+    "filePath": "src/components/shared/footer.tsx"
+  },
+  {
+    "key": "footer.product_description",
+    "sourceText": "Book stays on {site} — part of the {family} suite of tools.",
+    "filePath": "src/components/shared/footer.tsx"
+  },
+  {
+    "key": "footer.terms",
+    "sourceText": "Terms",
+    "filePath": "src/components/shared/footer.tsx"
+  },
+  {
+    "key": "gallery.all_media.few",
+    "sourceText": "All {n} media items",
+    "filePath": "src/components/public/image-gallery.tsx"
+  },
+  {
+    "key": "gallery.all_media.many",
+    "sourceText": "All {n} media items",
+    "filePath": "src/components/public/image-gallery.tsx"
+  },
+  {
+    "key": "gallery.all_media.one",
+    "sourceText": "All {n} media item",
+    "filePath": "src/components/public/image-gallery.tsx"
+  },
+  {
+    "key": "gallery.all_media.other",
+    "sourceText": "All {n} media items",
+    "filePath": "src/components/public/image-gallery.tsx"
+  },
+  {
+    "key": "gallery.all_media.two",
+    "sourceText": "All {n} media items",
+    "filePath": "src/components/public/image-gallery.tsx"
+  },
+  {
+    "key": "gallery.all_media.zero",
+    "sourceText": "All {n} media items",
+    "filePath": "src/components/public/image-gallery.tsx"
+  },
+  {
+    "key": "gallery.back_all",
+    "sourceText": "Back to all media",
+    "filePath": "src/components/public/image-gallery.tsx"
+  },
+  {
+    "key": "gallery.back_property",
+    "sourceText": "Back to property",
+    "filePath": "src/components/public/image-gallery.tsx"
+  },
+  {
+    "key": "gallery.items.few",
+    "sourceText": "{n} items",
+    "filePath": "src/components/public/image-gallery.tsx"
+  },
+  {
+    "key": "gallery.items.many",
+    "sourceText": "{n} items",
+    "filePath": "src/components/public/image-gallery.tsx"
+  },
+  {
+    "key": "gallery.items.one",
+    "sourceText": "{n} item",
+    "filePath": "src/components/public/image-gallery.tsx"
+  },
+  {
+    "key": "gallery.items.other",
+    "sourceText": "{n} items",
+    "filePath": "src/components/public/image-gallery.tsx"
+  },
+  {
+    "key": "gallery.items.two",
+    "sourceText": "{n} items",
+    "filePath": "src/components/public/image-gallery.tsx"
+  },
+  {
+    "key": "gallery.items.zero",
+    "sourceText": "{n} items",
+    "filePath": "src/components/public/image-gallery.tsx"
+  },
+  {
+    "key": "gallery.media_position",
+    "sourceText": "Media item {current} of {total}",
+    "filePath": "src/components/public/image-gallery.tsx"
+  },
+  {
+    "key": "gallery.next",
+    "sourceText": "Next photo",
+    "filePath": "src/components/public/image-gallery.tsx"
+  },
+  {
+    "key": "gallery.no_media",
+    "sourceText": "No media available",
+    "filePath": "src/components/public/image-gallery.tsx"
+  },
+  {
+    "key": "gallery.previous",
+    "sourceText": "Previous photo",
+    "filePath": "src/components/public/image-gallery.tsx"
+  },
+  {
+    "key": "gallery.property_photo",
+    "sourceText": "Property photo",
+    "filePath": "src/components/public/image-gallery.tsx"
+  },
+  {
+    "key": "gallery.show_all.few",
+    "sourceText": "Show all {n} items",
+    "filePath": "src/components/public/image-gallery.tsx"
+  },
+  {
+    "key": "gallery.show_all.many",
+    "sourceText": "Show all {n} items",
+    "filePath": "src/components/public/image-gallery.tsx"
+  },
+  {
+    "key": "gallery.show_all.one",
+    "sourceText": "Show all {n} item",
+    "filePath": "src/components/public/image-gallery.tsx"
+  },
+  {
+    "key": "gallery.show_all.other",
+    "sourceText": "Show all {n} items",
+    "filePath": "src/components/public/image-gallery.tsx"
+  },
+  {
+    "key": "gallery.show_all.two",
+    "sourceText": "Show all {n} items",
+    "filePath": "src/components/public/image-gallery.tsx"
+  },
+  {
+    "key": "gallery.show_all.zero",
+    "sourceText": "Show all {n} items",
+    "filePath": "src/components/public/image-gallery.tsx"
+  },
+  {
+    "key": "header.account",
+    "sourceText": "Account",
+    "filePath": "src/app/(public)/layout.tsx"
+  },
+  {
+    "key": "header.admin",
+    "sourceText": "Admin",
+    "filePath": "src/app/(public)/layout.tsx"
+  },
+  {
+    "key": "header.become_a_host",
+    "sourceText": "Become a host",
+    "filePath": "src/app/(public)/layout.tsx"
+  },
+  {
+    "key": "header.favorites",
+    "sourceText": "Favorites",
+    "filePath": "src/app/(public)/layout.tsx"
+  },
+  {
+    "key": "header.hosting_dashboard",
+    "sourceText": "Hosting dashboard",
+    "filePath": "src/app/(public)/layout.tsx"
+  },
+  {
+    "key": "header.list_your_property",
+    "sourceText": "List your property",
+    "filePath": "src/app/(public)/layout.tsx"
+  },
+  {
+    "key": "header.list_your_property_tooltip",
+    "sourceText": "Start listing your property — takes about 10 minutes.",
+    "filePath": "src/app/(public)/layout.tsx"
+  },
+  {
+    "key": "header.log_in",
+    "sourceText": "Log in",
+    "filePath": "src/app/(public)/layout.tsx"
+  },
+  {
+    "key": "header.log_out",
+    "sourceText": "Log out",
+    "filePath": "src/app/(public)/layout.tsx"
+  },
+  {
+    "key": "header.stays",
+    "sourceText": "Stays",
+    "filePath": "src/app/(public)/layout.tsx"
+  },
+  {
+    "key": "header.switch_to_hosting",
+    "sourceText": "Switch to hosting",
+    "filePath": "src/app/(public)/layout.tsx"
+  },
+  {
+    "key": "header.trips",
+    "sourceText": "Trips",
+    "filePath": "src/app/(public)/layout.tsx"
+  },
+  {
+    "key": "header.your_listings",
+    "sourceText": "Your listings",
+    "filePath": "src/app/(public)/layout.tsx"
+  },
+  {
+    "key": "home.featured_stays",
+    "sourceText": "Featured stays",
+    "filePath": "src/app/(public)/page.tsx"
+  },
+  {
+    "key": "home.more_places",
+    "sourceText": "More places to stay",
+    "filePath": "src/app/(public)/page.tsx"
+  },
+  {
+    "key": "home.no_listings",
+    "sourceText": "No listings yet. Check back soon!",
+    "filePath": "src/app/(public)/page.tsx"
+  },
+  {
+    "key": "home.page_title",
+    "sourceText": "Find places to stay in North Macedonia",
+    "filePath": "src/app/(public)/page.tsx"
+  },
+  {
+    "key": "home.places_to_stay",
+    "sourceText": "Places to stay",
+    "filePath": "src/app/(public)/page.tsx"
+  },
+  {
+    "key": "home.popular_homes",
+    "sourceText": "Popular homes",
+    "filePath": "src/app/(public)/page.tsx"
+  },
+  {
+    "key": "home.popular_homes_subtitle",
+    "sourceText": "Most viewed and booked in the last few weeks",
+    "filePath": "src/app/(public)/page.tsx"
+  },
+  {
+    "key": "home.show_all",
+    "sourceText": "Show all",
+    "filePath": "src/app/(public)/page.tsx"
+  },
+  {
+    "key": "home.show_all_homes",
+    "sourceText": "Show all homes",
+    "filePath": "src/app/(public)/page.tsx"
+  },
+  {
+    "key": "listing.about",
+    "sourceText": "About this space",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.amenities_heading",
+    "sourceText": "What this place offers",
+    "filePath": "src/components/public/amenity-list.tsx"
+  },
+  {
+    "key": "listing.baths.few",
+    "sourceText": "{n} baths",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.baths.many",
+    "sourceText": "{n} baths",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.baths.one",
+    "sourceText": "{n} bath",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.baths.other",
+    "sourceText": "{n} baths",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.baths.two",
+    "sourceText": "{n} baths",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.baths.zero",
+    "sourceText": "{n} baths",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.bedrooms.few",
+    "sourceText": "{n} bedrooms",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.bedrooms.many",
+    "sourceText": "{n} bedrooms",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.bedrooms.one",
+    "sourceText": "{n} bedroom",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.bedrooms.other",
+    "sourceText": "{n} bedrooms",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.bedrooms.two",
+    "sourceText": "{n} bedrooms",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.bedrooms.zero",
+    "sourceText": "{n} bedrooms",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.beds.few",
+    "sourceText": "{n} beds",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.beds.many",
+    "sourceText": "{n} beds",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.beds.one",
+    "sourceText": "{n} bed",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.beds.other",
+    "sourceText": "{n} beds",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.beds.two",
+    "sourceText": "{n} beds",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.beds.zero",
+    "sourceText": "{n} beds",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.guests.few",
+    "sourceText": "{n} guests",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.guests.many",
+    "sourceText": "{n} guests",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.guests.one",
+    "sourceText": "{n} guest",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.guests.other",
+    "sourceText": "{n} guests",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.guests.two",
+    "sourceText": "{n} guests",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.guests.zero",
+    "sourceText": "{n} guests",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.hosted_by",
+    "sourceText": "Hosted by {name}",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.link_copied",
+    "sourceText": "Link copied",
+    "filePath": "src/components/public/listing-actions.tsx"
+  },
+  {
+    "key": "listing.link_copied_clipboard",
+    "sourceText": "Link copied to clipboard",
+    "filePath": "src/components/public/listing-actions.tsx"
+  },
+  {
+    "key": "listing.remove_saved",
+    "sourceText": "Remove from saved",
+    "filePath": "src/components/public/property-card-gallery.tsx"
+  },
+  {
+    "key": "listing.report",
+    "sourceText": "Report",
+    "filePath": "src/components/public/listing-actions.tsx"
+  },
+  {
+    "key": "listing.report_description",
+    "sourceText": "Let us know what's wrong. Adding details is optional but helps us review it faster.",
+    "filePath": "src/components/public/listing-actions.tsx"
+  },
+  {
+    "key": "listing.report_placeholder",
+    "sourceText": "What's wrong with this listing? (optional)",
+    "filePath": "src/components/public/listing-actions.tsx"
+  },
+  {
+    "key": "listing.report_submitted",
+    "sourceText": "Report submitted, thank you",
+    "filePath": "src/components/public/listing-actions.tsx"
+  },
+  {
+    "key": "listing.report_title",
+    "sourceText": "Report this listing",
+    "filePath": "src/components/public/listing-actions.tsx"
+  },
+  {
+    "key": "listing.save",
+    "sourceText": "Save",
+    "filePath": "src/components/public/listing-actions.tsx"
+  },
+  {
+    "key": "listing.save_listing",
+    "sourceText": "Save listing",
+    "filePath": "src/components/public/property-card-gallery.tsx"
+  },
+  {
+    "key": "listing.share",
+    "sourceText": "Share",
+    "filePath": "src/components/public/listing-actions.tsx"
+  },
+  {
+    "key": "listing.share_failed",
+    "sourceText": "Could not share",
+    "filePath": "src/components/public/listing-actions.tsx"
+  },
+  {
+    "key": "listing.submit_report",
+    "sourceText": "Submit report",
+    "filePath": "src/components/public/listing-actions.tsx"
+  },
+  {
+    "key": "map.exit_fullscreen",
+    "sourceText": "Exit full screen map",
+    "filePath": "src/components/marketplace/properties-map-inner.tsx"
+  },
+  {
+    "key": "map.expand",
+    "sourceText": "Expand map",
+    "filePath": "src/components/marketplace/properties-map-inner.tsx"
+  },
+  {
+    "key": "map.listings",
+    "sourceText": "Map of listings",
+    "filePath": "src/components/marketplace/properties-explorer-client.tsx"
+  },
+  {
+    "key": "map.view_listing",
+    "sourceText": "View listing",
+    "filePath": "src/components/marketplace/properties-map-inner.tsx"
+  },
+  {
+    "key": "pagination.next",
+    "sourceText": "Next",
+    "filePath": "src/app/(public)/properties/page.tsx"
+  },
+  {
+    "key": "pagination.page_of",
+    "sourceText": "Page {page} of {pages}",
+    "filePath": "src/app/(public)/properties/page.tsx"
+  },
+  {
+    "key": "pagination.previous",
+    "sourceText": "Previous",
+    "filePath": "src/app/(public)/properties/page.tsx"
+  },
+  {
+    "key": "properties.clear_filters",
+    "sourceText": "Clear filters",
+    "filePath": "src/app/(public)/properties/page.tsx"
+  },
+  {
+    "key": "properties.explore",
+    "sourceText": "Explore properties",
+    "filePath": "src/app/(public)/properties/page.tsx"
+  },
+  {
+    "key": "properties.list",
+    "sourceText": "List",
+    "filePath": "src/components/marketplace/properties-explorer-client.tsx"
+  },
+  {
+    "key": "properties.map",
+    "sourceText": "Map",
+    "filePath": "src/components/marketplace/properties-explorer-client.tsx"
+  },
+  {
+    "key": "properties.none_description",
+    "sourceText": "Try adjusting your search filters or explore a different area.",
+    "filePath": "src/app/(public)/properties/page.tsx"
+  },
+  {
+    "key": "properties.none_found",
+    "sourceText": "No properties found",
+    "filePath": "src/app/(public)/properties/page.tsx"
+  },
+  {
+    "key": "properties.over_results.few",
+    "sourceText": "Over {n} homes",
+    "filePath": "src/components/marketplace/properties-explorer-client.tsx"
+  },
+  {
+    "key": "properties.over_results.many",
+    "sourceText": "Over {n} homes",
+    "filePath": "src/components/marketplace/properties-explorer-client.tsx"
+  },
+  {
+    "key": "properties.over_results.one",
+    "sourceText": "Over {n} home",
+    "filePath": "src/components/marketplace/properties-explorer-client.tsx"
+  },
+  {
+    "key": "properties.over_results.other",
+    "sourceText": "Over {n} homes",
+    "filePath": "src/components/marketplace/properties-explorer-client.tsx"
+  },
+  {
+    "key": "properties.over_results.two",
+    "sourceText": "Over {n} homes",
+    "filePath": "src/components/marketplace/properties-explorer-client.tsx"
+  },
+  {
+    "key": "properties.over_results.zero",
+    "sourceText": "Over {n} homes",
+    "filePath": "src/components/marketplace/properties-explorer-client.tsx"
+  },
+  {
+    "key": "properties.results_with_dates.few",
+    "sourceText": "{n} homes · dates applied in filters",
+    "filePath": "src/app/(public)/properties/page.tsx"
+  },
+  {
+    "key": "properties.results_with_dates.many",
+    "sourceText": "{n} homes · dates applied in filters",
+    "filePath": "src/app/(public)/properties/page.tsx"
+  },
+  {
+    "key": "properties.results_with_dates.one",
+    "sourceText": "{n} home · dates applied in filters",
+    "filePath": "src/app/(public)/properties/page.tsx"
+  },
+  {
+    "key": "properties.results_with_dates.other",
+    "sourceText": "{n} homes · dates applied in filters",
+    "filePath": "src/app/(public)/properties/page.tsx"
+  },
+  {
+    "key": "properties.results_with_dates.two",
+    "sourceText": "{n} homes · dates applied in filters",
+    "filePath": "src/app/(public)/properties/page.tsx"
+  },
+  {
+    "key": "properties.results_with_dates.zero",
+    "sourceText": "{n} homes · dates applied in filters",
+    "filePath": "src/app/(public)/properties/page.tsx"
+  },
+  {
+    "key": "properties.results.few",
+    "sourceText": "{n} homes",
+    "filePath": "src/app/(public)/properties/page.tsx"
+  },
+  {
+    "key": "properties.results.many",
+    "sourceText": "{n} homes",
+    "filePath": "src/app/(public)/properties/page.tsx"
+  },
+  {
+    "key": "properties.results.one",
+    "sourceText": "{n} home",
+    "filePath": "src/app/(public)/properties/page.tsx"
+  },
+  {
+    "key": "properties.results.other",
+    "sourceText": "{n} homes",
+    "filePath": "src/app/(public)/properties/page.tsx"
+  },
+  {
+    "key": "properties.results.two",
+    "sourceText": "{n} homes",
+    "filePath": "src/app/(public)/properties/page.tsx"
+  },
+  {
+    "key": "properties.results.zero",
+    "sourceText": "{n} homes",
+    "filePath": "src/app/(public)/properties/page.tsx"
+  },
+  {
+    "key": "properties.stays_in_city",
+    "sourceText": "Stays in {city}",
+    "filePath": "src/app/(public)/properties/page.tsx"
+  },
+  {
+    "key": "property_card.minimum_nights.few",
+    "sourceText": "{n}-night minimum",
+    "filePath": "src/components/public/property-card.tsx"
+  },
+  {
+    "key": "property_card.minimum_nights.many",
+    "sourceText": "{n}-night minimum",
+    "filePath": "src/components/public/property-card.tsx"
+  },
+  {
+    "key": "property_card.minimum_nights.one",
+    "sourceText": "{n}-night minimum",
+    "filePath": "src/components/public/property-card.tsx"
+  },
+  {
+    "key": "property_card.minimum_nights.other",
+    "sourceText": "{n}-night minimum",
+    "filePath": "src/components/public/property-card.tsx"
+  },
+  {
+    "key": "property_card.minimum_nights.two",
+    "sourceText": "{n}-night minimum",
+    "filePath": "src/components/public/property-card.tsx"
+  },
+  {
+    "key": "property_card.minimum_nights.zero",
+    "sourceText": "{n}-night minimum",
+    "filePath": "src/components/public/property-card.tsx"
+  },
+  {
+    "key": "property_card.no_photos",
+    "sourceText": "No photos",
+    "filePath": "src/components/public/property-card-gallery.tsx"
+  },
+  {
+    "key": "property_card.per_night",
+    "sourceText": "night",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "property_card.price_total",
+    "sourceText": "{price} total",
+    "filePath": "src/components/public/property-card.tsx"
+  },
+  {
+    "key": "property_card.type_in_city",
+    "sourceText": "{type} in {city}",
+    "filePath": "src/components/public/property-card-spotlight.tsx"
+  },
+  {
+    "key": "search.add_dates",
+    "sourceText": "Add dates",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.add_guests",
+    "sourceText": "Add guests",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.adults",
+    "sourceText": "Adults",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.adults_hint",
+    "sourceText": "Ages 13 or above",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.any_dates",
+    "sourceText": "Any dates",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.back",
+    "sourceText": "Back",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.check_in",
+    "sourceText": "Check in",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.check_out",
+    "sourceText": "Check out",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.children",
+    "sourceText": "Children",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.children_hint",
+    "sourceText": "Ages 2 - 12",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.choose_dates",
+    "sourceText": "Choose dates",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.choose_dates_description",
+    "sourceText": "Choose your check-in and check-out dates.",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.choose_guests_description",
+    "sourceText": "Choose how many guests are coming.",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.cities_with_listings",
+    "sourceText": "Cities with listings",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.close_destination_picker",
+    "sourceText": "Close destination picker",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.close_picker",
+    "sourceText": "Close picker",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.close_search",
+    "sourceText": "Close search",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.destination_description",
+    "sourceText": "Choose a destination city and optional property type filters.",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.done",
+    "sourceText": "Done",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.edit",
+    "sourceText": "Edit",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.exact_dates",
+    "sourceText": "Exact dates",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.flexible_1",
+    "sourceText": "+- 1 day",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.flexible_14",
+    "sourceText": "+- 14 days",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.flexible_2",
+    "sourceText": "+- 2 days",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.flexible_3",
+    "sourceText": "+- 3 days",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.flexible_7",
+    "sourceText": "+- 7 days",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.guest.few",
+    "sourceText": "{n} guests",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.guest.many",
+    "sourceText": "{n} guests",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.guest.one",
+    "sourceText": "{n} guest",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.guest.other",
+    "sourceText": "{n} guests",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.guest.two",
+    "sourceText": "{n} guests",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.guest.zero",
+    "sourceText": "{n} guests",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.infant.few",
+    "sourceText": "{n} infants",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.infant.many",
+    "sourceText": "{n} infants",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.infant.one",
+    "sourceText": "{n} infant",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.infant.other",
+    "sourceText": "{n} infants",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.infant.two",
+    "sourceText": "{n} infants",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.infant.zero",
+    "sourceText": "{n} infants",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.infants",
+    "sourceText": "Infants",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.infants_hint",
+    "sourceText": "Under 2",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.matching_cities",
+    "sourceText": "Matching cities",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.next",
+    "sourceText": "Next",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.night.few",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.night.many",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.night.one",
+    "sourceText": "{n} night",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.night.other",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.night.two",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.night.zero",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.no_matching_cities",
+    "sourceText": "No listing cities match that search",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.no_property_types_in_city",
+    "sourceText": "No property types are available in {city}.",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.open_search",
+    "sourceText": "Open search",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.pet.few",
+    "sourceText": "{n} pets",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.pet.many",
+    "sourceText": "{n} pets",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.pet.one",
+    "sourceText": "{n} pet",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.pet.other",
+    "sourceText": "{n} pets",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.pet.two",
+    "sourceText": "{n} pets",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.pet.zero",
+    "sourceText": "{n} pets",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.pets",
+    "sourceText": "Pets",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.pets_hint",
+    "sourceText": "Bringing a service animal?",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.property_type",
+    "sourceText": "Property type",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.reset",
+    "sourceText": "Reset",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.search",
+    "sourceText": "Search",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.search_destinations",
+    "sourceText": "Search destinations",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.search_listing_cities",
+    "sourceText": "Search listing cities",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.search_now",
+    "sourceText": "Search now",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.search_steps",
+    "sourceText": "Complete your stay search in three steps.",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.select_city_first",
+    "sourceText": "Select a city first to see available property types.",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.when",
+    "sourceText": "When",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.where",
+    "sourceText": "Where",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.where_to",
+    "sourceText": "Where to?",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.who",
+    "sourceText": "Who",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.whos_coming",
+    "sourceText": "Who's coming",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  }
+]

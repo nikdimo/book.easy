@@ -23,9 +23,10 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Search, X } from "lucide-react";
+import { GripVertical, RefreshCw, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import {
   Command,
   CommandEmpty,
@@ -36,17 +37,29 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   addLanguage,
   removeLanguage,
   reorderLanguageList,
+  toggleLanguageAiTranslation,
   toggleLanguageEnabled,
 } from "@/lib/actions/language.actions";
+import { runTranslationSync } from "@/lib/actions/ui-translation.actions";
 import {
   getLanguageSearchText,
   LANGUAGE_CATALOG,
   normalizeLanguageSearch,
 } from "@/lib/constants/languages";
+import type { TranslationStatus } from "@/lib/services/ui-translation.service";
 import { cn } from "@/lib/utils";
+import { TranslationReviewDialog } from "./translation-review-dialog";
 
 interface LanguageRow {
   code: string;
@@ -54,15 +67,27 @@ interface LanguageRow {
   isDefault: boolean;
   isEnabled: boolean;
   sortOrder: number;
+  useAiTranslation: boolean;
 }
 
-export function LanguagesTab({ languages }: { languages: LanguageRow[] }) {
+export function LanguagesTab({
+  languages,
+  translationStatus,
+}: {
+  languages: LanguageRow[];
+  translationStatus: TranslationStatus[];
+}) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [isSyncing, startSyncTransition] = useTransition();
   const [pickerOpen, setPickerOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [orderedLanguages, setOrderedLanguages] = useState(languages);
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
+  /** Language awaiting destructive-removal confirmation. Removal cascades to every
+   * stored translation for that locale, including manual reviews, so it must never
+   * happen on a single click. */
+  const [pendingRemoval, setPendingRemoval] = useState<LanguageRow | null>(null);
   const deferredQuery = useDeferredValue(query);
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -95,11 +120,40 @@ export function LanguagesTab({ languages }: { languages: LanguageRow[] }) {
     });
   }
 
+  function handleToggleAi(code: string) {
+    startTransition(async () => {
+      const result = await toggleLanguageAiTranslation(code);
+      if (result?.error) toast.error(result.error);
+      else router.refresh();
+    });
+  }
+
+  function handleSync() {
+    startSyncTransition(async () => {
+      const result = await runTranslationSync();
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+      const translatedCount = result.results.reduce((sum, r) => sum + r.translated, 0);
+      toast.success(
+        translatedCount > 0
+          ? `Scanned ${result.found} strings, translated ${translatedCount}`
+          : `Scanned ${result.found} strings — everything already up to date`
+      );
+      router.refresh();
+    });
+  }
+
   function handleRemove(code: string) {
     startTransition(async () => {
       const result = await removeLanguage(code);
       if (result?.error) toast.error(result.error);
-      else router.refresh();
+      else {
+        toast.success("Language removed");
+        setPendingRemoval(null);
+        router.refresh();
+      }
     });
   }
 
@@ -165,6 +219,7 @@ export function LanguagesTab({ languages }: { languages: LanguageRow[] }) {
         </p>
 
         <DndContext
+          id="languages-dnd"
           sensors={sensors}
           collisionDetection={closestCenter}
           onDragStart={handleDragStart}
@@ -183,7 +238,8 @@ export function LanguagesTab({ languages }: { languages: LanguageRow[] }) {
                     language={language}
                     isPending={isPending}
                     onToggle={() => handleToggle(language.code)}
-                    onRemove={() => handleRemove(language.code)}
+                    onToggleAi={() => handleToggleAi(language.code)}
+                    onRemove={() => setPendingRemoval(language)}
                   />
                 ))}
               </div>
@@ -196,6 +252,59 @@ export function LanguagesTab({ languages }: { languages: LanguageRow[] }) {
             ) : null}
           </DragOverlay>
         </DndContext>
+      </div>
+
+      <div className="space-y-3 rounded-2xl border bg-gradient-to-b from-background to-muted/20 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium">Translation status</p>
+            <p className="text-xs text-muted-foreground">
+              &ldquo;AI translate&rdquo; languages get real Claude-translated fixed
+              text; anything missing or stale still falls back to Google Translate.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSync}
+            disabled={isSyncing}
+            className="shrink-0 gap-1.5"
+          >
+            <RefreshCw className={cn("h-3.5 w-3.5", isSyncing && "animate-spin")} />
+            Sync now
+          </Button>
+        </div>
+
+        <div className="space-y-1.5">
+          {translationStatus.map((status) => (
+            <div
+              key={status.code}
+              className="flex items-center justify-between gap-2 rounded-lg border border-border/60 px-3 py-2 text-sm"
+            >
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="truncate font-medium">{status.name}</span>
+                {!status.useAiTranslation && (
+                  <Badge variant="secondary" className="shrink-0">
+                    Google Translate only
+                  </Badge>
+                )}
+              </div>
+              <div className="flex shrink-0 items-center gap-3 text-xs text-muted-foreground">
+                {status.useAiTranslation && status.total > 0 && (
+                  <span>
+                    {status.translated}/{status.total} translated
+                    {status.stale > 0 && `, ${status.stale} stale`}
+                    {status.manuallyEdited > 0 && `, ${status.manuallyEdited} manual`}
+                  </span>
+                )}
+                <span>{status.selectionCount} picks</span>
+                {status.useAiTranslation ? (
+                  <TranslationReviewDialog locale={status.code} languageName={status.name} />
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {availableToAdd.length > 0 ? (
@@ -250,7 +359,81 @@ export function LanguagesTab({ languages }: { languages: LanguageRow[] }) {
           All available languages from the current catalog have already been added.
         </div>
       )}
+
+      <RemoveLanguageDialog
+        language={pendingRemoval}
+        status={
+          pendingRemoval
+            ? translationStatus.find((entry) => entry.code === pendingRemoval.code) ?? null
+            : null
+        }
+        isPending={isPending}
+        onCancel={() => setPendingRemoval(null)}
+        onConfirm={() => pendingRemoval && handleRemove(pendingRemoval.code)}
+      />
     </div>
+  );
+}
+
+/** Destructive-removal confirmation. Deleting a Language cascades to every
+ * UiTranslation row for that locale (see the FK in schema.prisma), so reviewed and
+ * manually edited translations are lost permanently — the counts are shown so the
+ * admin can see exactly what is at stake before confirming. */
+function RemoveLanguageDialog({
+  language,
+  status,
+  isPending,
+  onCancel,
+  onConfirm,
+}: {
+  language: LanguageRow | null;
+  status: TranslationStatus | null;
+  isPending: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const storedTranslations = status ? status.translated + status.stale : 0;
+  const manualReviews = status?.manuallyEdited ?? 0;
+
+  return (
+    <Dialog open={Boolean(language)} onOpenChange={(open) => !open && onCancel()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Remove {language?.name}?</DialogTitle>
+          <DialogDescription asChild>
+            <div className="space-y-2 text-sm">
+              <p>
+                This permanently deletes every stored translation for this language.
+                It cannot be undone, and re-adding the language later starts from an
+                empty catalog.
+              </p>
+              {storedTranslations > 0 ? (
+                <p className="font-medium text-foreground">
+                  {storedTranslations} stored translation
+                  {storedTranslations === 1 ? "" : "s"} will be deleted
+                  {manualReviews > 0
+                    ? `, including ${manualReviews} manual review${manualReviews === 1 ? "" : "s"}`
+                    : ""}
+                  .
+                </p>
+              ) : (
+                <p className="text-muted-foreground">
+                  This language has no stored translations yet.
+                </p>
+              )}
+            </div>
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel} disabled={isPending}>
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={onConfirm} disabled={isPending}>
+            {manualReviews > 0 ? "Delete language and reviews" : "Delete language"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -258,11 +441,13 @@ function SortableLanguageRow({
   language,
   isPending,
   onToggle,
+  onToggleAi,
   onRemove,
 }: {
   language: LanguageRow;
   isPending: boolean;
   onToggle: () => void;
+  onToggleAi: () => void;
   onRemove: () => void;
 }) {
   const {
@@ -313,17 +498,29 @@ function SortableLanguageRow({
           )}
         </div>
       </div>
-      {!language.isDefault && (
-        <Button
-          variant="ghost"
-          size="icon"
-          disabled={isPending}
-          onClick={onRemove}
-          className="rounded-full"
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      )}
+      <div className="flex shrink-0 items-center gap-3">
+        {!language.isDefault && (
+          <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Checkbox
+              checked={language.useAiTranslation}
+              disabled={isPending}
+              onCheckedChange={onToggleAi}
+            />
+            AI translate
+          </label>
+        )}
+        {!language.isDefault && (
+          <Button
+            variant="ghost"
+            size="icon"
+            disabled={isPending}
+            onClick={onRemove}
+            className="rounded-full"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

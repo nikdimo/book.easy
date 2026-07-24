@@ -17,6 +17,8 @@ import { cn } from "@/lib/utils";
 import { sortPropertyTypesInDisplayOrder } from "@/lib/property-type-filter";
 import { placeKey, placeLabel, type PlaceOption } from "@/lib/utils/place";
 import { Button } from "@/components/ui/button";
+import { interpolate } from "@/lib/i18n/client";
+import { useSearchLabels } from "@/components/marketplace/search-labels";
 
 type Layout = "pill" | "hero" | "compact";
 
@@ -64,6 +66,7 @@ export function MarketplacePlaceSelector({
   onOpenChange?: (open: boolean) => void;
   className?: string;
 }) {
+  const labels = useSearchLabels();
   const isPillLayout = layout === "pill";
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
   const open = controlledOpen ?? uncontrolledOpen;
@@ -167,7 +170,7 @@ export function MarketplacePlaceSelector({
     ? country
       ? placeLabel({ city, country })
       : city
-    : "Search destinations";
+    : labels.searchDestinations.text;
 
   const pillFieldClass = cn(
     "relative flex flex-1 min-w-0 cursor-pointer items-center rounded-full px-6 py-2.5 text-left transition-[background-color,box-shadow,transform] duration-200 ease-out",
@@ -262,10 +265,11 @@ export function MarketplacePlaceSelector({
             "block font-semibold tracking-wide text-foreground",
             layout === "pill"
               ? "text-[0.72rem] leading-4"
-              : "text-xs tracking-wide"
+              : "text-xs tracking-wide",
+            labels.where.translated && "notranslate"
           )}
         >
-          Where
+          {labels.where.text}
         </span>
         <span
           className={cn(
@@ -335,16 +339,21 @@ export function MarketplacePlaceSelector({
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <div className="sr-only">
-            <DialogPrimitive.Title>Where</DialogPrimitive.Title>
-            <DialogPrimitive.Description>
-              Choose a destination city and optional property type filters.
+            <DialogPrimitive.Title className={labels.where.translated ? "notranslate" : undefined}>{labels.where.text}</DialogPrimitive.Title>
+            <DialogPrimitive.Description className={labels.destinationDescription.translated ? "notranslate" : undefined}>
+              {labels.destinationDescription.text}
             </DialogPrimitive.Description>
           </div>
 
           <div className="border-b border-border/70 bg-background px-4 pt-4 pb-4 md:px-6 md:pt-5">
             <div className="mb-4 flex items-start justify-between gap-4">
-              <p className="text-lg font-semibold text-foreground md:text-2xl">
-                Where
+              <p
+                className={cn(
+                  "text-lg font-semibold text-foreground md:text-2xl",
+                  labels.where.translated && "notranslate"
+                )}
+              >
+                {labels.where.text}
               </p>
               <button
                 type="button"
@@ -355,15 +364,20 @@ export function MarketplacePlaceSelector({
                   setOpen(false);
                 }}
                 className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                aria-label="Close destination picker"
+                aria-label={labels.closeDestinationPicker.text}
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
             <div className="rounded-[1.5rem] border border-border bg-background px-4 py-3 md:rounded-[1.75rem] md:px-5 md:py-4">
-              <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground md:text-[11px]">
-                Search destinations
+              <label
+                className={cn(
+                  "block text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground md:text-[11px]",
+                  labels.searchDestinations.translated && "notranslate"
+                )}
+              >
+                {labels.searchDestinations.text}
               </label>
               <div className="mt-2 flex items-center gap-3">
                 <MapPin className="h-5 w-5 shrink-0 text-muted-foreground" />
@@ -372,7 +386,7 @@ export function MarketplacePlaceSelector({
                   type="text"
                   value={draftCity}
                   onChange={(e) => setDraftCity(e.target.value)}
-                  placeholder="Search listing cities"
+                  placeholder={labels.searchListingCities.text}
                   className="w-full min-w-0 border-0 bg-transparent p-0 text-base font-medium text-foreground outline-none placeholder:text-muted-foreground/80"
                 />
               </div>
@@ -382,13 +396,26 @@ export function MarketplacePlaceSelector({
           <div className="flex-1 min-h-0 overflow-y-auto px-4 py-5 md:px-6 md:py-6">
             <div className="mx-auto w-full max-w-2xl">
               <div>
-                <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  {draftCity.trim() ? "Matching cities" : "Cities with listings"}
+                <p
+                  className={cn(
+                    "mb-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground",
+                    (draftCity.trim() ? labels.matchingCities : labels.citiesWithListings)
+                      .translated && "notranslate"
+                  )}
+                >
+                  {draftCity.trim()
+                    ? labels.matchingCities.text
+                    : labels.citiesWithListings.text}
                 </p>
                 <ul className="flex flex-col gap-1" role="list">
                   {filteredCities.length === 0 ? (
-                    <li className="py-6 text-center text-sm text-muted-foreground">
-                      No listing cities match that search
+                    <li
+                      className={cn(
+                        "py-6 text-center text-sm text-muted-foreground",
+                        labels.noMatchingCities.translated && "notranslate"
+                      )}
+                    >
+                      {labels.noMatchingCities.text}
                     </li>
                   ) : (
                     filteredCities.map((place) => {
@@ -445,17 +472,39 @@ export function MarketplacePlaceSelector({
 
               {showPropertyTypes && (
                 <div className="mt-8">
-                  <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Property type
+                  <p
+                    className={cn(
+                      "mb-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground",
+                      labels.propertyType.translated && "notranslate"
+                    )}
+                  >
+                    {labels.propertyType.text}
                   </p>
                   {!selectedPlace ? (
-                    <p className="text-sm text-muted-foreground">
-                      Select a city first to see available property types.
+                    <p
+                      className={cn(
+                        "text-sm text-muted-foreground",
+                        labels.selectCityFirst.translated && "notranslate"
+                      )}
+                    >
+                      {labels.selectCityFirst.text}
                     </p>
                   ) : availablePropertyTypes.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No property types are available in {selectedPlace.city}.
-                    </p>
+                    (() => {
+                      const noTypes = interpolate(labels.noPropertyTypesInCity, {
+                        city: selectedPlace.city,
+                      });
+                      return (
+                        <p
+                          className={cn(
+                            "text-sm text-muted-foreground",
+                            noTypes.translated && "notranslate"
+                          )}
+                        >
+                          {noTypes.text}
+                        </p>
+                      );
+                    })()
                   ) : (
                     <div className="flex flex-wrap gap-2 pb-1">
                       {propertyTypes.filter(({ value }) =>
@@ -499,18 +548,24 @@ export function MarketplacePlaceSelector({
                 <Button
                   type="button"
                   variant="outline"
-                  className="self-start rounded-full sm:min-w-[7rem]"
+                  className={cn(
+                    "self-start rounded-full sm:min-w-[7rem]",
+                    labels.reset.translated && "notranslate"
+                  )}
                   onClick={handleReset}
                 >
-                  Reset
+                  {labels.reset.text}
                 </Button>
                 <div className="flex w-full items-center justify-end gap-3 sm:w-auto">
                   <Button
                     type="button"
-                    className="min-w-[7rem] rounded-full"
+                    className={cn(
+                      "min-w-[7rem] rounded-full",
+                      labels.next.translated && "notranslate"
+                    )}
                     onClick={handleNext}
                   >
-                    Next
+                    {labels.next.text}
                   </Button>
                 </div>
               </div>

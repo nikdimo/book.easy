@@ -2,7 +2,6 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
-import { format } from "date-fns";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -22,6 +21,8 @@ import {
   parsePropertyTypesFromSearchParams,
   stringifyPropertyTypesParam,
 } from "@/lib/property-type-filter";
+import { useSearchLabels } from "@/components/marketplace/search-labels";
+import type { Resolved } from "@/lib/i18n/t";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 import type { PlaceOption } from "@/lib/utils/place";
 
@@ -162,13 +163,21 @@ function parseLocalYmd(s: string): Date | undefined {
   return Number.isNaN(dt.getTime()) ? undefined : dt;
 }
 
-function formatDateSummary(checkIn: string, checkOut: string): string {
+function formatDateSummary(
+  checkIn: string,
+  checkOut: string,
+  anyDates: Resolved,
+  locale: string
+): Resolved {
   const from = parseLocalYmd(checkIn);
   const to = parseLocalYmd(checkOut);
 
-  if (from && to) return `${format(from, "MMM d")} - ${format(to, "MMM d")}`;
-  if (from) return format(from, "MMM d");
-  return "Any dates";
+  if (from && to) {
+    const formatter = new Intl.DateTimeFormat(locale, { month: "short", day: "numeric" });
+    return { text: `${formatter.format(from)} - ${formatter.format(to)}`, translated: false };
+  }
+  if (from) return { text: new Intl.DateTimeFormat(locale, { month: "short", day: "numeric" }).format(from), translated: false };
+  return anyDates;
 }
 
 export function MarketplaceSearchBar({
@@ -261,6 +270,7 @@ function MarketplaceSearchBarInner({
   propertyTypes: PropertyTypeOption[];
   allPropertyTypeValues: string[];
 }) {
+  const labels = useSearchLabels();
   const router = useRouter();
   const [city, setCity] = useState(initialState.city);
   const [country, setCountry] = useState(initialState.country);
@@ -356,9 +366,9 @@ function MarketplaceSearchBarInner({
   const isSummary = variant === "summary";
 
   if (isSummary) {
-    const citySummary = city || "Where to?";
-    const dateSummary = formatDateSummary(checkIn, checkOut);
-    const guestSummary = formatGuestSummary(guestCounts);
+    const citySummary = city || labels.whereToPlaceholder.text;
+    const dateSummary = formatDateSummary(checkIn, checkOut, labels.anyDates, labels.locale);
+    const guestSummary = formatGuestSummary(guestCounts, labels);
 
     return (
       <div className="w-full">
@@ -366,14 +376,15 @@ function MarketplaceSearchBarInner({
           type="button"
           className="flex h-11 w-full items-center gap-2 rounded-full border border-border/70 bg-background px-3 text-left shadow-[0_10px_26px_rgba(15,23,42,0.08)] transition-shadow hover:shadow-[0_14px_32px_rgba(15,23,42,0.12)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           onClick={() => setSearchFlowOpen(true)}
-          aria-label="Open search"
+          aria-label={labels.openSearch.text}
         >
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-semibold text-foreground">
               {citySummary}
             </span>
             <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-              {dateSummary} · {guestSummary}
+              <span className={dateSummary.translated ? "notranslate" : undefined}>{dateSummary.text}</span> ·{" "}
+              <span className={guestSummary.translated ? "notranslate" : undefined}>{guestSummary.text}</span>
             </span>
           </span>
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
@@ -500,7 +511,7 @@ function MarketplaceSearchBarInner({
               "ml-1 h-11 shrink-0 rounded-full bg-primary px-4 text-primary-foreground shadow-none transition-all duration-200 hover:bg-primary/95",
               anyDesktopPillPanelOpen ? "gap-2 px-5" : "w-11 px-0"
             )}
-            aria-label="Search"
+            aria-label={labels.search.text}
           >
             <Search className="h-4 w-4" strokeWidth={2.5} />
             <span
@@ -508,10 +519,11 @@ function MarketplaceSearchBarInner({
                 "overflow-hidden whitespace-nowrap font-semibold transition-[max-width,opacity] duration-200",
                 anyDesktopPillPanelOpen
                   ? "max-w-20 opacity-100"
-                  : "max-w-0 opacity-0"
+                  : "max-w-0 opacity-0",
+                labels.search.translated && "notranslate"
               )}
             >
-              Search
+              {labels.search.text}
             </span>
           </Button>
         </div>
@@ -614,7 +626,9 @@ function MarketplaceSearchBarInner({
             )}
           >
             <Search className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Search</span>
+            <span className={cn("hidden sm:inline", labels.search.translated && "notranslate")}>
+              {labels.search.text}
+            </span>
           </Button>
         </div>
       </div>

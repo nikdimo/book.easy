@@ -4,7 +4,7 @@ import path from "node:path";
 export default defineConfig({
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.{ts,tsx}"],
     setupFiles: ["./vitest.setup.ts"],
     // These are integration tests that hit the real local Postgres (via docker compose,
     // see docker-compose.yml) — there's no mocked DB layer in this codebase, and adding

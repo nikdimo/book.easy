@@ -10,13 +10,13 @@ export default async function HostLayout({ children }: { children: React.ReactNo
   const languages = await getEnabledLanguages();
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-background">
+    <div className="flex min-h-screen flex-col bg-background md:h-screen md:flex-row md:overflow-hidden">
       <HostSidebar languages={languages} />
-      <div className="flex min-h-screen flex-1 min-w-0 flex-col">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col md:h-screen md:min-h-0">
         <div className="hidden md:flex items-center justify-end border-b bg-background px-8 py-4">
           <GoogleTranslateWidget languages={languages} />
         </div>
-        <main className="flex-1 min-w-0 min-h-0">{children}</main>
+        <main className="host-main min-h-0 min-w-0 flex-1 md:overflow-y-auto">{children}</main>
       </div>
     </div>
   );

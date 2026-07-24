@@ -14,6 +14,7 @@ import {
   GuestCountsStep,
 } from "@/components/marketplace/marketplace-stay-date-picker";
 import { placeKey, placeLabel, type PlaceOption } from "@/lib/utils/place";
+import { useSearchLabels } from "@/components/marketplace/search-labels";
 
 type SearchFlowStep = "where" | "when" | "who";
 
@@ -48,6 +49,7 @@ export function MarketplaceSearchFlowDialog({
   popularCities: PlaceOption[];
   onApplySearch: (next: SearchFlowState) => void;
 }) {
+  const labels = useSearchLabels();
   const [step, setStep] = React.useState<SearchFlowStep>("where");
   const [draftCity, setDraftCity] = React.useState(initialState.city);
   const [draftCheckIn, setDraftCheckIn] = React.useState(initialState.checkIn);
@@ -202,10 +204,10 @@ export function MarketplaceSearchFlowDialog({
     setStep("when");
   };
 
-  const stepTabs: { key: SearchFlowStep; label: string }[] = [
-    { key: "where", label: "Where" },
-    { key: "when", label: "When" },
-    { key: "who", label: "Who" },
+  const stepTabs = [
+    { key: "where" as const, label: labels.where },
+    { key: "when" as const, label: labels.when },
+    { key: "who" as const, label: labels.who },
   ];
 
   return (
@@ -217,15 +219,11 @@ export function MarketplaceSearchFlowDialog({
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <div className="sr-only">
-            <DialogPrimitive.Title>
-              {step === "where"
-                ? "Where"
-                : step === "when"
-                  ? "When"
-                  : "Who"}
+            <DialogPrimitive.Title className={(step === "where" ? labels.where : step === "when" ? labels.when : labels.who).translated ? "notranslate" : undefined}>
+              {step === "where" ? labels.where.text : step === "when" ? labels.when.text : labels.who.text}
             </DialogPrimitive.Title>
-            <DialogPrimitive.Description>
-              Complete your stay search in three steps.
+            <DialogPrimitive.Description className={labels.searchSteps.translated ? "notranslate" : undefined}>
+              {labels.searchSteps.text}
             </DialogPrimitive.Description>
           </div>
 
@@ -243,10 +241,11 @@ export function MarketplaceSearchFlowDialog({
                         "border-b-2 pb-1 text-sm font-semibold transition-colors md:text-base",
                         active
                           ? "border-foreground text-foreground"
-                          : "border-transparent text-muted-foreground hover:text-foreground/70"
+                          : "border-transparent text-muted-foreground hover:text-foreground/70",
+                        label.translated && "notranslate"
                       )}
                     >
-                      {label}
+                      {label.text}
                     </button>
                   );
                 })}
@@ -256,7 +255,7 @@ export function MarketplaceSearchFlowDialog({
                   type="button"
                   onClick={handleApplySearch}
                   className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  aria-label="Search now"
+                  aria-label={labels.searchNow.text}
                 >
                   <Search className="h-4 w-4" />
                 </button>
@@ -264,7 +263,7 @@ export function MarketplaceSearchFlowDialog({
                   type="button"
                   onClick={handleClose}
                   className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  aria-label="Close search"
+                  aria-label={labels.closeSearch.text}
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -305,8 +304,13 @@ export function MarketplaceSearchFlowDialog({
             {step === "where" ? (
               <div className="mx-auto w-full max-w-2xl">
                 <div className="rounded-[1.5rem] border border-border bg-background px-4 py-3 md:rounded-[1.75rem] md:px-5 md:py-4">
-                  <label className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground md:text-[11px]">
-                    Search destinations
+                  <label
+                    className={cn(
+                      "block text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground md:text-[11px]",
+                      labels.searchDestinations.translated && "notranslate"
+                    )}
+                  >
+                    {labels.searchDestinations.text}
                   </label>
                   <div className="mt-2 flex items-center gap-3">
                     <MapPin className="h-5 w-5 shrink-0 text-muted-foreground" />
@@ -315,20 +319,33 @@ export function MarketplaceSearchFlowDialog({
                       type="text"
                       value={draftCity}
                       onChange={(e) => setDraftCity(e.target.value)}
-                      placeholder="Search listing cities"
+                      placeholder={labels.searchListingCities.text}
                       className="w-full min-w-0 border-0 bg-transparent p-0 text-base font-medium text-foreground outline-none placeholder:text-muted-foreground/80"
                     />
                   </div>
                 </div>
 
                 <div className="mt-6">
-                  <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                    {draftCity.trim() ? "Matching cities" : "Cities with listings"}
+                  <p
+                    className={cn(
+                      "mb-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground",
+                      (draftCity.trim() ? labels.matchingCities : labels.citiesWithListings)
+                        .translated && "notranslate"
+                    )}
+                  >
+                    {draftCity.trim()
+                      ? labels.matchingCities.text
+                      : labels.citiesWithListings.text}
                   </p>
                   <ul className="flex flex-col gap-1" role="list">
                     {filteredCities.length === 0 ? (
-                      <li className="py-6 text-center text-sm text-muted-foreground">
-                        No listing cities match that search
+                      <li
+                        className={cn(
+                          "py-6 text-center text-sm text-muted-foreground",
+                          labels.noMatchingCities.translated && "notranslate"
+                        )}
+                      >
+                        {labels.noMatchingCities.text}
                       </li>
                     ) : (
                       filteredCities.map((place) => {
@@ -376,7 +393,7 @@ export function MarketplaceSearchFlowDialog({
                   <button
                     type="button"
                     onClick={handleBack}
-                    aria-label="Back"
+                    aria-label={labels.back.text}
                     className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border text-foreground transition-colors hover:bg-muted"
                   >
                     <ArrowLeft className="h-4 w-4" />
@@ -385,10 +402,10 @@ export function MarketplaceSearchFlowDialog({
                 <Button
                   type="button"
                   variant="outline"
-                  className="rounded-full"
+                  className={cn("rounded-full", labels.reset.translated && "notranslate")}
                   onClick={handleReset}
                 >
-                  Reset
+                  {labels.reset.text}
                 </Button>
               </div>
               {step !== "where" ? (
@@ -399,16 +416,21 @@ export function MarketplaceSearchFlowDialog({
                     onClick={handleApplySearch}
                   >
                     <Search className="mr-2 h-4 w-4" />
-                    Search
+                    <span className={cn(labels.search.translated && "notranslate")}>
+                      {labels.search.text}
+                    </span>
                   </Button>
                 ) : (
                   <Button
                     type="button"
-                    className="min-w-[9rem] rounded-full"
+                    className={cn(
+                      "min-w-[9rem] rounded-full",
+                      labels.whosComing.translated && "notranslate"
+                    )}
                     disabled={!canGoToWho}
                     onClick={handleNext}
                   >
-                    Who&apos;s coming
+                    {labels.whosComing.text}
                   </Button>
                 )
               ) : null}

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Heart, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -11,11 +11,14 @@ import { toggleFavorite } from "@/lib/actions/favorite.actions";
 import { toast } from "sonner";
 import { useSwipe } from "@/lib/hooks/use-swipe";
 import { useProgressivePreload } from "@/lib/hooks/use-progressive-preload";
+import { Tx, useI18n } from "@/lib/i18n/client";
 
 interface PropertyCardGalleryProps {
   href: string;
   title: string;
   images: { url: string; alt?: string | null }[];
+  /** First video among the listing's media, if any — plays as a preview on hover. */
+  videoUrl?: string | null;
   listingId: string;
   initialSaved: boolean;
   isAuthenticated: boolean;
@@ -28,15 +31,30 @@ export function PropertyCardGallery({
   href,
   title,
   images,
+  videoUrl,
   listingId,
   initialSaved,
   isAuthenticated,
 }: PropertyCardGalleryProps) {
+  const i18n = useI18n();
   const router = useRouter();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [saved, setSaved] = useState(initialSaved);
   const [hasBrowsedPhotos, setHasBrowsedPhotos] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
   const [, startTransition] = useTransition();
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const el = videoRef.current;
+    if (!el) return;
+    if (isHovering) {
+      el.currentTime = 0;
+      el.play().catch(() => {});
+    } else {
+      el.pause();
+    }
+  }, [isHovering]);
 
   const safeIndex = Math.min(currentImageIndex, Math.max(0, images.length - 1));
   const cover = images[safeIndex];
@@ -94,6 +112,8 @@ export function PropertyCardGallery({
       onClickCapture={swipe.onClickCapture}
       onTouchStart={hasMultiple ? swipe.onTouchStart : undefined}
       onTouchEnd={hasMultiple ? swipe.onTouchEnd : undefined}
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
     >
       <Link href={href} className="absolute inset-0 z-0">
         {cover ? (
@@ -106,10 +126,25 @@ export function PropertyCardGallery({
           />
         ) : (
           <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
-            No photos
+            <Tx k="property_card.no_photos" source="No photos" />
           </div>
         )}
       </Link>
+
+      {videoUrl && (
+        <video
+          ref={videoRef}
+          src={videoUrl}
+          muted
+          loop
+          playsInline
+          preload="none"
+          className={cn(
+            "pointer-events-none absolute inset-0 z-[1] h-full w-full object-cover transition-opacity duration-300",
+            isHovering ? "opacity-100" : "opacity-0"
+          )}
+        />
+      )}
 
       {preloadIndices.map((i) => (
         <div
@@ -136,7 +171,7 @@ export function PropertyCardGallery({
           "absolute right-3 top-3 z-10 h-9 w-9 rounded-full border-0 bg-transparent hover:bg-white/10 shadow-none",
           saved && "text-primary"
         )}
-        aria-label={saved ? "Remove from saved" : "Save listing"}
+        aria-label={saved ? i18n.resolve("listing.remove_saved", "Remove from saved").text : i18n.resolve("listing.save_listing", "Save listing").text}
         onClick={(e) => {
           e.preventDefault();
           handleToggleSaved();
@@ -161,7 +196,7 @@ export function PropertyCardGallery({
               goToImage((p) => (p - 1 + images.length) % images.length);
             }}
             className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/90 p-1.5 text-black opacity-0 shadow-sm transition-all hover:scale-105 hover:bg-white group-hover:opacity-100"
-            aria-label="Previous photo"
+            aria-label={i18n.resolve("gallery.previous", "Previous photo").text}
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -173,7 +208,7 @@ export function PropertyCardGallery({
               goToImage((p) => (p + 1) % images.length);
             }}
             className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/90 p-1.5 text-black opacity-0 shadow-sm transition-all hover:scale-105 hover:bg-white group-hover:opacity-100"
-            aria-label="Next photo"
+            aria-label={i18n.resolve("gallery.next", "Next photo").text}
           >
             <ChevronRight className="h-4 w-4" />
           </button>
