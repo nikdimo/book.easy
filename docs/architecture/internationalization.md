@@ -84,7 +84,19 @@ Synchronization holds a cross-process lock so an administrator-triggered sync ca
 
 High-visibility wording that must remain consistent across regenerations lives in `src/lib/i18n/curated-overrides.ts`. These reviewed defaults are applied during catalog scans, but an administrator's manual edit always takes precedence.
 
-The deployment script applies Prisma migrations, builds the exact catalog, imports the reviewed snapshot, synchronizes only genuinely new or changed copy, and only then restarts the application. A complete reviewed snapshot therefore deploys without an Anthropic request. The preferred workflow is to run extraction and `i18n:generate-reviewed` locally, review/export the result, and deploy that snapshot with Control Panel option 6. Production translation credentials are only a fallback for catalog additions that were not completed locally.
+Control Panel option 6 first attempts to export the existing reviewed snapshot
+without spending API credit. If enabled AI languages contain missing, empty, or
+stale fixed copy, it runs the local Anthropic synchronization, reports missing
+credentials or exhausted credit/quota, and revalidates and audits the completed
+snapshot before it creates a version or deploys. A failed or partial API run never
+deploys; completed batches remain saved, so running option 6 again resumes only the
+remaining work.
+
+The remote deployment script applies Prisma migrations, builds the exact catalog,
+imports the reviewed snapshot, synchronizes only genuinely new or changed copy, and
+only then restarts the application. A complete reviewed snapshot therefore deploys
+without an Anthropic request on the VPS. The local option-6 preflight is the preferred
+place to complete new fixed UI copy.
 
 ## Editorial review
 

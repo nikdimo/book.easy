@@ -200,7 +200,11 @@ export async function syncTranslations(): Promise<SyncResult[]> {
         const existingByKey = new Map(existing.map((row) => [row.key, row]));
         const needsTranslation = uiStrings.filter((entry) => {
           const row = existingByKey.get(entry.key);
-          return !row || row.sourceTextSnapshot !== entry.sourceText;
+          return (
+            !row ||
+            !row.value.trim() ||
+            row.sourceTextSnapshot !== entry.sourceText
+          );
         });
         return { language, needsTranslation };
       })

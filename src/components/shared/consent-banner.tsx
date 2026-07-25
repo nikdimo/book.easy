@@ -298,7 +298,7 @@ export function ConsentBanner() {
         {/* Cookie toggles — horizontal row, label above switch */}
         <div className="grid grid-cols-4 gap-2">
           {/* Strictly necessary */}
-          <div className="flex flex-col items-start gap-2">
+          <div className="flex flex-col items-center gap-2 text-center">
             <span className="text-xs font-medium text-foreground leading-tight">
               <Tx k="consent.strictly_necessary" source="Strictly necessary" />
             </span>
@@ -311,7 +311,7 @@ export function ConsentBanner() {
           </div>
 
           {/* Functional */}
-          <div className="flex flex-col items-start gap-2">
+          <div className="flex flex-col items-center gap-2 text-center">
             <span className="text-xs font-medium text-foreground leading-tight">
               <Tx k="consent.functional" source="Functional" />
             </span>
@@ -325,7 +325,7 @@ export function ConsentBanner() {
           </div>
 
           {/* Statistical */}
-          <div className="flex flex-col items-start gap-2">
+          <div className="flex flex-col items-center gap-2 text-center">
             <span className="text-xs font-medium text-foreground leading-tight">
               <Tx k="consent.statistical" source="Statistical" />
             </span>
@@ -339,7 +339,7 @@ export function ConsentBanner() {
           </div>
 
           {/* Marketing */}
-          <div className="flex flex-col items-start gap-2">
+          <div className="flex flex-col items-center gap-2 text-center">
             <span className="text-xs font-medium text-foreground leading-tight">
               <Tx k="consent.marketing" source="Marketing" />
             </span>

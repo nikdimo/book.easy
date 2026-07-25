@@ -19,6 +19,18 @@ async function main() {
   // committed, but exit non-zero so a deployment doesn't treat a partial run as
   // complete — re-running the sync is idempotent and picks up only what's missing.
   if (failed > 0) {
+    const errorText = results
+      .flatMap((result) => result.errors)
+      .join(" ");
+    if (/credit balance|billing|quota|rate.?limit|status.?429/i.test(errorText)) {
+      console.error(
+        "ANTHROPIC CREDIT/API ERROR: Translation could not finish because the API has no usable credit or quota. Add credit or resolve the Anthropic billing/quota issue, then run option 6 again."
+      );
+    } else if (/ANTHROPIC_API_KEY is not configured/i.test(errorText)) {
+      console.error(
+        "ANTHROPIC API KEY ERROR: ANTHROPIC_API_KEY is not configured locally. Add it to the local environment, then run option 6 again."
+      );
+    }
     for (const result of results.filter((entry) => entry.failed > 0)) {
       console.error(`  ${result.locale}: ${result.failed} failed — ${result.errors.join("; ")}`);
     }

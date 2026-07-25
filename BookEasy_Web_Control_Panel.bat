@@ -220,8 +220,37 @@ if errorlevel 1 (
 call npm run i18n:export-reviewed
 if errorlevel 1 (
     echo.
-    echo   ERROR - Reviewed translations are incomplete or stale.
-    echo   Nothing was saved or deployed. Finish the local translation review first.
+    echo   Reviewed translations are incomplete or stale.
+    echo   Attempting to translate missing UI copy with Anthropic...
+    echo.
+    call npm run i18n:sync
+    if errorlevel 1 (
+        echo.
+        echo   ERROR - Automatic Anthropic translation did not finish.
+        echo   Check the API message above. If credit or quota is unavailable,
+        echo   add credit or resolve billing, then run option 6 again.
+        echo   Nothing was saved or deployed.
+        pause
+        goto MENU
+    )
+    echo.
+    echo   Anthropic translation completed. Re-validating the reviewed snapshot...
+    call npm run i18n:export-reviewed
+    if errorlevel 1 (
+        echo.
+        echo   ERROR - Translations are still incomplete or stale after the API sync.
+        echo   Nothing was saved or deployed. Review the errors above.
+        pause
+        goto MENU
+    )
+)
+echo.
+echo [preflight] Auditing reviewed translations...
+call npm run i18n:audit
+if errorlevel 1 (
+    echo.
+    echo   ERROR - Translation quality audit failed.
+    echo   Nothing was saved or deployed. Review the issues above.
     pause
     goto MENU
 )
