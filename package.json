@@ -19,6 +19,7 @@
     "i18n:normalize-serbian": "node --conditions=react-server --import tsx scripts/normalize-serbian-script.ts",
     "i18n:export-reviewed": "node --conditions=react-server --import tsx scripts/export-reviewed-ui-translations.ts",
     "i18n:import-reviewed": "node --conditions=react-server --import tsx scripts/import-reviewed-ui-translations.ts",
+    "i18n:generate-reviewed": "node --conditions=react-server --import tsx scripts/generate-reviewed-ui-translations-gemini.ts",
     "popularity:recompute": "node --conditions=react-server --import tsx scripts/recompute-popularity.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

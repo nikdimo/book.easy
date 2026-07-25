@@ -2,7 +2,8 @@ import { db } from "../src/lib/db";
 
 const PLACEHOLDER_RE = /\{[A-Za-z][A-Za-z0-9_]*\}/g;
 const CYRILLIC_LOCALES = new Set(["mk", "sr", "bg"]);
-const ALLOWED_LATIN = /book\.easy\.mk|easy\.mk|Book Easy|EUR|Alt\+T|SMS|URL|Wi-?Fi/gi;
+const ALLOWED_LATIN =
+  /book\.easy\.mk|easy\.mk|Book Easy|Google|EUR|Alt\+T|SMS|URL|Wi-?Fi/gi;
 
 async function main() {
   const rows = await db.uiTranslation.findMany({

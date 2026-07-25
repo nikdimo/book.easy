@@ -10,10 +10,20 @@ describe("reviewed AI translation snapshot", () => {
     expect(snapshot.schemaVersion).toBe(1);
     expect(snapshot.languages.map((language) => language.code).sort()).toEqual([
       "bg",
+      "de",
+      "el",
+      "es",
+      "fr",
+      "it",
       "mk",
+      "nl",
+      "pl",
+      "ro",
+      "ru",
       "sq",
       "sr",
       "tr",
+      "uk",
     ]);
     expect(Object.keys(snapshot.catalog).sort()).toEqual([...sourceByKey.keys()].sort());
 

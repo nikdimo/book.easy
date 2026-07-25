@@ -159,5 +159,6 @@ src/
 | `npm run i18n:extract` | Regenerate the fixed-UI translation catalog |
 | `npm run i18n:check` | Verify translated public copy and the generated catalog |
 | `npm run i18n:sync` | Sync missing/stale translations for enabled AI languages |
+| `npm run i18n:generate-reviewed` | Generate/resume the local reviewed language catalogs with Gemini |
 | `npm run i18n:status` | Show translation completeness and review status |
 | `npm test` | Run the test suite (integration tests — needs the local DB running, `npm run db:docker`) |

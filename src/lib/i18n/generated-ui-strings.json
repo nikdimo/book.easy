@@ -417,17 +417,17 @@
   {
     "key": "consent.always_on",
     "sourceText": "Always on",
-    "filePath": "src/components/shared/consent-banner.tsx"
+    "filePath": "src/components/shared/privacy-settings-modal.tsx"
   },
   {
     "key": "consent.analytics_cookies",
     "sourceText": "Analytics cookies",
-    "filePath": "src/components/shared/consent-banner.tsx"
+    "filePath": "src/components/shared/privacy-settings-modal.tsx"
   },
   {
     "key": "consent.analytics_description",
     "sourceText": "Help us understand how the site is used so we can improve it. The data is anonymized.",
-    "filePath": "src/components/shared/consent-banner.tsx"
+    "filePath": "src/components/shared/privacy-settings-modal.tsx"
   },
   {
     "key": "consent.cookie_policy",
@@ -435,18 +435,48 @@
     "filePath": "src/components/shared/consent-banner.tsx"
   },
   {
-    "key": "consent.description",
-    "sourceText": "We use cookies to improve your experience, understand how the site is used, and personalize content. You control your preferences.",
+    "key": "consent.decline_all",
+    "sourceText": "Decline all",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
+    "key": "consent.detailed_info",
+    "sourceText": "Click 'Accept all' to give us your consent to use cookies for all these purposes. You can also use the toggles below to consent to specific purposes.",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
+    "key": "consent.dialog_title",
+    "sourceText": "We use cookies",
     "filePath": "src/components/shared/consent-banner.tsx"
   },
   {
     "key": "consent.essential_cookies",
     "sourceText": "Essential cookies",
-    "filePath": "src/components/shared/consent-banner.tsx"
+    "filePath": "src/components/shared/privacy-settings-modal.tsx"
   },
   {
     "key": "consent.essential_description",
     "sourceText": "Required for sign-in, security, and basic site functions. These are always enabled.",
+    "filePath": "src/components/shared/privacy-settings-modal.tsx"
+  },
+  {
+    "key": "consent.functional",
+    "sourceText": "Functional",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
+    "key": "consent.functional_benefit",
+    "sourceText": "to give you a better experience",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
+    "key": "consent.functional_desc",
+    "sourceText": "of our website (functional)",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
+    "key": "consent.functional_toggle_desc",
+    "sourceText": "Enhance your experience with personalized features.",
     "filePath": "src/components/shared/consent-banner.tsx"
   },
   {
@@ -455,18 +485,43 @@
     "filePath": "src/components/shared/consent-banner.tsx"
   },
   {
+    "key": "consent.intro",
+    "sourceText": "We use cookies to collect information about you. We use this information:",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
     "key": "consent.last_updated",
     "sourceText": "Last updated:",
+    "filePath": "src/components/shared/privacy-settings-modal.tsx"
+  },
+  {
+    "key": "consent.marketing",
+    "sourceText": "Marketing",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
+    "key": "consent.marketing_benefit",
+    "sourceText": "to serve you relevant",
     "filePath": "src/components/shared/consent-banner.tsx"
   },
   {
     "key": "consent.marketing_cookies",
     "sourceText": "Marketing cookies",
+    "filePath": "src/components/shared/privacy-settings-modal.tsx"
+  },
+  {
+    "key": "consent.marketing_desc",
+    "sourceText": "promotions (marketing)",
     "filePath": "src/components/shared/consent-banner.tsx"
   },
   {
     "key": "consent.marketing_description",
     "sourceText": "Personalize advertising and measure campaign performance. You can opt out at any time.",
+    "filePath": "src/components/shared/privacy-settings-modal.tsx"
+  },
+  {
+    "key": "consent.marketing_toggle_desc",
+    "sourceText": "Personalize ads and measure campaign performance.",
     "filePath": "src/components/shared/consent-banner.tsx"
   },
   {
@@ -477,11 +532,16 @@
   {
     "key": "consent.reject_all",
     "sourceText": "Reject all",
-    "filePath": "src/components/shared/consent-banner.tsx"
+    "filePath": "src/components/shared/privacy-settings-modal.tsx"
   },
   {
     "key": "consent.save_preferences",
     "sourceText": "Save preferences",
+    "filePath": "src/components/shared/privacy-settings-modal.tsx"
+  },
+  {
+    "key": "consent.save_settings",
+    "sourceText": "Save settings",
     "filePath": "src/components/shared/consent-banner.tsx"
   },
   {
@@ -490,13 +550,43 @@
     "filePath": "src/components/shared/consent-banner.tsx"
   },
   {
-    "key": "consent.terms_of_service",
-    "sourceText": "Terms of Service",
+    "key": "consent.statistical",
+    "sourceText": "Statistical",
     "filePath": "src/components/shared/consent-banner.tsx"
   },
   {
-    "key": "consent.title",
-    "sourceText": "We respect your privacy",
+    "key": "consent.statistical_toggle_desc",
+    "sourceText": "Help us understand usage to improve the site.",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
+    "key": "consent.statistics",
+    "sourceText": "to count the pages you visit",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
+    "key": "consent.statistics_desc",
+    "sourceText": "(statistics)",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
+    "key": "consent.strictly_necessary",
+    "sourceText": "Strictly necessary",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
+    "key": "consent.strictly_necessary_desc",
+    "sourceText": "Always enabled. Required for sign-in and security.",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
+    "key": "consent.terms_of_service",
+    "sourceText": "Terms of Service",
+    "filePath": "src/components/shared/privacy-settings-modal.tsx"
+  },
+  {
+    "key": "consent.withdraw_info",
+    "sourceText": "Withdraw or change your consent at any time by visiting your Privacy Settings. Read more about how we use cookies and other technologies to collect personal data:",
     "filePath": "src/components/shared/consent-banner.tsx"
   },
   {
@@ -953,6 +1043,31 @@
     "key": "home.show_all_homes",
     "sourceText": "Show all homes",
     "filePath": "src/app/(public)/page.tsx"
+  },
+  {
+    "key": "languages.automatic_badge",
+    "sourceText": "Automatic",
+    "filePath": "src/components/shared/google-translate-widget.tsx"
+  },
+  {
+    "key": "languages.automatic_heading",
+    "sourceText": "Automatic Google translation",
+    "filePath": "src/components/shared/google-translate-widget.tsx"
+  },
+  {
+    "key": "languages.no_results",
+    "sourceText": "No languages found",
+    "filePath": "src/components/shared/google-translate-widget.tsx"
+  },
+  {
+    "key": "languages.reviewed_heading",
+    "sourceText": "AI-translated system text",
+    "filePath": "src/components/shared/google-translate-widget.tsx"
+  },
+  {
+    "key": "languages.search_placeholder",
+    "sourceText": "Search languages",
+    "filePath": "src/components/shared/google-translate-widget.tsx"
   },
   {
     "key": "listing.about",

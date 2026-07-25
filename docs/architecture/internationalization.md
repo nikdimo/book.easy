@@ -17,6 +17,13 @@ Changing the cookie name would require explicit synchronization with the Google 
 
 Google Translate remains the fallback for dynamic host-authored content such as listing titles and descriptions. Fixed application copy must use the translation helpers below; it must not rely on Google Translate.
 
+The public language selector has two searchable groups:
+
+- **AI-translated system text** contains English plus every enabled language whose fixed UI catalog has been reviewed and exported.
+- **Automatic Google translation** is populated from the languages exposed by Google's translation widget at runtime. These choices translate the rendered page, including host-authored listing content, but they do not become reviewed application catalogs.
+
+Reviewed languages also keep Google's translation cookie active because Google is responsible for user-authored content. Resolved fixed UI copy is marked `notranslate`, so Google does not translate that reviewed copy a second time.
+
 Long-form Terms, Privacy, and Cookie Policy documents are treated as page
 content rather than fixed interface copy. Their body text remains in source
 HTML for Google's page translation layer and is intentionally excluded from
@@ -55,6 +62,7 @@ Translation keys are stable identifiers. Do not reuse a key for unrelated copy. 
 - `npm run i18n:check` verifies that the committed catalog is current and guest-facing copy is marked.
 - `npm run i18n:sync` scans the catalog into PostgreSQL and translates missing or stale entries for enabled AI languages.
 - `npm run i18n:status` prints completeness, stale, missing, and manually reviewed counts.
+- `npm run i18n:generate-reviewed` creates or resumes the complete local reviewed catalog for the supported language set using Gemini. It requires `GOOGLE_API_KEY`, validates exact keys and placeholders, and writes only missing or stale batches.
 - `npm run i18n:review -- --apply` runs a native-language editorial pass over current AI translations. Use `--locale=mk` and `--batch=3` to resume a specific failed batch without spending credit on completed work again.
 - `npm run i18n:audit` checks active AI translations for empty values, placeholder damage, and unexpected Latin-script prose in Cyrillic locales.
 - `npm run i18n:normalize-serbian` converts non-manual Serbian AI output to the site's chosen Cyrillic script while preserving placeholders and protected product tokens.
@@ -63,7 +71,7 @@ Translation keys are stable identifiers. Do not reuse a key for unrelated copy. 
 
 Use `npm run i18n:import-reviewed -- --dry-run` to validate the snapshot and report the target languages/manual overrides without writing to the database.
 
-Removed keys are marked inactive rather than deleted, preserving reviewed translations. Sync requests are chunked, strictly validated for keys and placeholders, retried by the Anthropic client, and run with bounded concurrency. `UI_TRANSLATION_SYNC_CONCURRENCY` accepts `1` through `4` and defaults to `3`.
+Removed keys are marked inactive rather than deleted, preserving reviewed translations. The local reviewed generator and the legacy synchronization workflow both validate keys and placeholders before committing a batch. The synchronization workflow uses bounded concurrency; `UI_TRANSLATION_SYNC_CONCURRENCY` accepts `1` through `4` and defaults to `3`.
 
 Batches are independent. A batch that fails validation is recorded with its locale and batch number while the batches that already committed stay committed, so one bad model response cannot discard a run. `syncTranslations()` reports `translated`, `skipped`, and `failed` per locale; the admin action and the CLI both surface a partial failure as a failure (the CLI exits non-zero) rather than a clean success. Re-running the sync is idempotent and retries only what is still missing or stale.
 
@@ -71,7 +79,7 @@ Synchronization holds a cross-process lock so an administrator-triggered sync ca
 
 High-visibility wording that must remain consistent across regenerations lives in `src/lib/i18n/curated-overrides.ts`. These reviewed defaults are applied during catalog scans, but an administrator's manual edit always takes precedence.
 
-The deployment script applies Prisma migrations, builds the exact catalog, imports the reviewed snapshot, synchronizes only genuinely new or changed copy, and only then restarts the application. Reviewed translations therefore deploy without an Anthropic request. Set `ANTHROPIC_API_KEY` and pin `ANTHROPIC_TRANSLATION_MODEL` in production only for future catalog additions that are not yet in the reviewed snapshot.
+The deployment script applies Prisma migrations, builds the exact catalog, imports the reviewed snapshot, synchronizes only genuinely new or changed copy, and only then restarts the application. A complete reviewed snapshot therefore deploys without an Anthropic request. The preferred workflow is to run extraction and `i18n:generate-reviewed` locally, review/export the result, and deploy that snapshot with Control Panel option 6. Production translation credentials are only a fallback for catalog additions that were not completed locally.
 
 ## Editorial review
 

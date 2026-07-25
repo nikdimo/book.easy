@@ -1,14 +1,23 @@
 "use client";
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  CommandSeparator,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Tx, useI18n } from "@/lib/i18n/client";
 import { recordLanguageSelection } from "@/lib/actions/language.actions";
 
 declare global {
@@ -39,6 +48,12 @@ interface LanguageOption {
   code: string;
   name: string;
   isDefault: boolean;
+  useAiTranslation: boolean;
+}
+
+interface AutomaticLanguage {
+  code: string;
+  name: string;
 }
 
 function readCurrentLanguage(fallback: string): string {
@@ -48,6 +63,15 @@ function readCurrentLanguage(fallback: string): string {
 
 function subscribeToLanguageCookie() {
   return () => {};
+}
+
+function googleLanguageOptions(): AutomaticLanguage[] {
+  const select = document.querySelector<HTMLSelectElement>(".goog-te-combo");
+  if (!select) return [];
+  return [...select.options]
+    .filter((option) => option.value)
+    .map((option) => ({ code: option.value, name: option.text.trim() }))
+    .filter((option) => option.name);
 }
 
 async function setLanguage(code: string, sourceLanguage: string) {
@@ -63,7 +87,7 @@ async function setLanguage(code: string, sourceLanguage: string) {
     try {
       await recordLanguageSelection(code);
     } catch {
-      // Selection tracking is best-effort — never block switching the language on it.
+      // Selection tracking is best-effort; never block switching the language.
     }
   }
   window.location.reload();
@@ -76,7 +100,10 @@ export function GoogleTranslateWidget({
   languages: LanguageOption[];
   currentLocale?: string;
 }) {
+  const i18n = useI18n();
   const sourceLanguage = FALLBACK_SOURCE_LANGUAGE;
+  const [open, setOpen] = useState(false);
+  const [automaticLanguages, setAutomaticLanguages] = useState<AutomaticLanguage[]>([]);
   const current = useSyncExternalStore(
     subscribeToLanguageCookie,
     () => readCurrentLanguage(sourceLanguage),
@@ -84,43 +111,68 @@ export function GoogleTranslateWidget({
   );
 
   useEffect(() => {
-    if (document.getElementById(SCRIPT_ID)) return;
-
-    window.googleTranslateElementInit = () => {
-      new window.google!.translate.TranslateElement(
-        {
-          pageLanguage: sourceLanguage,
-          includedLanguages: languages
-            .filter((l) => l.code !== sourceLanguage)
-            .map((l) => l.code)
-            .join(","),
-          autoDisplay: false,
-        },
-        "google_translate_element"
-      );
+    const collectLanguages = () => {
+      const options = googleLanguageOptions();
+      if (options.length) setAutomaticLanguages(options);
     };
 
-    const script = document.createElement("script");
-    script.id = SCRIPT_ID;
-    script.src =
-      "https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
-    script.async = true;
-    document.body.appendChild(script);
-    // languages intentionally excluded: the widget only needs to (re)init once per
-    // page load, off whatever list was available on mount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const container = document.getElementById("google_translate_element");
+    const observer = new MutationObserver(collectLanguages);
+    if (container) {
+      observer.observe(container, { childList: true, subtree: true });
+    }
+
+    const initialize = () => {
+      if (!window.google?.translate?.TranslateElement || !container) return;
+      if (!container.querySelector(".goog-te-combo")) {
+        new window.google.translate.TranslateElement(
+          {
+            pageLanguage: sourceLanguage,
+            autoDisplay: false,
+          },
+          "google_translate_element"
+        );
+      }
+      collectLanguages();
+    };
+
+    window.googleTranslateElementInit = initialize;
+    if (document.getElementById(SCRIPT_ID)) {
+      initialize();
+    } else {
+      const script = document.createElement("script");
+      script.id = SCRIPT_ID;
+      script.src =
+        "https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
+      script.async = true;
+      document.body.appendChild(script);
+    }
+
+    return () => observer.disconnect();
   }, [sourceLanguage]);
 
-  if (languages.length < 2) return null;
-
+  const reviewed = languages.filter(
+    (language) => language.isDefault || language.useAiTranslation
+  );
+  const reviewedCodes = new Set(reviewed.map((language) => language.code));
+  const automatic = automaticLanguages.filter(
+    (language) => !reviewedCodes.has(language.code)
+  );
   const currentLabel =
-    languages.find((l) => l.code === current)?.name ?? languages[0].name;
+    reviewed.find((language) => language.code === current)?.name ??
+    automatic.find((language) => language.code === current)?.name ??
+    languages.find((language) => language.code === sourceLanguage)?.name ??
+    "English";
+  const searchPlaceholder = i18n.resolve(
+    "languages.search_placeholder",
+    "Search languages"
+  ).text;
 
   return (
     <>
       <div id="google_translate_element" />
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
           <Button
             variant="ghost"
             size="sm"
@@ -129,23 +181,74 @@ export function GoogleTranslateWidget({
             <Globe className="h-4 w-4" />
             <span className="hidden sm:inline">{currentLabel}</span>
           </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="notranslate w-44">
-          {languages.map((lang) => (
-            <DropdownMenuItem
-              key={lang.code}
-              className="cursor-pointer"
-              onSelect={() => {
-                if (lang.code !== current) void setLanguage(lang.code, sourceLanguage);
-              }}
-            >
-              <span className={lang.code === current ? "font-semibold" : ""}>
-                {lang.name}
-              </span>
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        </PopoverTrigger>
+        <PopoverContent align="end" className="notranslate w-80 p-0">
+          <Command>
+            <CommandInput placeholder={searchPlaceholder} />
+            <CommandList>
+              <CommandEmpty>
+                <Tx k="languages.no_results" source="No languages found" />
+              </CommandEmpty>
+              <CommandGroup
+                heading={
+                  <Tx
+                    k="languages.reviewed_heading"
+                    source="AI-translated system text"
+                  />
+                }
+              >
+                {reviewed.map((language) => (
+                  <CommandItem
+                    key={language.code}
+                    value={`${language.name} ${language.code}`}
+                    data-checked={language.code === current}
+                    onSelect={() => {
+                      setOpen(false);
+                      if (language.code !== current) {
+                        void setLanguage(language.code, sourceLanguage);
+                      }
+                    }}
+                  >
+                    <span>{language.name}</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+              {automatic.length > 0 && (
+                <>
+                  <CommandSeparator />
+                  <CommandGroup
+                    heading={
+                      <Tx
+                        k="languages.automatic_heading"
+                        source="Automatic Google translation"
+                      />
+                    }
+                  >
+                    {automatic.map((language) => (
+                      <CommandItem
+                        key={language.code}
+                        value={`${language.name} ${language.code}`}
+                        data-checked={language.code === current}
+                        onSelect={() => {
+                          setOpen(false);
+                          if (language.code !== current) {
+                            void setLanguage(language.code, sourceLanguage);
+                          }
+                        }}
+                      >
+                        <span className="flex-1">{language.name}</span>
+                        <span className="text-[0.68rem] text-muted-foreground">
+                          <Tx k="languages.automatic_badge" source="Automatic" />
+                        </span>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </>
+              )}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
     </>
   );
 }

@@ -82,7 +82,12 @@ export function Header({
   listYourProperty?: Resolved;
   listYourPropertyTooltip?: Resolved;
   navLabels?: HeaderNavLabels;
-  languages?: { code: string; name: string; isDefault: boolean }[];
+  languages?: {
+    code: string;
+    name: string;
+    isDefault: boolean;
+    useAiTranslation: boolean;
+  }[];
   currentLocale?: string;
 }) {
   const router = useRouter();

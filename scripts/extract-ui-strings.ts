@@ -22,6 +22,7 @@ const UI_FILES = new Set([
   "src/components/shared/header.tsx",
   "src/components/shared/footer.tsx",
   "src/components/shared/consent-banner.tsx",
+  "src/components/shared/google-translate-widget.tsx",
   "src/components/shared/privacy-settings-modal.tsx",
 ]);
 // Long-form documents are page content, not fixed interface copy. Keep their

@@ -336,20 +336,6 @@ export const CURATED_TRANSLATION_OVERRIDES: Record<string, Record<string, string
     tr: "Son birkaç haftanın en çok görüntülenen ve rezerve edilenleri",
     bg: "Най-разглежданите и резервирани през последните няколко седмици",
   },
-  "consent.title": {
-    mk: "Ја почитуваме вашата приватност",
-    sq: "Ne e respektojmë privatësinë tuaj",
-    sr: "Поштујемо вашу приватност",
-    tr: "Gizliliğinize saygı duyuyoruz",
-    bg: "Уважаваме поверителността ви",
-  },
-  "consent.description": {
-    mk: "Користиме колачиња за да го подобриме вашето искуство, да разбереме како се користи страницата и да ја приспособиме содржината. Вие управувате со вашите поставки.",
-    sq: "Përdorim cookie për të përmirësuar përvojën tuaj, për të kuptuar si përdoret faqja dhe për të personalizuar përmbajtjen. Ju i kontrolloni preferencat tuaja.",
-    sr: "Користимо колачиће да побољшамо ваше искуство, разумемо како се сајт користи и прилагодимо садржај. Ви управљате својим подешавањима.",
-    tr: "Deneyiminizi iyileştirmek, sitenin nasıl kullanıldığını anlamak ve içeriği kişiselleştirmek için çerezler kullanıyoruz. Tercihlerinizin kontrolü sizdedir.",
-    bg: "Използваме бисквитки, за да подобрим изживяването ви, да разберем как се използва сайтът и да персонализираме съдържанието. Вие управлявате предпочитанията си.",
-  },
   "consent.last_updated": {
     mk: "Последно ажурирано:",
     sq: "Përditësuar së fundi:",

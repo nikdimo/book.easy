@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { BrandLogo } from "@/components/shared/brand-logo";
 import { emailSignInSchema } from "@/lib/validations/auth.schema";
 import { firstZodMessage } from "@/lib/utils/zod-error";
+import { BRAND_TAGLINE } from "@/lib/branding";
 
 const RESEND_COOLDOWN_SECONDS = 30;
 
@@ -230,7 +231,7 @@ export function LoginForm() {
   return (
     <AuthForm
       heading="Log in or sign up"
-      description="Book unique stays across North Macedonia"
+      description={BRAND_TAGLINE}
     />
   );
 }
