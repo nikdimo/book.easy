@@ -1,0 +1,1 @@
+ALTER TABLE "Property" ALTER COLUMN "country" DROP DEFAULT;

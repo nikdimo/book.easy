@@ -66,7 +66,11 @@ function chunks(entries: TranslationEntry[]): TranslationEntry[][] {
   let characters = 0;
   for (const entry of entries) {
     const size = entry.key.length + entry.sourceText.length;
-    if (current.length && (current.length >= MAX_BATCH_STRINGS || characters + size > MAX_BATCH_CHARACTERS)) {
+    if (
+      current.length &&
+      (current.length >= MAX_BATCH_STRINGS ||
+        characters + size > MAX_BATCH_CHARACTERS)
+    ) {
       result.push(current);
       current = [];
       characters = 0;
@@ -79,9 +83,19 @@ function chunks(entries: TranslationEntry[]): TranslationEntry[][] {
 }
 
 function syncConcurrency(): number {
-  const configured = Number.parseInt(process.env.UI_TRANSLATION_SYNC_CONCURRENCY ?? "", 10);
+  const configured = Number.parseInt(
+    process.env.UI_TRANSLATION_SYNC_CONCURRENCY ?? "",
+    10,
+  );
   if (!Number.isFinite(configured)) return DEFAULT_SYNC_CONCURRENCY;
   return Math.min(Math.max(configured, 1), 4);
+}
+
+function isPermanentTranslationApiFailure(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /credit balance|billing|quota|ANTHROPIC_API_KEY is not configured/i.test(
+    message,
+  );
 }
 
 /** Runs `task` over `items` with bounded concurrency, isolating failures: a rejected
@@ -90,7 +104,7 @@ function syncConcurrency(): number {
 async function runWithConcurrency<T>(
   items: T[],
   concurrency: number,
-  task: (item: T, index: number) => Promise<void>
+  task: (item: T, index: number) => Promise<void>,
 ): Promise<{ item: T; error: unknown }[]> {
   let nextIndex = 0;
   const failures: { item: T; error: unknown }[] = [];
@@ -104,15 +118,21 @@ async function runWithConcurrency<T>(
       }
     }
   }
-  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()));
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, () => worker()),
+  );
   return failures;
 }
 
 /** Syncs the build-generated, AST-validated catalog into the database. Missing keys
  * are marked inactive instead of being deleted, so an extractor/deployment mistake
  * cannot destroy reviewed translations. */
-export async function scanUiStrings(): Promise<{ found: number; pruned: number }> {
-  if (UI_CATALOG.length === 0) throw new Error("The generated UI translation catalog is empty.");
+export async function scanUiStrings(): Promise<{
+  found: number;
+  pruned: number;
+}> {
+  if (UI_CATALOG.length === 0)
+    throw new Error("The generated UI translation catalog is empty.");
   const now = new Date();
   const foundKeys = UI_CATALOG.map((entry) => entry.key);
   await db.$transaction([
@@ -121,7 +141,7 @@ export async function scanUiStrings(): Promise<{ found: number; pruned: number }
         where: { key },
         create: { key, sourceText, filePath, isActive: true, lastSeenAt: now },
         update: { sourceText, filePath, isActive: true, lastSeenAt: now },
-      })
+      }),
     ),
   ]);
   const deactivated = await db.uiString.updateMany({
@@ -134,31 +154,57 @@ export async function scanUiStrings(): Promise<{ found: number; pruned: number }
 
 async function applyCuratedTranslationOverrides(): Promise<void> {
   const keys = Object.keys(CURATED_TRANSLATION_OVERRIDES);
-  const catalogByKey = new Map(UI_CATALOG.map((entry) => [entry.key, entry.sourceText]));
-  const locales = [...new Set(Object.values(CURATED_TRANSLATION_OVERRIDES).flatMap(Object.keys))];
+  const catalogByKey = new Map(
+    UI_CATALOG.map((entry) => [entry.key, entry.sourceText]),
+  );
+  const locales = [
+    ...new Set(
+      Object.values(CURATED_TRANSLATION_OVERRIDES).flatMap(Object.keys),
+    ),
+  ];
   const [languages, manualRows] = await Promise.all([
-    db.language.findMany({ where: { code: { in: locales } }, select: { code: true } }),
+    db.language.findMany({
+      where: { code: { in: locales } },
+      select: { code: true },
+    }),
     db.uiTranslation.findMany({
       where: { key: { in: keys }, isManuallyEdited: true },
       select: { locale: true, key: true },
     }),
   ]);
   const availableLocales = new Set(languages.map((language) => language.code));
-  const manuallyEdited = new Set(manualRows.map((row) => `${row.locale}\u0000${row.key}`));
-  const operations = Object.entries(CURATED_TRANSLATION_OVERRIDES).flatMap(([key, translations]) => {
-    const sourceText = catalogByKey.get(key);
-    if (!sourceText) throw new Error(`Curated translation key "${key}" is not in the generated catalog.`);
-    return Object.entries(translations).flatMap(([locale, value]) => {
-      if (!availableLocales.has(locale) || manuallyEdited.has(`${locale}\u0000${key}`)) return [];
-      return [
-        db.uiTranslation.upsert({
-          where: { locale_key: { locale, key } },
-          create: { locale, key, value, sourceTextSnapshot: sourceText, isManuallyEdited: false },
-          update: { value, sourceTextSnapshot: sourceText },
-        }),
-      ];
-    });
-  });
+  const manuallyEdited = new Set(
+    manualRows.map((row) => `${row.locale}\u0000${row.key}`),
+  );
+  const operations = Object.entries(CURATED_TRANSLATION_OVERRIDES).flatMap(
+    ([key, translations]) => {
+      const sourceText = catalogByKey.get(key);
+      if (!sourceText)
+        throw new Error(
+          `Curated translation key "${key}" is not in the generated catalog.`,
+        );
+      return Object.entries(translations).flatMap(([locale, value]) => {
+        if (
+          !availableLocales.has(locale) ||
+          manuallyEdited.has(`${locale}\u0000${key}`)
+        )
+          return [];
+        return [
+          db.uiTranslation.upsert({
+            where: { locale_key: { locale, key } },
+            create: {
+              locale,
+              key,
+              value,
+              sourceTextSnapshot: sourceText,
+              isManuallyEdited: false,
+            },
+            update: { value, sourceTextSnapshot: sourceText },
+          }),
+        ];
+      });
+    },
+  );
   if (operations.length) await db.$transaction(operations);
 }
 
@@ -196,7 +242,9 @@ export async function syncTranslations(): Promise<SyncResult[]> {
 
     const plans = await Promise.all(
       languages.map(async (language) => {
-        const existing = await db.uiTranslation.findMany({ where: { locale: language.code } });
+        const existing = await db.uiTranslation.findMany({
+          where: { locale: language.code },
+        });
         const existingByKey = new Map(existing.map((row) => [row.key, row]));
         const needsTranslation = uiStrings.filter((entry) => {
           const row = existingByKey.get(entry.key);
@@ -207,7 +255,7 @@ export async function syncTranslations(): Promise<SyncResult[]> {
           );
         });
         return { language, needsTranslation };
-      })
+      }),
     );
 
     const tasks = plans.flatMap(({ language, needsTranslation }) => {
@@ -220,41 +268,81 @@ export async function syncTranslations(): Promise<SyncResult[]> {
       }));
     });
 
-    const failures = await runWithConcurrency(
-      tasks,
-      syncConcurrency(),
-      async ({ language, batch, batchIndex, batchCount }) => {
-        const translated = await translateBatch(
-          Object.fromEntries(batch.map((entry) => [entry.key, entry.sourceText])),
-          language.name,
-          language.code
+    const translateTask = async ({
+      language,
+      batch,
+      batchIndex,
+      batchCount,
+    }: (typeof tasks)[number]) => {
+      const translated = await translateBatch(
+        Object.fromEntries(batch.map((entry) => [entry.key, entry.sourceText])),
+        language.name,
+        language.code,
+      );
+      await db.$transaction(
+        batch.map((entry) =>
+          db.uiTranslation.upsert({
+            where: { locale_key: { locale: language.code, key: entry.key } },
+            create: {
+              locale: language.code,
+              key: entry.key,
+              value: translated[entry.key],
+              sourceTextSnapshot: entry.sourceText,
+              isManuallyEdited: false,
+            },
+            update: {
+              value: translated[entry.key],
+              sourceTextSnapshot: entry.sourceText,
+              isManuallyEdited: false,
+            },
+          }),
+        ),
+      );
+      console.info(
+        `[i18n] ${language.code}: completed batch ${batchIndex + 1}/${batchCount} (${batch.length} strings)`,
+      );
+    };
+
+    // Probe with one batch before opening the bounded worker pool. Billing, quota,
+    // and missing-key failures affect every language, so launching all locale calls
+    // would only repeat the same paid-provider error many times.
+    const failures: { item: (typeof tasks)[number]; error: unknown }[] = [];
+    if (tasks.length) {
+      const [probe, ...remaining] = tasks;
+      const probeFailures = await runWithConcurrency([probe], 1, translateTask);
+      failures.push(...probeFailures);
+
+      const permanentFailure = probeFailures.find(({ error }) =>
+        isPermanentTranslationApiFailure(error),
+      );
+      if (permanentFailure) {
+        const message =
+          permanentFailure.error instanceof Error
+            ? permanentFailure.error.message
+            : String(permanentFailure.error);
+        failures.push(
+          ...remaining.map((item) => ({
+            item,
+            error: new Error(
+              `Skipped after provider configuration failure: ${message}`,
+            ),
+          })),
         );
-        await db.$transaction(
-          batch.map((entry) =>
-            db.uiTranslation.upsert({
-              where: { locale_key: { locale: language.code, key: entry.key } },
-              create: {
-                locale: language.code,
-                key: entry.key,
-                value: translated[entry.key],
-                sourceTextSnapshot: entry.sourceText,
-                isManuallyEdited: false,
-              },
-              update: {
-                value: translated[entry.key],
-                sourceTextSnapshot: entry.sourceText,
-                isManuallyEdited: false,
-              },
-            })
-          )
-        );
-        console.info(
-          `[i18n] ${language.code}: completed batch ${batchIndex + 1}/${batchCount} (${batch.length} strings)`
+      } else {
+        failures.push(
+          ...(await runWithConcurrency(
+            remaining,
+            syncConcurrency(),
+            translateTask,
+          )),
         );
       }
-    );
+    }
 
-    const failedByLocale = new Map<string, { count: number; errors: string[] }>();
+    const failedByLocale = new Map<
+      string,
+      { count: number; errors: string[] }
+    >();
     for (const { item, error } of failures) {
       const locale = item.language.code;
       const entry = failedByLocale.get(locale) ?? { count: 0, errors: [] };
@@ -262,12 +350,12 @@ export async function syncTranslations(): Promise<SyncResult[]> {
       entry.errors.push(
         `batch ${item.batchIndex + 1}/${item.batchCount}: ${
           error instanceof Error ? error.message : String(error)
-        }`
+        }`,
       );
       failedByLocale.set(locale, entry);
       console.error(
         `[i18n] ${locale}: batch ${item.batchIndex + 1}/${item.batchCount} failed —`,
-        error
+        error,
       );
     }
 
@@ -304,13 +392,18 @@ export interface TranslationStatus {
  *  can see selection counts and decide whether to turn it on). */
 export async function getTranslationStatus(): Promise<TranslationStatus[]> {
   const [languages, uiStrings, translations] = await Promise.all([
-    db.language.findMany({ where: { isDefault: false }, orderBy: { sortOrder: "asc" } }),
+    db.language.findMany({
+      where: { isDefault: false },
+      orderBy: { sortOrder: "asc" },
+    }),
     db.uiString.findMany({ where: { isActive: true } }),
     db.uiTranslation.findMany(),
   ]);
 
   const total = uiStrings.length;
-  const sourceByKey = new Map(uiStrings.map((entry) => [entry.key, entry.sourceText]));
+  const sourceByKey = new Map(
+    uiStrings.map((entry) => [entry.key, entry.sourceText]),
+  );
 
   return languages.map((language) => {
     let translated = 0;
@@ -323,8 +416,7 @@ export async function getTranslationStatus(): Promise<TranslationStatus[]> {
       if (row.sourceTextSnapshot === currentSource) {
         translated++;
         if (row.isManuallyEdited) manuallyEdited++;
-      }
-      else stale++;
+      } else stale++;
     }
 
     return {
@@ -354,7 +446,9 @@ export async function getTranslationEntriesForLocale(locale: string) {
       sourceText: entry.sourceText,
       filePath: entry.filePath,
       value: translation?.value ?? "",
-      stale: Boolean(translation && translation.sourceTextSnapshot !== entry.sourceText),
+      stale: Boolean(
+        translation && translation.sourceTextSnapshot !== entry.sourceText,
+      ),
       isManuallyEdited: translation?.isManuallyEdited ?? false,
     };
   });

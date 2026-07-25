@@ -83,7 +83,11 @@ export default function PrivacyPage() {
               </li>
               <li>
                 <strong>Location Data:</strong> City/country inferred from IP address for
-                localization purposes (not precise geolocation)
+                localization and map centering (not precise geolocation). If you
+                explicitly choose &quot;Use my current location&quot; while creating a
+                listing, your browser may also provide precise coordinates after asking
+                for permission. Listing addresses and selected map coordinates are
+                processed by our mapping provider to search for and verify locations.
               </li>
               <li>
                 <strong>Cookies:</strong> Session cookies for authentication and analytics cookies

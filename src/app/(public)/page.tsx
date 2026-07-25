@@ -78,7 +78,7 @@ export default async function HomePage() {
         </div>
       )}
 
-      <h1 className="sr-only"><T t={t} k="home.page_title" source="Find places to stay in North Macedonia" /></h1>
+      <h1 className="sr-only"><T t={t} k="home.page_title" source="Find places to stay around the world" /></h1>
 
       {isLowInventory && (
         <section className="max-w-[1760px] mx-auto px-4 md:px-8 pt-6 pb-8">

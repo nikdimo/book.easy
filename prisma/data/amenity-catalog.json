@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 1,
+  "amenities": [
+    {
+      "name": "Hair dryer",
+      "category": "Bathroom",
+      "icon": "wind",
+      "isActive": true
+    },
+    {
+      "name": "TV",
+      "category": "Entertainment",
+      "icon": "tv",
+      "isActive": true
+    },
+    {
+      "name": "Air conditioning",
+      "category": "Essentials",
+      "icon": "wind",
+      "isActive": true
+    },
+    {
+      "name": "Dryer",
+      "category": "Essentials",
+      "icon": "wind",
+      "isActive": true
+    },
+    {
+      "name": "Heating",
+      "category": "Essentials",
+      "icon": "thermometer",
+      "isActive": true
+    },
+    {
+      "name": "Iron",
+      "category": "Essentials",
+      "icon": "shirt",
+      "isActive": true
+    },
+    {
+      "name": "Washer",
+      "category": "Essentials",
+      "icon": "shirt",
+      "isActive": true
+    },
+    {
+      "name": "Wi-Fi",
+      "category": "Essentials",
+      "icon": "wifi",
+      "isActive": true
+    },
+    {
+      "name": "City view",
+      "category": "Features",
+      "icon": "building",
+      "isActive": true
+    },
+    {
+      "name": "Free parking",
+      "category": "Features",
+      "icon": "car",
+      "isActive": true
+    },
+    {
+      "name": "Hot tub",
+      "category": "Features",
+      "icon": "bath",
+      "isActive": true
+    },
+    {
+      "name": "Lake view",
+      "category": "Features",
+      "icon": "mountain-snow",
+      "isActive": true
+    },
+    {
+      "name": "Pool",
+      "category": "Features",
+      "icon": "waves",
+      "isActive": true
+    },
+    {
+      "name": "Workspace",
+      "category": "Features",
+      "icon": "laptop",
+      "isActive": true
+    },
+    {
+      "name": "Coffee maker",
+      "category": "Kitchen",
+      "icon": "coffee",
+      "isActive": true
+    },
+    {
+      "name": "Kitchen",
+      "category": "Kitchen",
+      "icon": "cooking-pot",
+      "isActive": true
+    },
+    {
+      "name": "Microwave",
+      "category": "Kitchen",
+      "icon": "microwave",
+      "isActive": true
+    },
+    {
+      "name": "Refrigerator",
+      "category": "Kitchen",
+      "icon": "refrigerator",
+      "isActive": true
+    },
+    {
+      "name": "Balcony",
+      "category": "Outdoor",
+      "icon": "sun",
+      "isActive": true
+    },
+    {
+      "name": "BBQ grill",
+      "category": "Outdoor",
+      "icon": "flame",
+      "isActive": true
+    },
+    {
+      "name": "Garden",
+      "category": "Outdoor",
+      "icon": "trees",
+      "isActive": true
+    },
+    {
+      "name": "Fire extinguisher",
+      "category": "Safety",
+      "icon": "fire-extinguisher",
+      "isActive": true
+    },
+    {
+      "name": "First aid kit",
+      "category": "Safety",
+      "icon": "heart-pulse",
+      "isActive": true
+    },
+    {
+      "name": "Smoke detector",
+      "category": "Safety",
+      "icon": "shield",
+      "isActive": true
+    }
+  ]
+}

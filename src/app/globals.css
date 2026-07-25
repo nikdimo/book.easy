@@ -9,7 +9,8 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-manrope), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-heading:
+    var(--font-manrope), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -152,6 +153,8 @@
 .goog-te-banner-frame,
 #goog-gt-tt,
 .goog-te-balloon-frame,
+.goog-te-spinner-pos,
+.goog-te-spinner-animation,
 .skiptranslate:not(#google_translate_element) {
   display: none !important;
 }
@@ -166,10 +169,30 @@ body {
   display: none !important;
 }
 
-/* The listing editor owns both desktop scroll panes. Suppress the host page's
-   otherwise-useful main scrollbar so pane scrollbars remain in their own columns. */
-@media (min-width: 1280px) {
-  .host-main:has(> .host-split-view) {
-    overflow: hidden;
+/* Listing creation/editing is a viewport-height studio whose adjacent panes own
+   their scroll positions. Other host pages retain the normal host-main scroll. */
+.host-main:has(.listing-studio),
+.host-main:has(.host-split-view) {
+  overflow: hidden;
+}
+
+.host-dashboard-shell:has(.listing-studio),
+.host-dashboard-shell:has(.host-split-view) {
+  height: 100%;
+  max-width: none;
+  padding: 0;
+}
+
+@media (min-width: 768px) {
+  .listing-workspace {
+    display: grid;
+    grid-template-columns:
+      minmax(400px, var(--listing-editor-width, 48%))
+      12px
+      minmax(340px, 1fr);
+  }
+
+  .listing-workspace > [data-pane] {
+    display: block !important;
   }
 }

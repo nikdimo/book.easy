@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import catalog from "../generated-ui-strings.json";
 import snapshot from "../reviewed-ai-translations.json";
+import { REVIEWED_LANGUAGES } from "../reviewed-languages";
 
 const PLACEHOLDER_RE = /\{[A-Za-z][A-Za-z0-9_]*\}/g;
 
@@ -8,23 +9,12 @@ describe("reviewed AI translation snapshot", () => {
   it("fully covers the current catalog for every exported language", () => {
     const sourceByKey = new Map(catalog.map((entry) => [entry.key, entry.sourceText]));
     expect(snapshot.schemaVersion).toBe(1);
-    expect(snapshot.languages.map((language) => language.code).sort()).toEqual([
-      "bg",
-      "de",
-      "el",
-      "es",
-      "fr",
-      "it",
-      "mk",
-      "nl",
-      "pl",
-      "ro",
-      "ru",
-      "sq",
-      "sr",
-      "tr",
-      "uk",
-    ]);
+    expect(snapshot.languages.map((language) => language.code)).toEqual(
+      REVIEWED_LANGUAGES.map((language) => language.code)
+    );
+    expect(snapshot.languages.map((language) => language.name)).toEqual(
+      REVIEWED_LANGUAGES.map((language) => language.nativeName)
+    );
     expect(Object.keys(snapshot.catalog).sort()).toEqual([...sourceByKey.keys()].sort());
 
     for (const [key, source] of Object.entries(snapshot.catalog)) {

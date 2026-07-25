@@ -26,6 +26,10 @@ import {
   googleTranslateCookieValue,
   normalizeLocaleCode,
 } from "@/lib/i18n/locale-preference";
+import {
+  languageSearchScore,
+  reviewedLanguageSearchText,
+} from "@/lib/i18n/reviewed-languages";
 
 declare global {
   interface Window {
@@ -39,7 +43,7 @@ declare global {
               includedLanguages?: string;
               autoDisplay?: boolean;
             },
-            elementId: string
+            elementId: string,
           ): unknown;
         };
       };
@@ -49,6 +53,7 @@ declare global {
 
 const GOOGLE_AUTO_SOURCE_LANGUAGE = "auto";
 const SCRIPT_ID = "google-translate-script";
+const ELEMENT_ID = "google_translate_element";
 
 interface LanguageOption {
   code: string;
@@ -65,14 +70,18 @@ interface AutomaticLanguage {
 
 function languageDisplayName(code: string, locale: string): string | null {
   try {
-    return new Intl.DisplayNames([locale], { type: "language" }).of(code) ?? null;
+    return (
+      new Intl.DisplayNames([locale], { type: "language" }).of(code) ?? null
+    );
   } catch {
     return null;
   }
 }
 
 function googleLanguageOptions(displayLocale: string): AutomaticLanguage[] {
-  const select = document.querySelector<HTMLSelectElement>(".goog-te-combo");
+  const select = document.querySelector<HTMLSelectElement>(
+    `#${ELEMENT_ID} .goog-te-combo`,
+  );
   if (!select) return [];
   return [...select.options]
     .filter((option) => option.value)
@@ -91,6 +100,17 @@ function googleLanguageOptions(displayLocale: string): AutomaticLanguage[] {
       };
     })
     .filter((option) => option.name);
+}
+
+function ensureGoogleTranslateContainer(): HTMLElement {
+  const existing = document.getElementById(ELEMENT_ID);
+  if (existing) return existing;
+
+  const container = document.createElement("div");
+  container.id = ELEMENT_ID;
+  container.setAttribute("aria-hidden", "true");
+  document.body.appendChild(container);
+  return container;
 }
 
 function cookieDomainsToClear(hostname: string): Array<string | undefined> {
@@ -143,17 +163,23 @@ async function setLanguage(code: string) {
 
 export function GoogleTranslateWidget({
   languages,
-  currentLocale = DEFAULT_LOCALE,
+  currentLocale,
 }: {
   languages: LanguageOption[];
   currentLocale?: string;
 }) {
   const i18n = useI18n();
   const [open, setOpen] = useState(false);
-  const [automaticLanguages, setAutomaticLanguages] = useState<AutomaticLanguage[]>([]);
-  // The server has already resolved the request cookie. Using document.cookie here
-  // can select a stale duplicate domain cookie and disagree with the rendered locale.
-  const current = currentLocale;
+  const [automaticLanguages, setAutomaticLanguages] = useState<
+    AutomaticLanguage[]
+  >([]);
+  // The root provider is scoped to the request cookies and is the fallback for every
+  // layout. This is important outside the public layout, where callers previously
+  // omitted currentLocale and silently reset a visitor's choice to English.
+  const current =
+    normalizeLocaleCode(currentLocale) ??
+    normalizeLocaleCode(i18n.locale) ??
+    DEFAULT_LOCALE;
 
   useEffect(() => {
     // Normalize legacy or duplicate Google cookies before its script reads them.
@@ -164,21 +190,22 @@ export function GoogleTranslateWidget({
       if (options.length) setAutomaticLanguages(options);
     };
 
-    const container = document.getElementById("google_translate_element");
+    // Host and admin render responsive selectors in two different headers. They
+    // must share one Google element: duplicate IDs make Google's initialization
+    // nondeterministic and can leave one selector with an incomplete language list.
+    const container = ensureGoogleTranslateContainer();
     const observer = new MutationObserver(collectLanguages);
-    if (container) {
-      observer.observe(container, { childList: true, subtree: true });
-    }
+    observer.observe(container, { childList: true, subtree: true });
 
     const initialize = () => {
-      if (!window.google?.translate?.TranslateElement || !container) return;
+      if (!window.google?.translate?.TranslateElement) return;
       if (!container.querySelector(".goog-te-combo")) {
         new window.google.translate.TranslateElement(
           {
             pageLanguage: GOOGLE_AUTO_SOURCE_LANGUAGE,
             autoDisplay: false,
           },
-          "google_translate_element"
+          ELEMENT_ID,
         );
       }
       collectLanguages();
@@ -200,11 +227,11 @@ export function GoogleTranslateWidget({
   }, [current]);
 
   const reviewed = languages.filter(
-    (language) => language.isDefault || language.useAiTranslation
+    (language) => language.isDefault || language.useAiTranslation,
   );
   const reviewedCodes = new Set(reviewed.map((language) => language.code));
   const automatic = automaticLanguages.filter(
-    (language) => !reviewedCodes.has(language.code)
+    (language) => !reviewedCodes.has(language.code),
   );
   const currentLabel =
     reviewed.find((language) => language.code === current)?.name ??
@@ -213,86 +240,86 @@ export function GoogleTranslateWidget({
     "English";
   const searchPlaceholder = i18n.resolve(
     "languages.search_placeholder",
-    "Search languages"
+    "Search languages",
   ).text;
 
   return (
-    <>
-      <div id="google_translate_element" />
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="notranslate rounded-full font-medium gap-1.5 px-3"
-          >
-            <Globe className="h-4 w-4" />
-            <span className="hidden sm:inline">{currentLabel}</span>
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent align="end" className="notranslate w-80 p-0">
-          <Command>
-            <CommandInput placeholder={searchPlaceholder} />
-            <CommandList>
-              <CommandEmpty>
-                <Tx k="languages.no_results" source="No languages found" />
-              </CommandEmpty>
-              <CommandGroup
-                heading={
-                  <Tx
-                    k="languages.reviewed_heading"
-                    source="AI-translated system text"
-                  />
-                }
-              >
-                {reviewed.map((language) => (
-                  <CommandItem
-                    key={language.code}
-                    value={`${language.name} ${language.code}`}
-                    data-checked={language.code === current}
-                    onSelect={() => {
-                      setOpen(false);
-                      void setLanguage(language.code);
-                    }}
-                  >
-                    <span>{language.name}</span>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-              {automatic.length > 0 && (
-                <>
-                  <CommandSeparator />
-                  <CommandGroup
-                    heading={
-                      <Tx
-                        k="languages.automatic_heading"
-                        source="Automatic Google translation"
-                      />
-                    }
-                  >
-                    {automatic.map((language) => (
-                      <CommandItem
-                        key={language.code}
-                        value={`${language.name} ${language.searchTerms} ${language.code}`}
-                        data-checked={language.code === current}
-                        onSelect={() => {
-                          setOpen(false);
-                          void setLanguage(language.code);
-                        }}
-                      >
-                        <span className="flex-1">{language.name}</span>
-                        <span className="text-[0.68rem] text-muted-foreground">
-                          <Tx k="languages.automatic_badge" source="Automatic" />
-                        </span>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </>
-              )}
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
-    </>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="notranslate rounded-full font-medium gap-1.5 px-3"
+        >
+          <Globe className="h-4 w-4" />
+          <span className="hidden sm:inline">{currentLabel}</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="notranslate w-80 p-0">
+        <Command filter={languageSearchScore}>
+          <CommandInput placeholder={searchPlaceholder} />
+          <CommandList>
+            <CommandEmpty>
+              <Tx k="languages.no_results" source="No languages found" />
+            </CommandEmpty>
+            <CommandGroup
+              heading={
+                <Tx
+                  k="languages.reviewed_heading"
+                  source="AI-translated system text"
+                />
+              }
+            >
+              {reviewed.map((language) => (
+                <CommandItem
+                  key={language.code}
+                  value={reviewedLanguageSearchText(
+                    language.code,
+                    language.name,
+                  )}
+                  data-checked={language.code === current}
+                  onSelect={() => {
+                    setOpen(false);
+                    void setLanguage(language.code);
+                  }}
+                >
+                  <span>{language.name}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            {automatic.length > 0 && (
+              <>
+                <CommandSeparator />
+                <CommandGroup
+                  heading={
+                    <Tx
+                      k="languages.automatic_heading"
+                      source="Automatic Google translation"
+                    />
+                  }
+                >
+                  {automatic.map((language) => (
+                    <CommandItem
+                      key={language.code}
+                      value={`${language.name} ${language.searchTerms} ${language.code}`}
+                      data-checked={language.code === current}
+                      onSelect={() => {
+                        setOpen(false);
+                        void setLanguage(language.code);
+                      }}
+                    >
+                      <span className="flex-1">{language.name}</span>
+                      <span className="text-[0.68rem] text-muted-foreground">
+                        <Tx k="languages.automatic_badge" source="Automatic" />
+                      </span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }

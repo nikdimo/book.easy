@@ -51,13 +51,6 @@ export default async function EditListingPage({ params }: EditListingPageProps) 
         { value: currentPropertyType, label: await getPropertyTypeLabel(currentPropertyType) },
       ];
 
-  const cityRows = await db.property.findMany({
-    select: { city: true },
-    distinct: ["city"],
-    orderBy: { city: "asc" },
-  });
-  const availableCities = cityRows.map((row) => row.city);
-
   const statusConfig = LISTING_STATUSES.find((s) => s.value === listing.status);
 
   return (
@@ -65,7 +58,6 @@ export default async function EditListingPage({ params }: EditListingPageProps) 
       <ListingForm
         amenities={amenities}
         propertyTypes={propertyTypes}
-        availableCities={availableCities}
         listing={listingForm}
         initialMediaItems={initialMediaItems}
         editStatusLabel={statusConfig?.label || listing.status}

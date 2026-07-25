@@ -27,7 +27,7 @@ const geistMono = Geist_Mono({
 });
 
 // No `revalidate` here on purpose. This layout calls `getT()`, which reads the
-// `googtrans` locale cookie via `cookies()` — a request-time API — so every route
+// synchronized locale cookies via `cookies()` — a request-time API — so every route
 // beneath it renders dynamically and a segment-level `revalidate` would have no
 // effect (it previously read as if it enabled app-wide ISR, which it did not).
 // Serving a cached page in the wrong language would be a visible bug, and the app is
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     template: `%s | ${SITE_TITLE_SUFFIX}`,
   },
   description:
-    `Discover and book stays on ${SITE_DOMAIN} — unique homes across North Macedonia and beyond.`,
+    `Discover and book unique stays around the world on ${SITE_DOMAIN}.`,
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
 };
 

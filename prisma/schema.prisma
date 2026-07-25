@@ -184,10 +184,14 @@ model Property {
   address          String
   city             String
   area             String?
-  country          String   @default("North Macedonia")
+  country          String
   postalCode       String?
   latitude         Float?
   longitude        Float?
+  locationSource   String?
+  geocodingProvider String?
+  geocodingPlaceId String?
+  geocodingConfidence Float?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

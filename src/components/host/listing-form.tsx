@@ -1,10 +1,10 @@
 "use client";
 
 import { useActionState, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Bath, Bed, BedDouble, CalendarDays, ChevronLeft, ChevronRight, Eye, MapPin, ShieldCheck, Users } from "lucide-react";
+import { Bath, Bed, BedDouble, CalendarDays, ChevronLeft, ChevronRight, Eye, GripVertical, ListChecks, MapPin, Pencil, ShieldCheck, Users } from "lucide-react";
 import {
   saveListingDraft,
   submitNewListing,
@@ -30,7 +30,10 @@ import { formatPrice } from "@/lib/utils/format";
 import { splitDescriptionPreview } from "@/lib/utils/description-preview";
 import { toast } from "sonner";
 import { ListingImagesField } from "@/components/host/listing-images-field";
-import { ListingLocationField } from "@/components/host/listing-location-field";
+import {
+  ListingLocationField,
+  type ListingLocationValue,
+} from "@/components/host/listing-location-field";
 import { SuggestMissingOption } from "@/components/host/suggest-missing-option";
 import type { HostListingFormData } from "@/lib/serializers/host-listing-form";
 import type { ListingMediaItem } from "@/lib/types/listing-media";
@@ -40,7 +43,6 @@ import type { ListingDraftData } from "@/lib/types/listing-draft";
 interface ListingFormProps {
   amenities: { id: string; name: string; category: string }[];
   propertyTypes: PropertyTypeOption[];
-  availableCities?: string[];
   initialMediaItems?: ListingMediaItem[];
   /** Serialized from the server (no Prisma Decimal). */
   listing?: HostListingFormData;
@@ -60,6 +62,15 @@ type ListingFormValues = {
   address: string;
   city: string;
   area: string;
+  postalCode: string;
+  country: string;
+  latitude: string;
+  longitude: string;
+  locationSource: string;
+  locationConfirmed: string;
+  geocodingProvider: string;
+  geocodingPlaceId: string;
+  geocodingConfidence: string;
   maxGuests: string;
   bedrooms: string;
   beds: string;
@@ -113,6 +124,33 @@ function listingInitialValues(
       address: listing.property.address,
       city: listing.property.city,
       area: listing.property.area ?? "",
+      postalCode: listing.property.postalCode ?? "",
+      country: listing.property.country,
+      latitude:
+        listing.property.latitude != null
+          ? String(listing.property.latitude)
+          : "",
+      longitude:
+        listing.property.longitude != null
+          ? String(listing.property.longitude)
+          : "",
+      locationSource:
+        listing.property.locationSource ??
+        (listing.property.latitude != null &&
+        listing.property.longitude != null
+          ? "LEGACY"
+          : ""),
+      locationConfirmed:
+        listing.property.latitude != null &&
+        listing.property.longitude != null
+          ? "true"
+          : "false",
+      geocodingProvider: listing.property.geocodingProvider ?? "",
+      geocodingPlaceId: listing.property.geocodingPlaceId ?? "",
+      geocodingConfidence:
+        listing.property.geocodingConfidence != null
+          ? String(listing.property.geocodingConfidence)
+          : "",
       maxGuests: String(listing.maxGuests),
       bedrooms: String(listing.bedrooms),
       beds: String(listing.beds),
@@ -130,6 +168,15 @@ function listingInitialValues(
     address: draft?.address ?? "",
     city: draft?.city ?? "",
     area: draft?.area ?? "",
+    postalCode: draft?.postalCode ?? "",
+    country: draft?.country ?? "",
+    latitude: draft?.latitude ?? "",
+    longitude: draft?.longitude ?? "",
+    locationSource: draft?.locationSource ?? "",
+    locationConfirmed: draft?.locationConfirmed ?? "false",
+    geocodingProvider: draft?.geocodingProvider ?? "",
+    geocodingPlaceId: draft?.geocodingPlaceId ?? "",
+    geocodingConfidence: draft?.geocodingConfidence ?? "",
     maxGuests: draft?.maxGuests || "2",
     bedrooms: draft?.bedrooms || "1",
     beds: draft?.beds || "1",
@@ -149,6 +196,7 @@ const FIELD_VALIDATORS: Partial<Record<keyof ListingFormValues, (value: string) 
   propertyType: (v) => (v ? null : "Property type is required"),
   address: (v) => (v.trim().length < 3 ? "Address is required" : null),
   city: (v) => (v.trim().length < 2 ? "City is required" : null),
+  country: (v) => (v.trim().length < 2 ? "Country is required" : null),
   baseNightlyRate: (v) =>
     !v || Number(v) < 1 ? "Nightly rate is required" : null,
 };
@@ -173,7 +221,6 @@ function FieldSection({
 export function ListingForm({
   amenities,
   propertyTypes,
-  availableCities = [],
   listing,
   initialMediaItems = [],
   draftId: initialDraftId,
@@ -186,7 +233,9 @@ export function ListingForm({
   const isEditing = !!listing;
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+  const workspaceRef = useRef<HTMLDivElement>(null);
   const editorScrollRef = useRef<HTMLDivElement>(null);
+  const paneDragRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const [activeEditSection, setActiveEditSection] = useState("basics");
   const [values, setValues] = useState<ListingFormValues>(() =>
     listingInitialValues(listing, initialDraft)
@@ -204,7 +253,9 @@ export function ListingForm({
   const saveRequestRef = useRef(0);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved");
   const [currentStep, setCurrentStep] = useState(0);
-  const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
+  const [mobilePane, setMobilePane] = useState<"edit" | "preview">("edit");
+  const [editorWidthPercent, setEditorWidthPercent] = useState(48);
+  const [stepsOpen, setStepsOpen] = useState(false);
   const [publishChecklistOpen, setPublishChecklistOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submittedListingId, setSubmittedListingId] = useState<string | null>(null);
@@ -250,6 +301,20 @@ export function ListingForm({
     return () => window.clearTimeout(timeout);
   }, [values, selectedAmenityIds, mediaItems, isEditing, autosaveDraft]);
 
+  useEffect(() => {
+    const storedWidth = Number(
+      window.localStorage.getItem(
+        isEditing ? "bookeasy:listing-edit-width" : "bookeasy:listing-create-width"
+      )
+    );
+    const timeout = window.setTimeout(() => {
+      if (Number.isFinite(storedWidth) && storedWidth >= 36 && storedWidth <= 64) {
+        setEditorWidthPercent(storedWidth);
+      }
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [isEditing]);
+
   const groupedAmenities = useMemo(
     () =>
       amenities.reduce(
@@ -270,7 +335,35 @@ export function ListingForm({
 
   function setField(field: keyof ListingFormValues, value: string) {
     if (!isEditing) setSaveStatus("saving");
-    setValues((current) => ({ ...current, [field]: value }));
+    setValues((current) => {
+      const next = { ...current, [field]: value };
+      if (
+        current.locationSource === "AUTOCOMPLETE" &&
+        ["address", "city", "country", "postalCode"].includes(field)
+      ) {
+        next.locationConfirmed = "false";
+      }
+      return next;
+    });
+  }
+
+  function updateLocation(patch: Partial<ListingLocationValue>) {
+    if (!isEditing) setSaveStatus("saving");
+    setValues((current) => ({ ...current, ...patch }));
+    setFieldErrors((current) => {
+      const next = { ...current };
+      for (const key of [
+        "address",
+        "city",
+        "country",
+        "latitude",
+        "longitude",
+        "locationConfirmed",
+      ]) {
+        delete next[key];
+      }
+      return next;
+    });
   }
 
   function validateFieldOnBlur(field: keyof ListingFormValues, value: string) {
@@ -326,7 +419,7 @@ export function ListingForm({
   const nightlyRate = toPositiveNumber(values.baseNightlyRate, 0);
   const cleaningFee = toPositiveNumber(values.cleaningFee, 0);
   const minNights = Math.max(1, toPositiveNumber(values.minNights, 1));
-  const locationLine = [values.area, values.city || "City", "North Macedonia"]
+  const locationLine = [values.area, values.city || "City", values.country || "Country"]
     .filter(Boolean)
     .join(", ");
 
@@ -340,7 +433,15 @@ export function ListingForm({
       address: values.address,
       city: values.city,
       area: values.area || undefined,
-      country: "North Macedonia",
+      postalCode: values.postalCode || undefined,
+      country: values.country,
+      latitude: values.latitude || undefined,
+      longitude: values.longitude || undefined,
+      locationSource: values.locationSource || undefined,
+      locationConfirmed: values.locationConfirmed,
+      geocodingProvider: values.geocodingProvider || undefined,
+      geocodingPlaceId: values.geocodingPlaceId || undefined,
+      geocodingConfidence: values.geocodingConfidence || undefined,
       maxGuests: values.maxGuests,
       bedrooms: values.bedrooms,
       bathrooms: values.bathrooms,
@@ -405,8 +506,58 @@ export function ListingForm({
     setActiveEditSection(active);
   }
 
+  function selectMobilePane(pane: "edit" | "preview") {
+    setMobilePane(pane);
+  }
+
+  function goToStep(step: number) {
+    setCurrentStep(Math.min(STEPS.length - 1, Math.max(0, step)));
+    selectMobilePane("edit");
+    window.requestAnimationFrame(() => editorScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" }));
+  }
+
+  function setEditorPaneWidth(nextWidth: number) {
+    const workspace = workspaceRef.current;
+    if (!workspace) return;
+    const availableWidth = workspace.getBoundingClientRect().width - 12;
+    if (availableWidth <= 0) return;
+    const minEditor = 400;
+    const minPreview = 340;
+    const width = Math.min(
+      Math.max(minEditor, nextWidth),
+      Math.max(minEditor, availableWidth - minPreview)
+    );
+    const percent = Math.min(64, Math.max(36, (width / availableWidth) * 100));
+    setEditorWidthPercent(percent);
+    window.localStorage.setItem(
+      isEditing ? "bookeasy:listing-edit-width" : "bookeasy:listing-create-width",
+      percent.toFixed(2)
+    );
+  }
+
+  function startPaneResize(event: React.PointerEvent<HTMLDivElement>) {
+    const editor = editorScrollRef.current;
+    if (!editor) return;
+    paneDragRef.current = {
+      startX: event.clientX,
+      startWidth: editor.getBoundingClientRect().width,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function resizePanes(event: React.PointerEvent<HTMLDivElement>) {
+    if (!paneDragRef.current) return;
+    setEditorPaneWidth(
+      paneDragRef.current.startWidth + event.clientX - paneDragRef.current.startX
+    );
+  }
+
   return (
-    <form ref={formRef} action={isEditing ? formAction : undefined} className={isEditing ? "xl:h-full xl:overflow-hidden" : "space-y-6"}>
+    <form
+      ref={formRef}
+      action={isEditing ? formAction : undefined}
+      className="flex h-full min-h-0 flex-col overflow-hidden"
+    >
       {state?.error && !isEditing && (
         <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
           {state.error}
@@ -414,15 +565,17 @@ export function ListingForm({
       )}
 
       {!isEditing && (
-        <div className="sticky top-0 z-20 -mx-4 border-b bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="z-20 shrink-0 border-b bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:px-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <Button type="button" variant="ghost" onClick={async () => {
               const saved = await autosaveDraft();
               if (saved) router.push("/host/listings");
               else toast.error("Your latest changes could not be saved. Please retry before closing.");
             }}>
-              Close
+              <ChevronLeft />
+              My listings
             </Button>
+            <h1 className="hidden text-lg font-semibold sm:block">Create a listing</h1>
             <div className="flex items-center gap-3 text-sm">
               <span className={saveStatus === "error" ? "text-destructive" : "text-muted-foreground"} aria-live="polite">
                 {saveStatus === "saving" ? "Saving…" : saveStatus === "error" ? "Save failed" : "Draft saved"}
@@ -436,13 +589,73 @@ export function ListingForm({
           <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
             <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${((currentStep + 1) / STEPS.length) * 100}%` }} />
           </div>
+          <button
+            type="button"
+            onClick={() => setStepsOpen(true)}
+            className="mt-2 inline-flex min-h-8 items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+          >
+            <ListChecks className="h-4 w-4" />
+            Step {currentStep + 1} of {STEPS.length}: {STEPS[currentStep].title}
+          </button>
         </div>
       )}
 
-      <div className={isEditing ? "grid gap-0 xl:h-full xl:grid-cols-[minmax(420px,44%)_minmax(0,56%)]" : "grid gap-8 xl:grid-cols-[minmax(0,520px)_minmax(0,1fr)]"}>
-        <div ref={editorScrollRef} onScroll={isEditing ? updateActiveEditSection : undefined} className={isEditing ? "space-y-6 px-5 py-5 xl:h-full xl:overscroll-contain xl:overflow-y-auto xl:border-r xl:px-8 xl:py-0 xl:[scrollbar-gutter:stable]" : "space-y-6"}>
+      <div
+        role="tablist"
+        aria-label="Listing workspace"
+        onKeyDown={(event) => {
+          if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+          event.preventDefault();
+          const pane = mobilePane === "edit" ? "preview" : "edit";
+          selectMobilePane(pane);
+          document.getElementById(`listing-${pane}-tab`)?.focus();
+        }}
+        className="grid shrink-0 grid-cols-2 border-b bg-background p-1.5 md:hidden"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mobilePane === "edit"}
+          tabIndex={mobilePane === "edit" ? 0 : -1}
+          aria-controls="listing-editor-pane"
+          id="listing-edit-tab"
+          onClick={() => selectMobilePane("edit")}
+          className={`flex min-h-10 items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors ${mobilePane === "edit" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted"}`}
+        >
+          <Pencil className="h-4 w-4" />
+          Edit
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={mobilePane === "preview"}
+          tabIndex={mobilePane === "preview" ? 0 : -1}
+          aria-controls="listing-preview-pane"
+          id="listing-preview-tab"
+          onClick={() => selectMobilePane("preview")}
+          className={`flex min-h-10 items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors ${mobilePane === "preview" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted"}`}
+        >
+          <Eye className="h-4 w-4" />
+          Preview
+        </button>
+      </div>
+
+      <div
+        ref={workspaceRef}
+        className="listing-workspace relative min-h-0 flex-1 overflow-hidden"
+        style={{ "--listing-editor-width": `${editorWidthPercent}%` } as CSSProperties}
+      >
+        <div
+          ref={editorScrollRef}
+          id="listing-editor-pane"
+          role="tabpanel"
+          aria-labelledby="listing-edit-tab"
+          data-pane="editor"
+          onScroll={isEditing ? updateActiveEditSection : undefined}
+          className={`${mobilePane === "edit" ? "block" : "hidden"} h-full min-h-0 space-y-6 overflow-y-auto overscroll-contain px-5 py-5 [scrollbar-gutter:stable] md:px-8`}
+        >
           {isEditing && (
-            <div data-edit-sticky-header className="sticky top-0 z-20 -mx-5 -mt-5 border-b bg-background/95 px-5 pb-3 pt-5 backdrop-blur xl:-mx-8 xl:mt-0 xl:px-8 xl:pt-5">
+            <div data-edit-sticky-header className="sticky top-0 z-20 -mx-5 -mt-5 border-b bg-background/95 px-5 pb-3 pt-5 backdrop-blur md:-mx-8 md:px-8">
               <div className="flex flex-wrap items-center gap-3">
                 <h1 className="text-2xl font-bold">Edit Listing</h1>
                 {editStatusLabel && <Badge variant={editStatusApproved ? "default" : "secondary"}>{editStatusLabel}</Badge>}
@@ -451,9 +664,6 @@ export function ListingForm({
                     <Link href={availabilityHref}><CalendarDays className="mr-2 h-4 w-4" />Availability &amp; pricing</Link>
                   </Button>
                 )}
-                <Button type="button" variant="outline" size="sm" className="xl:hidden" onClick={() => setMobilePreviewOpen(true)}>
-                  <Eye className="mr-2 h-4 w-4" />Preview
-                </Button>
               </div>
               <nav className="mt-4 flex flex-wrap gap-1" aria-label="Listing sections">
                 {EDIT_SECTIONS.map((section) => (
@@ -547,6 +757,14 @@ export function ListingForm({
 
           <div id={isEditing ? "edit-section-location" : undefined} className={isEditing || currentStep === 1 ? "scroll-mt-32 block" : "hidden"}>
           <FieldSection title="Location">
+            <ListingLocationField value={values} onChange={updateLocation} />
+            <FieldError
+              message={
+                fieldErrors.locationConfirmed ||
+                fieldErrors.latitude ||
+                fieldErrors.longitude
+              }
+            />
             <div className="space-y-2">
               <Label htmlFor="address">Address</Label>
               <Input
@@ -569,16 +787,10 @@ export function ListingForm({
                   value={values.city}
                   onChange={(event) => setField("city", event.target.value)}
                   onBlur={() => handleBlur("city")}
-                  list="available-cities"
                   required
-                  placeholder="Skopje"
+                  placeholder="Enter city"
                 />
                 <FieldError message={fieldErrors.city} />
-                <datalist id="available-cities">
-                  {availableCities.map((city) => (
-                    <option key={city} value={city} />
-                  ))}
-                </datalist>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="area">Area / Neighbourhood</Label>
@@ -588,15 +800,38 @@ export function ListingForm({
                   value={values.area}
                   onChange={(event) => setField("area", event.target.value)}
                   onBlur={() => handleBlur("area")}
-                  placeholder="Debar Maalo"
+                  placeholder="Enter area or neighborhood"
                 />
               </div>
             </div>
-            <input type="hidden" name="country" value={listing?.property.country || "North Macedonia"} />
-            <ListingLocationField
-              initialLat={listing?.property.latitude ?? parseFloatOrUndefined(initialDraft?.latitude)}
-              initialLng={listing?.property.longitude ?? parseFloatOrUndefined(initialDraft?.longitude)}
-            />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="postalCode">Postal code</Label>
+                <Input
+                  id="postalCode"
+                  name="postalCode"
+                  value={values.postalCode}
+                  onChange={(event) => setField("postalCode", event.target.value)}
+                  onBlur={() => handleBlur("postalCode")}
+                  autoComplete="postal-code"
+                  placeholder="Enter postal code"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="country">Country</Label>
+                <Input
+                  id="country"
+                  name="country"
+                  value={values.country}
+                  onChange={(event) => setField("country", event.target.value)}
+                  onBlur={() => handleBlur("country")}
+                  required
+                  autoComplete="country-name"
+                  placeholder="Enter country"
+                />
+                <FieldError message={fieldErrors.country} />
+              </div>
+            </div>
           </FieldSection>
           </div>
 
@@ -720,16 +955,95 @@ export function ListingForm({
           </FieldSection>
           </div>
           {isEditing && (
-            <div className="sticky bottom-0 z-20 -mx-5 border-t bg-background/95 px-5 py-4 backdrop-blur xl:-mx-8 xl:px-8">
+            <div className="sticky bottom-0 z-20 -mx-5 border-t bg-background/95 px-5 py-4 backdrop-blur md:-mx-8 md:px-8">
               <Button type="submit" size="lg" disabled={isPending} className="w-full sm:w-auto">
                 {isPending ? "Saving..." : "Save changes"}
               </Button>
             </div>
           )}
+          {!isEditing && (
+            <div className="sticky bottom-0 z-20 -mx-5 border-t bg-background/95 px-5 py-4 backdrop-blur md:-mx-8 md:px-8">
+              <div className="flex items-center justify-between gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={currentStep === 0}
+                  onClick={() => goToStep(currentStep - 1)}
+                >
+                  <ChevronLeft /> Back
+                </Button>
+                {currentStep < STEPS.length - 1 ? (
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      void autosaveDraft();
+                      goToStep(currentStep + 1);
+                    }}
+                  >
+                    Continue <ChevronRight />
+                  </Button>
+                ) : (
+                  <Button type="button" disabled={isSubmittingNew} onClick={handleSubmitForReview}>
+                    {isSubmittingNew ? "Publishing…" : "Publish"}
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
-        <aside className={isEditing ? "hidden px-6 py-5 xl:block xl:h-full xl:overscroll-contain xl:overflow-y-auto xl:[scrollbar-gutter:stable]" : "hidden xl:sticky xl:top-24 xl:block xl:self-start"}>
-          <div className={isEditing ? "sticky top-0 z-10 -mx-6 -mt-5 mb-3 flex items-center justify-between gap-3 border-b bg-background/95 px-6 py-4 backdrop-blur" : "mb-3 flex items-center justify-between gap-3"}>
+        <div
+          role="separator"
+          aria-label="Resize listing editor and preview"
+          aria-orientation="vertical"
+          aria-valuemin={36}
+          aria-valuemax={64}
+          aria-valuenow={Math.round(editorWidthPercent)}
+          tabIndex={0}
+          onPointerDown={startPaneResize}
+          onPointerMove={resizePanes}
+          onPointerUp={(event) => {
+            paneDragRef.current = null;
+            event.currentTarget.releasePointerCapture(event.pointerId);
+          }}
+          onPointerCancel={() => {
+            paneDragRef.current = null;
+          }}
+          onDoubleClick={() => {
+            const workspace = workspaceRef.current;
+            if (workspace) setEditorPaneWidth((workspace.getBoundingClientRect().width - 12) * 0.48);
+          }}
+          onKeyDown={(event) => {
+            const editor = editorScrollRef.current;
+            if (!editor) return;
+            if (event.key === "ArrowLeft") {
+              event.preventDefault();
+              setEditorPaneWidth(editor.getBoundingClientRect().width - 24);
+            } else if (event.key === "ArrowRight") {
+              event.preventDefault();
+              setEditorPaneWidth(editor.getBoundingClientRect().width + 24);
+            } else if (event.key === "Home") {
+              event.preventDefault();
+              const workspace = workspaceRef.current;
+              if (workspace) setEditorPaneWidth((workspace.getBoundingClientRect().width - 12) * 0.48);
+            }
+          }}
+          className="group hidden h-full touch-none cursor-col-resize items-center justify-center bg-border/40 outline-none md:flex"
+        >
+          <span className="h-full w-px bg-border transition-colors group-hover:w-0.5 group-hover:bg-primary group-focus-visible:w-0.5 group-focus-visible:bg-primary" />
+          <span className="absolute flex h-10 w-4 items-center justify-center rounded-full border bg-background opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+            <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+          </span>
+        </div>
+
+        <aside
+          id="listing-preview-pane"
+          role="tabpanel"
+          aria-labelledby="listing-preview-tab"
+          data-pane="preview"
+          className={`${mobilePane === "preview" ? "block" : "hidden"} h-full min-h-0 overflow-y-auto overscroll-contain px-5 py-5 [scrollbar-gutter:stable] md:px-6`}
+        >
+          <div className="sticky top-0 z-10 -mx-5 -mt-5 mb-3 flex items-center justify-between gap-3 border-b bg-background/95 px-5 py-4 backdrop-blur md:-mx-6 md:px-6">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
               Guest booking preview
             </h2>
@@ -755,42 +1069,40 @@ export function ListingForm({
         </aside>
       </div>
 
-      {!isEditing && <div className="sticky bottom-0 z-10 -mx-4 border-t bg-background/95 px-4 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:static sm:mx-0 sm:border-t-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none">
-          <div className="flex items-center justify-between gap-3">
-            <Button type="button" variant="outline" disabled={currentStep === 0} onClick={() => setCurrentStep((step) => Math.max(0, step - 1))}>
-              <ChevronLeft /> Back
-            </Button>
-            <Button type="button" variant="outline" className="xl:hidden" onClick={() => setMobilePreviewOpen(true)}><Eye /> Preview</Button>
-            {currentStep < STEPS.length - 1 ? (
-              <Button type="button" onClick={() => { void autosaveDraft(); setCurrentStep((step) => Math.min(STEPS.length - 1, step + 1)); }}>
-                Continue <ChevronRight />
-              </Button>
-            ) : (
-              <Button type="button" disabled={isSubmittingNew} onClick={handleSubmitForReview}>{isSubmittingNew ? "Publishing…" : "Publish"}</Button>
-            )}
-          </div>
-      </div>}
-
-      <Dialog open={mobilePreviewOpen} onOpenChange={setMobilePreviewOpen}>
-        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto xl:hidden">
-          <DialogHeader><DialogTitle>Guest booking preview</DialogTitle></DialogHeader>
-          <ListingGuestPreview
-            title={values.title || FALLBACK_TITLE}
-            description={values.description || FALLBACK_DESCRIPTION}
-            typeLabel={typeLabel}
-            locationLine={locationLine}
-            mediaItems={mediaItems}
-            guests={guests}
-            bedrooms={bedrooms}
-            beds={beds}
-            bathrooms={bathrooms}
-            nightlyRate={nightlyRate}
-            cleaningFee={cleaningFee}
-            minNights={minNights}
-            amenities={selectedAmenities}
-          />
-        </DialogContent>
-      </Dialog>
+      {!isEditing && (
+        <Dialog open={stepsOpen} onOpenChange={setStepsOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Listing steps</DialogTitle>
+              <DialogDescription>
+                Jump to any part of your listing. Your draft is saved automatically.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              {STEPS.map((step, index) => (
+                <button
+                  key={step.title}
+                  type="button"
+                  aria-current={currentStep === index ? "step" : undefined}
+                  onClick={() => {
+                    goToStep(index);
+                    setStepsOpen(false);
+                  }}
+                  className={`flex min-h-12 w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors ${currentStep === index ? "border-primary bg-primary/5" : "hover:bg-muted"}`}
+                >
+                  <span className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${currentStep === index ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                    {index + 1}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-medium">{step.title}</span>
+                    <span className="block truncate text-xs text-muted-foreground">{step.description}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       <Dialog open={publishChecklistOpen} onOpenChange={setPublishChecklistOpen}>
         <DialogContent>
@@ -805,8 +1117,8 @@ export function ListingForm({
                 type="button"
                 className="flex w-full items-center justify-between rounded-lg border p-3 text-left text-sm transition-colors hover:bg-muted"
                 onClick={() => {
-                  const step = field === "propertyType" ? 0 : field === "address" || field === "city" ? 1 : ["maxGuests", "bedrooms", "beds", "bathrooms"].includes(field) ? 2 : field === "media" ? 4 : field === "title" || field === "description" ? 5 : 6;
-                  setCurrentStep(step);
+                  const step = field === "propertyType" ? 0 : ["address", "city", "country", "postalCode", "latitude", "longitude", "locationSource", "locationConfirmed"].includes(field) ? 1 : ["maxGuests", "bedrooms", "beds", "bathrooms"].includes(field) ? 2 : field === "media" ? 4 : field === "title" || field === "description" ? 5 : 6;
+                  goToStep(step);
                   setPublishChecklistOpen(false);
                 }}
               >
@@ -848,12 +1160,6 @@ export function ListingForm({
       </Dialog>
     </form>
   );
-}
-
-function parseFloatOrUndefined(value: string | undefined): number | undefined {
-  if (!value) return undefined;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 function FieldError({ message }: { message?: string }) {

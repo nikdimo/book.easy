@@ -10,6 +10,13 @@ export interface ListingDraftData {
   address?: string;
   city?: string;
   area?: string;
+  postalCode?: string;
+  country?: string;
+  locationSource?: string;
+  locationConfirmed?: string;
+  geocodingProvider?: string;
+  geocodingPlaceId?: string;
+  geocodingConfidence?: string;
   maxGuests?: string;
   bedrooms?: string;
   beds?: string;

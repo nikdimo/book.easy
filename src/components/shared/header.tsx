@@ -68,7 +68,7 @@ export function Header({
   availablePropertyTypesByCity = {},
   propertyTypes = [],
   languages = [],
-  currentLocale = "en",
+  currentLocale,
   listYourProperty = { text: "List your property", translated: false },
   listYourPropertyTooltip = {
     text: "Start listing your property — takes about 10 minutes.",
@@ -152,7 +152,10 @@ export function Header({
         </div>
 
         <div className="flex items-center justify-end gap-2 min-w-0">
-          <GoogleTranslateWidget languages={languages} currentLocale={currentLocale} />
+          <GoogleTranslateWidget
+            languages={languages}
+            currentLocale={currentLocale}
+          />
           {user?.isHost ? (
             <Button
               variant="ghost"
@@ -160,7 +163,13 @@ export function Header({
               asChild
             >
               <Link href="/host">
-                <span className={navLabels.switchToHosting.translated ? "notranslate" : undefined}>
+                <span
+                  className={
+                    navLabels.switchToHosting.translated
+                      ? "notranslate"
+                      : undefined
+                  }
+                >
                   {navLabels.switchToHosting.text}
                 </span>
               </Link>
@@ -174,14 +183,20 @@ export function Header({
                   asChild
                 >
                   <Link href="/account/become-host">
-                    <span className={listYourProperty.translated ? "notranslate" : undefined}>
+                    <span
+                      className={
+                        listYourProperty.translated ? "notranslate" : undefined
+                      }
+                    >
                       {listYourProperty.text}
                     </span>
                   </Link>
                 </Button>
               </TooltipTrigger>
               <TooltipContent
-                className={listYourPropertyTooltip.translated ? "notranslate" : undefined}
+                className={
+                  listYourPropertyTooltip.translated ? "notranslate" : undefined
+                }
               >
                 {listYourPropertyTooltip.text}
               </TooltipContent>
@@ -211,7 +226,11 @@ export function Header({
                 <DropdownMenuItem asChild>
                   <Link href="/properties">
                     <Home className="mr-2 h-4 w-4" />
-                    <span className={navLabels.stays.translated ? "notranslate" : undefined}>
+                    <span
+                      className={
+                        navLabels.stays.translated ? "notranslate" : undefined
+                      }
+                    >
                       {navLabels.stays.text}
                     </span>
                   </Link>
@@ -219,7 +238,11 @@ export function Header({
                 <DropdownMenuItem asChild>
                   <Link href="/account/bookings">
                     <CalendarDays className="mr-2 h-4 w-4" />
-                    <span className={navLabels.trips.translated ? "notranslate" : undefined}>
+                    <span
+                      className={
+                        navLabels.trips.translated ? "notranslate" : undefined
+                      }
+                    >
                       {navLabels.trips.text}
                     </span>
                   </Link>
@@ -227,7 +250,13 @@ export function Header({
                 <DropdownMenuItem asChild>
                   <Link href="/account/favorites">
                     <Heart className="mr-2 h-4 w-4" />
-                    <span className={navLabels.favorites.translated ? "notranslate" : undefined}>
+                    <span
+                      className={
+                        navLabels.favorites.translated
+                          ? "notranslate"
+                          : undefined
+                      }
+                    >
                       {navLabels.favorites.text}
                     </span>
                   </Link>
@@ -235,7 +264,11 @@ export function Header({
                 <DropdownMenuItem asChild>
                   <Link href="/account/profile">
                     <User className="mr-2 h-4 w-4" />
-                    <span className={navLabels.account.translated ? "notranslate" : undefined}>
+                    <span
+                      className={
+                        navLabels.account.translated ? "notranslate" : undefined
+                      }
+                    >
                       {navLabels.account.text}
                     </span>
                   </Link>
@@ -247,7 +280,11 @@ export function Header({
                       <Link href="/host">
                         <Home className="mr-2 h-4 w-4" />
                         <span
-                          className={navLabels.hostingDashboard.translated ? "notranslate" : undefined}
+                          className={
+                            navLabels.hostingDashboard.translated
+                              ? "notranslate"
+                              : undefined
+                          }
                         >
                           {navLabels.hostingDashboard.text}
                         </span>
@@ -257,7 +294,11 @@ export function Header({
                       <Link href="/host/listings">
                         <LayoutDashboard className="mr-2 h-4 w-4" />
                         <span
-                          className={navLabels.yourListings.translated ? "notranslate" : undefined}
+                          className={
+                            navLabels.yourListings.translated
+                              ? "notranslate"
+                              : undefined
+                          }
                         >
                           {navLabels.yourListings.text}
                         </span>
@@ -269,7 +310,13 @@ export function Header({
                   <DropdownMenuItem asChild>
                     <Link href="/account/become-host">
                       <Home className="mr-2 h-4 w-4" />
-                      <span className={navLabels.becomeAHost.translated ? "notranslate" : undefined}>
+                      <span
+                        className={
+                          navLabels.becomeAHost.translated
+                            ? "notranslate"
+                            : undefined
+                        }
+                      >
                         {navLabels.becomeAHost.text}
                       </span>
                     </Link>
@@ -281,7 +328,13 @@ export function Header({
                     <DropdownMenuItem asChild>
                       <Link href="/admin">
                         <ShieldCheck className="mr-2 h-4 w-4" />
-                        <span className={navLabels.admin.translated ? "notranslate" : undefined}>
+                        <span
+                          className={
+                            navLabels.admin.translated
+                              ? "notranslate"
+                              : undefined
+                          }
+                        >
                           {navLabels.admin.text}
                         </span>
                       </Link>
@@ -297,7 +350,11 @@ export function Header({
                   }}
                 >
                   <LogOut className="mr-2 h-4 w-4" />
-                  <span className={navLabels.logOut.translated ? "notranslate" : undefined}>
+                  <span
+                    className={
+                      navLabels.logOut.translated ? "notranslate" : undefined
+                    }
+                  >
                     {navLabels.logOut.text}
                   </span>
                 </DropdownMenuItem>
@@ -307,7 +364,11 @@ export function Header({
             <div className="flex items-center gap-1">
               <Button size="sm" className="rounded-full font-medium" asChild>
                 <Link href="/login">
-                  <span className={navLabels.logIn.translated ? "notranslate" : undefined}>
+                  <span
+                    className={
+                      navLabels.logIn.translated ? "notranslate" : undefined
+                    }
+                  >
                     {navLabels.logIn.text}
                   </span>
                 </Link>

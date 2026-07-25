@@ -220,8 +220,20 @@ if errorlevel 1 (
 call npm run i18n:export-reviewed
 if errorlevel 1 (
     echo.
-    echo   Reviewed translations are incomplete or stale.
-    echo   Attempting to translate missing UI copy with Anthropic...
+    echo   The local translation database is incomplete or stale.
+    echo   Restoring the committed reviewed snapshot before using paid AI...
+    echo.
+    call npm run i18n:import-reviewed
+    if not errorlevel 1 (
+        echo.
+        echo   Reviewed snapshot restored. Re-validating the local database...
+        call npm run i18n:export-reviewed
+    )
+)
+if errorlevel 1 (
+    echo.
+    echo   Reviewed translations contain genuinely new or changed UI copy.
+    echo   Attempting to translate only that copy with Anthropic...
     echo.
     call npm run i18n:sync
     if errorlevel 1 (
@@ -255,6 +267,18 @@ if errorlevel 1 (
     goto MENU
 )
 echo   Reviewed translation snapshot is complete.
+echo.
+echo [preflight] Exporting the local amenity catalog...
+call npm run amenities:export
+if errorlevel 1 (
+    echo.
+    echo   ERROR - Local amenities could not be exported.
+    echo   Make sure the local database is running, then run option 6 again.
+    echo   Nothing was saved or deployed.
+    pause
+    goto MENU
+)
+echo   Local amenity catalog is ready for production sync.
 echo.
 call :SAVE_BODY
 if errorlevel 1 (

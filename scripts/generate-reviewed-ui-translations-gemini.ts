@@ -1,36 +1,18 @@
 import { db } from "../src/lib/db";
 import { scanUiStrings } from "../src/lib/services/ui-translation.service";
+import {
+  REVIEWED_LANGUAGES,
+  type ReviewedLanguage,
+} from "../src/lib/i18n/reviewed-languages";
+import { validateTranslationMap } from "../src/lib/i18n/translation-validation";
 
 const MODEL = process.env.GEMINI_TRANSLATION_MODEL || "gemini-2.5-flash";
 const API_KEY = process.env.GOOGLE_API_KEY;
 const BATCH_SIZE = 30;
-const PLACEHOLDER_RE = /\{[A-Za-z][A-Za-z0-9_]*\}/g;
-
-const REVIEWED_LANGUAGES = [
-  { code: "mk", name: "Македонски", englishName: "Macedonian" },
-  { code: "sq", name: "Shqip", englishName: "Albanian" },
-  { code: "sr", name: "Српски", englishName: "Serbian (Cyrillic)" },
-  { code: "tr", name: "Türkçe", englishName: "Turkish" },
-  { code: "bg", name: "Български", englishName: "Bulgarian" },
-  { code: "ro", name: "Română", englishName: "Romanian" },
-  { code: "de", name: "Deutsch", englishName: "German" },
-  { code: "el", name: "Ελληνικά", englishName: "Greek" },
-  { code: "it", name: "Italiano", englishName: "Italian" },
-  { code: "fr", name: "Français", englishName: "French" },
-  { code: "es", name: "Español", englishName: "Spanish" },
-  { code: "nl", name: "Nederlands", englishName: "Dutch" },
-  { code: "pl", name: "Polski", englishName: "Polish" },
-  { code: "uk", name: "Українська", englishName: "Ukrainian" },
-  { code: "ru", name: "Русский", englishName: "Russian" },
-] as const;
 
 interface CatalogEntry {
   key: string;
   sourceText: string;
-}
-
-function placeholders(value: string): string[] {
-  return [...value.matchAll(PLACEHOLDER_RE)].map((match) => match[0]).sort();
 }
 
 function chunks<T>(values: T[], size: number): T[][] {
@@ -40,11 +22,10 @@ function chunks<T>(values: T[], size: number): T[][] {
 }
 
 async function generateBatch(
-  languages: readonly { code: string; name: string; englishName: string }[],
+  languages: readonly ReviewedLanguage[],
   entries: CatalogEntry[]
 ): Promise<Record<string, Record<string, string>>> {
   if (!API_KEY) throw new Error("GOOGLE_API_KEY is required.");
-  const requestedKeys = entries.map((entry) => entry.key).sort();
   const prompt = [
     "Translate fixed user-interface copy for a vacation-rental marketplace.",
     "Return only JSON shaped as {\"translations\":{\"locale\":{\"key\":\"value\"}}}.",
@@ -53,9 +34,11 @@ async function generateBatch(
     "Keys ending in .zero/.one/.two/.few/.many/.other are CLDR plural categories:",
     "write the grammatically correct form for that category, even when the English source repeats.",
     "Do not translate brand names, currency codes, URLs, or placeholders.",
-    `Locales: ${languages
-      .map((language) => `${language.code}=${language.englishName} (${language.name})`)
-      .join(", ")}`,
+    "Follow the language-specific editorial guidance below:",
+    ...languages.map(
+      (language) =>
+        `${language.code}=${language.englishName} (${language.nativeName}): ${language.editorGuidance}`
+    ),
     `Entries: ${JSON.stringify(entries)}`,
   ].join("\n");
 
@@ -88,31 +71,23 @@ async function generateBatch(
   };
   if (!parsed.translations) throw new Error("Gemini response has no translations object.");
 
+  const sourceByKey = Object.fromEntries(
+    entries.map((entry) => [entry.key, entry.sourceText])
+  );
   for (const language of languages) {
     const translated = parsed.translations[language.code];
     if (!translated) throw new Error(`Gemini omitted locale ${language.code}.`);
-    const actualKeys = Object.keys(translated).sort();
-    if (JSON.stringify(actualKeys) !== JSON.stringify(requestedKeys)) {
-      throw new Error(
-        `${language.code} returned ${actualKeys.length}/${requestedKeys.length} requested keys.`
-      );
-    }
-    for (const entry of entries) {
-      const value = translated[entry.key];
-      if (!value?.trim()) throw new Error(`${language.code}:${entry.key} is empty.`);
-      if (
-        JSON.stringify(placeholders(value)) !==
-        JSON.stringify(placeholders(entry.sourceText))
-      ) {
-        throw new Error(`${language.code}:${entry.key} changed placeholders.`);
-      }
-    }
+    parsed.translations[language.code] = validateTranslationMap(
+      sourceByKey,
+      translated,
+      `Gemini ${language.code} response`
+    );
   }
   return parsed.translations;
 }
 
 async function generateWithRetry(
-  languages: readonly { code: string; name: string; englishName: string }[],
+  languages: readonly ReviewedLanguage[],
   entries: CatalogEntry[]
 ) {
   let lastError: unknown;
@@ -142,14 +117,14 @@ async function main() {
       where: { code: language.code },
       create: {
         code: language.code,
-        name: language.name,
+        name: language.nativeName,
         isDefault: false,
         isEnabled: true,
         sortOrder: index + 1,
         useAiTranslation: true,
       },
       update: {
-        name: language.name,
+        name: language.nativeName,
         isEnabled: true,
         useAiTranslation: true,
       },
@@ -172,7 +147,7 @@ async function main() {
     );
   }
 
-  const groups = new Map<string, typeof REVIEWED_LANGUAGES[number][]>();
+  const groups = new Map<string, ReviewedLanguage[]>();
   for (const language of REVIEWED_LANGUAGES) {
     const signature = missingByLocale
       .get(language.code)!

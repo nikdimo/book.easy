@@ -58,6 +58,12 @@ npm run typecheck
 echo "[deploy] Prisma migrate deploy"
 npm run db:migrate:deploy
 
+echo "[deploy] Adding amenities that are missing from production"
+# The release snapshot is exported from the local database by Control Panel option 6.
+# Import is additive by amenity name: production-only rows and all existing production
+# settings remain untouched.
+npm run amenities:import
+
 echo "[deploy] Building"
 npm run build
 

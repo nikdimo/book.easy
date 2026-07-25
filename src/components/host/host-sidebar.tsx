@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -25,6 +25,7 @@ import {
   CalendarDays,
   ShieldCheck,
   Search,
+  GripVertical,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SITE_DOMAIN } from "@/lib/branding";
@@ -206,10 +207,37 @@ export function HostSidebar({
   languages?: Awaited<ReturnType<typeof getEnabledLanguages>>;
 }) {
   const [open, setOpen] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(232);
+  const dragRef = useRef<{ startX: number; startWidth: number } | null>(null);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem("bookeasy:host-sidebar-width");
+    const parsed = stored ? Number(stored) : 232;
+    const timeout = window.setTimeout(() => {
+      if (Number.isFinite(parsed)) setSidebarWidth(Math.min(320, Math.max(208, parsed)));
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, []);
+
+  function updateSidebarWidth(next: number) {
+    const width = Math.min(320, Math.max(208, next));
+    setSidebarWidth(width);
+    window.localStorage.setItem("bookeasy:host-sidebar-width", String(width));
+  }
+
+  function startResize(event: React.PointerEvent<HTMLDivElement>) {
+    dragRef.current = { startX: event.clientX, startWidth: sidebarWidth };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function resize(event: React.PointerEvent<HTMLDivElement>) {
+    if (!dragRef.current) return;
+    updateSidebarWidth(dragRef.current.startWidth + event.clientX - dragRef.current.startX);
+  }
 
   return (
-    <div className="flex shrink-0 flex-col md:w-56 md:border-r md:bg-background md:min-h-screen">
-      <div className="md:hidden sticky top-0 z-40 flex items-center justify-between gap-3 border-b bg-background/95 backdrop-blur px-4 py-3">
+    <>
+      <div className="z-40 flex shrink-0 items-center justify-between gap-3 border-b bg-background/95 px-4 py-3 backdrop-blur xl:hidden">
         <div className="flex items-center gap-3 min-w-0">
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
@@ -236,9 +264,48 @@ export function HostSidebar({
         <GoogleTranslateWidget languages={languages} />
       </div>
 
-      <aside className="hidden md:flex flex-col w-full min-h-0 flex-1 p-4 overflow-y-auto">
-        <SidebarContent />
-      </aside>
-    </div>
+      <div
+        className="relative hidden h-full shrink-0 border-r bg-background xl:flex"
+        style={{ width: sidebarWidth }}
+      >
+        <aside className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto p-4">
+          <SidebarContent />
+        </aside>
+        <div
+          role="separator"
+          aria-label="Resize profile navigation"
+          aria-orientation="vertical"
+          aria-valuemin={208}
+          aria-valuemax={320}
+          aria-valuenow={Math.round(sidebarWidth)}
+          tabIndex={0}
+          onPointerDown={startResize}
+          onPointerMove={resize}
+          onPointerUp={(event) => {
+            dragRef.current = null;
+            event.currentTarget.releasePointerCapture(event.pointerId);
+          }}
+          onDoubleClick={() => updateSidebarWidth(232)}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowLeft") {
+              event.preventDefault();
+              updateSidebarWidth(sidebarWidth - 12);
+            } else if (event.key === "ArrowRight") {
+              event.preventDefault();
+              updateSidebarWidth(sidebarWidth + 12);
+            } else if (event.key === "Home") {
+              event.preventDefault();
+              updateSidebarWidth(232);
+            }
+          }}
+          className="group absolute inset-y-0 -right-1.5 z-30 flex w-3 touch-none cursor-col-resize items-center justify-center outline-none"
+        >
+          <span className="h-full w-px bg-border transition-colors group-hover:bg-primary group-focus-visible:w-0.5 group-focus-visible:bg-primary" />
+          <span className="absolute flex h-10 w-3 items-center justify-center rounded-full border bg-background opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+            <GripVertical className="h-3 w-3 text-muted-foreground" />
+          </span>
+        </div>
+      </div>
+    </>
   );
 }

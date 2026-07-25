@@ -18,28 +18,20 @@ export default async function NewListingPage({ searchParams }: NewListingPagePro
 
   const { draft: draftIdParam } = await searchParams;
 
-  const [amenities, propertyTypes, cityRows, draft] = await Promise.all([
+  const [amenities, propertyTypes, draft] = await Promise.all([
     db.amenity.findMany({
       where: { isActive: true },
       orderBy: [{ category: "asc" }, { name: "asc" }],
     }),
     getActivePropertyTypes(),
-    db.property.findMany({
-      select: { city: true },
-      distinct: ["city"],
-      orderBy: { city: "asc" },
-    }),
     draftIdParam ? getHostListingDraft(draftIdParam, session.user.id) : null,
   ]);
-  const availableCities = cityRows.map((row) => row.city);
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Create a New Listing</h1>
+    <div className="listing-studio h-full min-h-0 overflow-hidden">
       <ListingForm
         amenities={amenities}
         propertyTypes={propertyTypes}
-        availableCities={availableCities}
         initialMediaItems={[]}
         draftId={draft?.id}
         initialDraft={draft?.data as ListingDraftData | undefined}

@@ -1,3 +1,5 @@
+import { REVIEWED_LANGUAGES } from "@/lib/i18n/reviewed-languages";
+
 export const DEFAULT_LOCALE = "en";
 export const SITE_LOCALE_COOKIE = "bookeasy_locale";
 export const GOOGLE_TRANSLATE_COOKIE = "googtrans";
@@ -12,25 +14,12 @@ const LOCALE_CODE_RE = /^[a-z]{2,3}(?:-[a-z]{2,4})?$/i;
  *
  * Ambiguous multilingual countries are omitted rather than guessing incorrectly.
  */
-const REVIEWED_LOCALE_BY_COUNTRY: Readonly<Record<string, string>> = {
-  AL: "sq",
-  AT: "de",
-  BG: "bg",
-  CZ: "cs",
-  DE: "de",
-  ES: "es",
-  FR: "fr",
-  GR: "el",
-  IT: "it",
-  MK: "mk",
-  NL: "nl",
-  PL: "pl",
-  RO: "ro",
-  RS: "sr",
-  RU: "ru",
-  TR: "tr",
-  UA: "uk",
-};
+const REVIEWED_LOCALE_BY_COUNTRY: Readonly<Record<string, string>> =
+  Object.fromEntries(
+    REVIEWED_LANGUAGES.flatMap((language) =>
+      language.primaryCountries.map((country) => [country, language.code])
+    )
+  );
 
 export function normalizeLocaleCode(value: string | null | undefined): string | null {
   const trimmed = value?.trim();

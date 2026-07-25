@@ -51,6 +51,7 @@ describe("locale preference", () => {
 
   it("keeps unmapped countries and unknown Cloudflare codes in English", () => {
     expect(localeFromCountry("DK")).toBeNull();
+    expect(localeFromCountry("CZ")).toBeNull();
     expect(resolveLocalePreference({ country: "DK" })).toEqual({
       locale: "en",
       source: "default",

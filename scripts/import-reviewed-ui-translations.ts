@@ -2,13 +2,9 @@ import { db } from "../src/lib/db";
 import catalog from "../src/lib/i18n/generated-ui-strings.json";
 import snapshot from "../src/lib/i18n/reviewed-ai-translations.json";
 import { scanUiStrings } from "../src/lib/services/ui-translation.service";
-
-const PLACEHOLDER_RE = /\{[A-Za-z][A-Za-z0-9_]*\}/g;
+import { REVIEWED_LANGUAGES } from "../src/lib/i18n/reviewed-languages";
+import { validateTranslationMap } from "../src/lib/i18n/translation-validation";
 const DRY_RUN = process.argv.includes("--dry-run");
-
-function placeholders(value: string): string[] {
-  return [...value.matchAll(PLACEHOLDER_RE)].map((match) => match[0]).sort();
-}
 
 function validateSnapshot(): void {
   if (snapshot.schemaVersion !== 1) {
@@ -22,24 +18,30 @@ function validateSnapshot(): void {
       "The reviewed translation snapshot does not contain exactly the deployed UI catalog keys."
     );
   }
+  const expectedLanguages = REVIEWED_LANGUAGES.map((language) => language.code);
+  const snapshotLanguages = snapshot.languages.map((language) => language.code);
+  if (JSON.stringify(snapshotLanguages) !== JSON.stringify(expectedLanguages)) {
+    throw new Error(
+      `Reviewed snapshot languages must match the canonical manifest (${expectedLanguages.join(", ")}).`
+    );
+  }
   for (const [key, source] of Object.entries(snapshot.catalog)) {
     if (currentCatalog.get(key) !== source) {
       throw new Error(`Reviewed translation snapshot is stale for "${key}".`);
     }
   }
-  for (const language of snapshot.languages) {
-    const keys = Object.keys(language.translations).sort();
-    if (JSON.stringify(keys) !== JSON.stringify(currentKeys)) {
-      throw new Error(`${language.code} does not contain exactly the deployed UI catalog keys.`);
+  for (const [index, language] of snapshot.languages.entries()) {
+    const manifestLanguage = REVIEWED_LANGUAGES[index];
+    if (language.name !== manifestLanguage.nativeName) {
+      throw new Error(
+        `${language.code} must use the canonical native name "${manifestLanguage.nativeName}".`
+      );
     }
-    for (const [key, value] of Object.entries(language.translations)) {
-      if (!value.trim()) throw new Error(`${language.code}:${key} is empty.`);
-      const expected = placeholders(snapshot.catalog[key as keyof typeof snapshot.catalog]);
-      const actual = placeholders(value);
-      if (JSON.stringify(actual) !== JSON.stringify(expected)) {
-        throw new Error(`${language.code}:${key} does not preserve source placeholders.`);
-      }
-    }
+    validateTranslationMap(
+      snapshot.catalog,
+      language.translations,
+      `Reviewed snapshot ${language.code}`
+    );
   }
 }
 

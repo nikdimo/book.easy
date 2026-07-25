@@ -2,6 +2,7 @@ import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { db } from "../src/lib/db";
 import { scanUiStrings } from "../src/lib/services/ui-translation.service";
+import { REVIEWED_LANGUAGES } from "../src/lib/i18n/reviewed-languages";
 
 const OUTPUT_PATH = path.join(
   process.cwd(),
@@ -15,7 +16,7 @@ async function main() {
   // Refresh the database catalog first so newly added source keys make the export
   // fail as missing/stale instead of silently producing an outdated snapshot.
   await scanUiStrings();
-  const [languages, strings] = await Promise.all([
+  const [databaseLanguages, strings] = await Promise.all([
     db.language.findMany({
       where: {
         isDefault: false,
@@ -32,11 +33,25 @@ async function main() {
     }),
   ]);
 
-  if (!languages.length) throw new Error("No enabled AI languages are available to export.");
+  if (!databaseLanguages.length) throw new Error("No enabled AI languages are available to export.");
   if (!strings.length) throw new Error("The active UI string catalog is empty.");
 
+  const expectedCodes = REVIEWED_LANGUAGES.map((language) => language.code);
+  const actualCodes = databaseLanguages.map((language) => language.code);
+  const expectedCodeSet = new Set<string>(expectedCodes);
+  const actualCodeSet = new Set<string>(actualCodes);
+  const missingCodes = expectedCodes.filter((code) => !actualCodeSet.has(code));
+  const unexpectedCodes = actualCodes.filter((code) => !expectedCodeSet.has(code));
+  if (missingCodes.length || unexpectedCodes.length) {
+    throw new Error(
+      "Enabled AI languages do not match the canonical reviewed-language manifest " +
+        `(missing: ${missingCodes.join(", ") || "none"}; ` +
+        `unexpected: ${unexpectedCodes.join(", ") || "none"}).`
+    );
+  }
+
   const snapshotLanguages = [];
-  for (const language of languages) {
+  for (const language of REVIEWED_LANGUAGES) {
     const translations = await db.uiTranslation.findMany({
       where: { locale: language.code },
       orderBy: { key: "asc" },
@@ -62,7 +77,7 @@ async function main() {
     }
     snapshotLanguages.push({
       code: language.code,
-      name: language.name,
+      name: language.nativeName,
       translations: Object.fromEntries(
         strings.map((entry) => [entry.key, byKey.get(entry.key)!.value])
       ),
@@ -77,7 +92,7 @@ async function main() {
   };
   await writeFile(OUTPUT_PATH, `${JSON.stringify(snapshot, null, 2)}\n`, "utf8");
   console.log(
-    `Exported ${strings.length} reviewed strings for ${languages.length} languages to ${OUTPUT_PATH}.`
+    `Exported ${strings.length} reviewed strings for ${REVIEWED_LANGUAGES.length} languages to ${OUTPUT_PATH}.`
   );
 }
 

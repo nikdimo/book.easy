@@ -14,9 +14,14 @@ export type HostListingFormData = {
     address: string;
     city: string;
     area?: string | null;
+    postalCode?: string | null;
     country: string;
     latitude?: number | null;
     longitude?: number | null;
+    locationSource?: string | null;
+    geocodingProvider?: string | null;
+    geocodingPlaceId?: string | null;
+    geocodingConfidence?: number | null;
   };
   pricingRule: {
     baseNightlyRate: number;
@@ -51,9 +56,14 @@ export function serializeHostListingForForm(
       address: listing.property.address,
       city: listing.property.city,
       area: listing.property.area,
+      postalCode: listing.property.postalCode,
       country: listing.property.country,
       latitude: listing.property.latitude,
       longitude: listing.property.longitude,
+      locationSource: listing.property.locationSource,
+      geocodingProvider: listing.property.geocodingProvider,
+      geocodingPlaceId: listing.property.geocodingPlaceId,
+      geocodingConfidence: listing.property.geocodingConfidence,
     },
     pricingRule: listing.pricingRule
       ? {

@@ -27,7 +27,7 @@ interface SearchPageProps {
 
 export const metadata = {
   title: "Explore Properties",
-  description: "Browse and search properties across North Macedonia",
+  description: "Browse and search properties around the world",
 };
 
 export default async function PropertiesPage({ searchParams }: SearchPageProps) {
@@ -118,8 +118,9 @@ export default async function PropertiesPage({ searchParams }: SearchPageProps) 
   );
   const listingQueryString = listingQuery.toString();
 
-  const mapPins: MapPin[] = results.listings.map((l) => {
-    const { lat, lng } = getMapCoordinatesForListing(l);
+  const mapPins: MapPin[] = results.listings.flatMap((l) => {
+    const coordinates = getMapCoordinatesForListing(l);
+    if (!coordinates) return [];
     let label = "—";
     if (l.pricingRule) {
       const nightly = Number(l.pricingRule.baseNightlyRate);
@@ -129,7 +130,14 @@ export default async function PropertiesPage({ searchParams }: SearchPageProps) 
           ? formatPrice(nightly * nightCount, cur, t.locale)
           : formatPrice(nightly, cur, t.locale);
     }
-    return { id: l.id, slug: l.slug, lat, lng, label, query: listingQueryString };
+    return [{
+      id: l.id,
+      slug: l.slug,
+      lat: coordinates.lat,
+      lng: coordinates.lng,
+      label,
+      query: listingQueryString,
+    }];
   });
 
   return (
