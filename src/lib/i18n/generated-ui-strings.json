@@ -455,6 +455,11 @@
     "filePath": "src/components/shared/consent-banner.tsx"
   },
   {
+    "key": "consent.last_updated",
+    "sourceText": "Last updated:",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
     "key": "consent.marketing_cookies",
     "sourceText": "Marketing cookies",
     "filePath": "src/components/shared/consent-banner.tsx"
@@ -690,8 +695,18 @@
     "filePath": "src/components/shared/footer.tsx"
   },
   {
+    "key": "footer.manage_privacy_settings",
+    "sourceText": "Manage your privacy settings and cookies",
+    "filePath": "src/components/shared/footer.tsx"
+  },
+  {
     "key": "footer.privacy",
     "sourceText": "Privacy",
+    "filePath": "src/components/shared/footer.tsx"
+  },
+  {
+    "key": "footer.privacy_settings",
+    "sourceText": "Privacy settings",
     "filePath": "src/components/shared/footer.tsx"
   },
   {
@@ -1173,6 +1188,46 @@
     "key": "pagination.previous",
     "sourceText": "Previous",
     "filePath": "src/app/(public)/properties/page.tsx"
+  },
+  {
+    "key": "privacy_settings.all_enabled",
+    "sourceText": "All cookies enabled",
+    "filePath": "src/components/shared/privacy-settings-modal.tsx"
+  },
+  {
+    "key": "privacy_settings.description",
+    "sourceText": "Manage your privacy preferences. Choose which cookies you want to enable.",
+    "filePath": "src/components/shared/privacy-settings-modal.tsx"
+  },
+  {
+    "key": "privacy_settings.nonessential_disabled",
+    "sourceText": "Non-essential cookies disabled",
+    "filePath": "src/components/shared/privacy-settings-modal.tsx"
+  },
+  {
+    "key": "privacy_settings.save_failed",
+    "sourceText": "Failed to save privacy settings",
+    "filePath": "src/components/shared/privacy-settings-modal.tsx"
+  },
+  {
+    "key": "privacy_settings.saved",
+    "sourceText": "Privacy settings saved successfully",
+    "filePath": "src/components/shared/privacy-settings-modal.tsx"
+  },
+  {
+    "key": "privacy_settings.saving",
+    "sourceText": "Saving...",
+    "filePath": "src/components/shared/privacy-settings-modal.tsx"
+  },
+  {
+    "key": "privacy_settings.title",
+    "sourceText": "Privacy settings",
+    "filePath": "src/components/shared/privacy-settings-modal.tsx"
+  },
+  {
+    "key": "privacy_settings.update_failed",
+    "sourceText": "Failed to update settings",
+    "filePath": "src/components/shared/privacy-settings-modal.tsx"
   },
   {
     "key": "properties.clear_filters",

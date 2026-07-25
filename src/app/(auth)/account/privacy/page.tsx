@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertCircle, Download, Trash2, Eye } from 'lucide-react';
+import { AlertCircle, Download, Trash2, Eye, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { PrivacySettingsModal } from '@/components/shared/privacy-settings-modal';
 import { toast } from 'sonner';
 
 export default function PrivacyPage() {
@@ -12,6 +13,7 @@ export default function PrivacyPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteConfirmPhrase, setDeleteConfirmPhrase] = useState('');
   const [deletePassword, setDeletePassword] = useState('');
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
 
   const handleExportData = async () => {
     setIsExporting(true);
@@ -78,6 +80,27 @@ export default function PrivacyPage() {
     <div className="min-h-screen bg-background py-12">
       <div className="max-w-4xl mx-auto px-4">
         <h1 className="text-3xl font-bold mb-8">Data & Privacy</h1>
+
+        {/* Quick Privacy Settings */}
+        <div className="mb-12 p-6 rounded-lg border border-primary/30 bg-primary/5">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Lock className="w-5 h-5 text-primary" />
+                <h2 className="font-semibold">Quick Settings</h2>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Manage your cookie preferences and consent settings anytime.
+              </p>
+            </div>
+            <Button
+              onClick={() => setShowPrivacyModal(true)}
+              className="flex-shrink-0"
+            >
+              🔒 Privacy Settings
+            </Button>
+          </div>
+        </div>
 
         {/* Legal Links */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
@@ -323,6 +346,12 @@ export default function PrivacyPage() {
           </div>
         </div>
       </div>
+
+      {/* Privacy Settings Modal */}
+      <PrivacySettingsModal
+        isOpen={showPrivacyModal}
+        onClose={() => setShowPrivacyModal(false)}
+      />
     </div>
   );
 }

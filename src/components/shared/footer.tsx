@@ -28,6 +28,11 @@ export async function Footer() {
   const logIn = t.resolve("footer.log_in", "Log in");
   const terms = t.resolve("footer.terms", "Terms");
   const privacy = t.resolve("footer.privacy", "Privacy");
+  const privacySettings = t.resolve("footer.privacy_settings", "Privacy settings");
+  const managePrivacySettings = t.resolve(
+    "footer.manage_privacy_settings",
+    "Manage your privacy settings and cookies"
+  );
   const eur = t.resolve("footer.eur", "EUR");
   const englishUs = t.resolve("footer.english_us", "English (US)");
 
@@ -157,6 +162,17 @@ export async function Footer() {
               )}
             >
               {privacy.text}
+            </Link>
+            <span className="text-muted-foreground">•</span>
+            <Link
+              href="/account/privacy"
+              className={cn(
+                "hover:text-foreground transition-colors",
+                privacySettings.translated && "notranslate"
+              )}
+              title={managePrivacySettings.text}
+            >
+              🔒 {privacySettings.text}
             </Link>
           </div>
           <div className="flex items-center gap-4 font-medium">

@@ -7,6 +7,15 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Tx } from '@/lib/i18n/client';
 
+type GtagArguments = [command: string, value: Date | string];
+
+declare global {
+  interface Window {
+    gtag?: (...args: GtagArguments) => void;
+    dataLayer: GtagArguments[];
+  }
+}
+
 export interface ConsentPreferences {
   essential: boolean;
   analytics: boolean;
@@ -25,20 +34,20 @@ function isConsentPreferences(value: unknown): value is ConsentPreferences {
 
 function loadGoogleAnalytics() {
   const measurementId = process.env.NEXT_PUBLIC_GA_ID;
-  if (!measurementId || typeof window === 'undefined') return;
-  if ((window as any).gtag) return;
+  if (!measurementId || window.gtag) return;
 
   const script = document.createElement('script');
   script.async = true;
   script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
   document.head.appendChild(script);
 
-  (window as any).dataLayer = (window as any).dataLayer || [];
-  (window as any).gtag = function () {
-    (window as any).dataLayer.push(arguments);
+  window.dataLayer = window.dataLayer || [];
+  const gtag = (...args: GtagArguments) => {
+    window.dataLayer.push(args);
   };
-  (window as any).gtag('js', new Date());
-  (window as any).gtag('config', measurementId);
+  window.gtag = gtag;
+  gtag('js', new Date());
+  gtag('config', measurementId);
 }
 
 // Beautiful toggle switch component
@@ -202,21 +211,23 @@ export function ConsentBanner() {
             <p className="text-sm text-muted-foreground leading-relaxed mb-2">
               <Tx
                 k="consent.description"
-                source="We use cookies to enhance your experience, analyze how you use our site, and show you relevant content. You're in control."
+                source="We use cookies to improve your experience, understand how the site is used, and personalize content. You control your preferences."
               />
             </p>
             {consentDate && (
               <p className="text-xs text-muted-foreground">
-                Last updated: {consentDate}
+                <Tx k="consent.last_updated" source="Last updated:" /> {consentDate}
               </p>
             )}
           </div>
           <button
             onClick={() => setIsOpen(false)}
             className="p-2 hover:bg-muted rounded-lg transition-colors flex-shrink-0"
-            aria-label="Close"
           >
             <X className="w-5 h-5" />
+            <span className="sr-only">
+              <Tx k="common.close" source="Close" />
+            </span>
           </button>
         </div>
 
@@ -232,12 +243,12 @@ export function ConsentBanner() {
             <div className="flex items-start justify-between gap-4 pb-4">
               <div className="flex-1">
                 <label htmlFor="essential" className="font-semibold text-sm block mb-1">
-                  <Tx k="consent.essential_cookies" source="Essential Cookies" />
+                  <Tx k="consent.essential_cookies" source="Essential cookies" />
                 </label>
                 <p className="text-xs text-muted-foreground">
                   <Tx
                     k="consent.essential_description"
-                    source="Required for sign-in, security, and basic functions. Always enabled."
+                    source="Required for sign-in, security, and basic site functions. These are always enabled."
                   />
                 </p>
               </div>
@@ -258,12 +269,12 @@ export function ConsentBanner() {
             <div className="flex items-start justify-between gap-4 pb-4 border-t border-border pt-5">
               <div className="flex-1">
                 <label htmlFor="analytics" className="font-semibold text-sm block mb-1">
-                  <Tx k="consent.analytics_cookies" source="Analytics Cookies" />
+                  <Tx k="consent.analytics_cookies" source="Analytics cookies" />
                 </label>
                 <p className="text-xs text-muted-foreground">
                   <Tx
                     k="consent.analytics_description"
-                    source="Help us understand usage to improve your experience. Data is anonymized."
+                    source="Help us understand how the site is used so we can improve it. The data is anonymized."
                   />
                 </p>
               </div>
@@ -280,12 +291,12 @@ export function ConsentBanner() {
             <div className="flex items-start justify-between gap-4 pb-5 border-t border-border pt-5">
               <div className="flex-1">
                 <label htmlFor="marketing" className="font-semibold text-sm block mb-1">
-                  <Tx k="consent.marketing_cookies" source="Marketing Cookies" />
+                  <Tx k="consent.marketing_cookies" source="Marketing cookies" />
                 </label>
                 <p className="text-xs text-muted-foreground">
                   <Tx
                     k="consent.marketing_description"
-                    source="Personalize content and measure campaign performance. Opt out anytime."
+                    source="Personalize advertising and measure campaign performance. You can opt out at any time."
                   />
                 </p>
               </div>
@@ -301,15 +312,15 @@ export function ConsentBanner() {
             {/* Privacy Links */}
             <div className="pt-4 border-t border-border flex flex-wrap gap-2 text-xs">
               <Link href="/privacy" className="text-primary hover:text-primary/80 font-medium hover:underline">
-                Privacy Policy
+                <Tx k="consent.privacy_policy" source="Privacy Policy" />
               </Link>
               <span className="text-muted-foreground">•</span>
               <Link href="/cookies" className="text-primary hover:text-primary/80 font-medium hover:underline">
-                Cookie Policy
+                <Tx k="consent.cookie_policy" source="Cookie Policy" />
               </Link>
               <span className="text-muted-foreground">•</span>
               <Link href="/terms" className="text-primary hover:text-primary/80 font-medium hover:underline">
-                Terms of Service
+                <Tx k="consent.terms_of_service" source="Terms of Service" />
               </Link>
             </div>
           </div>
@@ -324,7 +335,11 @@ export function ConsentBanner() {
             <ChevronDown
               className={cn('w-4 h-4 transition-transform duration-200', isExpanded && 'rotate-180')}
             />
-            {isExpanded ? 'Hide details' : 'Show details'}
+            {isExpanded ? (
+              <Tx k="consent.hide_details" source="Hide details" />
+            ) : (
+              <Tx k="consent.show_details" source="Show details" />
+            )}
           </button>
         </div>
 
@@ -335,7 +350,7 @@ export function ConsentBanner() {
             variant="outline"
             className="flex-1 font-medium h-10"
           >
-            Reject All
+            <Tx k="consent.reject_all" source="Reject all" />
           </Button>
 
           {isExpanded && (
@@ -344,7 +359,7 @@ export function ConsentBanner() {
               variant="secondary"
               className="flex-1 font-medium h-10"
             >
-              Save Preferences
+              <Tx k="consent.save_preferences" source="Save preferences" />
             </Button>
           )}
 
@@ -352,7 +367,7 @@ export function ConsentBanner() {
             onClick={handleAcceptAll}
             className="flex-1 bg-primary hover:bg-primary/90 font-medium h-10"
           >
-            Accept All
+            <Tx k="consent.accept_all" source="Accept all" />
           </Button>
         </div>
       </div>
