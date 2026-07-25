@@ -2,17 +2,26 @@ import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { db } from "@/lib/db";
+import {
+  DEFAULT_LOCALE,
+  GOOGLE_TRANSLATE_COOKIE,
+  SITE_LOCALE_COOKIE,
+  localeFromGoogleTranslateCookie,
+  normalizeLocaleCode,
+} from "@/lib/i18n/locale-preference";
 
-const COOKIE_NAME = "googtrans";
-const SOURCE_LANGUAGE = "en";
+const SOURCE_LANGUAGE = DEFAULT_LOCALE;
 
-/** Reads the same `googtrans` cookie the Google Translate widget uses, so there is a
- *  single source of truth for "what language is this visitor viewing in." */
+/** Reads Book Easy's explicit locale preference. The Google cookie remains a
+ *  migration fallback for visitors who selected a language before this cookie was
+ *  introduced. */
 export const getLocale = cache(async (): Promise<string> => {
   const store = await cookies();
-  const raw = store.get(COOKIE_NAME)?.value;
-  const match = raw?.match(/^\/[^/]+\/([^/]+)$/);
-  return match?.[1] ?? SOURCE_LANGUAGE;
+  return (
+    normalizeLocaleCode(store.get(SITE_LOCALE_COOKIE)?.value) ??
+    localeFromGoogleTranslateCookie(store.get(GOOGLE_TRANSLATE_COOKIE)?.value) ??
+    SOURCE_LANGUAGE
+  );
 });
 
 export function localeDirection(locale: string): "ltr" | "rtl" {

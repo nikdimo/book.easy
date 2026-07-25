@@ -19,6 +19,13 @@ import {
 } from "@/components/ui/popover";
 import { Tx, useI18n } from "@/lib/i18n/client";
 import { recordLanguageSelection } from "@/lib/actions/language.actions";
+import {
+  DEFAULT_LOCALE,
+  GOOGLE_TRANSLATE_COOKIE,
+  SITE_LOCALE_COOKIE,
+  googleTranslateCookieValue,
+  normalizeLocaleCode,
+} from "@/lib/i18n/locale-preference";
 
 declare global {
   interface Window {
@@ -40,10 +47,8 @@ declare global {
   }
 }
 
-const FALLBACK_SOURCE_LANGUAGE = "en";
 const GOOGLE_AUTO_SOURCE_LANGUAGE = "auto";
 const SCRIPT_ID = "google-translate-script";
-const COOKIE_NAME = "googtrans";
 
 interface LanguageOption {
   code: string;
@@ -55,59 +60,95 @@ interface LanguageOption {
 interface AutomaticLanguage {
   code: string;
   name: string;
+  searchTerms: string;
 }
 
-function googleLanguageOptions(): AutomaticLanguage[] {
+function languageDisplayName(code: string, locale: string): string | null {
+  try {
+    return new Intl.DisplayNames([locale], { type: "language" }).of(code) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function googleLanguageOptions(displayLocale: string): AutomaticLanguage[] {
   const select = document.querySelector<HTMLSelectElement>(".goog-te-combo");
   if (!select) return [];
   return [...select.options]
     .filter((option) => option.value)
-    .map((option) => ({ code: option.value, name: option.text.trim() }))
+    .map((option) => {
+      const code = option.value;
+      const googleName = option.text.trim();
+      const localizedName = languageDisplayName(code, displayLocale);
+      const englishName = languageDisplayName(code, "en");
+      const nativeName = languageDisplayName(code, code);
+      return {
+        code,
+        name: localizedName ?? englishName ?? googleName,
+        searchTerms: [googleName, localizedName, englishName, nativeName]
+          .filter((name): name is string => Boolean(name))
+          .join(" "),
+      };
+    })
     .filter((option) => option.name);
 }
 
-async function setLanguage(code: string, sourceLanguage: string) {
+function cookieDomainsToClear(hostname: string): Array<string | undefined> {
+  const hostnameParts = hostname.split(".");
+  const domains: Array<string | undefined> = [undefined];
+  for (let index = 0; index < hostnameParts.length - 1; index += 1) {
+    const domain = hostnameParts.slice(index).join(".");
+    domains.push(domain, `.${domain}`);
+  }
+  return domains;
+}
+
+function syncBrowserLanguageCookies(code: string) {
+  const locale = normalizeLocaleCode(code);
+  if (!locale) return;
+
   const hostname = window.location.hostname;
   const secure = window.location.protocol === "https:" ? "; secure" : "";
   const common = `; path=/; samesite=lax${secure}`;
-  const hostnameParts = hostname.split(".");
-  const cookieDomains: Array<string | undefined> = [undefined];
-  for (let index = 0; index < hostnameParts.length - 1; index += 1) {
-    const domain = hostnameParts.slice(index).join(".");
-    cookieDomains.push(domain, `.${domain}`);
+
+  // Older releases wrote googtrans at several parent-domain scopes. Remove every
+  // possible duplicate first so Google and the server cannot read different values.
+  for (const domain of cookieDomainsToClear(hostname)) {
+    const domainAttribute = domain ? `; domain=${domain}` : "";
+    document.cookie =
+      `${GOOGLE_TRANSLATE_COOKIE}=; expires=Thu, 01 Jan 1970 00:00:00 UTC` +
+      `${common}${domainAttribute}`;
   }
 
-  if (code === sourceLanguage) {
-    for (const domain of cookieDomains) {
-      const domainAttribute = domain ? `; domain=${domain}` : "";
-      document.cookie = `${COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 UTC${common}${domainAttribute}`;
-    }
-  } else {
-    // Listing content may be authored in any language. Google's page translator
-    // must detect each source text instead of assuming all dynamic copy is English.
-    const value = `/${GOOGLE_AUTO_SOURCE_LANGUAGE}/${code}`;
-    for (const domain of cookieDomains) {
-      const domainAttribute = domain ? `; domain=${domain}` : "";
-      document.cookie = `${COOKIE_NAME}=${value}; max-age=31536000${common}${domainAttribute}`;
-    }
-    try {
-      await recordLanguageSelection(code);
-    } catch {
-      // Selection tracking is best-effort; never block switching the language.
-    }
+  // Keep both cookies host-scoped. English is an explicit Google target too:
+  // user-authored Macedonian (or any other source language) still needs /auto/en.
+  document.cookie = `${SITE_LOCALE_COOKIE}=${locale}; max-age=31536000${common}`;
+  document.cookie =
+    `${GOOGLE_TRANSLATE_COOKIE}=${googleTranslateCookieValue(locale)}; ` +
+    `max-age=31536000${common}`;
+}
+
+async function setLanguage(code: string) {
+  const locale = normalizeLocaleCode(code);
+  if (!locale) return;
+
+  syncBrowserLanguageCookies(locale);
+  try {
+    await recordLanguageSelection(locale);
+  } catch {
+    // Selection tracking is best-effort; never block switching the language.
   }
   window.location.reload();
 }
 
 export function GoogleTranslateWidget({
   languages,
-  currentLocale = FALLBACK_SOURCE_LANGUAGE,
+  currentLocale = DEFAULT_LOCALE,
 }: {
   languages: LanguageOption[];
   currentLocale?: string;
 }) {
   const i18n = useI18n();
-  const sourceLanguage = FALLBACK_SOURCE_LANGUAGE;
   const [open, setOpen] = useState(false);
   const [automaticLanguages, setAutomaticLanguages] = useState<AutomaticLanguage[]>([]);
   // The server has already resolved the request cookie. Using document.cookie here
@@ -115,8 +156,11 @@ export function GoogleTranslateWidget({
   const current = currentLocale;
 
   useEffect(() => {
+    // Normalize legacy or duplicate Google cookies before its script reads them.
+    syncBrowserLanguageCookies(current);
+
     const collectLanguages = () => {
-      const options = googleLanguageOptions();
+      const options = googleLanguageOptions(current);
       if (options.length) setAutomaticLanguages(options);
     };
 
@@ -153,7 +197,7 @@ export function GoogleTranslateWidget({
     }
 
     return () => observer.disconnect();
-  }, [sourceLanguage]);
+  }, [current]);
 
   const reviewed = languages.filter(
     (language) => language.isDefault || language.useAiTranslation
@@ -165,7 +209,7 @@ export function GoogleTranslateWidget({
   const currentLabel =
     reviewed.find((language) => language.code === current)?.name ??
     automatic.find((language) => language.code === current)?.name ??
-    languages.find((language) => language.code === sourceLanguage)?.name ??
+    languages.find((language) => language.code === DEFAULT_LOCALE)?.name ??
     "English";
   const searchPlaceholder = i18n.resolve(
     "languages.search_placeholder",
@@ -208,7 +252,7 @@ export function GoogleTranslateWidget({
                     data-checked={language.code === current}
                     onSelect={() => {
                       setOpen(false);
-                      void setLanguage(language.code, sourceLanguage);
+                      void setLanguage(language.code);
                     }}
                   >
                     <span>{language.name}</span>
@@ -229,11 +273,11 @@ export function GoogleTranslateWidget({
                     {automatic.map((language) => (
                       <CommandItem
                         key={language.code}
-                        value={`${language.name} ${language.code}`}
+                        value={`${language.name} ${language.searchTerms} ${language.code}`}
                         data-checked={language.code === current}
                         onSelect={() => {
                           setOpen(false);
-                          void setLanguage(language.code, sourceLanguage);
+                          void setLanguage(language.code);
                         }}
                       >
                         <span className="flex-1">{language.name}</span>
