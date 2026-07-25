@@ -6,8 +6,8 @@ export function BrandLogo({ compact = false, className }: { compact?: boolean; c
     <Image
       src={compact ? "/branding/book-easy-symbol.png" : "/branding/book-easy-primary.png"}
       alt="Book Easy"
-      width={compact ? 120 : 560}
-      height={150}
+      width={compact ? 120 : 1631}
+      height={compact ? 150 : 592}
       unoptimized
       className={cn("h-auto w-auto", className)}
     />

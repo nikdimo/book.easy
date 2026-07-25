@@ -42,19 +42,37 @@ export function PropertyCardGallery({
   const [saved, setSaved] = useState(initialSaved);
   const [hasBrowsedPhotos, setHasBrowsedPhotos] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [, startTransition] = useTransition();
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
-    if (isHovering) {
-      el.currentTime = 0;
-      el.play().catch(() => {});
-    } else {
+
+    let cancelled = false;
+    if (!isHovering) {
       el.pause();
+      el.currentTime = 0;
+      return;
     }
-  }, [isHovering]);
+
+    // Starting playback is asynchronous even for a local upload. Keep the cover
+    // visible until the browser confirms playback so a slow/erroring video never
+    // replaces the photo with a blank frame.
+    void el
+      .play()
+      .then(() => {
+        if (!cancelled) setIsVideoPlaying(true);
+      })
+      .catch(() => {
+        if (!cancelled) setIsVideoPlaying(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isHovering, videoUrl]);
 
   const safeIndex = Math.min(currentImageIndex, Math.max(0, images.length - 1));
   const cover = images[safeIndex];
@@ -112,8 +130,14 @@ export function PropertyCardGallery({
       onClickCapture={swipe.onClickCapture}
       onTouchStart={hasMultiple ? swipe.onTouchStart : undefined}
       onTouchEnd={hasMultiple ? swipe.onTouchEnd : undefined}
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
+      onMouseEnter={() => {
+        setIsVideoPlaying(false);
+        setIsHovering(true);
+      }}
+      onMouseLeave={() => {
+        setIsHovering(false);
+        setIsVideoPlaying(false);
+      }}
     >
       <Link href={href} className="absolute inset-0 z-0">
         {cover ? (
@@ -138,10 +162,13 @@ export function PropertyCardGallery({
           muted
           loop
           playsInline
-          preload="none"
+          preload="metadata"
+          onLoadStart={() => setIsVideoPlaying(false)}
+          onPlaying={() => setIsVideoPlaying(true)}
+          onError={() => setIsVideoPlaying(false)}
           className={cn(
             "pointer-events-none absolute inset-0 z-[1] h-full w-full object-cover transition-opacity duration-300",
-            isHovering ? "opacity-100" : "opacity-0"
+            isHovering && isVideoPlaying ? "opacity-100" : "opacity-0"
           )}
         />
       )}

@@ -21,6 +21,17 @@ const UI_SCOPES = [
 const UI_FILES = new Set([
   "src/components/shared/header.tsx",
   "src/components/shared/footer.tsx",
+  "src/components/shared/consent-banner.tsx",
+]);
+// Long-form documents are page content, not fixed interface copy. Keep their
+// source HTML available to the Google Translate layer instead of adding
+// hundreds of legal-document paragraphs to the reviewed UI-string catalog.
+// Controls and navigation used by these pages remain covered through the
+// shared component scopes above.
+const CONTENT_FILES = new Set([
+  "src/app/(public)/cookies/page.tsx",
+  "src/app/(public)/privacy/page.tsx",
+  "src/app/(public)/terms/page.tsx",
 ]);
 const TRANSLATABLE_ATTRIBUTES = new Set(["aria-label", "placeholder", "title", "alt"]);
 
@@ -60,6 +71,7 @@ function relativePath(filePath: string): string {
 
 function isGuestUiFile(filePath: string): boolean {
   const relative = relativePath(filePath);
+  if (CONTENT_FILES.has(relative)) return false;
   return UI_FILES.has(relative) || UI_SCOPES.some((scope) => relative.startsWith(scope));
 }
 

@@ -78,20 +78,45 @@ export function ListingImagesField({
     setUploading(true);
     try {
       for (const file of fileList) {
-        const formData = new FormData();
-        formData.set("file", file);
-        const res = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-          credentials: "same-origin",
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          toast.error(data.error || "Upload failed");
-          continue;
-        }
-        if (data.url && (data.mediaType === "IMAGE" || data.mediaType === "VIDEO")) {
-          updateItems((prev) => [...prev, { url: data.url, mediaType: data.mediaType }]);
+        try {
+          const formData = new FormData();
+          formData.set("file", file);
+          const res = await fetch("/api/upload", {
+            method: "POST",
+            body: formData,
+            credentials: "same-origin",
+          });
+          const responseText = await res.text();
+          let data: { error?: string; url?: string; mediaType?: string } = {};
+          try {
+            data = responseText ? JSON.parse(responseText) : {};
+          } catch {
+            // Reverse proxies can return an HTML error page (notably for HTTP 413).
+          }
+
+          if (!res.ok) {
+            const message =
+              res.status === 413
+                ? "Video is too large for the server. Maximum upload size is 50 MB."
+                : data.error || `Upload failed (${res.status})`;
+            toast.error(message);
+            continue;
+          }
+          const uploadedUrl = data.url;
+          const uploadedMediaType = data.mediaType;
+          if (
+            uploadedUrl &&
+            (uploadedMediaType === "IMAGE" || uploadedMediaType === "VIDEO")
+          ) {
+            updateItems((prev) => [
+              ...prev,
+              { url: uploadedUrl, mediaType: uploadedMediaType },
+            ]);
+          } else {
+            toast.error("The server returned an invalid upload response. Please try again.");
+          }
+        } catch {
+          toast.error(`Couldn't upload ${file.name}. Check your connection and try again.`);
         }
       }
     } finally {
@@ -148,7 +173,7 @@ export function ListingImagesField({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="notranslate space-y-4" translate="no">
       <div
         className={cn(
           "relative rounded-lg border border-dashed p-5 transition-colors",

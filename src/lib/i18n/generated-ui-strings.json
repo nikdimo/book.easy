@@ -95,6 +95,11 @@
     "filePath": "src/app/(public)/bookings/confirm/page.tsx"
   },
   {
+    "key": "booking.clear_selection",
+    "sourceText": "Clear selection",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
     "key": "booking.continue_browsing",
     "sourceText": "Continue browsing",
     "filePath": "src/app/(public)/bookings/confirm/page.tsx"
@@ -403,6 +408,91 @@
     "key": "common.edit",
     "sourceText": "Edit",
     "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "consent.accept_all",
+    "sourceText": "Accept all",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
+    "key": "consent.always_on",
+    "sourceText": "Always on",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
+    "key": "consent.analytics_cookies",
+    "sourceText": "Analytics cookies",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
+    "key": "consent.analytics_description",
+    "sourceText": "Help us understand how the site is used so we can improve it. The data is anonymized.",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
+    "key": "consent.cookie_policy",
+    "sourceText": "Cookie Policy",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
+    "key": "consent.description",
+    "sourceText": "We use cookies to improve your experience, understand how the site is used, and personalize content. You control your preferences.",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
+    "key": "consent.essential_cookies",
+    "sourceText": "Essential cookies",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
+    "key": "consent.essential_description",
+    "sourceText": "Required for sign-in, security, and basic site functions. These are always enabled.",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
+    "key": "consent.hide_details",
+    "sourceText": "Hide details",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
+    "key": "consent.marketing_cookies",
+    "sourceText": "Marketing cookies",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
+    "key": "consent.marketing_description",
+    "sourceText": "Personalize advertising and measure campaign performance. You can opt out at any time.",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
+    "key": "consent.privacy_policy",
+    "sourceText": "Privacy Policy",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
+    "key": "consent.reject_all",
+    "sourceText": "Reject all",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
+    "key": "consent.save_preferences",
+    "sourceText": "Save preferences",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
+    "key": "consent.show_details",
+    "sourceText": "Show details",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
+    "key": "consent.terms_of_service",
+    "sourceText": "Terms of Service",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
+    "key": "consent.title",
+    "sourceText": "We respect your privacy",
+    "filePath": "src/components/shared/consent-banner.tsx"
   },
   {
     "key": "filters.all",

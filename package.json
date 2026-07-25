@@ -17,6 +17,8 @@
     "i18n:lookup": "node --conditions=react-server --import tsx scripts/lookup-ui-translations.ts",
     "i18n:audit": "node --conditions=react-server --import tsx scripts/audit-ui-translation-quality.ts",
     "i18n:normalize-serbian": "node --conditions=react-server --import tsx scripts/normalize-serbian-script.ts",
+    "i18n:export-reviewed": "node --conditions=react-server --import tsx scripts/export-reviewed-ui-translations.ts",
+    "i18n:import-reviewed": "node --conditions=react-server --import tsx scripts/import-reviewed-ui-translations.ts",
     "popularity:recompute": "node --conditions=react-server --import tsx scripts/recompute-popularity.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

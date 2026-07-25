@@ -93,6 +93,7 @@ model User {
   listingReports         ListingReport[] @relation("ListingReportReporter")
   reviewedListingReports ListingReport[] @relation("ListingReportReviewer")
   favorites           Favorite[]
+  userConsents        UserConsent[]
 
   @@index([email])
   @@index([role])
@@ -574,4 +575,29 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([createdAt])
   @@index([userId])
+}
+
+// ─── Consent & Privacy ──────────────────────────────────────────────────────────
+
+/**
+ * Track user consent for cookies and data processing per GDPR.
+ * If userId is null, it's an anonymous visitor's consent (identified by sessionId).
+ */
+model UserConsent {
+  id                String   @id @default(cuid())
+  userId            String?
+  sessionId         String   @unique
+  essential         Boolean  @default(true)
+  analytics         Boolean  @default(false)
+  marketing         Boolean  @default(false)
+  consentVersion    String   @default("1.0")
+  ipAddress         String?
+  userAgent         String?
+  consentedAt       DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([consentedAt])
 }

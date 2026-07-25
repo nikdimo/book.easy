@@ -141,7 +141,7 @@ export async function Footer() {
               Copyright {new Date().getFullYear()} book.easy, Inc.
             </span>
             <Link
-              href="/"
+              href="/terms"
               className={cn(
                 "hover:text-foreground transition-colors",
                 terms.translated && "notranslate"
@@ -150,7 +150,7 @@ export async function Footer() {
               {terms.text}
             </Link>
             <Link
-              href="/"
+              href="/privacy"
               className={cn(
                 "hover:text-foreground transition-colors",
                 privacy.translated && "notranslate"

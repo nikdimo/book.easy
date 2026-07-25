@@ -3,6 +3,7 @@ import { Inter, Manrope, Geist_Mono } from "next/font/google";
 import { SessionProvider } from "next-auth/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
+import { ConsentBanner } from "@/components/shared/consent-banner";
 import "./globals.css";
 import { SITE_DOMAIN, SITE_TITLE_DEFAULT, SITE_TITLE_SUFFIX } from "@/lib/branding";
 import { getT, localeDirection } from "@/lib/i18n/t";
@@ -65,6 +66,7 @@ export default async function RootLayout({
               {children}
               {modal}
               <Toaster richColors position="top-right" />
+              <ConsentBanner />
             </TooltipProvider>
           </SessionProvider>
         </I18nProvider>

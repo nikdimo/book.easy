@@ -213,6 +213,24 @@ echo ============================================
 echo   Save Version + Deploy (full release)
 echo ============================================
 echo.
+echo [preflight] Exporting the complete reviewed AI translation snapshot...
+call npm run i18n:extract
+if errorlevel 1 (
+    echo.
+    echo   ERROR - Translation catalog extraction failed. Nothing was saved or deployed.
+    pause
+    goto MENU
+)
+call npm run i18n:export-reviewed
+if errorlevel 1 (
+    echo.
+    echo   ERROR - Reviewed translations are incomplete or stale.
+    echo   Nothing was saved or deployed. Finish the local translation review first.
+    pause
+    goto MENU
+)
+echo   Reviewed translation snapshot is complete.
+echo.
 call :SAVE_BODY
 if errorlevel 1 (
     echo.

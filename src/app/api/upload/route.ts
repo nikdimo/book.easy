@@ -108,8 +108,18 @@ export async function POST(req: Request) {
     );
   }
 
-  const formData = await req.formData();
-  const file = formData.get("file") as File | null;
+  let formData: FormData;
+  try {
+    formData = await req.formData();
+  } catch (error) {
+    console.error("Unable to parse upload request", error);
+    return NextResponse.json(
+      { error: "The upload request could not be read. Check the file size and try again." },
+      { status: 400 }
+    );
+  }
+  const fileEntry = formData.get("file");
+  const file = fileEntry instanceof File ? fileEntry : null;
 
   if (!file) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
@@ -135,7 +145,16 @@ export async function POST(req: Request) {
     );
   }
 
-  let buffer = Buffer.from(await file.arrayBuffer());
+  let buffer: Buffer;
+  try {
+    buffer = Buffer.from(await file.arrayBuffer());
+  } catch (error) {
+    console.error("Unable to read uploaded file", error);
+    return NextResponse.json(
+      { error: "The uploaded file could not be read. Please try again." },
+      { status: 400 }
+    );
+  }
 
   if (!typeInfo.magic(buffer)) {
     return NextResponse.json(
@@ -162,8 +181,17 @@ export async function POST(req: Request) {
   // Never trust the client-supplied filename for the on-disk path — it's attacker
   // controlled and a `../` in it could otherwise escape the upload directory.
   const safeName = `${randomUUID()}.${typeInfo.ext}`;
-  const storage = getStorageAdapter();
-  const url = await storage.upload(buffer, safeName, outputMimeType);
+  let url: string;
+  try {
+    const storage = getStorageAdapter();
+    url = await storage.upload(buffer, safeName, outputMimeType);
+  } catch (error) {
+    console.error("Unable to store uploaded file", error);
+    return NextResponse.json(
+      { error: "The server could not save this file. Please try again later." },
+      { status: 500 }
+    );
+  }
 
   return NextResponse.json({ url, mediaType: typeInfo.mediaType });
 }

@@ -61,6 +61,13 @@ npm run db:migrate:deploy
 echo "[deploy] Building"
 npm run build
 
+echo "[deploy] Importing reviewed AI translations"
+# This imports only the version-controlled fixed-UI translation snapshot. It preserves
+# current production manual overrides, touches no user/listing/booking data, validates
+# the snapshot against the exact built catalog, and exits non-zero before restart if
+# completeness verification fails.
+npm run i18n:import-reviewed
+
 echo "[deploy] Syncing new and changed UI translations"
 # The build's prebuild hook regenerates the AST-validated catalog. Sync after a
 # successful build so new UI copy is translated before the new process is restarted.

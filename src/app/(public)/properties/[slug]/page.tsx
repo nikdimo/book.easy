@@ -50,6 +50,15 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
 
   const initialCheckIn = typeof search.checkIn === "string" ? search.checkIn : undefined;
   const initialCheckOut = typeof search.checkOut === "string" ? search.checkOut : undefined;
+  const hasExplicitSearchSelection = [
+    "checkIn",
+    "checkOut",
+    "guests",
+    "adults",
+    "children",
+    "infants",
+    "pets",
+  ].some((key) => typeof search[key] === "string");
   const toGuestCount = (value: string | string[] | undefined) => {
     const count = typeof value === "string" ? Number(value) : 0;
     return Number.isFinite(count) && count > 0 ? Math.floor(count) : 0;
@@ -195,6 +204,7 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
               initialCheckOut={initialCheckOut}
               initialGuests={initialGuests}
               initialGuestDetails={initialGuestDetails}
+              hasExplicitSearchSelection={hasExplicitSearchSelection}
               reserveTooltip={reserveTooltip}
             />
           )}

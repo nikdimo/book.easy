@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { differenceInDays } from "date-fns";
@@ -46,6 +46,7 @@ interface BookingWidgetProps {
   initialCheckOut?: string;
   initialGuests?: number;
   initialGuestDetails?: GuestDetails;
+  hasExplicitSearchSelection?: boolean;
   reserveTooltip: Resolved;
 }
 
@@ -55,6 +56,15 @@ type GuestDetails = {
   infants: number;
   pets: number;
 };
+
+type BookingDraft = {
+  checkIn: string;
+  checkOut: string;
+  guestDetails: GuestDetails;
+  note: string;
+};
+
+const BOOKING_DRAFT_VERSION = 1;
 
 export function BookingWidget({
   listingId,
@@ -69,6 +79,7 @@ export function BookingWidget({
   initialCheckOut = "",
   initialGuests,
   initialGuestDetails = { adults: 0, children: 0, infants: 0, pets: 0 },
+  hasExplicitSearchSelection = false,
   reserveTooltip,
 }: BookingWidgetProps) {
   const i18n = useI18n();
@@ -89,6 +100,65 @@ export function BookingWidget({
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [priceDetailsOpen, setPriceDetailsOpen] = useState(false);
+  const [draftReady, setDraftReady] = useState(false);
+  const draftStorageKey = `bookeasy:booking-draft:v${BOOKING_DRAFT_VERSION}:${listingId}`;
+
+  useEffect(() => {
+    let cancelled = false;
+
+    queueMicrotask(() => {
+      if (cancelled) return;
+
+      if (!hasExplicitSearchSelection) {
+        try {
+          const rawDraft = window.localStorage.getItem(draftStorageKey);
+          if (rawDraft) {
+            const draft = JSON.parse(rawDraft) as Partial<BookingDraft>;
+            if (typeof draft.checkIn === "string") setCheckInStr(draft.checkIn);
+            if (typeof draft.checkOut === "string") setCheckOutStr(draft.checkOut);
+            if (typeof draft.note === "string") setNote(draft.note);
+            if (
+              draft.guestDetails &&
+              ["adults", "children", "infants", "pets"].every(
+                (key) =>
+                  Number.isInteger(draft.guestDetails?.[key as keyof GuestDetails]) &&
+                  Number(draft.guestDetails?.[key as keyof GuestDetails]) >= 0
+              )
+            ) {
+              const restored = draft.guestDetails as GuestDetails;
+              const restoredOccupancy = restored.adults + restored.children;
+              if (restoredOccupancy > 0 && restoredOccupancy <= maxGuests) {
+                setGuestDetails(restored);
+              }
+            }
+          }
+        } catch {
+          // A malformed or unavailable browser cache should never block booking.
+        }
+      }
+
+      setDraftReady(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [draftStorageKey, hasExplicitSearchSelection, maxGuests]);
+
+  useEffect(() => {
+    if (!draftReady) return;
+    const draft: BookingDraft = {
+      checkIn: checkInStr,
+      checkOut: checkOutStr,
+      guestDetails,
+      note,
+    };
+    try {
+      window.localStorage.setItem(draftStorageKey, JSON.stringify(draft));
+    } catch {
+      // Booking remains usable when storage is disabled or full.
+    }
+  }, [checkInStr, checkOutStr, draftReady, draftStorageKey, guestDetails, note]);
 
   const checkIn = checkInStr ? parseLocalYmd(checkInStr) : undefined;
   const checkOut = checkOutStr ? parseLocalYmd(checkOutStr) : undefined;
@@ -126,7 +196,16 @@ export function BookingWidget({
     setError(null);
 
     if (!session) {
-      router.push(`/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`);
+      const returnUrl = new URL(window.location.href);
+      returnUrl.searchParams.set("checkIn", checkInStr);
+      returnUrl.searchParams.set("checkOut", checkOutStr);
+      returnUrl.searchParams.set("adults", String(guestDetails.adults));
+      returnUrl.searchParams.set("children", String(guestDetails.children));
+      returnUrl.searchParams.set("infants", String(guestDetails.infants));
+      returnUrl.searchParams.set("pets", String(guestDetails.pets));
+      router.push(
+        `/login?callbackUrl=${encodeURIComponent(`${returnUrl.pathname}${returnUrl.search}`)}`
+      );
       return;
     }
 
@@ -158,6 +237,29 @@ export function BookingWidget({
         toast.error(result.error);
       }
     });
+  }
+
+  function clearSelection() {
+    setCheckInStr("");
+    setCheckOutStr("");
+    setGuestDetails({ adults: 1, children: 0, infants: 0, pets: 0 });
+    setNote("");
+    setError(null);
+    try {
+      window.localStorage.removeItem(draftStorageKey);
+    } catch {
+      // The visible selection is still cleared if browser storage is unavailable.
+    }
+
+    const cleanUrl = new URL(window.location.href);
+    ["checkIn", "checkOut", "guests", "adults", "children", "infants", "pets"].forEach(
+      (key) => cleanUrl.searchParams.delete(key)
+    );
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${cleanUrl.pathname}${cleanUrl.search}${cleanUrl.hash}`
+    );
   }
 
   function renderPriceBreakdown() {
@@ -298,7 +400,23 @@ export function BookingWidget({
         </div>
 
         <div className="space-y-2">
-          <Label><Tx k="booking.message_optional" source="Message to host (optional)" /></Label>
+          <div className="flex items-center justify-between gap-3">
+            <Label><Tx k="booking.message_optional" source="Message to host (optional)" /></Label>
+            {(checkInStr ||
+              checkOutStr ||
+              note ||
+              guests !== 1 ||
+              guestDetails.infants > 0 ||
+              guestDetails.pets > 0) && (
+              <button
+                type="button"
+                onClick={clearSelection}
+                className="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              >
+                <Tx k="booking.clear_selection" source="Clear selection" />
+              </button>
+            )}
+          </div>
           <Textarea
             placeholder={i18n.resolve("booking.message_placeholder", "Introduce yourself and share your travel plans...").text}
             value={note}
