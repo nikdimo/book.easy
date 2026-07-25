@@ -270,7 +270,7 @@ export function ConsentBanner() {
         {/* Show details toggle */}
         <button
           onClick={() => setShowDetails(!showDetails)}
-          className="text-primary hover:text-primary/80 text-sm font-medium transition-colors mb-6 underline"
+          className="text-foreground hover:text-foreground/80 text-sm transition-colors mb-6 underline"
         >
           {showDetails ? (
             <Tx k="consent.hide_details" source="Hide details" />
@@ -280,31 +280,28 @@ export function ConsentBanner() {
         </button>
 
         {/* Main buttons */}
-        <div className="flex gap-3 mb-6">
+        <div className="flex gap-4 mb-6">
           <Button
             onClick={handleDeclineAll}
-            variant="outline"
-            className="flex-1 font-medium"
+            className="flex-1 h-12 bg-primary hover:bg-primary/90 font-medium"
           >
             <Tx k="consent.decline_all" source="Decline all" />
           </Button>
           <Button
             onClick={handleAcceptAll}
-            className="flex-1 bg-primary hover:bg-primary/90 font-medium"
+            className="flex-1 h-12 bg-primary hover:bg-primary/90 font-medium"
           >
             <Tx k="consent.accept_all" source="Accept all" />
           </Button>
         </div>
 
-        {/* Cookie toggles below buttons */}
-        <div className="space-y-3 text-xs">
+        {/* Cookie toggles — horizontal row, label above switch */}
+        <div className="grid grid-cols-4 gap-2">
           {/* Strictly necessary */}
-          <div className="flex items-center justify-between gap-3">
-            <label className="flex-1">
-              <h4 className="font-semibold text-foreground">
-                <Tx k="consent.strictly_necessary" source="Strictly necessary" />
-              </h4>
-            </label>
+          <div className="flex flex-col items-start gap-2">
+            <span className="text-xs font-medium text-foreground leading-tight">
+              <Tx k="consent.strictly_necessary" source="Strictly necessary" />
+            </span>
             <ToggleSwitch
               id="essential"
               checked={true}
@@ -314,12 +311,10 @@ export function ConsentBanner() {
           </div>
 
           {/* Functional */}
-          <div className="flex items-center justify-between gap-3">
-            <label className="flex-1">
-              <h4 className="font-semibold text-foreground">
-                <Tx k="consent.functional" source="Functional" />
-              </h4>
-            </label>
+          <div className="flex flex-col items-start gap-2">
+            <span className="text-xs font-medium text-foreground leading-tight">
+              <Tx k="consent.functional" source="Functional" />
+            </span>
             <ToggleSwitch
               id="functional"
               checked={preferences.analytics}
@@ -330,12 +325,10 @@ export function ConsentBanner() {
           </div>
 
           {/* Statistical */}
-          <div className="flex items-center justify-between gap-3">
-            <label className="flex-1">
-              <h4 className="font-semibold text-foreground">
-                <Tx k="consent.statistical" source="Statistical" />
-              </h4>
-            </label>
+          <div className="flex flex-col items-start gap-2">
+            <span className="text-xs font-medium text-foreground leading-tight">
+              <Tx k="consent.statistical" source="Statistical" />
+            </span>
             <ToggleSwitch
               id="statistical"
               checked={preferences.analytics}
@@ -346,12 +339,10 @@ export function ConsentBanner() {
           </div>
 
           {/* Marketing */}
-          <div className="flex items-center justify-between gap-3">
-            <label className="flex-1">
-              <h4 className="font-semibold text-foreground">
-                <Tx k="consent.marketing" source="Marketing" />
-              </h4>
-            </label>
+          <div className="flex flex-col items-start gap-2">
+            <span className="text-xs font-medium text-foreground leading-tight">
+              <Tx k="consent.marketing" source="Marketing" />
+            </span>
             <ToggleSwitch
               id="marketing"
               checked={preferences.marketing}

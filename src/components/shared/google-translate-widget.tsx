@@ -41,6 +41,7 @@ declare global {
 }
 
 const FALLBACK_SOURCE_LANGUAGE = "en";
+const GOOGLE_AUTO_SOURCE_LANGUAGE = "auto";
 const SCRIPT_ID = "google-translate-script";
 const COOKIE_NAME = "googtrans";
 
@@ -82,7 +83,9 @@ async function setLanguage(code: string, sourceLanguage: string) {
       document.cookie = `${COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 UTC${common}${domainAttribute}`;
     }
   } else {
-    const value = `/${sourceLanguage}/${code}`;
+    // Listing content may be authored in any language. Google's page translator
+    // must detect each source text instead of assuming all dynamic copy is English.
+    const value = `/${GOOGLE_AUTO_SOURCE_LANGUAGE}/${code}`;
     for (const domain of cookieDomains) {
       const domainAttribute = domain ? `; domain=${domain}` : "";
       document.cookie = `${COOKIE_NAME}=${value}; max-age=31536000${common}${domainAttribute}`;
@@ -128,7 +131,7 @@ export function GoogleTranslateWidget({
       if (!container.querySelector(".goog-te-combo")) {
         new window.google.translate.TranslateElement(
           {
-            pageLanguage: sourceLanguage,
+            pageLanguage: GOOGLE_AUTO_SOURCE_LANGUAGE,
             autoDisplay: false,
           },
           "google_translate_element"
