@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -56,15 +56,6 @@ interface AutomaticLanguage {
   name: string;
 }
 
-function readCurrentLanguage(fallback: string): string {
-  const match = document.cookie.match(new RegExp(`${COOKIE_NAME}=/[^/]+/([^;]+)`));
-  return match?.[1] ?? fallback;
-}
-
-function subscribeToLanguageCookie() {
-  return () => {};
-}
-
 function googleLanguageOptions(): AutomaticLanguage[] {
   const select = document.querySelector<HTMLSelectElement>(".goog-te-combo");
   if (!select) return [];
@@ -78,12 +69,24 @@ async function setLanguage(code: string, sourceLanguage: string) {
   const hostname = window.location.hostname;
   const secure = window.location.protocol === "https:" ? "; secure" : "";
   const common = `; path=/; samesite=lax${secure}`;
+  const hostnameParts = hostname.split(".");
+  const cookieDomains: Array<string | undefined> = [undefined];
+  for (let index = 0; index < hostnameParts.length - 1; index += 1) {
+    const domain = hostnameParts.slice(index).join(".");
+    cookieDomains.push(domain, `.${domain}`);
+  }
+
   if (code === sourceLanguage) {
-    document.cookie = `${COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 UTC${common}`;
-    document.cookie = `${COOKIE_NAME}=; domain=${hostname}; expires=Thu, 01 Jan 1970 00:00:00 UTC${common}`;
+    for (const domain of cookieDomains) {
+      const domainAttribute = domain ? `; domain=${domain}` : "";
+      document.cookie = `${COOKIE_NAME}=; expires=Thu, 01 Jan 1970 00:00:00 UTC${common}${domainAttribute}`;
+    }
   } else {
     const value = `/${sourceLanguage}/${code}`;
-    document.cookie = `${COOKIE_NAME}=${value}; max-age=31536000${common}`;
+    for (const domain of cookieDomains) {
+      const domainAttribute = domain ? `; domain=${domain}` : "";
+      document.cookie = `${COOKIE_NAME}=${value}; max-age=31536000${common}${domainAttribute}`;
+    }
     try {
       await recordLanguageSelection(code);
     } catch {
@@ -104,11 +107,9 @@ export function GoogleTranslateWidget({
   const sourceLanguage = FALLBACK_SOURCE_LANGUAGE;
   const [open, setOpen] = useState(false);
   const [automaticLanguages, setAutomaticLanguages] = useState<AutomaticLanguage[]>([]);
-  const current = useSyncExternalStore(
-    subscribeToLanguageCookie,
-    () => readCurrentLanguage(sourceLanguage),
-    () => currentLocale
-  );
+  // The server has already resolved the request cookie. Using document.cookie here
+  // can select a stale duplicate domain cookie and disagree with the rendered locale.
+  const current = currentLocale;
 
   useEffect(() => {
     const collectLanguages = () => {
@@ -204,9 +205,7 @@ export function GoogleTranslateWidget({
                     data-checked={language.code === current}
                     onSelect={() => {
                       setOpen(false);
-                      if (language.code !== current) {
-                        void setLanguage(language.code, sourceLanguage);
-                      }
+                      void setLanguage(language.code, sourceLanguage);
                     }}
                   >
                     <span>{language.name}</span>
@@ -231,9 +230,7 @@ export function GoogleTranslateWidget({
                         data-checked={language.code === current}
                         onSelect={() => {
                           setOpen(false);
-                          if (language.code !== current) {
-                            void setLanguage(language.code, sourceLanguage);
-                          }
+                          void setLanguage(language.code, sourceLanguage);
                         }}
                       >
                         <span className="flex-1">{language.name}</span>

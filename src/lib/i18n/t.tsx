@@ -165,3 +165,39 @@ export function T({
   const { text, translated } = translator.resolve(k, source);
   return translated ? <span className="notranslate">{text}</span> : <>{text}</>;
 }
+
+/** Renders a translated template while leaving interpolated database/user content
+ * available to Google's page translator. Only the reviewed fixed grammar fragments
+ * receive `notranslate`; wrapping the whole sentence would also protect values such
+ * as a host-authored property type from translation. */
+export function TWithValues({
+  t: translator,
+  k,
+  source,
+  values,
+}: {
+  t: Translator;
+  k: string;
+  source: string;
+  values: Record<string, string | number>;
+}) {
+  const { text, translated } = translator.resolve(k, source);
+  return (
+    <>
+      {text.split(/(\{\w+\})/g).map((part, index) => {
+        const placeholder = part.match(/^\{(\w+)\}$/)?.[1];
+        if (placeholder && placeholder in values) {
+          return <span key={`${placeholder}-${index}`}>{values[placeholder]}</span>;
+        }
+        if (!part) return null;
+        return translated ? (
+          <span className="notranslate" key={`text-${index}`}>
+            {part}
+          </span>
+        ) : (
+          part
+        );
+      })}
+    </>
+  );
+}

@@ -395,6 +395,11 @@
     "filePath": "src/components/public/listing-carousel-client.tsx"
   },
   {
+    "key": "common.and",
+    "sourceText": "and",
+    "filePath": "src/components/shared/consent-banner.tsx"
+  },
+  {
     "key": "common.close",
     "sourceText": "Close",
     "filePath": "src/components/public/image-gallery.tsx"
@@ -475,11 +480,6 @@
     "filePath": "src/components/shared/consent-banner.tsx"
   },
   {
-    "key": "consent.functional_toggle_desc",
-    "sourceText": "Enhance your experience with personalized features.",
-    "filePath": "src/components/shared/consent-banner.tsx"
-  },
-  {
     "key": "consent.hide_details",
     "sourceText": "Hide details",
     "filePath": "src/components/shared/consent-banner.tsx"
@@ -520,11 +520,6 @@
     "filePath": "src/components/shared/privacy-settings-modal.tsx"
   },
   {
-    "key": "consent.marketing_toggle_desc",
-    "sourceText": "Personalize ads and measure campaign performance.",
-    "filePath": "src/components/shared/consent-banner.tsx"
-  },
-  {
     "key": "consent.privacy_policy",
     "sourceText": "Privacy Policy",
     "filePath": "src/components/shared/consent-banner.tsx"
@@ -540,11 +535,6 @@
     "filePath": "src/components/shared/privacy-settings-modal.tsx"
   },
   {
-    "key": "consent.save_settings",
-    "sourceText": "Save settings",
-    "filePath": "src/components/shared/consent-banner.tsx"
-  },
-  {
     "key": "consent.show_details",
     "sourceText": "Show details",
     "filePath": "src/components/shared/consent-banner.tsx"
@@ -552,11 +542,6 @@
   {
     "key": "consent.statistical",
     "sourceText": "Statistical",
-    "filePath": "src/components/shared/consent-banner.tsx"
-  },
-  {
-    "key": "consent.statistical_toggle_desc",
-    "sourceText": "Help us understand usage to improve the site.",
     "filePath": "src/components/shared/consent-banner.tsx"
   },
   {
@@ -572,11 +557,6 @@
   {
     "key": "consent.strictly_necessary",
     "sourceText": "Strictly necessary",
-    "filePath": "src/components/shared/consent-banner.tsx"
-  },
-  {
-    "key": "consent.strictly_necessary_desc",
-    "sourceText": "Always enabled. Required for sign-in and security.",
     "filePath": "src/components/shared/consent-banner.tsx"
   },
   {

@@ -48,6 +48,11 @@ return <button>{resolve("search.submit", "Search")}</button>;
 
 Static client markup may use `<Tx k="search.submit" source="Search" />`; the Server Component equivalent is `<T t={t} k="..." source="..." />`. Both take the key and the English source as props — the extractor reads those two attributes, so neither may be a variable.
 
+When reviewed fixed copy contains dynamic database or user-authored values, use
+`<TWithValues>` instead of interpolating the string and wrapping the entire result
+in `notranslate`. It protects only the reviewed grammar fragments and leaves values
+such as property types and listing content available to Google's page translator.
+
 Plural copy must provide all CLDR forms through `pluralForms(...)`; selection is performed with `Intl.PluralRules`, not `count === 1`. This distinction matters: the CLDR category named `one` is not "the number 1". In Macedonian, 21 and 31 also select `one`, so an equality check would pick the wrong grammatical form.
 
 The helpers have deliberately separate server and client responsibilities — `pluralForms()` resolves every category server-side, `tPlural()` selects and interpolates one server-side result, `useI18n().plural()` performs client-side selection, `ti()` interpolates server-side, and `interpolate()` substitutes placeholders into already-resolved data on the client. Server-only code must not be pulled into client bundles to reduce that list.

@@ -7,7 +7,7 @@ import {
 } from "@/lib/services/search.service";
 import { getActivePropertyTypes } from "@/lib/services/property-type.service";
 import { getEnabledLanguages } from "@/lib/services/language.service";
-import { getT, type Resolved } from "@/lib/i18n/t";
+import { getLocale, getT, type Resolved } from "@/lib/i18n/t";
 import type { HeaderNavLabels } from "@/components/shared/header";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 import type { PlaceOption } from "@/lib/utils/place";
@@ -28,7 +28,13 @@ function resolveNavLabels(t: Awaited<ReturnType<typeof getT>>): HeaderNavLabels 
   };
 }
 
-async function HeaderWithPopularCities({ t }: { t: Awaited<ReturnType<typeof getT>> }) {
+async function HeaderWithPopularCities({
+  t,
+  requestedLocale,
+}: {
+  t: Awaited<ReturnType<typeof getT>>;
+  requestedLocale: string;
+}) {
   let popularCities: PlaceOption[] = [];
   let availablePropertyTypesByCity: Record<string, string[]> = {};
   let propertyTypes: PropertyTypeOption[] = [];
@@ -64,7 +70,7 @@ async function HeaderWithPopularCities({ t }: { t: Awaited<ReturnType<typeof get
       availablePropertyTypesByCity={availablePropertyTypesByCity}
       propertyTypes={propertyTypes}
       languages={languages}
-      currentLocale={t.locale}
+      currentLocale={requestedLocale}
       listYourProperty={listYourProperty}
       listYourPropertyTooltip={listYourPropertyTooltip}
       navLabels={resolveNavLabels(t)}
@@ -73,7 +79,7 @@ async function HeaderWithPopularCities({ t }: { t: Awaited<ReturnType<typeof get
 }
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
-  const t = await getT();
+  const [t, requestedLocale] = await Promise.all([getT(), getLocale()]);
 
   // Search/picker copy is resolved by `useSearchLabels()` on the client, off the
   // root `I18nProvider` — there is no second provider here.
@@ -81,7 +87,7 @@ export default async function PublicLayout({ children }: { children: React.React
     <div className="h-dvh overflow-hidden">
       <div className="h-full overflow-y-auto">
         <Suspense fallback={<div className="h-[72px] border-b bg-background" />}>
-          <HeaderWithPopularCities t={t} />
+          <HeaderWithPopularCities t={t} requestedLocale={requestedLocale} />
         </Suspense>
         <main>{children}</main>
         <Footer />

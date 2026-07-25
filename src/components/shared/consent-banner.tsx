@@ -148,10 +148,6 @@ export function ConsentBanner() {
     savePreferences(minimal);
   };
 
-  const handleSavePreferences = () => {
-    savePreferences(preferences);
-  };
-
   const savePreferences = (prefs: ConsentPreferences) => {
     localStorage.setItem('consent-preferences', JSON.stringify(prefs));
     localStorage.setItem('consent-given', new Date().toISOString());
@@ -188,20 +184,18 @@ export function ConsentBanner() {
       onClick={canClose ? handleClose : undefined}
     >
       <div
-        className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl bg-background border border-border rounded-lg shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
+        className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-lg bg-background border border-border rounded-lg shadow-2xl p-6"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="border-b border-border px-8 py-6 flex items-start justify-between gap-4 flex-shrink-0">
-          <div>
-            <h2 className="text-2xl font-bold">
-              <Tx k="consent.dialog_title" source="We use cookies" />
-            </h2>
-          </div>
+        {/* Header with close button */}
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <h2 className="text-lg font-bold">
+            <Tx k="consent.dialog_title" source="We use cookies" />
+          </h2>
           {canClose && (
             <button
               onClick={handleClose}
-              className="p-2 hover:bg-muted rounded-lg transition-colors flex-shrink-0"
+              className="p-1 hover:bg-muted rounded transition-colors flex-shrink-0"
             >
               <X className="w-5 h-5" />
               <span className="sr-only">
@@ -211,230 +205,161 @@ export function ConsentBanner() {
           )}
         </div>
 
-        {/* Scrollable Content */}
-        <div className="overflow-y-auto flex-1 px-8 py-6 space-y-6">
-          <div>
-            <p className="text-sm text-muted-foreground leading-relaxed">
+        {/* Main content */}
+        <p className="text-sm text-muted-foreground mb-4">
+          <Tx
+            k="consent.intro"
+            source="We use cookies to collect information about you. We use this information:"
+          />
+        </p>
+
+        {/* Cookie purposes list */}
+        <ol className="list-decimal list-inside text-sm space-y-2 mb-6 text-muted-foreground">
+          <li>
+            <span className="font-medium">
+              <Tx k="consent.functional_benefit" source="to give you a better experience" />
+            </span>
+            {' '}
+            <Tx k="consent.functional_desc" source="of our website (functional)" />
+          </li>
+          <li>
+            <span className="font-medium">
+              <Tx k="consent.statistics" source="to count the pages you visit" />
+            </span>
+            {' '}
+            <Tx k="consent.statistics_desc" source="(statistics)" />
+          </li>
+          <li>
+            <span className="font-medium">
+              <Tx k="consent.marketing_benefit" source="to serve you relevant" />
+            </span>
+            {' '}
+            <Tx k="consent.marketing_desc" source="promotions (marketing)" />
+          </li>
+        </ol>
+
+        {/* Detailed info */}
+        {showDetails && (
+          <div className="mb-6 pb-4 border-b border-border space-y-3 text-sm text-muted-foreground">
+            <p>
               <Tx
-                k="consent.intro"
-                source="We use cookies to collect information about you. We use this information:"
+                k="consent.detailed_info"
+                source="Click 'Accept all' to give us your consent to use cookies for all these purposes. You can also use the toggles below to consent to specific purposes."
               />
             </p>
-          </div>
-
-          {/* Cookie purposes list */}
-          <div className="space-y-4">
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 mt-1">
-                <div className="w-2 h-2 rounded-full bg-primary mt-1.5" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm">
-                  <span className="font-medium">
-                    <Tx
-                      k="consent.functional_benefit"
-                      source="to give you a better experience"
-                    />
-                  </span>
-                  <span className="text-muted-foreground">
-                    {' '}
-                    <Tx k="consent.functional_desc" source="of our website (functional)" />
-                  </span>
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 mt-1">
-                <div className="w-2 h-2 rounded-full bg-primary mt-1.5" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm">
-                  <span className="font-medium">
-                    <Tx k="consent.statistics" source="to count the pages you visit" />
-                  </span>
-                  <span className="text-muted-foreground">
-                    {' '}
-                    <Tx k="consent.statistics_desc" source="(statistics)" />
-                  </span>
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 mt-1">
-                <div className="w-2 h-2 rounded-full bg-primary mt-1.5" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm">
-                  <span className="font-medium">
-                    <Tx k="consent.marketing_benefit" source="to serve you relevant" />
-                  </span>
-                  <span className="text-muted-foreground">
-                    {' '}
-                    <Tx k="consent.marketing_desc" source="promotions (marketing)" />
-                  </span>
-                </p>
-              </div>
+            <p>
+              <Tx
+                k="consent.withdraw_info"
+                source="Withdraw or change your consent at any time by visiting your Privacy Settings. Read more about how we use cookies and other technologies to collect personal data:"
+              />
+            </p>
+            <div className="flex flex-wrap gap-2 pt-2">
+              <Link href="/privacy" className="text-primary hover:underline font-medium">
+                <Tx k="consent.privacy_policy" source="Privacy Policy" />
+              </Link>
+              <span className="text-muted-foreground">
+                <Tx k="common.and" source="and" />
+              </span>
+              <Link href="/cookies" className="text-primary hover:underline font-medium">
+                <Tx k="consent.cookie_policy" source="Cookie Policy" />
+              </Link>
             </div>
           </div>
+        )}
 
-          {/* Divider */}
-          <div className="border-t border-border pt-6" />
-
-          {/* Detailed info */}
-          {showDetails && (
-            <div className="space-y-4 text-sm text-muted-foreground">
-              <p>
-                <Tx
-                  k="consent.detailed_info"
-                  source="Click 'Accept all' to give us your consent to use cookies for all these purposes. You can also use the toggles below to consent to specific purposes."
-                />
-              </p>
-              <p>
-                <Tx
-                  k="consent.withdraw_info"
-                  source="Withdraw or change your consent at any time by visiting your Privacy Settings. Read more about how we use cookies and other technologies to collect personal data:"
-                />
-              </p>
-              <div className="flex flex-wrap gap-3 pt-2">
-                <Link href="/privacy" className="text-primary hover:underline font-medium">
-                  <Tx k="consent.privacy_policy" source="Privacy Policy" />
-                </Link>
-                <span className="text-muted-foreground">•</span>
-                <Link href="/cookies" className="text-primary hover:underline font-medium">
-                  <Tx k="consent.cookie_policy" source="Cookie Policy" />
-                </Link>
-              </div>
-            </div>
+        {/* Show details toggle */}
+        <button
+          onClick={() => setShowDetails(!showDetails)}
+          className="text-primary hover:text-primary/80 text-sm font-medium transition-colors mb-6 underline"
+        >
+          {showDetails ? (
+            <Tx k="consent.hide_details" source="Hide details" />
+          ) : (
+            <Tx k="consent.show_details" source="Show details" />
           )}
+        </button>
 
-          {/* Show details toggle */}
-          <button
-            onClick={() => setShowDetails(!showDetails)}
-            className="text-primary hover:text-primary/80 text-sm font-medium transition-colors"
-          >
-            {showDetails ? '▼' : '▶'}{" "}
-            {showDetails ? (
-              <Tx k="consent.hide_details" source="Hide details" />
-            ) : (
-              <Tx k="consent.show_details" source="Show details" />
-            )}
-          </button>
-
-          {/* Cookie Categories with toggles */}
-          <div className="space-y-4 border-t border-border pt-6">
-            {/* Strictly necessary */}
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex-1">
-                <h4 className="font-semibold text-sm mb-1">
-                  <Tx k="consent.strictly_necessary" source="Strictly necessary" />
-                </h4>
-                <p className="text-xs text-muted-foreground">
-                  <Tx
-                    k="consent.strictly_necessary_desc"
-                    source="Always enabled. Required for sign-in and security."
-                  />
-                </p>
-              </div>
-              <ToggleSwitch
-                id="essential"
-                checked={true}
-                onChange={() => {}}
-                disabled={true}
-              />
-            </div>
-
-            {/* Functional */}
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex-1">
-                <h4 className="font-semibold text-sm mb-1">
-                  <Tx k="consent.functional" source="Functional" />
-                </h4>
-                <p className="text-xs text-muted-foreground">
-                  <Tx
-                    k="consent.functional_toggle_desc"
-                    source="Enhance your experience with personalized features."
-                  />
-                </p>
-              </div>
-              <ToggleSwitch
-                id="functional"
-                checked={preferences.analytics}
-                onChange={(checked) =>
-                  setPreferences({ ...preferences, analytics: checked })
-                }
-              />
-            </div>
-
-            {/* Statistical */}
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex-1">
-                <h4 className="font-semibold text-sm mb-1">
-                  <Tx k="consent.statistical" source="Statistical" />
-                </h4>
-                <p className="text-xs text-muted-foreground">
-                  <Tx
-                    k="consent.statistical_toggle_desc"
-                    source="Help us understand usage to improve the site."
-                  />
-                </p>
-              </div>
-              <ToggleSwitch
-                id="statistical"
-                checked={preferences.analytics}
-                onChange={(checked) =>
-                  setPreferences({ ...preferences, analytics: checked })
-                }
-              />
-            </div>
-
-            {/* Marketing */}
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex-1">
-                <h4 className="font-semibold text-sm mb-1">
-                  <Tx k="consent.marketing" source="Marketing" />
-                </h4>
-                <p className="text-xs text-muted-foreground">
-                  <Tx
-                    k="consent.marketing_toggle_desc"
-                    source="Personalize ads and measure campaign performance."
-                  />
-                </p>
-              </div>
-              <ToggleSwitch
-                id="marketing"
-                checked={preferences.marketing}
-                onChange={(checked) =>
-                  setPreferences({ ...preferences, marketing: checked })
-                }
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Footer with buttons */}
-        <div className="border-t border-border px-8 py-6 flex gap-3 flex-col-reverse sm:flex-row flex-shrink-0 bg-muted/30">
+        {/* Main buttons */}
+        <div className="flex gap-3 mb-6">
           <Button
             onClick={handleDeclineAll}
             variant="outline"
-            className="flex-1 font-medium h-11"
+            className="flex-1 font-medium"
           >
             <Tx k="consent.decline_all" source="Decline all" />
           </Button>
           <Button
-            onClick={handleSavePreferences}
-            variant="secondary"
-            className="flex-1 font-medium h-11"
-          >
-            <Tx k="consent.save_settings" source="Save settings" />
-          </Button>
-          <Button
             onClick={handleAcceptAll}
-            className="flex-1 bg-primary hover:bg-primary/90 font-medium h-11"
+            className="flex-1 bg-primary hover:bg-primary/90 font-medium"
           >
             <Tx k="consent.accept_all" source="Accept all" />
           </Button>
+        </div>
+
+        {/* Cookie toggles below buttons */}
+        <div className="space-y-3 text-xs">
+          {/* Strictly necessary */}
+          <div className="flex items-center justify-between gap-3">
+            <label className="flex-1">
+              <h4 className="font-semibold text-foreground">
+                <Tx k="consent.strictly_necessary" source="Strictly necessary" />
+              </h4>
+            </label>
+            <ToggleSwitch
+              id="essential"
+              checked={true}
+              onChange={() => {}}
+              disabled={true}
+            />
+          </div>
+
+          {/* Functional */}
+          <div className="flex items-center justify-between gap-3">
+            <label className="flex-1">
+              <h4 className="font-semibold text-foreground">
+                <Tx k="consent.functional" source="Functional" />
+              </h4>
+            </label>
+            <ToggleSwitch
+              id="functional"
+              checked={preferences.analytics}
+              onChange={(checked) =>
+                setPreferences({ ...preferences, analytics: checked })
+              }
+            />
+          </div>
+
+          {/* Statistical */}
+          <div className="flex items-center justify-between gap-3">
+            <label className="flex-1">
+              <h4 className="font-semibold text-foreground">
+                <Tx k="consent.statistical" source="Statistical" />
+              </h4>
+            </label>
+            <ToggleSwitch
+              id="statistical"
+              checked={preferences.analytics}
+              onChange={(checked) =>
+                setPreferences({ ...preferences, analytics: checked })
+              }
+            />
+          </div>
+
+          {/* Marketing */}
+          <div className="flex items-center justify-between gap-3">
+            <label className="flex-1">
+              <h4 className="font-semibold text-foreground">
+                <Tx k="consent.marketing" source="Marketing" />
+              </h4>
+            </label>
+            <ToggleSwitch
+              id="marketing"
+              checked={preferences.marketing}
+              onChange={(checked) =>
+                setPreferences({ ...preferences, marketing: checked })
+              }
+            />
+          </div>
         </div>
       </div>
     </div>

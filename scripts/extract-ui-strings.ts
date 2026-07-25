@@ -143,7 +143,10 @@ function extract(): ExtractedUiString[] {
           : "";
         if (
           TRANSLATABLE_ATTRIBUTES.has(attributeName) &&
-          !(attributeName === "source" && (tagName === "T" || tagName === "Tx")) &&
+          !(
+            attributeName === "source" &&
+            (tagName === "T" || tagName === "Tx" || tagName === "TWithValues")
+          ) &&
           node.initializer &&
           ts.isStringLiteral(node.initializer)
         ) {
@@ -204,7 +207,9 @@ function extract(): ExtractedUiString[] {
 
       if (
         (ts.isJsxSelfClosingElement(node) || ts.isJsxOpeningElement(node)) &&
-        (node.tagName.getText() === "T" || node.tagName.getText() === "Tx")
+        (node.tagName.getText() === "T" ||
+          node.tagName.getText() === "Tx" ||
+          node.tagName.getText() === "TWithValues")
       ) {
         const key = jsxAttribute(node, "k");
         const sourceText = jsxAttribute(node, "source");

@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { getPropertyTypeLabel } from "@/lib/services/property-type.service";
 import type { ListingCardSerialized } from "@/lib/serializers/listing-card";
-import { getT, T, ti, tPlural } from "@/lib/i18n/t";
+import { getT, T, TWithValues, tPlural } from "@/lib/i18n/t";
 import { LocalizedPrice } from "@/components/shared/localized-price";
 
 interface PropertyCardSpotlightProps {
@@ -20,10 +20,6 @@ export async function PropertyCardSpotlight({ listing }: PropertyCardSpotlightPr
   const [main, ...rest] = displayImages;
   const sideImages = rest.slice(0, 2);
   const typeLabel = await getPropertyTypeLabel(property.propertyType);
-  const headline = ti(t, "property_card.type_in_city", "{type} in {city}", {
-    type: typeLabel,
-    city: property.city,
-  });
   const guests = tPlural(t, "listing.guests", listing.maxGuests, "{n} guest", "{n} guests");
   const bedrooms = tPlural(t, "listing.bedrooms", listing.bedrooms, "{n} bedroom", "{n} bedrooms");
   const baths = tPlural(t, "listing.baths", listing.bathrooms, "{n} bath", "{n} baths");
@@ -71,7 +67,12 @@ export async function PropertyCardSpotlight({ listing }: PropertyCardSpotlightPr
 
       <div className="flex flex-col justify-center gap-2 p-5 sm:p-6">
         <h3 className="text-lg font-semibold text-foreground leading-snug group-hover:underline underline-offset-2">
-          <span className={headline.translated ? "notranslate" : undefined}>{headline.text}</span>
+          <TWithValues
+            t={t}
+            k="property_card.type_in_city"
+            source="{type} in {city}"
+            values={{ type: typeLabel, city: property.city }}
+          />
         </h3>
         <p className="text-muted-foreground text-sm line-clamp-3">{description}</p>
         <p className="text-muted-foreground text-xs">

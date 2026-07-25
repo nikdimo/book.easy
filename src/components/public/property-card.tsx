@@ -7,7 +7,7 @@ import { PropertyCardGallery } from "@/components/public/property-card-gallery";
 import { LocalizedPrice } from "@/components/shared/localized-price";
 import { auth } from "@/lib/auth";
 import { getFavoriteListingIdSet } from "@/lib/services/favorite.service";
-import { getT, T, ti, tPlural } from "@/lib/i18n/t";
+import { getT, T, TWithValues, ti, tPlural } from "@/lib/i18n/t";
 
 interface PropertyCardProps {
   listing: {
@@ -52,7 +52,6 @@ export async function PropertyCard({
   const displayImages = images.filter((img) => img.url?.trim());
   const city = property.city;
   const typeLabel = await getPropertyTypeLabel(property.propertyType);
-  const headline = ti(t, "property_card.type_in_city", "{type} in {city}", { type: typeLabel, city });
   const href = `/properties/${slug}${searchQuery ? `?${searchQuery}` : ""}`;
 
   const session = await auth();
@@ -102,7 +101,12 @@ export async function PropertyCard({
       >
         <div className="flex items-start justify-between gap-3">
           <h3 className="min-w-0 flex-1 text-[0.95rem] font-semibold text-foreground leading-snug line-clamp-2 group-hover/link:underline underline-offset-2">
-            <span className={headline.translated ? "notranslate" : undefined}>{headline.text}</span>
+            <TWithValues
+              t={t}
+              k="property_card.type_in_city"
+              source="{type} in {city}"
+              values={{ type: typeLabel, city }}
+            />
           </h3>
           {belowMinStay ? (
             <Badge
