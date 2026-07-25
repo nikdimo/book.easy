@@ -164,7 +164,9 @@ if errorlevel 1 (
 
 echo.
 echo [2/2] Pulling latest code, building, and restarting the service...
-ssh -i "%KEY%" %HOST% "bash %REMOTE_DIR%/scripts/deploy-remote.sh"
+rem Refresh before launching the script so a release that changes the deployment
+rem procedure runs the new procedure immediately, not the previous VPS copy.
+ssh -i "%KEY%" %HOST% "git -C %REMOTE_DIR% fetch origin && git -C %REMOTE_DIR% reset --hard origin/main && bash %REMOTE_DIR%/scripts/deploy-remote.sh"
 if errorlevel 1 (
     echo   ERROR - Deploy script failed on VPS. See output above.
     pause

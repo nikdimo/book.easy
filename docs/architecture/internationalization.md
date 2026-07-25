@@ -59,7 +59,7 @@ Translation keys are stable identifiers. Do not reuse a key for unrelated copy. 
 - `npm run i18n:audit` checks active AI translations for empty values, placeholder damage, and unexpected Latin-script prose in Cyrillic locales.
 - `npm run i18n:normalize-serbian` converts non-manual Serbian AI output to the site's chosen Cyrillic script while preserving placeholders and protected product tokens.
 - `npm run i18n:export-reviewed` writes the complete, current local AI translation set to the version-controlled reviewed snapshot. It refuses incomplete or stale languages.
-- `npm run i18n:import-reviewed` validates and imports that snapshot for languages that already exist in the target database. It enables AI fixed-copy for those languages, preserves current manual overrides, and never creates language settings or touches unrelated application data.
+- `npm run i18n:import-reviewed` validates and imports every language in that snapshot. The snapshot is authoritative for reviewed fixed-copy languages: missing language rows are created, existing rows are enabled, and AI fixed-copy is enabled. Current manual translation overrides are preserved, and unrelated application data is never touched.
 
 Use `npm run i18n:import-reviewed -- --dry-run` to validate the snapshot and report the target languages/manual overrides without writing to the database.
 

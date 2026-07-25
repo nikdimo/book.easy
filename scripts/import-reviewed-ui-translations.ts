@@ -47,20 +47,13 @@ async function main() {
   validateSnapshot();
   if (!DRY_RUN) await scanUiStrings();
 
-  const snapshotByLocale = new Map(
-    snapshot.languages.map((language) => [language.code, language])
-  );
+  const locales = snapshot.languages.map((language) => language.code);
   const existingLanguages = await db.language.findMany({
-    where: { code: { in: [...snapshotByLocale.keys()] }, isDefault: false },
+    where: { code: { in: locales } },
     select: { code: true },
   });
-  if (!existingLanguages.length) {
-    throw new Error(
-      "None of the reviewed snapshot languages exist in this database. Add languages in Admin settings first."
-    );
-  }
-
-  const locales = existingLanguages.map((language) => language.code);
+  const existingLocaleSet = new Set(existingLanguages.map((language) => language.code));
+  const missingLocales = locales.filter((locale) => !existingLocaleSet.has(locale));
   const currentManualRows = await db.uiTranslation.findMany({
     where: {
       locale: { in: locales },
@@ -76,19 +69,35 @@ async function main() {
 
   if (DRY_RUN) {
     console.log(
-      `Dry run: would import ${catalog.length} reviewed AI translations for ${locales.join(", ")}, enable AI fixed-copy for those existing languages, and preserve ${currentManual.size} current manual overrides.`
+      `Dry run: would import ${catalog.length} reviewed AI translations for ${locales.join(", ")}, ` +
+        `create ${missingLocales.length ? missingLocales.join(", ") : "no missing languages"}, ` +
+        `enable all reviewed languages, and preserve ${currentManual.size} current manual overrides.`
     );
     return;
   }
 
-  const operations = existingLanguages.flatMap(({ code }) => {
-    const language = snapshotByLocale.get(code)!;
-    return [
-      db.language.update({
-        where: { code },
-        data: { useAiTranslation: true },
-      }),
-      ...Object.entries(language.translations).flatMap(([key, value]) => {
+  for (const [index, language] of snapshot.languages.entries()) {
+    const { code, name } = language;
+    await db.language.upsert({
+      where: { code },
+      create: {
+        code,
+        name,
+        isDefault: false,
+        isEnabled: true,
+        sortOrder: index + 1,
+        useAiTranslation: true,
+      },
+      update: {
+        name,
+        isDefault: false,
+        isEnabled: true,
+        useAiTranslation: true,
+      },
+    });
+
+    const translationOperations = Object.entries(language.translations).flatMap(
+      ([key, value]) => {
         if (currentManual.has(`${code}\u0000${key}`)) return [];
         const sourceTextSnapshot =
           snapshot.catalog[key as keyof typeof snapshot.catalog];
@@ -109,12 +118,14 @@ async function main() {
             },
           }),
         ];
-      }),
-    ];
-  });
-  await db.$transaction(operations);
+      }
+    );
+    if (translationOperations.length) {
+      await db.$transaction(translationOperations);
+    }
+  }
 
-  for (const { code } of existingLanguages) {
+  for (const { code } of snapshot.languages) {
     const current = await db.uiTranslation.findMany({
       where: {
         locale: code,
@@ -140,7 +151,9 @@ async function main() {
   }
 
   console.log(
-    `Imported reviewed AI translations for ${locales.join(", ")}; preserved ${currentManual.size} current manual overrides.`
+    `Imported reviewed AI translations for ${locales.join(", ")}; ` +
+      `created ${missingLocales.length ? missingLocales.join(", ") : "no languages"}; ` +
+      `preserved ${currentManual.size} current manual overrides.`
   );
 }
 
