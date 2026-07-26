@@ -859,6 +859,7 @@ export function MarketplaceStayDatePicker({
   dateFlexibility = 0,
   open: controlledOpen,
   onOpenChange,
+  onStepChange,
   initialSegment = "checkin",
   initialStep = "dates",
   showBackToPlace = false,
@@ -880,6 +881,12 @@ export function MarketplaceStayDatePicker({
   dateModifiers,
   dateModifiersClassNames,
   renderDateFooter,
+  sharedPillActive = false,
+  hidePillDivider = false,
+  desktopContentRef,
+  desktopContentStyle,
+  useSharedDesktopShell = false,
+  dialogContentId,
   className,
 }: {
   layout: Layout;
@@ -889,6 +896,7 @@ export function MarketplaceStayDatePicker({
   dateFlexibility?: number;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  onStepChange?: (step: Step) => void;
   initialSegment?: "checkin" | "checkout";
   initialStep?: Step;
   showBackToPlace?: boolean;
@@ -915,6 +923,12 @@ export function MarketplaceStayDatePicker({
     resetDates: () => void;
     summaryText: Resolved;
   }) => React.ReactNode;
+  sharedPillActive?: boolean;
+  hidePillDivider?: boolean;
+  desktopContentRef?: React.Ref<HTMLDivElement>;
+  desktopContentStyle?: React.CSSProperties;
+  useSharedDesktopShell?: boolean;
+  dialogContentId?: string;
   className?: string;
 }) {
   const labels = useSearchLabels();
@@ -924,7 +938,7 @@ export function MarketplaceStayDatePicker({
     finalActionLabel ?? (showGuestStep ? labels.search : labels.done);
   const isPillLayout = layout === "pill";
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
-  const [step, setStep] = React.useState<Step>("dates");
+  const [step, setStep] = React.useState<Step>(initialStep);
   const [activeSegment, setActiveSegment] = React.useState<
     "checkin" | "checkout"
   >("checkin");
@@ -933,6 +947,13 @@ export function MarketplaceStayDatePicker({
   const openingFromTriggerRef = React.useRef(false);
   const open = controlledOpen ?? uncontrolledOpen;
   const setOpen = onOpenChange ?? setUncontrolledOpen;
+  const changeStep = React.useCallback(
+    (nextStep: Step) => {
+      setStep(nextStep);
+      onStepChange?.(nextStep);
+    },
+    [onStepChange]
+  );
 
   React.useEffect(() => {
     if (!open || (isPillLayout && window.innerWidth >= 768)) return;
@@ -1021,7 +1042,7 @@ export function MarketplaceStayDatePicker({
 
   const openSegment = (seg: "checkin" | "checkout") => {
     openingFromTriggerRef.current = true;
-    setStep("dates");
+    changeStep("dates");
     setActiveSegment(seg);
     setOpen(true);
   };
@@ -1046,7 +1067,9 @@ export function MarketplaceStayDatePicker({
     cn(
     "flex-1 min-w-0 rounded-full px-6 py-2.5 text-left outline-none transition-[background-color,box-shadow,transform] duration-200 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
       segmentActive(seg)
-        ? "bg-white shadow-[0_2px_10px_rgba(15,23,42,0.12)]"
+        ? sharedPillActive
+          ? ""
+          : "bg-white shadow-[0_2px_10px_rgba(15,23,42,0.12)]"
         : "hover:bg-black/[0.035]"
     );
 
@@ -1072,6 +1095,7 @@ export function MarketplaceStayDatePicker({
           onClick={() => openSegment("checkin")}
           aria-expanded={open}
           aria-haspopup="dialog"
+          aria-controls={dialogContentId}
         >
           <CalendarRange className="h-4 w-4 shrink-0 text-muted-foreground" />
           <span
@@ -1092,6 +1116,7 @@ export function MarketplaceStayDatePicker({
             onClick={() => openSegment("checkin")}
             aria-expanded={open}
             aria-haspopup="dialog"
+            aria-controls={dialogContentId}
           >
             <span
               className={cn(
@@ -1114,13 +1139,15 @@ export function MarketplaceStayDatePicker({
             type="button"
             className={cn(
               pillSeg("checkin"),
-              "relative hidden sm:block after:absolute after:right-0 after:top-1/2 after:h-8 after:w-px after:-translate-y-1/2 after:bg-black/8 after:transition-opacity",
+              "relative hidden sm:block after:absolute after:right-0 after:top-1/2 after:h-8 after:w-px after:-translate-y-1/2 after:bg-black/8 after:transition-opacity after:duration-150",
               segmentActive("checkin") && "after:opacity-0",
-              segmentActive("checkout") && "after:opacity-0"
+              segmentActive("checkout") && "after:opacity-0",
+              hidePillDivider && "after:opacity-0"
             )}
             onClick={() => openSegment("checkin")}
             aria-expanded={open}
             aria-haspopup="dialog"
+            aria-controls={dialogContentId}
           >
             <span
               className={cn(
@@ -1153,6 +1180,7 @@ export function MarketplaceStayDatePicker({
             onClick={() => openSegment("checkin")}
             aria-expanded={open}
             aria-haspopup="dialog"
+            aria-controls={dialogContentId}
           >
             <CalendarRange className="mt-0.5 hidden h-5 w-5 shrink-0 text-muted-foreground sm:block" />
             <div className="min-w-0 flex-1">
@@ -1181,6 +1209,7 @@ export function MarketplaceStayDatePicker({
             onClick={() => openSegment("checkout")}
             aria-expanded={open}
             aria-haspopup="dialog"
+            aria-controls={dialogContentId}
           >
             <div className="min-w-0 flex-1 sm:pl-0">
               <span
@@ -1228,16 +1257,23 @@ export function MarketplaceStayDatePicker({
           )}
         />
         <DialogPrimitive.Content
+          id={dialogContentId}
+          ref={desktopContentRef}
+          style={desktopContentStyle}
           className={cn(
-            "fixed z-50 flex flex-col overflow-hidden border border-border/60 bg-background text-popover-foreground shadow-[0_10px_32px_rgba(0,0,0,0.16)] outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-2",
-            "left-3 right-3 top-4 bottom-4 h-auto max-h-[calc(100dvh-2rem)] rounded-[2rem]",
-            isPillLayout
+            useSharedDesktopShell
+              ? "fixed z-[52] flex h-auto flex-col overflow-hidden rounded-[1.75rem] border-transparent bg-transparent text-popover-foreground shadow-none outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:duration-150 data-[state=open]:delay-100 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-100"
+              : "fixed z-50 flex flex-col overflow-hidden border border-border/60 bg-background text-popover-foreground shadow-[0_10px_32px_rgba(0,0,0,0.16)] outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-2",
+            !useSharedDesktopShell &&
+              "left-3 right-3 top-4 bottom-4 h-auto max-h-[calc(100dvh-2rem)] rounded-[2rem]",
+            !useSharedDesktopShell && isPillLayout
               ? dayVariant === "availability"
                 ? "md:left-1/2 md:right-auto md:top-[5.75rem] md:bottom-auto md:h-auto md:max-h-[min(44rem,calc(100dvh-7rem))] md:w-[58rem] md:max-w-[calc(100vw-4rem)] md:-translate-x-1/2 md:rounded-[2rem]"
                 : "md:left-1/2 md:right-auto md:top-[5.75rem] md:bottom-auto md:h-auto md:max-h-[min(35rem,calc(100dvh-7rem))] md:w-[45rem] md:max-w-[calc(100vw-2rem)] md:-translate-x-1/2 md:rounded-[1.75rem]"
-              : dayVariant === "availability"
+              : !useSharedDesktopShell && dayVariant === "availability"
                 ? "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-[50rem] md:max-h-[calc(100dvh-5rem)] md:w-[58rem] md:max-w-[calc(100vw-4rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[2rem]"
-                : "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-[50rem] md:max-h-[calc(100dvh-5rem)] md:w-[44rem] md:max-w-[calc(100vw-6rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[2rem]"
+                : !useSharedDesktopShell &&
+                    "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-[50rem] md:max-h-[calc(100dvh-5rem)] md:w-[44rem] md:max-w-[calc(100vw-6rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[2rem]"
           )}
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
@@ -1375,7 +1411,7 @@ export function MarketplaceStayDatePicker({
                       "shrink-0 text-sm font-semibold text-foreground",
                       labels.edit.translated && "notranslate"
                     )}
-                    onClick={() => setStep("dates")}
+                    onClick={() => changeStep("dates")}
                   >
                     {labels.edit.text}
                   </button>
@@ -1386,7 +1422,14 @@ export function MarketplaceStayDatePicker({
           ) : null}
 
           {step === "dates" ? (
-            <>
+            <div
+              key="dates"
+              className={cn(
+                useSharedDesktopShell
+                  ? "desktop-search-panel-content flex min-h-0 flex-1 flex-col"
+                  : "contents"
+              )}
+            >
               <DateRangeCalendarStep
                 active={open && step === "dates"}
                 selected={selectedRange}
@@ -1461,7 +1504,7 @@ export function MarketplaceStayDatePicker({
                             disabled={!canGoNext}
                             onClick={() => {
                               if (showGuestStep) {
-                                setStep("guests");
+                                changeStep("guests");
                                 return;
                               }
 
@@ -1481,9 +1524,16 @@ export function MarketplaceStayDatePicker({
                   </div>
                 ) : null}
               </div>
-            </>
+            </div>
           ) : (
-            <>
+            <div
+              key="guests"
+              className={cn(
+                useSharedDesktopShell
+                  ? "desktop-search-panel-content flex min-h-0 flex-1 flex-col"
+                  : "contents"
+              )}
+            >
               <div
                 ref={bodyScrollRef}
                 className="flex-1 min-h-0 overflow-y-auto px-4 py-5 md:px-6 md:py-6"
@@ -1516,7 +1566,7 @@ export function MarketplaceStayDatePicker({
                           "min-w-[7rem] rounded-full",
                           labels.back.translated && "notranslate"
                         )}
-                        onClick={() => setStep("dates")}
+                        onClick={() => changeStep("dates")}
                       >
                         {labels.back.text}
                       </Button>
@@ -1542,7 +1592,7 @@ export function MarketplaceStayDatePicker({
                   </div>
                 </div>
               ) : null}
-            </>
+            </div>
           )}
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>

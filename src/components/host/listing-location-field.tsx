@@ -289,6 +289,38 @@ export function ListingLocationField({
     });
   }
 
+  /**
+   * Fills in address text (street/city/area/postcode/country) from a reverse-geocode
+   * lookup, but keeps the pin at the exact coordinates the host chose. Reverse geocoding
+   * returns the nearest known address's own coordinates, which are rarely the exact
+   * spot clicked — using those for the pin instead of just the address text is what
+   * made the pin visibly jump after every click or drag.
+   */
+  function applyReverseGeocodedAddress(
+    result: LocationSuggestion,
+    source: "MANUAL_PIN" | "BROWSER_LOCATION" | "MAPS_LINK",
+    latitude: number,
+    longitude: number
+  ) {
+    onChange({
+      address: result.address || value.address,
+      city: result.city || value.city,
+      area: result.area || value.area,
+      postalCode: result.postalCode || value.postalCode,
+      country: result.country || value.country,
+      latitude: String(latitude),
+      longitude: String(longitude),
+      locationSource: source,
+      locationConfirmed: "true",
+      geocodingProvider: "GEOAPIFY",
+      geocodingPlaceId: result.placeId,
+      geocodingConfidence:
+        typeof result.confidence === "number"
+          ? String(result.confidence)
+          : "",
+    });
+  }
+
   function chooseSuggestion(result: LocationSuggestion) {
     abortRef.current?.abort();
     selectedQueryRef.current = result.label;
@@ -334,7 +366,7 @@ export function ListingLocationField({
         response.ok &&
         payload.result
       ) {
-        applyGeocodedLocation(payload.result, source);
+        applyReverseGeocodedAddress(payload.result, source, latitude, longitude);
       }
     } catch {
       // The exact pin remains valid even when no address can be resolved.

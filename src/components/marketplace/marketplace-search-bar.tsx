@@ -1,7 +1,16 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+} from "react";
+import { createPortal } from "react-dom";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -27,6 +36,21 @@ import type { PropertyTypeOption } from "@/lib/types/property-type";
 import type { PlaceOption } from "@/lib/utils/place";
 
 type Variant = "hero" | "compact" | "pill" | "summary";
+type DesktopPanel = "where" | "when" | "who";
+
+type CapsuleGeometry = {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
+type PopoverGeometry = {
+  left: number;
+  top: number;
+  width: number;
+  maxHeight: number;
+};
 
 type SearchBarState = {
   city: string;
@@ -272,6 +296,9 @@ function MarketplaceSearchBarInner({
 }) {
   const labels = useSearchLabels();
   const router = useRouter();
+  const isCompact = variant === "compact";
+  const isPill = variant === "pill";
+  const isSummary = variant === "summary";
   const [city, setCity] = useState(initialState.city);
   const [country, setCountry] = useState(initialState.country);
   const [checkIn, setCheckIn] = useState(initialState.checkIn);
@@ -293,6 +320,183 @@ function MarketplaceSearchBarInner({
   );
   const [propertyTypes, setPropertyTypes] = useState(initialState.propertyTypes);
   const anyDesktopPillPanelOpen = placeSelectorOpen || datePickerOpen;
+  const activeDesktopPanel: DesktopPanel | null = isPill
+    ? placeSelectorOpen
+      ? "where"
+      : datePickerOpen
+        ? datePickerInitialStep === "guests"
+          ? "who"
+          : "when"
+        : null
+    : null;
+  const pillFormRef = useRef<HTMLFormElement>(null);
+  const whereFieldRef = useRef<HTMLDivElement>(null);
+  const whenFieldRef = useRef<HTMLDivElement>(null);
+  const whoFieldRef = useRef<HTMLDivElement>(null);
+  const pendingDatePickerCloseFrameRef = useRef<number | null>(null);
+  const [capsuleGeometry, setCapsuleGeometry] =
+    useState<CapsuleGeometry | null>(null);
+  const [renderedDesktopPanel, setRenderedDesktopPanel] =
+    useState<DesktopPanel | null>(null);
+  const [desktopShellVisible, setDesktopShellVisible] = useState(false);
+  const [popoverGeometry, setPopoverGeometry] =
+    useState<PopoverGeometry | null>(null);
+  const [whereContentNode, setWhereContentNode] =
+    useState<HTMLDivElement | null>(null);
+  const [dateContentNode, setDateContentNode] =
+    useState<HTMLDivElement | null>(null);
+  const [desktopPanelHeight, setDesktopPanelHeight] = useState<number | null>(
+    null
+  );
+
+  const handleWhereContentRef = useCallback((node: HTMLDivElement | null) => {
+    setWhereContentNode(node);
+  }, []);
+  const handleDateContentRef = useCallback((node: HTMLDivElement | null) => {
+    setDateContentNode(node);
+  }, []);
+  const desktopContentNode =
+    activeDesktopPanel === "where" ? whereContentNode : dateContentNode;
+
+  useEffect(
+    () => () => {
+      if (pendingDatePickerCloseFrameRef.current !== null) {
+        window.cancelAnimationFrame(pendingDatePickerCloseFrameRef.current);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    let closeTimer: ReturnType<typeof setTimeout> | undefined;
+    let openFrame: number | undefined;
+
+    if (activeDesktopPanel) {
+      openFrame = window.requestAnimationFrame(() => {
+        setRenderedDesktopPanel(activeDesktopPanel);
+        setDesktopShellVisible(true);
+      });
+    } else {
+      openFrame = window.requestAnimationFrame(() => {
+        setDesktopShellVisible(false);
+        closeTimer = setTimeout(() => setRenderedDesktopPanel(null), 180);
+      });
+    }
+
+    return () => {
+      if (openFrame !== undefined) window.cancelAnimationFrame(openFrame);
+      if (closeTimer !== undefined) clearTimeout(closeTimer);
+    };
+  }, [activeDesktopPanel]);
+
+  useLayoutEffect(() => {
+    if (!isPill || !renderedDesktopPanel) return;
+
+    const form = pillFormRef.current;
+    if (!form) return;
+
+    const updateGeometry = () => {
+      const formRect = form.getBoundingClientRect();
+      if (formRect.width <= 0 || formRect.height <= 0) return;
+
+      const field =
+        activeDesktopPanel === "where"
+          ? whereFieldRef.current
+          : activeDesktopPanel === "when"
+            ? whenFieldRef.current
+            : activeDesktopPanel === "who"
+              ? whoFieldRef.current
+              : null;
+
+      if (field) {
+        const fieldRect = field.getBoundingClientRect();
+        setCapsuleGeometry({
+          left: fieldRect.left - formRect.left,
+          top: fieldRect.top - formRect.top,
+          width: fieldRect.width,
+          height: fieldRect.height,
+        });
+      }
+
+      const viewportPadding = 16;
+      const availableWidth = Math.max(
+        0,
+        window.innerWidth - viewportPadding * 2
+      );
+      const targetWidth =
+        renderedDesktopPanel === "when"
+          ? Math.min(formRect.width, availableWidth)
+          : Math.min(
+              renderedDesktopPanel === "where" ? 416 : 400,
+              formRect.width,
+              availableWidth
+            );
+      const unclampedLeft =
+        renderedDesktopPanel === "who"
+          ? formRect.right - targetWidth
+          : formRect.left;
+      const left = Math.min(
+        Math.max(viewportPadding, unclampedLeft),
+        window.innerWidth - targetWidth - viewportPadding
+      );
+      const top = formRect.bottom + 12;
+
+      setPopoverGeometry({
+        left,
+        top,
+        width: targetWidth,
+        maxHeight: Math.max(180, window.innerHeight - top - viewportPadding),
+      });
+    };
+
+    updateGeometry();
+    const resizeObserver = new ResizeObserver(updateGeometry);
+    resizeObserver.observe(form);
+    [whereFieldRef.current, whenFieldRef.current, whoFieldRef.current].forEach(
+      (node) => {
+        if (node) resizeObserver.observe(node);
+      }
+    );
+    window.addEventListener("resize", updateGeometry);
+    window.addEventListener("scroll", updateGeometry, true);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", updateGeometry);
+      window.removeEventListener("scroll", updateGeometry, true);
+    };
+  }, [activeDesktopPanel, isPill, renderedDesktopPanel]);
+
+  useLayoutEffect(() => {
+    if (!desktopContentNode || !activeDesktopPanel || !popoverGeometry) return;
+
+    const updateHeight = () => {
+      const measuredHeight = desktopContentNode.getBoundingClientRect().height;
+      if (measuredHeight > 0) {
+        setDesktopPanelHeight(
+          Math.min(Math.ceil(measuredHeight), popoverGeometry.maxHeight)
+        );
+      }
+    };
+
+    updateHeight();
+    const resizeObserver = new ResizeObserver(updateHeight);
+    resizeObserver.observe(desktopContentNode);
+    return () => resizeObserver.disconnect();
+  }, [activeDesktopPanel, desktopContentNode, popoverGeometry]);
+
+  const desktopContentStyle: CSSProperties | undefined = popoverGeometry
+    ? {
+        left: popoverGeometry.left,
+        top: popoverGeometry.top,
+        right: "auto",
+        bottom: "auto",
+        width: popoverGeometry.width,
+        maxWidth: popoverGeometry.width,
+        maxHeight: popoverGeometry.maxHeight,
+        transform: "none",
+      }
+    : { visibility: "hidden" };
 
   const submitQuery = () => {
     const p = new URLSearchParams();
@@ -335,6 +539,10 @@ function MarketplaceSearchBarInner({
   }
 
   const openGuestsStep = () => {
+    if (pendingDatePickerCloseFrameRef.current !== null) {
+      window.cancelAnimationFrame(pendingDatePickerCloseFrameRef.current);
+      pendingDatePickerCloseFrameRef.current = null;
+    }
     setPlaceSelectorOpen(false);
     // The current popover dismisses on pointer-down. Reopen on the next frame so
     // the guest request always wins over that close event in a single click.
@@ -352,18 +560,33 @@ function MarketplaceSearchBarInner({
   };
 
   const handleDatePickerOpenChange = (nextOpen: boolean) => {
-    setDatePickerOpen(nextOpen);
     if (nextOpen) {
+      if (pendingDatePickerCloseFrameRef.current !== null) {
+        window.cancelAnimationFrame(pendingDatePickerCloseFrameRef.current);
+        pendingDatePickerCloseFrameRef.current = null;
+      }
+      setDatePickerOpen(true);
       setPlaceSelectorOpen(false);
-    } else {
+      return;
+    }
+
+    if (!isPill) {
+      setDatePickerOpen(false);
       setDatePickerCanReturnToPlace(false);
       setDatePickerInitialStep("dates");
+      return;
     }
-  };
 
-  const isCompact = variant === "compact";
-  const isPill = variant === "pill";
-  const isSummary = variant === "summary";
+    if (pendingDatePickerCloseFrameRef.current !== null) {
+      window.cancelAnimationFrame(pendingDatePickerCloseFrameRef.current);
+    }
+    pendingDatePickerCloseFrameRef.current = window.requestAnimationFrame(() => {
+      pendingDatePickerCloseFrameRef.current = null;
+      setDatePickerOpen(false);
+      setDatePickerCanReturnToPlace(false);
+      setDatePickerInitialStep("dates");
+    });
+  };
 
   if (isSummary) {
     const citySummary = city || labels.whereToPlaceholder.text;
@@ -444,90 +667,170 @@ function MarketplaceSearchBarInner({
 
   if (isPill) {
     return (
-      <form
-        onSubmit={onSubmit}
-        className="relative z-[60] flex w-full max-w-[64rem] items-center rounded-full border border-black/10 bg-[#f7f7f7] p-1 shadow-[0_1px_2px_rgba(0,0,0,0.08),0_8px_24px_rgba(0,0,0,0.08)] transition-shadow duration-200 hover:shadow-[0_2px_4px_rgba(0,0,0,0.10),0_10px_28px_rgba(0,0,0,0.10)]"
-      >
-        <MarketplacePlaceSelector
-          layout="pill"
-          city={city}
-          country={country}
-          selectedPropertyTypes={propertyTypes}
-          onPropertyTypesChange={setPropertyTypes}
-          onPlaceChange={({ city: c, country: co }) => {
-            setCity(c);
-            setCountry(co);
-          }}
-          open={placeSelectorOpen}
-          onOpenChange={handlePlaceOpenChange}
-          onNextToDates={() => {
-            setDatePickerCanReturnToPlace(true);
-            setDatePickerInitialSegment("checkin");
-            setDatePickerOpen(true);
-          }}
-          popularCities={popularCities}
-          availablePropertyTypesByCity={availablePropertyTypesByCity}
-          propertyTypes={propertyTypeOptions}
-          showPropertyTypes={showPropertyTypesInWhere}
-          className="flex flex-1 min-w-0"
-        />
-        <MarketplaceStayDatePicker
-          key={datePickerInitialStep}
-          layout="pill"
-          checkIn={checkIn}
-          checkOut={checkOut}
-          guestCounts={guestCounts}
-          dateFlexibility={dateFlexibility}
-          open={datePickerOpen}
-          onOpenChange={handleDatePickerOpenChange}
-          initialSegment={datePickerInitialSegment}
-          initialStep={datePickerInitialStep}
-          showBackToPlace={datePickerCanReturnToPlace}
-          onRangeStringsChange={({ checkIn: ci, checkOut: co }) => {
-            setCheckIn(ci);
-            setCheckOut(co);
-          }}
-          onGuestCountsChange={setGuestCounts}
-          onDateFlexibilityChange={setDateFlexibility}
-          onBackToPlace={() => {
-            setDatePickerCanReturnToPlace(false);
-            setDatePickerOpen(false);
-            setPlaceSelectorOpen(true);
-          }}
-          onSearchRequest={submitQuery}
-          className="flex flex-1 min-w-0"
-        />
-        <div className="flex min-w-0 shrink-0 items-center pl-0.5 pr-0.5">
-          <MarketplaceGuestSelector
-            layout="pill"
-            value={guestCounts}
-            active={datePickerOpen && datePickerInitialStep === "guests"}
-            onOpenRequest={openGuestsStep}
-            className="min-w-[14rem] flex-1"
+      <>
+        {typeof document !== "undefined" &&
+        renderedDesktopPanel &&
+        popoverGeometry
+          ? createPortal(
+              <div
+                aria-hidden
+                className="desktop-search-popover-shell pointer-events-none fixed z-[51] overflow-hidden rounded-[1.75rem] border border-border/60 bg-background shadow-[0_10px_32px_rgba(0,0,0,0.16)]"
+                style={{
+                  left: popoverGeometry.left,
+                  top: popoverGeometry.top,
+                  width: popoverGeometry.width,
+                  height: desktopPanelHeight ?? 0,
+                  maxHeight: popoverGeometry.maxHeight,
+                  opacity:
+                    desktopShellVisible && desktopPanelHeight !== null ? 1 : 0,
+                  transform:
+                    desktopShellVisible && desktopPanelHeight !== null
+                      ? "translateY(0) scale(1)"
+                      : "translateY(-6px) scale(0.985)",
+                }}
+              />,
+              document.body
+            )
+          : null}
+
+        <form
+          ref={pillFormRef}
+          onSubmit={onSubmit}
+          className="relative z-[60] flex w-full max-w-[64rem] items-center rounded-full border border-black/10 bg-[#f7f7f7] p-1 shadow-[0_1px_2px_rgba(0,0,0,0.08),0_8px_24px_rgba(0,0,0,0.08)] transition-shadow duration-200 hover:shadow-[0_2px_4px_rgba(0,0,0,0.10),0_10px_28px_rgba(0,0,0,0.10)]"
+        >
+          <span
+            aria-hidden
+            className="desktop-search-active-capsule pointer-events-none absolute z-0 rounded-full border border-black/[0.04] bg-white shadow-[0_2px_10px_rgba(15,23,42,0.12)]"
+            style={
+              capsuleGeometry
+                ? {
+                    left: capsuleGeometry.left,
+                    top: capsuleGeometry.top,
+                    width: capsuleGeometry.width,
+                    height: capsuleGeometry.height,
+                    opacity: activeDesktopPanel ? 1 : 0,
+                    transform: "translateZ(0)",
+                  }
+                : { opacity: 0 }
+            }
           />
-          <Button
-            type="submit"
-            className={cn(
-              "ml-1 h-11 shrink-0 rounded-full bg-primary px-4 text-primary-foreground shadow-none transition-all duration-200 hover:bg-primary/95",
-              anyDesktopPillPanelOpen ? "gap-2 px-5" : "w-11 px-0"
-            )}
-            aria-label={labels.search.text}
+
+          <div
+            ref={whereFieldRef}
+            className="relative z-10 flex min-w-0 flex-1 self-stretch"
           >
-            <Search className="h-4 w-4" strokeWidth={2.5} />
-            <span
+            <MarketplacePlaceSelector
+              layout="pill"
+              city={city}
+              country={country}
+              selectedPropertyTypes={propertyTypes}
+              onPropertyTypesChange={setPropertyTypes}
+              onPlaceChange={({ city: c, country: co }) => {
+                setCity(c);
+                setCountry(co);
+              }}
+              open={placeSelectorOpen}
+              onOpenChange={handlePlaceOpenChange}
+              onNextToDates={() => {
+                setDatePickerCanReturnToPlace(true);
+                setDatePickerInitialSegment("checkin");
+                setDatePickerInitialStep("dates");
+                setDatePickerOpen(true);
+              }}
+              popularCities={popularCities}
+              availablePropertyTypesByCity={availablePropertyTypesByCity}
+              propertyTypes={propertyTypeOptions}
+              showPropertyTypes={showPropertyTypesInWhere}
+              sharedPillActive
+              hidePillDivider={
+                activeDesktopPanel === "where" ||
+                activeDesktopPanel === "when"
+              }
+              desktopContentRef={handleWhereContentRef}
+              desktopContentStyle={desktopContentStyle}
+              useSharedDesktopShell
+              dialogContentId="desktop-search-where-panel"
+              className="flex min-w-0 flex-1"
+            />
+          </div>
+
+          <div
+            ref={whenFieldRef}
+            className="relative z-10 flex min-w-0 flex-1 self-stretch"
+          >
+            <MarketplaceStayDatePicker
+              layout="pill"
+              checkIn={checkIn}
+              checkOut={checkOut}
+              guestCounts={guestCounts}
+              dateFlexibility={dateFlexibility}
+              open={datePickerOpen}
+              onOpenChange={handleDatePickerOpenChange}
+              onStepChange={setDatePickerInitialStep}
+              initialSegment={datePickerInitialSegment}
+              initialStep={datePickerInitialStep}
+              showBackToPlace={datePickerCanReturnToPlace}
+              onRangeStringsChange={({ checkIn: ci, checkOut: co }) => {
+                setCheckIn(ci);
+                setCheckOut(co);
+              }}
+              onGuestCountsChange={setGuestCounts}
+              onDateFlexibilityChange={setDateFlexibility}
+              onBackToPlace={() => {
+                setDatePickerCanReturnToPlace(false);
+                setDatePickerOpen(false);
+                setPlaceSelectorOpen(true);
+              }}
+              onSearchRequest={submitQuery}
+              sharedPillActive
+              hidePillDivider={
+                activeDesktopPanel === "when" ||
+                activeDesktopPanel === "who"
+              }
+              desktopContentRef={handleDateContentRef}
+              desktopContentStyle={desktopContentStyle}
+              useSharedDesktopShell
+              dialogContentId="desktop-search-date-panel"
+              className="flex min-w-0 flex-1"
+            />
+          </div>
+
+          <div className="relative z-10 flex min-w-0 shrink-0 items-center pl-0.5 pr-0.5">
+            <div ref={whoFieldRef} className="flex min-w-0 self-stretch">
+              <MarketplaceGuestSelector
+                layout="pill"
+                value={guestCounts}
+                active={activeDesktopPanel === "who"}
+                sharedPillActive
+                onOpenRequest={openGuestsStep}
+                dialogContentId="desktop-search-date-panel"
+                className="min-w-[14rem] flex-1"
+              />
+            </div>
+            <Button
+              type="submit"
               className={cn(
-                "overflow-hidden whitespace-nowrap font-semibold transition-[max-width,opacity] duration-200",
-                anyDesktopPillPanelOpen
-                  ? "max-w-20 opacity-100"
-                  : "max-w-0 opacity-0",
-                labels.search.translated && "notranslate"
+                "relative z-10 ml-1 h-11 shrink-0 rounded-full bg-primary px-4 text-primary-foreground shadow-none transition-all duration-200 hover:bg-primary/95",
+                anyDesktopPillPanelOpen ? "gap-2 px-5" : "w-11 px-0"
               )}
+              aria-label={labels.search.text}
             >
-              {labels.search.text}
-            </span>
-          </Button>
-        </div>
-      </form>
+              <Search className="h-4 w-4" strokeWidth={2.5} />
+              <span
+                className={cn(
+                  "overflow-hidden whitespace-nowrap font-semibold transition-[max-width,opacity] duration-200",
+                  anyDesktopPillPanelOpen
+                    ? "max-w-20 opacity-100"
+                    : "max-w-0 opacity-0",
+                  labels.search.translated && "notranslate"
+                )}
+              >
+                {labels.search.text}
+              </span>
+            </Button>
+          </div>
+        </form>
+      </>
     );
   }
 

@@ -50,13 +50,17 @@ export function MarketplaceGuestSelector({
   layout,
   value,
   active = false,
+  sharedPillActive = false,
   onOpenRequest,
+  dialogContentId,
   className,
 }: {
   layout: Layout;
   value: GuestCounts;
   active?: boolean;
+  sharedPillActive?: boolean;
   onOpenRequest: () => void;
+  dialogContentId?: string;
   className?: string;
 }) {
   const labels = useSearchLabels();
@@ -67,7 +71,9 @@ export function MarketplaceGuestSelector({
     "flex min-w-0 items-center rounded-full px-6 py-2.5 text-left outline-none transition-[background-color,box-shadow,transform] duration-200 ease-out",
     "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
     triggerActive
-      ? "bg-white shadow-[0_2px_10px_rgba(15,23,42,0.12)]"
+      ? sharedPillActive
+        ? ""
+        : "bg-white shadow-[0_2px_10px_rgba(15,23,42,0.12)]"
       : "hover:bg-black/[0.035]"
   );
 
@@ -89,6 +95,7 @@ export function MarketplaceGuestSelector({
       className={cn(pillClass, className)}
       aria-expanded={active}
       aria-haspopup="dialog"
+      aria-controls={dialogContentId}
       onClick={onOpenRequest}
     >
       <span className="min-w-0 flex-1 text-left">
@@ -117,6 +124,7 @@ export function MarketplaceGuestSelector({
       className={cn(heroClass, className)}
       aria-expanded={active}
       aria-haspopup="dialog"
+      aria-controls={dialogContentId}
       onClick={onOpenRequest}
     >
       <Users className="h-5 w-5 text-muted-foreground shrink-0 hidden sm:block" />

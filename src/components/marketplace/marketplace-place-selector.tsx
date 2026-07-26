@@ -47,6 +47,12 @@ export function MarketplacePlaceSelector({
   showPropertyTypes = false,
   open: controlledOpen,
   onOpenChange,
+  sharedPillActive = false,
+  hidePillDivider = false,
+  desktopContentRef,
+  desktopContentStyle,
+  useSharedDesktopShell = false,
+  dialogContentId,
   className,
 }: {
   layout: Layout;
@@ -64,6 +70,12 @@ export function MarketplacePlaceSelector({
   showPropertyTypes?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  sharedPillActive?: boolean;
+  hidePillDivider?: boolean;
+  desktopContentRef?: React.Ref<HTMLDivElement>;
+  desktopContentStyle?: React.CSSProperties;
+  useSharedDesktopShell?: boolean;
+  dialogContentId?: string;
   className?: string;
 }) {
   const labels = useSearchLabels();
@@ -175,10 +187,13 @@ export function MarketplacePlaceSelector({
   const pillFieldClass = cn(
     "relative flex flex-1 min-w-0 cursor-pointer items-center rounded-full px-6 py-2.5 text-left transition-[background-color,box-shadow,transform] duration-200 ease-out",
     "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-    "after:absolute after:right-0 after:top-1/2 after:h-8 after:w-px after:-translate-y-1/2 after:bg-black/8 after:transition-opacity",
+    "after:absolute after:right-0 after:top-1/2 after:h-8 after:w-px after:-translate-y-1/2 after:bg-black/8 after:transition-opacity after:duration-150",
     triggerActive
-      ? "bg-white shadow-[0_2px_10px_rgba(15,23,42,0.12)] after:opacity-0"
-      : "hover:bg-black/[0.035]"
+      ? sharedPillActive
+        ? "after:opacity-0"
+        : "bg-white shadow-[0_2px_10px_rgba(15,23,42,0.12)] after:opacity-0"
+      : "hover:bg-black/[0.035]",
+    hidePillDivider && "after:opacity-0"
   );
 
   const heroFieldClass = cn(
@@ -303,6 +318,7 @@ export function MarketplacePlaceSelector({
             onClick={() => setOpen(true)}
             aria-expanded={open}
             aria-haspopup="dialog"
+            aria-controls={dialogContentId}
           >
             {triggerInner}
           </button>
@@ -313,6 +329,7 @@ export function MarketplacePlaceSelector({
             onClick={() => setOpen(true)}
             aria-expanded={open}
             aria-haspopup="dialog"
+            aria-controls={dialogContentId}
           >
             {triggerInner}
           </button>
@@ -329,12 +346,19 @@ export function MarketplacePlaceSelector({
           )}
         />
         <DialogPrimitive.Content
+          id={dialogContentId}
+          ref={desktopContentRef}
+          style={desktopContentStyle}
           className={cn(
-            "fixed z-50 flex flex-col overflow-hidden border border-border/60 bg-background text-popover-foreground shadow-[0_10px_32px_rgba(0,0,0,0.16)] outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-2",
-            "left-3 right-3 top-4 bottom-4 h-auto max-h-[calc(100dvh-2rem)] rounded-[2rem]",
-            isPillLayout
+            useSharedDesktopShell
+              ? "fixed z-[52] flex h-auto flex-col overflow-hidden rounded-[1.75rem] border-transparent bg-transparent text-popover-foreground shadow-none outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:duration-150 data-[state=open]:delay-100 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-100"
+              : "fixed z-50 flex flex-col overflow-hidden border border-border/60 bg-background text-popover-foreground shadow-[0_10px_32px_rgba(0,0,0,0.16)] outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-2",
+            !useSharedDesktopShell &&
+              "left-3 right-3 top-4 bottom-4 h-auto max-h-[calc(100dvh-2rem)] rounded-[2rem]",
+            !useSharedDesktopShell && isPillLayout
               ? "md:left-[max(1rem,calc(50%-24rem))] md:right-auto md:top-[5.75rem] md:bottom-auto md:h-auto md:max-h-[min(38rem,calc(100dvh-7rem))] md:w-[26rem] md:max-w-[calc(100vw-2rem)] md:rounded-[1.75rem]"
-              : "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-[50rem] md:max-h-[calc(100dvh-5rem)] md:w-[44rem] md:max-w-[calc(100vw-6rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[2rem]"
+              : !useSharedDesktopShell &&
+                  "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-[50rem] md:max-h-[calc(100dvh-5rem)] md:w-[44rem] md:max-w-[calc(100vw-6rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[2rem]"
           )}
           onOpenAutoFocus={(e) => e.preventDefault()}
         >

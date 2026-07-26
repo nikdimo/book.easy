@@ -110,6 +110,23 @@ const EDIT_SECTIONS = [
 
 type SaveStatus = "saving" | "saved" | "error";
 
+function listingEditSignature(
+  values: ListingFormValues,
+  mediaItems: ListingMediaItem[],
+  amenityIds: string[]
+) {
+  return JSON.stringify({
+    values,
+    mediaItems: mediaItems.map(({ id, url, mediaType, alt }) => ({
+      id: id ?? null,
+      url,
+      mediaType,
+      alt: alt ?? null,
+    })),
+    amenityIds: [...amenityIds].sort(),
+  });
+}
+
 function toPositiveNumber(value: string, fallback: number) {
   if (value.trim() === "") return fallback;
   const parsed = Number(value);
@@ -253,6 +270,19 @@ export function ListingForm({
   const [selectedAmenityIds, setSelectedAmenityIds] = useState<string[]>(
     () => listing?.amenities.map((a) => a.amenityId) ?? initialDraft?.amenityIds ?? []
   );
+  const [lastPublishedSignature, setLastPublishedSignature] = useState(() =>
+    listingEditSignature(
+      listingInitialValues(listing, initialDraft),
+      initialMediaItems.length > 0
+        ? initialMediaItems
+        : initialDraft?.mediaItems ??
+            (initialDraft?.imageUrls ?? []).map((url) => ({
+              url,
+              mediaType: "IMAGE" as const,
+            })),
+      listing?.amenities.map((a) => a.amenityId) ?? initialDraft?.amenityIds ?? []
+    )
+  );
   const draftIdRef = useRef<string | null>(initialDraftId ?? null);
   const saveRequestRef = useRef(0);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved");
@@ -267,12 +297,20 @@ export function ListingForm({
   const [submittedListingId, setSubmittedListingId] = useState<string | null>(null);
   const [desktopToolbarTarget, setDesktopToolbarTarget] = useState<HTMLElement | null>(null);
   const [isSubmittingNew, startSubmitNewTransition] = useTransition();
+  const currentEditSignature = useMemo(
+    () => listingEditSignature(values, mediaItems, selectedAmenityIds),
+    [values, mediaItems, selectedAmenityIds]
+  );
+  const hasUnpublishedChanges =
+    isEditing && currentEditSignature !== lastPublishedSignature;
 
   const [state, formAction, isPending] = useActionState(
     async (_prev: { error?: string; success?: boolean } | undefined, formData: FormData) => {
+      const submittedSignature = currentEditSignature;
       const result = await updateListing(listing!.id, formData);
       if (result && "success" in result && result.success) {
-        toast.success("Listing updated");
+        setLastPublishedSignature(submittedSignature);
+        toast.success("Changes published");
       }
       if (result && "error" in result) toast.error(result.error);
       return result;
@@ -1129,9 +1167,37 @@ export function ListingForm({
           </div>
           {isEditing && (
             <div className="sticky bottom-0 z-20 -mx-5 border-t bg-background/95 px-5 py-4 backdrop-blur md:-mx-8 md:px-8">
-              <Button type="submit" size="lg" disabled={isPending} className="w-full sm:w-auto">
-                {isPending ? "Saving..." : "Save changes"}
-              </Button>
+              {hasUnpublishedChanges ? (
+                <Button
+                  type="submit"
+                  size="lg"
+                  disabled={isPending}
+                  className="w-full sm:w-auto"
+                >
+                  {isPending ? "Publishing changes…" : "Publish changes"}
+                </Button>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span
+                      tabIndex={0}
+                      className="block w-full cursor-not-allowed sm:w-fit"
+                    >
+                      <Button
+                        type="button"
+                        size="lg"
+                        disabled
+                        className="w-full sm:w-auto"
+                      >
+                        Publish changes
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    No changes have been made.
+                  </TooltipContent>
+                </Tooltip>
+              )}
             </div>
           )}
           {!isEditing && (
@@ -1303,29 +1369,42 @@ export function ListingForm({
         open={!!submittedListingId}
         onOpenChange={(open) => {
           if (!open && submittedListingId) {
-            router.push(`/host/listings/${submittedListingId}/edit`);
+            router.push("/host/listings");
           }
         }}
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Listing published</DialogTitle>
+            <DialogTitle>Listing published successfully</DialogTitle>
             <DialogDescription className="pt-2 text-foreground">
-              Thanks! Your listing is live now. Our team will still review the content
-              shortly, so keep it accurate. Questions? Contact{" "}
+              Your listing is live. You can return to My Listings or continue editing
+              it now. Our team will still review the content shortly, so keep it
+              accurate. Questions? Contact{" "}
               <a href="mailto:hello@book.easy.mk" className="underline underline-offset-2">
                 hello@book.easy.mk
               </a>
               .
             </DialogDescription>
           </DialogHeader>
-          <Button
-            onClick={() => {
-              if (submittedListingId) router.push(`/host/listings/${submittedListingId}/edit`);
-            }}
-          >
-            Got it
-          </Button>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => router.push("/host/listings")}
+            >
+              Go to My Listings
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                if (submittedListingId) {
+                  router.push(`/host/listings/${submittedListingId}/edit`);
+                }
+              }}
+            >
+              Continue editing
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </form>
