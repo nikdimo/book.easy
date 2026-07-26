@@ -105,7 +105,10 @@ export default function ListingLocationPickerInner({
   const geoapifyMapsKey = process.env.NEXT_PUBLIC_GEOAPIFY_MAPS_KEY?.trim();
 
   return (
-    <div className={cn("overflow-hidden rounded-lg border", className)}>
+    // `isolate` pins Leaflet's internal z-index values (its controls/panes go up to
+    // 1000) inside this element's own stacking context, so they can never render above
+    // page chrome outside the map — e.g. the wizard's sticky Back/Continue footer bar.
+    <div className={cn("relative isolate overflow-hidden rounded-lg border", className)}>
       <MapContainer
         center={position}
         zoom={hasPin ? 13 : zoom}

@@ -6,6 +6,7 @@ import {
   AlertCircle,
   CheckCircle2,
   ExternalLink,
+  HelpCircle,
   Link2,
   Loader2,
   LocateFixed,
@@ -24,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { resolveMapsLink } from "@/lib/actions/listing.actions";
 import { parseCoordsFromMapsText } from "@/lib/utils/parse-maps-link";
 import { StreetViewPreview } from "@/components/host/street-view-preview";
@@ -504,35 +506,32 @@ export function ListingLocationField({
 
   return (
     <div className="space-y-4">
-      <div className="space-y-3 rounded-lg border border-primary/30 bg-primary/[0.03] p-4">
-        <div>
+      <div className="space-y-2">
+        <div className="flex items-center gap-1.5">
           <Label htmlFor="maps-link" className="text-sm font-semibold">
-            Paste a Google Maps link
+            Property location
           </Label>
-          <p className="mt-1 text-xs text-muted-foreground">
-            This is the easiest way to get an exact pin — Google Maps knows this area
-            much better than address search does, especially outside city centers.
-          </p>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground"
+                aria-label="How to get a Google Maps link"
+              >
+                <HelpCircle className="h-3.5 w-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-64">
+              Open Google Maps, find the property, tap Share → Copy link
+              (desktop: right-click the spot on the map → Copy link), then
+              paste it here.
+            </TooltipContent>
+          </Tooltip>
         </div>
-        <ol className="space-y-1 text-xs text-muted-foreground">
-          <li>1. Open Google Maps and find the property.</li>
-          <li>2. Tap <span className="font-medium text-foreground">Share</span>, then <span className="font-medium text-foreground">Copy link</span> (on desktop: right-click the spot on the map → <span className="font-medium text-foreground">Copy link</span>).</li>
-          <li>3. Paste the link below.</li>
-        </ol>
-        <Button type="button" variant="outline" size="sm" asChild>
-          <a
-            href={googleMapsSearchUrl(value.city, value.country)}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <ExternalLink className="h-4 w-4" />
-            Open Google Maps
-          </a>
-        </Button>
         <div className="flex gap-2">
           <Input
             id="maps-link"
-            placeholder="Paste the Google Maps link here"
+            placeholder="Paste a Google Maps link"
             value={linkValue}
             onChange={(event) => setLinkValue(event.target.value)}
             onKeyDown={(event) => {
@@ -555,6 +554,16 @@ export function ListingLocationField({
             Use link
           </Button>
         </div>
+        <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs" asChild>
+          <a
+            href={googleMapsSearchUrl(value.city, value.country)}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <ExternalLink className="h-3 w-3" />
+            Open Google Maps
+          </a>
+        </Button>
       </div>
 
       <details className="group rounded-lg border px-3 py-2">
