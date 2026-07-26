@@ -15,6 +15,12 @@ type Status = "checking" | "available" | "unavailable";
  *
  * Renders nothing at all if NEXT_PUBLIC_GOOGLE_MAPS_API_KEY isn't configured, same as
  * the Geoapify map tiles falling back silently in listing-location-picker-inner.tsx.
+ *
+ * The caller should key this component by (rounded) coordinates — see
+ * ListingLocationField — so a new pin position remounts it and its "checking" status
+ * resets naturally via the initial useState below, rather than this effect needing to
+ * reset it itself (React's rules-of-hooks lint flags synchronous setState in an effect
+ * body as a cascading-render risk).
  */
 export function StreetViewPreview({
   latitude,
@@ -30,7 +36,6 @@ export function StreetViewPreview({
     if (!key) return;
 
     let cancelled = false;
-    setStatus("checking");
 
     // Debounced: a host fine-tuning the pin by dragging fires several coordinate
     // updates in quick succession, and each one would otherwise trigger its own check.

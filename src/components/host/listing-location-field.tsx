@@ -762,7 +762,15 @@ export function ListingLocationField({
           <Label className="text-xs text-muted-foreground">
             Street view near this pin
           </Label>
-          <StreetViewPreview latitude={latitude} longitude={longitude} />
+          {/* Remounts on each new pin position so its "checking" state resets
+             cleanly — see StreetViewPreview for why that's done via key instead of
+             an effect-internal reset. Rounded so floating-point noise from repeated
+             reverse-geocode round-trips doesn't remount it needlessly. */}
+          <StreetViewPreview
+            key={`${latitude.toFixed(5)},${longitude.toFixed(5)}`}
+            latitude={latitude}
+            longitude={longitude}
+          />
         </div>
       )}
 
