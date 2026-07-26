@@ -13,6 +13,14 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { resolveMapsLink } from "@/lib/actions/listing.actions";
@@ -69,6 +77,10 @@ type IpLocation = {
 };
 
 function finiteCoordinate(value: string, min: number, max: number) {
+  // `Number("")` is 0, not NaN — without this guard an unset coordinate reads as a
+  // real pin at exactly (0, 0), which is what put new listings' starting pin in the
+  // ocean off West Africa instead of showing no pin at all.
+  if (value.trim() === "") return null;
   const number = Number(value);
   return Number.isFinite(number) && number >= min && number <= max
     ? number
@@ -84,9 +96,17 @@ function preferredLanguage() {
 export function ListingLocationField({
   value,
   onChange,
+  active = true,
 }: {
   value: ListingLocationValue;
   onChange: (patch: Partial<ListingLocationValue>) => void;
+  /** Whether this field is the step the host is currently looking at. The listing
+   *  wizard keeps every step's fields mounted at once (just hidden via CSS) so it can
+   *  validate and preview across steps — without this, the geolocation prompt below
+   *  would fire the moment the wizard first loads (step 1), not when the host actually
+   *  reaches the location step, which is both surprising and something some browsers
+   *  quietly refuse to prompt for outside a real user action. */
+  active?: boolean;
 }) {
   const initialLat = finiteCoordinate(value.latitude, -90, 90);
   const initialLng = finiteCoordinate(value.longitude, -180, 180);
@@ -94,6 +114,10 @@ export function ListingLocationField({
   const [mapCenter, setMapCenter] = React.useState<[number, number]>(
     hasPin ? [initialLat, initialLng] : WORLD_CENTER
   );
+  // Only meaningful while there's no pin — starts at the whole-world view and tightens
+  // once a location signal (device GPS, then IP as a fallback) narrows it down. Once a
+  // pin exists the map always zooms to street level instead.
+  const [mapZoom, setMapZoom] = React.useState(2);
   const [query, setQuery] = React.useState("");
   const [suggestions, setSuggestions] = React.useState<LocationSuggestion[]>([]);
   const [searching, setSearching] = React.useState(false);
@@ -102,39 +126,83 @@ export function ListingLocationField({
   const [linkValue, setLinkValue] = React.useState("");
   const [resolving, setResolving] = React.useState(false);
   const [locating, setLocating] = React.useState(false);
+  const [locationDialogOpen, setLocationDialogOpen] = React.useState(false);
+  const [locationMessage, setLocationMessage] = React.useState("");
   const abortRef = React.useRef<AbortController | null>(null);
   const searchRequestRef = React.useRef(0);
   const reverseRequestRef = React.useRef(0);
   const selectedQueryRef = React.useRef("");
 
   React.useEffect(() => {
-    if (hasPin) return;
+    if (hasPin || !active) return;
 
+    let cancelled = false;
     const controller = new AbortController();
-    void fetch("/api/location/ip", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: "{}",
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        if (!response.ok) return null;
-        return (await response.json()) as { result?: IpLocation | null };
-      })
-      .then((payload) => {
-        if (payload?.result) {
-          setMapCenter([
-            payload.result.latitude,
-            payload.result.longitude,
-          ]);
-        }
-      })
-      .catch(() => {
-        // IP location is only a convenience; the world view remains usable.
-      });
 
-    return () => controller.abort();
-  }, [hasPin, initialLat, initialLng]);
+    // Coarse (city-level) fallback for when the browser can't or won't give an exact
+    // position — still far better than the whole-world view. This is only ever used
+    // to recenter the map, never to place a pin: a host still has to search, click, or
+    // explicitly confirm "I'm at the property" before any coordinate is saved.
+    function centerFromIp() {
+      void fetch("/api/location/ip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+        signal: controller.signal,
+      })
+        .then(async (response) => {
+          if (!response.ok) return null;
+          return (await response.json()) as { result?: IpLocation | null };
+        })
+        .then((payload) => {
+          if (cancelled || !payload?.result) return;
+          setMapCenter([payload.result.latitude, payload.result.longitude]);
+          setMapZoom(11);
+        })
+        .catch(() => {
+          // IP location is only a convenience; the world view remains usable.
+        });
+    }
+
+    // Ask for device location as soon as this step is reached, without an extra click
+    // or confirmation dialog first — this only moves the *starting view*, it does not
+    // place or confirm a pin, so it doesn't need the same "are you at the property"
+    // gate the explicit "Use my current location" button has.
+    if (window.isSecureContext && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          if (cancelled) return;
+          const latitude = Number(position.coords.latitude);
+          const longitude = Number(position.coords.longitude);
+          if (
+            Number.isFinite(latitude) &&
+            Number.isFinite(longitude) &&
+            latitude >= -90 &&
+            latitude <= 90 &&
+            longitude >= -180 &&
+            longitude <= 180
+          ) {
+            setMapCenter([latitude, longitude]);
+            setMapZoom(13);
+          } else {
+            centerFromIp();
+          }
+        },
+        () => {
+          // Permission denied, unavailable, or timed out — fall back to IP.
+          if (!cancelled) centerFromIp();
+        },
+        { enableHighAccuracy: false, timeout: 6_000, maximumAge: 5 * 60_000 }
+      );
+    } else {
+      centerFromIp();
+    }
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [hasPin, active]);
 
   React.useEffect(() => {
     const normalized = query.trim();
@@ -275,31 +343,89 @@ export function ListingLocationField({
     }
   }
 
-  function useCurrentLocation() {
+  function requestCurrentLocation() {
+    setLocationDialogOpen(false);
+    setLocationMessage("");
+
+    if (!window.isSecureContext) {
+      const message =
+        "Current location is only available on a secure HTTPS connection.";
+      setLocationMessage(message);
+      toast.error(message);
+      return;
+    }
     if (!navigator.geolocation) {
-      toast.error("Current location is not available in this browser");
+      const message = "Current location is not available in this browser.";
+      setLocationMessage(message);
+      toast.error(message);
       return;
     }
 
     setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        void setCoordinates(
-          position.coords.latitude,
-          position.coords.longitude,
-          "BROWSER_LOCATION"
-        ).finally(() => setLocating(false));
-      },
-      (error) => {
-        setLocating(false);
-        toast.error(
-          error.code === error.PERMISSION_DENIED
-            ? "Location permission was denied"
-            : "We couldn't determine your current location"
-        );
-      },
-      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 }
-    );
+    try {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const latitude = Number(position.coords.latitude);
+          const longitude = Number(position.coords.longitude);
+          if (
+            !Number.isFinite(latitude) ||
+            latitude < -90 ||
+            latitude > 90 ||
+            !Number.isFinite(longitude) ||
+            longitude < -180 ||
+            longitude > 180
+          ) {
+            setLocating(false);
+            const message =
+              "Your browser returned an invalid location. Search for the address or place the pin manually.";
+            setLocationMessage(message);
+            toast.error(message);
+            return;
+          }
+
+          void setCoordinates(
+            latitude,
+            longitude,
+            "BROWSER_LOCATION"
+          )
+            .then(() => {
+              setLocationMessage(
+                "Current location added. Check the pin and drag it if the property is nearby rather than exactly here."
+              );
+              toast.success("Current location added");
+            })
+            .catch(() => {
+              const message =
+                "We couldn't add your current location. Search for the address or place the pin manually.";
+              setLocationMessage(message);
+              toast.error(message);
+            })
+            .finally(() => setLocating(false));
+        },
+        (error) => {
+          setLocating(false);
+          const message =
+            error.code === error.PERMISSION_DENIED
+              ? "Location access was not allowed. You can search for the property or place the pin on the map."
+              : error.code === error.TIMEOUT
+                ? "Finding your location took too long. Try again, search for the address, or place the pin manually."
+                : "We couldn't determine your current location. Search for the address or place the pin manually.";
+          setLocationMessage(message);
+          toast.error(message);
+        },
+        {
+          enableHighAccuracy: false,
+          timeout: 15_000,
+          maximumAge: 60_000,
+        }
+      );
+    } catch {
+      setLocating(false);
+      const message =
+        "Your browser blocked the location request. Search for the address or place the pin manually.";
+      setLocationMessage(message);
+      toast.error(message);
+    }
   }
 
   async function applyLink() {
@@ -429,7 +555,7 @@ export function ListingLocationField({
             size="sm"
             variant="outline"
             disabled={locating || resolving}
-            onClick={useCurrentLocation}
+            onClick={() => setLocationDialogOpen(true)}
           >
             {locating ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -442,6 +568,44 @@ export function ListingLocationField({
             Only use this if you are at the property.
           </span>
         </div>
+        {locationMessage && (
+          <p
+            className="flex items-start gap-1.5 text-xs text-muted-foreground"
+            aria-live="polite"
+          >
+            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            {locationMessage}
+          </p>
+        )}
+        <Dialog
+          open={locationDialogOpen}
+          onOpenChange={setLocationDialogOpen}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Are you at the property now?</DialogTitle>
+              <DialogDescription>
+                Choose yes only if you are physically at the property. Your
+                browser will then ask whether book.easy.mk may use your current
+                location. You can deny the request and continue by searching or
+                selecting the property on the map.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setLocationDialogOpen(false)}
+              >
+                No, I&apos;ll choose it
+              </Button>
+              <Button type="button" onClick={requestCurrentLocation}>
+                <LocateFixed className="h-4 w-4" />
+                Yes, use where I am
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="space-y-2">
@@ -463,6 +627,7 @@ export function ListingLocationField({
           lat={latitude}
           lng={longitude}
           hasPin={hasPin}
+          zoom={mapZoom}
           onChange={(nextLat, nextLng) => {
             void setCoordinates(nextLat, nextLng, "MANUAL_PIN");
           }}

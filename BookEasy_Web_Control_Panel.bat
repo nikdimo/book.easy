@@ -13,16 +13,15 @@ echo   book.easy.mk - Web Control Panel
 echo ============================================
 echo.
 echo   [A] PREVIEW
-echo   1. Start Dev Server (Docker DB + migrations + Next.js)
-echo   2. Start Dev Server + Docker (auto-starts Docker Desktop if needed)
+echo   1. Start Dev Server (migrations + Next.js)
 echo.
 echo   [B] DEPLOY
-echo   3. Deploy to book.easy.mk
+echo   2. Deploy to book.easy.mk
 echo.
 echo   [C] VERSION CONTROL
-echo   4. Save version to GitHub
-echo   5. See all saved versions
-echo   6. Save version + Deploy (full release)
+echo   3. Save version to GitHub
+echo   4. See all saved versions
+echo   5. Save version + Deploy (full release)
 echo.
 echo   [0] Exit
 echo ============================================
@@ -30,11 +29,10 @@ echo.
 set /p CHOICE="Choose: "
 
 if "%CHOICE%"=="1" goto PREVIEW
-if "%CHOICE%"=="2" goto PREVIEW_AUTO_DOCKER
-if "%CHOICE%"=="3" goto DEPLOY
-if "%CHOICE%"=="4" goto SAVE
-if "%CHOICE%"=="5" goto LIST_VERSIONS
-if "%CHOICE%"=="6" goto RELEASE
+if "%CHOICE%"=="2" goto DEPLOY
+if "%CHOICE%"=="3" goto SAVE
+if "%CHOICE%"=="4" goto LIST_VERSIONS
+if "%CHOICE%"=="5" goto RELEASE
 if "%CHOICE%"=="0" exit /b 0
 goto MENU
 
@@ -49,40 +47,6 @@ echo.
 goto PREVIEW_BODY
 
 
-:PREVIEW_AUTO_DOCKER
-cls
-echo.
-echo ============================================
-echo   Start Dev Server + Docker
-echo ============================================
-echo.
-echo [0/4] Checking if Docker Desktop is running...
-docker info >nul 2>&1
-if not errorlevel 1 (
-    echo   Docker is already running.
-    goto PREVIEW_BODY
-)
-
-echo   Docker is not running - starting Docker Desktop...
-start "" "C:\Program Files\Docker\Docker\Docker Desktop.exe"
-
-echo   Waiting for Docker to become ready (this can take up to a few minutes)...
-set DOCKER_TRIES=0
-:WAIT_DOCKER
-set /a DOCKER_TRIES+=1
-timeout /t 10 /nobreak >nul
-docker info >nul 2>&1
-if not errorlevel 1 goto PREVIEW_BODY
-if %DOCKER_TRIES% GEQ 18 (
-    echo.
-    echo   ERROR - Docker Desktop did not become ready in time. Try again once it's fully started.
-    pause
-    goto MENU
-)
-echo   Still waiting... (%DOCKER_TRIES%/18)
-goto WAIT_DOCKER
-
-
 :PREVIEW_BODY
 rem Never start a second Next.js process against the same .next cache. Concurrent
 rem dev processes can corrupt Turbopack's persistent task state on Windows.
@@ -95,32 +59,18 @@ if not errorlevel 1 (
     goto MENU
 )
 
-echo [1/4] Starting Postgres (Docker)...
-docker compose up -d
-if errorlevel 1 (
-    echo.
-    echo   ERROR - Docker failed to start the database. Is Docker Desktop running?
-    pause
-    goto MENU
-)
-
-echo.
-echo [2/4] Waiting for Postgres to accept connections...
-timeout /t 5 /nobreak >nul
-
-echo.
-echo [3/4] Applying database schema...
+echo [1/2] Applying database schema...
 call npm run db:generate
 call npm run db:push
 if errorlevel 1 (
     echo.
-    echo   ERROR - Prisma db push failed. Check your .env DATABASE_URL.
+    echo   ERROR - Prisma db push failed. Check your .env DATABASE_URL and that PostgreSQL is running.
     pause
     goto MENU
 )
 
 echo.
-echo [4/4] Starting the web app...
+echo [2/2] Starting the web app...
 echo   Clearing generated development cache...
 if exist ".next\dev" rmdir /s /q ".next\dev"
 if exist ".next\dev" (
@@ -132,7 +82,6 @@ if exist ".next\dev" (
 )
 echo   Opening http://localhost:3000
 echo   Press Ctrl+C in this window to stop.
-echo   (Postgres keeps running in Docker until you run "docker compose down" separately)
 echo.
 start "" /b powershell -NoProfile -WindowStyle Hidden -Command "$url='http://localhost:3000'; for ($i=0; $i -lt 90; $i++) { try { $response=Invoke-WebRequest -UseBasicParsing -Uri $url -TimeoutSec 2; if ($response.StatusCode -ge 200) { Start-Process $url; exit 0 } } catch {}; Start-Sleep -Seconds 1 }; Start-Process $url"
 rem Webpack is used for control-panel previews because Next 16.2.2 Turbopack can

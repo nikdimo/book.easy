@@ -13,7 +13,11 @@ export default async function HostLayout({ children }: { children: React.ReactNo
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-background xl:flex-row">
       <HostSidebar languages={languages} />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="hidden shrink-0 items-center justify-end border-b bg-background px-8 py-4 xl:flex">
+        <div className="host-desktop-toolbar hidden min-h-14 shrink-0 items-center gap-3 border-b bg-background px-6 xl:flex">
+          <div
+            id="host-listing-toolbar-slot"
+            className="flex min-w-0 flex-1 items-center"
+          />
           <GoogleTranslateWidget languages={languages} />
         </div>
         <main className="host-main min-h-0 min-w-0 flex-1 overflow-y-auto">{children}</main>

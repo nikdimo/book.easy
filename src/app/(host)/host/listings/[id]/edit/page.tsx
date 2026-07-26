@@ -5,7 +5,7 @@ import { getHostListing } from "@/lib/services/listing.service";
 import { serializeHostListingForForm } from "@/lib/serializers/host-listing-form";
 import { ListingForm } from "@/components/host/listing-form";
 import { LISTING_STATUSES } from "@/lib/constants";
-import { getActivePropertyTypes, getPropertyTypeLabel } from "@/lib/services/property-type.service";
+import { getActivePropertyTypes, getPropertyTypeOption } from "@/lib/services/property-type.service";
 import type { ListingMediaItem } from "@/lib/types/listing-media";
 
 interface EditListingPageProps {
@@ -48,7 +48,7 @@ export default async function EditListingPage({ params }: EditListingPageProps) 
     ? activePropertyTypes
     : [
         ...activePropertyTypes,
-        { value: currentPropertyType, label: await getPropertyTypeLabel(currentPropertyType) },
+        await getPropertyTypeOption(currentPropertyType),
       ];
 
   const statusConfig = LISTING_STATUSES.find((s) => s.value === listing.status);

@@ -4,6 +4,7 @@ import type { ListingMediaItem } from "@/lib/types/listing-media";
  * blur before it's complete enough to become a real Listing/Property row. Every field
  * is optional since the host may have only filled in a few so far. */
 export interface ListingDraftData {
+  currentStep?: number;
   title?: string;
   description?: string;
   propertyType?: string;

@@ -2,6 +2,7 @@
 
 import { useActionState, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { CSSProperties, ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Bath, Bed, BedDouble, CalendarDays, ChevronLeft, ChevronRight, Eye, GripVertical, ListChecks, MapPin, Pencil, ShieldCheck, Users } from "lucide-react";
@@ -19,6 +20,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +45,12 @@ import type { HostListingFormData } from "@/lib/serializers/host-listing-form";
 import type { ListingMediaItem } from "@/lib/types/listing-media";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 import type { ListingDraftData } from "@/lib/types/listing-draft";
+import { PropertyTypeIcon } from "@/components/shared/property-type-icon";
+import { cn } from "@/lib/utils";
+import {
+  LISTING_STEPS,
+  normalizeListingStep,
+} from "@/lib/constants/listing-steps";
 
 interface ListingFormProps {
   amenities: { id: string; name: string; category: string }[];
@@ -84,15 +96,7 @@ const FALLBACK_TITLE = "Your listing title";
 const FALLBACK_DESCRIPTION =
   "Describe the space, the neighborhood, and the details guests should know before booking.";
 
-const STEPS = [
-  { title: "Property type", description: "What kind of place will guests book?" },
-  { title: "Location", description: "Help guests understand where they will stay." },
-  { title: "Property details", description: "Set the capacity and sleeping arrangements." },
-  { title: "Amenities", description: "Choose what your property offers." },
-  { title: "Photos", description: "Add at least 3 photos and choose the best one first." },
-  { title: "Description", description: "Give guests a clear, inviting overview." },
-  { title: "Pricing", description: "Set the price and minimum stay, then publish." },
-] as const;
+const STEPS = LISTING_STEPS;
 
 const EDIT_SECTIONS = [
   { id: "basics", label: "Basics" },
@@ -252,13 +256,16 @@ export function ListingForm({
   const draftIdRef = useRef<string | null>(initialDraftId ?? null);
   const saveRequestRef = useRef(0);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved");
-  const [currentStep, setCurrentStep] = useState(0);
+  const initialStep = isEditing ? 0 : normalizeListingStep(initialDraft?.currentStep);
+  const [currentStep, setCurrentStep] = useState(initialStep);
+  const currentStepRef = useRef(initialStep);
   const [mobilePane, setMobilePane] = useState<"edit" | "preview">("edit");
   const [editorWidthPercent, setEditorWidthPercent] = useState(48);
   const [stepsOpen, setStepsOpen] = useState(false);
   const [publishChecklistOpen, setPublishChecklistOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submittedListingId, setSubmittedListingId] = useState<string | null>(null);
+  const [desktopToolbarTarget, setDesktopToolbarTarget] = useState<HTMLElement | null>(null);
   const [isSubmittingNew, startSubmitNewTransition] = useTransition();
 
   const [state, formAction, isPending] = useActionState(
@@ -277,11 +284,15 @@ export function ListingForm({
   // yet, so leaving the page (or the tab crashing) doesn't lose it. Not validated —
   // partial/empty values are expected. No-op once editing a real listing, which is
   // already persisted.
-  const autosaveDraft = useCallback(async () => {
+  const autosaveDraft = useCallback(async (stepOverride?: number) => {
     if (isEditing || !formRef.current) return true;
     const request = ++saveRequestRef.current;
     setSaveStatus("saving");
     const fd = new FormData(formRef.current);
+    fd.set(
+      "currentStep",
+      String(normalizeListingStep(stepOverride ?? currentStepRef.current))
+    );
     const result = await saveListingDraft(draftIdRef.current, fd);
     if (result && "draftId" in result) {
       draftIdRef.current = result.draftId;
@@ -314,6 +325,15 @@ export function ListingForm({
     }, 0);
     return () => window.clearTimeout(timeout);
   }, [isEditing]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setDesktopToolbarTarget(
+        document.getElementById("host-listing-toolbar-slot")
+      );
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, []);
 
   const groupedAmenities = useMemo(
     () =>
@@ -474,6 +494,17 @@ export function ListingForm({
     });
   }
 
+  async function leaveListingStudio() {
+    const saved = await autosaveDraft();
+    if (saved) {
+      router.push("/host/listings");
+    } else {
+      toast.error(
+        "Your latest changes could not be saved. Please retry before closing."
+      );
+    }
+  }
+
   function scrollToEditSection(sectionId: string) {
     const container = editorScrollRef.current;
     const section = document.getElementById(`edit-section-${sectionId}`);
@@ -511,7 +542,10 @@ export function ListingForm({
   }
 
   function goToStep(step: number) {
-    setCurrentStep(Math.min(STEPS.length - 1, Math.max(0, step)));
+    const nextStep = normalizeListingStep(step);
+    currentStepRef.current = nextStep;
+    setCurrentStep(nextStep);
+    void autosaveDraft(nextStep);
     selectMobilePane("edit");
     window.requestAnimationFrame(() => editorScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" }));
   }
@@ -558,20 +592,95 @@ export function ListingForm({
       action={isEditing ? formAction : undefined}
       className="flex h-full min-h-0 flex-col overflow-hidden"
     >
+      {!isEditing && (
+        <input type="hidden" name="currentStep" value={currentStep} />
+      )}
       {state?.error && !isEditing && (
         <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
           {state.error}
         </div>
       )}
 
+      {!isEditing &&
+        desktopToolbarTarget &&
+        createPortal(
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="shrink-0"
+              onClick={() => void leaveListingStudio()}
+            >
+              <ChevronLeft />
+              My listings
+            </Button>
+            <span className="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden="true" />
+            <h1 className="shrink-0 text-base font-semibold">Create a listing</h1>
+            <button
+              type="button"
+              onClick={() => setStepsOpen(true)}
+              className="ml-1 inline-flex min-h-9 min-w-0 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <ListChecks className="h-4 w-4 shrink-0" />
+              <span className="truncate">
+                Step {currentStep + 1} of {STEPS.length}: {STEPS[currentStep].title}
+              </span>
+            </button>
+            <div className="mx-2 h-1 min-w-16 max-w-32 flex-1 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-primary transition-all"
+                style={{
+                  width: `${((currentStep + 1) / STEPS.length) * 100}%`,
+                }}
+              />
+            </div>
+            <span
+              className={`shrink-0 text-sm ${
+                saveStatus === "error"
+                  ? "text-destructive"
+                  : "text-muted-foreground"
+              }`}
+              aria-live="polite"
+            >
+              {saveStatus === "saving"
+                ? "Saving…"
+                : saveStatus === "error"
+                  ? "Save failed"
+                  : "Draft saved"}
+            </span>
+            {saveStatus === "error" && (
+              <Button
+                type="button"
+                variant="link"
+                size="sm"
+                className="shrink-0 px-1"
+                onClick={() => void autosaveDraft()}
+              >
+                Retry
+              </Button>
+            )}
+            <Button
+              type="button"
+              size="sm"
+              className="shrink-0"
+              disabled={isSubmittingNew}
+              onClick={handleSubmitForReview}
+            >
+              {isSubmittingNew ? "Publishing…" : "Publish"}
+            </Button>
+          </div>,
+          desktopToolbarTarget
+        )}
+
       {!isEditing && (
-        <div className="z-20 shrink-0 border-b bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:px-6">
+        <div className="z-20 shrink-0 border-b bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:px-6 xl:hidden">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <Button type="button" variant="ghost" onClick={async () => {
-              const saved = await autosaveDraft();
-              if (saved) router.push("/host/listings");
-              else toast.error("Your latest changes could not be saved. Please retry before closing.");
-            }}>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => void leaveListingStudio()}
+            >
               <ChevronLeft />
               My listings
             </Button>
@@ -726,24 +835,84 @@ export function ListingForm({
                 </span>
               </div>
             </div>
-            <div className={isEditing || currentStep === 0 ? "space-y-2" : "hidden"}>
-              <Label htmlFor="propertyType">Property type</Label>
-              <select
+            <div className={isEditing || currentStep === 0 ? "space-y-3" : "hidden"}>
+              <Label id="property-type-label">Property type</Label>
+              <input
                 id="propertyType"
+                type="hidden"
                 name="propertyType"
                 value={values.propertyType}
-                onChange={(event) => setField("propertyType", event.target.value)}
-                onBlur={() => handleBlur("propertyType")}
-                required
-                className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              />
+              <div
+                role="radiogroup"
+                aria-labelledby="property-type-label"
+                aria-required="true"
+                aria-invalid={Boolean(fieldErrors.propertyType)}
+                className="grid grid-cols-2 gap-3 sm:grid-cols-3"
+                onBlur={(event) => {
+                  if (!event.currentTarget.contains(event.relatedTarget)) {
+                    handleBlur("propertyType");
+                  }
+                }}
               >
-                <option value="">Select type</option>
-                {propertyTypes.map((type) => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
+                {propertyTypes.map((type) => {
+                  const selected = values.propertyType === type.value;
+                  return (
+                    <Tooltip key={type.value}>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={selected}
+                          className={cn(
+                            "group relative flex min-h-28 flex-col items-center justify-center gap-3 rounded-2xl border bg-background px-3 py-4 text-center shadow-sm outline-none transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40",
+                            selected &&
+                              "border-primary bg-primary/6 text-primary shadow-[0_10px_30px_-18px_var(--primary)] ring-1 ring-primary"
+                          )}
+                          onClick={() => {
+                            setField("propertyType", type.value);
+                            setFieldErrors((current) => ({
+                              ...current,
+                              propertyType: "",
+                            }));
+                            setTimeout(() => void autosaveDraft(), 0);
+                          }}
+                        >
+                          <span
+                            className={cn(
+                              "flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary",
+                              selected && "bg-primary/12 text-primary"
+                            )}
+                          >
+                            <PropertyTypeIcon
+                              name={type.icon}
+                              className="size-7"
+                            />
+                          </span>
+                          <span className="text-sm font-semibold leading-tight text-foreground">
+                            {type.label}
+                          </span>
+                          {selected && (
+                            <span
+                              className="absolute right-2.5 top-2.5 size-2 rounded-full bg-primary ring-4 ring-primary/15"
+                              aria-hidden="true"
+                            />
+                          )}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent
+                        sideOffset={8}
+                        className={cn(
+                          "max-w-64 text-center",
+                          !type.description && "hidden"
+                        )}
+                      >
+                        {type.description}
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })}
+              </div>
               <FieldError message={fieldErrors.propertyType} />
               <SuggestMissingOption
                 kind="PROPERTY_TYPE"
@@ -757,7 +926,11 @@ export function ListingForm({
 
           <div id={isEditing ? "edit-section-location" : undefined} className={isEditing || currentStep === 1 ? "scroll-mt-32 block" : "hidden"}>
           <FieldSection title="Location">
-            <ListingLocationField value={values} onChange={updateLocation} />
+            <ListingLocationField
+              value={values}
+              onChange={updateLocation}
+              active={isEditing || currentStep === 1}
+            />
             <FieldError
               message={
                 fieldErrors.locationConfirmed ||
@@ -852,7 +1025,7 @@ export function ListingForm({
                 value={values.maxGuests}
                 min={1}
                 onChange={(value) => setField("maxGuests", value)}
-                onBlur={autosaveDraft}
+                onBlur={() => void autosaveDraft()}
               />
               <NumberField
                 id="bedrooms"
@@ -860,7 +1033,7 @@ export function ListingForm({
                 value={values.bedrooms}
                 min={0}
                 onChange={(value) => setField("bedrooms", value)}
-                onBlur={autosaveDraft}
+                onBlur={() => void autosaveDraft()}
               />
               <NumberField
                 id="beds"
@@ -868,7 +1041,7 @@ export function ListingForm({
                 value={values.beds}
                 min={0}
                 onChange={(value) => setField("beds", value)}
-                onBlur={autosaveDraft}
+                onBlur={() => void autosaveDraft()}
               />
               <NumberField
                 id="bathrooms"
@@ -876,7 +1049,7 @@ export function ListingForm({
                 value={values.bathrooms}
                 min={0}
                 onChange={(value) => setField("bathrooms", value)}
-                onBlur={autosaveDraft}
+                onBlur={() => void autosaveDraft()}
               />
             </div>
           </FieldSection>
@@ -904,7 +1077,7 @@ export function ListingForm({
                 min={0}
                 step="0.01"
                 onChange={(value) => setField("cleaningFee", value)}
-                onBlur={autosaveDraft}
+                onBlur={() => void autosaveDraft()}
               />
               <NumberField
                 id="minNights"
@@ -912,7 +1085,7 @@ export function ListingForm({
                 value={values.minNights}
                 min={1}
                 onChange={(value) => setField("minNights", value)}
-                onBlur={autosaveDraft}
+                onBlur={() => void autosaveDraft()}
               />
             </div>
           </FieldSection>
@@ -975,10 +1148,7 @@ export function ListingForm({
                 {currentStep < STEPS.length - 1 ? (
                   <Button
                     type="button"
-                    onClick={() => {
-                      void autosaveDraft();
-                      goToStep(currentStep + 1);
-                    }}
+                    onClick={() => goToStep(currentStep + 1)}
                   >
                     Continue <ChevronRight />
                   </Button>

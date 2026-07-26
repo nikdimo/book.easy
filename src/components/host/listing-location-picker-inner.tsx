@@ -59,20 +59,29 @@ function KeepMapSized() {
 function RecenterOnChange({
   position,
   hasPin,
+  zoom,
 }: {
   position: [number, number];
   hasPin: boolean;
+  /** Zoom to use while there's no pin yet — e.g. tighter once a location signal
+   *  (device GPS or IP) narrows down where the host probably is. Ignored once a pin
+   *  is placed, when the map always zooms to at least street level. */
+  zoom: number;
 }) {
   const map = useMap();
   const prev = React.useRef(position);
+  const prevZoom = React.useRef(zoom);
   React.useEffect(() => {
-    if (prev.current[0] !== position[0] || prev.current[1] !== position[1]) {
-      map.setView(position, hasPin ? Math.max(map.getZoom(), 13) : map.getZoom(), {
+    const positionChanged = prev.current[0] !== position[0] || prev.current[1] !== position[1];
+    const zoomChanged = prevZoom.current !== zoom;
+    if (positionChanged || (zoomChanged && !hasPin)) {
+      map.setView(position, hasPin ? Math.max(map.getZoom(), 13) : zoom, {
         animate: true,
       });
       prev.current = position;
+      prevZoom.current = zoom;
     }
-  }, [hasPin, map, position]);
+  }, [hasPin, map, position, zoom]);
   return null;
 }
 
@@ -80,12 +89,15 @@ export default function ListingLocationPickerInner({
   lat,
   lng,
   hasPin,
+  zoom = 2,
   onChange,
   className,
 }: {
   lat: number;
   lng: number;
   hasPin: boolean;
+  /** Zoom to use before a pin is placed. Defaults to the whole-world view. */
+  zoom?: number;
   onChange: (lat: number, lng: number) => void;
   className?: string;
 }) {
@@ -96,7 +108,7 @@ export default function ListingLocationPickerInner({
     <div className={cn("overflow-hidden rounded-lg border", className)}>
       <MapContainer
         center={position}
-        zoom={hasPin ? 13 : 2}
+        zoom={hasPin ? 13 : zoom}
         className="h-full w-full min-h-[280px] z-0"
         scrollWheelZoom
       >
@@ -113,7 +125,7 @@ export default function ListingLocationPickerInner({
         )}
         <KeepMapSized />
         <ClickToPlace onPick={onChange} />
-        <RecenterOnChange position={position} hasPin={hasPin} />
+        <RecenterOnChange position={position} hasPin={hasPin} zoom={zoom} />
         {hasPin && (
           <Marker
             position={position}

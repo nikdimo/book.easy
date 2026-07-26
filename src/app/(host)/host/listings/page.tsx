@@ -11,6 +11,10 @@ import { HostListingCard } from "@/components/host/host-listing-card";
 import { DeleteDraftButton } from "@/components/host/delete-draft-button";
 import { formatDate } from "@/lib/utils/format";
 import type { ListingDraftData } from "@/lib/types/listing-draft";
+import {
+  LISTING_STEPS,
+  normalizeListingStep,
+} from "@/lib/constants/listing-steps";
 
 export const metadata = { title: "My Listings" };
 
@@ -42,6 +46,8 @@ export default async function HostListingsPage() {
             {drafts.map((draft) => {
               const data = draft.data as ListingDraftData;
               const title = data.title?.trim() || "Untitled draft";
+              const currentStep = normalizeListingStep(data.currentStep);
+              const step = LISTING_STEPS[currentStep];
               return (
                 <Card key={draft.id}>
                   <CardContent className="flex flex-col items-stretch gap-4 p-4 sm:flex-row sm:items-center">
@@ -50,7 +56,11 @@ export default async function HostListingsPage() {
                         <h3 className="font-semibold truncate">{title}</h3>
                         <Badge variant="secondary">Draft</Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm font-medium text-foreground">
+                        Stopped at Step {currentStep + 1} of {LISTING_STEPS.length}:{" "}
+                        {step.title}
+                      </p>
+                      <p className="mt-0.5 text-sm text-muted-foreground">
                         Last edited {formatDate(draft.updatedAt)}
                       </p>
                     </div>

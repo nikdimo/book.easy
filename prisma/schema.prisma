@@ -164,6 +164,10 @@ model PropertyType {
   id        String   @id @default(cuid())
   value     String   @unique
   label     String
+  /** Curated Lucide icon key, editable by admins in Settings. */
+  icon      String   @default("Building2")
+  /** Short guest-facing explanation shown when a property type is hovered or focused. */
+  description String @default("A distinct type of accommodation available for guests to book.")
   /** false = not offered in pickers/filters going forward, but still valid for any
    *  property already using it (e.g. a "this listing only" suggestion approval). */
   isActive  Boolean  @default(true)
