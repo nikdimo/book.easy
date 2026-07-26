@@ -234,3 +234,40 @@ export async function locateIp(ip: string): Promise<{
     countryCode: response.country?.iso_code?.trim().toUpperCase() || "",
   };
 }
+
+type StreetViewMetadataResponse = {
+  status?: string;
+};
+
+/**
+ * Whether Google has Street View imagery near a point, checked via the Street View
+ * Static API's metadata endpoint — unlike the image endpoint, metadata requests are
+ * not billed, so this is free to call before deciding whether to render a preview.
+ * Coverage is sparse in rural areas (much of rural Greece included), and Google's embed
+ * shows a broken-looking default view rather than failing cleanly when there's no
+ * nearby panorama, so this check is what lets the UI show nothing instead of that.
+ */
+export async function checkStreetViewAvailability(input: {
+  latitude: number;
+  longitude: number;
+}): Promise<boolean> {
+  const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY?.trim();
+  if (!key) return false;
+
+  const url = new URL("https://maps.googleapis.com/maps/api/streetview/metadata");
+  url.searchParams.set("location", `${input.latitude},${input.longitude}`);
+  url.searchParams.set("key", key);
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, { cache: "no-store", signal: controller.signal });
+    if (!response.ok) return false;
+    const payload = (await response.json()) as StreetViewMetadataResponse;
+    return payload.status === "OK";
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timeout);
+  }
+}

@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import {
   AlertCircle,
   CheckCircle2,
+  ExternalLink,
   Link2,
   Loader2,
   LocateFixed,
@@ -25,6 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { resolveMapsLink } from "@/lib/actions/listing.actions";
 import { parseCoordsFromMapsText } from "@/lib/utils/parse-maps-link";
+import { StreetViewPreview } from "@/components/host/street-view-preview";
 
 const ListingLocationPickerInner = dynamic(
   () => import("./listing-location-picker-inner"),
@@ -91,6 +93,16 @@ function preferredLanguage() {
   if (typeof document === "undefined") return "en";
   const language = document.documentElement.lang || navigator.language || "en";
   return language.slice(0, 2).toLowerCase();
+}
+
+/** Deep-links straight into a Google Maps search, prefilled with whatever city/country
+ *  is already known — saves the host from re-typing something we already have, and
+ *  gives Maps a head start over its much better address data for places (rural Greece
+ *  included) that Geoapify's search struggles with. */
+function googleMapsSearchUrl(city: string, country: string): string {
+  const query = [city, country].filter(Boolean).join(", ");
+  if (!query) return "https://www.google.com/maps";
+  return `https://www.google.com/maps/search/?${new URLSearchParams({ api: "1", query }).toString()}`;
 }
 
 export function ListingLocationField({
@@ -492,153 +504,211 @@ export function ListingLocationField({
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="address-search">Search for the property address</Label>
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+      <div className="space-y-3 rounded-lg border border-primary/30 bg-primary/[0.03] p-4">
+        <div>
+          <Label htmlFor="maps-link" className="text-sm font-semibold">
+            Paste a Google Maps link
+          </Label>
+          <p className="mt-1 text-xs text-muted-foreground">
+            This is the easiest way to get an exact pin — Google Maps knows this area
+            much better than address search does, especially outside city centers.
+          </p>
+        </div>
+        <ol className="space-y-1 text-xs text-muted-foreground">
+          <li>1. Open Google Maps and find the property.</li>
+          <li>2. Tap <span className="font-medium text-foreground">Share</span>, then <span className="font-medium text-foreground">Copy link</span> (on desktop: right-click the spot on the map → <span className="font-medium text-foreground">Copy link</span>).</li>
+          <li>3. Paste the link below.</li>
+        </ol>
+        <Button type="button" variant="outline" size="sm" asChild>
+          <a
+            href={googleMapsSearchUrl(value.city, value.country)}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <ExternalLink className="h-4 w-4" />
+            Open Google Maps
+          </a>
+        </Button>
+        <div className="flex gap-2">
           <Input
-            id="address-search"
-            role="combobox"
-            aria-autocomplete="list"
-            aria-expanded={suggestions.length > 0}
-            aria-controls="address-search-results"
-            aria-activedescendant={
-              activeSuggestion >= 0
-                ? `address-result-${activeSuggestion}`
-                : undefined
-            }
-            autoComplete="off"
-            className="pl-9 pr-9"
-            placeholder="Start typing an address, city, or place"
-            value={query}
-            onChange={(event) => {
-              const nextQuery = event.target.value;
-              selectedQueryRef.current = "";
-              setQuery(nextQuery);
-              setActiveSuggestion(-1);
-              if (nextQuery.trim().length < 3) {
-                setSuggestions([]);
-                setSearching(false);
-                setSearchError("");
-              }
-            }}
+            id="maps-link"
+            placeholder="Paste the Google Maps link here"
+            value={linkValue}
+            onChange={(event) => setLinkValue(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === "ArrowDown" && suggestions.length > 0) {
+              if (event.key === "Enter") {
                 event.preventDefault();
-                setActiveSuggestion((current) =>
-                  Math.min(suggestions.length - 1, current + 1)
-                );
-              } else if (event.key === "ArrowUp" && suggestions.length > 0) {
-                event.preventDefault();
-                setActiveSuggestion((current) => Math.max(0, current - 1));
-              } else if (event.key === "Enter" && activeSuggestion >= 0) {
-                event.preventDefault();
-                chooseSuggestion(suggestions[activeSuggestion]);
-              } else if (event.key === "Escape") {
-                setSuggestions([]);
-                setActiveSuggestion(-1);
+                void applyLink();
               }
-            }}
-            onBlur={() => {
-              window.setTimeout(() => setSuggestions([]), 150);
             }}
           />
-          {searching && (
-            <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
-          )}
-          {suggestions.length > 0 && (
-            <div
-              id="address-search-results"
-              role="listbox"
-              className="absolute z-[1000] mt-1 max-h-64 w-full overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg"
-            >
-              {suggestions.map((result, index) => (
-                <button
-                  id={`address-result-${index}`}
-                  key={result.id}
-                  type="button"
-                  role="option"
-                  aria-selected={activeSuggestion === index}
-                  className={`flex w-full items-start gap-2 rounded-md px-3 py-2 text-left text-sm ${
-                    activeSuggestion === index ? "bg-muted" : "hover:bg-muted"
-                  }`}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => chooseSuggestion(result)}
-                >
-                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                  <span>{result.label}</span>
-                </button>
-              ))}
-              <div className="border-t px-3 py-1.5 text-[11px] text-muted-foreground">
-                Powered by Geoapify
-              </div>
-            </div>
-          )}
-        </div>
-        {searchError && (
-          <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            {searchError}. You can still set the exact location on the map.
-          </p>
-        )}
-        <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
-            size="sm"
-            variant="outline"
-            disabled={locating || resolving}
-            onClick={() => setLocationDialogOpen(true)}
+            onClick={() => void applyLink()}
+            disabled={resolving || !linkValue.trim()}
           >
-            {locating ? (
+            {resolving ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <LocateFixed className="h-4 w-4" />
+              <Link2 className="h-4 w-4" />
             )}
-            Use my current location
+            Use link
           </Button>
-          <span className="text-xs text-muted-foreground">
-            Only use this if you are at the property.
-          </span>
         </div>
-        {locationMessage && (
-          <p
-            className="flex items-start gap-1.5 text-xs text-muted-foreground"
-            aria-live="polite"
-          >
-            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-            {locationMessage}
-          </p>
-        )}
-        <Dialog
-          open={locationDialogOpen}
-          onOpenChange={setLocationDialogOpen}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Are you at the property now?</DialogTitle>
-              <DialogDescription>
-                Choose yes only if you are physically at the property. Your
-                browser will then ask whether book.easy.mk may use your current
-                location. You can deny the request and continue by searching or
-                selecting the property on the map.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setLocationDialogOpen(false)}
-              >
-                No, I&apos;ll choose it
-              </Button>
-              <Button type="button" onClick={requestCurrentLocation}>
-                <LocateFixed className="h-4 w-4" />
-                Yes, use where I am
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
+
+      <details className="group rounded-lg border px-3 py-2">
+        <summary className="cursor-pointer text-sm font-medium text-muted-foreground">
+          Prefer to search or use your current location instead?
+        </summary>
+        <div className="mt-3 space-y-2">
+          <Label htmlFor="address-search" className="text-xs">
+            Search for the property address
+          </Label>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input
+              id="address-search"
+              role="combobox"
+              aria-autocomplete="list"
+              aria-expanded={suggestions.length > 0}
+              aria-controls="address-search-results"
+              aria-activedescendant={
+                activeSuggestion >= 0
+                  ? `address-result-${activeSuggestion}`
+                  : undefined
+              }
+              autoComplete="off"
+              className="pl-9 pr-9"
+              placeholder="Start typing an address, city, or place"
+              value={query}
+              onChange={(event) => {
+                const nextQuery = event.target.value;
+                selectedQueryRef.current = "";
+                setQuery(nextQuery);
+                setActiveSuggestion(-1);
+                if (nextQuery.trim().length < 3) {
+                  setSuggestions([]);
+                  setSearching(false);
+                  setSearchError("");
+                }
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "ArrowDown" && suggestions.length > 0) {
+                  event.preventDefault();
+                  setActiveSuggestion((current) =>
+                    Math.min(suggestions.length - 1, current + 1)
+                  );
+                } else if (event.key === "ArrowUp" && suggestions.length > 0) {
+                  event.preventDefault();
+                  setActiveSuggestion((current) => Math.max(0, current - 1));
+                } else if (event.key === "Enter" && activeSuggestion >= 0) {
+                  event.preventDefault();
+                  chooseSuggestion(suggestions[activeSuggestion]);
+                } else if (event.key === "Escape") {
+                  setSuggestions([]);
+                  setActiveSuggestion(-1);
+                }
+              }}
+              onBlur={() => {
+                window.setTimeout(() => setSuggestions([]), 150);
+              }}
+            />
+            {searching && (
+              <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
+            )}
+            {suggestions.length > 0 && (
+              <div
+                id="address-search-results"
+                role="listbox"
+                className="absolute z-[1000] mt-1 max-h-64 w-full overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg"
+              >
+                {suggestions.map((result, index) => (
+                  <button
+                    id={`address-result-${index}`}
+                    key={result.id}
+                    type="button"
+                    role="option"
+                    aria-selected={activeSuggestion === index}
+                    className={`flex w-full items-start gap-2 rounded-md px-3 py-2 text-left text-sm ${
+                      activeSuggestion === index ? "bg-muted" : "hover:bg-muted"
+                    }`}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => chooseSuggestion(result)}
+                  >
+                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span>{result.label}</span>
+                  </button>
+                ))}
+                <div className="border-t px-3 py-1.5 text-[11px] text-muted-foreground">
+                  Powered by Geoapify
+                </div>
+              </div>
+            )}
+          </div>
+          {searchError && (
+            <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              {searchError}. You can still set the exact location on the map.
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={locating || resolving}
+              onClick={() => setLocationDialogOpen(true)}
+            >
+              {locating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <LocateFixed className="h-4 w-4" />
+              )}
+              Use my current location
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              Only use this if you are at the property.
+            </span>
+          </div>
+          {locationMessage && (
+            <p
+              className="flex items-start gap-1.5 text-xs text-muted-foreground"
+              aria-live="polite"
+            >
+              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              {locationMessage}
+            </p>
+          )}
+        </div>
+      </details>
+
+      <Dialog open={locationDialogOpen} onOpenChange={setLocationDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Are you at the property now?</DialogTitle>
+            <DialogDescription>
+              Choose yes only if you are physically at the property. Your
+              browser will then ask whether book.easy.mk may use your current
+              location. You can deny the request and continue by searching or
+              selecting the property on the map.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setLocationDialogOpen(false)}
+            >
+              No, I&apos;ll choose it
+            </Button>
+            <Button type="button" onClick={requestCurrentLocation}>
+              <LocateFixed className="h-4 w-4" />
+              Yes, use where I am
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -687,43 +757,14 @@ export function ListingLocationField({
         )}
       </div>
 
-      <details className="rounded-lg border px-3 py-2">
-        <summary className="cursor-pointer text-sm font-medium">
-          Other ways to set the location
-        </summary>
-        <div className="mt-3 space-y-2">
-          <Label htmlFor="maps-link" className="text-xs">
-            Paste a Google Maps link or coordinates
+      {hasPin && process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY && (
+        <div className="space-y-2">
+          <Label className="text-xs text-muted-foreground">
+            Street view near this pin
           </Label>
-          <div className="flex gap-2">
-            <Input
-              id="maps-link"
-              placeholder="Google Maps link or 'lat, lng'"
-              value={linkValue}
-              onChange={(event) => setLinkValue(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  void applyLink();
-                }
-              }}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => void applyLink()}
-              disabled={resolving}
-            >
-              {resolving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Link2 className="h-4 w-4" />
-              )}
-              Use link
-            </Button>
-          </div>
+          <StreetViewPreview latitude={latitude} longitude={longitude} />
         </div>
-      </details>
+      )}
 
       <input type="hidden" name="latitude" value={value.latitude} />
       <input type="hidden" name="longitude" value={value.longitude} />
