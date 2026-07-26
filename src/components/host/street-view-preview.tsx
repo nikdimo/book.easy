@@ -65,9 +65,14 @@ export function StreetViewPreview({
 
   if (!key) return null;
 
+  // notranslate: this text swaps between three different states as `status` resolves,
+  // and Google Translate's live DOM translation mutates rendered text outside React's
+  // control — when React later tries to update a subtree Translate already touched, it
+  // throws (e.g. "insertBefore: not a child of this node"). See t.tsx and the same
+  // class used throughout the public marketplace pages for this exact reason.
   if (status === "checking") {
     return (
-      <div className="flex h-40 w-full items-center justify-center gap-2 rounded-lg border bg-muted/40 text-xs text-muted-foreground">
+      <div className="notranslate flex h-40 w-full items-center justify-center gap-2 rounded-lg border bg-muted/40 text-xs text-muted-foreground">
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
         Checking for a street view photo…
       </div>
@@ -76,7 +81,7 @@ export function StreetViewPreview({
 
   if (status === "unavailable") {
     return (
-      <div className="flex h-16 w-full items-center gap-2 rounded-lg border border-dashed px-3 text-xs text-muted-foreground">
+      <div className="notranslate flex h-16 w-full items-center gap-2 rounded-lg border border-dashed px-3 text-xs text-muted-foreground">
         <ImageOff className="h-3.5 w-3.5 shrink-0" />
         No street view photo is available for this exact spot.
       </div>
