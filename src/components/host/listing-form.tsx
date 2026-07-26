@@ -98,6 +98,10 @@ const FALLBACK_DESCRIPTION =
 
 const STEPS = LISTING_STEPS;
 
+/** Text fields a reverse-geocode result fills in — see setField/updateLocation for how
+ *  these are protected once the host edits one directly. */
+const LOCATION_TEXT_FIELDS = ["address", "city", "area", "postalCode", "country"] as const;
+
 const EDIT_SECTIONS = [
   { id: "basics", label: "Basics" },
   { id: "description", label: "Description" },
@@ -257,6 +261,12 @@ export function ListingForm({
   const workspaceRef = useRef<HTMLDivElement>(null);
   const editorScrollRef = useRef<HTMLDivElement>(null);
   const paneDragRef = useRef<{ startX: number; startWidth: number } | null>(null);
+  /** Address-text fields the host has typed into directly, this session — a geocode
+   *  result (from moving the pin, pasting a link, etc.) skips these instead of
+   *  overwriting a correction the host made on purpose. Starts empty even when editing
+   *  an existing listing: pre-existing data isn't "manually edited by the user in this
+   *  session", so an initial pin move can still refresh it. See updateLocation. */
+  const manuallyEditedLocationFieldsRef = useRef<Set<string>>(new Set());
   const [activeEditSection, setActiveEditSection] = useState("basics");
   const [values, setValues] = useState<ListingFormValues>(() =>
     listingInitialValues(listing, initialDraft)
@@ -393,6 +403,9 @@ export function ListingForm({
 
   function setField(field: keyof ListingFormValues, value: string) {
     if (!isEditing) setSaveStatus("saving");
+    if ((LOCATION_TEXT_FIELDS as readonly string[]).includes(field)) {
+      manuallyEditedLocationFieldsRef.current.add(field);
+    }
     setValues((current) => {
       const next = { ...current, [field]: value };
       if (
@@ -407,7 +420,19 @@ export function ListingForm({
 
   function updateLocation(patch: Partial<ListingLocationValue>) {
     if (!isEditing) setSaveStatus("saving");
-    setValues((current) => ({ ...current, ...patch }));
+    setValues((current) => {
+      // A geocode result (pin move, pasted link, address search) always carries fresh
+      // values for these fields, including empty ones for data the new spot doesn't
+      // have — skip any the host has typed over by hand instead of clobbering their
+      // correction with it.
+      const filtered = { ...patch };
+      for (const field of LOCATION_TEXT_FIELDS) {
+        if (manuallyEditedLocationFieldsRef.current.has(field)) {
+          delete filtered[field];
+        }
+      }
+      return { ...current, ...filtered };
+    });
     setFieldErrors((current) => {
       const next = { ...current };
       for (const key of [

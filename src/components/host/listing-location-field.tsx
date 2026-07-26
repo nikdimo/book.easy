@@ -284,12 +284,18 @@ export function ListingLocationField({
     source: "AUTOCOMPLETE" | "MANUAL_PIN" | "BROWSER_LOCATION" | "MAPS_LINK"
   ) {
     setMapCenter([result.latitude, result.longitude]);
+    // Send the new result's fields as-is, including empty ones — falling back to the
+    // old value here (as this used to) meant moving the pin somewhere new could leave
+    // stale text from a *previous* pin (e.g. an old test location's "area") sitting
+    // next to a brand new city/country. The parent decides whether to actually apply
+    // each field, skipping any the host has manually typed over — see updateLocation
+    // in listing-form.tsx.
     onChange({
-      address: result.address || value.address,
-      city: result.city || value.city,
-      area: result.area || value.area,
-      postalCode: result.postalCode || value.postalCode,
-      country: result.country || value.country,
+      address: result.address,
+      city: result.city,
+      area: result.area,
+      postalCode: result.postalCode,
+      country: result.country,
       latitude: String(result.latitude),
       longitude: String(result.longitude),
       locationSource: source,
@@ -309,6 +315,10 @@ export function ListingLocationField({
    * returns the nearest known address's own coordinates, which are rarely the exact
    * spot clicked — using those for the pin instead of just the address text is what
    * made the pin visibly jump after every click or drag.
+   *
+   * Sends the new result's fields as-is (see applyGeocodedLocation for why not falling
+   * back to the old value) — the parent skips applying any field the host has manually
+   * typed over.
    */
   function applyReverseGeocodedAddress(
     result: LocationSuggestion,
@@ -317,11 +327,11 @@ export function ListingLocationField({
     longitude: number
   ) {
     onChange({
-      address: result.address || value.address,
-      city: result.city || value.city,
-      area: result.area || value.area,
-      postalCode: result.postalCode || value.postalCode,
-      country: result.country || value.country,
+      address: result.address,
+      city: result.city,
+      area: result.area,
+      postalCode: result.postalCode,
+      country: result.country,
       latitude: String(latitude),
       longitude: String(longitude),
       locationSource: source,
