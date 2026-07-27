@@ -215,6 +215,14 @@ model Property {
   geocodingProvider   String?
   geocodingPlaceId    String?
   geocodingConfidence Float?
+  /** The exact Street View angle a host picked for this property (compass heading in
+   *  degrees, camera pitch, and the specific panorama id) — saved so guests see the
+   *  same curated view the host confirmed, rather than Google's default direction for
+   *  whatever panorama happens to be nearest. Null until a host actually saves one;
+   *  the guest-facing page falls back to no Street View at all rather than guessing. */
+  streetViewHeading   Float?
+  streetViewPitch     Float?
+  streetViewPanoId    String?
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
 

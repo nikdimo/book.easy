@@ -31,6 +31,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { formatPrice } from "@/lib/utils/format";
 import { splitDescriptionPreview } from "@/lib/utils/description-preview";
 import { toast } from "sonner";
@@ -306,14 +312,12 @@ export function ListingForm({
   const [values, setValues] = useState<ListingFormValues>(() =>
     listingInitialValues(listing, initialDraft)
   );
-  // Mirrors ListingLocationField's own choose/confirm sub-screen (see its
-  // onScreenChange) so the plain address/city/area/postal/country inputs below it only
-  // show once a location has actually been picked. Guessed from the initial values so
-  // there's no flash on load; ListingLocationField's first onScreenChange call
-  // corrects it immediately either way.
-  const [locationScreen, setLocationScreen] = useState<"choose" | "confirm">(
-    values.latitude ? "confirm" : "choose"
-  );
+  // Mirrors ListingLocationField's own hasPin state (see its onHasLocationChange) so
+  // the "Address details" summary row/drawer below it only appears once a location
+  // has actually been picked. Guessed from the initial values so there's no flash on
+  // load; ListingLocationField's first onHasLocationChange call corrects it either way.
+  const [hasLocation, setHasLocation] = useState(Boolean(values.latitude));
+  const [addressDrawerOpen, setAddressDrawerOpen] = useState(false);
   const [mediaItems, setMediaItems] = useState<ListingMediaItem[]>(() =>
     resolveInitialMediaItems(initialMediaItems, initialDraft)
   );
@@ -504,6 +508,37 @@ export function ListingForm({
   function handleBlur(field: keyof ListingFormValues) {
     validateFieldOnBlur(field, values[field]);
     autosaveDraft();
+  }
+
+  /** Continue out of the Location step (index 1 in LISTING_STEPS) previously advanced
+   *  unconditionally — a host could skip it with no pin at all, only finding out at
+   *  final publish. Checks the same rules validateFieldOnBlur already enforces on
+   *  blur, plus that a location was actually confirmed, and surfaces them immediately
+   *  instead of silently letting the host move on. */
+  function validateLocationStepBeforeContinue(): boolean {
+    let ok = true;
+
+    const hasPin = Boolean(values.latitude) && Boolean(values.longitude);
+    if (!hasPin || values.locationConfirmed !== "true") {
+      setFieldErrors((current) => ({
+        ...current,
+        locationConfirmed: hasPin
+          ? "Confirm this location before continuing"
+          : "Choose a location before continuing",
+      }));
+      ok = false;
+    }
+
+    for (const field of ["address", "city", "country"] as const) {
+      const message = FIELD_VALIDATORS[field]?.(values[field]) ?? null;
+      if (message) {
+        setFieldErrors((current) => ({ ...current, [field]: message }));
+        ok = false;
+      }
+    }
+
+    if (!ok) toast.error("Finish setting the location before continuing");
+    return ok;
   }
 
   function handleMediaItemsChange(
@@ -1093,7 +1128,7 @@ export function ListingForm({
               value={values}
               onChange={updateLocation}
               active={isEditing || currentStep === 1}
-              onScreenChange={setLocationScreen}
+              onHasLocationChange={setHasLocation}
             />
             <FieldError
               message={
@@ -1102,106 +1137,127 @@ export function ListingForm({
                 fieldErrors.longitude
               }
             />
-            {/* CSS-only visibility (not conditional unmounting) — same reason every
-               other wizard step in this file uses `hidden` instead of `&&`: form
-               submission reads live DOM via `new FormData(formRef.current)`
-               (autosaveDraft, publish), so unmounting these would drop address/city/
-               etc. from that snapshot if a save happens to fire while briefly on the
-               "choose" screen. */}
-            <div className={locationScreen === "confirm" ? "contents" : "hidden"}>
-                <div className="space-y-2">
-                  <Label htmlFor="address">Address</Label>
-                  <Input
-                    id="address"
-                    name="address"
-                    value={values.address}
-                    onChange={(event) => setField("address", event.target.value)}
-                    onBlur={() => handleBlur("address")}
-                    required
-                    placeholder="Street and building number"
-                  />
-                  <FieldError message={fieldErrors.address} />
-                  {manuallyEditedLocationFields.has("address") && (
-                    <p className="text-xs text-muted-foreground">
-                      You&apos;ve edited this — it won&apos;t be replaced automatically if you move the pin.
-                    </p>
-                  )}
+            {hasLocation && (
+              <button
+                type="button"
+                onClick={() => setAddressDrawerOpen(true)}
+                className="flex w-full items-center justify-between gap-3 rounded-lg border px-4 py-3 text-left transition-colors hover:bg-muted/50"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">Address details</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {[values.address, values.city, values.country].filter(Boolean).join(", ") ||
+                      "Tap to fill in"}
+                  </p>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </button>
+            )}
+            {/* Unlike a CSS-hidden div, Radix's Sheet/Dialog content unmounts entirely
+               while closed — which this drawer is, almost always. These hidden inputs
+               are the actual source of truth for form submission (`new
+               FormData(formRef.current)` in autosaveDraft/publish); the visible
+               Inputs inside the Sheet below have no `name` and exist purely to edit
+               `values` via React state, same division of labor as latitude/longitude
+               etc. at the bottom of this component. */}
+            <input type="hidden" name="address" value={values.address} />
+            <input type="hidden" name="city" value={values.city} />
+            <input type="hidden" name="area" value={values.area} />
+            <input type="hidden" name="postalCode" value={values.postalCode} />
+            <input type="hidden" name="country" value={values.country} />
+            <Sheet open={hasLocation && addressDrawerOpen} onOpenChange={setAddressDrawerOpen}>
+              <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto">
+                <SheetHeader>
+                  <SheetTitle>Address details</SheetTitle>
+                </SheetHeader>
+                <div className="space-y-4 px-4 pb-6">
                   <div className="space-y-2">
-                    <Label htmlFor="city">City</Label>
+                    <Label htmlFor="address">Address</Label>
                     <Input
-                      id="city"
-                      name="city"
-                      value={values.city}
-                      onChange={(event) => setField("city", event.target.value)}
-                      onBlur={() => handleBlur("city")}
-                      required
-                      placeholder="Enter city"
+                      id="address"
+                      value={values.address}
+                      onChange={(event) => setField("address", event.target.value)}
+                      onBlur={() => handleBlur("address")}
+                      placeholder="Street and building number"
                     />
-                    <FieldError message={fieldErrors.city} />
-                    {manuallyEditedLocationFields.has("city") && (
+                    <FieldError message={fieldErrors.address} />
+                    {manuallyEditedLocationFields.has("address") && (
                       <p className="text-xs text-muted-foreground">
                         You&apos;ve edited this — it won&apos;t be replaced automatically if you move the pin.
                       </p>
                     )}
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="area">Area / Neighbourhood</Label>
-                    <Input
-                      id="area"
-                      name="area"
-                      value={values.area}
-                      onChange={(event) => setField("area", event.target.value)}
-                      onBlur={() => handleBlur("area")}
-                      placeholder="Enter area or neighborhood"
-                    />
-                    {manuallyEditedLocationFields.has("area") && (
-                      <p className="text-xs text-muted-foreground">
-                        You&apos;ve edited this — it won&apos;t be replaced automatically if you move the pin.
-                      </p>
-                    )}
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="city">City</Label>
+                      <Input
+                        id="city"
+                        value={values.city}
+                        onChange={(event) => setField("city", event.target.value)}
+                        onBlur={() => handleBlur("city")}
+                        placeholder="Enter city"
+                      />
+                      <FieldError message={fieldErrors.city} />
+                      {manuallyEditedLocationFields.has("city") && (
+                        <p className="text-xs text-muted-foreground">
+                          You&apos;ve edited this — it won&apos;t be replaced automatically if you move the pin.
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="area">Area / Neighbourhood</Label>
+                      <Input
+                        id="area"
+                        value={values.area}
+                        onChange={(event) => setField("area", event.target.value)}
+                        onBlur={() => handleBlur("area")}
+                        placeholder="Enter area or neighborhood"
+                      />
+                      {manuallyEditedLocationFields.has("area") && (
+                        <p className="text-xs text-muted-foreground">
+                          You&apos;ve edited this — it won&apos;t be replaced automatically if you move the pin.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="postalCode">Postal code</Label>
+                      <Input
+                        id="postalCode"
+                        value={values.postalCode}
+                        onChange={(event) => setField("postalCode", event.target.value)}
+                        onBlur={() => handleBlur("postalCode")}
+                        autoComplete="postal-code"
+                        placeholder="Enter postal code"
+                      />
+                      {manuallyEditedLocationFields.has("postalCode") && (
+                        <p className="text-xs text-muted-foreground">
+                          You&apos;ve edited this — it won&apos;t be replaced automatically if you move the pin.
+                        </p>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="country">Country</Label>
+                      <Input
+                        id="country"
+                        value={values.country}
+                        onChange={(event) => setField("country", event.target.value)}
+                        onBlur={() => handleBlur("country")}
+                        autoComplete="country-name"
+                        placeholder="Enter country"
+                      />
+                      <FieldError message={fieldErrors.country} />
+                      {manuallyEditedLocationFields.has("country") && (
+                        <p className="text-xs text-muted-foreground">
+                          You&apos;ve edited this — it won&apos;t be replaced automatically if you move the pin.
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="postalCode">Postal code</Label>
-                    <Input
-                      id="postalCode"
-                      name="postalCode"
-                      value={values.postalCode}
-                      onChange={(event) => setField("postalCode", event.target.value)}
-                      onBlur={() => handleBlur("postalCode")}
-                      autoComplete="postal-code"
-                      placeholder="Enter postal code"
-                    />
-                    {manuallyEditedLocationFields.has("postalCode") && (
-                      <p className="text-xs text-muted-foreground">
-                        You&apos;ve edited this — it won&apos;t be replaced automatically if you move the pin.
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="country">Country</Label>
-                    <Input
-                      id="country"
-                      name="country"
-                      value={values.country}
-                      onChange={(event) => setField("country", event.target.value)}
-                      onBlur={() => handleBlur("country")}
-                      required
-                      autoComplete="country-name"
-                      placeholder="Enter country"
-                    />
-                    <FieldError message={fieldErrors.country} />
-                    {manuallyEditedLocationFields.has("country") && (
-                      <p className="text-xs text-muted-foreground">
-                        You&apos;ve edited this — it won&apos;t be replaced automatically if you move the pin.
-                      </p>
-                    )}
-                  </div>
-                </div>
-            </div>
+              </SheetContent>
+            </Sheet>
           </FieldSection>
           </div>
 
@@ -1390,7 +1446,11 @@ export function ListingForm({
                 ) : currentStep < STEPS.length - 1 ? (
                   <Button
                     type="button"
-                    onClick={() => goToStep(currentStep + 1)}
+                    onClick={() => {
+                      // Location is step index 1 — see LISTING_STEPS.
+                      if (currentStep === 1 && !validateLocationStepBeforeContinue()) return;
+                      goToStep(currentStep + 1);
+                    }}
                   >
                     Continue <ChevronRight />
                   </Button>

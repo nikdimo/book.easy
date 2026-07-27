@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import {
   AlertCircle,
   CheckCircle2,
-  ChevronLeft,
+  ChevronRight,
   Link2,
   Loader2,
   LocateFixed,
@@ -22,6 +22,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { resolveMapsLink } from "@/lib/actions/listing.actions";
@@ -108,11 +114,38 @@ function newSessionToken() {
     : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+/** A collapsed summary row that opens a drawer — the "tap Où, get a full panel; tap
+ *  Quand, get another" pattern from Airbnb's search sheet, applied here so the whole
+ *  location step isn't showing the map, search, and street view all at once. */
+function LocationSummaryRow({
+  label,
+  summary,
+  onClick,
+}: {
+  label: string;
+  summary: React.ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center justify-between gap-3 rounded-lg border px-4 py-3 text-left transition-colors hover:bg-muted/50"
+    >
+      <div className="min-w-0">
+        <p className="text-sm font-medium">{label}</p>
+        <div className="truncate text-xs text-muted-foreground">{summary}</div>
+      </div>
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+    </button>
+  );
+}
+
 export function ListingLocationField({
   value,
   onChange,
   active = true,
-  onScreenChange,
+  onHasLocationChange,
 }: {
   value: ListingLocationValue;
   onChange: (patch: Partial<ListingLocationValue>) => void;
@@ -123,18 +156,16 @@ export function ListingLocationField({
    *  reaches the location step, which is both surprising and something some browsers
    *  quietly refuse to prompt for outside a real user action. */
   active?: boolean;
-  /** The parent shows the plain address/city/area/postal/country text fields only once
-   *  a location has actually been picked (the "confirm" screen below) — this reports
-   *  which screen is current so the parent can toggle them without needing to
-   *  duplicate this component's own choose/confirm state. */
-  onScreenChange?: (screen: "choose" | "confirm") => void;
+  /** The parent shows its own "Address details" summary row/drawer only once a
+   *  location has actually been picked — this reports that instead of the parent
+   *  duplicating the coordinate-parsing logic below. */
+  onHasLocationChange?: (hasLocation: boolean) => void;
 }) {
   const initialLat = finiteCoordinate(value.latitude, -90, 90);
   const initialLng = finiteCoordinate(value.longitude, -180, 180);
   const hasPin = initialLat !== null && initialLng !== null;
-  const [screen, setScreen] = React.useState<"choose" | "confirm">(
-    hasPin ? "confirm" : "choose"
-  );
+  const [whereOpen, setWhereOpen] = React.useState(!hasPin);
+  const [streetViewOpen, setStreetViewOpen] = React.useState(false);
   const [mapCenter, setMapCenter] = React.useState<[number, number]>(
     hasPin ? [initialLat, initialLng] : WORLD_CENTER
   );
@@ -160,8 +191,8 @@ export function ListingLocationField({
   const sessionTokenRef = React.useRef(newSessionToken());
 
   React.useEffect(() => {
-    onScreenChange?.(screen);
-  }, [screen, onScreenChange]);
+    onHasLocationChange?.(hasPin);
+  }, [hasPin, onHasLocationChange]);
 
   React.useEffect(() => {
     if (hasPin || !active) return;
@@ -290,7 +321,7 @@ export function ListingLocationField({
   }, [mapCenter, query]);
 
   /** Common tail for every method that resolves to a full location: recenters the
-   *  map, advances to the confirm screen, and writes the new fields — always as-is,
+   *  map, closes the "Where is it?" drawer, and writes the new fields — always as-is,
    *  including empty ones. The parent (listing-form.tsx) is what actually decides
    *  whether to apply each address field or keep a manual edit; sending a stale
    *  fallback here is what used to leave old text sitting next to a brand new pin. */
@@ -299,7 +330,7 @@ export function ListingLocationField({
     source: "AUTOCOMPLETE" | "MANUAL_PIN" | "BROWSER_LOCATION" | "MAPS_LINK"
   ) {
     setMapCenter([result.latitude, result.longitude]);
-    setScreen("confirm");
+    setWhereOpen(false);
     onChange({
       address: result.address,
       city: result.city,
@@ -359,7 +390,7 @@ export function ListingLocationField({
   ) {
     const request = ++reverseRequestRef.current;
     setMapCenter([latitude, longitude]);
-    setScreen("confirm");
+    setWhereOpen(false);
     onChange({
       latitude: String(latitude),
       longitude: String(longitude),
@@ -511,18 +542,26 @@ export function ListingLocationField({
     }
   }
 
-  function chooseDifferentLocation() {
-    setScreen("choose");
-    setQuery("");
-    setLinkValue("");
-    setLinkOpen(false);
-    setPredictions([]);
+  /** Clears the search/link scratch state left over from a previous visit to this
+   *  drawer, so reopening it to pick somewhere else doesn't show stale text. */
+  function handleWhereOpenChange(open: boolean) {
+    setWhereOpen(open);
+    if (open) {
+      setQuery("");
+      setLinkValue("");
+      setLinkOpen(false);
+      setPredictions([]);
+    }
   }
 
   const latitude = initialLat ?? mapCenter[0];
   const longitude = initialLng ?? mapCenter[1];
   const confirmed = hasPin && value.locationConfirmed === "true";
   const stale = hasPin && !confirmed;
+  const locationSummary = hasPin
+    ? [value.address, value.city, value.country].filter(Boolean).join(", ") ||
+      `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
+    : "Not set yet";
 
   return (
     // notranslate: this form swaps between different icon/text subtrees in several
@@ -532,223 +571,249 @@ export function ListingLocationField({
     // ("insertBefore: not a child of this node") — see the StreetViewPreview fix for
     // the same issue. This whole form is host-only, plain-English UI with no i18n
     // integration already, so nothing is lost by keeping Translate out of it.
-    <div className="notranslate space-y-4">
-      {screen === "choose" && (
-        <>
-          <div className="space-y-2">
-            <Label htmlFor="address-search" className="text-sm font-semibold">
-              Where is the property?
-            </Label>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="address-search"
-                role="combobox"
-                aria-autocomplete="list"
-                aria-expanded={predictions.length > 0}
-                aria-controls="address-search-results"
-                aria-activedescendant={
-                  activePrediction >= 0 ? `address-result-${activePrediction}` : undefined
-                }
-                autoComplete="off"
-                className="pl-9 pr-9"
-                placeholder="Search for an address, business, or place"
-                value={query}
-                onChange={(event) => {
-                  const nextQuery = event.target.value;
-                  selectedQueryRef.current = "";
-                  setQuery(nextQuery);
-                  setActivePrediction(-1);
-                  if (nextQuery.trim().length < 2) {
-                    setPredictions([]);
-                    setSearching(false);
-                    setSearchError("");
-                  }
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "ArrowDown" && predictions.length > 0) {
-                    event.preventDefault();
-                    setActivePrediction((current) => Math.min(predictions.length - 1, current + 1));
-                  } else if (event.key === "ArrowUp" && predictions.length > 0) {
-                    event.preventDefault();
-                    setActivePrediction((current) => Math.max(0, current - 1));
-                  } else if (event.key === "Enter" && activePrediction >= 0) {
-                    event.preventDefault();
-                    selectPrediction(predictions[activePrediction]);
-                  } else if (event.key === "Escape") {
-                    setPredictions([]);
-                    setActivePrediction(-1);
-                  }
-                }}
-                onBlur={() => {
-                  window.setTimeout(() => setPredictions([]), 150);
-                }}
-              />
-              {(searching || resolving) && (
-                <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
+    <div className="notranslate space-y-2">
+      <LocationSummaryRow
+        label="Where is it?"
+        summary={
+          hasPin ? (
+            <span className="inline-flex items-center gap-1">
+              {confirmed ? (
+                <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              ) : (
+                <AlertCircle className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" />
               )}
-              {predictions.length > 0 && (
-                <div
-                  id="address-search-results"
-                  role="listbox"
-                  className="absolute z-[1000] mt-1 max-h-64 w-full overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg"
-                >
-                  {predictions.map((prediction, index) => (
-                    <button
-                      id={`address-result-${index}`}
-                      key={prediction.placeId}
-                      type="button"
-                      role="option"
-                      aria-selected={activePrediction === index}
-                      className={`flex w-full items-start gap-2 rounded-md px-3 py-2 text-left text-sm ${
-                        activePrediction === index ? "bg-muted" : "hover:bg-muted"
-                      }`}
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={() => selectPrediction(prediction)}
-                    >
-                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                      <span>{prediction.label}</span>
-                    </button>
-                  ))}
-                </div>
+              {locationSummary}
+            </span>
+          ) : (
+            locationSummary
+          )
+        }
+        onClick={() => handleWhereOpenChange(true)}
+      />
+
+      {hasPin && (
+        <LocationSummaryRow
+          label="Street view"
+          summary="See what the street looks like near this pin"
+          onClick={() => setStreetViewOpen(true)}
+        />
+      )}
+
+      <Sheet open={whereOpen} onOpenChange={handleWhereOpenChange}>
+        <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Where is the property?</SheetTitle>
+          </SheetHeader>
+          <div className="notranslate space-y-4 px-4 pb-6">
+            <div className="space-y-2">
+              <Label htmlFor="address-search" className="text-sm font-semibold">
+                Search
+              </Label>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="address-search"
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-expanded={predictions.length > 0}
+                  aria-controls="address-search-results"
+                  aria-activedescendant={
+                    activePrediction >= 0 ? `address-result-${activePrediction}` : undefined
+                  }
+                  autoComplete="off"
+                  className="pl-9 pr-9"
+                  placeholder="Search for an address, business, or place"
+                  value={query}
+                  onChange={(event) => {
+                    const nextQuery = event.target.value;
+                    selectedQueryRef.current = "";
+                    setQuery(nextQuery);
+                    setActivePrediction(-1);
+                    if (nextQuery.trim().length < 2) {
+                      setPredictions([]);
+                      setSearching(false);
+                      setSearchError("");
+                    }
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "ArrowDown" && predictions.length > 0) {
+                      event.preventDefault();
+                      setActivePrediction((current) => Math.min(predictions.length - 1, current + 1));
+                    } else if (event.key === "ArrowUp" && predictions.length > 0) {
+                      event.preventDefault();
+                      setActivePrediction((current) => Math.max(0, current - 1));
+                    } else if (event.key === "Enter" && activePrediction >= 0) {
+                      event.preventDefault();
+                      selectPrediction(predictions[activePrediction]);
+                    } else if (event.key === "Escape") {
+                      setPredictions([]);
+                      setActivePrediction(-1);
+                    }
+                  }}
+                  onBlur={() => {
+                    window.setTimeout(() => setPredictions([]), 150);
+                  }}
+                />
+                {(searching || resolving) && (
+                  <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
+                )}
+                {predictions.length > 0 && (
+                  <div
+                    id="address-search-results"
+                    role="listbox"
+                    className="absolute z-[1000] mt-1 max-h-64 w-full overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg"
+                  >
+                    {predictions.map((prediction, index) => (
+                      <button
+                        id={`address-result-${index}`}
+                        key={prediction.placeId}
+                        type="button"
+                        role="option"
+                        aria-selected={activePrediction === index}
+                        className={`flex w-full items-start gap-2 rounded-md px-3 py-2 text-left text-sm ${
+                          activePrediction === index ? "bg-muted" : "hover:bg-muted"
+                        }`}
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => selectPrediction(prediction)}
+                      >
+                        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                        <span>{prediction.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {searchError && (
+                <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                  <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  {searchError}. You can still set the exact location another way below.
+                </p>
               )}
             </div>
-            {searchError && (
-              <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                {searchError}. You can still set the exact location another way below.
-              </p>
-            )}
-          </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={locating || resolving}
-              onClick={() => setLocationDialogOpen(true)}
-            >
-              {locating ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <LocateFixed className="h-4 w-4" />
-              )}
-              Use my current location
-            </Button>
-            {!linkOpen && (
-              <Button type="button" variant="outline" onClick={() => setLinkOpen(true)}>
-                <Link2 className="h-4 w-4" />
-                Paste a Google Maps link
-              </Button>
-            )}
-          </div>
-          {locationMessage && (
-            <p className="flex items-start gap-1.5 text-xs text-muted-foreground" aria-live="polite">
-              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              {locationMessage}
-            </p>
-          )}
-
-          {linkOpen && (
-            <div className="flex gap-2">
-              <Input
-                placeholder="Paste a Google Maps link"
-                value={linkValue}
-                autoFocus
-                onChange={(event) => setLinkValue(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    void applyLink();
-                  }
-                }}
-              />
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => void applyLink()}
-                disabled={resolving || !linkValue.trim()}
+                disabled={locating || resolving}
+                onClick={() => setLocationDialogOpen(true)}
               >
-                {resolving ? (
+                {locating ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
-                  <Link2 className="h-4 w-4" />
+                  <LocateFixed className="h-4 w-4" />
                 )}
-                Use link
+                Use my current location
               </Button>
+              {!linkOpen && (
+                <Button type="button" variant="outline" onClick={() => setLinkOpen(true)}>
+                  <Link2 className="h-4 w-4" />
+                  Paste a Google Maps link
+                </Button>
+              )}
             </div>
-          )}
-        </>
-      )}
-
-      <div className="space-y-2">
-        {screen === "confirm" && (
-          <button
-            type="button"
-            onClick={chooseDifferentLocation}
-            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Choose a different location
-          </button>
-        )}
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <Label>{screen === "confirm" ? "Confirm the exact location" : "Or click the map to drop a pin"}</Label>
-          {screen === "confirm" && confirmed ? (
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              Location confirmed
-            </span>
-          ) : screen === "confirm" && stale ? (
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400">
-              <AlertCircle className="h-3.5 w-3.5" />
-              Confirm location again
-            </span>
-          ) : null}
-        </div>
-        <ListingLocationPickerInner
-          lat={latitude}
-          lng={longitude}
-          hasPin={hasPin}
-          zoom={mapZoom}
-          onChange={(nextLat, nextLng) => {
-            void setCoordinates(nextLat, nextLng, "MANUAL_PIN");
-          }}
-        />
-        <p className="text-xs text-muted-foreground">
-          {hasPin ? "Drag the pin to fine-tune it." : "The map starts near your approximate location."}
-        </p>
-      </div>
-
-      {screen === "confirm" && (
-        <>
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            {resolving ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <MapPin className="h-3.5 w-3.5" />
+            {locationMessage && (
+              <p className="flex items-start gap-1.5 text-xs text-muted-foreground" aria-live="polite">
+                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                {locationMessage}
+              </p>
             )}
-            <span>
-              {latitude.toFixed(6)}, {longitude.toFixed(6)}
-            </span>
-          </div>
 
-          {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY && (
+            {linkOpen && (
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Paste a Google Maps link"
+                  value={linkValue}
+                  autoFocus
+                  onChange={(event) => setLinkValue(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void applyLink();
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void applyLink()}
+                  disabled={resolving || !linkValue.trim()}
+                >
+                  {resolving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Link2 className="h-4 w-4" />
+                  )}
+                  Use link
+                </Button>
+              </div>
+            )}
+
             <div className="space-y-2">
-              <Label className="text-xs text-muted-foreground">Street view near this pin</Label>
-              {/* Remounts on each new pin position so its "checking" state resets
-                 cleanly — see StreetViewPreview for why that's done via key instead of
-                 an effect-internal reset. Rounded so floating-point noise from repeated
-                 reverse-geocode round-trips doesn't remount it needlessly. */}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Label>{hasPin ? "Confirm the exact location" : "Or click the map to drop a pin"}</Label>
+                {confirmed ? (
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Location confirmed
+                  </span>
+                ) : stale ? (
+                  <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    Confirm location again
+                  </span>
+                ) : null}
+              </div>
+              <ListingLocationPickerInner
+                lat={latitude}
+                lng={longitude}
+                hasPin={hasPin}
+                zoom={mapZoom}
+                onChange={(nextLat, nextLng) => {
+                  void setCoordinates(nextLat, nextLng, "MANUAL_PIN");
+                }}
+              />
+              <p className="text-xs text-muted-foreground">
+                {hasPin ? "Drag the pin to fine-tune it." : "The map starts near your approximate location."}
+              </p>
+              {hasPin && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  {resolving ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <MapPin className="h-3.5 w-3.5" />
+                  )}
+                  <span>
+                    {latitude.toFixed(6)}, {longitude.toFixed(6)}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <Sheet open={streetViewOpen} onOpenChange={setStreetViewOpen}>
+        <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Street view near this pin</SheetTitle>
+          </SheetHeader>
+          <div className="px-4 pb-6">
+            {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? (
+              // Remounts each time the drawer opens on a (possibly new) pin position so
+              // its "checking" state resets cleanly — see StreetViewPreview for why
+              // that's done via key instead of an effect-internal reset.
               <StreetViewPreview
                 key={`${latitude.toFixed(5)},${longitude.toFixed(5)}`}
                 latitude={latitude}
                 longitude={longitude}
               />
-            </div>
-          )}
-        </>
-      )}
+            ) : (
+              <p className="text-sm text-muted-foreground">Street view isn&apos;t configured.</p>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <Dialog open={locationDialogOpen} onOpenChange={setLocationDialogOpen}>
         <DialogContent>
