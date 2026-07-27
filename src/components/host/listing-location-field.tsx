@@ -515,7 +515,14 @@ export function ListingLocationField({
   const stale = hasPin && !confirmed;
 
   return (
-    <div className="space-y-4">
+    // notranslate: this form swaps between different icon/text subtrees in several
+    // places (loading spinners, the confirmed/stale badge, the coordinate readout) as
+    // state changes. Google Translate's live DOM translation restructures whatever it
+    // touches, and React's next update to that same subtree can then throw ("insertBefore:
+    // not a child of this node") — see the StreetViewPreview fix for the same issue.
+    // This whole form is host-only, plain-English UI with no i18n integration already
+    // (unlike the guest-facing pages), so nothing is lost by keeping Translate out of it.
+    <div className="notranslate space-y-4">
       <div className="space-y-2">
         <div className="flex items-center gap-1.5">
           <Label htmlFor="maps-link" className="text-sm font-semibold">

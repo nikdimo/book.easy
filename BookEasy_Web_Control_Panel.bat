@@ -14,6 +14,7 @@ echo ============================================
 echo.
 echo   [A] PREVIEW
 echo   1. Start Dev Server (migrations + Next.js)
+echo   M. Start Mobile App Preview (web + React Native)
 echo.
 echo   [B] DEPLOY
 echo   2. Deploy to book.easy.mk
@@ -29,11 +30,76 @@ echo.
 set /p CHOICE="Choose: "
 
 if "%CHOICE%"=="1" goto PREVIEW
+if /I "%CHOICE%"=="M" goto MOBILE_PREVIEW
 if "%CHOICE%"=="2" goto DEPLOY
 if "%CHOICE%"=="3" goto SAVE
 if "%CHOICE%"=="4" goto LIST_VERSIONS
 if "%CHOICE%"=="5" goto RELEASE
 if "%CHOICE%"=="0" exit /b 0
+goto MENU
+
+
+:MOBILE_PREVIEW
+cls
+echo.
+echo ============================================
+echo   Start Mobile App Preview
+echo ============================================
+echo.
+
+rem Reuse an existing backend. Starting two Next.js processes against the same
+rem .next directory can corrupt the development cache on Windows.
+powershell -NoProfile -Command "if (Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }"
+if not errorlevel 1 goto MOBILE_WEB_READY
+
+echo [1/3] Preparing the database...
+call npm run db:generate
+call npm run db:push
+if errorlevel 1 (
+    echo.
+    echo   ERROR - Database preparation failed. Check DATABASE_URL and PostgreSQL.
+    pause
+    goto MENU
+)
+
+echo.
+echo [2/3] Starting the web API and control panel...
+if exist ".next\dev" rmdir /s /q ".next\dev"
+if exist ".next\dev" (
+    echo.
+    echo   ERROR - Could not clear .next\dev.
+    echo   Close any other book.easy.mk server windows and try again.
+    pause
+    goto MENU
+)
+start "BookEasy Web" cmd /k "cd /d ""%REPO%"" && npm run dev -- --webpack"
+goto MOBILE_WEB_STARTED
+
+:MOBILE_WEB_READY
+echo [1/3] Web API already running at http://localhost:3000
+
+:MOBILE_WEB_STARTED
+echo.
+powershell -NoProfile -Command "if (Get-NetTCPConnection -LocalPort 8081 -State Listen -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }"
+if not errorlevel 1 goto MOBILE_APP_READY
+
+echo [3/3] Building and starting the React Native web preview...
+start "Property Host Mobile" cmd /k "cd /d ""%REPO%"" && npm run mobile:preview"
+goto MOBILE_OPEN
+
+:MOBILE_APP_READY
+echo [3/3] Mobile app already running at http://localhost:8081
+
+:MOBILE_OPEN
+echo.
+echo   Waiting for both applications, then opening:
+echo   http://localhost:8081/dashboard
+echo.
+start "" /b powershell -NoProfile -WindowStyle Hidden -Command "$api='http://localhost:3000/api/mobile/v1/languages?locale=en'; $mobile='http://localhost:8081/dashboard'; for ($i=0; $i -lt 120; $i++) { try { $a=Invoke-WebRequest -UseBasicParsing -Uri $api -Headers @{ Origin='http://localhost:8081' } -TimeoutSec 2; $m=Invoke-WebRequest -UseBasicParsing -Uri $mobile -TimeoutSec 2; if ($a.StatusCode -ge 200 -and $m.StatusCode -ge 200) { Start-Process $mobile; exit 0 } } catch {}; Start-Sleep -Seconds 1 }; Start-Process $mobile"
+echo   The mobile preview opens automatically when it is ready.
+echo   Use the same Google or email-link login as the web control panel.
+echo.
+pause
 goto MENU
 
 
