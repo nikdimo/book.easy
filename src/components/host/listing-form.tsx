@@ -293,8 +293,14 @@ export function ListingForm({
    *  result (from moving the pin, pasting a link, etc.) skips these instead of
    *  overwriting a correction the host made on purpose. Starts empty even when editing
    *  an existing listing: pre-existing data isn't "manually edited by the user in this
-   *  session", so an initial pin move can still refresh it. See updateLocation. */
-  const manuallyEditedLocationFieldsRef = useRef<Set<string>>(new Set());
+   *  session", so an initial pin move can still refresh it. See updateLocation.
+   *  State (not a ref) so the "won't auto-update" note below each field can actually
+   *  render — a host who types a one-off correction has no way to tell it's now
+   *  protected otherwise, which is exactly what made a stale test value ("kink's
+   *  house") sit unexplained in Address after moving the pin to a real location. */
+  const [manuallyEditedLocationFields, setManuallyEditedLocationFields] = useState<
+    Set<string>
+  >(new Set());
   const [activeEditSection, setActiveEditSection] = useState("basics");
   const [activePreviewSection, setActivePreviewSection] = useState("basics");
   const [values, setValues] = useState<ListingFormValues>(() =>
@@ -433,7 +439,9 @@ export function ListingForm({
   function setField(field: keyof ListingFormValues, value: string) {
     if (!isEditing) setSaveStatus("saving");
     if ((LOCATION_TEXT_FIELDS as readonly string[]).includes(field)) {
-      manuallyEditedLocationFieldsRef.current.add(field);
+      setManuallyEditedLocationFields((current) =>
+        current.has(field) ? current : new Set(current).add(field)
+      );
     }
     setValues((current) => {
       const next = { ...current, [field]: value };
@@ -456,7 +464,7 @@ export function ListingForm({
       // correction with it.
       const filtered = { ...patch };
       for (const field of LOCATION_TEXT_FIELDS) {
-        if (manuallyEditedLocationFieldsRef.current.has(field)) {
+        if (manuallyEditedLocationFields.has(field)) {
           delete filtered[field];
         }
       }
@@ -1113,6 +1121,11 @@ export function ListingForm({
                     placeholder="Street and building number"
                   />
                   <FieldError message={fieldErrors.address} />
+                  {manuallyEditedLocationFields.has("address") && (
+                    <p className="text-xs text-muted-foreground">
+                      You&apos;ve edited this — it won&apos;t be replaced automatically if you move the pin.
+                    </p>
+                  )}
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
@@ -1127,6 +1140,11 @@ export function ListingForm({
                       placeholder="Enter city"
                     />
                     <FieldError message={fieldErrors.city} />
+                    {manuallyEditedLocationFields.has("city") && (
+                      <p className="text-xs text-muted-foreground">
+                        You&apos;ve edited this — it won&apos;t be replaced automatically if you move the pin.
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="area">Area / Neighbourhood</Label>
@@ -1138,6 +1156,11 @@ export function ListingForm({
                       onBlur={() => handleBlur("area")}
                       placeholder="Enter area or neighborhood"
                     />
+                    {manuallyEditedLocationFields.has("area") && (
+                      <p className="text-xs text-muted-foreground">
+                        You&apos;ve edited this — it won&apos;t be replaced automatically if you move the pin.
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -1152,6 +1175,11 @@ export function ListingForm({
                       autoComplete="postal-code"
                       placeholder="Enter postal code"
                     />
+                    {manuallyEditedLocationFields.has("postalCode") && (
+                      <p className="text-xs text-muted-foreground">
+                        You&apos;ve edited this — it won&apos;t be replaced automatically if you move the pin.
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="country">Country</Label>
@@ -1166,6 +1194,11 @@ export function ListingForm({
                       placeholder="Enter country"
                     />
                     <FieldError message={fieldErrors.country} />
+                    {manuallyEditedLocationFields.has("country") && (
+                      <p className="text-xs text-muted-foreground">
+                        You&apos;ve edited this — it won&apos;t be replaced automatically if you move the pin.
+                      </p>
+                    )}
                   </div>
                 </div>
             </div>
