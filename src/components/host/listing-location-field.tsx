@@ -5,8 +5,7 @@ import dynamic from "next/dynamic";
 import {
   AlertCircle,
   CheckCircle2,
-  ExternalLink,
-  HelpCircle,
+  ChevronLeft,
   Link2,
   Loader2,
   LocateFixed,
@@ -25,7 +24,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { resolveMapsLink } from "@/lib/actions/listing.actions";
 import { parseCoordsFromMapsText } from "@/lib/utils/parse-maps-link";
 import { StreetViewPreview } from "@/components/host/street-view-preview";
@@ -57,19 +55,26 @@ export type ListingLocationValue = {
   geocodingConfidence: string;
 };
 
-type LocationSuggestion = {
-  id: string;
+/** A resolved location with full coordinates and address parts — what place-details,
+ *  reverse-geocode, and the maps-link flow all eventually produce. */
+type ResolvedLocation = {
   label: string;
   address: string;
   city: string;
   area: string;
   postalCode: string;
   country: string;
-  countryCode: string;
   latitude: number;
   longitude: number;
   placeId: string;
-  confidence?: number;
+};
+
+/** An autocomplete row — Google intentionally doesn't include coordinates here; a
+ *  follow-up place-details call (billed together with this as one cheap "session",
+ *  see sessionTokenRef) resolves the pick into a ResolvedLocation. */
+type PlacePrediction = {
+  placeId: string;
+  label: string;
 };
 
 type IpLocation = {
@@ -97,20 +102,17 @@ function preferredLanguage() {
   return language.slice(0, 2).toLowerCase();
 }
 
-/** Deep-links straight into a Google Maps search, prefilled with whatever city/country
- *  is already known — saves the host from re-typing something we already have, and
- *  gives Maps a head start over its much better address data for places (rural Greece
- *  included) that Geoapify's search struggles with. */
-function googleMapsSearchUrl(city: string, country: string): string {
-  const query = [city, country].filter(Boolean).join(", ");
-  if (!query) return "https://www.google.com/maps";
-  return `https://www.google.com/maps/search/?${new URLSearchParams({ api: "1", query }).toString()}`;
+function newSessionToken() {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 export function ListingLocationField({
   value,
   onChange,
   active = true,
+  onScreenChange,
 }: {
   value: ListingLocationValue;
   onChange: (patch: Partial<ListingLocationValue>) => void;
@@ -121,10 +123,18 @@ export function ListingLocationField({
    *  reaches the location step, which is both surprising and something some browsers
    *  quietly refuse to prompt for outside a real user action. */
   active?: boolean;
+  /** The parent shows the plain address/city/area/postal/country text fields only once
+   *  a location has actually been picked (the "confirm" screen below) — this reports
+   *  which screen is current so the parent can toggle them without needing to
+   *  duplicate this component's own choose/confirm state. */
+  onScreenChange?: (screen: "choose" | "confirm") => void;
 }) {
   const initialLat = finiteCoordinate(value.latitude, -90, 90);
   const initialLng = finiteCoordinate(value.longitude, -180, 180);
   const hasPin = initialLat !== null && initialLng !== null;
+  const [screen, setScreen] = React.useState<"choose" | "confirm">(
+    hasPin ? "confirm" : "choose"
+  );
   const [mapCenter, setMapCenter] = React.useState<[number, number]>(
     hasPin ? [initialLat, initialLng] : WORLD_CENTER
   );
@@ -133,10 +143,11 @@ export function ListingLocationField({
   // pin exists the map always zooms to street level instead.
   const [mapZoom, setMapZoom] = React.useState(2);
   const [query, setQuery] = React.useState("");
-  const [suggestions, setSuggestions] = React.useState<LocationSuggestion[]>([]);
+  const [predictions, setPredictions] = React.useState<PlacePrediction[]>([]);
   const [searching, setSearching] = React.useState(false);
   const [searchError, setSearchError] = React.useState("");
-  const [activeSuggestion, setActiveSuggestion] = React.useState(-1);
+  const [activePrediction, setActivePrediction] = React.useState(-1);
+  const [linkOpen, setLinkOpen] = React.useState(false);
   const [linkValue, setLinkValue] = React.useState("");
   const [resolving, setResolving] = React.useState(false);
   const [locating, setLocating] = React.useState(false);
@@ -146,6 +157,11 @@ export function ListingLocationField({
   const searchRequestRef = React.useRef(0);
   const reverseRequestRef = React.useRef(0);
   const selectedQueryRef = React.useRef("");
+  const sessionTokenRef = React.useRef(newSessionToken());
+
+  React.useEffect(() => {
+    onScreenChange?.(screen);
+  }, [screen, onScreenChange]);
 
   React.useEffect(() => {
     if (hasPin || !active) return;
@@ -222,10 +238,8 @@ export function ListingLocationField({
     const normalized = query.trim();
     abortRef.current?.abort();
 
-    if (
-      normalized.length < 3 ||
-      normalized === selectedQueryRef.current
-    ) {
+    if (normalized.length < 2 || normalized === selectedQueryRef.current) {
+      setPredictions([]);
       return;
     }
 
@@ -241,33 +255,29 @@ export function ListingLocationField({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           query: normalized,
+          sessionToken: sessionTokenRef.current,
           language: preferredLanguage(),
-          bias: {
-            latitude: mapCenter[0],
-            longitude: mapCenter[1],
-          },
+          bias: { latitude: mapCenter[0], longitude: mapCenter[1] },
         }),
         signal: controller.signal,
       })
         .then(async (response) => {
           const payload = (await response.json()) as {
-            results?: LocationSuggestion[];
+            results?: PlacePrediction[];
             error?: string;
           };
           if (!response.ok) throw new Error(payload.error || "Address search failed");
           return payload.results ?? [];
         })
         .then((results) => {
-          if (request === searchRequestRef.current) setSuggestions(results);
+          if (request === searchRequestRef.current) setPredictions(results);
         })
         .catch((error) => {
           if (error instanceof Error && error.name === "AbortError") return;
           if (request === searchRequestRef.current) {
-            setSuggestions([]);
+            setPredictions([]);
             setSearchError(
-              error instanceof Error
-                ? error.message
-                : "Address search is unavailable"
+              error instanceof Error ? error.message : "Address search is unavailable"
             );
           }
         })
@@ -279,17 +289,17 @@ export function ListingLocationField({
     return () => window.clearTimeout(timeout);
   }, [mapCenter, query]);
 
-  function applyGeocodedLocation(
-    result: LocationSuggestion,
+  /** Common tail for every method that resolves to a full location: recenters the
+   *  map, advances to the confirm screen, and writes the new fields — always as-is,
+   *  including empty ones. The parent (listing-form.tsx) is what actually decides
+   *  whether to apply each address field or keep a manual edit; sending a stale
+   *  fallback here is what used to leave old text sitting next to a brand new pin. */
+  function applyResolvedLocation(
+    result: ResolvedLocation,
     source: "AUTOCOMPLETE" | "MANUAL_PIN" | "BROWSER_LOCATION" | "MAPS_LINK"
   ) {
     setMapCenter([result.latitude, result.longitude]);
-    // Send the new result's fields as-is, including empty ones — falling back to the
-    // old value here (as this used to) meant moving the pin somewhere new could leave
-    // stale text from a *previous* pin (e.g. an old test location's "area") sitting
-    // next to a brand new city/country. The parent decides whether to actually apply
-    // each field, skipping any the host has manually typed over — see updateLocation
-    // in listing-form.tsx.
+    setScreen("confirm");
     onChange({
       address: result.address,
       city: result.city,
@@ -300,58 +310,46 @@ export function ListingLocationField({
       longitude: String(result.longitude),
       locationSource: source,
       locationConfirmed: "true",
-      geocodingProvider: "GEOAPIFY",
+      geocodingProvider: source === "AUTOCOMPLETE" ? "GOOGLE_PLACES" : "GEOAPIFY",
       geocodingPlaceId: result.placeId,
-      geocodingConfidence:
-        typeof result.confidence === "number"
-          ? String(result.confidence)
-          : "",
+      geocodingConfidence: "",
     });
   }
 
-  /**
-   * Fills in address text (street/city/area/postcode/country) from a reverse-geocode
-   * lookup, but keeps the pin at the exact coordinates the host chose. Reverse geocoding
-   * returns the nearest known address's own coordinates, which are rarely the exact
-   * spot clicked — using those for the pin instead of just the address text is what
-   * made the pin visibly jump after every click or drag.
-   *
-   * Sends the new result's fields as-is (see applyGeocodedLocation for why not falling
-   * back to the old value) — the parent skips applying any field the host has manually
-   * typed over.
-   */
-  function applyReverseGeocodedAddress(
-    result: LocationSuggestion,
-    source: "MANUAL_PIN" | "BROWSER_LOCATION" | "MAPS_LINK",
-    latitude: number,
-    longitude: number
-  ) {
-    onChange({
-      address: result.address,
-      city: result.city,
-      area: result.area,
-      postalCode: result.postalCode,
-      country: result.country,
-      latitude: String(latitude),
-      longitude: String(longitude),
-      locationSource: source,
-      locationConfirmed: "true",
-      geocodingProvider: "GEOAPIFY",
-      geocodingPlaceId: result.placeId,
-      geocodingConfidence:
-        typeof result.confidence === "number"
-          ? String(result.confidence)
-          : "",
-    });
-  }
-
-  function chooseSuggestion(result: LocationSuggestion) {
+  function selectPrediction(prediction: PlacePrediction) {
     abortRef.current?.abort();
-    selectedQueryRef.current = result.label;
-    setQuery(result.label);
-    setSuggestions([]);
+    selectedQueryRef.current = prediction.label;
+    setQuery(prediction.label);
+    setPredictions([]);
     setSearchError("");
-    applyGeocodedLocation(result, "AUTOCOMPLETE");
+    setActivePrediction(-1);
+
+    setResolving(true);
+    void fetch("/api/location/place-details", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        placeId: prediction.placeId,
+        sessionToken: sessionTokenRef.current,
+        language: preferredLanguage(),
+      }),
+    })
+      .then(async (response) => {
+        const payload = (await response.json()) as {
+          result?: ResolvedLocation | null;
+          error?: string;
+        };
+        if (!response.ok) throw new Error(payload.error || "Couldn't look up that place");
+        if (!payload.result) throw new Error("Couldn't look up that place");
+        applyResolvedLocation(payload.result, "AUTOCOMPLETE");
+        // A session ends once Details is called — start a fresh token for the next
+        // search rather than keep billing further keystrokes against this one.
+        sessionTokenRef.current = newSessionToken();
+      })
+      .catch((error) => {
+        toast.error(error instanceof Error ? error.message : "Couldn't look up that place");
+      })
+      .finally(() => setResolving(false));
   }
 
   async function setCoordinates(
@@ -361,6 +359,7 @@ export function ListingLocationField({
   ) {
     const request = ++reverseRequestRef.current;
     setMapCenter([latitude, longitude]);
+    setScreen("confirm");
     onChange({
       latitude: String(latitude),
       longitude: String(longitude),
@@ -383,14 +382,26 @@ export function ListingLocationField({
         }),
       });
       const payload = (await response.json()) as {
-        result?: LocationSuggestion | null;
+        result?: ResolvedLocation | null;
       };
-      if (
-        request === reverseRequestRef.current &&
-        response.ok &&
-        payload.result
-      ) {
-        applyReverseGeocodedAddress(payload.result, source, latitude, longitude);
+      if (request === reverseRequestRef.current && response.ok && payload.result) {
+        // Reverse geocoding returns the nearest known address's own coordinates,
+        // rarely the exact spot clicked/dragged — keep the pin exactly where the host
+        // put it and only take the address text from this result.
+        onChange({
+          address: payload.result.address,
+          city: payload.result.city,
+          area: payload.result.area,
+          postalCode: payload.result.postalCode,
+          country: payload.result.country,
+          latitude: String(latitude),
+          longitude: String(longitude),
+          locationSource: source,
+          locationConfirmed: "true",
+          geocodingProvider: "GEOAPIFY",
+          geocodingPlaceId: payload.result.placeId,
+          geocodingConfidence: "",
+        });
       }
     } catch {
       // The exact pin remains valid even when no address can be resolved.
@@ -404,8 +415,7 @@ export function ListingLocationField({
     setLocationMessage("");
 
     if (!window.isSecureContext) {
-      const message =
-        "Current location is only available on a secure HTTPS connection.";
+      const message = "Current location is only available on a secure HTTPS connection.";
       setLocationMessage(message);
       toast.error(message);
       return;
@@ -439,11 +449,7 @@ export function ListingLocationField({
             return;
           }
 
-          void setCoordinates(
-            latitude,
-            longitude,
-            "BROWSER_LOCATION"
-          )
+          void setCoordinates(latitude, longitude, "BROWSER_LOCATION")
             .then(() => {
               setLocationMessage(
                 "Current location added. Check the pin and drag it if the property is nearby rather than exactly here."
@@ -469,11 +475,7 @@ export function ListingLocationField({
           setLocationMessage(message);
           toast.error(message);
         },
-        {
-          enableHighAccuracy: false,
-          timeout: 15_000,
-          maximumAge: 60_000,
-        }
+        { enableHighAccuracy: false, timeout: 15_000, maximumAge: 60_000 }
       );
     } catch {
       setLocating(false);
@@ -509,6 +511,14 @@ export function ListingLocationField({
     }
   }
 
+  function chooseDifferentLocation() {
+    setScreen("choose");
+    setQuery("");
+    setLinkValue("");
+    setLinkOpen(false);
+    setPredictions([]);
+  }
+
   const latitude = initialLat ?? mapCenter[0];
   const longitude = initialLng ?? mapCenter[1];
   const confirmed = hasPin && value.locationConfirmed === "true";
@@ -518,170 +528,102 @@ export function ListingLocationField({
     // notranslate: this form swaps between different icon/text subtrees in several
     // places (loading spinners, the confirmed/stale badge, the coordinate readout) as
     // state changes. Google Translate's live DOM translation restructures whatever it
-    // touches, and React's next update to that same subtree can then throw ("insertBefore:
-    // not a child of this node") — see the StreetViewPreview fix for the same issue.
-    // This whole form is host-only, plain-English UI with no i18n integration already
-    // (unlike the guest-facing pages), so nothing is lost by keeping Translate out of it.
+    // touches, and React's next update to that same subtree can then throw
+    // ("insertBefore: not a child of this node") — see the StreetViewPreview fix for
+    // the same issue. This whole form is host-only, plain-English UI with no i18n
+    // integration already, so nothing is lost by keeping Translate out of it.
     <div className="notranslate space-y-4">
-      <div className="space-y-2">
-        <div className="flex items-center gap-1.5">
-          <Label htmlFor="maps-link" className="text-sm font-semibold">
-            Property location
-          </Label>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                className="text-muted-foreground hover:text-foreground"
-                aria-label="How to get a Google Maps link"
-              >
-                <HelpCircle className="h-3.5 w-3.5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-64">
-              Open Google Maps, find the property, tap Share → Copy link
-              (desktop: right-click the spot on the map → Copy link), then
-              paste it here.
-            </TooltipContent>
-          </Tooltip>
-        </div>
-        <div className="flex gap-2">
-          <Input
-            id="maps-link"
-            placeholder="Paste a Google Maps link"
-            value={linkValue}
-            onChange={(event) => setLinkValue(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                void applyLink();
-              }
-            }}
-          />
-          <Button
-            type="button"
-            onClick={() => void applyLink()}
-            disabled={resolving || !linkValue.trim()}
-          >
-            {resolving ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Link2 className="h-4 w-4" />
-            )}
-            Use link
-          </Button>
-        </div>
-        <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs" asChild>
-          <a
-            href={googleMapsSearchUrl(value.city, value.country)}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <ExternalLink className="h-3 w-3" />
-            Open Google Maps
-          </a>
-        </Button>
-      </div>
-
-      <details className="group rounded-lg border px-3 py-2">
-        <summary className="cursor-pointer text-sm font-medium text-muted-foreground">
-          Prefer to search or use your current location instead?
-        </summary>
-        <div className="mt-3 space-y-2">
-          <Label htmlFor="address-search" className="text-xs">
-            Search for the property address
-          </Label>
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              id="address-search"
-              role="combobox"
-              aria-autocomplete="list"
-              aria-expanded={suggestions.length > 0}
-              aria-controls="address-search-results"
-              aria-activedescendant={
-                activeSuggestion >= 0
-                  ? `address-result-${activeSuggestion}`
-                  : undefined
-              }
-              autoComplete="off"
-              className="pl-9 pr-9"
-              placeholder="Start typing an address, city, or place"
-              value={query}
-              onChange={(event) => {
-                const nextQuery = event.target.value;
-                selectedQueryRef.current = "";
-                setQuery(nextQuery);
-                setActiveSuggestion(-1);
-                if (nextQuery.trim().length < 3) {
-                  setSuggestions([]);
-                  setSearching(false);
-                  setSearchError("");
+      {screen === "choose" && (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="address-search" className="text-sm font-semibold">
+              Where is the property?
+            </Label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="address-search"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded={predictions.length > 0}
+                aria-controls="address-search-results"
+                aria-activedescendant={
+                  activePrediction >= 0 ? `address-result-${activePrediction}` : undefined
                 }
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "ArrowDown" && suggestions.length > 0) {
-                  event.preventDefault();
-                  setActiveSuggestion((current) =>
-                    Math.min(suggestions.length - 1, current + 1)
-                  );
-                } else if (event.key === "ArrowUp" && suggestions.length > 0) {
-                  event.preventDefault();
-                  setActiveSuggestion((current) => Math.max(0, current - 1));
-                } else if (event.key === "Enter" && activeSuggestion >= 0) {
-                  event.preventDefault();
-                  chooseSuggestion(suggestions[activeSuggestion]);
-                } else if (event.key === "Escape") {
-                  setSuggestions([]);
-                  setActiveSuggestion(-1);
-                }
-              }}
-              onBlur={() => {
-                window.setTimeout(() => setSuggestions([]), 150);
-              }}
-            />
-            {searching && (
-              <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
-            )}
-            {suggestions.length > 0 && (
-              <div
-                id="address-search-results"
-                role="listbox"
-                className="absolute z-[1000] mt-1 max-h-64 w-full overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg"
-              >
-                {suggestions.map((result, index) => (
-                  <button
-                    id={`address-result-${index}`}
-                    key={result.id}
-                    type="button"
-                    role="option"
-                    aria-selected={activeSuggestion === index}
-                    className={`flex w-full items-start gap-2 rounded-md px-3 py-2 text-left text-sm ${
-                      activeSuggestion === index ? "bg-muted" : "hover:bg-muted"
-                    }`}
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => chooseSuggestion(result)}
-                  >
-                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                    <span>{result.label}</span>
-                  </button>
-                ))}
-                <div className="border-t px-3 py-1.5 text-[11px] text-muted-foreground">
-                  Powered by Geoapify
+                autoComplete="off"
+                className="pl-9 pr-9"
+                placeholder="Search for an address, business, or place"
+                value={query}
+                onChange={(event) => {
+                  const nextQuery = event.target.value;
+                  selectedQueryRef.current = "";
+                  setQuery(nextQuery);
+                  setActivePrediction(-1);
+                  if (nextQuery.trim().length < 2) {
+                    setPredictions([]);
+                    setSearching(false);
+                    setSearchError("");
+                  }
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "ArrowDown" && predictions.length > 0) {
+                    event.preventDefault();
+                    setActivePrediction((current) => Math.min(predictions.length - 1, current + 1));
+                  } else if (event.key === "ArrowUp" && predictions.length > 0) {
+                    event.preventDefault();
+                    setActivePrediction((current) => Math.max(0, current - 1));
+                  } else if (event.key === "Enter" && activePrediction >= 0) {
+                    event.preventDefault();
+                    selectPrediction(predictions[activePrediction]);
+                  } else if (event.key === "Escape") {
+                    setPredictions([]);
+                    setActivePrediction(-1);
+                  }
+                }}
+                onBlur={() => {
+                  window.setTimeout(() => setPredictions([]), 150);
+                }}
+              />
+              {(searching || resolving) && (
+                <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
+              )}
+              {predictions.length > 0 && (
+                <div
+                  id="address-search-results"
+                  role="listbox"
+                  className="absolute z-[1000] mt-1 max-h-64 w-full overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg"
+                >
+                  {predictions.map((prediction, index) => (
+                    <button
+                      id={`address-result-${index}`}
+                      key={prediction.placeId}
+                      type="button"
+                      role="option"
+                      aria-selected={activePrediction === index}
+                      className={`flex w-full items-start gap-2 rounded-md px-3 py-2 text-left text-sm ${
+                        activePrediction === index ? "bg-muted" : "hover:bg-muted"
+                      }`}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => selectPrediction(prediction)}
+                    >
+                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span>{prediction.label}</span>
+                    </button>
+                  ))}
                 </div>
-              </div>
+              )}
+            </div>
+            {searchError && (
+              <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                {searchError}. You can still set the exact location another way below.
+              </p>
             )}
           </div>
-          {searchError && (
-            <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              {searchError}. You can still set the exact location on the map.
-            </p>
-          )}
+
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
-              size="sm"
               variant="outline"
               disabled={locating || resolving}
               onClick={() => setLocationDialogOpen(true)}
@@ -693,58 +635,71 @@ export function ListingLocationField({
               )}
               Use my current location
             </Button>
-            <span className="text-xs text-muted-foreground">
-              Only use this if you are at the property.
-            </span>
+            {!linkOpen && (
+              <Button type="button" variant="outline" onClick={() => setLinkOpen(true)}>
+                <Link2 className="h-4 w-4" />
+                Paste a Google Maps link
+              </Button>
+            )}
           </div>
           {locationMessage && (
-            <p
-              className="flex items-start gap-1.5 text-xs text-muted-foreground"
-              aria-live="polite"
-            >
+            <p className="flex items-start gap-1.5 text-xs text-muted-foreground" aria-live="polite">
               <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               {locationMessage}
             </p>
           )}
-        </div>
-      </details>
 
-      <Dialog open={locationDialogOpen} onOpenChange={setLocationDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Are you at the property now?</DialogTitle>
-            <DialogDescription>
-              Choose yes only if you are physically at the property. Your
-              browser will then ask whether book.easy.mk may use your current
-              location. You can deny the request and continue by searching or
-              selecting the property on the map.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setLocationDialogOpen(false)}
-            >
-              No, I&apos;ll choose it
-            </Button>
-            <Button type="button" onClick={requestCurrentLocation}>
-              <LocateFixed className="h-4 w-4" />
-              Yes, use where I am
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          {linkOpen && (
+            <div className="flex gap-2">
+              <Input
+                placeholder="Paste a Google Maps link"
+                value={linkValue}
+                autoFocus
+                onChange={(event) => setLinkValue(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    void applyLink();
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void applyLink()}
+                disabled={resolving || !linkValue.trim()}
+              >
+                {resolving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Link2 className="h-4 w-4" />
+                )}
+                Use link
+              </Button>
+            </div>
+          )}
+        </>
+      )}
 
       <div className="space-y-2">
+        {screen === "confirm" && (
+          <button
+            type="button"
+            onClick={chooseDifferentLocation}
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Choose a different location
+          </button>
+        )}
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <Label>Confirm the exact location</Label>
-          {confirmed ? (
+          <Label>{screen === "confirm" ? "Confirm the exact location" : "Or click the map to drop a pin"}</Label>
+          {screen === "confirm" && confirmed ? (
             <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
               <CheckCircle2 className="h-3.5 w-3.5" />
               Location confirmed
             </span>
-          ) : stale ? (
+          ) : screen === "confirm" && stale ? (
             <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400">
               <AlertCircle className="h-3.5 w-3.5" />
               Confirm location again
@@ -761,72 +716,70 @@ export function ListingLocationField({
           }}
         />
         <p className="text-xs text-muted-foreground">
-          Click the map to place a pin, or drag the pin to fine-tune it.
+          {hasPin ? "Drag the pin to fine-tune it." : "The map starts near your approximate location."}
         </p>
       </div>
 
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        {resolving ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-        ) : (
-          <MapPin className="h-3.5 w-3.5" />
-        )}
-        {hasPin ? (
-          <span>
-            {latitude.toFixed(6)}, {longitude.toFixed(6)}
-          </span>
-        ) : (
-          <span>
-            The map starts near your approximate IP location. No property pin is
-            saved until you choose one.
-          </span>
-        )}
-      </div>
+      {screen === "confirm" && (
+        <>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            {resolving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <MapPin className="h-3.5 w-3.5" />
+            )}
+            <span>
+              {latitude.toFixed(6)}, {longitude.toFixed(6)}
+            </span>
+          </div>
 
-      {hasPin && process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY && (
-        <div className="space-y-2">
-          <Label className="text-xs text-muted-foreground">
-            Street view near this pin
-          </Label>
-          {/* Remounts on each new pin position so its "checking" state resets
-             cleanly — see StreetViewPreview for why that's done via key instead of
-             an effect-internal reset. Rounded so floating-point noise from repeated
-             reverse-geocode round-trips doesn't remount it needlessly. */}
-          <StreetViewPreview
-            key={`${latitude.toFixed(5)},${longitude.toFixed(5)}`}
-            latitude={latitude}
-            longitude={longitude}
-          />
-        </div>
+          {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY && (
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Street view near this pin</Label>
+              {/* Remounts on each new pin position so its "checking" state resets
+                 cleanly — see StreetViewPreview for why that's done via key instead of
+                 an effect-internal reset. Rounded so floating-point noise from repeated
+                 reverse-geocode round-trips doesn't remount it needlessly. */}
+              <StreetViewPreview
+                key={`${latitude.toFixed(5)},${longitude.toFixed(5)}`}
+                latitude={latitude}
+                longitude={longitude}
+              />
+            </div>
+          )}
+        </>
       )}
+
+      <Dialog open={locationDialogOpen} onOpenChange={setLocationDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Are you at the property now?</DialogTitle>
+            <DialogDescription>
+              Choose yes only if you are physically at the property. Your
+              browser will then ask whether book.easy.mk may use your current
+              location. You can deny the request and continue by searching or
+              selecting the property on the map.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setLocationDialogOpen(false)}>
+              No, I&apos;ll choose it
+            </Button>
+            <Button type="button" onClick={requestCurrentLocation}>
+              <LocateFixed className="h-4 w-4" />
+              Yes, use where I am
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <input type="hidden" name="latitude" value={value.latitude} />
       <input type="hidden" name="longitude" value={value.longitude} />
-      <input
-        type="hidden"
-        name="locationSource"
-        value={value.locationSource}
-      />
-      <input
-        type="hidden"
-        name="locationConfirmed"
-        value={value.locationConfirmed}
-      />
-      <input
-        type="hidden"
-        name="geocodingProvider"
-        value={value.geocodingProvider}
-      />
-      <input
-        type="hidden"
-        name="geocodingPlaceId"
-        value={value.geocodingPlaceId}
-      />
-      <input
-        type="hidden"
-        name="geocodingConfidence"
-        value={value.geocodingConfidence}
-      />
+      <input type="hidden" name="locationSource" value={value.locationSource} />
+      <input type="hidden" name="locationConfirmed" value={value.locationConfirmed} />
+      <input type="hidden" name="geocodingProvider" value={value.geocodingProvider} />
+      <input type="hidden" name="geocodingPlaceId" value={value.geocodingPlaceId} />
+      <input type="hidden" name="geocodingConfidence" value={value.geocodingConfidence} />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
-  autocompletePlaces,
+  getPlaceDetails,
   LocationProviderError,
 } from "@/lib/services/location.service";
 import {
@@ -10,15 +10,9 @@ import {
 } from "@/lib/utils/location-request";
 
 const requestSchema = z.object({
-  query: z.string().trim().min(2).max(200),
+  placeId: z.string().trim().min(1).max(300),
   sessionToken: z.string().trim().min(1).max(200),
   language: z.string().trim().regex(/^[a-z]{2}$/i).optional(),
-  bias: z
-    .object({
-      latitude: z.number().min(-90).max(90),
-      longitude: z.number().min(-180).max(180),
-    })
-    .optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -36,16 +30,16 @@ export async function POST(request: NextRequest) {
   try {
     const parsed = requestSchema.safeParse(await request.json());
     if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid address search" }, { status: 400 });
+      return NextResponse.json({ error: "Invalid place" }, { status: 400 });
     }
-    const results = await autocompletePlaces(parsed.data);
-    return NextResponse.json({ results });
+    const result = await getPlaceDetails(parsed.data);
+    return NextResponse.json({ result });
   } catch (error) {
     const status = error instanceof LocationProviderError ? error.status : 500;
     const message =
       error instanceof LocationProviderError
         ? error.message
-        : "Address search failed";
+        : "Could not look up that place";
     return NextResponse.json({ error: message }, { status });
   }
 }

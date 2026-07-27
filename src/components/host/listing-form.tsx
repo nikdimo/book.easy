@@ -2,10 +2,9 @@
 
 import { useActionState, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { CSSProperties, ReactNode } from "react";
-import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Bath, Bed, BedDouble, CalendarDays, ChevronLeft, ChevronRight, Eye, GripVertical, ListChecks, MapPin, Pencil, ShieldCheck, Users } from "lucide-react";
+import { Bath, Bed, BedDouble, CalendarDays, ChevronLeft, ChevronRight, Eye, GripVertical, ListChecks, Loader2, MapPin, Pencil, ShieldCheck, Users } from "lucide-react";
 import {
   saveListingDraft,
   submitNewListing,
@@ -35,7 +34,10 @@ import {
 import { formatPrice } from "@/lib/utils/format";
 import { splitDescriptionPreview } from "@/lib/utils/description-preview";
 import { toast } from "sonner";
-import { ListingImagesField } from "@/components/host/listing-images-field";
+import {
+  ListingImagesField,
+  type ListingMediaUploadState,
+} from "@/components/host/listing-images-field";
 import {
   ListingLocationField,
   type ListingLocationValue,
@@ -135,6 +137,31 @@ function toPositiveNumber(value: string, fallback: number) {
   if (value.trim() === "") return fallback;
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+function resolveInitialMediaItems(
+  initialMediaItems: ListingMediaItem[],
+  initialDraft?: ListingDraftData
+): ListingMediaItem[] {
+  if (initialMediaItems.length > 0) return initialMediaItems;
+
+  const draftMediaItems = Array.isArray(initialDraft?.mediaItems)
+    ? initialDraft.mediaItems
+    : [];
+  if (draftMediaItems.length > 0) {
+    return draftMediaItems
+      .filter((item) => typeof item?.url === "string" && item.url.length > 0)
+      .map((item) => ({
+        ...item,
+        // Drafts saved before mixed-media support did not include mediaType.
+        mediaType: item.mediaType === "VIDEO" ? "VIDEO" : "IMAGE",
+      }));
+  }
+
+  return (initialDraft?.imageUrls ?? []).map((url) => ({
+    url,
+    mediaType: "IMAGE",
+  }));
 }
 
 function listingInitialValues(
@@ -260,6 +287,7 @@ export function ListingForm({
   const formRef = useRef<HTMLFormElement>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
   const editorScrollRef = useRef<HTMLDivElement>(null);
+  const previewScrollRef = useRef<HTMLDivElement>(null);
   const paneDragRef = useRef<{ startX: number; startWidth: number } | null>(null);
   /** Address-text fields the host has typed into directly, this session — a geocode
    *  result (from moving the pin, pasting a link, etc.) skips these instead of
@@ -268,14 +296,20 @@ export function ListingForm({
    *  session", so an initial pin move can still refresh it. See updateLocation. */
   const manuallyEditedLocationFieldsRef = useRef<Set<string>>(new Set());
   const [activeEditSection, setActiveEditSection] = useState("basics");
+  const [activePreviewSection, setActivePreviewSection] = useState("basics");
   const [values, setValues] = useState<ListingFormValues>(() =>
     listingInitialValues(listing, initialDraft)
   );
-  const [mediaItems, setMediaItems] = useState<ListingMediaItem[]>(
-    initialMediaItems.length > 0
-      ? initialMediaItems
-      : initialDraft?.mediaItems ??
-          (initialDraft?.imageUrls ?? []).map((url) => ({ url, mediaType: "IMAGE" as const }))
+  // Mirrors ListingLocationField's own choose/confirm sub-screen (see its
+  // onScreenChange) so the plain address/city/area/postal/country inputs below it only
+  // show once a location has actually been picked. Guessed from the initial values so
+  // there's no flash on load; ListingLocationField's first onScreenChange call
+  // corrects it immediately either way.
+  const [locationScreen, setLocationScreen] = useState<"choose" | "confirm">(
+    values.latitude ? "confirm" : "choose"
+  );
+  const [mediaItems, setMediaItems] = useState<ListingMediaItem[]>(() =>
+    resolveInitialMediaItems(initialMediaItems, initialDraft)
   );
   const [selectedAmenityIds, setSelectedAmenityIds] = useState<string[]>(
     () => listing?.amenities.map((a) => a.amenityId) ?? initialDraft?.amenityIds ?? []
@@ -283,13 +317,7 @@ export function ListingForm({
   const [lastPublishedSignature, setLastPublishedSignature] = useState(() =>
     listingEditSignature(
       listingInitialValues(listing, initialDraft),
-      initialMediaItems.length > 0
-        ? initialMediaItems
-        : initialDraft?.mediaItems ??
-            (initialDraft?.imageUrls ?? []).map((url) => ({
-              url,
-              mediaType: "IMAGE" as const,
-            })),
+      resolveInitialMediaItems(initialMediaItems, initialDraft),
       listing?.amenities.map((a) => a.amenityId) ?? initialDraft?.amenityIds ?? []
     )
   );
@@ -305,7 +333,11 @@ export function ListingForm({
   const [publishChecklistOpen, setPublishChecklistOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submittedListingId, setSubmittedListingId] = useState<string | null>(null);
-  const [desktopToolbarTarget, setDesktopToolbarTarget] = useState<HTMLElement | null>(null);
+  const [mediaUploadState, setMediaUploadState] = useState<ListingMediaUploadState>({
+    active: false,
+    progress: 0,
+    message: "",
+  });
   const [isSubmittingNew, startSubmitNewTransition] = useTransition();
   const currentEditSignature = useMemo(
     () => listingEditSignature(values, mediaItems, selectedAmenityIds),
@@ -313,9 +345,15 @@ export function ListingForm({
   );
   const hasUnpublishedChanges =
     isEditing && currentEditSignature !== lastPublishedSignature;
+  const photoCount = mediaItems.filter(
+    (item) => item.mediaType !== "VIDEO"
+  ).length;
 
   const [state, formAction, isPending] = useActionState(
     async (_prev: { error?: string; success?: boolean } | undefined, formData: FormData) => {
+      if (mediaUploadState.active) {
+        return { error: "Wait for your photos and videos to finish uploading." };
+      }
       const submittedSignature = currentEditSignature;
       const result = await updateListing(listing!.id, formData);
       if (result && "success" in result && result.success) {
@@ -373,15 +411,6 @@ export function ListingForm({
     }, 0);
     return () => window.clearTimeout(timeout);
   }, [isEditing]);
-
-  useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      setDesktopToolbarTarget(
-        document.getElementById("host-listing-toolbar-slot")
-      );
-    }, 0);
-    return () => window.clearTimeout(timeout);
-  }, []);
 
   const groupedAmenities = useMemo(
     () =>
@@ -486,6 +515,19 @@ export function ListingForm({
     setTimeout(() => void autosaveDraft(), 0);
   }
 
+  const handleMediaUploadStateChange = useCallback(
+    (next: ListingMediaUploadState) => {
+      setMediaUploadState((current) =>
+        current.active === next.active &&
+        current.progress === next.progress &&
+        current.message === next.message
+          ? current
+          : next
+      );
+    },
+    []
+  );
+
   function toggleAmenity(amenityId: string, checked: boolean) {
     if (!isEditing) setSaveStatus("saving");
     setSelectedAmenityIds((current) =>
@@ -500,14 +542,16 @@ export function ListingForm({
   const beds = toPositiveNumber(values.beds, 1);
   const bathrooms = toPositiveNumber(values.bathrooms, 1);
   const nightlyRate = toPositiveNumber(values.baseNightlyRate, 0);
-  const cleaningFee = toPositiveNumber(values.cleaningFee, 0);
-  const minNights = Math.max(1, toPositiveNumber(values.minNights, 1));
   const locationLine = [values.area, values.city || "City", values.country || "Country"]
     .filter(Boolean)
     .join(", ");
 
   function handleSubmitForReview() {
     if (!formRef.current) return;
+    if (mediaUploadState.active) {
+      toast.info("Wait for your photos and videos to finish uploading.");
+      return;
+    }
 
     const parsed = listingFormSchema.safeParse({
       title: values.title,
@@ -535,7 +579,7 @@ export function ListingForm({
     });
 
     const errors = parsed.success ? {} : zodFieldErrors(parsed.error);
-    if (mediaItems.filter((item) => item.mediaType === "IMAGE").length < 3) {
+    if (photoCount < 3) {
       errors.media = "Add at least 3 photos before publishing";
     }
     setFieldErrors(errors);
@@ -572,12 +616,10 @@ export function ListingForm({
     const container = editorScrollRef.current;
     const section = document.getElementById(`edit-section-${sectionId}`);
     if (!container || !section) return;
-    const stickyHeader = container.querySelector<HTMLElement>("[data-edit-sticky-header]");
     const containerTop = container.getBoundingClientRect().top;
     const sectionTop = section.getBoundingClientRect().top;
-    const stickyOffset = (stickyHeader?.offsetHeight ?? 100) + 16;
     container.scrollTo({
-      top: container.scrollTop + sectionTop - containerTop - stickyOffset,
+      top: container.scrollTop + sectionTop - containerTop - 16,
       behavior: "smooth",
     });
     setActiveEditSection(sectionId);
@@ -590,14 +632,47 @@ export function ListingForm({
       setActiveEditSection(EDIT_SECTIONS[EDIT_SECTIONS.length - 1].id);
       return;
     }
-    const stickyHeader = container.querySelector<HTMLElement>("[data-edit-sticky-header]");
-    const marker = container.getBoundingClientRect().top + (stickyHeader?.offsetHeight ?? 100) + 24;
+    const marker = container.getBoundingClientRect().top + 24;
     let active: (typeof EDIT_SECTIONS)[number]["id"] = EDIT_SECTIONS[0].id;
     for (const section of EDIT_SECTIONS) {
       const element = document.getElementById(`edit-section-${section.id}`);
       if (element && element.getBoundingClientRect().top <= marker) active = section.id;
     }
     setActiveEditSection(active);
+  }
+
+  function scrollToPreviewSection(sectionId: string) {
+    const container = previewScrollRef.current;
+    const section = document.getElementById(`preview-section-${sectionId}`);
+    if (!container || !section) return;
+    const containerTop = container.getBoundingClientRect().top;
+    const sectionTop = section.getBoundingClientRect().top;
+    container.scrollTo({
+      top: container.scrollTop + sectionTop - containerTop - 16,
+      behavior: "smooth",
+    });
+    setActivePreviewSection(sectionId);
+  }
+
+  function updateActivePreviewSection() {
+    const container = previewScrollRef.current;
+    if (!container) return;
+
+    const marker = container.getBoundingClientRect().top + 24;
+    let active: (typeof EDIT_SECTIONS)[number]["id"] = EDIT_SECTIONS[0].id;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    for (const section of EDIT_SECTIONS) {
+      const element = document.getElementById(`preview-section-${section.id}`);
+      if (!element) continue;
+      const distance = Math.abs(element.getBoundingClientRect().top - marker);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        active = section.id;
+      }
+    }
+
+    setActivePreviewSection(active);
   }
 
   function selectMobilePane(pane: "edit" | "preview") {
@@ -664,80 +739,8 @@ export function ListingForm({
         </div>
       )}
 
-      {!isEditing &&
-        desktopToolbarTarget &&
-        createPortal(
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="shrink-0"
-              onClick={() => void leaveListingStudio()}
-            >
-              <ChevronLeft />
-              My listings
-            </Button>
-            <span className="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden="true" />
-            <h1 className="shrink-0 text-base font-semibold">Create a listing</h1>
-            <button
-              type="button"
-              onClick={() => setStepsOpen(true)}
-              className="ml-1 inline-flex min-h-9 min-w-0 items-center gap-1.5 rounded-md px-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              <ListChecks className="h-4 w-4 shrink-0" />
-              <span className="truncate">
-                Step {currentStep + 1} of {STEPS.length}: {STEPS[currentStep].title}
-              </span>
-            </button>
-            <div className="mx-2 h-1 min-w-16 max-w-32 flex-1 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary transition-all"
-                style={{
-                  width: `${((currentStep + 1) / STEPS.length) * 100}%`,
-                }}
-              />
-            </div>
-            <span
-              className={`shrink-0 text-sm ${
-                saveStatus === "error"
-                  ? "text-destructive"
-                  : "text-muted-foreground"
-              }`}
-              aria-live="polite"
-            >
-              {saveStatus === "saving"
-                ? "Saving…"
-                : saveStatus === "error"
-                  ? "Save failed"
-                  : "Draft saved"}
-            </span>
-            {saveStatus === "error" && (
-              <Button
-                type="button"
-                variant="link"
-                size="sm"
-                className="shrink-0 px-1"
-                onClick={() => void autosaveDraft()}
-              >
-                Retry
-              </Button>
-            )}
-            <Button
-              type="button"
-              size="sm"
-              className="shrink-0"
-              disabled={isSubmittingNew}
-              onClick={handleSubmitForReview}
-            >
-              {isSubmittingNew ? "Publishing…" : "Publish"}
-            </Button>
-          </div>,
-          desktopToolbarTarget
-        )}
-
       {!isEditing && (
-        <div className="z-20 shrink-0 border-b bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:px-6 xl:hidden">
+        <div className="z-20 shrink-0 border-b bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:hidden">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <Button
               type="button"
@@ -753,8 +756,17 @@ export function ListingForm({
                 {saveStatus === "saving" ? "Saving…" : saveStatus === "error" ? "Save failed" : "Draft saved"}
               </span>
               {saveStatus === "error" && <Button type="button" variant="link" onClick={() => void autosaveDraft()}>Retry</Button>}
-              <Button type="button" disabled={isSubmittingNew} onClick={handleSubmitForReview}>
-                {isSubmittingNew ? "Publishing…" : "Publish"}
+              <Button
+                type="button"
+                disabled={isSubmittingNew || mediaUploadState.active}
+                onClick={handleSubmitForReview}
+              >
+                {mediaUploadState.active ? (
+                  <>
+                    <Loader2 className="animate-spin" />
+                    Uploading
+                  </>
+                ) : isSubmittingNew ? "Publishing…" : "Publish"}
               </Button>
             </div>
           </div>
@@ -818,16 +830,14 @@ export function ListingForm({
         style={{ "--listing-editor-width": `${editorWidthPercent}%` } as CSSProperties}
       >
         <div
-          ref={editorScrollRef}
           id="listing-editor-pane"
           role="tabpanel"
           aria-labelledby="listing-edit-tab"
           data-pane="editor"
-          onScroll={isEditing ? updateActiveEditSection : undefined}
-          className={`${mobilePane === "edit" ? "block" : "hidden"} h-full min-h-0 space-y-6 overflow-y-auto overscroll-contain px-5 py-5 [scrollbar-gutter:stable] md:px-8`}
+          className={`${mobilePane === "edit" ? "flex" : "hidden"} h-full min-h-0 flex-col overflow-hidden`}
         >
           {isEditing && (
-            <div data-edit-sticky-header className="sticky top-0 z-20 -mx-5 -mt-5 border-b bg-background/95 px-5 pb-3 pt-5 backdrop-blur md:-mx-8 md:px-8">
+            <header className="z-20 shrink-0 border-b bg-background px-5 pb-3 pt-5 shadow-sm md:px-8">
               <div className="flex flex-wrap items-center gap-3">
                 <h1 className="text-2xl font-bold">Edit Listing</h1>
                 {editStatusLabel && <Badge variant={editStatusApproved ? "default" : "secondary"}>{editStatusLabel}</Badge>}
@@ -844,8 +854,90 @@ export function ListingForm({
                   </button>
                 ))}
               </nav>
-            </div>
+            </header>
           )}
+          {!isEditing && (
+            <header className="z-20 hidden shrink-0 border-b bg-background px-5 pb-3 pt-5 shadow-sm md:block md:px-8">
+              <div className="flex min-h-9 min-w-0 items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="-ml-2 shrink-0"
+                  onClick={() => void leaveListingStudio()}
+                >
+                  <ChevronLeft />
+                  My listings
+                </Button>
+                <span className="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden="true" />
+                <h1 className="shrink-0 text-base font-semibold">Create a listing</h1>
+                <span
+                  className={`ml-auto shrink-0 text-sm ${
+                    saveStatus === "error"
+                      ? "text-destructive"
+                      : "text-muted-foreground"
+                  }`}
+                  aria-live="polite"
+                >
+                  {saveStatus === "saving"
+                    ? "Saving…"
+                    : saveStatus === "error"
+                      ? "Save failed"
+                      : "Draft saved"}
+                </span>
+                {saveStatus === "error" && (
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    className="shrink-0 px-1"
+                    onClick={() => void autosaveDraft()}
+                  >
+                    Retry
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  size="sm"
+                  className="shrink-0"
+                  disabled={isSubmittingNew || mediaUploadState.active}
+                  onClick={handleSubmitForReview}
+                >
+                  {mediaUploadState.active ? (
+                    <>
+                      <Loader2 className="animate-spin" />
+                      Uploading
+                    </>
+                  ) : isSubmittingNew ? "Publishing…" : "Publish"}
+                </Button>
+              </div>
+              <div className="mt-4 flex min-h-[30px] min-w-0 items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setStepsOpen(true)}
+                  className="inline-flex min-w-0 shrink items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <ListChecks className="h-4 w-4 shrink-0" />
+                  <span className="truncate">
+                    Step {currentStep + 1} of {STEPS.length}: {STEPS[currentStep].title}
+                  </span>
+                </button>
+                <div className="h-1.5 min-w-16 flex-1 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all"
+                    style={{
+                      width: `${((currentStep + 1) / STEPS.length) * 100}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            </header>
+          )}
+          <div
+            ref={editorScrollRef}
+            onScroll={isEditing ? updateActiveEditSection : undefined}
+            className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-5 py-5 [scrollbar-gutter:stable] md:px-8"
+          >
           {isEditing && state?.error && (
             <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{state.error}</div>
           )}
@@ -853,7 +945,7 @@ export function ListingForm({
             <div className="rounded-lg bg-destructive/10 p-4 text-destructive"><p className="text-sm font-medium">Moderation feedback:</p><p className="mt-1 text-sm">{moderationNote}</p></div>
           )}
           <div>
-            {!isEditing && <p className="text-xs font-semibold uppercase tracking-wide text-primary">Step {currentStep + 1} of {STEPS.length}</p>}
+            {!isEditing && <p className="text-xs font-semibold uppercase tracking-wide text-primary md:hidden">Step {currentStep + 1} of {STEPS.length}</p>}
             <h2 className="mt-1 text-2xl font-semibold">{isEditing ? "Listing details" : STEPS[currentStep].title}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{isEditing ? "Build the listing exactly as guests will understand it." : STEPS[currentStep].description}</p>
           </div>
@@ -993,6 +1085,7 @@ export function ListingForm({
               value={values}
               onChange={updateLocation}
               active={isEditing || currentStep === 1}
+              onScreenChange={setLocationScreen}
             />
             <FieldError
               message={
@@ -1001,80 +1094,94 @@ export function ListingForm({
                 fieldErrors.longitude
               }
             />
-            <div className="space-y-2">
-              <Label htmlFor="address">Address</Label>
-              <Input
-                id="address"
-                name="address"
-                value={values.address}
-                onChange={(event) => setField("address", event.target.value)}
-                onBlur={() => handleBlur("address")}
-                required
-                placeholder="Street and building number"
-              />
-              <FieldError message={fieldErrors.address} />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="city">City</Label>
-                <Input
-                  id="city"
-                  name="city"
-                  value={values.city}
-                  onChange={(event) => setField("city", event.target.value)}
-                  onBlur={() => handleBlur("city")}
-                  required
-                  placeholder="Enter city"
-                />
-                <FieldError message={fieldErrors.city} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="area">Area / Neighbourhood</Label>
-                <Input
-                  id="area"
-                  name="area"
-                  value={values.area}
-                  onChange={(event) => setField("area", event.target.value)}
-                  onBlur={() => handleBlur("area")}
-                  placeholder="Enter area or neighborhood"
-                />
-              </div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="postalCode">Postal code</Label>
-                <Input
-                  id="postalCode"
-                  name="postalCode"
-                  value={values.postalCode}
-                  onChange={(event) => setField("postalCode", event.target.value)}
-                  onBlur={() => handleBlur("postalCode")}
-                  autoComplete="postal-code"
-                  placeholder="Enter postal code"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="country">Country</Label>
-                <Input
-                  id="country"
-                  name="country"
-                  value={values.country}
-                  onChange={(event) => setField("country", event.target.value)}
-                  onBlur={() => handleBlur("country")}
-                  required
-                  autoComplete="country-name"
-                  placeholder="Enter country"
-                />
-                <FieldError message={fieldErrors.country} />
-              </div>
+            {/* CSS-only visibility (not conditional unmounting) — same reason every
+               other wizard step in this file uses `hidden` instead of `&&`: form
+               submission reads live DOM via `new FormData(formRef.current)`
+               (autosaveDraft, publish), so unmounting these would drop address/city/
+               etc. from that snapshot if a save happens to fire while briefly on the
+               "choose" screen. */}
+            <div className={locationScreen === "confirm" ? "contents" : "hidden"}>
+                <div className="space-y-2">
+                  <Label htmlFor="address">Address</Label>
+                  <Input
+                    id="address"
+                    name="address"
+                    value={values.address}
+                    onChange={(event) => setField("address", event.target.value)}
+                    onBlur={() => handleBlur("address")}
+                    required
+                    placeholder="Street and building number"
+                  />
+                  <FieldError message={fieldErrors.address} />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="city">City</Label>
+                    <Input
+                      id="city"
+                      name="city"
+                      value={values.city}
+                      onChange={(event) => setField("city", event.target.value)}
+                      onBlur={() => handleBlur("city")}
+                      required
+                      placeholder="Enter city"
+                    />
+                    <FieldError message={fieldErrors.city} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="area">Area / Neighbourhood</Label>
+                    <Input
+                      id="area"
+                      name="area"
+                      value={values.area}
+                      onChange={(event) => setField("area", event.target.value)}
+                      onBlur={() => handleBlur("area")}
+                      placeholder="Enter area or neighborhood"
+                    />
+                  </div>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="postalCode">Postal code</Label>
+                    <Input
+                      id="postalCode"
+                      name="postalCode"
+                      value={values.postalCode}
+                      onChange={(event) => setField("postalCode", event.target.value)}
+                      onBlur={() => handleBlur("postalCode")}
+                      autoComplete="postal-code"
+                      placeholder="Enter postal code"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="country">Country</Label>
+                    <Input
+                      id="country"
+                      name="country"
+                      value={values.country}
+                      onChange={(event) => setField("country", event.target.value)}
+                      onBlur={() => handleBlur("country")}
+                      required
+                      autoComplete="country-name"
+                      placeholder="Enter country"
+                    />
+                    <FieldError message={fieldErrors.country} />
+                  </div>
+                </div>
             </div>
           </FieldSection>
           </div>
 
           <div id={isEditing ? "edit-section-photos" : undefined} className={isEditing || currentStep === 4 ? "scroll-mt-32 block" : "hidden"}>
           <FieldSection title="Photos and videos">
-            <ListingImagesField items={mediaItems} onItemsChange={handleMediaItemsChange} />
-            <p className="text-sm text-muted-foreground">{mediaItems.filter((item) => item.mediaType === "IMAGE").length} of 3 required photos added</p>
+            <ListingImagesField
+              items={mediaItems}
+              onItemsChange={handleMediaItemsChange}
+              onUploadStateChange={handleMediaUploadStateChange}
+            />
+            <p className="text-sm text-muted-foreground">
+              {photoCount} of 3 required photos added
+            </p>
             <FieldError message={fieldErrors.media} />
           </FieldSection>
           </div>
@@ -1190,9 +1297,15 @@ export function ListingForm({
             </div>
           </FieldSection>
           </div>
+          </div>
           {isEditing && (
-            <div className="sticky bottom-0 z-20 -mx-5 border-t bg-background/95 px-5 py-4 backdrop-blur md:-mx-8 md:px-8">
-              {hasUnpublishedChanges ? (
+            <footer className="z-20 shrink-0 border-t bg-background px-5 py-4 shadow-[0_-2px_8px_rgb(0_0_0/0.04)] md:px-8">
+              {mediaUploadState.active ? (
+                <MediaUploadStatus
+                  state={mediaUploadState}
+                  className="ml-auto max-w-sm"
+                />
+              ) : hasUnpublishedChanges ? (
                 <Button
                   type="submit"
                   size="lg"
@@ -1223,10 +1336,10 @@ export function ListingForm({
                   </TooltipContent>
                 </Tooltip>
               )}
-            </div>
+            </footer>
           )}
           {!isEditing && (
-            <div className="sticky bottom-0 z-20 -mx-5 border-t bg-background/95 px-5 py-4 backdrop-blur md:-mx-8 md:px-8">
+            <footer className="z-20 shrink-0 border-t bg-background px-5 py-4 shadow-[0_-2px_8px_rgb(0_0_0/0.04)] md:px-8">
               <div className="flex items-center justify-between gap-3">
                 <Button
                   type="button"
@@ -1236,7 +1349,12 @@ export function ListingForm({
                 >
                   <ChevronLeft /> Back
                 </Button>
-                {currentStep < STEPS.length - 1 ? (
+                {mediaUploadState.active ? (
+                  <MediaUploadStatus
+                    state={mediaUploadState}
+                    className="ml-auto max-w-sm"
+                  />
+                ) : currentStep < STEPS.length - 1 ? (
                   <Button
                     type="button"
                     onClick={() => goToStep(currentStep + 1)}
@@ -1244,12 +1362,16 @@ export function ListingForm({
                     Continue <ChevronRight />
                   </Button>
                 ) : (
-                  <Button type="button" disabled={isSubmittingNew} onClick={handleSubmitForReview}>
+                  <Button
+                    type="button"
+                    disabled={isSubmittingNew}
+                    onClick={handleSubmitForReview}
+                  >
                     {isSubmittingNew ? "Publishing…" : "Publish"}
                   </Button>
                 )}
               </div>
-            </div>
+            </footer>
           )}
         </div>
 
@@ -1302,31 +1424,58 @@ export function ListingForm({
           role="tabpanel"
           aria-labelledby="listing-preview-tab"
           data-pane="preview"
-          className={`${mobilePane === "preview" ? "block" : "hidden"} h-full min-h-0 overflow-y-auto overscroll-contain px-5 py-5 [scrollbar-gutter:stable] md:px-6`}
+          className={`${mobilePane === "preview" ? "flex" : "hidden"} h-full min-h-0 flex-col overflow-hidden`}
         >
-          <div className="sticky top-0 z-10 -mx-5 -mt-5 mb-3 flex items-center justify-between gap-3 border-b bg-background/95 px-5 py-4 backdrop-blur md:-mx-6 md:px-6">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Guest booking preview
-            </h2>
-            <Badge variant="secondary" className="rounded-md">
-              Live
-            </Badge>
+          <header className="z-20 shrink-0 border-b bg-background px-5 pb-3 pt-5 shadow-sm md:px-6">
+            <div className="flex min-h-9 items-center justify-between gap-3">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Guest booking preview
+              </h2>
+              <Badge variant="secondary" className="rounded-md">
+                Live
+              </Badge>
+            </div>
+            <nav className="mt-4 hidden flex-wrap gap-1 md:flex" aria-label="Preview sections">
+              {EDIT_SECTIONS.map((section) => (
+                <button
+                  key={section.id}
+                  type="button"
+                  aria-current={activePreviewSection === section.id ? "location" : undefined}
+                  onClick={() => scrollToPreviewSection(section.id)}
+                  className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                    activePreviewSection === section.id
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {section.label}
+                </button>
+              ))}
+            </nav>
+          </header>
+          <div
+            ref={previewScrollRef}
+            onScroll={updateActivePreviewSection}
+            className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 [scrollbar-gutter:stable] md:px-6"
+          >
+            <ListingGuestPreview
+              title={values.title || FALLBACK_TITLE}
+              description={values.description || FALLBACK_DESCRIPTION}
+              typeLabel={typeLabel}
+              locationLine={locationLine}
+              mediaItems={mediaItems}
+              guests={guests}
+              bedrooms={bedrooms}
+              beds={beds}
+              bathrooms={bathrooms}
+              nightlyRate={nightlyRate}
+              amenities={selectedAmenities}
+            />
           </div>
-          <ListingGuestPreview
-            title={values.title || FALLBACK_TITLE}
-            description={values.description || FALLBACK_DESCRIPTION}
-            typeLabel={typeLabel}
-            locationLine={locationLine}
-            mediaItems={mediaItems}
-            guests={guests}
-            bedrooms={bedrooms}
-            beds={beds}
-            bathrooms={bathrooms}
-            nightlyRate={nightlyRate}
-            cleaningFee={cleaningFee}
-            minNights={minNights}
-            amenities={selectedAmenities}
-          />
+          <footer className="hidden shrink-0 items-center gap-2 border-t bg-background px-5 py-3 text-xs text-muted-foreground shadow-[0_-2px_8px_rgb(0_0_0/0.04)] md:flex md:px-6">
+            <span className="size-2 rounded-full bg-emerald-500" aria-hidden="true" />
+            Preview updates as you edit
+          </footer>
         </aside>
       </div>
 
@@ -1441,6 +1590,45 @@ function FieldError({ message }: { message?: string }) {
   return <p className="text-xs text-destructive">{message}</p>;
 }
 
+function MediaUploadStatus({
+  state,
+  className,
+}: {
+  state: ListingMediaUploadState;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn("flex min-w-0 flex-1 items-center gap-3", className)}
+      role="status"
+      aria-live="polite"
+    >
+      <Loader2 className="h-5 w-5 shrink-0 animate-spin text-primary" />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-3 text-xs">
+          <span className="truncate font-medium">{state.message}</span>
+          <span className="shrink-0 tabular-nums text-muted-foreground">
+            {state.progress}%
+          </span>
+        </div>
+        <div
+          className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"
+          role="progressbar"
+          aria-label="Media upload progress"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={state.progress}
+        >
+          <div
+            className="h-full rounded-full bg-primary transition-[width] duration-200"
+            style={{ width: `${state.progress}%` }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function NumberField({
   id,
   label,
@@ -1517,8 +1705,6 @@ function ListingGuestPreview({
   beds,
   bathrooms,
   nightlyRate,
-  cleaningFee,
-  minNights,
   amenities,
 }: {
   title: string;
@@ -1531,25 +1717,23 @@ function ListingGuestPreview({
   beds: number;
   bathrooms: number;
   nightlyRate: number;
-  cleaningFee: number;
-  minNights: number;
   amenities: { id: string; name: string; category: string }[];
 }) {
   const displayedMedia = mediaItems.slice(0, 5);
-  const sampleNights = Math.max(minNights, 2);
-  const sampleSubtotal = nightlyRate * sampleNights;
-  const sampleTotal = sampleSubtotal + cleaningFee;
 
   return (
-    <div className="overflow-hidden rounded-xl border bg-background shadow-sm">
-      <div className="p-4 md:p-5">
-        <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+    <div className="listing-guest-preview bg-background">
+      <div id="preview-section-basics" className="scroll-mt-4 p-4 md:p-6">
+        <div className="mb-5">
           <div className="min-w-0">
-            <h3 className="text-xl font-semibold leading-tight tracking-tight md:text-2xl">
+            <h3 className="text-xl font-semibold leading-tight tracking-tight md:text-[26px]">
               {title}
             </h3>
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-              <span className="flex min-w-0 items-center gap-1 text-muted-foreground">
+              <span
+                id="preview-section-location"
+                className="flex min-w-0 scroll-mt-4 items-center gap-1 text-muted-foreground"
+              >
                 <MapPin className="h-4 w-4 shrink-0" />
                 <span className="truncate">{locationLine}</span>
               </span>
@@ -1560,16 +1744,18 @@ function ListingGuestPreview({
               )}
             </div>
           </div>
-          <Badge variant="outline" className="rounded-md">
-            Preview
-          </Badge>
         </div>
 
-        <PreviewGallery mediaItems={displayedMedia} />
+        <div id="preview-section-photos" className="scroll-mt-4">
+          <PreviewGallery mediaItems={displayedMedia} />
+        </div>
 
-        <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1fr)_300px]">
-          <div className="space-y-6">
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-border/80 pb-4 text-sm text-muted-foreground">
+        <div className="listing-guest-preview-layout mt-10 grid grid-cols-1 gap-10">
+          <div className="space-y-8">
+            <div
+              id="preview-section-details"
+              className="flex scroll-mt-4 flex-wrap items-center gap-x-6 gap-y-2 border-b border-border/80 pb-2 text-sm text-muted-foreground"
+            >
               <span className="flex items-center gap-1.5">
                 <Users className="h-4 w-4" />
                 {guests} guests
@@ -1589,7 +1775,7 @@ function ListingGuestPreview({
             </div>
 
             <div className="flex items-center gap-4">
-              <div className="flex size-12 items-center justify-center rounded-full border-2 border-border bg-muted text-sm font-semibold">
+              <div className="flex size-14 items-center justify-center rounded-full border-2 border-border bg-muted text-lg font-semibold">
                 BE
               </div>
               <div>
@@ -1600,16 +1786,15 @@ function ListingGuestPreview({
 
             <Separator />
 
-            <div>
-              <h4 className="mb-3 text-lg font-semibold">About this space</h4>
+            <div id="preview-section-description" className="scroll-mt-4">
+              <h4 className="mb-4 text-xl font-semibold">About this space</h4>
               <DescriptionPreviewSplit description={description} />
             </div>
 
-            {amenities.length > 0 && (
-              <>
-                <Separator />
-                <div>
-                  <h4 className="mb-3 text-lg font-semibold">What this place offers</h4>
+            <Separator />
+            <div id="preview-section-amenities" className="scroll-mt-4">
+              <h4 className="mb-4 text-xl font-semibold">What this place offers</h4>
+              {amenities.length > 0 ? (
                   <div className="grid gap-2 sm:grid-cols-2">
                     {amenities.slice(0, 8).map((amenity) => (
                       <div key={amenity.id} className="flex items-center gap-2 text-sm">
@@ -1618,59 +1803,68 @@ function ListingGuestPreview({
                       </div>
                     ))}
                   </div>
-                </div>
-              </>
-            )}
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Selected amenities will appear here.
+                </p>
+              )}
+            </div>
           </div>
 
-          <div className="rounded-xl border-2 border-border p-4 shadow-lg">
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-semibold">
-                {nightlyRate > 0 ? formatPrice(nightlyRate) : "EUR"}
-              </span>
-              <span className="text-sm text-muted-foreground">/ night</span>
-            </div>
-            <div className="mt-4 grid grid-cols-2 overflow-hidden rounded-lg border text-xs">
-              <div className="border-r p-3">
-                <p className="font-semibold uppercase">Check-in</p>
-                <p className="mt-1 text-muted-foreground">Select date</p>
-              </div>
-              <div className="p-3">
-                <p className="font-semibold uppercase">Check-out</p>
-                <p className="mt-1 text-muted-foreground">Select date</p>
-              </div>
-              <div className="col-span-2 border-t p-3">
-                <p className="font-semibold uppercase">Guests</p>
-                <p className="mt-1 text-muted-foreground">1 guest</p>
+          <div
+            id="preview-section-pricing"
+            className="listing-guest-preview-booking w-full max-w-[360px] scroll-mt-4 justify-self-end overflow-hidden rounded-2xl border-2 border-border shadow-xl"
+          >
+            <div className="px-6 pb-2 pt-6">
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-semibold">
+                  {nightlyRate > 0 ? formatPrice(nightlyRate) : "EUR"}
+                </span>
+                <span className="text-base text-muted-foreground">/ night</span>
               </div>
             </div>
-            <Button type="button" className="mt-4 w-full py-5 text-base font-semibold" disabled>
-              Reserve
-            </Button>
-            <p className="mt-3 text-center text-xs text-muted-foreground">
-              Guests will not be charged yet.
-            </p>
-            {nightlyRate > 0 && (
-              <div className="mt-4 space-y-2 border-t pt-4 text-sm">
-                <div className="flex justify-between gap-2">
-                  <span>
-                    {formatPrice(nightlyRate)} x {sampleNights} nights
-                  </span>
-                  <span>{formatPrice(sampleSubtotal)}</span>
-                </div>
-                {cleaningFee > 0 && (
-                  <div className="flex justify-between gap-2">
-                    <span>Cleaning fee</span>
-                    <span>{formatPrice(cleaningFee)}</span>
+
+            <div className="space-y-4 px-6 pb-6">
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Dates</p>
+                <div className="grid grid-cols-2 overflow-hidden rounded-xl border bg-background text-xs">
+                  <div className="border-r p-3">
+                    <p className="font-semibold uppercase">Check-in</p>
+                    <p className="mt-1 text-muted-foreground">Select date</p>
                   </div>
-                )}
-                <Separator />
-                <div className="flex justify-between font-semibold">
-                  <span>Total</span>
-                  <span>{formatPrice(sampleTotal)}</span>
+                  <div className="p-3">
+                    <p className="font-semibold uppercase">Check-out</p>
+                    <p className="mt-1 text-muted-foreground">Select date</p>
+                  </div>
                 </div>
               </div>
-            )}
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Guests</p>
+                <div className="flex items-center justify-between rounded-xl border bg-background px-3.5 py-3 text-sm">
+                  <span>1 guest</span>
+                  <span className="text-muted-foreground">Edit</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium">
+                  Message to host{" "}
+                  <span className="font-normal text-muted-foreground">(optional)</span>
+                </p>
+                <div className="min-h-20 rounded-md border bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
+                  Introduce yourself and share any useful details.
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                className="w-full rounded-lg py-6 text-base font-semibold"
+                disabled
+              >
+                Reserve
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -1681,7 +1875,7 @@ function ListingGuestPreview({
 function PreviewGallery({ mediaItems }: { mediaItems: ListingMediaItem[] }) {
   if (mediaItems.length === 0) {
     return (
-      <div className="flex aspect-[16/9] items-center justify-center rounded-xl bg-muted text-sm text-muted-foreground ring-1 ring-black/5">
+      <div className="flex aspect-[16/9] items-center justify-center rounded-2xl bg-muted text-sm text-muted-foreground ring-1 ring-black/5">
         Photos and videos will appear here
       </div>
     );
@@ -1690,7 +1884,7 @@ function PreviewGallery({ mediaItems }: { mediaItems: ListingMediaItem[] }) {
   const [cover, ...gridImages] = mediaItems;
 
   return (
-    <div className="overflow-hidden rounded-xl ring-1 ring-black/5">
+    <div className="overflow-hidden rounded-2xl ring-1 ring-black/5">
       <div className="grid max-h-[360px] grid-cols-1 gap-2 md:grid-cols-4 md:grid-rows-2">
         <div className="relative aspect-[4/3] overflow-hidden bg-muted md:col-span-2 md:row-span-2 md:aspect-auto">
           <PreviewMedia item={cover} />
