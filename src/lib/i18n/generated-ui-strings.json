@@ -1270,6 +1270,886 @@
     "filePath": "src/components/marketplace/properties-map-inner.tsx"
   },
   {
+    "key": "mobile.account.all_tools",
+    "sourceText": "All existing host tools",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.account.browse",
+    "sourceText": "Browse public properties",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.account.profile_detail",
+    "sourceText": "Name, photo, and personal details",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.bookings.cancel_action",
+    "sourceText": "Cancel booking",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.bookings.cancel_warning",
+    "sourceText": "Cancelling a confirmed booking should only be used for emergencies. A reason is required.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.bookings.cancelled_admin",
+    "sourceText": "Cancelled by Admin",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.bookings.cancelled_guest",
+    "sourceText": "Cancelled by Guest",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.bookings.cancelled_host",
+    "sourceText": "Cancelled by Host",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.bookings.completed",
+    "sourceText": "Completed",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.bookings.confirm_action",
+    "sourceText": "Confirm",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.bookings.confirm_cancel",
+    "sourceText": "Confirm cancellation",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.bookings.dates",
+    "sourceText": "Dates",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.bookings.guest",
+    "sourceText": "Guest",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.bookings.guests",
+    "sourceText": "Guests",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.bookings.keep",
+    "sourceText": "Keep booking",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.bookings.no_bookings",
+    "sourceText": "No bookings yet",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.bookings.no_bookings_description",
+    "sourceText": "Bookings will appear here when guests request to stay at your listings.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.bookings.pending",
+    "sourceText": "Pending",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.bookings.reason",
+    "sourceText": "Reason (required)",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.bookings.reject_action",
+    "sourceText": "Reject",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.bookings.title",
+    "sourceText": "Booking Requests",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.bookings.total",
+    "sourceText": "Total",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.bookings.unavailable",
+    "sourceText": "Bookings unavailable",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.bookings.update_error",
+    "sourceText": "Could not update booking",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.bridge",
+    "sourceText": "The same seven-step builder opens securely and uses the same saved drafts as the web control panel.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.complete",
+    "sourceText": "Complete listing builder",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.new_listing",
+    "sourceText": "NEW LISTING",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.saved",
+    "sourceText": "Your progress is saved as a draft after every step.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.step_amenities",
+    "sourceText": "Amenities",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.step_amenities_description",
+    "sourceText": "Choose what your property offers.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.step_description",
+    "sourceText": "Description",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.step_description_description",
+    "sourceText": "Give guests a clear, inviting overview.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.step_location",
+    "sourceText": "Location",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.step_location_description",
+    "sourceText": "Help guests understand where they will stay.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.step_photos",
+    "sourceText": "Photos",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.step_photos_description",
+    "sourceText": "Add at least 3 photos and choose the best one first.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.step_pricing",
+    "sourceText": "Pricing",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.step_pricing_description",
+    "sourceText": "Set the price and minimum stay, then publish.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.step_property_details",
+    "sourceText": "Property details",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.step_property_details_description",
+    "sourceText": "Set the capacity and sleeping arrangements.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.step_property_type",
+    "sourceText": "Property type",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.step_property_type_description",
+    "sourceText": "What kind of place will guests book?",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.base_rate",
+    "sourceText": "Base rate",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.block",
+    "sourceText": "Block",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.block_all",
+    "sourceText": "Block all future",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.block_all_description",
+    "sourceText": "This will block every currently available future date. Existing booking holds remain as-is.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.block_all_title",
+    "sourceText": "Block all future dates",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.block_selected",
+    "sourceText": "Block selected range",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.block_selected_description",
+    "sourceText": "This will block the selected range for booking requests.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.blocked",
+    "sourceText": "Blocked",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.blocked_days",
+    "sourceText": "blocked days",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.booked",
+    "sourceText": "Booked",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.booked_days",
+    "sourceText": "booked days",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.booking",
+    "sourceText": "Booking",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.booking_hold",
+    "sourceText": "Booking hold",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.bulk",
+    "sourceText": "Bulk Future Actions",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.bulk_description",
+    "sourceText": "These actions affect all future dates and stay separate from the date-by-date calendar workflow.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.calendar",
+    "sourceText": "Calendar",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.custom_price",
+    "sourceText": "Custom price",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.custom_price_days",
+    "sourceText": "custom price days",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.edit_price",
+    "sourceText": "Edit price",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.exceptions",
+    "sourceText": "Upcoming Exceptions",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.exceptions_description",
+    "sourceText": "Review the upcoming blocked dates, bookings, and custom price periods in one timeline.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.instructions",
+    "sourceText": "Select a date range, then apply availability or pricing actions.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.make_all",
+    "sourceText": "Make all future available",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.make_all_description",
+    "sourceText": "This will remove all manual future blocks. Confirmed and pending booking holds are kept.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.make_all_title",
+    "sourceText": "Make all future dates available",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.make_available",
+    "sourceText": "Make available",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.make_selected",
+    "sourceText": "Make selected range available",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.make_selected_description",
+    "sourceText": "This removes manual blocks in the selected range. Booking holds stay untouched.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.manual_block",
+    "sourceText": "Manual block",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.mixed_prices",
+    "sourceText": "Mixed prices",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.nightly_price",
+    "sourceText": "Nightly price",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.no_exceptions",
+    "sourceText": "No upcoming exceptions for the selected filter.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.no_reason",
+    "sourceText": "No reason provided",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.price_override",
+    "sourceText": "Price override",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.pricing_missing",
+    "sourceText": "Listing pricing is missing",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.pricing_missing_description",
+    "sourceText": "Add pricing on the listing edit page before managing the calendar.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.reason",
+    "sourceText": "Block reason (optional)",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.reason_example",
+    "sourceText": "e.g. Maintenance, private stay",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.remove_price",
+    "sourceText": "Remove custom price",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.reserved",
+    "sourceText": "Reserved dates",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.reset_price",
+    "sourceText": "Reset price",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.revert_price",
+    "sourceText": "Nights will revert to the base price.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.save_price",
+    "sourceText": "Save price",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.select_range",
+    "sourceText": "Select a date range",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.set_rate",
+    "sourceText": "Set a nightly rate for the selected range.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.title",
+    "sourceText": "Availability & pricing",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.unavailable",
+    "sourceText": "Calendar unavailable",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.update_error",
+    "sourceText": "Could not update calendar",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.chat.booking_conversation",
+    "sourceText": "Booking conversation",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.chat.send",
+    "sourceText": "Send",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.chat.start",
+    "sourceText": "Start the conversation",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.chat.start_description",
+    "sourceText": "Share arrival details and answer questions about this booking.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.chat.write",
+    "sourceText": "Write a message",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.dashboard.confirmed",
+    "sourceText": "Confirmed",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.dashboard.create_listing",
+    "sourceText": "Create Listing",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.dashboard.my_listings",
+    "sourceText": "My Listings",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.dashboard.pending_requests",
+    "sourceText": "Pending Requests",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.dashboard.title",
+    "sourceText": "Host Dashboard",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.dashboard.total_bookings",
+    "sourceText": "Total Bookings",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.dashboard.unavailable",
+    "sourceText": "Dashboard unavailable",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.all",
+    "sourceText": "All",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.blocks",
+    "sourceText": "Blocks",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.bookings",
+    "sourceText": "Bookings",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.cancel",
+    "sourceText": "Cancel",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.choose_language",
+    "sourceText": "Choose the language used across the application.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.confirm",
+    "sourceText": "Confirm",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.continue",
+    "sourceText": "Continue",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.dashboard",
+    "sourceText": "Dashboard",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.day_ago",
+    "sourceText": "{count} day ago",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.days",
+    "sourceText": "days",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.days_ago",
+    "sourceText": "{count} days ago",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.delete",
+    "sourceText": "Delete",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.edit",
+    "sourceText": "Edit",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.hide",
+    "sourceText": "Hide",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.host",
+    "sourceText": "HOST",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.hour_ago",
+    "sourceText": "{count} hour ago",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.hours_ago",
+    "sourceText": "{count} hours ago",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.just_now",
+    "sourceText": "Just now",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.language",
+    "sourceText": "Language",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.loading",
+    "sourceText": "Loading",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.messages",
+    "sourceText": "MESSAGES",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.minute_ago",
+    "sourceText": "{count} minute ago",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.minutes_ago",
+    "sourceText": "{count} minutes ago",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.night",
+    "sourceText": "night",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.notifications",
+    "sourceText": "Notifications",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.preview",
+    "sourceText": "Preview",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.prices",
+    "sourceText": "Prices",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.reviewed_languages",
+    "sourceText": "Reviewed languages",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.session",
+    "sourceText": "Session",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.try_again",
+    "sourceText": "Try again.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.generic.unread",
+    "sourceText": "unread",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.inbox.empty",
+    "sourceText": "No conversations yet",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.inbox.empty_description",
+    "sourceText": "A thread is created automatically when a booking is made.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.inbox.subtitle",
+    "sourceText": "Every booking has a private conversation with the guest.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.inbox.title",
+    "sourceText": "Inbox",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.inbox.unavailable",
+    "sourceText": "Inbox unavailable",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.listings.approved",
+    "sourceText": "Approved",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.listings.archived",
+    "sourceText": "Archived",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.listings.booking",
+    "sourceText": "booking",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.listings.bookings",
+    "sourceText": "bookings",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.listings.delete_draft",
+    "sourceText": "Delete draft",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.listings.delete_draft_error",
+    "sourceText": "Could not delete draft",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.listings.delete_error",
+    "sourceText": "Could not delete listing",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.listings.draft",
+    "sourceText": "Draft",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.listings.from_site",
+    "sourceText": "from the site?",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.listings.hide_error",
+    "sourceText": "Could not hide listing",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.listings.hide_site",
+    "sourceText": "Hide from site",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.listings.in_progress_drafts",
+    "sourceText": "In-progress drafts",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.listings.last_edited",
+    "sourceText": "Last edited",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.listings.new_listing",
+    "sourceText": "New Listing",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.listings.no_listings",
+    "sourceText": "No listings yet",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.listings.no_listings_description",
+    "sourceText": "Create your first listing to start receiving bookings.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.listings.of",
+    "sourceText": "of",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.listings.pending_review",
+    "sourceText": "Pending Review",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.listings.rejected",
+    "sourceText": "Rejected",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.listings.stopped_at_step",
+    "sourceText": "Stopped at Step",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.listings.suspended",
+    "sourceText": "Suspended",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.listings.unavailable",
+    "sourceText": "Listings unavailable",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.listings.unpublished",
+    "sourceText": "Unpublished",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.login.email",
+    "sourceText": "Email address",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.login.email_action",
+    "sourceText": "Continue with email",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.login.google",
+    "sourceText": "Continue with Google",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.login.google_window",
+    "sourceText": "Complete Google sign-in in the secure window.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.login.invalid_email",
+    "sourceText": "Enter a valid email address.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.login.or",
+    "sourceText": "OR",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.login.property_management",
+    "sourceText": "PROPERTY MANAGEMENT",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.login.same_account",
+    "sourceText": "Uses the same secure account and login options as the host control panel.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.login.subtitle",
+    "sourceText": "Manage listings, availability, and booking requests wherever you are.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.login.welcome",
+    "sourceText": "Welcome back",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.notifications.activity",
+    "sourceText": "ACTIVITY",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.notifications.caught_up",
+    "sourceText": "You're all caught up",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.notifications.empty",
+    "sourceText": "Booking and chat notifications will appear here.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.notifications.mark_all",
+    "sourceText": "Mark all read",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.notifications.subtitle",
+    "sourceText": "Booking updates and new messages in one place.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
     "key": "pagination.next",
     "sourceText": "Next",
     "filePath": "src/app/(public)/properties/page.tsx"

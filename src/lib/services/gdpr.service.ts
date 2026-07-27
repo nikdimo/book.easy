@@ -56,6 +56,20 @@ export interface UserDataExport {
     marketing: boolean;
     consentedAt: Date;
   }>;
+  notifications: Array<{
+    type: string;
+    title: string;
+    body: string;
+    readAt?: Date;
+    createdAt: Date;
+  }>;
+  messages: Array<{
+    conversationId: string;
+    body: string;
+    editedAt?: Date;
+    deletedAt?: Date;
+    createdAt: Date;
+  }>;
 }
 
 /**
@@ -80,6 +94,14 @@ export async function exportUserData(userId: string): Promise<UserDataExport> {
       },
       auditLogs: {
         take: 200,
+      },
+      notifications: {
+        orderBy: { createdAt: 'desc' },
+        take: 500,
+      },
+      sentMessages: {
+        orderBy: { createdAt: 'desc' },
+        take: 1000,
       },
     },
   });
@@ -158,6 +180,20 @@ export async function exportUserData(userId: string): Promise<UserDataExport> {
       marketing: consent.marketing,
       consentedAt: consent.consentedAt,
     })),
+    notifications: user.notifications.map((notification) => ({
+      type: notification.type,
+      title: notification.title,
+      body: notification.body,
+      readAt: notification.readAt || undefined,
+      createdAt: notification.createdAt,
+    })),
+    messages: user.sentMessages.map((message) => ({
+      conversationId: message.conversationId,
+      body: message.deletedAt ? 'Message removed' : message.body,
+      editedAt: message.editedAt || undefined,
+      deletedAt: message.deletedAt || undefined,
+      createdAt: message.createdAt,
+    })),
   };
 }
 
@@ -216,7 +252,14 @@ export async function deleteUserAccount(userId: string): Promise<{
       });
       deletedRecords['favorites'] = favoriteCount.count;
 
-      // 5. Handle listings (listings should be anonymized, not deleted, to preserve history)
+      // 5. Remove transient notifications and registered devices. Sent chat messages
+      // keep the booking record intact but lose their sender identity through SetNull.
+      const notificationCount = await tx.notification.deleteMany({ where: { userId } });
+      deletedRecords['notifications'] = notificationCount.count;
+      const pushTokenCount = await tx.pushToken.deleteMany({ where: { userId } });
+      deletedRecords['pushTokens'] = pushTokenCount.count;
+
+      // 6. Handle listings (listings should be anonymized, not deleted, to preserve history)
       const listingCount = await tx.listing.count({
         where: { hostId: userId },
       });
@@ -232,7 +275,7 @@ export async function deleteUserAccount(userId: string): Promise<{
         anonymizedRecords['listings'] = listingCount;
       }
 
-      // 6. Anonymize bookings (cancel pending, keep history for records)
+      // 7. Anonymize bookings (cancel pending, keep history for records)
       const pendingBookings = await tx.booking.updateMany({
         where: {
           guestId: userId,
@@ -244,13 +287,13 @@ export async function deleteUserAccount(userId: string): Promise<{
       });
       anonymizedRecords['bookingsCancelled'] = pendingBookings.count;
 
-      // 7. Delete user profile
+      // 8. Delete user profile
       await tx.profile.deleteMany({
         where: { userId },
       });
       deletedRecords['profiles'] = 1;
 
-      // 8. Delete auth-related records
+      // 9. Delete auth-related records
       const sessionsDeleted = await tx.session.deleteMany({
         where: { userId },
       });
@@ -261,7 +304,7 @@ export async function deleteUserAccount(userId: string): Promise<{
       });
       deletedRecords['accounts'] = accountsDeleted.count;
 
-      // 9. Finally delete the user account
+      // 10. Finally delete the user account
       await tx.user.delete({
         where: { id: userId },
       });
@@ -312,7 +355,19 @@ export async function runDataRetentionCleanup(): Promise<{
       });
       deletedRecords['expiredTokens'] = tokensDeleted.count;
 
-      // 3. Anonymize very old audit logs (older than 2 years but keep count)
+      // 3. Delete read notifications after one year. Unread records remain so a user
+      // does not lose important booking activity simply because it is old.
+      const notificationCutoff = new Date(now);
+      notificationCutoff.setFullYear(notificationCutoff.getFullYear() - 1);
+      const notificationsDeleted = await tx.notification.deleteMany({
+        where: {
+          readAt: { not: null },
+          createdAt: { lt: notificationCutoff },
+        },
+      });
+      deletedRecords['oldReadNotifications'] = notificationsDeleted.count;
+
+      // 4. Anonymize very old audit logs (older than 2 years but keep count)
       const auditCutoff = new Date(now);
       auditCutoff.setFullYear(auditCutoff.getFullYear() - 2);
       const oldAuditLogs = await tx.auditLog.findMany({
@@ -330,7 +385,7 @@ export async function runDataRetentionCleanup(): Promise<{
         deletedRecords['oldAuditLogs'] = oldAuditLogs.length;
       }
 
-      // 4. Delete inactive user accounts (no login for 2 years, with backup data)
+      // 5. Delete inactive user accounts (no login for 2 years, with backup data)
       const inactiveCutoff = new Date(now);
       inactiveCutoff.setFullYear(inactiveCutoff.getFullYear() - 2);
       const inactiveUsers = await tx.user.findMany({
@@ -402,6 +457,16 @@ export function getDataRetentionPolicy() {
       retention: 'As long as user data retained (7 years)',
       reason: 'Proof of consent for GDPR',
       note: 'Kept with anonymized user indicator',
+    },
+    chatMessages: {
+      retention: 'Booking record retention period',
+      reason: 'Guest support and dispute resolution',
+      note: 'Sender identity is removed when an account is deleted',
+    },
+    notifications: {
+      retention: '1 year after being read',
+      reason: 'In-app activity history',
+      note: 'Unread records remain until read or account deletion',
     },
     inactiveAccounts: {
       retention: '2 years',

@@ -66,6 +66,15 @@ enum ReportStatus {
   DISMISSED
 }
 
+enum NotificationType {
+  BOOKING_REQUEST
+  BOOKING_CONFIRMED
+  BOOKING_REJECTED
+  BOOKING_CANCELLED
+  CHAT_MESSAGE
+  SYSTEM
+}
+
 // ─── User & Profile ─────────────────────────────────────────────────────────────
 
 model User {
@@ -80,20 +89,24 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  profile             Profile?
-  properties          Property[]
-  listings            Listing[]
-  bookings            Booking[]
-  auditLogs           AuditLog[]
-  accounts            Account[]
-  sessions            Session[]
-  suggestions         Suggestion[] @relation("SuggestionHost")
-  reviewedSuggestions Suggestion[] @relation("SuggestionReviewer")
-  listingDrafts       ListingDraft[]
-  listingReports         ListingReport[] @relation("ListingReportReporter")
-  reviewedListingReports ListingReport[] @relation("ListingReportReviewer")
-  favorites           Favorite[]
-  userConsents        UserConsent[]
+  profile                 Profile?
+  properties              Property[]
+  listings                Listing[]
+  bookings                Booking[]
+  auditLogs               AuditLog[]
+  accounts                Account[]
+  sessions                Session[]
+  suggestions             Suggestion[]              @relation("SuggestionHost")
+  reviewedSuggestions     Suggestion[]              @relation("SuggestionReviewer")
+  listingDrafts           ListingDraft[]
+  listingReports          ListingReport[]           @relation("ListingReportReporter")
+  reviewedListingReports  ListingReport[]           @relation("ListingReportReviewer")
+  favorites               Favorite[]
+  userConsents            UserConsent[]
+  notifications           Notification[]
+  pushTokens              PushToken[]
+  conversationMemberships ConversationParticipant[]
+  sentMessages            Message[]                 @relation("MessageSender")
 
   @@index([email])
   @@index([role])
@@ -138,8 +151,8 @@ model VerificationToken {
 }
 
 model Profile {
-  id              String  @id @default(cuid())
-  userId          String  @unique
+  id              String   @id @default(cuid())
+  userId          String   @unique
   phone           String?
   bio             String?
   avatarUrl       String?
@@ -161,18 +174,24 @@ model Profile {
  * data/URLs/filters didn't need to change.
  */
 model PropertyType {
-  id        String   @id @default(cuid())
-  value     String   @unique
-  label     String
-  /** Curated Lucide icon key, editable by admins in Settings. */
-  icon      String   @default("Building2")
-  /** Short guest-facing explanation shown when a property type is hovered or focused. */
-  description String @default("A distinct type of accommodation available for guests to book.")
-  /** false = not offered in pickers/filters going forward, but still valid for any
-   *  property already using it (e.g. a "this listing only" suggestion approval). */
-  isActive  Boolean  @default(true)
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
+  id          String   @id @default(cuid())
+  value       String   @unique
+  label       String
+  /**
+   * Curated Lucide icon key, editable by admins in Settings.
+   */
+  icon        String   @default("Building2")
+  /**
+   * Short guest-facing explanation shown when a property type is hovered or focused.
+   */
+  description String   @default("A distinct type of accommodation available for guests to book.")
+  /**
+   * false = not offered in pickers/filters going forward, but still valid for any
+   * property already using it (e.g. a "this listing only" suggestion approval).
+   */
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
 
   properties Property[]
 
@@ -180,24 +199,24 @@ model PropertyType {
 }
 
 model Property {
-  id               String   @id @default(cuid())
-  ownerId          String
-  name             String
-  propertyType     String
-  propertyTypeInfo PropertyType @relation(fields: [propertyType], references: [value])
-  address          String
-  city             String
-  area             String?
-  country          String
-  postalCode       String?
-  latitude         Float?
-  longitude        Float?
-  locationSource   String?
-  geocodingProvider String?
-  geocodingPlaceId String?
+  id                  String       @id @default(cuid())
+  ownerId             String
+  name                String
+  propertyType        String
+  propertyTypeInfo    PropertyType @relation(fields: [propertyType], references: [value])
+  address             String
+  city                String
+  area                String?
+  country             String
+  postalCode          String?
+  latitude            Float?
+  longitude           Float?
+  locationSource      String?
+  geocodingProvider   String?
+  geocodingPlaceId    String?
   geocodingConfidence Float?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
 
   owner    User      @relation(fields: [ownerId], references: [id])
   listings Listing[]
@@ -220,25 +239,29 @@ model Listing {
   bathrooms      Int
   beds           Int
   moderationNote String?
-  /** True whenever the live content was created/edited since an admin last looked at
-   *  it — drives the admin "Pending Review" queue independently of `status`, since
-   *  listings are published immediately rather than gated behind approval. */
+  /**
+   * True whenever the live content was created/edited since an admin last looked at
+   * it — drives the admin "Pending Review" queue independently of `status`, since
+   * listings are published immediately rather than gated behind approval.
+   */
   needsReview    Boolean       @default(false)
   approvedAt     DateTime?
   publishedAt    DateTime?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
-  /** Time-decayed demand signal (views + heavily-weighted bookings) recomputed by a
-   *  scheduled job — see lib/services/popularity.service.ts. Denormalised onto the
-   *  listing so the home page can order by it with a plain indexed query instead of
-   *  aggregating the event tables on every request. 0 means "no signal yet", which is
-   *  what gates the public "Popular homes" section from appearing at all. */
+  /**
+   * Time-decayed demand signal (views + heavily-weighted bookings) recomputed by a
+   * scheduled job — see lib/services/popularity.service.ts. Denormalised onto the
+   * listing so the home page can order by it with a plain indexed query instead of
+   * aggregating the event tables on every request. 0 means "no signal yet", which is
+   * what gates the public "Popular homes" section from appearing at all.
+   */
   popularityScore     Float     @default(0)
   popularityUpdatedAt DateTime?
 
-  property           Property           @relation(fields: [propertyId], references: [id])
-  host               User               @relation(fields: [hostId], references: [id])
+  property           Property            @relation(fields: [propertyId], references: [id])
+  host               User                @relation(fields: [hostId], references: [id])
   images             ListingImage[]
   amenities          ListingAmenity[]
   pricingRule        PricingRule?
@@ -249,6 +272,7 @@ model Listing {
   reports            ListingReport[]
   favorites          Favorite[]
   views              ListingView[]
+  conversations      Conversation[]
 
   @@index([hostId])
   @@index([status])
@@ -299,15 +323,15 @@ model ListingDraft {
 }
 
 model ListingImage {
-  id           String  @id @default(cuid())
+  id           String           @id @default(cuid())
   listingId    String
   url          String
   mediaType    ListingMediaType @default(IMAGE)
   alt          String?
-  displayOrder Int     @default(0)
-  isPrimary    Boolean @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  displayOrder Int              @default(0)
+  isPrimary    Boolean          @default(false)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 
   listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
@@ -321,8 +345,10 @@ model Amenity {
   name      String   @unique
   category  String
   icon      String?
-  /** false = not offered in the general amenity picker, but still valid for any
-   *  listing already using it (e.g. a "this listing only" suggestion approval). */
+  /**
+   * false = not offered in the general amenity picker, but still valid for any
+   * listing already using it (e.g. a "this listing only" suggestion approval).
+   */
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 
@@ -338,18 +364,18 @@ model Amenity {
  * on the listing that requested it, without polluting the catalog for everyone else).
  */
 model Suggestion {
-  id           String            @id @default(cuid())
+  id           String           @id @default(cuid())
   kind         SuggestionKind
   label        String
   note         String?
-  status       SuggestionStatus  @default(PENDING)
+  status       SuggestionStatus @default(PENDING)
   scope        SuggestionScope?
   listingId    String?
   hostId       String
   reviewedById String?
   reviewedAt   DateTime?
   adminNote    String?
-  createdAt    DateTime          @default(now())
+  createdAt    DateTime         @default(now())
 
   listing    Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
   host       User     @relation("SuggestionHost", fields: [hostId], references: [id])
@@ -415,14 +441,14 @@ model ListingAmenity {
 // ─── Pricing ────────────────────────────────────────────────────────────────────
 
 model PricingRule {
-  id                String  @id @default(cuid())
-  listingId         String  @unique
-  baseNightlyRate   Decimal @db.Decimal(10, 2)
-  cleaningFee       Decimal @default(0) @db.Decimal(10, 2)
-  serviceFeePercent Decimal @default(0) @db.Decimal(5, 2)
-  currency          String  @default("EUR")
-  minNights         Int     @default(1)
-  maxNights         Int     @default(365)
+  id                String   @id @default(cuid())
+  listingId         String   @unique
+  baseNightlyRate   Decimal  @db.Decimal(10, 2)
+  cleaningFee       Decimal  @default(0) @db.Decimal(10, 2)
+  serviceFeePercent Decimal  @default(0) @db.Decimal(5, 2)
+  currency          String   @default("EUR")
+  minNights         Int      @default(1)
+  maxNights         Int      @default(365)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -466,31 +492,125 @@ model AvailabilityBlock {
 // ─── Booking ────────────────────────────────────────────────────────────────────
 
 model Booking {
-  id               String        @id @default(cuid())
-  listingId        String
-  guestId          String
-  checkIn          DateTime      @db.Date
-  checkOut         DateTime      @db.Date
-  guestCount       Int
-  nightlyRate      Decimal       @db.Decimal(10, 2)
-  cleaningFee      Decimal       @default(0) @db.Decimal(10, 2)
-  serviceFee       Decimal       @default(0) @db.Decimal(10, 2)
-  totalPrice       Decimal       @db.Decimal(10, 2)
-  numberOfNights   Int
-  status           BookingStatus @default(PENDING)
-  guestNote        String?
-  hostNote         String?
+  id                 String        @id @default(cuid())
+  listingId          String
+  guestId            String
+  checkIn            DateTime      @db.Date
+  checkOut           DateTime      @db.Date
+  guestCount         Int
+  nightlyRate        Decimal       @db.Decimal(10, 2)
+  cleaningFee        Decimal       @default(0) @db.Decimal(10, 2)
+  serviceFee         Decimal       @default(0) @db.Decimal(10, 2)
+  totalPrice         Decimal       @db.Decimal(10, 2)
+  numberOfNights     Int
+  status             BookingStatus @default(PENDING)
+  guestNote          String?
+  hostNote           String?
   cancellationReason String?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
   listing            Listing             @relation(fields: [listingId], references: [id])
   guest              User                @relation(fields: [guestId], references: [id])
   availabilityBlocks AvailabilityBlock[]
+  conversation       Conversation?
 
   @@index([listingId, status])
   @@index([guestId])
   @@index([listingId, checkIn, checkOut])
+}
+
+// ─── Notifications & booking chat ─────────────────────────────────────────────
+
+/**
+ * Durable in-app notification. Push delivery is an additional transport for this
+ * record, not the source of truth, so unread state survives across devices.
+ */
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  route     String?
+  data      Json?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+  @@index([userId, createdAt])
+}
+
+/**
+ * One device can rotate Expo push tokens over time. Tokens are unique globally and
+ * reassigned to the currently authenticated user when a device changes account.
+ */
+model PushToken {
+  id         String   @id @default(cuid())
+  userId     String
+  token      String   @unique
+  platform   String
+  deviceName String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/**
+ * The first release creates one conversation per booking. Keeping listingId explicit
+ * makes future pre-booking inquiry conversations possible without changing Message.
+ */
+model Conversation {
+  id                 String    @id @default(cuid())
+  bookingId          String?   @unique
+  listingId          String
+  lastMessageAt      DateTime?
+  lastMessagePreview String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  booking      Booking?                  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  listing      Listing                   @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@index([listingId])
+  @@index([lastMessageAt])
+}
+
+model ConversationParticipant {
+  conversationId String
+  userId         String
+  unreadCount    Int       @default(0)
+  lastReadAt     DateTime?
+  joinedAt       DateTime  @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([conversationId, userId])
+  @@index([userId, unreadCount])
+}
+
+model Message {
+  id             String    @id @default(cuid())
+  conversationId String
+  senderId       String?
+  body           String    @db.Text
+  editedAt       DateTime?
+  deletedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User?        @relation("MessageSender", fields: [senderId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
 }
 
 // ─── Settings ───────────────────────────────────────────────────────────────────
@@ -501,8 +621,10 @@ model Language {
   isDefault        Boolean   @default(false)
   isEnabled        Boolean   @default(true)
   sortOrder        Int       @default(0)
-  /** Whether this language's fixed UI text gets real AI translation, vs. relying
-   *  entirely on the Google Translate widget like every language does today. */
+  /**
+   * Whether this language's fixed UI text gets real AI translation, vs. relying
+   * entirely on the Google Translate widget like every language does today.
+   */
   useAiTranslation Boolean   @default(false)
   selectionCount   Int       @default(0)
   lastSelectedAt   DateTime?
@@ -513,8 +635,10 @@ model Language {
   @@index([isEnabled])
 }
 
-/** The master list of fixed UI strings found in the codebase by the extraction scan
- *  (`scanUiStrings`). One row per `t()`/`<T>` key. */
+/**
+ * The master list of fixed UI strings found in the codebase by the extraction scan
+ * (`scanUiStrings`). One row per `t()`/`<T>` key.
+ */
 model UiString {
   key        String   @id
   sourceText String
@@ -528,9 +652,11 @@ model UiString {
   @@index([isActive])
 }
 
-/** AI-generated translation of a UiString for one locale. `sourceTextSnapshot` records
- *  what the English text was at translation time, so we can detect drift when the
- *  source text later changes without a re-sync. */
+/**
+ * AI-generated translation of a UiString for one locale. `sourceTextSnapshot` records
+ * what the English text was at translation time, so we can detect drift when the
+ * source text later changes without a re-sync.
+ */
 model UiTranslation {
   id                 String   @id @default(cuid())
   locale             String
@@ -550,7 +676,6 @@ model UiTranslation {
 /**
  * Single-row, cross-process lock guarding translation synchronization, so an
  * admin-triggered sync and a deployment sync can't run concurrently.
- *
  * Deliberately a plain table rather than a Postgres advisory lock: the sync spans
  * minutes of external Anthropic calls, and Prisma pools connections. A
  * session-scoped advisory lock is bound to one connection and could be released on
@@ -592,17 +717,17 @@ model AuditLog {
  * If userId is null, it's an anonymous visitor's consent (identified by sessionId).
  */
 model UserConsent {
-  id                String   @id @default(cuid())
-  userId            String?
-  sessionId         String   @unique
-  essential         Boolean  @default(true)
-  analytics         Boolean  @default(false)
-  marketing         Boolean  @default(false)
-  consentVersion    String   @default("1.0")
-  ipAddress         String?
-  userAgent         String?
-  consentedAt       DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id             String   @id @default(cuid())
+  userId         String?
+  sessionId      String   @unique
+  essential      Boolean  @default(true)
+  analytics      Boolean  @default(false)
+  marketing      Boolean  @default(false)
+  consentVersion String   @default("1.0")
+  ipAddress      String?
+  userAgent      String?
+  consentedAt    DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
 

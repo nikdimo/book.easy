@@ -206,6 +206,10 @@ export async function createBooking(input: CreateBookingInput) {
     const { notifyHostNewBookingRequest } = await import("@/lib/email");
     await notifyHostNewBookingRequest(booking.id);
   });
+  notifyBestEffort(async () => {
+    const { notifyBookingEvent } = await import("@/lib/services/notification.service");
+    await notifyBookingEvent(booking.id, "request");
+  });
   return booking;
 }
 
@@ -273,6 +277,13 @@ export async function cancelBooking(
         await notifyGuestBookingCancelled(updated.id);
       }
     });
+    notifyBestEffort(async () => {
+      const { notifyBookingEvent } = await import("@/lib/services/notification.service");
+      await notifyBookingEvent(
+        updated.id,
+        cancelledBy === "guest" ? "cancelled-by-guest" : "cancelled-by-host"
+      );
+    });
     return updated;
   });
 }
@@ -300,6 +311,10 @@ export async function confirmBooking(bookingId: string, hostId: string) {
     notifyBestEffort(async () => {
       const { notifyGuestBookingConfirmed } = await import("@/lib/email");
       await notifyGuestBookingConfirmed(booking.id);
+    });
+    notifyBestEffort(async () => {
+      const { notifyBookingEvent } = await import("@/lib/services/notification.service");
+      await notifyBookingEvent(booking.id, "confirmed");
     });
     return booking;
   });
@@ -337,6 +352,10 @@ export async function rejectBooking(bookingId: string, hostId: string, reason?: 
     notifyBestEffort(async () => {
       const { notifyGuestBookingRejected } = await import("@/lib/email");
       await notifyGuestBookingRejected(updated.id);
+    });
+    notifyBestEffort(async () => {
+      const { notifyBookingEvent } = await import("@/lib/services/notification.service");
+      await notifyBookingEvent(updated.id, "rejected");
     });
     return updated;
   });

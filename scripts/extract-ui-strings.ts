@@ -19,6 +19,7 @@ const UI_SCOPES = [
   "src/components/public/",
 ];
 const UI_FILES = new Set([
+  "src/lib/i18n/mobile-ui-catalog.ts",
   "src/components/shared/header.tsx",
   "src/components/shared/footer.tsx",
   "src/components/shared/consent-banner.tsx",

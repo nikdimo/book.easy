@@ -319,7 +319,6 @@ function MarketplaceSearchBarInner({
     initialState.dateFlexibility
   );
   const [propertyTypes, setPropertyTypes] = useState(initialState.propertyTypes);
-  const anyDesktopPillPanelOpen = placeSelectorOpen || datePickerOpen;
   const activeDesktopPanel: DesktopPanel | null = isPill
     ? placeSelectorOpen
       ? "where"
@@ -348,6 +347,9 @@ function MarketplaceSearchBarInner({
   const [desktopPanelHeight, setDesktopPanelHeight] = useState<number | null>(
     null
   );
+  const visualDesktopPanel =
+    activeDesktopPanel ??
+    (desktopShellVisible ? renderedDesktopPanel : null);
 
   const handleWhereContentRef = useCallback((node: HTMLDivElement | null) => {
     setWhereContentNode(node);
@@ -368,7 +370,8 @@ function MarketplaceSearchBarInner({
   );
 
   useEffect(() => {
-    let closeTimer: ReturnType<typeof setTimeout> | undefined;
+    let hideTimer: ReturnType<typeof setTimeout> | undefined;
+    let removeTimer: ReturnType<typeof setTimeout> | undefined;
     let openFrame: number | undefined;
 
     if (activeDesktopPanel) {
@@ -377,15 +380,19 @@ function MarketplaceSearchBarInner({
         setDesktopShellVisible(true);
       });
     } else {
-      openFrame = window.requestAnimationFrame(() => {
+      // Radix briefly reports the current dialog as closed when a pointer moves
+      // from one search trigger to another. Keep the visual shell alive long
+      // enough for the next trigger to claim it, avoiding a one-frame flash.
+      hideTimer = setTimeout(() => {
         setDesktopShellVisible(false);
-        closeTimer = setTimeout(() => setRenderedDesktopPanel(null), 180);
-      });
+        removeTimer = setTimeout(() => setRenderedDesktopPanel(null), 180);
+      }, 80);
     }
 
     return () => {
       if (openFrame !== undefined) window.cancelAnimationFrame(openFrame);
-      if (closeTimer !== undefined) clearTimeout(closeTimer);
+      if (hideTimer !== undefined) clearTimeout(hideTimer);
+      if (removeTimer !== undefined) clearTimeout(removeTimer);
     };
   }, [activeDesktopPanel]);
 
@@ -695,6 +702,7 @@ function MarketplaceSearchBarInner({
 
         <form
           ref={pillFormRef}
+          data-desktop-search-pill
           onSubmit={onSubmit}
           className="relative z-[60] flex w-full max-w-[64rem] items-center rounded-full border border-black/10 bg-[#f7f7f7] p-1 shadow-[0_1px_2px_rgba(0,0,0,0.08),0_8px_24px_rgba(0,0,0,0.08)] transition-shadow duration-200 hover:shadow-[0_2px_4px_rgba(0,0,0,0.10),0_10px_28px_rgba(0,0,0,0.10)]"
         >
@@ -708,7 +716,7 @@ function MarketplaceSearchBarInner({
                     top: capsuleGeometry.top,
                     width: capsuleGeometry.width,
                     height: capsuleGeometry.height,
-                    opacity: activeDesktopPanel ? 1 : 0,
+                    opacity: visualDesktopPanel ? 1 : 0,
                     transform: "translateZ(0)",
                   }
                 : { opacity: 0 }
@@ -743,8 +751,8 @@ function MarketplaceSearchBarInner({
               showPropertyTypes={showPropertyTypesInWhere}
               sharedPillActive
               hidePillDivider={
-                activeDesktopPanel === "where" ||
-                activeDesktopPanel === "when"
+                visualDesktopPanel === "where" ||
+                visualDesktopPanel === "when"
               }
               desktopContentRef={handleWhereContentRef}
               desktopContentStyle={desktopContentStyle}
@@ -784,8 +792,8 @@ function MarketplaceSearchBarInner({
               onSearchRequest={submitQuery}
               sharedPillActive
               hidePillDivider={
-                activeDesktopPanel === "when" ||
-                activeDesktopPanel === "who"
+                visualDesktopPanel === "when" ||
+                visualDesktopPanel === "who"
               }
               desktopContentRef={handleDateContentRef}
               desktopContentStyle={desktopContentStyle}
@@ -811,7 +819,7 @@ function MarketplaceSearchBarInner({
               type="submit"
               className={cn(
                 "relative z-10 ml-1 h-11 shrink-0 rounded-full bg-primary px-4 text-primary-foreground shadow-none transition-all duration-200 hover:bg-primary/95",
-                anyDesktopPillPanelOpen ? "gap-2 px-5" : "w-11 px-0"
+                visualDesktopPanel ? "gap-2 px-5" : "w-11 px-0"
               )}
               aria-label={labels.search.text}
             >
@@ -819,7 +827,7 @@ function MarketplaceSearchBarInner({
               <span
                 className={cn(
                   "overflow-hidden whitespace-nowrap font-semibold transition-[max-width,opacity] duration-200",
-                  anyDesktopPillPanelOpen
+                  visualDesktopPanel
                     ? "max-w-20 opacity-100"
                     : "max-w-0 opacity-0",
                   labels.search.translated && "notranslate"

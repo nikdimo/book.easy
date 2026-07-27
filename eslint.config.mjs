@@ -17,6 +17,12 @@ const eslintConfig = defineConfig([
     ".tmp.driveupload/**",
     "Listing-Explorer/**",
     "src/generated/**",
+    // Expo owns generated output; its source is checked with `npm run mobile:typecheck`
+    // and `npm --prefix mobile run lint`.
+    "mobile/.expo/**",
+    "mobile/dist/**",
+    "mobile/node_modules/**",
+    "mobile/scripts/**",
   ]),
 ]);
 

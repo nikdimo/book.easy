@@ -97,6 +97,54 @@ async function main() {
     },
   });
 
+  const conversation = await prisma.conversation.upsert({
+    where: { bookingId: booking.id },
+    create: { bookingId: booking.id, listingId: listing.id },
+    update: {},
+  });
+  await prisma.conversationParticipant.createMany({
+    data: [
+      { conversationId: conversation.id, userId: host.id },
+      { conversationId: conversation.id, userId: guest.id },
+    ],
+    skipDuplicates: true,
+  });
+  if ((await prisma.message.count({ where: { conversationId: conversation.id } })) === 0) {
+    const message = await prisma.message.create({
+      data: {
+        conversationId: conversation.id,
+        senderId: guest.id,
+        body: "Hi! Is self check-in available if we arrive after 21:00?",
+      },
+    });
+    await prisma.conversation.update({
+      where: { id: conversation.id },
+      data: {
+        lastMessageAt: message.createdAt,
+        lastMessagePreview: message.body,
+      },
+    });
+    await prisma.conversationParticipant.update({
+      where: {
+        conversationId_userId: {
+          conversationId: conversation.id,
+          userId: host.id,
+        },
+      },
+      data: { unreadCount: 1 },
+    });
+    await prisma.notification.create({
+      data: {
+        userId: host.id,
+        type: "CHAT_MESSAGE",
+        title: guest.name,
+        body: `${listing.title}: ${message.body}`,
+        route: `/chat/${conversation.id}`,
+        data: { conversationId: conversation.id },
+      },
+    });
+  }
+
   const secret = process.env.AUTH_SECRET ?? "dev-only-auth-secret-not-for-production";
   const baseUrl = process.env.AUTH_URL ?? "http://localhost:3000";
 
@@ -113,6 +161,7 @@ async function main() {
   }
   console.log(`QA listing: ${listing.id}`);
   console.log(`QA booking: ${booking.id}`);
+  console.log(`QA conversation: ${conversation.id}`);
 }
 
 main()

@@ -41,6 +41,7 @@
     "Listing-Explorer",
     ".codex-backups",
     ".tmp.driveupload",
-    "src/generated"
+    "src/generated",
+    "mobile"
   ]
 }

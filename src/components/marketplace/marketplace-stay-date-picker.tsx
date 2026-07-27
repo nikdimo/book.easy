@@ -757,7 +757,10 @@ export function DateRangeCalendarStep({
           isDragging && "cursor-grabbing select-none"
         )}
       >
-        <div className="mx-auto w-full">
+        <div
+          className="notranslate mx-auto w-full"
+          translate="no"
+        >
           <Calendar
             mode="range"
             required={false}
@@ -1276,6 +1279,26 @@ export function MarketplaceStayDatePicker({
                     "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-[50rem] md:max-h-[calc(100dvh-5rem)] md:w-[44rem] md:max-w-[calc(100vw-6rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[2rem]"
           )}
           onOpenAutoFocus={(e) => e.preventDefault()}
+          onPointerDownOutside={(event) => {
+            const target = event.target;
+            if (
+              isPillLayout &&
+              target instanceof Element &&
+              target.closest("[data-desktop-search-pill]")
+            ) {
+              event.preventDefault();
+            }
+          }}
+          onFocusOutside={(event) => {
+            const target = event.target;
+            if (
+              isPillLayout &&
+              target instanceof Element &&
+              target.closest("[data-desktop-search-pill]")
+            ) {
+              event.preventDefault();
+            }
+          }}
         >
           <div className="sr-only">
             <DialogPrimitive.Title className={(step === "dates" ? resolvedDialogTitle : labels.who).translated ? "notranslate" : undefined}>
