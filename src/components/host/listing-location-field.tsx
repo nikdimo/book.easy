@@ -4,8 +4,6 @@ import * as React from "react";
 import dynamic from "next/dynamic";
 import {
   AlertCircle,
-  CheckCircle2,
-  ChevronLeft,
   ChevronRight,
   Link2,
   Loader2,
@@ -26,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import { resolveMapsLink } from "@/lib/actions/listing.actions";
 import { parseCoordsFromMapsText } from "@/lib/utils/parse-maps-link";
 import {
@@ -116,9 +115,7 @@ function newSessionToken() {
     : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-/** A collapsed summary row that opens a drawer — the "tap Où, get a full panel; tap
- *  Quand, get another" pattern from Airbnb's search sheet, applied here so the whole
- *  location step isn't showing the map, search, and street view all at once. */
+/** The compact entry point shown before a location has been confirmed. */
 function LocationSummaryRow({
   label,
   summary,
@@ -140,6 +137,29 @@ function LocationSummaryRow({
       </div>
       <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
     </button>
+  );
+}
+
+function ResolvingFieldLabel({
+  htmlFor,
+  resolving,
+  children,
+}: {
+  htmlFor: string;
+  resolving: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <Label htmlFor={htmlFor}>{children}</Label>
+      <Loader2
+        className={cn(
+          "h-3.5 w-3.5 animate-spin text-primary",
+          !resolving && "invisible"
+        )}
+        aria-hidden="true"
+      />
+    </div>
   );
 }
 
@@ -169,7 +189,6 @@ export function ListingLocationField({
   const initialLng = finiteCoordinate(value.longitude, -180, 180);
   const hasPin = initialLat !== null && initialLng !== null;
   const [whereOpen, setWhereOpen] = React.useState(false);
-  const [modalView, setModalView] = React.useState<"map" | "streetView">("map");
   const autoOpenedRef = React.useRef(false);
   const initialStreetViewSelection = React.useMemo(
     () =>
@@ -346,7 +365,7 @@ export function ListingLocationField({
   }, [mapCenter, query]);
 
   /** Common tail for every method that resolves to a full location: recenters the
-   *  map, closes the "Where is it?" drawer, and writes the new fields — always as-is,
+   *  map and writes the new fields — always as-is,
    *  including empty ones. The parent (listing-form.tsx) is what actually decides
    *  whether to apply each address field or keep a manual edit; sending a stale
    *  fallback here is what used to leave old text sitting next to a brand new pin. */
@@ -565,12 +584,10 @@ export function ListingLocationField({
     }
   }
 
-  /** Clears the search/link scratch state left over from a previous visit to this
-   *  drawer, so reopening it to pick somewhere else doesn't show stale text. */
+  /** Clears search/link scratch state when the editor popup is reopened. */
   function handleWhereOpenChange(open: boolean) {
     setWhereOpen(open);
     if (open) {
-      setModalView("map");
       setQuery("");
       setLinkValue("");
       setLinkOpen(false);
@@ -595,24 +612,114 @@ export function ListingLocationField({
     // plain-English UI with no i18n
     // integration already, so nothing is lost by keeping Translate out of it.
     <div className="notranslate space-y-2">
-      <LocationSummaryRow
-        label="Where is it?"
-        summary={
-          hasPin ? (
-            <span className="inline-flex items-center gap-1">
-              {confirmed ? (
-                <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-600 dark:text-emerald-400" />
-              ) : (
+      <div className="flex min-h-9 items-center justify-between gap-3">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight">
+          Location
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">Help guests understand where they will stay.</p>
+        </div>
+        {confirmed && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => handleWhereOpenChange(true)}
+          >
+            Edit location
+          </Button>
+        )}
+      </div>
+      {confirmed ? (
+        <section className="overflow-hidden rounded-xl border bg-background">
+          <div className="grid grid-cols-2 border-b">
+            <div className="relative aspect-square overflow-hidden border-r bg-muted">
+              <ListingLocationPickerInner
+                lat={latitude}
+                lng={longitude}
+                hasPin
+                zoom={16}
+                interactive={false}
+                className="h-full w-full"
+                onChange={() => undefined}
+              />
+              <span className="absolute left-3 top-3 rounded-full bg-background/95 px-2.5 py-1 text-xs font-medium shadow">
+                Map
+              </span>
+            </div>
+            <div className="relative aspect-square overflow-hidden bg-muted">
+              <StreetViewPicker
+                key={`summary-${latitude.toFixed(5)},${longitude.toFixed(5)}`}
+                latitude={latitude}
+                longitude={longitude}
+                initialSelection={initialStreetViewSelection}
+                compact
+                readOnly
+                fill
+              />
+              <span className="absolute left-3 top-3 z-10 rounded-full bg-background/95 px-2.5 py-1 text-xs font-medium shadow">
+                Street View
+              </span>
+            </div>
+          </div>
+
+          <dl className="grid gap-x-6 gap-y-4 p-4 text-sm sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Address
+              </dt>
+              <dd className="mt-1 font-medium">{value.address || "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                City
+              </dt>
+              <dd className="mt-1">{value.city || "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Postal code
+              </dt>
+              <dd className="mt-1">{value.postalCode || "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Area
+              </dt>
+              <dd className="mt-1">{value.area || "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Country
+              </dt>
+              <dd className="mt-1">{value.country || "—"}</dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Exact location
+              </dt>
+              <dd className="mt-1 text-muted-foreground">
+                {latitude.toFixed(6)}, {longitude.toFixed(6)}
+              </dd>
+            </div>
+          </dl>
+        </section>
+      ) : (
+        <LocationSummaryRow
+          label="Where is it?"
+          summary={
+            hasPin ? (
+              <span className="inline-flex items-center gap-1">
                 <AlertCircle className="h-3 w-3 shrink-0 text-amber-600 dark:text-amber-400" />
-              )}
-              {locationSummary}
-            </span>
-          ) : (
-            locationSummary
-          )
-        }
-        onClick={() => handleWhereOpenChange(true)}
-      />
+                {locationSummary}
+              </span>
+            ) : (
+              locationSummary
+            )
+          }
+          onClick={() => handleWhereOpenChange(true)}
+        />
+      )}
 
       <Dialog open={whereOpen} onOpenChange={handleWhereOpenChange}>
         <DialogContent
@@ -620,25 +727,10 @@ export function ListingLocationField({
           className="grid h-[min(92dvh,820px)] w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden rounded-2xl p-0 sm:w-[96vw] sm:max-w-[80rem]"
         >
           <DialogHeader className="flex h-16 shrink-0 flex-row items-center gap-3 border-b px-5">
-            {modalView === "streetView" && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => setModalView("map")}
-              >
-                <ChevronLeft className="h-4 w-4" />
-                <span className="sr-only">Back to map</span>
-              </Button>
-            )}
             <div>
-              <DialogTitle className="text-lg">
-                {modalView === "map" ? "Where is your property?" : "Choose the street view"}
-              </DialogTitle>
+              <DialogTitle className="text-lg">Where is your property?</DialogTitle>
               <DialogDescription className="mt-1">
-                {modalView === "map"
-                  ? "Search or place the pin exactly where guests will stay."
-                  : "Move along the street and turn the camera to the best view."}
+                Search or place the pin exactly where guests will stay.
               </DialogDescription>
             </div>
             <DialogClose asChild>
@@ -648,38 +740,17 @@ export function ListingLocationField({
             </DialogClose>
           </DialogHeader>
 
-          {modalView === "streetView" && hasPin ? (
-            <div className="min-h-0 flex-1 overflow-y-auto p-5">
-              {process.env.NEXT_PUBLIC_GOOGLE_MAPS_JAVASCRIPT_API_KEY ? (
-                <StreetViewPicker
-                  key={`${latitude.toFixed(5)},${longitude.toFixed(5)}`}
-                  latitude={latitude}
-                  longitude={longitude}
-                  initialSelection={initialStreetViewSelection}
-                  onUseView={(selection: StreetViewSelection) => {
-                    onChange({
-                      streetViewHeading: String(selection.heading),
-                      streetViewPitch: String(selection.pitch),
-                      streetViewPanoId: selection.panoId,
-                    });
-                    setModalView("map");
-                  }}
-                />
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  The interactive Street View picker isn&apos;t configured.
-                </p>
-              )}
-            </div>
-          ) : (
-            <div className="grid min-h-0 flex-1 grid-rows-[minmax(20rem,1fr)_auto] lg:grid-cols-[minmax(0,1fr)_23rem] lg:grid-rows-1">
+          <div className="grid min-h-0 flex-1 grid-rows-[minmax(20rem,1fr)_auto] lg:grid-cols-[minmax(0,1fr)_23rem] lg:grid-rows-1">
               <section className="relative min-h-0 overflow-hidden bg-muted">
                 <ListingLocationPickerInner
                   lat={latitude}
                   lng={longitude}
                   hasPin={hasPin}
                   zoom={mapZoom}
-                  className="h-full min-h-[22rem] w-full"
+                  className={cn(
+                    "h-full min-h-[22rem] w-full",
+                    resolving && "pointer-events-none"
+                  )}
                   onChange={(nextLat, nextLng) => {
                     void setCoordinates(nextLat, nextLng, "MANUAL_PIN");
                   }}
@@ -703,6 +774,7 @@ export function ListingLocationField({
                       className="h-12 border-0 bg-transparent pl-12 pr-11 text-base shadow-none focus-visible:ring-0"
                       placeholder="Search Google for an address or place"
                       value={query}
+                      disabled={resolving}
                       onChange={(event) => {
                         const nextQuery = event.target.value;
                         selectedQueryRef.current = "";
@@ -723,9 +795,14 @@ export function ListingLocationField({
                         } else if (event.key === "ArrowUp" && predictions.length > 0) {
                           event.preventDefault();
                           setActivePrediction((current) => Math.max(0, current - 1));
-                        } else if (event.key === "Enter" && activePrediction >= 0) {
+                        } else if (
+                          event.key === "Enter" &&
+                          predictions.length > 0
+                        ) {
                           event.preventDefault();
-                          selectPrediction(predictions[activePrediction]);
+                          selectPrediction(
+                            predictions[activePrediction >= 0 ? activePrediction : 0]
+                          );
                         } else if (event.key === "Escape") {
                           setPredictions([]);
                           setActivePrediction(-1);
@@ -735,9 +812,13 @@ export function ListingLocationField({
                         window.setTimeout(() => setPredictions([]), 150);
                       }}
                     />
-                    {(searching || resolving) && (
-                      <Loader2 className="absolute right-4 top-3.5 h-5 w-5 animate-spin text-muted-foreground" />
-                    )}
+                    <Loader2
+                      className={cn(
+                        "pointer-events-none absolute right-4 top-3.5 h-5 w-5 animate-spin text-muted-foreground",
+                        !searching && !resolving && "invisible"
+                      )}
+                      aria-hidden="true"
+                    />
                     {predictions.length > 0 && (
                       <div
                         id="address-search-results"
@@ -775,6 +856,7 @@ export function ListingLocationField({
                         placeholder="Paste a Google Maps link"
                         value={linkValue}
                         autoFocus
+                        disabled={resolving}
                         onChange={(event) => setLinkValue(event.target.value)}
                         onKeyDown={(event) => {
                           if (event.key === "Enter") {
@@ -802,19 +884,32 @@ export function ListingLocationField({
                     disabled={locating || resolving}
                     onClick={() => setLocationDialogOpen(true)}
                   >
-                    {locating ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <LocateFixed className="h-4 w-4" />
-                    )}
+                    <span
+                      className="relative h-4 w-4 shrink-0"
+                      aria-hidden="true"
+                    >
+                      <Loader2
+                        className={cn(
+                          "absolute inset-0 h-4 w-4 animate-spin",
+                          !locating && "invisible"
+                        )}
+                      />
+                      <LocateFixed
+                        className={cn(
+                          "absolute inset-0 h-4 w-4",
+                          locating && "invisible"
+                        )}
+                      />
+                    </span>
                     My location
                   </Button>
                   {!linkOpen && (
                     <Button
                       type="button"
-                      variant="secondary"
-                      className="bg-background shadow-lg hover:bg-background/90"
-                      onClick={() => setLinkOpen(true)}
+                    variant="secondary"
+                    className="bg-background shadow-lg hover:bg-background/90"
+                    disabled={resolving}
+                    onClick={() => setLinkOpen(true)}
                     >
                       <Link2 className="h-4 w-4" />
                       Maps link
@@ -848,16 +943,36 @@ export function ListingLocationField({
                         </p>
                       </div>
 
-                      <div className="space-y-3">
+                      <div className="space-y-3" aria-busy={resolving}>
+                        <div
+                          className={cn(
+                            "flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/[0.06] px-3 py-2 text-xs font-medium text-primary",
+                            !resolving && "hidden"
+                          )}
+                          aria-live="polite"
+                        >
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            <span>Filling in the address details…</span>
+                        </div>
                         <div className="space-y-1.5">
-                          <Label htmlFor="location-address">Address</Label>
+                          <ResolvingFieldLabel
+                            htmlFor="location-address"
+                            resolving={resolving}
+                          >
+                            Address
+                          </ResolvingFieldLabel>
                           <Input
                             id="location-address"
                             value={value.address}
+                            disabled={resolving}
                             onChange={(event) =>
                               onManualAddressChange?.("address", event.target.value)
                             }
                             placeholder="Street and building number"
+                            className={cn(
+                              "transition-colors duration-300",
+                              resolving && "animate-pulse border-primary/30 bg-primary/[0.04]"
+                            )}
                           />
                           {addressErrors?.address && (
                             <p className="text-xs text-destructive">
@@ -867,13 +982,23 @@ export function ListingLocationField({
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-1.5">
-                            <Label htmlFor="location-city">City</Label>
+                            <ResolvingFieldLabel
+                              htmlFor="location-city"
+                              resolving={resolving}
+                            >
+                              City
+                            </ResolvingFieldLabel>
                             <Input
                               id="location-city"
                               value={value.city}
+                              disabled={resolving}
                               onChange={(event) =>
                                 onManualAddressChange?.("city", event.target.value)
                               }
+                              className={cn(
+                                "transition-colors duration-300",
+                                resolving && "animate-pulse border-primary/30 bg-primary/[0.04]"
+                              )}
                             />
                             {addressErrors?.city && (
                               <p className="text-xs text-destructive">
@@ -882,35 +1007,65 @@ export function ListingLocationField({
                             )}
                           </div>
                           <div className="space-y-1.5">
-                            <Label htmlFor="location-postal">Postal code</Label>
+                            <ResolvingFieldLabel
+                              htmlFor="location-postal"
+                              resolving={resolving}
+                            >
+                              Postal code
+                            </ResolvingFieldLabel>
                             <Input
                               id="location-postal"
                               value={value.postalCode}
+                              disabled={resolving}
                               onChange={(event) =>
                                 onManualAddressChange?.("postalCode", event.target.value)
                               }
+                              className={cn(
+                                "transition-colors duration-300",
+                                resolving && "animate-pulse border-primary/30 bg-primary/[0.04]"
+                              )}
                             />
                           </div>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                           <div className="space-y-1.5">
-                            <Label htmlFor="location-area">Area</Label>
+                            <ResolvingFieldLabel
+                              htmlFor="location-area"
+                              resolving={resolving}
+                            >
+                              Area
+                            </ResolvingFieldLabel>
                             <Input
                               id="location-area"
                               value={value.area}
+                              disabled={resolving}
                               onChange={(event) =>
                                 onManualAddressChange?.("area", event.target.value)
                               }
+                              className={cn(
+                                "transition-colors duration-300",
+                                resolving && "animate-pulse border-primary/30 bg-primary/[0.04]"
+                              )}
                             />
                           </div>
                           <div className="space-y-1.5">
-                            <Label htmlFor="location-country">Country</Label>
+                            <ResolvingFieldLabel
+                              htmlFor="location-country"
+                              resolving={resolving}
+                            >
+                              Country
+                            </ResolvingFieldLabel>
                             <Input
                               id="location-country"
                               value={value.country}
+                              disabled={resolving}
                               onChange={(event) =>
                                 onManualAddressChange?.("country", event.target.value)
                               }
+                              className={cn(
+                                "transition-colors duration-300",
+                                resolving && "animate-pulse border-primary/30 bg-primary/[0.04]"
+                              )}
                             />
                             {addressErrors?.country && (
                               <p className="text-xs text-destructive">
@@ -921,21 +1076,30 @@ export function ListingLocationField({
                         </div>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => setModalView("streetView")}
-                        className="flex w-full items-center justify-between rounded-xl border p-3 text-left transition-colors hover:bg-muted"
-                      >
-                        <span>
-                          <span className="block text-sm font-medium">Street View</span>
-                          <span className="block text-xs text-muted-foreground">
-                            {initialStreetViewSelection
-                              ? "Approved — tap to adjust"
-                              : "Choose what guests will see"}
-                          </span>
-                        </span>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                      </button>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium">Street View</p>
+                            <p className="text-xs text-muted-foreground">
+                              Turn the camera to the view guests should see.
+                            </p>
+                          </div>
+                        </div>
+                        <StreetViewPicker
+                          key={`editor-${latitude.toFixed(5)},${longitude.toFixed(5)}`}
+                          latitude={latitude}
+                          longitude={longitude}
+                          initialSelection={initialStreetViewSelection}
+                          compact
+                          onUseView={(selection: StreetViewSelection) => {
+                            onChange({
+                              streetViewHeading: String(selection.heading),
+                              streetViewPitch: String(selection.pitch),
+                              streetViewPanoId: selection.panoId,
+                            });
+                          }}
+                        />
+                      </div>
                     </>
                   )}
                 </div>
@@ -964,29 +1128,43 @@ export function ListingLocationField({
                   </Button>
                 </div>
               </aside>
-            </div>
-          )}
+          </div>
         </DialogContent>
       </Dialog>
 
       <Dialog open={locationDialogOpen} onOpenChange={setLocationDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[calc(100dvh-2rem)] min-w-0 w-[calc(100vw-2rem)] max-w-lg overflow-x-hidden overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Are you at the property now?</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="pr-8 leading-snug">
+              Are you at the property now?
+            </DialogTitle>
+            <DialogDescription className="break-words leading-relaxed">
               Choose yes only if you are physically at the property. Your
               browser will then ask whether book.easy.mk may use your current
               location. You can deny the request and continue by searching or
               selecting the property on the map.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setLocationDialogOpen(false)}>
-              No, I&apos;ll choose it
+          <DialogFooter className="flex-col-reverse gap-2 sm:flex-col-reverse sm:justify-stretch">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-auto min-h-10 min-w-0 w-full whitespace-normal px-4 py-2 text-center leading-snug"
+              onClick={() => setLocationDialogOpen(false)}
+            >
+              <span className="min-w-0 break-words">
+                No, I&apos;ll choose it
+              </span>
             </Button>
-            <Button type="button" onClick={requestCurrentLocation}>
-              <LocateFixed className="h-4 w-4" />
-              Yes, use where I am
+            <Button
+              type="button"
+              className="h-auto min-h-10 min-w-0 w-full whitespace-normal px-4 py-2 text-center leading-snug"
+              onClick={requestCurrentLocation}
+            >
+              <LocateFixed className="h-4 w-4 shrink-0" />
+              <span className="min-w-0 break-words">
+                Yes, use where I am
+              </span>
             </Button>
           </DialogFooter>
         </DialogContent>

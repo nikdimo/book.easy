@@ -29,7 +29,7 @@ export default async function HostListingsPage() {
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+      <div className="flex flex-wrap items-center gap-3 mb-6">
         <h1 className="text-2xl font-bold">My Listings</h1>
         <Button asChild>
           <Link href="/host/listings/new"><Plus className="h-4 w-4 mr-2" />New Listing</Link>

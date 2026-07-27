@@ -4,7 +4,8 @@ import { useActionState, useCallback, useEffect, useMemo, useRef, useState, useT
 import type { CSSProperties, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Bath, Bed, BedDouble, CalendarDays, ChevronLeft, ChevronRight, CircleAlert, Eye, GripVertical, ListChecks, Loader2, MapPin, Pencil, ShieldCheck, Users } from "lucide-react";
+import { Bath, Bed, BedDouble, Building, CalendarDays, ChevronLeft, ChevronRight, CircleAlert, CircleDollarSign, Coffee, CookingPot, Eye, Flame, GripVertical, HeartPulse, Laptop, ListChecks, Loader2, MapPin, Microwave, Minus, Mountain, Pencil, Plus, Refrigerator, Shirt, Shield, ShieldCheck, Sparkles, Sun, Thermometer, Trees, Tv, Users, Waves, Wind, Wifi, Car } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import {
   saveListingDraft,
   submitNewListing,
@@ -14,7 +15,6 @@ import { listingFormSchema } from "@/lib/validations/listing.schema";
 import { zodFieldErrors } from "@/lib/utils/zod-error";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -55,7 +55,7 @@ import {
 } from "@/lib/constants/listing-steps";
 
 interface ListingFormProps {
-  amenities: { id: string; name: string; category: string }[];
+  amenities: { id: string; name: string; category: string; icon?: string | null }[];
   propertyTypes: PropertyTypeOption[];
   initialMediaItems?: ListingMediaItem[];
   /** Serialized from the server (no Prisma Decimal). */
@@ -361,14 +361,16 @@ function FieldSection({
   title,
   children,
 }: {
-  title: string;
+  title?: string;
   children: ReactNode;
 }) {
   return (
     <section className="space-y-4 border-b border-border/70 pb-6 last:border-b-0 last:pb-0">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-        {title}
-      </h2>
+      {title && (
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          {title}
+        </h2>
+      )}
       {children}
     </section>
   );
@@ -494,6 +496,14 @@ export function ListingForm({
         const result = await saveListingDraft(draftIdRef.current, fd);
         if (result && "draftId" in result) {
           draftIdRef.current = result.draftId;
+          // Once the first autosave creates the draft, keep its ID in the URL so
+          // refreshes and accidental navigation back to this form reopen the same
+          // draft. The plain /new route remains reserved for an intentional new draft.
+          if (!initialDraftId && window.location.pathname.endsWith("/new")) {
+            const nextUrl = new URL(window.location.href);
+            nextUrl.searchParams.set("draft", result.draftId);
+            window.history.replaceState(window.history.state, "", nextUrl);
+          }
           if (request === saveRequestRef.current) setSaveStatus("saved");
           return true;
         }
@@ -513,7 +523,7 @@ export function ListingForm({
       () => undefined
     );
     return save;
-  }, [isEditing]);
+  }, [initialDraftId, isEditing]);
 
   // Keep the preview instant while batching text edits into a quiet background save.
   // Discrete controls also call autosaveDraft immediately below.
@@ -576,6 +586,12 @@ export function ListingForm({
 
   function updateLocation(patch: Partial<ListingLocationValue>) {
     if (!isEditing) setSaveStatus("saving");
+    const replacingFromSearch = patch.locationSource === "AUTOCOMPLETE";
+    if (replacingFromSearch) {
+      // Choosing a new search result is an explicit request to replace the previous
+      // location, including address fields the host may have edited earlier.
+      setManuallyEditedLocationFields(new Set());
+    }
     setValues((current) => {
       // A geocode result (pin move, pasted link, address search) always carries fresh
       // values for these fields, including empty ones for data the new spot doesn't
@@ -591,7 +607,7 @@ export function ListingForm({
         filtered.streetViewPanoId = "";
       }
       for (const field of LOCATION_TEXT_FIELDS) {
-        if (manuallyEditedLocationFields.has(field)) {
+        if (!replacingFromSearch && manuallyEditedLocationFields.has(field)) {
           delete filtered[field];
         }
       }
@@ -1112,10 +1128,10 @@ export function ListingForm({
               </div>
             </header>
           )}
-          <div
-            ref={editorScrollRef}
-            onScroll={isEditing ? updateActiveEditSection : undefined}
-            className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain px-5 py-5 [scrollbar-gutter:stable] md:px-8"
+            <div
+              ref={editorScrollRef}
+              onScroll={isEditing ? updateActiveEditSection : undefined}
+            className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-5 py-4 [scrollbar-gutter:stable] md:px-8"
           >
           {isEditing && state?.error && (
             <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{state.error}</div>
@@ -1123,7 +1139,7 @@ export function ListingForm({
           {isEditing && moderationNote && (
             <div className="rounded-lg bg-destructive/10 p-4 text-destructive"><p className="text-sm font-medium">Moderation feedback:</p><p className="mt-1 text-sm">{moderationNote}</p></div>
           )}
-          <div>
+          <div className={isEditing || currentStep !== 1 ? undefined : "hidden"}>
             {!isEditing && <p className="text-xs font-semibold uppercase tracking-wide text-primary md:hidden">Step {currentStep + 1} of {STEPS.length}</p>}
             <h2 className="mt-1 text-2xl font-semibold">{isEditing ? "Listing details" : STEPS[currentStep].title}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{isEditing ? "Build the listing exactly as guests will understand it." : STEPS[currentStep].description}</p>
@@ -1259,7 +1275,7 @@ export function ListingForm({
           </div>
 
           <div id={isEditing ? "edit-section-location" : undefined} className={isEditing || currentStep === 1 ? "scroll-mt-32 block" : "hidden"}>
-          <FieldSection title="Location">
+          <FieldSection>
             <ListingLocationField
               value={values}
               onChange={updateLocation}
@@ -1321,34 +1337,42 @@ export function ListingForm({
 
           <div id={isEditing ? "edit-section-details" : undefined} className={isEditing || currentStep === 2 ? "scroll-mt-32 block" : "hidden"}>
           <FieldSection title="Capacity">
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-              <NumberField
+            <div className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
+              <CapacityCounter
                 id="maxGuests"
                 label="Guests"
+                description="Maximum overnight guests"
+                icon={Users}
                 value={values.maxGuests}
                 min={1}
                 onChange={(value) => setField("maxGuests", value)}
                 onBlur={() => void autosaveDraft()}
               />
-              <NumberField
+              <CapacityCounter
                 id="bedrooms"
                 label="Bedrooms"
+                description="Private sleeping rooms"
+                icon={BedDouble}
                 value={values.bedrooms}
                 min={0}
                 onChange={(value) => setField("bedrooms", value)}
                 onBlur={() => void autosaveDraft()}
               />
-              <NumberField
+              <CapacityCounter
                 id="beds"
                 label="Beds"
+                description="Total sleeping spaces"
+                icon={Bed}
                 value={values.beds}
                 min={0}
                 onChange={(value) => setField("beds", value)}
                 onBlur={() => void autosaveDraft()}
               />
-              <NumberField
+              <CapacityCounter
                 id="bathrooms"
                 label="Bathrooms"
+                description="Full and half bathrooms"
+                icon={Bath}
                 value={values.bathrooms}
                 min={0}
                 onChange={(value) => setField("bathrooms", value)}
@@ -1360,31 +1384,37 @@ export function ListingForm({
 
           <div id={isEditing ? "edit-section-pricing" : undefined} className={isEditing || currentStep === 6 ? "scroll-mt-32 block" : "hidden"}>
           <FieldSection title="Pricing">
-            <div className="grid gap-4 md:grid-cols-3">
-              <div>
-                <NumberField
-                  id="baseNightlyRate"
-                  label="Nightly rate (EUR)"
-                  value={values.baseNightlyRate}
-                  min={1}
-                  step="0.01"
-                  onChange={(value) => setField("baseNightlyRate", value)}
-                  onBlur={() => handleBlur("baseNightlyRate")}
-                />
+            <div className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
+              <PricingField
+                id="baseNightlyRate"
+                label="Nightly rate"
+                description="Your base price per night, before fees"
+                icon={CircleDollarSign}
+                value={values.baseNightlyRate}
+                min={1}
+                step="0.01"
+                suffix="EUR / night"
+                onChange={(value) => setField("baseNightlyRate", value)}
+                onBlur={() => handleBlur("baseNightlyRate")}
+              />
                 <FieldError message={fieldErrors.baseNightlyRate} />
-              </div>
-              <NumberField
+              <PricingField
                 id="cleaningFee"
-                label="Cleaning fee (EUR)"
+                label="Cleaning fee"
+                description="One-time fee added to each reservation"
+                icon={Sparkles}
                 value={values.cleaningFee}
                 min={0}
                 step="0.01"
+                suffix="EUR / stay"
                 onChange={(value) => setField("cleaningFee", value)}
                 onBlur={() => void autosaveDraft()}
               />
-              <NumberField
+              <CapacityCounter
                 id="minNights"
                 label="Minimum nights"
+                description="Shortest stay guests can book"
+                icon={CalendarDays}
                 value={values.minNights}
                 min={1}
                 onChange={(value) => setField("minNights", value)}
@@ -1395,27 +1425,38 @@ export function ListingForm({
           </div>
 
           <div id={isEditing ? "edit-section-amenities" : undefined} className={isEditing || currentStep === 3 ? "scroll-mt-32 block" : "hidden"}>
-          <FieldSection title="Amenities">
-            <div className="space-y-5">
+          <FieldSection>
+            <div className="space-y-7">
               {Object.entries(groupedAmenities).map(([category, items]) => (
                 <div key={category}>
-                  <p className="mb-2 text-sm font-medium text-muted-foreground">{category}</p>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <p className="mb-3 text-sm font-semibold text-foreground">{category}</p>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {items.map((amenity) => {
                       const checked = selectedAmenityIds.includes(amenity.id);
+                      const Icon = AMENITY_ICON_MAP[amenity.icon ?? ""] ?? Sparkles;
                       return (
-                        <label
+                        <button
+                          type="button"
                           key={amenity.id}
-                          className="flex cursor-pointer items-center gap-2 rounded-lg border border-border/70 px-3 py-2 text-sm transition-colors hover:bg-muted/50"
+                          aria-pressed={checked}
+                          onClick={() => toggleAmenity(amenity.id, !checked)}
+                          className={cn(
+                            "group flex min-h-[76px] cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all",
+                            checked
+                              ? "border-primary bg-primary/[0.08] text-foreground shadow-sm ring-1 ring-primary/20"
+                              : "border-border/70 bg-card hover:-translate-y-0.5 hover:border-primary/40 hover:bg-muted/30 hover:shadow-sm"
+                          )}
                         >
-                          <Checkbox
-                            name="amenityIds"
-                            value={amenity.id}
-                            checked={checked}
-                            onCheckedChange={(next) => toggleAmenity(amenity.id, next === true)}
-                          />
-                          {amenity.name}
-                        </label>
+                          <span className={cn(
+                            "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors",
+                            checked ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
+                          )}>
+                            <Icon className="h-5 w-5" aria-hidden="true" />
+                          </span>
+                          <span className="flex-1 text-sm font-medium">{amenity.name}</span>
+                          <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", checked ? "bg-primary" : "bg-border")} aria-hidden="true" />
+                          {checked && <input type="hidden" name="amenityIds" value={amenity.id} />}
+                        </button>
                       );
                     })}
                   </div>
@@ -1752,6 +1793,29 @@ export function ListingForm({
   );
 }
 
+const AMENITY_ICON_MAP: Record<string, LucideIcon> = {
+  wifi: Wifi,
+  wind: Wind,
+  thermometer: Thermometer,
+  shirt: Shirt,
+  tv: Tv,
+  "cooking-pot": CookingPot,
+  refrigerator: Refrigerator,
+  microwave: Microwave,
+  coffee: Coffee,
+  sun: Sun,
+  trees: Trees,
+  car: Car,
+  waves: Waves,
+  bath: Bath,
+  flame: Flame,
+  shield: Shield,
+  "heart-pulse": HeartPulse,
+  "mountain-snow": Mountain,
+  building: Building,
+  laptop: Laptop,
+};
+
 function StepRequirementStatus({
   issues,
   uploadState,
@@ -1828,37 +1892,130 @@ function MediaUploadStatus({
   );
 }
 
-function NumberField({
+function PricingField({
   id,
   label,
+  description,
+  icon: Icon,
   value,
   min,
   step,
+  suffix,
   onChange,
   onBlur,
 }: {
   id: keyof ListingFormValues;
   label: string;
+  description: string;
+  icon: typeof Users;
   value: string;
   min: number;
   step?: string;
+  suffix: string;
   onChange: (value: string) => void;
   onBlur?: () => void;
 }) {
   return (
-    <div className="space-y-2">
-      <Label htmlFor={id}>{label}</Label>
-      <Input
-        id={id}
-        name={id}
-        type="number"
-        min={min}
-        step={step}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        onBlur={onBlur}
-        required={id !== "cleaningFee"}
-      />
+    <div className="flex min-h-[88px] items-center gap-4 border-b border-border/60 px-4 py-4 last:border-b-0 sm:px-6">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+        <Icon className="h-5 w-5" aria-hidden="true" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <Label htmlFor={id} className="text-base font-semibold">{label}</Label>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
+      <div className="flex w-44 shrink-0 items-center gap-2">
+        <Input
+          id={id}
+          name={id}
+          type="number"
+          min={min}
+          step={step}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          onBlur={onBlur}
+          required={id !== "cleaningFee"}
+          className="text-right font-semibold tabular-nums"
+        />
+        <span className="w-20 shrink-0 text-xs text-muted-foreground">{suffix}</span>
+      </div>
+    </div>
+  );
+}
+
+function CapacityCounter({
+  id,
+  label,
+  description,
+  icon: Icon,
+  value,
+  min,
+  onChange,
+  onBlur,
+}: {
+  id: keyof ListingFormValues;
+  label: string;
+  description: string;
+  icon: typeof Users;
+  value: string;
+  min: number;
+  onChange: (value: string) => void;
+  onBlur?: () => void;
+}) {
+  const numericValue = Number(value);
+  const canDecrease = Number.isFinite(numericValue) && numericValue > min;
+
+  const updateValue = (nextValue: number) => {
+    onChange(String(Math.max(min, nextValue)));
+    onBlur?.();
+  };
+
+  return (
+    <div className="flex min-h-[88px] items-center gap-4 border-b border-border/60 px-4 py-4 last:border-b-0 sm:px-6">
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <Icon className="h-5 w-5" aria-hidden="true" />
+        </span>
+        <div className="min-w-0">
+          <Label htmlFor={id} className="text-base font-semibold">{label}</Label>
+          <p className="text-sm text-muted-foreground">{description}</p>
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-2 rounded-full border border-border/80 bg-background p-1 shadow-sm">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 rounded-full"
+          aria-label={`Decrease ${label}`}
+          disabled={!canDecrease}
+          onClick={() => updateValue((Number.isFinite(numericValue) ? numericValue : min) - 1)}
+        >
+          <Minus className="h-4 w-4" />
+        </Button>
+        <Input
+          id={id}
+          name={id}
+          type="number"
+          min={min}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          onBlur={onBlur}
+          required
+          aria-label={label}
+          className="h-9 w-12 border-0 bg-transparent p-0 text-center text-base font-semibold tabular-nums shadow-none focus-visible:ring-0"
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 rounded-full"
+          aria-label={`Increase ${label}`}
+          onClick={() => updateValue((Number.isFinite(numericValue) ? numericValue : min) + 1)}
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 }
@@ -1916,7 +2073,7 @@ function ListingGuestPreview({
   beds: number;
   bathrooms: number;
   nightlyRate: number;
-  amenities: { id: string; name: string; category: string }[];
+  amenities: { id: string; name: string; category: string; icon?: string | null }[];
 }) {
   const displayedMedia = mediaItems.slice(0, 5);
 

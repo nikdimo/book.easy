@@ -30,12 +30,14 @@ type MapConstructor = new (
     center: { lat: number; lng: number };
     zoom: number;
     mapId: string;
+    cameraControl: boolean;
     clickableIcons: boolean;
     fullscreenControl: boolean;
     mapTypeControl: boolean;
     streetViewControl: boolean;
     zoomControl: boolean;
     gestureHandling: string;
+    keyboardShortcuts: boolean;
   }
 ) => GoogleMap;
 type MarkerConstructor = new (options: {
@@ -52,6 +54,7 @@ export default function ListingLocationPickerInner({
   zoom = 2,
   onChange,
   className,
+  interactive = true,
 }: {
   lat: number;
   lng: number;
@@ -59,6 +62,7 @@ export default function ListingLocationPickerInner({
   zoom?: number;
   onChange: (lat: number, lng: number) => void;
   className?: string;
+  interactive?: boolean;
 }) {
   const key =
     process.env.NEXT_PUBLIC_GOOGLE_MAPS_JAVASCRIPT_API_KEY?.trim();
@@ -66,6 +70,7 @@ export default function ListingLocationPickerInner({
   const mapRef = React.useRef<GoogleMap | null>(null);
   const markerRef = React.useRef<GoogleMarker | null>(null);
   const markerConstructorRef = React.useRef<MarkerConstructor | null>(null);
+  const resizeObserverRef = React.useRef<ResizeObserver | null>(null);
   const listenersRef = React.useRef<MapsListener[]>([]);
   const onChangeRef = React.useRef(onChange);
   const initialOptionsRef = React.useRef({ lat, lng, hasPin, zoom });
@@ -96,40 +101,53 @@ export default function ListingLocationPickerInner({
           center: { lat: initial.lat, lng: initial.lng },
           zoom: initial.hasPin ? 17 : initial.zoom,
           mapId: "DEMO_MAP_ID",
+          cameraControl: interactive,
           clickableIcons: false,
-          fullscreenControl: true,
-          mapTypeControl: true,
+          fullscreenControl: interactive,
+          mapTypeControl: interactive,
           streetViewControl: false,
-          zoomControl: true,
-          gestureHandling: "greedy",
+          zoomControl: interactive,
+          gestureHandling: interactive ? "greedy" : "none",
+          keyboardShortcuts: interactive,
         });
 
         mapRef.current = map;
         markerConstructorRef.current = MarkerClass;
-        listenersRef.current.push(
-          map.addListener("click", (event) => {
-            if (event.latLng) {
-              onChangeRef.current(event.latLng.lat(), event.latLng.lng());
-            }
-          })
-        );
+        resizeObserverRef.current = new ResizeObserver(() => {
+          const current = initialOptionsRef.current;
+          window.requestAnimationFrame(() => {
+            map.setCenter({ lat: current.lat, lng: current.lng });
+          });
+        });
+        resizeObserverRef.current.observe(containerRef.current);
+        if (interactive) {
+          listenersRef.current.push(
+            map.addListener("click", (event) => {
+              if (event.latLng) {
+                onChangeRef.current(event.latLng.lat(), event.latLng.lng());
+              }
+            })
+          );
+        }
 
         const current = initialOptionsRef.current;
         if (current.hasPin) {
           const marker = new MarkerClass({
             map,
             position: { lat: current.lat, lng: current.lng },
-            gmpDraggable: true,
+            gmpDraggable: interactive,
             title: "Property location",
           });
           markerRef.current = marker;
-          listenersRef.current.push(
-            marker.addListener("dragend", (event) => {
-              if (event.latLng) {
-                onChangeRef.current(event.latLng.lat(), event.latLng.lng());
-              }
-            })
-          );
+          if (interactive) {
+            listenersRef.current.push(
+              marker.addListener("dragend", (event) => {
+                if (event.latLng) {
+                  onChangeRef.current(event.latLng.lat(), event.latLng.lng());
+                }
+              })
+            );
+          }
         }
         setReady(true);
       })
@@ -142,11 +160,13 @@ export default function ListingLocationPickerInner({
       for (const listener of listenersRef.current) listener.remove();
       listenersRef.current = [];
       if (markerRef.current) markerRef.current.map = null;
+      resizeObserverRef.current?.disconnect();
+      resizeObserverRef.current = null;
       markerRef.current = null;
       markerConstructorRef.current = null;
       mapRef.current = null;
     };
-  }, [key]);
+  }, [interactive, key]);
 
   React.useEffect(() => {
     const map = mapRef.current;
@@ -167,21 +187,23 @@ export default function ListingLocationPickerInner({
       const marker = new MarkerClass({
         map,
         position,
-        gmpDraggable: true,
+        gmpDraggable: interactive,
         title: "Property location",
       });
       markerRef.current = marker;
-      listenersRef.current.push(
-        marker.addListener("dragend", (event) => {
-          if (event.latLng) {
-            onChangeRef.current(event.latLng.lat(), event.latLng.lng());
-          }
-        })
-      );
+      if (interactive) {
+        listenersRef.current.push(
+          marker.addListener("dragend", (event) => {
+            if (event.latLng) {
+              onChangeRef.current(event.latLng.lat(), event.latLng.lng());
+            }
+          })
+        );
+      }
     } else if (markerRef.current) {
       markerRef.current.position = position;
     }
-  }, [hasPin, lat, lng, zoom]);
+  }, [hasPin, interactive, lat, lng, zoom]);
 
   if (!key) {
     return (

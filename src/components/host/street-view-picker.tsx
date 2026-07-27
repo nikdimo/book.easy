@@ -1,17 +1,22 @@
 "use client";
 
 import * as React from "react";
-import { Check, ImageOff, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ImageOff, Loader2 } from "lucide-react";
 import { loadGoogleMaps } from "@/lib/google-maps-browser";
+import { streetViewPanoId } from "@/lib/utils/street-view-response";
 
 type StreetViewPov = { heading: number; pitch: number };
+type MapsListener = { remove(): void };
 type StreetViewPanorama = {
   getPano(): string;
   getPov(): StreetViewPov;
+  addListener(
+    event: "pano_changed" | "pov_changed",
+    handler: () => void
+  ): MapsListener;
 };
-type StreetViewResponse = {
-  data?: { location?: { pano?: string } };
+type StreetViewPanoramaData = {
+  location?: { pano?: string };
 };
 type MapsApi = {
   StreetViewPanorama: new (
@@ -29,7 +34,7 @@ type MapsApi = {
       request:
         | { pano: string }
         | { location: { lat: number; lng: number }; radius: number },
-      callback: (response: StreetViewResponse | null, status: string) => void
+      callback: (response: StreetViewPanoramaData | null, status: string) => void
     ): void;
   };
   StreetViewStatus: { OK: string };
@@ -46,21 +51,33 @@ export function StreetViewPicker({
   longitude,
   initialSelection,
   onUseView,
+  compact = false,
+  readOnly = false,
+  fill = false,
 }: {
   latitude: number;
   longitude: number;
   initialSelection?: StreetViewSelection | null;
-  onUseView: (selection: StreetViewSelection) => void;
+  onUseView?: (selection: StreetViewSelection) => void;
+  compact?: boolean;
+  readOnly?: boolean;
+  fill?: boolean;
 }) {
   const key =
     process.env.NEXT_PUBLIC_GOOGLE_MAPS_JAVASCRIPT_API_KEY?.trim();
   const containerRef = React.useRef<HTMLDivElement>(null);
   const panoramaRef = React.useRef<StreetViewPanorama | null>(null);
+  const listenersRef = React.useRef<MapsListener[]>([]);
+  const onUseViewRef = React.useRef(onUseView);
+  const initialSelectionRef = React.useRef(initialSelection);
   const [maps, setMaps] = React.useState<MapsApi | null>(null);
   const [status, setStatus] = React.useState<
     "loading" | "ready" | "unavailable" | "error"
   >("loading");
-  const [saved, setSaved] = React.useState(Boolean(initialSelection));
+
+  React.useEffect(() => {
+    onUseViewRef.current = onUseView;
+  }, [onUseView]);
 
   React.useEffect(() => {
     if (!key) return;
@@ -84,13 +101,14 @@ export function StreetViewPicker({
 
     let cancelled = false;
     const service = new maps.StreetViewService();
-    const request = initialSelection?.panoId
-      ? { pano: initialSelection.panoId }
+    const initial = initialSelectionRef.current;
+    const request = initial?.panoId
+      ? { pano: initial.panoId }
       : { location: { lat: latitude, lng: longitude }, radius: 75 };
 
     service.getPanorama(request, (response, responseStatus) => {
       if (cancelled) return;
-      const panoId = response?.data?.location?.pano;
+      const panoId = streetViewPanoId(response);
       if (responseStatus !== maps.StreetViewStatus.OK || !panoId) {
         setStatus("unavailable");
         return;
@@ -100,10 +118,10 @@ export function StreetViewPicker({
         containerRef.current!,
         {
           pano: panoId,
-          pov: initialSelection
+          pov: initial
             ? {
-                heading: initialSelection.heading,
-                pitch: initialSelection.pitch,
+                heading: initial.heading,
+                pitch: initial.pitch,
               }
             : { heading: 0, pitch: 0 },
           visible: true,
@@ -111,14 +129,39 @@ export function StreetViewPicker({
           fullscreenControl: true,
         }
       );
+      const syncSelection = () => {
+        const panorama = panoramaRef.current;
+        if (!panorama || readOnly) return;
+        const pov = panorama.getPov();
+        const currentPanoId = panorama.getPano();
+        if (
+          !currentPanoId ||
+          !Number.isFinite(pov.heading) ||
+          !Number.isFinite(pov.pitch)
+        ) {
+          return;
+        }
+        onUseViewRef.current?.({
+          panoId: currentPanoId,
+          heading: Math.round(pov.heading * 100) / 100,
+          pitch: Math.round(pov.pitch * 100) / 100,
+        });
+      };
+      listenersRef.current = [
+        panoramaRef.current.addListener("pano_changed", syncSelection),
+        panoramaRef.current.addListener("pov_changed", syncSelection),
+      ];
       setStatus("ready");
+      syncSelection();
     });
 
     return () => {
       cancelled = true;
+      for (const listener of listenersRef.current) listener.remove();
+      listenersRef.current = [];
       panoramaRef.current = null;
     };
-  }, [initialSelection, latitude, longitude, maps]);
+  }, [latitude, longitude, maps, readOnly]);
 
   if (!key) {
     return (
@@ -128,31 +171,35 @@ export function StreetViewPicker({
     );
   }
 
-  function useCurrentView() {
-    const panorama = panoramaRef.current;
-    if (!panorama) return;
-    const pov = panorama.getPov();
-    const panoId = panorama.getPano();
-    if (!panoId || !Number.isFinite(pov.heading) || !Number.isFinite(pov.pitch)) {
-      setStatus("error");
-      return;
-    }
-    onUseView({
-      panoId,
-      heading: Math.round(pov.heading * 100) / 100,
-      pitch: Math.round(pov.pitch * 100) / 100,
-    });
-    setSaved(true);
-  }
-
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Turn the view and move along the street until guests can clearly recognize
-        the property, then approve the exact view below.
-      </p>
-      <div className="relative overflow-hidden rounded-xl border bg-muted">
-        <div ref={containerRef} className="h-[min(52vh,520px)] min-h-72 w-full" />
+    <div
+      className={
+        fill ? "h-full" : compact ? "space-y-2" : "space-y-4"
+      }
+    >
+      {!compact && (
+        <p className="text-sm text-muted-foreground">
+          Turn the view and move along the street until guests can clearly recognize
+          the property. Your selected view is saved automatically.
+        </p>
+      )}
+      <div
+        className={
+          fill
+            ? "relative h-full overflow-hidden bg-muted"
+            : "relative overflow-hidden rounded-xl border bg-muted"
+        }
+      >
+        <div
+          ref={containerRef}
+          className={
+            fill
+              ? "h-full w-full"
+              : compact
+              ? "aspect-[4/3] w-full"
+              : "h-[min(52vh,520px)] min-h-72 w-full"
+          }
+        />
         {status === "loading" && (
           <div className="absolute inset-0 flex items-center justify-center gap-2 bg-muted text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -171,17 +218,6 @@ export function StreetViewPicker({
             for this key.
           </div>
         )}
-      </div>
-      <div className="flex items-center justify-end gap-3">
-        {saved && (
-          <span className="flex items-center gap-1 text-sm text-emerald-700">
-            <Check className="h-4 w-4" />
-            View approved
-          </span>
-        )}
-        <Button type="button" disabled={status !== "ready"} onClick={useCurrentView}>
-          Use this view
-        </Button>
       </div>
     </div>
   );

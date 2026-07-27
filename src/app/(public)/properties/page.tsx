@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { PropertyCard } from "@/components/public/property-card";
 import { PropertiesExplorerClient } from "@/components/marketplace/properties-explorer-client";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -20,6 +21,7 @@ import { formatPrice, getNightCount } from "@/lib/utils/format";
 import type { MapPin } from "@/components/marketplace/properties-map";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { getT, T, ti, tPlural } from "@/lib/i18n/t";
+import { getMarketplaceSettings } from "@/lib/services/marketplace-settings.service";
 
 interface SearchPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -33,6 +35,29 @@ export const metadata = {
 export default async function PropertiesPage({ searchParams }: SearchPageProps) {
   const t = await getT();
   const params = await searchParams;
+  const marketplaceSettings = await getMarketplaceSettings();
+
+  const hasSelectedDestination =
+    typeof params.city === "string" && params.city.trim().length > 0;
+  const exploreAll = params.all === "1";
+  if (
+    !hasSelectedDestination &&
+    !exploreAll &&
+    marketplaceSettings.featuredMarketEnabled &&
+    marketplaceSettings.featuredCity &&
+    marketplaceSettings.featuredCountry
+  ) {
+    const featuredParams = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (typeof value === "string") featuredParams.append(key, value);
+      else value?.forEach((item) => featuredParams.append(key, item));
+    }
+    featuredParams.delete("all");
+    featuredParams.set("city", marketplaceSettings.featuredCity);
+    featuredParams.set("country", marketplaceSettings.featuredCountry);
+    featuredParams.set("featured", "1");
+    redirect(`/properties?${featuredParams.toString()}`);
+  }
 
   const propertyTypes = await getActivePropertyTypes();
   const allPropertyTypeValues = propertyTypes.map((t) => t.value);
@@ -84,6 +109,8 @@ export default async function PropertiesPage({ searchParams }: SearchPageProps) 
     const p = new URLSearchParams();
     if (filters.city) p.set("city", filters.city);
     if (filters.country) p.set("country", filters.country);
+    if (params.featured === "1") p.set("featured", "1");
+    if (params.all === "1") p.set("all", "1");
     if (filters.checkIn) p.set("checkIn", filters.checkIn);
     if (filters.checkOut) p.set("checkOut", filters.checkOut);
     if (filters.guests) p.set("guests", String(filters.guests));
@@ -159,6 +186,7 @@ export default async function PropertiesPage({ searchParams }: SearchPageProps) 
             totalLabel={totalLabel}
             totalCount={results.total}
             mapPins={mapPins}
+            featuredMarket={params.featured === "1"}
           >
             {results.listings.length > 0 ? (
               <>

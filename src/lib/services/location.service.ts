@@ -411,7 +411,26 @@ export async function getPlaceDetails(input: {
   const streetNumber = addressComponent(components, "street_number");
   const route = addressComponent(components, "route");
   const city = addressComponent(components, "locality", "postal_town", "administrative_area_level_3");
-  const area = addressComponent(components, "sublocality", "neighborhood", "administrative_area_level_2");
+  // Google varies this hierarchy considerably by country. In Greece, for example,
+  // locality is commonly the town while administrative_area_level_3 is the
+  // municipality. Keep the first useful district/municipality/region that is not
+  // merely a duplicate of the city.
+  const area =
+    [
+      addressComponent(
+        components,
+        "sublocality_level_1",
+        "sublocality",
+        "neighborhood"
+      ),
+      addressComponent(components, "administrative_area_level_3"),
+      addressComponent(components, "administrative_area_level_2"),
+      addressComponent(components, "administrative_area_level_1"),
+    ].find(
+      (candidate) =>
+        candidate &&
+        candidate.localeCompare(city, undefined, { sensitivity: "base" }) !== 0
+    ) ?? "";
   const country = addressComponent(components, "country");
   const countryCode =
     components.find((component) => component.types.includes("country"))?.short_name.toUpperCase() ||
@@ -422,7 +441,7 @@ export async function getPlaceDetails(input: {
     label: result.formatted_address || [route, city, country].filter(Boolean).join(", "),
     address: [streetNumber, route].filter(Boolean).join(" "),
     city,
-    area: area === city ? "" : area,
+    area,
     postalCode: addressComponent(components, "postal_code"),
     country,
     countryCode,

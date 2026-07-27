@@ -623,6 +623,14 @@ model Message {
 
 // ─── Settings ───────────────────────────────────────────────────────────────────
 
+model MarketplaceSettings {
+  id                    String   @id
+  featuredMarketEnabled Boolean  @default(false)
+  featuredCity          String?
+  featuredCountry       String?
+  updatedAt             DateTime @updatedAt
+}
+
 model Language {
   code             String    @id // ISO 639-1, e.g. "mk", "en"
   name             String

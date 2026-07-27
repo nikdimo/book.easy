@@ -34,7 +34,7 @@ export function loadGoogleMaps(
     script.src =
       "https://maps.googleapis.com/maps/api/js" +
       `?key=${encodeURIComponent(key)}` +
-      "&v=weekly&loading=async&libraries=maps,marker" +
+      "&v=weekly&loading=async&libraries=maps,marker,streetView" +
       `&callback=${callbackName}`;
     script.onerror = () => {
       delete browserWindow[callbackName];

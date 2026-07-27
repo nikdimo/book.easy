@@ -747,7 +747,7 @@
   {
     "key": "footer.explore_all",
     "sourceText": "Explore all",
-    "filePath": "src/components/shared/footer.tsx"
+    "filePath": "src/components/marketplace/properties-explorer-client.tsx"
   },
   {
     "key": "footer.host_dashboard",

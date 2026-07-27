@@ -190,6 +190,7 @@ export function PropertiesExplorerClient({
   totalLabel,
   totalCount,
   mapPins,
+  featuredMarket = false,
 }: {
   amenities: { id: string; name: string; category: string }[];
   propertyTypes: PropertyTypeOption[];
@@ -199,6 +200,7 @@ export function PropertiesExplorerClient({
   totalLabel: Resolved;
   totalCount: number;
   mapPins: MapPin[];
+  featuredMarket?: boolean;
 }) {
   const i18n = useI18n();
   const router = useRouter();
@@ -512,17 +514,36 @@ export function PropertiesExplorerClient({
             )}
           >
             {totalCount > 0 ? (
-              <h2 className="mb-6 text-2xl font-semibold tracking-tight text-foreground">
-                {(() => {
-                  const value = i18n.plural(
-                    "properties.over_results",
-                    totalCount,
-                    "Over {n} home",
-                    "Over {n} homes"
-                  );
-                  return <span className={value.translated ? "notranslate" : undefined}>{value.text}</span>;
-                })()}
-              </h2>
+              <div className="mb-6 flex items-center justify-between gap-4">
+                <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+                  {(() => {
+                    const value = i18n.plural(
+                      "properties.over_results",
+                      totalCount,
+                      "Over {n} home",
+                      "Over {n} homes"
+                    );
+                    return <span className={value.translated ? "notranslate" : undefined}>{value.text}</span>;
+                  })()}
+                </h2>
+                {featuredMarket ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="shrink-0 rounded-full text-sm font-semibold underline underline-offset-4"
+                    onClick={() =>
+                      mutateQuery((nextParams) => {
+                        nextParams.delete("city");
+                        nextParams.delete("country");
+                        nextParams.delete("featured");
+                        nextParams.set("all", "1");
+                      })
+                    }
+                  >
+                    <Tx k="footer.explore_all" source="Explore all" />
+                  </Button>
+                ) : null}
+              </div>
             ) : null}
             {children}
           </div>
