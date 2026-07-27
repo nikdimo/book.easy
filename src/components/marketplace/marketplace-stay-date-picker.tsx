@@ -1248,7 +1248,16 @@ export function MarketplaceStayDatePicker({
         else closePicker();
       }}
     >
-      <div className={cn("min-w-0", className)}>{triggers}</div>
+      {/*
+       * This control replaces several text nodes as the selected range changes.
+       * Google Translate also replaces text nodes in-place, which can leave React
+       * trying to remove nodes that are no longer its children. The app already
+       * resolves supported-language copy before rendering, so keep the interactive
+       * picker tree under React's exclusive ownership.
+       */}
+      <div className={cn("notranslate min-w-0", className)} translate="no">
+        {triggers}
+      </div>
 
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay
@@ -1263,7 +1272,9 @@ export function MarketplaceStayDatePicker({
           id={dialogContentId}
           ref={desktopContentRef}
           style={desktopContentStyle}
+          translate="no"
           className={cn(
+            "notranslate",
             useSharedDesktopShell
               ? "fixed z-[52] flex h-auto flex-col overflow-hidden rounded-[1.75rem] border-transparent bg-transparent text-popover-foreground shadow-none outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:duration-150 data-[state=open]:delay-100 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-100"
               : "fixed z-50 flex flex-col overflow-hidden border border-border/60 bg-background text-popover-foreground shadow-[0_10px_32px_rgba(0,0,0,0.16)] outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-2",
@@ -1278,7 +1289,6 @@ export function MarketplaceStayDatePicker({
                 : !useSharedDesktopShell &&
                     "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-[50rem] md:max-h-[calc(100dvh-5rem)] md:w-[44rem] md:max-w-[calc(100vw-6rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[2rem]"
           )}
-          onOpenAutoFocus={(e) => e.preventDefault()}
           onPointerDownOutside={(event) => {
             const target = event.target;
             if (
