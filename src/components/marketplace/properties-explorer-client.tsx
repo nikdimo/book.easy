@@ -208,6 +208,13 @@ export function PropertiesExplorerClient({
   const [focusedSection, setFocusedSection] =
     useState<SearchFiltersSection | null>(null);
   const [mobileView, setMobileView] = useState<"list" | "map">("list");
+  const [hoveredPinId, setHoveredPinId] = useState<string | null>(null);
+
+  const listingIdFromTarget = (target: EventTarget | null) =>
+    target instanceof Element
+      ? target.closest<HTMLElement>("[data-map-listing-id]")?.dataset
+          .mapListingId ?? null
+      : null;
 
   const allPropertyTypeValues = useMemo(
     () => propertyTypes.map((t) => t.value),
@@ -472,8 +479,32 @@ export function PropertiesExplorerClient({
         </Button>
       </div>
 
-      <div className="relative min-w-0 flex-1">
-        <div className="lg:pr-[min(42vw,560px)] xl:pr-[min(45vw,640px)]">
+      <div
+        className="relative min-w-0 flex-1"
+        onMouseOver={(event) => {
+          const listingId = listingIdFromTarget(event.target);
+          if (listingId) setHoveredPinId(listingId);
+        }}
+        onMouseOut={(event) => {
+          const fromListingId = listingIdFromTarget(event.target);
+          const toListingId = listingIdFromTarget(event.relatedTarget);
+          if (fromListingId && fromListingId !== toListingId) {
+            setHoveredPinId(null);
+          }
+        }}
+        onFocusCapture={(event) => {
+          const listingId = listingIdFromTarget(event.target);
+          if (listingId) setHoveredPinId(listingId);
+        }}
+        onBlurCapture={(event) => {
+          const fromListingId = listingIdFromTarget(event.target);
+          const toListingId = listingIdFromTarget(event.relatedTarget);
+          if (fromListingId && fromListingId !== toListingId) {
+            setHoveredPinId(null);
+          }
+        }}
+      >
+        <div className="lg:pr-[45vw] xl:pr-[48vw]">
           <div
             className={cn(
               "px-4 pt-2 pb-6 md:px-8",
@@ -500,6 +531,7 @@ export function PropertiesExplorerClient({
             <div className="fixed inset-x-0 top-[7.75rem] bottom-0 z-20 px-4 pb-4 lg:hidden">
               <PropertiesMap
                 pins={mapPins}
+                hoveredPinId={hoveredPinId}
                 className="h-full rounded-2xl border-0"
               />
             </div>
@@ -507,11 +539,15 @@ export function PropertiesExplorerClient({
         </div>
 
         <aside
-          className="pointer-events-none fixed top-20 right-0 bottom-0 z-30 hidden w-[min(42vw,560px)] border-l border-border bg-muted/20 p-3 pl-2 lg:block xl:w-[min(45vw,640px)]"
+          className="pointer-events-none absolute inset-y-0 right-0 z-30 hidden w-[45vw] border-l border-border bg-muted/20 p-3 pl-2 lg:block xl:w-[48vw]"
           aria-label={i18n.resolve("map.listings", "Map of listings").text}
         >
-          <div className="pointer-events-auto h-[calc(100dvh-5rem-1.5rem)]">
-            <PropertiesMap pins={mapPins} className="h-full rounded-2xl" />
+          <div className="pointer-events-auto sticky top-20 h-[calc(100dvh-5rem-1.5rem)]">
+            <PropertiesMap
+              pins={mapPins}
+              hoveredPinId={hoveredPinId}
+              className="h-full rounded-2xl"
+            />
           </div>
         </aside>
       </div>

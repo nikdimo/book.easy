@@ -137,7 +137,10 @@ export default function ListingsScreen() {
                   <SmallButton
                     label={t("Continue")}
                     onPress={() =>
-                      void openControlPanel(`/host/listings/new?draft=${draft.id}`)
+                      router.push({
+                        pathname: "/new-listing",
+                        params: { draft: draft.id },
+                      })
                     }
                   />
                   <IconButton

@@ -4,6 +4,7 @@ import { getPropertyTypeLabel } from "@/lib/services/property-type.service";
 import type { ListingCardSerialized } from "@/lib/serializers/listing-card";
 import { getT, T, TWithValues, tPlural } from "@/lib/i18n/t";
 import { LocalizedPrice } from "@/components/shared/localized-price";
+import { PropertyCardSpotlightMedia } from "@/components/public/property-card-spotlight-media";
 
 interface PropertyCardSpotlightProps {
   listing: ListingCardSerialized;
@@ -15,7 +16,7 @@ interface PropertyCardSpotlightProps {
  * there's enough inventory to fill a dense grid). */
 export async function PropertyCardSpotlight({ listing }: PropertyCardSpotlightProps) {
   const t = await getT();
-  const { slug, title, description, property, images, pricingRule } = listing;
+  const { slug, title, description, property, images, video, pricingRule } = listing;
   const displayImages = images.filter((img) => img.url?.trim());
   const [main, ...rest] = displayImages;
   const sideImages = rest.slice(0, 2);
@@ -32,21 +33,16 @@ export async function PropertyCardSpotlight({ listing }: PropertyCardSpotlightPr
     >
       <div className="relative grid grid-cols-3 grid-rows-2 gap-0.5 aspect-[4/3] sm:aspect-auto bg-muted">
         {main ? (
-          <div
+          <PropertyCardSpotlightMedia
+            imageUrl={main.url}
+            imageAlt={main.alt || title}
+            videoUrl={video?.url}
             className={
               sideImages.length > 0
                 ? "relative col-span-2 row-span-2"
                 : "relative col-span-3 row-span-2"
             }
-          >
-            <Image
-              src={main.url}
-              alt={main.alt || title}
-              fill
-              className="object-cover transition-transform duration-500 group-hover:scale-105"
-              sizes="(max-width: 640px) 100vw, 40vw"
-            />
-          </div>
+          />
         ) : (
           <div className="col-span-3 row-span-2 flex items-center justify-center text-muted-foreground text-sm">
             <T t={t} k="property_card.no_photos" source="No photos" />

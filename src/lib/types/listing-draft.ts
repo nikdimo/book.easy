@@ -18,6 +18,9 @@ export interface ListingDraftData {
   geocodingProvider?: string;
   geocodingPlaceId?: string;
   geocodingConfidence?: string;
+  streetViewHeading?: string;
+  streetViewPitch?: string;
+  streetViewPanoId?: string;
   maxGuests?: string;
   bedrooms?: string;
   beds?: string;

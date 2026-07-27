@@ -22,6 +22,9 @@ export type HostListingFormData = {
     geocodingProvider?: string | null;
     geocodingPlaceId?: string | null;
     geocodingConfidence?: number | null;
+    streetViewHeading?: number | null;
+    streetViewPitch?: number | null;
+    streetViewPanoId?: string | null;
   };
   pricingRule: {
     baseNightlyRate: number;
@@ -64,6 +67,9 @@ export function serializeHostListingForForm(
       geocodingProvider: listing.property.geocodingProvider,
       geocodingPlaceId: listing.property.geocodingPlaceId,
       geocodingConfidence: listing.property.geocodingConfidence,
+      streetViewHeading: listing.property.streetViewHeading,
+      streetViewPitch: listing.property.streetViewPitch,
+      streetViewPanoId: listing.property.streetViewPanoId,
     },
     pricingRule: listing.pricingRule
       ? {

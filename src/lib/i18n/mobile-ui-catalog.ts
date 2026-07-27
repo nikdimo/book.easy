@@ -301,6 +301,132 @@ export function mobileUiCatalog(translator: Translator): string[] {
       "mobile.builder.bridge",
       "The same seven-step builder opens securely and uses the same saved drafts as the web control panel."
     ),
+    t(translator, "mobile.builder.step", "Step"),
+    t(translator, "mobile.builder.back", "Back"),
+    t(translator, "mobile.builder.saving", "Saving…"),
+    t(translator, "mobile.builder.save_failed", "Save failed"),
+    t(translator, "mobile.builder.draft_saved", "Draft saved"),
+    t(translator, "mobile.builder.retry", "Retry"),
+    t(
+      translator,
+      "mobile.builder.load_error",
+      "Could not load listing editor"
+    ),
+    t(
+      translator,
+      "mobile.builder.unavailable",
+      "Listing editor unavailable"
+    ),
+    t(
+      translator,
+      "mobile.builder.draft_save_error",
+      "Draft could not be saved"
+    ),
+    t(
+      translator,
+      "mobile.builder.finish_location_web",
+      "Finish Location on the web"
+    ),
+    t(
+      translator,
+      "mobile.builder.location_web_description",
+      "Location stays in the web editor while that step is being updated. Any location already saved in this draft remains untouched."
+    ),
+    t(
+      translator,
+      "mobile.builder.open_location_web",
+      "Open Location in web editor"
+    ),
+    t(
+      translator,
+      "mobile.builder.manage_photos_web",
+      "Manage Photos on the web"
+    ),
+    t(
+      translator,
+      "mobile.builder.photos_web_description",
+      "Photos stay in the web editor for now so its existing upload, ordering, and cover-photo behavior remains unchanged."
+    ),
+    t(
+      translator,
+      "mobile.builder.open_photos_web",
+      "Open Photos in web editor"
+    ),
+    t(
+      translator,
+      "mobile.builder.finish_web",
+      "Finish in web editor"
+    ),
+    t(
+      translator,
+      "mobile.builder.amenity_selected",
+      "amenity selected"
+    ),
+    t(
+      translator,
+      "mobile.builder.amenities_selected",
+      "amenities selected"
+    ),
+    t(translator, "mobile.builder.minimum_short", "min"),
+    t(translator, "mobile.builder.ready_publish", "Ready to publish?"),
+    t(
+      translator,
+      "mobile.builder.finish_publish_description",
+      "Finish Location and Photos in the web editor, review the full listing, then publish it there."
+    ),
+    t(
+      translator,
+      "mobile.builder.choose_property_type",
+      "Choose a property type"
+    ),
+    t(translator, "mobile.builder.capacity", "Capacity"),
+    t(translator, "mobile.builder.beds", "Beds"),
+    t(translator, "mobile.builder.bathrooms", "Bathrooms"),
+    t(translator, "mobile.builder.title", "Title"),
+    t(
+      translator,
+      "mobile.builder.nightly_rate_eur",
+      "Nightly rate (EUR)"
+    ),
+    t(
+      translator,
+      "mobile.builder.cleaning_fee_eur",
+      "Cleaning fee (EUR)"
+    ),
+    t(translator, "mobile.builder.minimum_nights", "Minimum nights"),
+    t(
+      translator,
+      "mobile.builder.title_placeholder",
+      "Modern apartment near the center"
+    ),
+    t(
+      translator,
+      "mobile.builder.description_placeholder",
+      "Describe the stay, layout, neighborhood, and what makes it easy to book."
+    ),
+    t(
+      translator,
+      "mobile.builder.property_type_required",
+      "Property type is required"
+    ),
+    t(
+      translator,
+      "mobile.builder.title_minimum",
+      "Title must be at least 5 characters"
+    ),
+    t(
+      translator,
+      "mobile.builder.description_minimum",
+      "Description must be at least 20 characters"
+    ),
+    t(
+      translator,
+      "mobile.builder.nightly_rate_required",
+      "Nightly rate is required"
+    ),
+    t(translator, "mobile.builder.try_again", "Try again"),
+    t(translator, "mobile.builder.decrease", "Decrease"),
+    t(translator, "mobile.builder.increase", "Increase"),
     t(translator, "mobile.account.all_tools", "All existing host tools"),
     t(translator, "mobile.account.profile_detail", "Name, photo, and personal details"),
     t(translator, "mobile.account.browse", "Browse public properties"),

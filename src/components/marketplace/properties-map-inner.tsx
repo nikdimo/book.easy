@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   MapContainer,
   TileLayer,
@@ -22,6 +23,10 @@ export type MapPin = {
   lat: number;
   lng: number;
   label: string;
+  title: string;
+  location: string;
+  imageUrl?: string;
+  imageAlt?: string;
   /** Query string (no leading "?") carrying the current search's dates/guests to the listing page. */
   query?: string;
 };
@@ -40,13 +45,22 @@ function FitBounds({ positions }: { positions: [number, number][] }) {
   return null;
 }
 
-function priceDivIcon(label: string) {
-  const safe = label.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+function priceDivIcon(label: string, active: boolean) {
+  const safe = label
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
   return L.divIcon({
     className: "!border-0 !bg-transparent",
-    html: `<div class="whitespace-nowrap rounded-full border border-border bg-background px-2.5 py-1 text-xs font-semibold text-foreground shadow-md">${safe}</div>`,
-    iconSize: [88, 32],
-    iconAnchor: [44, 32],
+    html: `<div class="whitespace-nowrap rounded-full border px-3 py-1.5 text-sm font-semibold shadow-md transition-[transform,background-color,color,border-color] duration-150 ${
+      active
+        ? "scale-110 border-foreground bg-foreground text-background"
+        : "border-border bg-background text-foreground hover:scale-105 hover:border-foreground hover:bg-foreground hover:text-background"
+    }">${safe}</div>`,
+    iconSize: [96, 36],
+    iconAnchor: [48, 36],
   });
 }
 
@@ -62,12 +76,16 @@ function MapResize({ when }: { when: boolean }) {
 export default function PropertiesMapInner({
   pins,
   className,
+  hoveredPinId,
 }: {
   pins: MapPin[];
   className?: string;
+  hoveredPinId?: string | null;
 }) {
   const i18n = useI18n();
   const [expanded, setExpanded] = React.useState(false);
+  const [selectedPinId, setSelectedPinId] = React.useState<string | null>(null);
+  const [mapHoveredPinId, setMapHoveredPinId] = React.useState<string | null>(null);
   const positions = React.useMemo(
     () => pins.map((p) => [p.lat, p.lng] as [number, number]),
     [pins]
@@ -115,18 +133,69 @@ export default function PropertiesMapInner({
           <Marker
             key={pin.id}
             position={[pin.lat, pin.lng]}
-            icon={priceDivIcon(pin.label)}
+            icon={priceDivIcon(
+              pin.label,
+              hoveredPinId === pin.id ||
+                mapHoveredPinId === pin.id ||
+                selectedPinId === pin.id
+            )}
+            zIndexOffset={
+              hoveredPinId === pin.id ||
+              mapHoveredPinId === pin.id ||
+              selectedPinId === pin.id
+                ? 1000
+                : 0
+            }
+            eventHandlers={{
+              click: () => setSelectedPinId(pin.id),
+              mouseover: () => setMapHoveredPinId(pin.id),
+              mouseout: () => setMapHoveredPinId(null),
+              popupclose: () =>
+                setSelectedPinId((current) =>
+                  current === pin.id ? null : current
+                ),
+            }}
           >
-            <Popup>
-              <span className="text-sm font-semibold">{pin.label}</span>
-              <div className="mt-1">
-                <Link
-                  href={`/properties/${pin.slug}${pin.query ? `?${pin.query}` : ""}`}
-                  className="text-sm text-primary underline underline-offset-2"
-                >
-                  <Tx k="map.view_listing" source="View listing" />
-                </Link>
-              </div>
+            <Popup
+              className="listing-preview-popup"
+              minWidth={280}
+              maxWidth={320}
+              offset={[0, -8]}
+            >
+              <Link
+                href={`/properties/${pin.slug}${pin.query ? `?${pin.query}` : ""}`}
+                className="group block overflow-hidden rounded-2xl bg-background text-foreground"
+                aria-label={i18n.resolve("map.view_listing", "View listing").text}
+              >
+                <div className="relative aspect-[16/9] overflow-hidden bg-muted">
+                  {pin.imageUrl ? (
+                    <Image
+                      src={pin.imageUrl}
+                      alt={pin.imageAlt || pin.title}
+                      fill
+                      className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                      sizes="320px"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                      <Tx k="property_card.no_photos" source="No photos" />
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-1 px-4 py-3.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="line-clamp-1 text-sm font-semibold">
+                      {pin.location}
+                    </p>
+                    <span className="notranslate shrink-0 text-sm font-semibold" translate="no">
+                      {pin.label}
+                    </span>
+                  </div>
+                  <p className="line-clamp-2 text-sm text-muted-foreground">
+                    {pin.title}
+                  </p>
+                </div>
+              </Link>
             </Popup>
           </Marker>
         ))}

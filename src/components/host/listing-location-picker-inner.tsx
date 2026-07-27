@@ -1,89 +1,49 @@
 "use client";
 
 import * as React from "react";
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
+import { Loader2, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { loadGoogleMaps } from "@/lib/google-maps-browser";
 
-const markerIcon = L.divIcon({
-  className: "!border-0 !bg-transparent",
-  html: `<div style="width:24px;height:24px;border-radius:50% 50% 50% 0;background:var(--color-primary, #7c3f2e);transform:rotate(-45deg);box-shadow:0 1px 4px rgba(0,0,0,0.4);"></div>`,
-  iconSize: [24, 24],
-  iconAnchor: [12, 24],
-});
-
-function ClickToPlace({ onPick }: { onPick: (lat: number, lng: number) => void }) {
-  useMapEvents({
-    click(e) {
-      onPick(e.latlng.lat, e.latlng.lng);
-    },
-  });
-  return null;
-}
-
-function KeepMapSized() {
-  const map = useMap();
-
-  React.useEffect(() => {
-    const container = map.getContainer();
-    let frame = 0;
-
-    const refresh = () => {
-      window.cancelAnimationFrame(frame);
-      frame = window.requestAnimationFrame(() => {
-        if (container.clientWidth > 0 && container.clientHeight > 0) {
-          map.invalidateSize({ pan: false });
-        }
-      });
-    };
-
-    const observer = new ResizeObserver(refresh);
-    observer.observe(container);
-    if (container.parentElement) observer.observe(container.parentElement);
-    window.addEventListener("resize", refresh);
-    document.addEventListener("visibilitychange", refresh);
-    refresh();
-
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", refresh);
-      document.removeEventListener("visibilitychange", refresh);
-      window.cancelAnimationFrame(frame);
-    };
-  }, [map]);
-
-  return null;
-}
-
-function RecenterOnChange({
-  position,
-  hasPin,
-  zoom,
-}: {
-  position: [number, number];
-  hasPin: boolean;
-  /** Zoom to use while there's no pin yet — e.g. tighter once a location signal
-   *  (device GPS or IP) narrows down where the host probably is. Ignored once a pin
-   *  is placed, when the map always zooms to at least street level. */
-  zoom: number;
-}) {
-  const map = useMap();
-  const prev = React.useRef(position);
-  const prevZoom = React.useRef(zoom);
-  React.useEffect(() => {
-    const positionChanged = prev.current[0] !== position[0] || prev.current[1] !== position[1];
-    const zoomChanged = prevZoom.current !== zoom;
-    if (positionChanged || (zoomChanged && !hasPin)) {
-      map.setView(position, hasPin ? Math.max(map.getZoom(), 13) : zoom, {
-        animate: true,
-      });
-      prev.current = position;
-      prevZoom.current = zoom;
-    }
-  }, [hasPin, map, position, zoom]);
-  return null;
-}
+type MapsListener = { remove(): void };
+type GoogleLatLng = { lat(): number; lng(): number };
+type GoogleMap = {
+  addListener(
+    event: "click",
+    handler: (event: { latLng?: GoogleLatLng }) => void
+  ): MapsListener;
+  getZoom(): number | undefined;
+  setCenter(position: { lat: number; lng: number }): void;
+  setZoom(zoom: number): void;
+};
+type GoogleMarker = {
+  addListener(
+    event: "dragend",
+    handler: (event: { latLng?: GoogleLatLng }) => void
+  ): MapsListener;
+  map: GoogleMap | null;
+  position: { lat: number; lng: number } | GoogleLatLng | null;
+};
+type MapConstructor = new (
+  container: HTMLElement,
+  options: {
+    center: { lat: number; lng: number };
+    zoom: number;
+    mapId: string;
+    clickableIcons: boolean;
+    fullscreenControl: boolean;
+    mapTypeControl: boolean;
+    streetViewControl: boolean;
+    zoomControl: boolean;
+    gestureHandling: string;
+  }
+) => GoogleMap;
+type MarkerConstructor = new (options: {
+  map: GoogleMap;
+  position: { lat: number; lng: number };
+  gmpDraggable: boolean;
+  title: string;
+}) => GoogleMarker;
 
 export default function ListingLocationPickerInner({
   lat,
@@ -96,54 +56,158 @@ export default function ListingLocationPickerInner({
   lat: number;
   lng: number;
   hasPin: boolean;
-  /** Zoom to use before a pin is placed. Defaults to the whole-world view. */
   zoom?: number;
   onChange: (lat: number, lng: number) => void;
   className?: string;
 }) {
-  const position: [number, number] = [lat, lng];
-  const geoapifyMapsKey = process.env.NEXT_PUBLIC_GEOAPIFY_MAPS_KEY?.trim();
+  const key =
+    process.env.NEXT_PUBLIC_GOOGLE_MAPS_JAVASCRIPT_API_KEY?.trim();
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const mapRef = React.useRef<GoogleMap | null>(null);
+  const markerRef = React.useRef<GoogleMarker | null>(null);
+  const markerConstructorRef = React.useRef<MarkerConstructor | null>(null);
+  const listenersRef = React.useRef<MapsListener[]>([]);
+  const onChangeRef = React.useRef(onChange);
+  const initialOptionsRef = React.useRef({ lat, lng, hasPin, zoom });
+  const [ready, setReady] = React.useState(false);
+  const [loadFailed, setLoadFailed] = React.useState(false);
+
+  React.useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  React.useEffect(() => {
+    initialOptionsRef.current = { lat, lng, hasPin, zoom };
+  }, [hasPin, lat, lng, zoom]);
+
+  React.useEffect(() => {
+    if (!key) return;
+    let cancelled = false;
+
+    void loadGoogleMaps(key)
+      .then((maps) => {
+        if (cancelled || !containerRef.current) return;
+        const MapClass = maps.Map as MapConstructor;
+        const MarkerClass = (
+          maps.marker as { AdvancedMarkerElement: MarkerConstructor }
+        ).AdvancedMarkerElement;
+        const initial = initialOptionsRef.current;
+        const map = new MapClass(containerRef.current, {
+          center: { lat: initial.lat, lng: initial.lng },
+          zoom: initial.hasPin ? 17 : initial.zoom,
+          mapId: "DEMO_MAP_ID",
+          clickableIcons: false,
+          fullscreenControl: true,
+          mapTypeControl: true,
+          streetViewControl: false,
+          zoomControl: true,
+          gestureHandling: "greedy",
+        });
+
+        mapRef.current = map;
+        markerConstructorRef.current = MarkerClass;
+        listenersRef.current.push(
+          map.addListener("click", (event) => {
+            if (event.latLng) {
+              onChangeRef.current(event.latLng.lat(), event.latLng.lng());
+            }
+          })
+        );
+
+        const current = initialOptionsRef.current;
+        if (current.hasPin) {
+          const marker = new MarkerClass({
+            map,
+            position: { lat: current.lat, lng: current.lng },
+            gmpDraggable: true,
+            title: "Property location",
+          });
+          markerRef.current = marker;
+          listenersRef.current.push(
+            marker.addListener("dragend", (event) => {
+              if (event.latLng) {
+                onChangeRef.current(event.latLng.lat(), event.latLng.lng());
+              }
+            })
+          );
+        }
+        setReady(true);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadFailed(true);
+      });
+
+    return () => {
+      cancelled = true;
+      for (const listener of listenersRef.current) listener.remove();
+      listenersRef.current = [];
+      if (markerRef.current) markerRef.current.map = null;
+      markerRef.current = null;
+      markerConstructorRef.current = null;
+      mapRef.current = null;
+    };
+  }, [key]);
+
+  React.useEffect(() => {
+    const map = mapRef.current;
+    const MarkerClass = markerConstructorRef.current;
+    if (!map) return;
+
+    const position = { lat, lng };
+    map.setCenter(position);
+    map.setZoom(hasPin ? Math.max(map.getZoom() ?? 17, 17) : zoom);
+
+    if (!hasPin) {
+      if (markerRef.current) markerRef.current.map = null;
+      markerRef.current = null;
+      return;
+    }
+
+    if (!markerRef.current && MarkerClass) {
+      const marker = new MarkerClass({
+        map,
+        position,
+        gmpDraggable: true,
+        title: "Property location",
+      });
+      markerRef.current = marker;
+      listenersRef.current.push(
+        marker.addListener("dragend", (event) => {
+          if (event.latLng) {
+            onChangeRef.current(event.latLng.lat(), event.latLng.lng());
+          }
+        })
+      );
+    } else if (markerRef.current) {
+      markerRef.current.position = position;
+    }
+  }, [hasPin, lat, lng, zoom]);
+
+  if (!key) {
+    return (
+      <div className={cn("flex items-center justify-center bg-muted", className)}>
+        <p className="text-sm text-muted-foreground">
+          Google Maps isn&apos;t configured.
+        </p>
+      </div>
+    );
+  }
 
   return (
-    // `isolate` pins Leaflet's internal z-index values (its controls/panes go up to
-    // 1000) inside this element's own stacking context, so they can never render above
-    // page chrome outside the map — e.g. the wizard's sticky Back/Continue footer bar.
-    <div className={cn("relative isolate overflow-hidden rounded-lg border", className)}>
-      <MapContainer
-        center={position}
-        zoom={hasPin ? 13 : zoom}
-        className="h-full w-full min-h-[280px] z-0"
-        scrollWheelZoom
-      >
-        {geoapifyMapsKey ? (
-          <TileLayer
-            attribution='&copy; <a href="https://www.geoapify.com/">Geoapify</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url={`https://maps.geoapify.com/v1/tile/osm-bright/{z}/{x}/{y}.png?apiKey=${geoapifyMapsKey}`}
-          />
-        ) : (
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-        )}
-        <KeepMapSized />
-        <ClickToPlace onPick={onChange} />
-        <RecenterOnChange position={position} hasPin={hasPin} zoom={zoom} />
-        {hasPin && (
-          <Marker
-            position={position}
-            icon={markerIcon}
-            draggable
-            eventHandlers={{
-              dragend: (e) => {
-                const m = e.target as L.Marker;
-                const { lat: newLat, lng: newLng } = m.getLatLng();
-                onChange(newLat, newLng);
-              },
-            }}
-          />
-        )}
-      </MapContainer>
+    <div className={cn("relative isolate overflow-hidden bg-muted", className)}>
+      <div ref={containerRef} className="h-full min-h-96 w-full" />
+      {!ready && !loadFailed && (
+        <div className="absolute inset-0 flex items-center justify-center gap-2 bg-muted text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading Google Maps…
+        </div>
+      )}
+      {loadFailed && (
+        <div className="absolute inset-0 flex items-center justify-center gap-2 bg-muted px-6 text-center text-sm text-destructive">
+          <MapPin className="h-4 w-4" />
+          Google Maps couldn&apos;t load. Check the API key restrictions.
+        </div>
+      )}
     </div>
   );
 }

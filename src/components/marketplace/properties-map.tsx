@@ -15,9 +15,17 @@ export type { MapPin };
 export function PropertiesMap({
   pins,
   className,
+  hoveredPinId,
 }: {
   pins: MapPin[];
   className?: string;
+  hoveredPinId?: string | null;
 }) {
-  return <PropertiesMapInner pins={pins} className={className} />;
+  return (
+    <PropertiesMapInner
+      pins={pins}
+      className={className}
+      hoveredPinId={hoveredPinId}
+    />
+  );
 }

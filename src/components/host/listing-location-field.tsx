@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import {
   AlertCircle,
   CheckCircle2,
+  ChevronLeft,
   ChevronRight,
   Link2,
   Loader2,
@@ -17,22 +18,20 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogClose,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { resolveMapsLink } from "@/lib/actions/listing.actions";
 import { parseCoordsFromMapsText } from "@/lib/utils/parse-maps-link";
-import { StreetViewPreview } from "@/components/host/street-view-preview";
+import {
+  StreetViewPicker,
+  type StreetViewSelection,
+} from "@/components/host/street-view-picker";
 
 const ListingLocationPickerInner = dynamic(
   () => import("./listing-location-picker-inner"),
@@ -59,6 +58,9 @@ export type ListingLocationValue = {
   geocodingProvider: string;
   geocodingPlaceId: string;
   geocodingConfidence: string;
+  streetViewHeading: string;
+  streetViewPitch: string;
+  streetViewPanoId: string;
 };
 
 /** A resolved location with full coordinates and address parts — what place-details,
@@ -144,11 +146,17 @@ function LocationSummaryRow({
 export function ListingLocationField({
   value,
   onChange,
+  onManualAddressChange,
+  addressErrors,
   active = true,
-  onHasLocationChange,
 }: {
   value: ListingLocationValue;
   onChange: (patch: Partial<ListingLocationValue>) => void;
+  onManualAddressChange?: (
+    field: "address" | "city" | "area" | "postalCode" | "country",
+    value: string
+  ) => void;
+  addressErrors?: Partial<Record<"address" | "city" | "country", string>>;
   /** Whether this field is the step the host is currently looking at. The listing
    *  wizard keeps every step's fields mounted at once (just hidden via CSS) so it can
    *  validate and preview across steps — without this, the geolocation prompt below
@@ -156,16 +164,30 @@ export function ListingLocationField({
    *  reaches the location step, which is both surprising and something some browsers
    *  quietly refuse to prompt for outside a real user action. */
   active?: boolean;
-  /** The parent shows its own "Address details" summary row/drawer only once a
-   *  location has actually been picked — this reports that instead of the parent
-   *  duplicating the coordinate-parsing logic below. */
-  onHasLocationChange?: (hasLocation: boolean) => void;
 }) {
   const initialLat = finiteCoordinate(value.latitude, -90, 90);
   const initialLng = finiteCoordinate(value.longitude, -180, 180);
   const hasPin = initialLat !== null && initialLng !== null;
-  const [whereOpen, setWhereOpen] = React.useState(!hasPin);
-  const [streetViewOpen, setStreetViewOpen] = React.useState(false);
+  const [whereOpen, setWhereOpen] = React.useState(false);
+  const [modalView, setModalView] = React.useState<"map" | "streetView">("map");
+  const autoOpenedRef = React.useRef(false);
+  const initialStreetViewSelection = React.useMemo(
+    () =>
+      value.streetViewPanoId &&
+      Number.isFinite(Number(value.streetViewHeading)) &&
+      Number.isFinite(Number(value.streetViewPitch))
+        ? {
+            panoId: value.streetViewPanoId,
+            heading: Number(value.streetViewHeading),
+            pitch: Number(value.streetViewPitch),
+          }
+        : null,
+    [
+      value.streetViewHeading,
+      value.streetViewPanoId,
+      value.streetViewPitch,
+    ]
+  );
   const [mapCenter, setMapCenter] = React.useState<[number, number]>(
     hasPin ? [initialLat, initialLng] : WORLD_CENTER
   );
@@ -191,8 +213,11 @@ export function ListingLocationField({
   const sessionTokenRef = React.useRef(newSessionToken());
 
   React.useEffect(() => {
-    onHasLocationChange?.(hasPin);
-  }, [hasPin, onHasLocationChange]);
+    if (!active || hasPin || autoOpenedRef.current) return;
+    autoOpenedRef.current = true;
+    const timeout = window.setTimeout(() => setWhereOpen(true), 0);
+    return () => window.clearTimeout(timeout);
+  }, [active, hasPin]);
 
   React.useEffect(() => {
     if (hasPin || !active) return;
@@ -330,7 +355,6 @@ export function ListingLocationField({
     source: "AUTOCOMPLETE" | "MANUAL_PIN" | "BROWSER_LOCATION" | "MAPS_LINK"
   ) {
     setMapCenter([result.latitude, result.longitude]);
-    setWhereOpen(false);
     onChange({
       address: result.address,
       city: result.city,
@@ -340,7 +364,7 @@ export function ListingLocationField({
       latitude: String(result.latitude),
       longitude: String(result.longitude),
       locationSource: source,
-      locationConfirmed: "true",
+      locationConfirmed: "false",
       geocodingProvider: source === "AUTOCOMPLETE" ? "GOOGLE_PLACES" : "GEOAPIFY",
       geocodingPlaceId: result.placeId,
       geocodingConfidence: "",
@@ -390,12 +414,11 @@ export function ListingLocationField({
   ) {
     const request = ++reverseRequestRef.current;
     setMapCenter([latitude, longitude]);
-    setWhereOpen(false);
     onChange({
       latitude: String(latitude),
       longitude: String(longitude),
       locationSource: source,
-      locationConfirmed: "true",
+      locationConfirmed: "false",
       geocodingProvider: "",
       geocodingPlaceId: "",
       geocodingConfidence: "",
@@ -428,7 +451,7 @@ export function ListingLocationField({
           latitude: String(latitude),
           longitude: String(longitude),
           locationSource: source,
-          locationConfirmed: "true",
+          locationConfirmed: "false",
           geocodingProvider: "GEOAPIFY",
           geocodingPlaceId: payload.result.placeId,
           geocodingConfidence: "",
@@ -547,6 +570,7 @@ export function ListingLocationField({
   function handleWhereOpenChange(open: boolean) {
     setWhereOpen(open);
     if (open) {
+      setModalView("map");
       setQuery("");
       setLinkValue("");
       setLinkOpen(false);
@@ -557,7 +581,6 @@ export function ListingLocationField({
   const latitude = initialLat ?? mapCenter[0];
   const longitude = initialLng ?? mapCenter[1];
   const confirmed = hasPin && value.locationConfirmed === "true";
-  const stale = hasPin && !confirmed;
   const locationSummary = hasPin
     ? [value.address, value.city, value.country].filter(Boolean).join(", ") ||
       `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
@@ -568,8 +591,8 @@ export function ListingLocationField({
     // places (loading spinners, the confirmed/stale badge, the coordinate readout) as
     // state changes. Google Translate's live DOM translation restructures whatever it
     // touches, and React's next update to that same subtree can then throw
-    // ("insertBefore: not a child of this node") — see the StreetViewPreview fix for
-    // the same issue. This whole form is host-only, plain-English UI with no i18n
+    // ("insertBefore: not a child of this node"). This whole form is host-only,
+    // plain-English UI with no i18n
     // integration already, so nothing is lost by keeping Translate out of it.
     <div className="notranslate space-y-2">
       <LocationSummaryRow
@@ -591,229 +614,360 @@ export function ListingLocationField({
         onClick={() => handleWhereOpenChange(true)}
       />
 
-      {hasPin && (
-        <LocationSummaryRow
-          label="Street view"
-          summary="See what the street looks like near this pin"
-          onClick={() => setStreetViewOpen(true)}
-        />
-      )}
+      <Dialog open={whereOpen} onOpenChange={handleWhereOpenChange}>
+        <DialogContent
+          showCloseButton={false}
+          className="grid h-[min(92dvh,820px)] w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] grid-rows-[auto_minmax(0,1fr)] gap-0 overflow-hidden rounded-2xl p-0 sm:w-[96vw] sm:max-w-[80rem]"
+        >
+          <DialogHeader className="flex h-16 shrink-0 flex-row items-center gap-3 border-b px-5">
+            {modalView === "streetView" && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setModalView("map")}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span className="sr-only">Back to map</span>
+              </Button>
+            )}
+            <div>
+              <DialogTitle className="text-lg">
+                {modalView === "map" ? "Where is your property?" : "Choose the street view"}
+              </DialogTitle>
+              <DialogDescription className="mt-1">
+                {modalView === "map"
+                  ? "Search or place the pin exactly where guests will stay."
+                  : "Move along the street and turn the camera to the best view."}
+              </DialogDescription>
+            </div>
+            <DialogClose asChild>
+              <Button type="button" variant="ghost" size="sm" className="ml-auto">
+                Close
+              </Button>
+            </DialogClose>
+          </DialogHeader>
 
-      <Sheet open={whereOpen} onOpenChange={handleWhereOpenChange}>
-        <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>Where is the property?</SheetTitle>
-          </SheetHeader>
-          <div className="notranslate space-y-4 px-4 pb-6">
-            <div className="space-y-2">
-              <Label htmlFor="address-search" className="text-sm font-semibold">
-                Search
-              </Label>
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="address-search"
-                  role="combobox"
-                  aria-autocomplete="list"
-                  aria-expanded={predictions.length > 0}
-                  aria-controls="address-search-results"
-                  aria-activedescendant={
-                    activePrediction >= 0 ? `address-result-${activePrediction}` : undefined
-                  }
-                  autoComplete="off"
-                  className="pl-9 pr-9"
-                  placeholder="Search for an address, business, or place"
-                  value={query}
-                  onChange={(event) => {
-                    const nextQuery = event.target.value;
-                    selectedQueryRef.current = "";
-                    setQuery(nextQuery);
-                    setActivePrediction(-1);
-                    if (nextQuery.trim().length < 2) {
-                      setPredictions([]);
-                      setSearching(false);
-                      setSearchError("");
-                    }
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "ArrowDown" && predictions.length > 0) {
-                      event.preventDefault();
-                      setActivePrediction((current) => Math.min(predictions.length - 1, current + 1));
-                    } else if (event.key === "ArrowUp" && predictions.length > 0) {
-                      event.preventDefault();
-                      setActivePrediction((current) => Math.max(0, current - 1));
-                    } else if (event.key === "Enter" && activePrediction >= 0) {
-                      event.preventDefault();
-                      selectPrediction(predictions[activePrediction]);
-                    } else if (event.key === "Escape") {
-                      setPredictions([]);
-                      setActivePrediction(-1);
-                    }
-                  }}
-                  onBlur={() => {
-                    window.setTimeout(() => setPredictions([]), 150);
+          {modalView === "streetView" && hasPin ? (
+            <div className="min-h-0 flex-1 overflow-y-auto p-5">
+              {process.env.NEXT_PUBLIC_GOOGLE_MAPS_JAVASCRIPT_API_KEY ? (
+                <StreetViewPicker
+                  key={`${latitude.toFixed(5)},${longitude.toFixed(5)}`}
+                  latitude={latitude}
+                  longitude={longitude}
+                  initialSelection={initialStreetViewSelection}
+                  onUseView={(selection: StreetViewSelection) => {
+                    onChange({
+                      streetViewHeading: String(selection.heading),
+                      streetViewPitch: String(selection.pitch),
+                      streetViewPanoId: selection.panoId,
+                    });
+                    setModalView("map");
                   }}
                 />
-                {(searching || resolving) && (
-                  <Loader2 className="absolute right-3 top-3 h-4 w-4 animate-spin text-muted-foreground" />
-                )}
-                {predictions.length > 0 && (
-                  <div
-                    id="address-search-results"
-                    role="listbox"
-                    className="absolute z-[1000] mt-1 max-h-64 w-full overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-lg"
-                  >
-                    {predictions.map((prediction, index) => (
-                      <button
-                        id={`address-result-${index}`}
-                        key={prediction.placeId}
-                        type="button"
-                        role="option"
-                        aria-selected={activePrediction === index}
-                        className={`flex w-full items-start gap-2 rounded-md px-3 py-2 text-left text-sm ${
-                          activePrediction === index ? "bg-muted" : "hover:bg-muted"
-                        }`}
-                        onMouseDown={(event) => event.preventDefault()}
-                        onClick={() => selectPrediction(prediction)}
-                      >
-                        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                        <span>{prediction.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              {searchError && (
-                <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                  <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                  {searchError}. You can still set the exact location another way below.
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  The interactive Street View picker isn&apos;t configured.
                 </p>
               )}
             </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={locating || resolving}
-                onClick={() => setLocationDialogOpen(true)}
-              >
-                {locating ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <LocateFixed className="h-4 w-4" />
-                )}
-                Use my current location
-              </Button>
-              {!linkOpen && (
-                <Button type="button" variant="outline" onClick={() => setLinkOpen(true)}>
-                  <Link2 className="h-4 w-4" />
-                  Paste a Google Maps link
-                </Button>
-              )}
-            </div>
-            {locationMessage && (
-              <p className="flex items-start gap-1.5 text-xs text-muted-foreground" aria-live="polite">
-                <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                {locationMessage}
-              </p>
-            )}
-
-            {linkOpen && (
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Paste a Google Maps link"
-                  value={linkValue}
-                  autoFocus
-                  onChange={(event) => setLinkValue(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      void applyLink();
-                    }
+          ) : (
+            <div className="grid min-h-0 flex-1 grid-rows-[minmax(20rem,1fr)_auto] lg:grid-cols-[minmax(0,1fr)_23rem] lg:grid-rows-1">
+              <section className="relative min-h-0 overflow-hidden bg-muted">
+                <ListingLocationPickerInner
+                  lat={latitude}
+                  lng={longitude}
+                  hasPin={hasPin}
+                  zoom={mapZoom}
+                  className="h-full min-h-[22rem] w-full"
+                  onChange={(nextLat, nextLng) => {
+                    void setCoordinates(nextLat, nextLng, "MANUAL_PIN");
                   }}
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => void applyLink()}
-                  disabled={resolving || !linkValue.trim()}
-                >
-                  {resolving ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Link2 className="h-4 w-4" />
-                  )}
-                  Use link
-                </Button>
-              </div>
-            )}
 
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <Label>{hasPin ? "Confirm the exact location" : "Or click the map to drop a pin"}</Label>
-                {confirmed ? (
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                    Location confirmed
-                  </span>
-                ) : stale ? (
-                  <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-700 dark:text-amber-400">
-                    <AlertCircle className="h-3.5 w-3.5" />
-                    Confirm location again
-                  </span>
-                ) : null}
-              </div>
-              <ListingLocationPickerInner
-                lat={latitude}
-                lng={longitude}
-                hasPin={hasPin}
-                zoom={mapZoom}
-                onChange={(nextLat, nextLng) => {
-                  void setCoordinates(nextLat, nextLng, "MANUAL_PIN");
-                }}
-              />
-              <p className="text-xs text-muted-foreground">
-                {hasPin ? "Drag the pin to fine-tune it." : "The map starts near your approximate location."}
-              </p>
-              {hasPin && (
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  {resolving ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <MapPin className="h-3.5 w-3.5" />
+                <div className="absolute left-4 right-4 top-4 z-10 max-w-xl space-y-2 lg:right-auto lg:w-[min(34rem,calc(100%-2rem))]">
+                  <div className="relative rounded-xl bg-background shadow-[0_4px_24px_rgba(0,0,0,0.22)]">
+                    <Search className="pointer-events-none absolute left-4 top-3.5 h-5 w-5 text-muted-foreground" />
+                    <Input
+                      id="address-search"
+                      role="combobox"
+                      aria-autocomplete="list"
+                      aria-expanded={predictions.length > 0}
+                      aria-controls="address-search-results"
+                      aria-activedescendant={
+                        activePrediction >= 0
+                          ? `address-result-${activePrediction}`
+                          : undefined
+                      }
+                      autoComplete="off"
+                      className="h-12 border-0 bg-transparent pl-12 pr-11 text-base shadow-none focus-visible:ring-0"
+                      placeholder="Search Google for an address or place"
+                      value={query}
+                      onChange={(event) => {
+                        const nextQuery = event.target.value;
+                        selectedQueryRef.current = "";
+                        setQuery(nextQuery);
+                        setActivePrediction(-1);
+                        if (nextQuery.trim().length < 2) {
+                          setPredictions([]);
+                          setSearching(false);
+                          setSearchError("");
+                        }
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "ArrowDown" && predictions.length > 0) {
+                          event.preventDefault();
+                          setActivePrediction((current) =>
+                            Math.min(predictions.length - 1, current + 1)
+                          );
+                        } else if (event.key === "ArrowUp" && predictions.length > 0) {
+                          event.preventDefault();
+                          setActivePrediction((current) => Math.max(0, current - 1));
+                        } else if (event.key === "Enter" && activePrediction >= 0) {
+                          event.preventDefault();
+                          selectPrediction(predictions[activePrediction]);
+                        } else if (event.key === "Escape") {
+                          setPredictions([]);
+                          setActivePrediction(-1);
+                        }
+                      }}
+                      onBlur={() => {
+                        window.setTimeout(() => setPredictions([]), 150);
+                      }}
+                    />
+                    {(searching || resolving) && (
+                      <Loader2 className="absolute right-4 top-3.5 h-5 w-5 animate-spin text-muted-foreground" />
+                    )}
+                    {predictions.length > 0 && (
+                      <div
+                        id="address-search-results"
+                        role="listbox"
+                        className="absolute left-0 right-0 top-[calc(100%+0.5rem)] max-h-72 overflow-y-auto rounded-xl border bg-popover p-1 text-popover-foreground shadow-xl"
+                      >
+                        {predictions.map((prediction, index) => (
+                          <button
+                            id={`address-result-${index}`}
+                            key={prediction.placeId}
+                            type="button"
+                            role="option"
+                            aria-selected={activePrediction === index}
+                            className={`flex w-full items-start gap-3 rounded-lg px-3 py-3 text-left text-sm ${
+                              activePrediction === index ? "bg-muted" : "hover:bg-muted"
+                            }`}
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => selectPrediction(prediction)}
+                          >
+                            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                            <span>{prediction.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  {searchError && (
+                    <p className="rounded-lg bg-background/95 px-3 py-2 text-xs text-destructive shadow">
+                      {searchError}
+                    </p>
                   )}
-                  <span>
-                    {latitude.toFixed(6)}, {longitude.toFixed(6)}
-                  </span>
+                  {linkOpen && (
+                    <div className="flex gap-2 rounded-xl bg-background p-2 shadow-lg">
+                      <Input
+                        placeholder="Paste a Google Maps link"
+                        value={linkValue}
+                        autoFocus
+                        onChange={(event) => setLinkValue(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            void applyLink();
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        onClick={() => void applyLink()}
+                        disabled={resolving || !linkValue.trim()}
+                      >
+                        Use link
+                      </Button>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
 
-      <Sheet open={streetViewOpen} onOpenChange={setStreetViewOpen}>
-        <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto">
-          <SheetHeader>
-            <SheetTitle>Street view near this pin</SheetTitle>
-          </SheetHeader>
-          <div className="px-4 pb-6">
-            {process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? (
-              // Remounts each time the drawer opens on a (possibly new) pin position so
-              // its "checking" state resets cleanly — see StreetViewPreview for why
-              // that's done via key instead of an effect-internal reset.
-              <StreetViewPreview
-                key={`${latitude.toFixed(5)},${longitude.toFixed(5)}`}
-                latitude={latitude}
-                longitude={longitude}
-              />
-            ) : (
-              <p className="text-sm text-muted-foreground">Street view isn&apos;t configured.</p>
-            )}
-          </div>
-        </SheetContent>
-      </Sheet>
+                <div className="absolute bottom-5 left-4 z-10 flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="bg-background shadow-lg hover:bg-background/90"
+                    disabled={locating || resolving}
+                    onClick={() => setLocationDialogOpen(true)}
+                  >
+                    {locating ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <LocateFixed className="h-4 w-4" />
+                    )}
+                    My location
+                  </Button>
+                  {!linkOpen && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="bg-background shadow-lg hover:bg-background/90"
+                      onClick={() => setLinkOpen(true)}
+                    >
+                      <Link2 className="h-4 w-4" />
+                      Maps link
+                    </Button>
+                  )}
+                </div>
+              </section>
+
+              <aside className="flex max-h-[43dvh] min-h-0 flex-col border-t bg-background lg:max-h-none lg:border-l lg:border-t-0">
+                <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
+                  <div>
+                    <p className="text-sm font-semibold">
+                      {hasPin ? "Confirm the details" : "Choose a point on the map"}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {hasPin
+                        ? "Drag the pin if you need to fine-tune the entrance."
+                        : "Search above or click the map to place the property pin."}
+                    </p>
+                  </div>
+
+                  {hasPin && (
+                    <>
+                      <div className="rounded-xl border bg-muted/35 p-3">
+                        <p className="flex items-start gap-2 text-sm font-medium">
+                          <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                          <span>{locationSummary}</span>
+                        </p>
+                        <p className="mt-2 pl-6 text-xs text-muted-foreground">
+                          {latitude.toFixed(6)}, {longitude.toFixed(6)}
+                        </p>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="location-address">Address</Label>
+                          <Input
+                            id="location-address"
+                            value={value.address}
+                            onChange={(event) =>
+                              onManualAddressChange?.("address", event.target.value)
+                            }
+                            placeholder="Street and building number"
+                          />
+                          {addressErrors?.address && (
+                            <p className="text-xs text-destructive">
+                              {addressErrors.address}
+                            </p>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <Label htmlFor="location-city">City</Label>
+                            <Input
+                              id="location-city"
+                              value={value.city}
+                              onChange={(event) =>
+                                onManualAddressChange?.("city", event.target.value)
+                              }
+                            />
+                            {addressErrors?.city && (
+                              <p className="text-xs text-destructive">
+                                {addressErrors.city}
+                              </p>
+                            )}
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor="location-postal">Postal code</Label>
+                            <Input
+                              id="location-postal"
+                              value={value.postalCode}
+                              onChange={(event) =>
+                                onManualAddressChange?.("postalCode", event.target.value)
+                              }
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <Label htmlFor="location-area">Area</Label>
+                            <Input
+                              id="location-area"
+                              value={value.area}
+                              onChange={(event) =>
+                                onManualAddressChange?.("area", event.target.value)
+                              }
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label htmlFor="location-country">Country</Label>
+                            <Input
+                              id="location-country"
+                              value={value.country}
+                              onChange={(event) =>
+                                onManualAddressChange?.("country", event.target.value)
+                              }
+                            />
+                            {addressErrors?.country && (
+                              <p className="text-xs text-destructive">
+                                {addressErrors.country}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setModalView("streetView")}
+                        className="flex w-full items-center justify-between rounded-xl border p-3 text-left transition-colors hover:bg-muted"
+                      >
+                        <span>
+                          <span className="block text-sm font-medium">Street View</span>
+                          <span className="block text-xs text-muted-foreground">
+                            {initialStreetViewSelection
+                              ? "Approved — tap to adjust"
+                              : "Choose what guests will see"}
+                          </span>
+                        </span>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      </button>
+                    </>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between gap-3 border-t p-4">
+                  <span className="text-xs text-muted-foreground">
+                    {resolving ? "Finding the address…" : locationMessage}
+                  </span>
+                  <Button
+                    type="button"
+                    disabled={!hasPin || resolving}
+                    onClick={() => {
+                      if (
+                        value.address.trim().length < 3 ||
+                        value.city.trim().length < 2 ||
+                        value.country.trim().length < 2
+                      ) {
+                        toast.error("Complete the address details before confirming");
+                        return;
+                      }
+                      onChange({ locationConfirmed: "true" });
+                      setWhereOpen(false);
+                    }}
+                  >
+                    Confirm location
+                  </Button>
+                </div>
+              </aside>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={locationDialogOpen} onOpenChange={setLocationDialogOpen}>
         <DialogContent>

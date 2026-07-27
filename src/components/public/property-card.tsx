@@ -36,6 +36,8 @@ interface PropertyCardProps {
   nightCount?: number;
   /** Query string (no leading "?") carrying the current search's dates/guests to the listing page. */
   searchQuery?: string;
+  /** Connects this card to its price marker when rendered in the marketplace explorer. */
+  mapListingId?: string;
 }
 
 /** Server component — only the photo gallery and save button need client interactivity
@@ -46,6 +48,7 @@ export async function PropertyCard({
   checkOut,
   nightCount,
   searchQuery,
+  mapListingId,
 }: PropertyCardProps) {
   const t = await getT();
   const { slug, title, property, images, video, pricingRule } = listing;
@@ -84,7 +87,10 @@ export async function PropertyCard({
     : null;
 
   return (
-    <div className="flex flex-col gap-3">
+    <div
+      className="flex flex-col gap-3"
+      data-map-listing-id={mapListingId}
+    >
       <PropertyCardGallery
         href={href}
         title={title}

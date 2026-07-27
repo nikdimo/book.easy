@@ -66,6 +66,42 @@ export interface ListingsResponse {
   drafts: { id: string; title: string; currentStep: number; updatedAt: string }[];
 }
 
+export interface ListingDraftData {
+  currentStep?: number;
+  title?: string;
+  description?: string;
+  propertyType?: string;
+  maxGuests?: string;
+  bedrooms?: string;
+  beds?: string;
+  bathrooms?: string;
+  baseNightlyRate?: string;
+  cleaningFee?: string;
+  minNights?: string;
+  amenityIds?: string[];
+}
+
+export interface ListingEditorResponse {
+  propertyTypes: {
+    value: string;
+    label: string;
+    icon: string;
+    description: string;
+  }[];
+  amenities: {
+    id: string;
+    name: string;
+    category: string;
+    icon: string | null;
+  }[];
+}
+
+export interface ListingDraftResponse {
+  draftId: string;
+  data: ListingDraftData;
+  updatedAt: string;
+}
+
 export interface BookingSummary {
   id: string;
   listingId: string;

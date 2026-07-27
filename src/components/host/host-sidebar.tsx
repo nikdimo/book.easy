@@ -78,7 +78,13 @@ function SidebarNavLinks({
   );
 }
 
-function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+function SidebarContent({
+  onNavigate,
+  languages,
+}: {
+  onNavigate?: () => void;
+  languages?: Awaited<ReturnType<typeof getEnabledLanguages>>;
+}) {
   const router = useRouter();
   const { data: session, update } = useSession();
   const user = session?.user;
@@ -132,6 +138,14 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       </div>
 
       <div className="mt-auto pt-6 border-t border-border space-y-2">
+        {languages && (
+          <div className="flex items-center justify-between rounded-lg px-1 py-1">
+            <span className="px-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Language
+            </span>
+            <GoogleTranslateWidget languages={languages} />
+          </div>
+        )}
         {user ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -271,7 +285,7 @@ export function HostSidebar({
         style={{ width: sidebarWidth }}
       >
         <aside className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto p-4">
-          <SidebarContent />
+          <SidebarContent languages={languages} />
         </aside>
         <div
           role="separator"

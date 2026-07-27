@@ -136,6 +136,10 @@ export default async function PropertiesPage({ searchParams }: SearchPageProps) 
       lat: coordinates.lat,
       lng: coordinates.lng,
       label,
+      title: l.title,
+      location: [l.property.area, l.property.city].filter(Boolean).join(", "),
+      imageUrl: l.images.find((image) => image.url?.trim())?.url,
+      imageAlt: l.images.find((image) => image.url?.trim())?.alt ?? undefined,
       query: listingQueryString,
     }];
   });
@@ -167,6 +171,7 @@ export default async function PropertiesPage({ searchParams }: SearchPageProps) 
                       checkOut={filters.checkOut}
                       nightCount={nightCount}
                       searchQuery={listingQueryString}
+                      mapListingId={listing.id}
                     />
                   ))}
                 </div>

@@ -1235,6 +1235,11 @@
     "filePath": "src/components/public/property-card-gallery.tsx"
   },
   {
+    "key": "listing.see_street_view",
+    "sourceText": "See street view",
+    "filePath": "src/components/public/property-street-view.tsx"
+  },
+  {
     "key": "listing.share",
     "sourceText": "Share",
     "filePath": "src/components/public/listing-actions.tsx"
@@ -1243,6 +1248,16 @@
     "key": "listing.share_failed",
     "sourceText": "Could not share",
     "filePath": "src/components/public/listing-actions.tsx"
+  },
+  {
+    "key": "listing.street_view",
+    "sourceText": "Street view",
+    "filePath": "src/components/public/property-street-view.tsx"
+  },
+  {
+    "key": "listing.street_view_selected_by_host",
+    "sourceText": "Street view selected by the host",
+    "filePath": "src/components/public/property-street-view.tsx"
   },
   {
     "key": "listing.submit_report",
@@ -1390,8 +1405,48 @@
     "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
   },
   {
+    "key": "mobile.builder.amenities_selected",
+    "sourceText": "amenities selected",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.amenity_selected",
+    "sourceText": "amenity selected",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.back",
+    "sourceText": "Back",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.bathrooms",
+    "sourceText": "Bathrooms",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.beds",
+    "sourceText": "Beds",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
     "key": "mobile.builder.bridge",
     "sourceText": "The same seven-step builder opens securely and uses the same saved drafts as the web control panel.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.capacity",
+    "sourceText": "Capacity",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.choose_property_type",
+    "sourceText": "Choose a property type",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.cleaning_fee_eur",
+    "sourceText": "Cleaning fee (EUR)",
     "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
   },
   {
@@ -1400,13 +1455,138 @@
     "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
   },
   {
+    "key": "mobile.builder.decrease",
+    "sourceText": "Decrease",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.description_minimum",
+    "sourceText": "Description must be at least 20 characters",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.description_placeholder",
+    "sourceText": "Describe the stay, layout, neighborhood, and what makes it easy to book.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.draft_save_error",
+    "sourceText": "Draft could not be saved",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.draft_saved",
+    "sourceText": "Draft saved",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.finish_location_web",
+    "sourceText": "Finish Location on the web",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.finish_publish_description",
+    "sourceText": "Finish Location and Photos in the web editor, review the full listing, then publish it there.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.finish_web",
+    "sourceText": "Finish in web editor",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.increase",
+    "sourceText": "Increase",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.load_error",
+    "sourceText": "Could not load listing editor",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.location_web_description",
+    "sourceText": "Location stays in the web editor while that step is being updated. Any location already saved in this draft remains untouched.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.manage_photos_web",
+    "sourceText": "Manage Photos on the web",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.minimum_nights",
+    "sourceText": "Minimum nights",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.minimum_short",
+    "sourceText": "min",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
     "key": "mobile.builder.new_listing",
     "sourceText": "NEW LISTING",
     "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
   },
   {
+    "key": "mobile.builder.nightly_rate_eur",
+    "sourceText": "Nightly rate (EUR)",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.nightly_rate_required",
+    "sourceText": "Nightly rate is required",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.open_location_web",
+    "sourceText": "Open Location in web editor",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.open_photos_web",
+    "sourceText": "Open Photos in web editor",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.photos_web_description",
+    "sourceText": "Photos stay in the web editor for now so its existing upload, ordering, and cover-photo behavior remains unchanged.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.property_type_required",
+    "sourceText": "Property type is required",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.ready_publish",
+    "sourceText": "Ready to publish?",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.retry",
+    "sourceText": "Retry",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.save_failed",
+    "sourceText": "Save failed",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
     "key": "mobile.builder.saved",
     "sourceText": "Your progress is saved as a draft after every step.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.saving",
+    "sourceText": "Saving…",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.step",
+    "sourceText": "Step",
     "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
   },
   {
@@ -1477,6 +1657,31 @@
   {
     "key": "mobile.builder.step_property_type_description",
     "sourceText": "What kind of place will guests book?",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.title",
+    "sourceText": "Title",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.title_minimum",
+    "sourceText": "Title must be at least 5 characters",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.title_placeholder",
+    "sourceText": "Modern apartment near the center",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.try_again",
+    "sourceText": "Try again",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.builder.unavailable",
+    "sourceText": "Listing editor unavailable",
     "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
   },
   {
@@ -2362,7 +2567,7 @@
   {
     "key": "property_card.no_photos",
     "sourceText": "No photos",
-    "filePath": "src/components/public/property-card-gallery.tsx"
+    "filePath": "src/components/marketplace/properties-map-inner.tsx"
   },
   {
     "key": "property_card.per_night",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent, DragEvent } from "react";
 import {
   closestCenter,
@@ -22,7 +22,15 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, ImagePlus, Loader2, Trash2, Upload } from "lucide-react";
+import {
+  CircleAlert,
+  GripVertical,
+  ImagePlus,
+  Loader2,
+  RotateCcw,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -30,25 +38,138 @@ import { Label } from "@/components/ui/label";
 import type { ListingMediaItem } from "@/lib/types/listing-media";
 import { cn } from "@/lib/utils";
 
+export interface ListingMediaUploadState {
+  active: boolean;
+  progress: number;
+  message: string;
+}
+
 interface ListingImagesFieldProps {
   initialItems?: ListingMediaItem[];
   items?: ListingMediaItem[];
   onItemsChange?: (
     next: ListingMediaItem[] | ((current: ListingMediaItem[]) => ListingMediaItem[])
   ) => void;
+  onUploadStateChange?: (state: ListingMediaUploadState) => void;
+}
+
+type UploadTaskStatus = "queued" | "uploading" | "processing" | "error";
+
+interface UploadTask {
+  id: string;
+  file: File;
+  previewUrl: string;
+  mediaType: "IMAGE" | "VIDEO";
+  progress: number;
+  status: UploadTaskStatus;
+  error?: string;
+}
+
+interface UploadResponse {
+  error?: string;
+  url?: string;
+  mediaType?: string;
+}
+
+const MAX_PARALLEL_UPLOADS = 3;
+
+function fileMediaType(file: File): "IMAGE" | "VIDEO" {
+  return file.type.startsWith("video/") ||
+    /\.(mp4|mov|webm)$/i.test(file.name)
+    ? "VIDEO"
+    : "IMAGE";
+}
+
+function uploadErrorMessage(status: number, data: UploadResponse): string {
+  if (status === 413) {
+    return "Video is too large for the server. Maximum upload size is 50 MB.";
+  }
+  return data.error || `Upload failed (${status})`;
+}
+
+function uploadFile(
+  task: UploadTask,
+  onProgress: (progress: number) => void,
+  onProcessing: () => void
+): Promise<{ url: string; mediaType: "IMAGE" | "VIDEO" }> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const formData = new FormData();
+    formData.set("file", task.file);
+
+    xhr.open("POST", "/api/upload");
+    xhr.withCredentials = true;
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        onProgress(Math.round((event.loaded / event.total) * 100));
+      }
+    };
+    xhr.upload.onload = onProcessing;
+    xhr.onerror = () => reject(new Error("Check your connection and try again."));
+    xhr.onabort = () => reject(new Error("Upload cancelled."));
+    xhr.onload = () => {
+      let data: UploadResponse = {};
+      try {
+        data = xhr.responseText ? JSON.parse(xhr.responseText) : {};
+      } catch {
+        // Reverse proxies can return an HTML error page, notably for HTTP 413.
+      }
+
+      if (xhr.status < 200 || xhr.status >= 300) {
+        reject(new Error(uploadErrorMessage(xhr.status, data)));
+        return;
+      }
+
+      if (
+        data.url &&
+        (data.mediaType === "IMAGE" || data.mediaType === "VIDEO")
+      ) {
+        resolve({ url: data.url, mediaType: data.mediaType });
+        return;
+      }
+
+      reject(new Error("The server returned an invalid upload response."));
+    };
+    xhr.send(formData);
+  });
 }
 
 export function ListingImagesField({
   initialItems = [],
   items,
   onItemsChange,
+  onUploadStateChange,
 }: ListingImagesFieldProps) {
   const [internalItems, setInternalItems] = useState<ListingMediaItem[]>(initialItems);
-  const [uploading, setUploading] = useState(false);
+  const [uploadTasks, setUploadTasks] = useState<UploadTask[]>([]);
   const [dropActive, setDropActive] = useState(false);
   const [activeId, setActiveId] = useState<UniqueIdentifier | null>(null);
+  const previewUrlsRef = useRef(new Set<string>());
 
   const mediaItems = items ?? internalItems;
+  const activeUploadTasks = useMemo(
+    () => uploadTasks.filter((task) => task.status !== "error"),
+    [uploadTasks]
+  );
+  const uploading = activeUploadTasks.length > 0;
+  const uploadProgress = useMemo(() => {
+    if (activeUploadTasks.length === 0) return 0;
+    const total = activeUploadTasks.reduce((sum, task) => {
+      if (task.status === "processing") return sum + 95;
+      if (task.status === "queued") return sum;
+      return sum + task.progress * 0.9;
+    }, 0);
+    return Math.round(total / activeUploadTasks.length);
+  }, [activeUploadTasks]);
+  const processingCount = activeUploadTasks.filter(
+    (task) => task.status === "processing"
+  ).length;
+  const uploadMessage =
+    processingCount > 0
+      ? `Processing ${processingCount} ${processingCount === 1 ? "file" : "files"}`
+      : `Uploading ${activeUploadTasks.length} ${
+          activeUploadTasks.length === 1 ? "file" : "files"
+        }`;
   const sortableItems = mediaItems.map((item, index) => ({
     id: `${item.mediaType}-${item.url}-${index}`,
     ...item,
@@ -64,6 +185,22 @@ export function ListingImagesField({
     })
   );
 
+  useEffect(() => {
+    onUploadStateChange?.({
+      active: uploading,
+      progress: uploadProgress,
+      message: uploading ? uploadMessage : "",
+    });
+  }, [onUploadStateChange, uploadMessage, uploadProgress, uploading]);
+
+  useEffect(() => {
+    const previewUrls = previewUrlsRef.current;
+    return () => {
+      for (const url of previewUrls) URL.revokeObjectURL(url);
+      previewUrls.clear();
+    };
+  }, []);
+
   function updateItems(
     next: ListingMediaItem[] | ((current: ListingMediaItem[]) => ListingMediaItem[])
   ) {
@@ -71,57 +208,97 @@ export function ListingImagesField({
     onItemsChange?.(next);
   }
 
-  async function uploadFiles(files: FileList | File[]) {
-    const fileList = Array.from(files);
-    if (fileList.length === 0) return;
+  function updateUploadTask(
+    taskId: string,
+    update: Partial<Pick<UploadTask, "status" | "progress" | "error">>
+  ) {
+    setUploadTasks((current) =>
+      current.map((task) => (task.id === taskId ? { ...task, ...update } : task))
+    );
+  }
 
-    setUploading(true);
+  function releasePreviewUrl(url: string) {
+    window.requestAnimationFrame(() => {
+      URL.revokeObjectURL(url);
+      previewUrlsRef.current.delete(url);
+    });
+  }
+
+  async function runUploadTask(task: UploadTask) {
+    updateUploadTask(task.id, {
+      status: "uploading",
+      progress: 0,
+      error: undefined,
+    });
+
     try {
-      for (const file of fileList) {
-        try {
-          const formData = new FormData();
-          formData.set("file", file);
-          const res = await fetch("/api/upload", {
-            method: "POST",
-            body: formData,
-            credentials: "same-origin",
-          });
-          const responseText = await res.text();
-          let data: { error?: string; url?: string; mediaType?: string } = {};
-          try {
-            data = responseText ? JSON.parse(responseText) : {};
-          } catch {
-            // Reverse proxies can return an HTML error page (notably for HTTP 413).
-          }
-
-          if (!res.ok) {
-            const message =
-              res.status === 413
-                ? "Video is too large for the server. Maximum upload size is 50 MB."
-                : data.error || `Upload failed (${res.status})`;
-            toast.error(message);
-            continue;
-          }
-          const uploadedUrl = data.url;
-          const uploadedMediaType = data.mediaType;
-          if (
-            uploadedUrl &&
-            (uploadedMediaType === "IMAGE" || uploadedMediaType === "VIDEO")
-          ) {
-            updateItems((prev) => [
-              ...prev,
-              { url: uploadedUrl, mediaType: uploadedMediaType },
-            ]);
-          } else {
-            toast.error("The server returned an invalid upload response. Please try again.");
-          }
-        } catch {
-          toast.error(`Couldn't upload ${file.name}. Check your connection and try again.`);
-        }
-      }
-    } finally {
-      setUploading(false);
+      const uploaded = await uploadFile(
+        task,
+        (progress) => updateUploadTask(task.id, { progress }),
+        () =>
+          updateUploadTask(task.id, {
+            status: "processing",
+            progress: 100,
+          })
+      );
+      updateItems((current) => [...current, uploaded]);
+      setUploadTasks((current) =>
+        current.filter((currentTask) => currentTask.id !== task.id)
+      );
+      releasePreviewUrl(task.previewUrl);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Upload failed. Please try again.";
+      updateUploadTask(task.id, {
+        status: "error",
+        error: message,
+      });
+      toast.error(`${task.file.name}: ${message}`);
     }
+  }
+
+  async function runUploadQueue(tasks: UploadTask[]) {
+    let nextIndex = 0;
+    const workerCount = Math.min(MAX_PARALLEL_UPLOADS, tasks.length);
+    await Promise.all(
+      Array.from({ length: workerCount }, async () => {
+        while (nextIndex < tasks.length) {
+          const task = tasks[nextIndex];
+          nextIndex += 1;
+          await runUploadTask(task);
+        }
+      })
+    );
+  }
+
+  async function uploadFiles(files: FileList | File[]) {
+    const tasks = Array.from(files).map((file, index) => {
+      const previewUrl = URL.createObjectURL(file);
+      previewUrlsRef.current.add(previewUrl);
+      return {
+        id: `${Date.now()}-${index}-${crypto.randomUUID()}`,
+        file,
+        previewUrl,
+        mediaType: fileMediaType(file),
+        progress: 0,
+        status: "queued" as const,
+      };
+    });
+    if (tasks.length === 0) return;
+
+    setUploadTasks((current) => [...current, ...tasks]);
+    await runUploadQueue(tasks);
+  }
+
+  function retryUpload(task: UploadTask) {
+    void runUploadTask(task);
+  }
+
+  function removeUploadTask(task: UploadTask) {
+    setUploadTasks((current) =>
+      current.filter((currentTask) => currentTask.id !== task.id)
+    );
+    releasePreviewUrl(task.previewUrl);
   }
 
   async function onFileChange(e: ChangeEvent<HTMLInputElement>) {
@@ -221,7 +398,7 @@ export function ListingImagesField({
               {uploading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Uploading
+                  Uploading {uploadProgress}%
                 </>
               ) : (
                 <>
@@ -232,9 +409,39 @@ export function ListingImagesField({
             </label>
           </Button>
         </div>
+        {uploading && (
+          <div
+            className="mt-4 rounded-lg border bg-background p-3 shadow-sm"
+            role="status"
+            aria-live="polite"
+          >
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <span className="flex items-center gap-2 font-medium">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                {uploadMessage}
+              </span>
+              <span className="tabular-nums text-muted-foreground">
+                {uploadProgress}%
+              </span>
+            </div>
+            <div
+              className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"
+              role="progressbar"
+              aria-label="Media upload progress"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={uploadProgress}
+            >
+              <div
+                className="h-full rounded-full bg-primary transition-[width] duration-200"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
-      {mediaItems.length > 0 ? (
+      {mediaItems.length > 0 || uploadTasks.length > 0 ? (
         <DndContext
           id="listing-images-dnd"
           sensors={sensors}
@@ -253,6 +460,14 @@ export function ListingImagesField({
                   index={index}
                   isCover={index === 0 && item.mediaType === "IMAGE"}
                   onRemove={() => removeAt(index)}
+                />
+              ))}
+              {uploadTasks.map((task) => (
+                <PendingUploadTile
+                  key={task.id}
+                  task={task}
+                  onRetry={() => retryUpload(task)}
+                  onRemove={() => removeUploadTask(task)}
                 />
               ))}
             </ul>
@@ -281,6 +496,107 @@ export function ListingImagesField({
         />
       ))}
     </div>
+  );
+}
+
+function PendingUploadTile({
+  task,
+  onRetry,
+  onRemove,
+}: {
+  task: UploadTask;
+  onRetry: () => void;
+  onRemove: () => void;
+}) {
+  const failed = task.status === "error";
+  const statusLabel =
+    task.status === "queued"
+      ? "Waiting to upload"
+      : task.status === "processing"
+        ? "Processing"
+        : task.status === "uploading"
+          ? `Uploading ${task.progress}%`
+          : "Upload failed";
+
+  return (
+    <li className="relative aspect-[4/3] overflow-hidden rounded-lg border bg-muted">
+      {task.mediaType === "VIDEO" ? (
+        <video
+          src={task.previewUrl}
+          className="h-full w-full object-cover"
+          muted
+          playsInline
+          preload="metadata"
+        />
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={task.previewUrl}
+          alt=""
+          className="h-full w-full object-cover"
+        />
+      )}
+      <div
+        className={cn(
+          "absolute inset-0 flex flex-col justify-end p-3 text-white",
+          failed ? "bg-black/65" : "bg-gradient-to-t from-black/75 via-black/20 to-black/10"
+        )}
+      >
+        <p className="truncate text-xs font-medium" title={task.file.name}>
+          {task.file.name}
+        </p>
+        {failed ? (
+          <>
+            <p className="mt-1 line-clamp-2 flex items-start gap-1 text-[11px] text-white/85">
+              <CircleAlert className="mt-0.5 h-3 w-3 shrink-0" />
+              {task.error}
+            </p>
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={onRetry}
+                className="inline-flex min-h-7 items-center gap-1 rounded-md bg-white px-2 text-[11px] font-medium text-black transition-colors hover:bg-white/90"
+              >
+                <RotateCcw className="h-3 w-3" />
+                Retry
+              </button>
+              <button
+                type="button"
+                onClick={onRemove}
+                className="inline-flex min-h-7 items-center gap-1 rounded-md border border-white/40 px-2 text-[11px] font-medium transition-colors hover:bg-white/10"
+              >
+                <Trash2 className="h-3 w-3" />
+                Remove
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="mt-1 flex items-center gap-1.5 text-[11px]">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              {statusLabel}
+            </div>
+            <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/30">
+              <div
+                className={cn(
+                  "h-full rounded-full bg-white transition-[width] duration-200",
+                  task.status === "processing" && "animate-pulse"
+                )}
+                style={{
+                  width: `${
+                    task.status === "processing"
+                      ? 95
+                      : task.status === "queued"
+                        ? 6
+                        : Math.max(6, task.progress)
+                  }%`,
+                }}
+              />
+            </div>
+          </>
+        )}
+      </div>
+    </li>
   );
 }
 

@@ -244,6 +244,76 @@ body {
   }
 
   .listing-workspace > [data-pane] {
-    display: block !important;
+    display: flex !important;
+  }
+}
+
+/* The guest preview lives in a resizable pane, so it responds to the pane
+   width instead of the browser viewport. This mirrors the public listing's
+   two-thirds content / one-third booking layout without squeezing the card. */
+.listing-guest-preview {
+  container-type: inline-size;
+}
+
+.listing-guest-preview-layout {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@container (min-width: 780px) {
+  .listing-guest-preview-layout {
+    grid-template-columns: minmax(0, 2fr) minmax(300px, 1fr);
+    column-gap: 3.5rem;
+  }
+
+  .listing-guest-preview-booking {
+    position: sticky;
+    top: 1rem;
+    align-self: start;
+    max-width: none;
+  }
+}
+/* Listing-map previews intentionally replace Leaflet's speech-bubble chrome with
+   the same rounded, image-led card language used by the search results. */
+.listing-preview-popup .leaflet-popup-content-wrapper {
+  overflow: hidden;
+  border-radius: 1rem;
+  padding: 0;
+  box-shadow:
+    0 18px 48px rgb(15 23 42 / 0.18),
+    0 2px 8px rgb(15 23 42 / 0.12);
+}
+
+.listing-preview-popup .leaflet-popup-content {
+  width: 320px !important;
+  margin: 0;
+}
+
+.leaflet-container .listing-preview-popup a {
+  color: var(--foreground);
+}
+
+.listing-preview-popup .leaflet-popup-tip {
+  box-shadow: 3px 3px 6px rgb(15 23 42 / 0.08);
+}
+
+.listing-preview-popup .leaflet-popup-close-button {
+  top: 0.65rem !important;
+  right: 0.65rem !important;
+  z-index: 2;
+  display: grid;
+  width: 2rem !important;
+  height: 2rem !important;
+  place-items: center;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 0.92) !important;
+  color: #171717 !important;
+  font-size: 1.35rem !important;
+  line-height: 1 !important;
+  box-shadow: 0 1px 5px rgb(15 23 42 / 0.18);
+}
+
+@media (max-width: 420px) {
+  .listing-preview-popup .leaflet-popup-content {
+    width: min(280px, calc(100vw - 3rem)) !important;
   }
 }

@@ -4,7 +4,7 @@ import { useActionState, useCallback, useEffect, useMemo, useRef, useState, useT
 import type { CSSProperties, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Bath, Bed, BedDouble, CalendarDays, ChevronLeft, ChevronRight, Eye, GripVertical, ListChecks, Loader2, MapPin, Pencil, ShieldCheck, Users } from "lucide-react";
+import { Bath, Bed, BedDouble, CalendarDays, ChevronLeft, ChevronRight, CircleAlert, Eye, GripVertical, ListChecks, Loader2, MapPin, Pencil, ShieldCheck, Users } from "lucide-react";
 import {
   saveListingDraft,
   submitNewListing,
@@ -31,12 +31,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { formatPrice } from "@/lib/utils/format";
 import { splitDescriptionPreview } from "@/lib/utils/description-preview";
 import { toast } from "sonner";
@@ -91,6 +85,9 @@ type ListingFormValues = {
   geocodingProvider: string;
   geocodingPlaceId: string;
   geocodingConfidence: string;
+  streetViewHeading: string;
+  streetViewPitch: string;
+  streetViewPanoId: string;
   maxGuests: string;
   bedrooms: string;
   beds: string;
@@ -209,6 +206,15 @@ function listingInitialValues(
         listing.property.geocodingConfidence != null
           ? String(listing.property.geocodingConfidence)
           : "",
+      streetViewHeading:
+        listing.property.streetViewHeading != null
+          ? String(listing.property.streetViewHeading)
+          : "",
+      streetViewPitch:
+        listing.property.streetViewPitch != null
+          ? String(listing.property.streetViewPitch)
+          : "",
+      streetViewPanoId: listing.property.streetViewPanoId ?? "",
       maxGuests: String(listing.maxGuests),
       bedrooms: String(listing.bedrooms),
       beds: String(listing.beds),
@@ -235,6 +241,9 @@ function listingInitialValues(
     geocodingProvider: draft?.geocodingProvider ?? "",
     geocodingPlaceId: draft?.geocodingPlaceId ?? "",
     geocodingConfidence: draft?.geocodingConfidence ?? "",
+    streetViewHeading: draft?.streetViewHeading ?? "",
+    streetViewPitch: draft?.streetViewPitch ?? "",
+    streetViewPanoId: draft?.streetViewPanoId ?? "",
     maxGuests: draft?.maxGuests || "2",
     bedrooms: draft?.bedrooms || "1",
     beds: draft?.beds || "1",
@@ -248,16 +257,105 @@ function listingInitialValues(
 /** Subset of listingFormSchema's rules worth showing inline, as-you-go, rather than
  * only after a full submit attempt. */
 const FIELD_VALIDATORS: Partial<Record<keyof ListingFormValues, (value: string) => string | null>> = {
-  title: (v) => (v.trim().length < 5 ? "Title must be at least 5 characters" : null),
+  title: (v) =>
+    v.trim().length < 5
+      ? "Title must be at least 5 characters"
+      : v.trim().length > 100
+        ? "Title must be 100 characters or fewer"
+        : null,
   description: (v) =>
-    v.trim().length < 20 ? "Description must be at least 20 characters" : null,
+    v.trim().length < 20
+      ? "Description must be at least 20 characters"
+      : v.trim().length > 5000
+        ? "Description must be 5,000 characters or fewer"
+        : null,
   propertyType: (v) => (v ? null : "Property type is required"),
   address: (v) => (v.trim().length < 3 ? "Address is required" : null),
   city: (v) => (v.trim().length < 2 ? "City is required" : null),
   country: (v) => (v.trim().length < 2 ? "Country is required" : null),
+  maxGuests: (v) =>
+    !Number.isInteger(Number(v)) || Number(v) < 1 || Number(v) > 20
+      ? "Guests must be between 1 and 20"
+      : null,
+  bedrooms: (v) =>
+    !Number.isInteger(Number(v)) || Number(v) < 0 || Number(v) > 20
+      ? "Bedrooms must be between 0 and 20"
+      : null,
+  beds: (v) =>
+    !Number.isInteger(Number(v)) || Number(v) < 0 || Number(v) > 40
+      ? "Beds must be between 0 and 40"
+      : null,
+  bathrooms: (v) =>
+    !Number.isInteger(Number(v)) || Number(v) < 0 || Number(v) > 20
+      ? "Bathrooms must be between 0 and 20"
+      : null,
   baseNightlyRate: (v) =>
-    !v || Number(v) < 1 ? "Nightly rate is required" : null,
+    !v || !Number.isFinite(Number(v)) || Number(v) < 1
+      ? "Nightly rate must be at least €1"
+      : null,
+  cleaningFee: (v) =>
+    v === "" || !Number.isFinite(Number(v)) || Number(v) < 0
+      ? "Cleaning fee cannot be negative"
+      : null,
+  minNights: (v) =>
+    !Number.isInteger(Number(v)) || Number(v) < 1
+      ? "Minimum stay must be at least 1 night"
+      : null,
 };
+
+type ListingStepIssue = {
+  field: string;
+  message: string;
+};
+
+function listingStepIssues(
+  step: number,
+  values: ListingFormValues,
+  photoCount: number,
+  uploadActive: boolean
+): ListingStepIssue[] {
+  const fieldsByStep: Partial<Record<number, (keyof ListingFormValues)[]>> = {
+    0: ["propertyType"],
+    1: ["address", "city", "country"],
+    2: ["maxGuests", "bedrooms", "beds", "bathrooms"],
+    5: ["title", "description"],
+    6: ["baseNightlyRate", "cleaningFee", "minNights"],
+  };
+
+  const issues: ListingStepIssue[] = (fieldsByStep[step] ?? []).flatMap((field) => {
+    const message = FIELD_VALIDATORS[field]?.(values[field]);
+    return message ? [{ field, message }] : [];
+  });
+
+  if (step === 1) {
+    const hasPin = Boolean(values.latitude) && Boolean(values.longitude);
+    if (!hasPin || values.locationConfirmed !== "true") {
+      issues.unshift({
+        field: "locationConfirmed",
+        message: hasPin
+          ? "Confirm the selected location to continue"
+          : "Choose and confirm a location to continue",
+      });
+    }
+  }
+
+  if (step === 4) {
+    if (uploadActive) {
+      issues.push({
+        field: "mediaUpload",
+        message: "Wait for all photo and video uploads to finish",
+      });
+    } else if (photoCount < 3) {
+      const remaining = 3 - photoCount;
+      issues.push({
+        field: "media",
+        message: `Add ${remaining} more ${remaining === 1 ? "photo" : "photos"} to continue`,
+      });
+    }
+  }
+
+  return issues;
+}
 
 function FieldSection({
   title,
@@ -312,12 +410,6 @@ export function ListingForm({
   const [values, setValues] = useState<ListingFormValues>(() =>
     listingInitialValues(listing, initialDraft)
   );
-  // Mirrors ListingLocationField's own hasPin state (see its onHasLocationChange) so
-  // the "Address details" summary row/drawer below it only appears once a location
-  // has actually been picked. Guessed from the initial values so there's no flash on
-  // load; ListingLocationField's first onHasLocationChange call corrects it either way.
-  const [hasLocation, setHasLocation] = useState(Boolean(values.latitude));
-  const [addressDrawerOpen, setAddressDrawerOpen] = useState(false);
   const [mediaItems, setMediaItems] = useState<ListingMediaItem[]>(() =>
     resolveInitialMediaItems(initialMediaItems, initialDraft)
   );
@@ -333,6 +425,7 @@ export function ListingForm({
   );
   const draftIdRef = useRef<string | null>(initialDraftId ?? null);
   const saveRequestRef = useRef(0);
+  const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved");
   const initialStep = isEditing ? 0 : normalizeListingStep(initialDraft?.currentStep);
   const [currentStep, setCurrentStep] = useState(initialStep);
@@ -358,6 +451,12 @@ export function ListingForm({
   const photoCount = mediaItems.filter(
     (item) => item.mediaType !== "VIDEO"
   ).length;
+  const issuesByStep = STEPS.map((_, step) =>
+    listingStepIssues(step, values, photoCount, mediaUploadState.active)
+  );
+  const currentStepIssues = issuesByStep[currentStep] ?? [];
+  const currentStepReady = currentStepIssues.length === 0;
+  const listingReady = issuesByStep.every((issues) => issues.length === 0);
 
   const [state, formAction, isPending] = useActionState(
     async (_prev: { error?: string; success?: boolean } | undefined, formData: FormData) => {
@@ -380,8 +479,8 @@ export function ListingForm({
   // yet, so leaving the page (or the tab crashing) doesn't lose it. Not validated —
   // partial/empty values are expected. No-op once editing a real listing, which is
   // already persisted.
-  const autosaveDraft = useCallback(async (stepOverride?: number) => {
-    if (isEditing || !formRef.current) return true;
+  const autosaveDraft = useCallback((stepOverride?: number): Promise<boolean> => {
+    if (isEditing || !formRef.current) return Promise.resolve(true);
     const request = ++saveRequestRef.current;
     setSaveStatus("saving");
     const fd = new FormData(formRef.current);
@@ -389,15 +488,31 @@ export function ListingForm({
       "currentStep",
       String(normalizeListingStep(stepOverride ?? currentStepRef.current))
     );
-    const result = await saveListingDraft(draftIdRef.current, fd);
-    if (result && "draftId" in result) {
-      draftIdRef.current = result.draftId;
-      if (request === saveRequestRef.current) setSaveStatus("saved");
-      return true;
-    } else if (request === saveRequestRef.current) {
-      setSaveStatus("error");
-    }
-    return false;
+
+    const save = saveQueueRef.current.then(async () => {
+      try {
+        const result = await saveListingDraft(draftIdRef.current, fd);
+        if (result && "draftId" in result) {
+          draftIdRef.current = result.draftId;
+          if (request === saveRequestRef.current) setSaveStatus("saved");
+          return true;
+        }
+      } catch {
+        // The latest queued save owns the visible failure state below.
+      }
+
+      if (request === saveRequestRef.current) setSaveStatus("error");
+      return false;
+    });
+
+    // Draft writes are intentionally serialized. An upload completion can queue a
+    // Photos save at almost the same moment the host advances; allowing those writes
+    // to race could persist the older Photos step after the newer Description step.
+    saveQueueRef.current = save.then(
+      () => undefined,
+      () => undefined
+    );
+    return save;
   }, [isEditing]);
 
   // Keep the preview instant while batching text edits into a quiet background save.
@@ -467,6 +582,14 @@ export function ListingForm({
       // have — skip any the host has typed over by hand instead of clobbering their
       // correction with it.
       const filtered = { ...patch };
+      const pinMoved =
+        ("latitude" in filtered && filtered.latitude !== current.latitude) ||
+        ("longitude" in filtered && filtered.longitude !== current.longitude);
+      if (pinMoved) {
+        filtered.streetViewHeading = "";
+        filtered.streetViewPitch = "";
+        filtered.streetViewPanoId = "";
+      }
       for (const field of LOCATION_TEXT_FIELDS) {
         if (manuallyEditedLocationFields.has(field)) {
           delete filtered[field];
@@ -612,6 +735,9 @@ export function ListingForm({
       geocodingProvider: values.geocodingProvider || undefined,
       geocodingPlaceId: values.geocodingPlaceId || undefined,
       geocodingConfidence: values.geocodingConfidence || undefined,
+      streetViewHeading: values.streetViewHeading || undefined,
+      streetViewPitch: values.streetViewPitch || undefined,
+      streetViewPanoId: values.streetViewPanoId || undefined,
       maxGuests: values.maxGuests,
       bedrooms: values.bedrooms,
       bathrooms: values.bathrooms,
@@ -801,7 +927,12 @@ export function ListingForm({
               {saveStatus === "error" && <Button type="button" variant="link" onClick={() => void autosaveDraft()}>Retry</Button>}
               <Button
                 type="button"
-                disabled={isSubmittingNew || mediaUploadState.active}
+                disabled={isSubmittingNew || !listingReady}
+                title={
+                  listingReady
+                    ? undefined
+                    : "Complete all required listing steps before publishing"
+                }
                 onClick={handleSubmitForReview}
               >
                 {mediaUploadState.active ? (
@@ -943,7 +1074,12 @@ export function ListingForm({
                   type="button"
                   size="sm"
                   className="shrink-0"
-                  disabled={isSubmittingNew || mediaUploadState.active}
+                  disabled={isSubmittingNew || !listingReady}
+                  title={
+                    listingReady
+                      ? undefined
+                      : "Complete all required listing steps before publishing"
+                  }
                   onClick={handleSubmitForReview}
                 >
                   {mediaUploadState.active ? (
@@ -1073,7 +1209,7 @@ export function ListingForm({
                               ...current,
                               propertyType: "",
                             }));
-                            setTimeout(() => void autosaveDraft(), 0);
+                            window.setTimeout(() => goToStep(1), 0);
                           }}
                         >
                           <span
@@ -1127,8 +1263,30 @@ export function ListingForm({
             <ListingLocationField
               value={values}
               onChange={updateLocation}
+              onManualAddressChange={(field, nextValue) =>
+                setField(field, nextValue)
+              }
+              addressErrors={{
+                address: fieldErrors.address,
+                city: fieldErrors.city,
+                country: fieldErrors.country,
+              }}
               active={isEditing || currentStep === 1}
-              onHasLocationChange={setHasLocation}
+            />
+            <input
+              type="hidden"
+              name="streetViewHeading"
+              value={values.streetViewHeading}
+            />
+            <input
+              type="hidden"
+              name="streetViewPitch"
+              value={values.streetViewPitch}
+            />
+            <input
+              type="hidden"
+              name="streetViewPanoId"
+              value={values.streetViewPanoId}
             />
             <FieldError
               message={
@@ -1137,127 +1295,13 @@ export function ListingForm({
                 fieldErrors.longitude
               }
             />
-            {hasLocation && (
-              <button
-                type="button"
-                onClick={() => setAddressDrawerOpen(true)}
-                className="flex w-full items-center justify-between gap-3 rounded-lg border px-4 py-3 text-left transition-colors hover:bg-muted/50"
-              >
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">Address details</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {[values.address, values.city, values.country].filter(Boolean).join(", ") ||
-                      "Tap to fill in"}
-                  </p>
-                </div>
-                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-              </button>
-            )}
-            {/* Unlike a CSS-hidden div, Radix's Sheet/Dialog content unmounts entirely
-               while closed — which this drawer is, almost always. These hidden inputs
-               are the actual source of truth for form submission (`new
-               FormData(formRef.current)` in autosaveDraft/publish); the visible
-               Inputs inside the Sheet below have no `name` and exist purely to edit
-               `values` via React state, same division of labor as latitude/longitude
-               etc. at the bottom of this component. */}
+            {/* The location editor is portaled and unmounts when closed, so these
+               hidden inputs remain the source of truth for autosave and publishing. */}
             <input type="hidden" name="address" value={values.address} />
             <input type="hidden" name="city" value={values.city} />
             <input type="hidden" name="area" value={values.area} />
             <input type="hidden" name="postalCode" value={values.postalCode} />
             <input type="hidden" name="country" value={values.country} />
-            <Sheet open={hasLocation && addressDrawerOpen} onOpenChange={setAddressDrawerOpen}>
-              <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto">
-                <SheetHeader>
-                  <SheetTitle>Address details</SheetTitle>
-                </SheetHeader>
-                <div className="space-y-4 px-4 pb-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="address">Address</Label>
-                    <Input
-                      id="address"
-                      value={values.address}
-                      onChange={(event) => setField("address", event.target.value)}
-                      onBlur={() => handleBlur("address")}
-                      placeholder="Street and building number"
-                    />
-                    <FieldError message={fieldErrors.address} />
-                    {manuallyEditedLocationFields.has("address") && (
-                      <p className="text-xs text-muted-foreground">
-                        You&apos;ve edited this — it won&apos;t be replaced automatically if you move the pin.
-                      </p>
-                    )}
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="city">City</Label>
-                      <Input
-                        id="city"
-                        value={values.city}
-                        onChange={(event) => setField("city", event.target.value)}
-                        onBlur={() => handleBlur("city")}
-                        placeholder="Enter city"
-                      />
-                      <FieldError message={fieldErrors.city} />
-                      {manuallyEditedLocationFields.has("city") && (
-                        <p className="text-xs text-muted-foreground">
-                          You&apos;ve edited this — it won&apos;t be replaced automatically if you move the pin.
-                        </p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="area">Area / Neighbourhood</Label>
-                      <Input
-                        id="area"
-                        value={values.area}
-                        onChange={(event) => setField("area", event.target.value)}
-                        onBlur={() => handleBlur("area")}
-                        placeholder="Enter area or neighborhood"
-                      />
-                      {manuallyEditedLocationFields.has("area") && (
-                        <p className="text-xs text-muted-foreground">
-                          You&apos;ve edited this — it won&apos;t be replaced automatically if you move the pin.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="postalCode">Postal code</Label>
-                      <Input
-                        id="postalCode"
-                        value={values.postalCode}
-                        onChange={(event) => setField("postalCode", event.target.value)}
-                        onBlur={() => handleBlur("postalCode")}
-                        autoComplete="postal-code"
-                        placeholder="Enter postal code"
-                      />
-                      {manuallyEditedLocationFields.has("postalCode") && (
-                        <p className="text-xs text-muted-foreground">
-                          You&apos;ve edited this — it won&apos;t be replaced automatically if you move the pin.
-                        </p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="country">Country</Label>
-                      <Input
-                        id="country"
-                        value={values.country}
-                        onChange={(event) => setField("country", event.target.value)}
-                        onBlur={() => handleBlur("country")}
-                        autoComplete="country-name"
-                        placeholder="Enter country"
-                      />
-                      <FieldError message={fieldErrors.country} />
-                      {manuallyEditedLocationFields.has("country") && (
-                        <p className="text-xs text-muted-foreground">
-                          You&apos;ve edited this — it won&apos;t be replaced automatically if you move the pin.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </SheetContent>
-            </Sheet>
           </FieldSection>
           </div>
 
@@ -1438,14 +1482,21 @@ export function ListingForm({
                 >
                   <ChevronLeft /> Back
                 </Button>
-                {mediaUploadState.active ? (
-                  <MediaUploadStatus
-                    state={mediaUploadState}
-                    className="ml-auto max-w-sm"
-                  />
-                ) : currentStep < STEPS.length - 1 ? (
+                <StepRequirementStatus
+                  issues={currentStepIssues}
+                  uploadState={
+                    currentStep === 4 && mediaUploadState.active
+                      ? mediaUploadState
+                      : undefined
+                  }
+                />
+                {currentStep < STEPS.length - 1 ? (
                   <Button
                     type="button"
+                    disabled={!currentStepReady}
+                    aria-describedby={
+                      currentStepReady ? undefined : "listing-step-requirements"
+                    }
                     onClick={() => {
                       // Location is step index 1 — see LISTING_STEPS.
                       if (currentStep === 1 && !validateLocationStepBeforeContinue()) return;
@@ -1457,7 +1508,10 @@ export function ListingForm({
                 ) : (
                   <Button
                     type="button"
-                    disabled={isSubmittingNew}
+                    disabled={isSubmittingNew || !listingReady}
+                    aria-describedby={
+                      listingReady ? undefined : "listing-step-requirements"
+                    }
                     onClick={handleSubmitForReview}
                   >
                     {isSubmittingNew ? "Publishing…" : "Publish"}
@@ -1582,26 +1636,46 @@ export function ListingForm({
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-2">
-              {STEPS.map((step, index) => (
-                <button
-                  key={step.title}
-                  type="button"
-                  aria-current={currentStep === index ? "step" : undefined}
-                  onClick={() => {
-                    goToStep(index);
-                    setStepsOpen(false);
-                  }}
-                  className={`flex min-h-12 w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors ${currentStep === index ? "border-primary bg-primary/5" : "hover:bg-muted"}`}
-                >
-                  <span className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${currentStep === index ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                    {index + 1}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block text-sm font-medium">{step.title}</span>
-                    <span className="block truncate text-xs text-muted-foreground">{step.description}</span>
-                  </span>
-                </button>
-              ))}
+              {STEPS.map((step, index) => {
+                const blockingStep =
+                  index > currentStep
+                    ? issuesByStep.findIndex(
+                        (issues, stepIndex) =>
+                          stepIndex < index && issues.length > 0
+                      )
+                    : -1;
+                const disabled = blockingStep >= 0;
+
+                return (
+                  <button
+                    key={step.title}
+                    type="button"
+                    disabled={disabled}
+                    aria-current={currentStep === index ? "step" : undefined}
+                    onClick={() => {
+                      goToStep(index);
+                      setStepsOpen(false);
+                    }}
+                    className={`flex min-h-12 w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                      currentStep === index
+                        ? "border-primary bg-primary/5"
+                        : "hover:bg-muted disabled:hover:bg-transparent"
+                    }`}
+                  >
+                    <span className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${currentStep === index ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                      {index + 1}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium">{step.title}</span>
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {disabled
+                          ? `Complete ${STEPS[blockingStep].title} first`
+                          : step.description}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </DialogContent>
         </Dialog>
@@ -1675,6 +1749,38 @@ export function ListingForm({
         </DialogContent>
       </Dialog>
     </form>
+  );
+}
+
+function StepRequirementStatus({
+  issues,
+  uploadState,
+}: {
+  issues: ListingStepIssue[];
+  uploadState?: ListingMediaUploadState;
+}) {
+  if (issues.length === 0 && !uploadState) return <span className="ml-auto" />;
+
+  return (
+    <div
+      id="listing-step-requirements"
+      className="ml-auto flex min-w-0 max-w-xl flex-1 flex-col items-end gap-1.5"
+      role="status"
+      aria-live="polite"
+    >
+      {uploadState && (
+        <MediaUploadStatus
+          state={uploadState}
+          className="w-full max-w-sm flex-none"
+        />
+      )}
+      {issues.length > 0 && (
+        <p className="flex items-start gap-1.5 text-right text-xs leading-relaxed text-destructive">
+          <CircleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+          <span>{issues.map((issue) => issue.message).join(" · ")}</span>
+        </p>
+      )}
+    </div>
   );
 }
 
