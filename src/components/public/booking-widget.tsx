@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { differenceInDays } from "date-fns";
 import { computeStayPricing, parseLocalYmd } from "@/lib/utils/stay-pricing";
+import { validateBookingSelection } from "@/lib/utils/booking-selection";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -65,6 +65,92 @@ type BookingDraft = {
 };
 
 const BOOKING_DRAFT_VERSION = 1;
+const BOOKINGS_UNAVAILABLE_KEY = "mobile.bookings.unavailable";
+const BOOKINGS_UNAVAILABLE_SOURCE = "Bookings unavailable";
+
+function BookingGuestEditor({
+  value,
+  summary,
+  maxGuests,
+  onChange,
+}: {
+  value: GuestDetails;
+  summary: Resolved;
+  maxGuests: number;
+  onChange: (next: GuestDetails) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  function openEditor() {
+    setDraft(value);
+    setOpen(true);
+  }
+
+  function commitAndClose() {
+    onChange(draft);
+    setOpen(false);
+  }
+
+  function handleOpenChange(nextOpen: boolean) {
+    if (nextOpen) {
+      openEditor();
+      return;
+    }
+    commitAndClose();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-3 rounded-xl border border-input bg-background px-3.5 py-3 text-left transition-colors hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        onClick={openEditor}
+      >
+        <span className="min-w-0 truncate text-sm text-foreground">
+          <span className={summary.translated ? "notranslate" : undefined}>
+            {summary.text}
+          </span>
+        </span>
+        <span className="shrink-0 text-sm font-medium text-primary">
+          <Tx k="common.edit" source="Edit" />
+        </span>
+      </button>
+
+      <DialogContent
+        className="notranslate max-w-[calc(100%-2rem)] gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-md"
+        translate="no"
+      >
+        <div className="border-b px-5 py-4 pr-12">
+          <DialogTitle className="text-lg">
+            <Tx k="booking.guests_label" source="Guests" />
+          </DialogTitle>
+          <p className="mt-1 text-sm text-muted-foreground">
+            <Tx
+              k="booking.choose_guests"
+              source="Choose who is coming with you."
+            />
+          </p>
+        </div>
+        <GuestCountsStep
+          guestCounts={draft}
+          onGuestCountsChange={setDraft}
+          maxOccupancy={maxGuests}
+          className="rounded-none border-0 px-5"
+        />
+        <div className="border-t p-4">
+          <Button
+            type="button"
+            className="w-full rounded-xl"
+            onClick={commitAndClose}
+          >
+            <Tx k="common.done" source="Done" />
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export function BookingWidget({
   listingId,
@@ -96,7 +182,6 @@ export function BookingWidget({
       adults: initialGuests ? Math.min(Math.max(initialGuests, 1), maxGuests) : 1,
     };
   });
-  const [guestEditorOpen, setGuestEditorOpen] = useState(false);
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [priceDetailsOpen, setPriceDetailsOpen] = useState(false);
@@ -163,7 +248,13 @@ export function BookingWidget({
 
   const checkIn = checkInStr ? parseLocalYmd(checkInStr) : undefined;
   const checkOut = checkOutStr ? parseLocalYmd(checkOutStr) : undefined;
-  const nights = checkIn && checkOut ? differenceInDays(checkOut, checkIn) : 0;
+  const selectionValidation = validateBookingSelection(
+    checkIn,
+    checkOut,
+    minNights,
+    disabledDateRanges
+  );
+  const nights = Math.max(0, selectionValidation.nights);
 
   const overrideMap = useMemo(() => {
     const m = new Map<string, number>();
@@ -192,9 +283,53 @@ export function BookingWidget({
     ? { text: guestParts.map((part) => part.text).join(", "), translated: guestParts.every((part) => part.translated) }
     : i18n.resolve("booking.add_guests", "Add guests");
   const nightLabel = i18n.plural("booking.nights", nights, "{n} night", "{n} nights");
+  const minimumStayMessage = i18n.plural(
+    "booking.minimum_stay",
+    minNights,
+    "Minimum stay is {n} night",
+    "Minimum stay is {n} nights"
+  );
+  const selectDatesMessage = i18n.resolve(
+    "booking.select_dates_error",
+    "Please select check-in and check-out dates"
+  );
+  const bookingsUnavailableMessage = i18n.resolve(
+    BOOKINGS_UNAVAILABLE_KEY,
+    BOOKINGS_UNAVAILABLE_SOURCE
+  );
+  const unavailableDatesMessage: Resolved = {
+    text: `${bookingsUnavailableMessage.text}. ${selectDatesMessage.text}`,
+    translated:
+      bookingsUnavailableMessage.translated && selectDatesMessage.translated,
+  };
+  const reserveProblem: Resolved | null =
+    selectionValidation.status === "unavailable"
+      ? unavailableDatesMessage
+      : selectionValidation.status === "minimum-stay"
+        ? minimumStayMessage
+        : selectionValidation.status === "valid"
+          ? null
+          : selectDatesMessage;
+  const pickerMessage =
+    selectionValidation.status === "unavailable"
+      ? unavailableDatesMessage
+      : minimumStayMessage;
+  const bookingMessage = error
+    ? { text: error, translated: false }
+    : reserveProblem;
+  const bookingMessageIsError =
+    Boolean(error) ||
+    selectionValidation.status === "minimum-stay" ||
+    selectionValidation.status === "unavailable" ||
+    selectionValidation.status === "invalid";
 
   function handleSubmit() {
     setError(null);
+
+    if (reserveProblem) {
+      setError(reserveProblem.text);
+      return;
+    }
 
     if (!session) {
       const returnUrl = new URL(window.location.href);
@@ -207,20 +342,6 @@ export function BookingWidget({
       router.push(
         `/login?callbackUrl=${encodeURIComponent(`${returnUrl.pathname}${returnUrl.search}`)}`
       );
-      return;
-    }
-
-    if (!checkIn || !checkOut) {
-      const message = i18n.resolve("booking.select_dates_error", "Please select check-in and check-out dates").text;
-      setError(message);
-      toast.error(message);
-      return;
-    }
-
-    if (nights < minNights) {
-      const message = i18n.plural("booking.minimum_stay", minNights, "Minimum stay is {n} night", "Minimum stay is {n} nights").text;
-      setError(message);
-      toast.error(message);
       return;
     }
 
@@ -246,6 +367,8 @@ export function BookingWidget({
     setGuestDetails({ adults: 1, children: 0, infants: 0, pets: 0 });
     setNote("");
     setError(null);
+    setPriceDetailsOpen(false);
+    setDesktopPriceDetailsOpen(false);
     try {
       window.localStorage.removeItem(draftStorageKey);
     } catch {
@@ -323,7 +446,10 @@ export function BookingWidget({
 
   return (
     <>
-      <Card className="rounded-2xl border-2 border-border shadow-xl overflow-hidden lg:sticky lg:top-24">
+      <Card
+        className="notranslate rounded-2xl border-2 border-border shadow-xl overflow-hidden lg:sticky lg:top-24"
+        translate="no"
+      >
       <CardHeader className="pb-2">
         <CardTitle className="flex flex-col gap-1 font-normal">
           <div className="flex items-baseline gap-1">
@@ -355,49 +481,60 @@ export function BookingWidget({
             onRangeStringsChange={({ checkIn: ci, checkOut: co }) => {
               setCheckInStr(ci);
               setCheckOutStr(co);
+              setError(null);
             }}
+            renderDateFooter={({ canGoNext, closePicker, resetDates }) => (
+              <div className="space-y-3">
+                <p
+                  aria-live="polite"
+                  className={
+                    selectionValidation.status === "minimum-stay" ||
+                    selectionValidation.status === "unavailable"
+                      ? "text-sm font-medium text-destructive"
+                      : "text-sm text-muted-foreground"
+                  }
+                >
+                  <span className={pickerMessage.translated ? "notranslate" : undefined}>
+                    {pickerMessage.text}
+                  </span>
+                </p>
+                <div className="flex items-center justify-between gap-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-full sm:min-w-[7rem]"
+                    onClick={resetDates}
+                  >
+                    <Tx k="search.reset" source="Reset" />
+                  </Button>
+                  <Button
+                    type="button"
+                    className="min-w-[7rem] rounded-full"
+                    disabled={
+                      !canGoNext || selectionValidation.status !== "valid"
+                    }
+                    onClick={closePicker}
+                  >
+                    <Tx k="common.done" source="Done" />
+                  </Button>
+                </div>
+              </div>
+            )}
             className="w-full"
           />
         </div>
 
         <div className="space-y-2">
           <Label><Tx k="booking.guests_label" source="Guests" /></Label>
-          <Dialog open={guestEditorOpen} onOpenChange={setGuestEditorOpen}>
-            <button
-              type="button"
-              className="flex w-full items-center justify-between gap-3 rounded-xl border border-input bg-background px-3.5 py-3 text-left transition-colors hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              onClick={() => setGuestEditorOpen(true)}
-            >
-              <span className="min-w-0 truncate text-sm text-foreground">
-                <span className={guestSummary.translated ? "notranslate" : undefined}>{guestSummary.text}</span>
-              </span>
-              <span className="shrink-0 text-sm font-medium text-primary"><Tx k="common.edit" source="Edit" /></span>
-            </button>
-
-            <DialogContent className="max-w-[calc(100%-2rem)] gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-md">
-              <div className="border-b px-5 py-4 pr-12">
-                <DialogTitle className="text-lg"><Tx k="booking.guests_label" source="Guests" /></DialogTitle>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  <Tx k="booking.choose_guests" source="Choose who is coming with you." />
-                </p>
-              </div>
-              <GuestCountsStep
-                guestCounts={guestDetails}
-                onGuestCountsChange={setGuestDetails}
-                maxOccupancy={maxGuests}
-                className="rounded-none border-0 px-5"
-              />
-              <div className="border-t p-4">
-                <Button
-                  type="button"
-                  className="w-full rounded-xl"
-                  onClick={() => setGuestEditorOpen(false)}
-                >
-                  <Tx k="common.done" source="Done" />
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+          <BookingGuestEditor
+            value={guestDetails}
+            summary={guestSummary}
+            maxGuests={maxGuests}
+            onChange={(next) => {
+              setGuestDetails(next);
+              setError(null);
+            }}
+          />
         </div>
 
         <div className="space-y-2">
@@ -425,10 +562,6 @@ export function BookingWidget({
             rows={3}
           />
         </div>
-
-        {error && (
-          <p className="hidden text-sm text-destructive lg:block">{error}</p>
-        )}
 
         {nights > 0 && stayPricing && (
           <div className="hidden rounded-xl border border-border/70 bg-muted/20 px-4 py-3 lg:block">
@@ -463,21 +596,36 @@ export function BookingWidget({
           </div>
         )}
 
+        {bookingMessage && (
+          <p
+            aria-live="polite"
+            className={
+              bookingMessageIsError
+                ? "hidden text-sm font-medium text-destructive lg:block"
+                : "hidden text-sm text-muted-foreground lg:block"
+            }
+          >
+            <span className={bookingMessage.translated ? "notranslate" : undefined}>
+              {bookingMessage.text}
+            </span>
+          </p>
+        )}
+
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               onClick={handleSubmit}
-              className="hidden w-full rounded-lg text-base font-semibold py-6 lg:flex"
+              className="hidden w-full rounded-lg text-base font-semibold py-6 disabled:bg-muted disabled:text-muted-foreground lg:flex"
               size="lg"
-              disabled={isPending || !checkIn || !checkOut}
+              disabled={isPending || Boolean(reserveProblem)}
             >
               {isPending ? <Tx k="booking.sending_request" source="Sending request…" /> : <Tx k="booking.reserve" source="Reserve" />}
             </Button>
           </TooltipTrigger>
           <TooltipContent
-            className={reserveTooltip.translated ? "notranslate" : undefined}
+            className={(reserveProblem ?? reserveTooltip).translated ? "notranslate" : undefined}
           >
-            {reserveTooltip.text}
+            {(reserveProblem ?? reserveTooltip).text}
           </TooltipContent>
         </Tooltip>
 
@@ -487,10 +635,23 @@ export function BookingWidget({
       </CardContent>
     </Card>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 px-4 pt-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 lg:hidden"
+      <div
+        className="notranslate fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 px-4 pt-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 lg:hidden"
+        translate="no"
         style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
       >
-        {error && <p className="mb-2 text-sm text-destructive">{error}</p>}
+        {bookingMessage && (
+          <p
+            aria-live="polite"
+            className={
+              bookingMessageIsError
+                ? "mb-2 text-sm font-medium text-destructive"
+                : "mb-2 text-sm text-muted-foreground"
+            }
+          >
+            {bookingMessage.text}
+          </p>
+        )}
         <div className="flex items-center justify-between gap-4">
           <button
             type="button"
@@ -523,9 +684,9 @@ export function BookingWidget({
           </button>
           <Button
             onClick={handleSubmit}
-            className="shrink-0 rounded-xl px-8 font-semibold"
+            className="shrink-0 rounded-xl px-8 font-semibold disabled:bg-muted disabled:text-muted-foreground"
             size="lg"
-            disabled={isPending || !checkIn || !checkOut}
+            disabled={isPending || Boolean(reserveProblem)}
           >
             {isPending ? <Tx k="booking.sending" source="Sending…" /> : <Tx k="booking.reserve" source="Reserve" />}
           </Button>
@@ -533,7 +694,11 @@ export function BookingWidget({
       </div>
 
       <Sheet open={priceDetailsOpen} onOpenChange={setPriceDetailsOpen}>
-        <SheetContent side="bottom" className="max-h-[80vh] overflow-y-auto rounded-t-2xl">
+        <SheetContent
+          side="bottom"
+          className="notranslate max-h-[80vh] overflow-y-auto rounded-t-2xl"
+          translate="no"
+        >
           <SheetHeader>
             <SheetTitle><Tx k="booking.price_details" source="Price details" /></SheetTitle>
           </SheetHeader>

@@ -834,6 +834,7 @@ export function DateRangeCalendarStep({
             mode="range"
             required={false}
             resetOnSelect
+            excludeDisabled
             selected={calendarSelected}
             onSelect={(range) => commitRange(range)}
             numberOfMonths={visibleMonthCount}
