@@ -175,17 +175,6 @@ export const CURATED_TRANSLATION_OVERRIDES: Record<string, Record<string, string
   "listing.link_copied_clipboard": {
     mk: "Врската е копирана во меморијата",
   },
-  "listing.report_description": {
-    mk: "Кажете ни што не е во ред. Деталите се незадолжителни, но ќе ни помогнат побрзо да го разгледаме случајот.",
-  },
-  "listing.report_placeholder": {
-    mk: "Што не е во ред со овој оглас? (незадолжително)",
-  },
-  "listing.report_title": {
-    mk: "Пријави го овој оглас",
-    sq: "Raporto këtë shpallje",
-    bg: "Подай сигнал за тази обява",
-  },
   "listing.save_listing": {
     mk: "Зачувај го огласот",
     sq: "Ruaj shpalljen",
@@ -193,14 +182,8 @@ export const CURATED_TRANSLATION_OVERRIDES: Record<string, Record<string, string
   "listing.share_failed": {
     mk: "Не може да се сподели",
   },
-  "listing.submit_report": {
-    bg: "Изпрати сигнала",
-  },
   "listing.report": {
     bg: "Подай сигнал",
-  },
-  "listing.report_submitted": {
-    bg: "Сигналът е изпратен, благодарим ви",
   },
   "map.exit_fullscreen": {
     bg: "Излез от картата на цял екран",
@@ -517,5 +500,39 @@ export const CURATED_TRANSLATION_OVERRIDES: Record<string, Record<string, string
     sr: "Чување...",
     tr: "Kaydediliyor...",
     bg: "Запазване...",
+  },
+  "nav.messages": {
+    mk: "Пораки",
+    sq: "Mesazhet",
+    sr: "Поруке",
+    tr: "Mesajlar",
+    bg: "Съобщения",
+    ro: "Mesaje",
+    de: "Nachrichten",
+    el: "Μηνύματα",
+    it: "Messaggi",
+    fr: "Messages",
+    es: "Mensajes",
+    nl: "Berichten",
+    pl: "Wiadomości",
+    uk: "Повідомлення",
+    ru: "Сообщения",
+  },
+  "nav.support_cases": {
+    mk: "Случаи за поддршка",
+    sq: "Rastet e mbështetjes",
+    sr: "Случајеви подршке",
+    tr: "Destek talepleri",
+    bg: "Случаи за поддръжка",
+    ro: "Cazuri de asistență",
+    de: "Supportfälle",
+    el: "Υποθέσεις υποστήριξης",
+    it: "Casi di assistenza",
+    fr: "Dossiers d’assistance",
+    es: "Casos de soporte",
+    nl: "Supportcases",
+    pl: "Zgłoszenia do pomocy",
+    uk: "Звернення до служби підтримки",
+    ru: "Обращения в службу поддержки",
   },
 };

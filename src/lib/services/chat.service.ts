@@ -5,6 +5,9 @@ import { db } from "@/lib/db";
 import { createUserNotification } from "@/lib/services/notification.service";
 
 const MESSAGE_MAX_LENGTH = 2000;
+const EMAIL_PATTERN = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i;
+const URL_PATTERN = /\b(?:https?:\/\/|www\.|wa\.me\/|t\.me\/)\S+/i;
+const PHONE_PATTERN = /(?:\+?\d[\s().-]*){7,}/;
 
 export async function ensureBookingConversation(bookingId: string, requiredUserId?: string) {
   const booking = await db.booking.findUnique({
@@ -25,19 +28,73 @@ export async function ensureBookingConversation(bookingId: string, requiredUserI
     throw new Error("Booking not found");
   }
 
+  let conversation = await db.conversation.findUnique({ where: { bookingId } });
+  if (!conversation) {
+    const inquiry = await db.conversation.findUnique({
+      where: {
+        listingId_inquiryGuestId: {
+          listingId: booking.listingId,
+          inquiryGuestId: booking.guestId,
+        },
+      },
+    });
+    conversation = inquiry
+      ? await db.conversation.update({
+          where: { id: inquiry.id },
+          data: { bookingId, kind: "BOOKING", status: "OPEN" },
+        })
+      : await db.conversation.create({
+          data: {
+            bookingId,
+            listingId: booking.listingId,
+            kind: "BOOKING",
+            startedById: booking.guestId,
+          },
+        });
+  }
+
+  await db.conversationParticipant.createMany({
+    data: [
+      { conversationId: conversation.id, userId: booking.guestId },
+      { conversationId: conversation.id, userId: booking.listing.hostId },
+    ],
+    skipDuplicates: true,
+  });
+
+  return conversation;
+}
+
+export async function ensureInquiryConversation(listingId: string, guestId: string) {
+  const listing = await db.listing.findFirst({
+    where: {
+      id: listingId,
+      status: "APPROVED",
+      hostId: { not: guestId },
+    },
+    select: { id: true, hostId: true },
+  });
+  if (!listing) throw new Error("Listing not found");
+
   const conversation = await db.conversation.upsert({
-    where: { bookingId },
+    where: {
+      listingId_inquiryGuestId: {
+        listingId,
+        inquiryGuestId: guestId,
+      },
+    },
     create: {
-      bookingId,
-      listingId: booking.listingId,
+      listingId,
+      inquiryGuestId: guestId,
+      startedById: guestId,
+      kind: "INQUIRY",
     },
     update: {},
   });
 
   await db.conversationParticipant.createMany({
     data: [
-      { conversationId: conversation.id, userId: booking.guestId },
-      { conversationId: conversation.id, userId: booking.listing.hostId },
+      { conversationId: conversation.id, userId: guestId },
+      { conversationId: conversation.id, userId: listing.hostId },
     ],
     skipDuplicates: true,
   });
@@ -97,9 +154,15 @@ export async function listUserConversations(userId: string) {
 
   return rows.map((row) => {
     const membership = row.participants.find((participant) => participant.userId === userId);
-    const other = row.participants.find((participant) => participant.userId !== userId);
+    const other = row.participants.find(
+      (participant) =>
+        participant.userId !== userId && participant.role !== "SUPPORT"
+    );
     return {
       id: row.id,
+      kind: row.kind,
+      status: row.status,
+      hasSupport: row.participants.some((participant) => participant.role === "SUPPORT"),
       booking: row.booking,
       listing: {
         id: row.listing.id,
@@ -151,7 +214,7 @@ export async function getConversationMessages(conversationId: string, userId: st
   await db.notification.updateMany({
     where: {
       userId,
-      type: "CHAT_MESSAGE",
+      type: { in: ["CHAT_MESSAGE", "SUPPORT_MESSAGE"] },
       readAt: null,
       data: { path: ["conversationId"], equals: conversationId },
     },
@@ -165,6 +228,10 @@ export async function getConversationMessages(conversationId: string, userId: st
       body: message.deletedAt ? "Message removed" : message.body,
       sender: message.sender ?? { id: "", name: "Deleted user", image: null },
       senderId: message.senderId,
+      senderRole:
+        conversation.participants.find(
+          (participant) => participant.userId === message.senderId
+        )?.role ?? "MEMBER",
       createdAt: message.createdAt,
       editedAt: message.editedAt,
       deletedAt: message.deletedAt,
@@ -192,10 +259,31 @@ export async function sendConversationMessage(input: {
     },
     include: {
       user: { select: { name: true } },
-      conversation: { select: { listing: { select: { title: true } } } },
+      conversation: {
+        select: {
+          kind: true,
+          status: true,
+          listing: { select: { title: true } },
+        },
+      },
     },
   });
   if (!membership) throw new Error("Conversation not found");
+  if (
+    membership.conversation.status !== "OPEN" &&
+    membership.role !== "SUPPORT"
+  ) {
+    throw new Error("This conversation is not accepting new messages");
+  }
+  if (
+    membership.conversation.kind === "INQUIRY" &&
+    membership.role !== "SUPPORT" &&
+    (EMAIL_PATTERN.test(body) || URL_PATTERN.test(body) || PHONE_PATTERN.test(body))
+  ) {
+    throw new Error(
+      "Keep contact details and external links inside Linger Homes until a booking is confirmed"
+    );
+  }
 
   const { message, recipients } = await db.$transaction(async (tx) => {
     const message = await tx.message.create({
@@ -222,7 +310,7 @@ export async function sendConversationMessage(input: {
         conversationId: input.conversationId,
         userId: { not: input.senderId },
       },
-      select: { userId: true },
+      select: { userId: true, role: true },
     });
 
     await tx.conversationParticipant.updateMany({
@@ -240,17 +328,107 @@ export async function sendConversationMessage(input: {
     conversationId: input.conversationId,
   } satisfies Prisma.InputJsonObject;
   await Promise.all(
-    recipients.map(({ userId }) =>
+    recipients.map(({ userId, role }) =>
       createUserNotification({
         userId,
-        type: "CHAT_MESSAGE",
-        title: membership.user.name,
+        type: membership.role === "SUPPORT" ? "SUPPORT_MESSAGE" : "CHAT_MESSAGE",
+        title:
+          membership.role === "SUPPORT"
+            ? "Linger Homes Support"
+            : membership.user.name,
         body: `${membership.conversation.listing.title}: ${body.slice(0, 140)}`,
-        route: `/chat/${input.conversationId}`,
-        data: notificationData,
+        route: `/messages/${input.conversationId}`,
+        data: { ...notificationData, recipientRole: role },
       })
     )
   );
 
+  void import("@/lib/email")
+    .then(({ notifyConversationMessage }) =>
+      notifyConversationMessage({
+        conversationId: input.conversationId,
+        senderId: input.senderId,
+        recipientIds: recipients.map(({ userId }) => userId),
+        preview: body.slice(0, 180),
+        supportSender: membership.role === "SUPPORT",
+      })
+    )
+    .catch(() => {
+      // The message and durable notifications are authoritative. Email is best-effort.
+    });
+
   return message;
+}
+
+export async function listAdminConversations() {
+  return db.conversation.findMany({
+    include: {
+      booking: {
+        select: { id: true, status: true, checkIn: true, checkOut: true },
+      },
+      listing: { select: { id: true, title: true } },
+      participants: {
+        include: {
+          user: { select: { id: true, name: true, email: true, role: true } },
+        },
+      },
+      _count: { select: { messages: true, safetyCases: true } },
+    },
+    orderBy: [{ lastMessageAt: "desc" }, { createdAt: "desc" }],
+  });
+}
+
+export async function joinConversationAsSupport(
+  conversationId: string,
+  adminId: string
+) {
+  const admin = await db.user.findFirst({
+    where: { id: adminId, role: "ADMIN", isActive: true },
+    select: { id: true },
+  });
+  if (!admin) throw new Error("Admin access required");
+
+  const conversation = await db.conversation.findUnique({
+    where: { id: conversationId },
+    select: { id: true },
+  });
+  if (!conversation) throw new Error("Conversation not found");
+
+  await db.$transaction([
+    db.conversationParticipant.upsert({
+      where: {
+        conversationId_userId: { conversationId, userId: adminId },
+      },
+      create: { conversationId, userId: adminId, role: "SUPPORT" },
+      update: { role: "SUPPORT" },
+    }),
+    db.conversation.update({
+      where: { id: conversationId },
+      data: { supportJoinedAt: new Date() },
+    }),
+  ]);
+}
+
+export async function getConversationForAdmin(conversationId: string) {
+  const conversation = await db.conversation.findUnique({
+    where: { id: conversationId },
+    include: {
+      booking: true,
+      listing: { select: { id: true, title: true } },
+      participants: {
+        include: {
+          user: { select: { id: true, name: true, email: true, role: true } },
+        },
+      },
+      messages: {
+        orderBy: { createdAt: "asc" },
+        include: {
+          sender: { select: { id: true, name: true, email: true, role: true } },
+        },
+      },
+      safetyCases: { select: { id: true, reference: true, status: true } },
+    },
+  });
+  if (!conversation) throw new Error("Conversation not found");
+  return conversation;
 }

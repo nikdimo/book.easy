@@ -117,8 +117,15 @@ export default function ChatScreen() {
                 key={message.id}
                 style={[styles.messageWrap, mine ? styles.mineWrap : styles.theirsWrap]}
               >
-                {!mine ? <Text style={styles.sender}>{message.sender.name}</Text> : null}
-                <View style={[styles.bubble, mine ? styles.mine : styles.theirs]}>
+                {!mine ? (
+                  <Text style={styles.sender}>
+                    {message.senderRole === "SUPPORT" ? t("Linger Homes Support") : message.sender.name}
+                  </Text>
+                ) : null}
+                <View style={[
+                  styles.bubble,
+                  mine ? styles.mine : message.senderRole === "SUPPORT" ? styles.support : styles.theirs,
+                ]}>
                   <Text style={[styles.body, mine && styles.mineBody]}>{message.body}</Text>
                 </View>
                 <Text style={styles.time}>
@@ -199,6 +206,12 @@ const styles = StyleSheet.create({
   bubble: { borderRadius: radii.lg, paddingHorizontal: spacing.md, paddingVertical: 10 },
   mine: { backgroundColor: colors.primary, borderBottomRightRadius: 5 },
   theirs: { backgroundColor: colors.surface, borderBottomLeftRadius: 5 },
+  support: {
+    backgroundColor: colors.primarySoft,
+    borderWidth: 1,
+    borderColor: "#B8D5DA",
+    borderBottomLeftRadius: 5,
+  },
   body: { color: colors.ink, fontSize: 14, lineHeight: 20 },
   mineBody: { color: "#fff" },
   time: { color: colors.muted, fontSize: 9, marginTop: 4, marginHorizontal: 4 },

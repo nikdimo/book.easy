@@ -12,6 +12,8 @@ import {
   Settings,
   ShieldCheck,
   Users,
+  MessagesSquare,
+  ShieldAlert,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -21,7 +23,9 @@ import type { getEnabledLanguages } from "@/lib/services/language.service";
 const adminNav = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/listings", label: "Listings", icon: Home },
-  { href: "/admin/reports", label: "Reports", icon: Flag },
+  { href: "/admin/reports", label: "Legacy listing reports", icon: Flag },
+  { href: "/admin/cases", label: "Cases", icon: ShieldAlert },
+  { href: "/admin/communications", label: "Communications", icon: MessagesSquare },
   { href: "/admin/bookings", label: "Bookings", icon: CalendarDays },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/audit-log", label: "Audit Log", icon: FileText },

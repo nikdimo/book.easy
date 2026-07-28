@@ -10,12 +10,27 @@ import {
 import { Href, useRouter } from "expo-router";
 import { AppState } from "react-native";
 import { useAuth } from "@/context/auth-context";
-import { apiFetch, NotificationSummary, NotificationsResponse } from "@/lib/api";
+import {
+  apiFetch,
+  NotificationSummary,
+  NotificationsResponse,
+  openControlPanel,
+} from "@/lib/api";
 import {
   registerForPushNotifications,
   setApplicationBadge,
   subscribeToNotificationResponses,
 } from "@/lib/push-notifications";
+
+function nativeRoute(route: string): Href {
+  const messageMatch = route.match(/^\/messages\/([^/?#]+)/);
+  if (messageMatch) return `/chat/${messageMatch[1]}` as Href;
+  return route as Href;
+}
+
+function isWebOnlyRoute(route: string) {
+  return route.startsWith("/account/support") || route.startsWith("/admin/");
+}
 
 interface NotificationState {
   notifications: NotificationSummary[];
@@ -82,7 +97,8 @@ export function NotificationProvider({ children }: PropsWithChildren) {
   useEffect(
     () =>
       subscribeToNotificationResponses((route) => {
-        router.push(route as Href);
+        if (isWebOnlyRoute(route)) void openControlPanel(route);
+        else router.push(nativeRoute(route));
         void refreshNotifications();
       }),
     [refreshNotifications, router]
@@ -108,7 +124,13 @@ export function NotificationProvider({ children }: PropsWithChildren) {
         });
       }
       await refreshNotifications();
-      if (notification.route) router.push(notification.route as Href);
+      if (notification.route) {
+        if (isWebOnlyRoute(notification.route)) {
+          await openControlPanel(notification.route);
+        } else {
+          router.push(nativeRoute(notification.route));
+        }
+      }
     },
     [refreshNotifications, router]
   );

@@ -66,12 +66,57 @@ enum ReportStatus {
   DISMISSED
 }
 
+enum ConversationKind {
+  INQUIRY
+  BOOKING
+}
+
+enum ConversationStatus {
+  OPEN
+  FROZEN
+  CLOSED
+}
+
+enum ConversationParticipantRole {
+  MEMBER
+  SUPPORT
+}
+
+enum SafetyCaseType {
+  REPORT
+  CLAIM
+}
+
+enum SafetyCaseStatus {
+  SUBMITTED
+  UNDER_REVIEW
+  AWAITING_INFORMATION
+  RESOLVED
+  REJECTED
+}
+
+enum SafetyCasePriority {
+  NORMAL
+  URGENT
+}
+
+enum SafetyCaseTargetType {
+  USER
+  HOST
+  LISTING
+  BOOKING
+  MESSAGE
+}
+
 enum NotificationType {
   BOOKING_REQUEST
   BOOKING_CONFIRMED
   BOOKING_REJECTED
   BOOKING_CANCELLED
   CHAT_MESSAGE
+  CASE_SUBMITTED
+  CASE_UPDATED
+  SUPPORT_MESSAGE
   SYSTEM
 }
 
@@ -107,6 +152,12 @@ model User {
   pushTokens              PushToken[]
   conversationMemberships ConversationParticipant[]
   sentMessages            Message[]                 @relation("MessageSender")
+  startedConversations    Conversation[]            @relation("ConversationStarter")
+  inquiryConversations    Conversation[]            @relation("ConversationInquiryGuest")
+  submittedSafetyCases    SafetyCase[]              @relation("SafetyCaseReporter")
+  reportedSafetyCases     SafetyCase[]              @relation("SafetyCaseReportedUser")
+  assignedSafetyCases     SafetyCase[]              @relation("SafetyCaseAssignedAdmin")
+  safetyCaseUpdates       SafetyCaseUpdate[]        @relation("SafetyCaseUpdateAuthor")
 
   @@index([email])
   @@index([role])
@@ -215,11 +266,13 @@ model Property {
   geocodingProvider   String?
   geocodingPlaceId    String?
   geocodingConfidence Float?
-  /** The exact Street View angle a host picked for this property (compass heading in
-   *  degrees, camera pitch, and the specific panorama id) — saved so guests see the
-   *  same curated view the host confirmed, rather than Google's default direction for
-   *  whatever panorama happens to be nearest. Null until a host actually saves one;
-   *  the guest-facing page falls back to no Street View at all rather than guessing. */
+  /**
+   * The exact Street View angle a host picked for this property (compass heading in
+   * degrees, camera pitch, and the specific panorama id) — saved so guests see the
+   * same curated view the host confirmed, rather than Google's default direction for
+   * whatever panorama happens to be nearest. Null until a host actually saves one;
+   * the guest-facing page falls back to no Street View at all rather than guessing.
+   */
   streetViewHeading   Float?
   streetViewPitch     Float?
   streetViewPanoId    String?
@@ -278,6 +331,7 @@ model Listing {
   bookings           Booking[]
   suggestions        Suggestion[]
   reports            ListingReport[]
+  safetyCases        SafetyCase[]
   favorites          Favorite[]
   views              ListingView[]
   conversations      Conversation[]
@@ -522,6 +576,7 @@ model Booking {
   guest              User                @relation(fields: [guestId], references: [id])
   availabilityBlocks AvailabilityBlock[]
   conversation       Conversation?
+  safetyCases        SafetyCase[]
 
   @@index([listingId, status])
   @@index([guestId])
@@ -574,29 +629,40 @@ model PushToken {
  * makes future pre-booking inquiry conversations possible without changing Message.
  */
 model Conversation {
-  id                 String    @id @default(cuid())
-  bookingId          String?   @unique
+  id                 String             @id @default(cuid())
+  bookingId          String?            @unique
   listingId          String
+  kind               ConversationKind   @default(BOOKING)
+  status             ConversationStatus @default(OPEN)
+  startedById        String?
+  inquiryGuestId     String?
   lastMessageAt      DateTime?
   lastMessagePreview String?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  supportJoinedAt    DateTime?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
 
   booking      Booking?                  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   listing      Listing                   @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  startedBy    User?                     @relation("ConversationStarter", fields: [startedById], references: [id], onDelete: SetNull)
+  inquiryGuest User?                     @relation("ConversationInquiryGuest", fields: [inquiryGuestId], references: [id], onDelete: SetNull)
   participants ConversationParticipant[]
   messages     Message[]
+  safetyCases  SafetyCase[]
 
+  @@unique([listingId, inquiryGuestId])
   @@index([listingId])
+  @@index([kind, status])
   @@index([lastMessageAt])
 }
 
 model ConversationParticipant {
   conversationId String
   userId         String
-  unreadCount    Int       @default(0)
+  role           ConversationParticipantRole @default(MEMBER)
+  unreadCount    Int                         @default(0)
   lastReadAt     DateTime?
-  joinedAt       DateTime  @default(now())
+  joinedAt       DateTime                    @default(now())
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -616,9 +682,80 @@ model Message {
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender       User?        @relation("MessageSender", fields: [senderId], references: [id], onDelete: SetNull)
+  safetyCases  SafetyCase[]
 
   @@index([conversationId, createdAt])
   @@index([senderId])
+}
+
+// ─── Safety reports & booking claims ──────────────────────────────────────────
+
+model SafetyCase {
+  id              String               @id @default(cuid())
+  reference       String               @unique
+  type            SafetyCaseType
+  status          SafetyCaseStatus     @default(SUBMITTED)
+  priority        SafetyCasePriority   @default(NORMAL)
+  targetType      SafetyCaseTargetType
+  category        String
+  subject         String
+  description     String               @db.Text
+  reporterId      String
+  reportedUserId  String?
+  listingId       String?
+  bookingId       String?
+  messageId       String?
+  conversationId  String?
+  assignedAdminId String?
+  resolution      String?              @db.Text
+  resolvedAt      DateTime?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  reporter      User                 @relation("SafetyCaseReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reportedUser  User?                @relation("SafetyCaseReportedUser", fields: [reportedUserId], references: [id], onDelete: SetNull)
+  assignedAdmin User?                @relation("SafetyCaseAssignedAdmin", fields: [assignedAdminId], references: [id], onDelete: SetNull)
+  listing       Listing?             @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  booking       Booking?             @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  message       Message?             @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  conversation  Conversation?        @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  evidence      SafetyCaseEvidence[]
+  updates       SafetyCaseUpdate[]
+
+  @@index([reporterId, createdAt])
+  @@index([status, priority, createdAt])
+  @@index([assignedAdminId, status])
+  @@index([listingId])
+  @@index([bookingId])
+  @@index([reportedUserId])
+}
+
+model SafetyCaseEvidence {
+  id        String   @id @default(cuid())
+  caseId    String
+  url       String
+  fileName  String
+  mimeType  String
+  sizeBytes Int
+  createdAt DateTime @default(now())
+
+  safetyCase SafetyCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  @@index([caseId])
+}
+
+model SafetyCaseUpdate {
+  id         String   @id @default(cuid())
+  caseId     String
+  authorId   String?
+  body       String   @db.Text
+  isInternal Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  safetyCase SafetyCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  author     User?      @relation("SafetyCaseUpdateAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([caseId, createdAt])
 }
 
 // ─── Settings ───────────────────────────────────────────────────────────────────

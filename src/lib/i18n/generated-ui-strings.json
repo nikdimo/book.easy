@@ -1205,26 +1205,6 @@
     "filePath": "src/components/public/listing-actions.tsx"
   },
   {
-    "key": "listing.report_description",
-    "sourceText": "Let us know what's wrong. Adding details is optional but helps us review it faster.",
-    "filePath": "src/components/public/listing-actions.tsx"
-  },
-  {
-    "key": "listing.report_placeholder",
-    "sourceText": "What's wrong with this listing? (optional)",
-    "filePath": "src/components/public/listing-actions.tsx"
-  },
-  {
-    "key": "listing.report_submitted",
-    "sourceText": "Report submitted, thank you",
-    "filePath": "src/components/public/listing-actions.tsx"
-  },
-  {
-    "key": "listing.report_title",
-    "sourceText": "Report this listing",
-    "filePath": "src/components/public/listing-actions.tsx"
-  },
-  {
     "key": "listing.save",
     "sourceText": "Save",
     "filePath": "src/components/public/listing-actions.tsx"
@@ -1258,11 +1238,6 @@
     "key": "listing.street_view_selected_by_host",
     "sourceText": "Street view selected by the host",
     "filePath": "src/components/public/property-street-view.tsx"
-  },
-  {
-    "key": "listing.submit_report",
-    "sourceText": "Submit report",
-    "filePath": "src/components/public/listing-actions.tsx"
   },
   {
     "key": "map.exit_fullscreen",
@@ -2353,6 +2328,16 @@
     "key": "mobile.notifications.subtitle",
     "sourceText": "Booking updates and new messages in one place.",
     "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "nav.messages",
+    "sourceText": "Messages",
+    "filePath": "src/components/shared/header.tsx"
+  },
+  {
+    "key": "nav.support_cases",
+    "sourceText": "Support cases",
+    "filePath": "src/components/shared/header.tsx"
   },
   {
     "key": "pagination.next",

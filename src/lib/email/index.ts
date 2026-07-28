@@ -46,6 +46,136 @@ export async function sendTransactionalEmail(params: SendEmailParams): Promise<v
   });
 }
 
+function appUrl(path: string) {
+  const base =
+    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
+    `https://${SITE_DOMAIN}`;
+  return `${base}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+export async function notifyConversationMessage(input: {
+  conversationId: string;
+  senderId: string;
+  recipientIds: string[];
+  preview: string;
+  supportSender: boolean;
+}): Promise<void> {
+  if (input.recipientIds.length === 0) return;
+  const { db } = await import("@/lib/db");
+  const [conversation, sender, recipients] = await Promise.all([
+    db.conversation.findUnique({
+      where: { id: input.conversationId },
+      select: { listing: { select: { title: true } } },
+    }),
+    db.user.findUnique({
+      where: { id: input.senderId },
+      select: { name: true },
+    }),
+    db.user.findMany({
+      where: { id: { in: input.recipientIds }, isActive: true },
+      select: { name: true, email: true },
+    }),
+  ]);
+  if (!conversation || !sender) return;
+
+  const senderName = input.supportSender
+    ? "Linger Homes Support"
+    : sender.name;
+  const link = appUrl(`/messages/${input.conversationId}`);
+  await Promise.allSettled(
+    recipients.map((recipient) =>
+      sendTransactionalEmail({
+        to: recipient.email,
+        subject: `[Linger Homes] New message about ${conversation.listing.title}`,
+        text: [
+          `Hi ${recipient.name},`,
+          "",
+          `${senderName} sent you a message about "${conversation.listing.title}".`,
+          "",
+          input.preview,
+          "",
+          `Reply securely in Linger Homes: ${link}`,
+          "",
+          "For your privacy, keep the conversation inside Linger Homes.",
+        ].join("\n"),
+      })
+    )
+  );
+}
+
+export async function notifySafetyCaseSubmitted(input: {
+  caseId: string;
+}): Promise<void> {
+  const { db } = await import("@/lib/db");
+  const safetyCase = await db.safetyCase.findUnique({
+    where: { id: input.caseId },
+    include: {
+      reporter: { select: { name: true, email: true } },
+    },
+  });
+  if (!safetyCase) return;
+
+  const link = appUrl(`/account/support/${safetyCase.id}`);
+  await sendTransactionalEmail({
+    to: safetyCase.reporter.email,
+    subject: `[Linger Homes] ${safetyCase.type === "CLAIM" ? "Claim" : "Report"} received: ${safetyCase.reference}`,
+    text: [
+      `Hi ${safetyCase.reporter.name},`,
+      "",
+      `We received your ${safetyCase.type.toLowerCase()} "${safetyCase.subject}".`,
+      `Reference: ${safetyCase.reference}`,
+      `Status: ${safetyCase.status.replaceAll("_", " ")}`,
+      "",
+      `Follow the case: ${link}`,
+      "",
+      "Linger Homes Support",
+    ].join("\n"),
+  });
+
+  const supportEmail =
+    process.env.SUPPORT_EMAIL ?? `support@${SITE_DOMAIN}`;
+  await sendTransactionalEmail({
+    to: supportEmail,
+    subject: `[Linger Homes Support] New ${safetyCase.type.toLowerCase()}: ${safetyCase.reference}`,
+    text: [
+      `${safetyCase.reference}: ${safetyCase.subject}`,
+      `Category: ${safetyCase.category}`,
+      `Priority: ${safetyCase.priority}`,
+      "",
+      appUrl(`/admin/cases/${safetyCase.id}`),
+    ].join("\n"),
+  });
+}
+
+export async function notifySafetyCaseUpdated(input: {
+  caseId: string;
+  message: string;
+}): Promise<void> {
+  const { db } = await import("@/lib/db");
+  const safetyCase = await db.safetyCase.findUnique({
+    where: { id: input.caseId },
+    include: {
+      reporter: { select: { name: true, email: true } },
+    },
+  });
+  if (!safetyCase) return;
+
+  await sendTransactionalEmail({
+    to: safetyCase.reporter.email,
+    subject: `[Linger Homes] Update for ${safetyCase.reference}`,
+    text: [
+      `Hi ${safetyCase.reporter.name},`,
+      "",
+      input.message,
+      `Current status: ${safetyCase.status.replaceAll("_", " ")}`,
+      "",
+      `View and respond: ${appUrl(`/account/support/${safetyCase.id}`)}`,
+      "",
+      "Linger Homes Support",
+    ].join("\n"),
+  });
+}
+
 export async function notifyHostNewBookingRequest(bookingId: string): Promise<void> {
   const { db } = await import("@/lib/db");
   const booking = await db.booking.findUnique({

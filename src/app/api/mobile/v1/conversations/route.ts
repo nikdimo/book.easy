@@ -1,5 +1,6 @@
 import {
   ensureBookingConversation,
+  ensureInquiryConversation,
   listUserConversations,
 } from "@/lib/services/chat.service";
 import { mobileJson, mobileOptions, requireMobileUser } from "@/lib/mobile-api";
@@ -38,22 +39,24 @@ export async function POST(request: Request) {
   const access = await requireMobileUser(request);
   if ("response" in access) return access.response;
 
-  let input: { bookingId?: string };
+  let input: { bookingId?: string; listingId?: string };
   try {
     input = await request.json();
   } catch {
     return mobileJson(request, { error: "Invalid JSON body" }, { status: 400 });
   }
-  if (!input.bookingId) {
-    return mobileJson(request, { error: "Booking is required" }, { status: 400 });
+  if (!input.bookingId && !input.listingId) {
+    return mobileJson(request, { error: "A booking or listing is required" }, { status: 400 });
   }
 
   try {
-    const conversation = await ensureBookingConversation(input.bookingId, access.user.id);
+    const conversation = input.bookingId
+      ? await ensureBookingConversation(input.bookingId, access.user.id)
+      : await ensureInquiryConversation(input.listingId!, access.user.id);
     const conversations = await listUserConversations(access.user.id);
     const accessible = conversations.find((item) => item.id === conversation.id);
     if (!accessible) {
-      return mobileJson(request, { error: "Booking not found" }, { status: 404 });
+      return mobileJson(request, { error: "Conversation not found" }, { status: 404 });
     }
     return mobileJson(request, { conversationId: conversation.id }, { status: 201 });
   } catch (error) {

@@ -21,6 +21,8 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Heart,
+  MessageCircle,
+  LifeBuoy,
 } from "lucide-react";
 import { MarketplaceSearchBar } from "@/components/marketplace/marketplace-search-bar";
 import { GoogleTranslateWidget } from "@/components/shared/google-translate-widget";
@@ -34,6 +36,7 @@ import type { PropertyTypeOption } from "@/lib/types/property-type";
 import type { PlaceOption } from "@/lib/utils/place";
 import type { Resolved } from "@/lib/i18n/t";
 import { BrandLogo } from "@/components/shared/brand-logo";
+import { Tx } from "@/lib/i18n/client";
 
 export interface HeaderNavLabels {
   switchToHosting: Resolved;
@@ -259,6 +262,18 @@ export function Header({
                     >
                       {navLabels.favorites.text}
                     </span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/account/messages">
+                    <MessageCircle className="mr-2 h-4 w-4" />
+                    <Tx k="nav.messages" source="Messages" />
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/account/support">
+                    <LifeBuoy className="mr-2 h-4 w-4" />
+                    <Tx k="nav.support_cases" source="Support cases" />
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>

@@ -153,6 +153,9 @@ export interface NotificationSummary {
     | "BOOKING_REJECTED"
     | "BOOKING_CANCELLED"
     | "CHAT_MESSAGE"
+    | "SUPPORT_MESSAGE"
+    | "CASE_SUBMITTED"
+    | "CASE_UPDATED"
     | "SYSTEM";
   title: string;
   body: string;
@@ -169,6 +172,9 @@ export interface NotificationsResponse {
 
 export interface ConversationSummary {
   id: string;
+  kind: "INQUIRY" | "BOOKING";
+  status: "OPEN" | "FROZEN" | "CLOSED";
+  hasSupport: boolean;
   booking: {
     id: string;
     status: string;
@@ -196,6 +202,7 @@ export interface ChatMessage {
   body: string;
   sender: { id: string; name: string; image: string | null };
   senderId: string | null;
+  senderRole: "MEMBER" | "SUPPORT";
   createdAt: string;
   editedAt: string | null;
   deletedAt: string | null;
@@ -204,6 +211,8 @@ export interface ChatMessage {
 export interface ChatResponse {
   conversation: {
     id: string;
+    kind: "INQUIRY" | "BOOKING";
+    status: "OPEN" | "FROZEN" | "CLOSED";
     booking: {
       id: string;
       status: string;
@@ -213,6 +222,7 @@ export interface ChatResponse {
     listing: { id: string; title: string };
     participants: {
       userId: string;
+      role: "MEMBER" | "SUPPORT";
       user: { id: string; name: string; image: string | null };
     }[];
   };

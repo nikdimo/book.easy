@@ -27,6 +27,7 @@ import {
   Search,
   GripVertical,
   Smartphone,
+  MessageCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SITE_DOMAIN } from "@/lib/branding";
@@ -38,6 +39,7 @@ const hostNav = [
   { href: "/host", label: "Dashboard", icon: LayoutDashboard },
   { href: "/host/listings", label: "My Listings", icon: Home },
   { href: "/host/bookings", label: "Bookings", icon: CalendarDays },
+  { href: "/host/inbox", label: "Inbox", icon: MessageCircle },
   { href: "/host/mobile", label: "Mobile Preview", icon: Smartphone },
 ];
 

@@ -88,9 +88,15 @@ export default function InboxScreen() {
                   </Text>
                 ) : null}
               </View>
-              <Text numberOfLines={1} style={styles.listing}>
-                {conversation.listing.title}
-              </Text>
+              <View style={styles.contextRow}>
+                <Text numberOfLines={1} style={styles.listing}>
+                  {conversation.listing.title}
+                </Text>
+                <Text style={styles.kind}>
+                  {conversation.kind === "INQUIRY" ? t("Inquiry") : t("Booking")}
+                </Text>
+                {conversation.hasSupport ? <Text style={styles.support}>{t("Support")}</Text> : null}
+              </View>
               <View style={styles.previewRow}>
                 <Text
                   numberOfLines={1}
@@ -133,6 +139,9 @@ const styles = StyleSheet.create({
   name: { flex: 1, color: colors.ink, fontSize: 14, fontWeight: "900" },
   time: { color: colors.muted, fontSize: 10 },
   listing: { color: colors.primary, fontSize: 11, fontWeight: "700", marginTop: 3 },
+  contextRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 3 },
+  kind: { color: colors.muted, fontSize: 9, fontWeight: "800", textTransform: "uppercase" },
+  support: { color: colors.primary, fontSize: 9, fontWeight: "900", textTransform: "uppercase" },
   previewRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: 6 },
   preview: { flex: 1, color: colors.muted, fontSize: 12 },
   previewUnread: { color: colors.ink, fontWeight: "800" },

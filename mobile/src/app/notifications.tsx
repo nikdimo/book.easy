@@ -11,6 +11,9 @@ const icons: Record<string, string> = {
   BOOKING_REJECTED: "×",
   BOOKING_CANCELLED: "!",
   CHAT_MESSAGE: "C",
+  SUPPORT_MESSAGE: "S",
+  CASE_SUBMITTED: "R",
+  CASE_UPDATED: "U",
   SYSTEM: "i",
 };
 

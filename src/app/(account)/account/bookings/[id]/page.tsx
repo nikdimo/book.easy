@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { CancelBookingButton } from "@/components/account/cancel-booking-button";
 import { formatDate, formatPrice, formatGuestCount } from "@/lib/utils/format";
 import { BOOKING_STATUSES } from "@/lib/constants";
+import { StartConversationButton } from "@/components/communication/start-conversation-button";
 
 interface BookingDetailProps {
   params: Promise<{ id: string }>;
@@ -124,9 +125,18 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
             </>
           )}
 
+          <Separator />
+          <div className="flex flex-wrap gap-2">
+            <StartConversationButton bookingId={booking.id} label="Message host" />
+            <Button variant="outline" asChild>
+              <Link href={`/account/support/new?type=CLAIM&targetType=BOOKING&bookingId=${booking.id}`}>
+                Report a problem
+              </Link>
+            </Button>
+          </div>
+
           {canCancel && (
             <>
-              <Separator />
               <CancelBookingButton bookingId={booking.id} />
             </>
           )}

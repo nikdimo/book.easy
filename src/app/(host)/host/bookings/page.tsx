@@ -8,6 +8,9 @@ import { HostBookingActions } from "@/components/host/host-booking-actions";
 import { HostCancelBookingButton } from "@/components/host/host-cancel-booking-button";
 import { formatDate, formatPrice } from "@/lib/utils/format";
 import { BOOKING_STATUSES } from "@/lib/constants";
+import { StartConversationButton } from "@/components/communication/start-conversation-button";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export const metadata = { title: "Booking Requests" };
 
@@ -71,6 +74,14 @@ export default async function HostBookingsPage() {
                 {booking.status === "CONFIRMED" && (
                   <HostCancelBookingButton bookingId={booking.id} />
                 )}
+                <div className="flex flex-wrap gap-2">
+                  <StartConversationButton bookingId={booking.id} label="Message guest" />
+                  <Button variant="outline" asChild>
+                    <Link href={`/account/support/new?type=CLAIM&targetType=BOOKING&bookingId=${booking.id}`}>
+                      Report a problem
+                    </Link>
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           );

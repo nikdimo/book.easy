@@ -51,6 +51,11 @@ export default function MoreScreen() {
           detail={t("Browse public properties")}
           onPress={() => void openControlPanel("/properties")}
         />
+        <MenuItem
+          label={t("Support cases")}
+          detail={t("Reports, booking claims, and support replies")}
+          onPress={() => void openControlPanel("/account/support")}
+        />
       </View>
 
       <SectionHeader title="Session" />
