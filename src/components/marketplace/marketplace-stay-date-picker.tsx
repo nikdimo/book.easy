@@ -17,7 +17,7 @@ import {
   getDefaultClassNames,
   type Locale,
 } from "react-day-picker";
-import { CalendarRange, Search, X } from "lucide-react";
+import { CalendarRange, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -465,10 +465,12 @@ export function DateRangeCalendarStep({
     DateRange | undefined
   >(undefined);
   const [isDragging, setIsDragging] = React.useState(false);
+  const [canScrollBack, setCanScrollBack] = React.useState(false);
   const [, startMonthAppendTransition] = React.useTransition();
   const bodyScrollRef = React.useRef<HTMLDivElement>(null);
   const wasActiveRef = React.useRef(false);
   const pendingMonthAppendScrollTopRef = React.useRef<number | null>(null);
+  const pendingArrowScrollRef = React.useRef<1 | null>(null);
   const dragFrameRef = React.useRef<number | null>(null);
   const dragAutoScrollFrameRef = React.useRef<number | null>(null);
   const dragPointerRef = React.useRef<{ x: number; y: number } | null>(null);
@@ -497,7 +499,9 @@ export function DateRangeCalendarStep({
     if (!justOpened) return;
 
     bodyScrollRef.current?.scrollTo({ top: 0 });
+    setCanScrollBack(false);
     pendingMonthAppendScrollTopRef.current = null;
+    pendingArrowScrollRef.current = null;
     // Resets the visible month count each time this step becomes active, so a
     // prior expansion doesn't leak into the next open. Selection changes must
     // not reset this state: hosts often select dates in a lazily loaded month.
@@ -525,6 +529,16 @@ export function DateRangeCalendarStep({
     const scrollContainer = bodyScrollRef.current;
     if (scrollContainer) scrollContainer.scrollTop = scrollTop;
     pendingMonthAppendScrollTopRef.current = null;
+
+    if (scrollContainer && pendingArrowScrollRef.current) {
+      pendingArrowScrollRef.current = null;
+      window.requestAnimationFrame(() => {
+        scrollContainer.scrollBy({
+          top: Math.max(240, scrollContainer.clientHeight * 0.8),
+          behavior: "smooth",
+        });
+      });
+    }
   }, [visibleMonthCount]);
 
   React.useEffect(() => {
@@ -730,6 +744,39 @@ export function DateRangeCalendarStep({
     [disabledDateRanges]
   );
 
+  const scrollCalendar = React.useCallback(
+    (direction: -1 | 1) => {
+      const scrollContainer = bodyScrollRef.current;
+      if (!scrollContainer) return;
+
+      const scrollAmount = Math.max(240, scrollContainer.clientHeight * 0.8);
+      const isNearEnd =
+        scrollContainer.scrollTop + scrollContainer.clientHeight >=
+        scrollContainer.scrollHeight - 48;
+
+      if (
+        direction === 1 &&
+        isNearEnd &&
+        visibleMonthCount < MAX_MONTH_COUNT
+      ) {
+        pendingMonthAppendScrollTopRef.current = scrollContainer.scrollTop;
+        pendingArrowScrollRef.current = 1;
+        startMonthAppendTransition(() => {
+          setVisibleMonthCount((current) =>
+            Math.min(MAX_MONTH_COUNT, current + MONTH_LOAD_STEP)
+          );
+        });
+        return;
+      }
+
+      scrollContainer.scrollBy({
+        top: direction * scrollAmount,
+        behavior: "smooth",
+      });
+    },
+    [visibleMonthCount]
+  );
+
   return (
     <DragContext.Provider value={dragCtx}>
       <div
@@ -737,6 +784,7 @@ export function DateRangeCalendarStep({
         onScroll={(e) => {
           if (fitViewport) return;
           const el = e.currentTarget;
+          setCanScrollBack(el.scrollTop > 8);
           if (
             pendingMonthAppendScrollTopRef.current === null &&
             visibleMonthCount < MAX_MONTH_COUNT &&
@@ -757,6 +805,27 @@ export function DateRangeCalendarStep({
           isDragging && "cursor-grabbing select-none"
         )}
       >
+        {!fitViewport ? (
+          <div className="pointer-events-none sticky top-2 z-20 -mb-9 flex h-9 items-center justify-between">
+            <button
+              type="button"
+              className="pointer-events-auto inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-background/95 text-foreground shadow-sm backdrop-blur transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-30"
+              onClick={() => scrollCalendar(-1)}
+              disabled={!canScrollBack}
+              aria-label={labels.back.text}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              className="pointer-events-auto inline-flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-background/95 text-foreground shadow-sm backdrop-blur transition-colors hover:bg-muted"
+              onClick={() => scrollCalendar(1)}
+              aria-label={labels.next.text}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        ) : null}
         <div
           className="notranslate mx-auto w-full"
           translate="no"

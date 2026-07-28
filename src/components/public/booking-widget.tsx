@@ -22,7 +22,7 @@ import { Label } from "@/components/ui/label";
 import { LocalizedPrice } from "@/components/shared/localized-price";
 import { createBookingAction } from "@/lib/actions/booking.actions";
 import { toast } from "sonner";
-import { ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -100,6 +100,7 @@ export function BookingWidget({
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [priceDetailsOpen, setPriceDetailsOpen] = useState(false);
+  const [desktopPriceDetailsOpen, setDesktopPriceDetailsOpen] = useState(false);
   const [draftReady, setDraftReady] = useState(false);
   const draftStorageKey = `bookeasy:booking-draft:v${BOOKING_DRAFT_VERSION}:${listingId}`;
 
@@ -429,6 +430,39 @@ export function BookingWidget({
           <p className="hidden text-sm text-destructive lg:block">{error}</p>
         )}
 
+        {nights > 0 && stayPricing && (
+          <div className="hidden rounded-xl border border-border/70 bg-muted/20 px-4 py-3 lg:block">
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <p className="text-sm font-medium">
+                  <span className={nightLabel.translated ? "notranslate" : undefined}>{nightLabel.text}</span>{" "}
+                  · <span className="text-muted-foreground"><Tx k="booking.total" source="Total" /></span>
+                </p>
+                <button
+                  type="button"
+                  className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                  onClick={() => setDesktopPriceDetailsOpen((open) => !open)}
+                  aria-expanded={desktopPriceDetailsOpen}
+                >
+                  <Tx k="booking.price_details" source="Price details" />
+                  {desktopPriceDetailsOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+              <LocalizedPrice
+                amount={total}
+                currency={currency}
+                locale={i18n.locale}
+                className="text-xl font-semibold"
+              />
+            </div>
+            {desktopPriceDetailsOpen && (
+              <div className="mt-3 border-t border-border/60 pt-3">
+                {renderPriceBreakdown()}
+              </div>
+            )}
+          </div>
+        )}
+
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
@@ -446,13 +480,6 @@ export function BookingWidget({
             {reserveTooltip.text}
           </TooltipContent>
         </Tooltip>
-
-        {nights > 0 && stayPricing && (
-          <div className="hidden lg:block">
-            <Separator className="mb-4" />
-            {renderPriceBreakdown()}
-          </div>
-        )}
 
         <p className="hidden text-xs text-muted-foreground text-center leading-relaxed lg:block">
           <Tx k="booking.no_charge_notice" source="You won't be charged yet. The host will approve or decline your request." />
