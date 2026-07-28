@@ -184,19 +184,33 @@ export function TWithValues({
   k,
   source,
   values,
+  protectedValues = [],
 }: {
   t: Translator;
   k: string;
   source: string;
   values: Record<string, string | number>;
+  /** Placeholder values that are proper names or identifiers and must not be
+   * machine-translated (for example a city name such as "Bitola"). */
+  protectedValues?: readonly string[];
 }) {
   const { text, translated } = translator.resolve(k, source);
+  const protectedValueNames = new Set(protectedValues);
   return (
     <>
       {text.split(/(\{\w+\})/g).map((part, index) => {
         const placeholder = part.match(/^\{(\w+)\}$/)?.[1];
         if (placeholder && placeholder in values) {
-          return <span key={`${placeholder}-${index}`}>{values[placeholder]}</span>;
+          const isProtected = protectedValueNames.has(placeholder);
+          return (
+            <span
+              key={`${placeholder}-${index}`}
+              className={isProtected ? "notranslate" : undefined}
+              translate={isProtected ? "no" : undefined}
+            >
+              {values[placeholder]}
+            </span>
+          );
         }
         if (!part) return null;
         return translated ? (

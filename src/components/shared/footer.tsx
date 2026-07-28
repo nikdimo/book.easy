@@ -6,6 +6,7 @@ import {
   SITE_DOMAIN,
 } from "@/lib/branding";
 import { BrandLogo } from "@/components/shared/brand-logo";
+import { localizePlaceName } from "@/lib/i18n/place-name";
 import { getAvailableCities } from "@/lib/services/search.service";
 import { getT, ti } from "@/lib/i18n/t";
 import { cn } from "@/lib/utils";
@@ -72,9 +73,10 @@ export async function Footer() {
                 <li key={`${place.city}-${place.country}`}>
                   <Link
                     href={`/properties?city=${encodeURIComponent(place.city)}`}
-                    className="hover:text-foreground transition-colors"
+                    className="notranslate hover:text-foreground transition-colors"
+                    translate="no"
                   >
-                    {place.city}
+                    {localizePlaceName(place.city, t.locale)}
                   </Link>
                 </li>
               ))}

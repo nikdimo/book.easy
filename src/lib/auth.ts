@@ -9,6 +9,7 @@ import { db } from "@/lib/db";
 import { authConfig } from "@/lib/auth.config";
 import { rateLimit } from "@/lib/rate-limit";
 import { PRODUCT_NAME } from "@/lib/branding";
+import { communicationReplyToAddress } from "@/lib/communication-brand.server";
 
 // Magic-link sign-ins only carry an email, but `name` is required on User.
 // Fall back to the local part of the email so the account still gets a display name.
@@ -60,6 +61,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         await transport.sendMail({
           to: email,
           from: provider.from,
+          replyTo: communicationReplyToAddress(),
           subject: `Sign in to ${PRODUCT_NAME}`,
           text: `Sign in to ${PRODUCT_NAME}\n${url}\n\nIf you didn't request this, you can ignore this email.`,
           html: `<p>Sign in to <strong>${PRODUCT_NAME}</strong></p><p><a href="${url}">Click here to sign in</a></p><p>If you didn't request this, you can ignore this email.</p>`,

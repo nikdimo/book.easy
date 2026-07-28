@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, FileText } from "lucide-react";
 import { SafetyCaseControls } from "@/components/admin/safety-case-controls";
+import { ClaimReleaseButton } from "@/components/admin/claim-release-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { requireAdminPage } from "@/lib/auth-helpers";
@@ -32,6 +33,34 @@ export default async function AdminCasePage({ params }: { params: Promise<{ id: 
         <div><span className="text-muted-foreground">Reported user</span><p>{item.reportedUser ? `${item.reportedUser.name} · ${item.reportedUser.email}` : "None"}</p></div>
         <div><span className="text-muted-foreground">Listing</span><p>{item.listing?.title || "None"}</p></div>
         <div><span className="text-muted-foreground">Assigned</span><p>{item.assignedAdmin?.name || "Unassigned"}</p></div>
+        {item.type === "CLAIM" ? (
+          <>
+            <div>
+              <span className="text-muted-foreground">Request type</span>
+              <p>{item.claimKind?.replaceAll("_", " ") || "Not specified"}</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Requested amount</span>
+              <p className="font-semibold">
+                {item.requestedAmount
+                  ? `${Number(item.requestedAmount).toFixed(2)} ${item.currency || "EUR"}`
+                  : "Not specified"}
+              </p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Recipient response</span>
+              <p>{item.responseStatus?.replaceAll("_", " ") || "Not started"}</p>
+            </div>
+            <div>
+              <span className="text-muted-foreground">Counteroffer</span>
+              <p>
+                {item.counterAmount
+                  ? `${Number(item.counterAmount).toFixed(2)} ${item.currency || "EUR"}`
+                  : "None"}
+              </p>
+            </div>
+          </>
+        ) : null}
       </div>
       <div className="rounded-xl border p-4">
         <h2 className="mb-2 font-semibold">Description</h2>
@@ -65,6 +94,9 @@ export default async function AdminCasePage({ params }: { params: Promise<{ id: 
       </div>
       {item.conversation ? (
         <Button asChild variant="outline"><Link href={`/admin/communications/${item.conversation.id}`}>View related conversation</Link></Button>
+      ) : null}
+      {item.type === "CLAIM" && item.responseStatus === "AWAITING_ADMIN" ? (
+        <ClaimReleaseButton caseId={item.id} />
       ) : null}
       <SafetyCaseControls caseId={item.id} initialStatus={item.status} initialPriority={item.priority} />
     </div>

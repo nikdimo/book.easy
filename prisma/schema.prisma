@@ -108,6 +108,53 @@ enum SafetyCaseTargetType {
   MESSAGE
 }
 
+enum ReviewDirection {
+  GUEST_TO_HOST
+  HOST_TO_GUEST
+}
+
+enum ReviewStatus {
+  PENDING_ADMIN
+  APPROVED
+  REJECTED
+  HIDDEN
+}
+
+enum ReviewRatingCategory {
+  OVERALL
+  ACCURACY
+  CHECK_IN
+  CLEANLINESS
+  COMMUNICATION
+  LOCATION
+  VALUE
+  HOUSE_RULES
+}
+
+enum ReviewReminderStage {
+  INVITATION
+  DAY_3
+  DAY_7
+  HOURS_48
+  HOURS_24
+  OTHER_PARTY_SUBMITTED
+}
+
+enum ClaimKind {
+  EXPENSE
+  DAMAGE
+  REFUND
+}
+
+enum ClaimResponseStatus {
+  AWAITING_ADMIN
+  AWAITING_RECIPIENT
+  ACCEPTED
+  COUNTERED
+  REJECTED
+  ESCALATED
+}
+
 enum NotificationType {
   BOOKING_REQUEST
   BOOKING_CONFIRMED
@@ -117,6 +164,10 @@ enum NotificationType {
   CASE_SUBMITTED
   CASE_UPDATED
   SUPPORT_MESSAGE
+  REVIEW_INVITATION
+  REVIEW_SUBMITTED
+  REVIEW_PUBLISHED
+  REVIEW_REJECTED
   SYSTEM
 }
 
@@ -158,6 +209,11 @@ model User {
   reportedSafetyCases     SafetyCase[]              @relation("SafetyCaseReportedUser")
   assignedSafetyCases     SafetyCase[]              @relation("SafetyCaseAssignedAdmin")
   safetyCaseUpdates       SafetyCaseUpdate[]        @relation("SafetyCaseUpdateAuthor")
+  authoredReviews         Review[]                  @relation("ReviewAuthor")
+  receivedReviews         Review[]                  @relation("ReviewSubject")
+  moderatedReviews        Review[]                  @relation("ReviewModerator")
+  reviewInvitations       ReviewInvitation[]
+  reviewAdminReads        ReviewAdminRead[]
 
   @@index([email])
   @@index([role])
@@ -335,6 +391,7 @@ model Listing {
   favorites          Favorite[]
   views              ListingView[]
   conversations      Conversation[]
+  reviews            Review[]
 
   @@index([hostId])
   @@index([status])
@@ -577,6 +634,8 @@ model Booking {
   availabilityBlocks AvailabilityBlock[]
   conversation       Conversation?
   safetyCases        SafetyCase[]
+  reviews            Review[]
+  reviewInvitations  ReviewInvitation[]
 
   @@index([listingId, status])
   @@index([guestId])
@@ -708,6 +767,14 @@ model SafetyCase {
   conversationId  String?
   assignedAdminId String?
   resolution      String?              @db.Text
+  claimKind       ClaimKind?
+  requestedAmount Decimal?             @db.Decimal(10, 2)
+  currency        String?
+  responseStatus  ClaimResponseStatus?
+  counterAmount   Decimal?             @db.Decimal(10, 2)
+  responseNote    String?              @db.Text
+  respondBy       DateTime?
+  adminApprovedAt DateTime?
   resolvedAt      DateTime?
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
@@ -728,6 +795,7 @@ model SafetyCase {
   @@index([listingId])
   @@index([bookingId])
   @@index([reportedUserId])
+  @@index([responseStatus, respondBy])
 }
 
 model SafetyCaseEvidence {
@@ -756,6 +824,97 @@ model SafetyCaseUpdate {
   author     User?      @relation("SafetyCaseUpdateAuthor", fields: [authorId], references: [id], onDelete: SetNull)
 
   @@index([caseId, createdAt])
+}
+
+// ─── Two-sided post-stay reviews ─────────────────────────────────────────────
+
+model Review {
+  id             String          @id @default(cuid())
+  bookingId      String
+  listingId      String
+  authorId       String?
+  subjectUserId  String?
+  direction      ReviewDirection
+  status         ReviewStatus    @default(PENDING_ADMIN)
+  publicComment  String          @db.Text
+  privateNote    String?         @db.Text
+  submittedAt    DateTime        @default(now())
+  reviewDeadline DateTime
+  adminReadAt    DateTime?
+  approvedAt     DateTime?
+  approvedById   String?
+  rejectedAt     DateTime?
+  moderationNote String?         @db.Text
+  publishedAt    DateTime?
+  hiddenAt       DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  booking     Booking           @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  listing     Listing           @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  author      User?             @relation("ReviewAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  subjectUser User?             @relation("ReviewSubject", fields: [subjectUserId], references: [id], onDelete: SetNull)
+  approvedBy  User?             @relation("ReviewModerator", fields: [approvedById], references: [id], onDelete: SetNull)
+  ratings     ReviewRating[]
+  adminReads  ReviewAdminRead[]
+
+  @@unique([bookingId, direction])
+  @@index([listingId, status, publishedAt])
+  @@index([subjectUserId, status, publishedAt])
+  @@index([status, submittedAt])
+}
+
+model ReviewRating {
+  id       String               @id @default(cuid())
+  reviewId String
+  category ReviewRatingCategory
+  score    Int
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewId, category])
+  @@index([category, score])
+}
+
+model ReviewInvitation {
+  id          String          @id @default(cuid())
+  bookingId   String
+  recipientId String
+  direction   ReviewDirection
+  deadline    DateTime
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  booking   Booking                    @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  recipient User                       @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  reminders ReviewInvitationReminder[]
+
+  @@unique([bookingId, direction])
+  @@index([recipientId, deadline])
+}
+
+model ReviewInvitationReminder {
+  id           String              @id @default(cuid())
+  invitationId String
+  stage        ReviewReminderStage
+  sentAt       DateTime            @default(now())
+
+  invitation ReviewInvitation @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+
+  @@unique([invitationId, stage])
+  @@index([sentAt])
+}
+
+model ReviewAdminRead {
+  reviewId String
+  adminId  String
+  readAt   DateTime @default(now())
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  admin  User   @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@id([reviewId, adminId])
+  @@index([adminId, readAt])
 }
 
 // ─── Settings ───────────────────────────────────────────────────────────────────

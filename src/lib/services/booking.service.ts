@@ -23,13 +23,28 @@ function notifyBestEffort(fn: () => Promise<void>): void {
 export async function completePastBookings(): Promise<void> {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  await db.booking.updateMany({
+  const completing = await db.booking.findMany({
     where: {
       status: BookingStatus.CONFIRMED,
-      checkOut: { lt: today },
+      checkOut: { lte: today },
     },
+    select: { id: true },
+  });
+  if (completing.length === 0) return;
+
+  await db.booking.updateMany({
+    where: { id: { in: completing.map((booking) => booking.id) } },
     data: { status: BookingStatus.COMPLETED },
   });
+
+  // Completing the stay also opens the sealed 14-day review window. Invitations are
+  // independently deduplicated, so a retry cannot send duplicate opening messages.
+  const { ensureReviewInvitationsForBooking } = await import(
+    "@/lib/services/review.service"
+  );
+  await Promise.allSettled(
+    completing.map((booking) => ensureReviewInvitationsForBooking(booking.id))
+  );
 }
 
 export async function getGuestBookings(guestId: string) {

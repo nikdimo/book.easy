@@ -7,6 +7,8 @@ import { LocalizedPrice } from "@/components/shared/localized-price";
 import { auth } from "@/lib/auth";
 import { getFavoriteListingIdSet } from "@/lib/services/favorite.service";
 import { getT, T, TWithValues, ti, tPlural } from "@/lib/i18n/t";
+import { localizePlaceName } from "@/lib/i18n/place-name";
+import { Moon, UserRound } from "lucide-react";
 
 interface PropertyCardProps {
   listing: {
@@ -52,7 +54,7 @@ export async function PropertyCard({
   const t = await getT();
   const { slug, title, property, images, video, pricingRule } = listing;
   const displayImages = images.filter((img) => img.url?.trim());
-  const city = property.city;
+  const city = localizePlaceName(property.city, t.locale);
   const typeLabel = await getPropertyTypeLabel(property.propertyType);
   const href = `/properties/${slug}${searchQuery ? `?${searchQuery}` : ""}`;
 
@@ -77,8 +79,15 @@ export async function PropertyCard({
   const belowMinStay =
     showTrip && pricingRule != null && nightCount! < pricingRule.minNights;
   const minimumStay = pricingRule
-    ? tPlural(t, "property_card.minimum_nights", pricingRule.minNights, "{n}-night minimum", "{n}-night minimum")
+    ? tPlural(t, "property_card.minimum_nights", pricingRule.minNights, "{n}-night min.", "{n}-night min.")
     : null;
+  const guestsLabel = tPlural(
+    t,
+    "listing.guests",
+    listing.maxGuests,
+    "{n} guest",
+    "{n} guests"
+  );
   const totalPrice = pricingRule && tripTotal != null
     ? ti(t, "property_card.price_total", "{price} total", {
         price: formatPrice(tripTotal, pricingRule.currency, t.locale),
@@ -102,15 +111,16 @@ export async function PropertyCard({
 
       <a
         href={href}
-        className="flex flex-col gap-1 px-0.5 group/link"
+        className="group/link flex min-w-0 flex-col gap-0.5 px-1"
       >
-        <div className="flex items-start justify-between gap-3">
-          <h3 className="min-w-0 flex-1 text-[0.95rem] font-semibold text-foreground leading-snug line-clamp-2 group-hover/link:underline underline-offset-2">
+        <div className="flex min-w-0 items-baseline justify-between gap-3">
+          <h3 className="min-w-0 flex-1 truncate text-[0.95rem] font-semibold leading-snug text-foreground group-hover/link:underline underline-offset-2">
             <TWithValues
               t={t}
               k="property_card.type_in_city"
               source="{type} in {city}"
               values={{ type: typeLabel, city }}
+              protectedValues={["city"]}
             />
           </h3>
           {belowMinStay ? (
@@ -123,27 +133,53 @@ export async function PropertyCard({
           ) : null}
         </div>
 
-        <p className="text-muted-foreground text-[0.83rem] line-clamp-1">{title}</p>
+        <p className="truncate text-[0.9rem] leading-5 text-muted-foreground">{title}</p>
 
         {dateLine ? (
-          <p className="text-muted-foreground text-[0.83rem]">{dateLine}</p>
+          <p
+            className="notranslate text-[0.9rem] leading-5 text-muted-foreground"
+            translate="no"
+          >
+            {dateLine}
+          </p>
         ) : null}
 
         {pricingRule && tripTotal != null ? (
-          <div className="mt-0.5">
-            <span className="text-sm font-semibold text-foreground">
+          <div className="mt-1">
+            <span className="text-[0.95rem] font-semibold text-foreground underline decoration-1 underline-offset-2">
               <span className={totalPrice?.translated ? "notranslate" : undefined}>{totalPrice?.text}</span>
             </span>
           </div>
         ) : pricingRule ? (
-          <div className="mt-0.5 flex items-baseline gap-1">
-            <LocalizedPrice
-              amount={nightly}
-              currency={pricingRule.currency}
-              locale={t.locale}
-              className="text-sm font-semibold text-foreground"
-            />
-            <span className="text-muted-foreground text-[0.83rem]"><T t={t} k="property_card.per_night" source="night" /></span>
+          <div className="mt-1 flex min-w-0 items-center gap-2 text-[0.85rem] leading-5 text-muted-foreground">
+            <span
+              className="flex shrink-0 items-center gap-1"
+              aria-label={guestsLabel.text}
+            >
+              <UserRound className="size-4" aria-hidden="true" />
+              <span>{listing.maxGuests}</span>
+            </span>
+            <span aria-hidden="true">·</span>
+            <span className="flex min-w-0 items-center gap-1">
+              <Moon className="size-4 shrink-0" aria-hidden="true" />
+              <span
+                className={`truncate ${minimumStay?.translated ? "notranslate" : ""}`}
+              >
+                {minimumStay?.text}
+              </span>
+            </span>
+            <span aria-hidden="true">·</span>
+            <span className="flex shrink-0 items-baseline gap-1">
+              <LocalizedPrice
+                amount={nightly}
+                currency={pricingRule.currency}
+                locale={t.locale}
+                className="text-[0.95rem] font-semibold text-foreground"
+              />
+              <span className="text-[0.9rem] text-muted-foreground">
+                <T t={t} k="property_card.per_night" source="night" />
+              </span>
+            </span>
           </div>
         ) : null}
       </a>

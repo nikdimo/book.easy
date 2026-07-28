@@ -64,14 +64,13 @@
 
 - Communication copy uses the approved spelling **Linger Homes**.
 - Customer email sender name is **Linger Homes**.
-- Support email sender/display name is **Linger Homes Support**.
+- Support participation inside the product is displayed as **Linger Homes Support**.
 - Communication identity is centralized in `src/lib/communication-brand.ts`
   without modifying the global branding files during the parallel rollout.
 - Email links use `NEXT_PUBLIC_APP_URL` while both domains operate in parallel and
   fall back to `https://lingerhomes.com`.
-- The sender mailbox uses the address configured in `EMAIL_FROM` so the current
-  authenticated SMTP setup remains deliverable during the parallel rollout. After
-  the coordinated email cutover, that setting should use `hello@lingerhomes.com`
-  or `support@lingerhomes.com`; the visible sender name is already branded.
+- The sender mailbox uses the address configured in `EMAIL_FROM`; the official
+  sender identity is `Linger Homes <hello@lingerhomes.com>`.
+- Replies use `EMAIL_REPLY_TO` and fall back to `hello@lingerhomes.com`.
 - Case escalation mail uses `SUPPORT_EMAIL` and falls back to
-  `support@lingerhomes.com`.
+  `hello@lingerhomes.com`.

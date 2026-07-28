@@ -15,7 +15,8 @@ import {
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 import { cn } from "@/lib/utils";
 import { sortPropertyTypesInDisplayOrder } from "@/lib/property-type-filter";
-import { placeKey, placeLabel, type PlaceOption } from "@/lib/utils/place";
+import { placeKey, type PlaceOption } from "@/lib/utils/place";
+import { localizePlaceName, localizedPlaceLabel } from "@/lib/i18n/place-name";
 import { Button } from "@/components/ui/button";
 import { interpolate } from "@/lib/i18n/client";
 import { useSearchLabels } from "@/components/marketplace/search-labels";
@@ -180,8 +181,8 @@ export function MarketplacePlaceSelector({
   const triggerActive = open;
   const currentLabel = city
     ? country
-      ? placeLabel({ city, country })
-      : city
+      ? localizedPlaceLabel({ city, country }, labels.locale)
+      : localizePlaceName(city, labels.locale)
     : labels.searchDestinations.text;
 
   const pillFieldClass = cn(
@@ -290,8 +291,11 @@ export function MarketplacePlaceSelector({
           className={cn(
             "mt-px block truncate md:text-base",
             layout === "pill" ? "text-sm leading-5 font-normal" : "text-sm font-medium",
-            !city && "text-muted-foreground"
+            !city && "text-muted-foreground",
+            (city || labels.searchDestinations.translated) && "notranslate"
           )}
+          translate="no"
+          suppressHydrationWarning
         >
           {currentLabel}
         </span>
@@ -457,34 +461,33 @@ export function MarketplacePlaceSelector({
                             )}
                             onClick={() => {
                               setDraftCity(place.city);
-                              if (isPillLayout) {
-                                onPlaceChange({
-                                  city: place.city,
-                                  country: place.country,
-                                });
-                                if (showPropertyTypes) {
-                                  onPropertyTypesChange(
-                                    sortPropertyTypesInDisplayOrder(
-                                      draftPropertyTypes.filter((value) =>
-                                        (
-                                          availablePropertyTypesByCity[
-                                            placeKey(place)
-                                          ] ?? []
-                                        ).includes(value)
-                                      ),
-                                      allPropertyTypeValues
-                                    )
-                                  );
-                                }
-                                setOpen(false);
+                              onPlaceChange({
+                                city: place.city,
+                                country: place.country,
+                              });
+                              if (showPropertyTypes) {
+                                onPropertyTypesChange(
+                                  sortPropertyTypesInDisplayOrder(
+                                    draftPropertyTypes.filter((value) =>
+                                      (
+                                        availablePropertyTypesByCity[
+                                          placeKey(place)
+                                        ] ?? []
+                                      ).includes(value)
+                                    ),
+                                    allPropertyTypeValues
+                                  )
+                                );
                               }
+                              setOpen(false);
+                              onNextToDates?.();
                             }}
                           >
                             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
                               <MapPin className="h-5 w-5" strokeWidth={1.75} />
                             </span>
-                            <span className="block min-w-0 font-semibold text-foreground">
-                              {placeLabel(place)}
+                            <span className="notranslate block min-w-0 font-semibold text-foreground" translate="no">
+                              {localizedPlaceLabel(place, labels.locale)}
                             </span>
                           </button>
                         </li>

@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { addDays, format } from "date-fns";
 import { computeStayPricing, parseLocalYmd } from "@/lib/utils/stay-pricing";
 import { validateBookingSelection } from "@/lib/utils/booking-selection";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +23,7 @@ import { LocalizedPrice } from "@/components/shared/localized-price";
 import { createBookingAction } from "@/lib/actions/booking.actions";
 import { toast } from "sonner";
 import { ChevronDown, ChevronUp } from "lucide-react";
+import { updateActiveSearchState } from "@/lib/marketplace-search-state";
 import {
   Tooltip,
   TooltipContent,
@@ -58,14 +58,6 @@ type GuestDetails = {
   pets: number;
 };
 
-type BookingDraft = {
-  checkIn: string;
-  checkOut: string;
-  guestDetails: GuestDetails;
-  note: string;
-};
-
-const BOOKING_DRAFT_VERSION = 1;
 const BOOKINGS_UNAVAILABLE_KEY = "mobile.bookings.unavailable";
 const BOOKINGS_UNAVAILABLE_SOURCE = "Bookings unavailable";
 
@@ -105,17 +97,24 @@ function BookingGuestEditor({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <button
         type="button"
-        className="flex w-full items-center justify-between gap-3 rounded-xl border border-input bg-background px-3.5 py-3 text-left transition-colors hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="flex w-full items-center justify-between gap-3 bg-background px-4 py-3 text-left transition-colors hover:bg-muted/30 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
         onClick={openEditor}
       >
-        <span className="min-w-0 truncate text-sm text-foreground">
-          <span className={summary.translated ? "notranslate" : undefined}>
-            {summary.text}
+        <span className="min-w-0">
+          <span className="block text-[0.68rem] font-semibold uppercase tracking-wide text-foreground">
+            <Tx k="booking.guests_label" source="Guests" />
+          </span>
+          <span
+            className={`mt-0.5 block truncate text-sm ${
+              summary.text ? "text-foreground" : "text-muted-foreground"
+            }`}
+          >
+            <span className={summary.translated ? "notranslate" : undefined}>
+              {summary.text}
+            </span>
           </span>
         </span>
-        <span className="shrink-0 text-sm font-medium text-primary">
-          <Tx k="common.edit" source="Edit" />
-        </span>
+        <ChevronDown className="size-4 shrink-0 text-foreground" aria-hidden="true" />
       </button>
 
       <DialogContent
@@ -166,7 +165,6 @@ export function BookingWidget({
   initialCheckOut = "",
   initialGuests,
   initialGuestDetails = { adults: 0, children: 0, infants: 0, pets: 0 },
-  hasExplicitSearchSelection = false,
   reserveTooltip,
 }: BookingWidgetProps) {
   const i18n = useI18n();
@@ -189,65 +187,20 @@ export function BookingWidget({
   const [error, setError] = useState<string | null>(null);
   const [priceDetailsOpen, setPriceDetailsOpen] = useState(false);
   const [desktopPriceDetailsOpen, setDesktopPriceDetailsOpen] = useState(false);
-  const [draftReady, setDraftReady] = useState(false);
-  const draftStorageKey = `bookeasy:booking-draft:v${BOOKING_DRAFT_VERSION}:${listingId}`;
+  const hasSyncedSearchRef = useRef(false);
 
   useEffect(() => {
-    let cancelled = false;
-
-    queueMicrotask(() => {
-      if (cancelled) return;
-
-      if (!hasExplicitSearchSelection) {
-        try {
-          const rawDraft = window.localStorage.getItem(draftStorageKey);
-          if (rawDraft) {
-            const draft = JSON.parse(rawDraft) as Partial<BookingDraft>;
-            if (typeof draft.checkIn === "string") setCheckInStr(draft.checkIn);
-            if (typeof draft.checkOut === "string") setCheckOutStr(draft.checkOut);
-            if (typeof draft.note === "string") setNote(draft.note);
-            if (
-              draft.guestDetails &&
-              ["adults", "children", "infants", "pets"].every(
-                (key) =>
-                  Number.isInteger(draft.guestDetails?.[key as keyof GuestDetails]) &&
-                  Number(draft.guestDetails?.[key as keyof GuestDetails]) >= 0
-              )
-            ) {
-              const restored = draft.guestDetails as GuestDetails;
-              const restoredOccupancy = restored.adults + restored.children;
-              if (restoredOccupancy > 0 && restoredOccupancy <= maxGuests) {
-                setGuestDetails(restored);
-              }
-            }
-          }
-        } catch {
-          // A malformed or unavailable browser cache should never block booking.
-        }
-      }
-
-      setDraftReady(true);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [draftStorageKey, hasExplicitSearchSelection, maxGuests]);
-
-  useEffect(() => {
-    if (!draftReady) return;
-    const draft: BookingDraft = {
+    if (!hasSyncedSearchRef.current) {
+      hasSyncedSearchRef.current = true;
+      return;
+    }
+    updateActiveSearchState({
       checkIn: checkInStr,
       checkOut: checkOutStr,
-      guestDetails,
-      note,
-    };
-    try {
-      window.localStorage.setItem(draftStorageKey, JSON.stringify(draft));
-    } catch {
-      // Booking remains usable when storage is disabled or full.
-    }
-  }, [checkInStr, checkOutStr, draftReady, draftStorageKey, guestDetails, note]);
+      guestCounts: guestDetails,
+      dateFlexibility,
+    });
+  }, [checkInStr, checkOutStr, dateFlexibility, guestDetails]);
 
   const checkIn = checkInStr ? parseLocalYmd(checkInStr) : undefined;
   const checkOut = checkOutStr ? parseLocalYmd(checkOutStr) : undefined;
@@ -373,11 +326,12 @@ export function BookingWidget({
     setError(null);
     setPriceDetailsOpen(false);
     setDesktopPriceDetailsOpen(false);
-    try {
-      window.localStorage.removeItem(draftStorageKey);
-    } catch {
-      // The visible selection is still cleared if browser storage is unavailable.
-    }
+    updateActiveSearchState({
+      checkIn: "",
+      checkOut: "",
+      guestCounts: { adults: 1, children: 0, infants: 0, pets: 0 },
+      dateFlexibility: 0,
+    });
 
     const cleanUrl = new URL(window.location.href);
     ["checkIn", "checkOut", "guests", "adults", "children", "infants", "pets"].forEach(
@@ -474,35 +428,43 @@ export function BookingWidget({
       </CardHeader>
       <CardContent className="space-y-4 pt-0">
         <div className="space-y-2">
-          <Label><Tx k="booking.dates" source="Dates" /></Label>
-          <MarketplaceStayDatePicker
-            layout="pill"
-            checkIn={checkInStr}
-            checkOut={checkOutStr}
-            open={datePickerOpen}
-            onOpenChange={setDatePickerOpen}
-            dateFlexibility={dateFlexibility}
-            showDateFlexibility
-            onDateFlexibilityChange={setDateFlexibility}
-            showGuestStep={false}
-            pagedCalendarOnDesktop
-            disabledDateRanges={disabledDateRanges}
-            onRangeStringsChange={({ checkIn: ci, checkOut: co }) => {
-              const startDate = ci ? parseLocalYmd(ci) : undefined;
-              const nextCheckOut =
-                co ||
-                (startDate
-                  ? format(addDays(startDate, minNights), "yyyy-MM-dd")
-                  : "");
-              setCheckInStr(ci);
-              setCheckOutStr(nextCheckOut);
-              setError(null);
-              if (ci && nextCheckOut) {
-                window.requestAnimationFrame(() => setDatePickerOpen(false));
-              }
-            }}
-            className="w-full"
-          />
+          <Label className="text-base font-semibold">
+            <Tx k="booking.dates" source="Dates" />
+          </Label>
+          <div className="overflow-hidden rounded-xl border border-foreground/50 bg-background">
+            <MarketplaceStayDatePicker
+              layout="compact"
+              checkIn={checkInStr}
+              checkOut={checkOutStr}
+              open={datePickerOpen}
+              onOpenChange={setDatePickerOpen}
+              dateFlexibility={dateFlexibility}
+              showDateFlexibility
+              onDateFlexibilityChange={setDateFlexibility}
+              showGuestStep={false}
+              pagedCalendarOnDesktop
+              disabledDateRanges={disabledDateRanges}
+              minimumStayNights={minNights}
+              minimumStayMessage={minimumStayMessage}
+              onRangeStringsChange={({ checkIn: ci, checkOut: co }) => {
+                setCheckInStr(ci);
+                setCheckOutStr(co);
+                setError(null);
+              }}
+              className="w-full [&_button]:!rounded-none [&_button]:!border-0"
+            />
+            <div className="border-t border-foreground/30">
+              <BookingGuestEditor
+                value={guestDetails}
+                summary={guestSummary}
+                maxGuests={maxGuests}
+                onChange={(next) => {
+                  setGuestDetails(next);
+                  setError(null);
+                }}
+              />
+            </div>
+          </div>
           {selectionValidation.status !== "valid" && checkInStr && checkOutStr && (
             <p aria-live="polite" className="text-sm text-destructive">
               <span className={pickerMessage.translated ? "notranslate" : undefined}>
@@ -510,19 +472,6 @@ export function BookingWidget({
               </span>
             </p>
           )}
-        </div>
-
-        <div className="space-y-2">
-          <Label><Tx k="booking.guests_label" source="Guests" /></Label>
-          <BookingGuestEditor
-            value={guestDetails}
-            summary={guestSummary}
-            maxGuests={maxGuests}
-            onChange={(next) => {
-              setGuestDetails(next);
-              setError(null);
-            }}
-          />
         </div>
 
         <div className="space-y-2">
@@ -589,7 +538,7 @@ export function BookingWidget({
             aria-live="polite"
             className={
               bookingMessageIsError
-                ? "hidden text-sm font-medium text-destructive lg:block"
+                ? "hidden rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm lg:block"
                 : "hidden text-sm text-muted-foreground lg:block"
             }
           >
@@ -633,7 +582,7 @@ export function BookingWidget({
             aria-live="polite"
             className={
               bookingMessageIsError
-                ? "mb-2 text-sm font-medium text-destructive"
+                ? "mb-2 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm"
                 : "mb-2 text-sm text-muted-foreground"
             }
           >

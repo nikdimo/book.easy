@@ -4,6 +4,6 @@ export const COMMUNICATION_BRAND = Object.freeze({
   supportName: "Linger Homes Support",
   canonicalUrl: "https://lingerhomes.com",
   publicEmail: "hello@lingerhomes.com",
-  supportEmail: "support@lingerhomes.com",
-  privacyEmail: "privacy@lingerhomes.com",
+  supportEmail: "hello@lingerhomes.com",
+  privacyEmail: "hello@lingerhomes.com",
 });

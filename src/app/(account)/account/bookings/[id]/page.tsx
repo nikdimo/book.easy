@@ -1,6 +1,6 @@
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { Calendar, MapPin, Users, ArrowLeft } from "lucide-react";
+import { Calendar, MapPin, Users, ArrowLeft, Star } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { getGuestBookingWithHost } from "@/lib/services/booking.service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -128,6 +128,14 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
           <Separator />
           <div className="flex flex-wrap gap-2">
             <StartConversationButton bookingId={booking.id} label="Message host" />
+            {booking.status === "COMPLETED" ? (
+              <Button asChild>
+                <Link href={`/account/bookings/${booking.id}/after-stay`}>
+                  <Star className="mr-1 h-4 w-4" />
+                  Rate your stay
+                </Link>
+              </Button>
+            ) : null}
             <Button variant="outline" asChild>
               <Link href={`/account/support/new?type=CLAIM&targetType=BOOKING&bookingId=${booking.id}`}>
                 Report a problem

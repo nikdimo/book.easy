@@ -56,7 +56,10 @@ export default async function BookingConfirmPage({ searchParams }: ConfirmPagePr
         <CardContent className="space-y-4">
           <div>
             <h3 className="font-semibold">{booking.listing.title}</h3>
-            <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+            <div
+              className="notranslate flex items-center gap-1 text-sm text-muted-foreground mt-1"
+              translate="no"
+            >
               <MapPin className="h-3 w-3" />
               {booking.listing.property.city}, {booking.listing.property.country}
             </div>
@@ -67,14 +70,20 @@ export default async function BookingConfirmPage({ searchParams }: ConfirmPagePr
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-muted-foreground"><T t={t} k="booking.check_in" source="Check-in" /></p>
-              <p className="font-medium flex items-center gap-1">
+              <p
+                className="notranslate font-medium flex items-center gap-1"
+                translate="no"
+              >
                 <Calendar className="h-3 w-3" />
                 {formatDate(booking.checkIn, t.locale)}
               </p>
             </div>
             <div>
               <p className="text-muted-foreground"><T t={t} k="booking.check_out" source="Check-out" /></p>
-              <p className="font-medium flex items-center gap-1">
+              <p
+                className="notranslate font-medium flex items-center gap-1"
+                translate="no"
+              >
                 <Calendar className="h-3 w-3" />
                 {formatDate(booking.checkOut, t.locale)}
               </p>

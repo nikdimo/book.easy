@@ -11,6 +11,7 @@ import { BOOKING_STATUSES } from "@/lib/constants";
 import { StartConversationButton } from "@/components/communication/start-conversation-button";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Star } from "lucide-react";
 
 export const metadata = { title: "Booking Requests" };
 
@@ -76,6 +77,14 @@ export default async function HostBookingsPage() {
                 )}
                 <div className="flex flex-wrap gap-2">
                   <StartConversationButton bookingId={booking.id} label="Message guest" />
+                  {booking.status === "COMPLETED" ? (
+                    <Button asChild>
+                      <Link href={`/account/bookings/${booking.id}/after-stay`}>
+                        <Star className="mr-1 h-4 w-4" />
+                        Rate guest
+                      </Link>
+                    </Button>
+                  ) : null}
                   <Button variant="outline" asChild>
                     <Link href={`/account/support/new?type=CLAIM&targetType=BOOKING&bookingId=${booking.id}`}>
                       Report a problem

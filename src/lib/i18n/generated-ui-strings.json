@@ -410,11 +410,6 @@
     "filePath": "src/components/public/booking-widget.tsx"
   },
   {
-    "key": "common.edit",
-    "sourceText": "Edit",
-    "filePath": "src/components/public/booking-widget.tsx"
-  },
-  {
     "key": "consent.accept_all",
     "sourceText": "Accept all",
     "filePath": "src/components/shared/consent-banner.tsx"
@@ -1152,6 +1147,11 @@
   {
     "key": "listing.cleaning_fee",
     "sourceText": "Cleaning fee",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.guest_reviews",
+    "sourceText": "Guest reviews",
     "filePath": "src/app/(public)/properties/[slug]/page.tsx"
   },
   {
@@ -2556,32 +2556,32 @@
   },
   {
     "key": "property_card.minimum_nights.few",
-    "sourceText": "{n}-night minimum",
+    "sourceText": "{n}-night min.",
     "filePath": "src/components/public/property-card.tsx"
   },
   {
     "key": "property_card.minimum_nights.many",
-    "sourceText": "{n}-night minimum",
+    "sourceText": "{n}-night min.",
     "filePath": "src/components/public/property-card.tsx"
   },
   {
     "key": "property_card.minimum_nights.one",
-    "sourceText": "{n}-night minimum",
+    "sourceText": "{n}-night min.",
     "filePath": "src/components/public/property-card.tsx"
   },
   {
     "key": "property_card.minimum_nights.other",
-    "sourceText": "{n}-night minimum",
+    "sourceText": "{n}-night min.",
     "filePath": "src/components/public/property-card.tsx"
   },
   {
     "key": "property_card.minimum_nights.two",
-    "sourceText": "{n}-night minimum",
+    "sourceText": "{n}-night min.",
     "filePath": "src/components/public/property-card.tsx"
   },
   {
     "key": "property_card.minimum_nights.zero",
-    "sourceText": "{n}-night minimum",
+    "sourceText": "{n}-night min.",
     "filePath": "src/components/public/property-card.tsx"
   },
   {

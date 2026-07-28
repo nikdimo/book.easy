@@ -20,7 +20,13 @@ export function PreservedPlaceText({
   return text.split(pattern).map((part, index) => {
     const isPlaceName = names.some((name) => name.toLowerCase() === part.toLowerCase());
     return isPlaceName ? (
-      <span key={`${part}-${index}`} translate="no">{part}</span>
+      <span
+        key={`${part}-${index}`}
+        className="notranslate"
+        translate="no"
+      >
+        {part}
+      </span>
     ) : (
       <span key={`${part}-${index}`}>{part}</span>
     );

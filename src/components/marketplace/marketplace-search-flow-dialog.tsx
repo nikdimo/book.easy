@@ -13,7 +13,8 @@ import {
   DateRangeCalendarStep,
   GuestCountsStep,
 } from "@/components/marketplace/marketplace-stay-date-picker";
-import { placeKey, placeLabel, type PlaceOption } from "@/lib/utils/place";
+import { placeKey, type PlaceOption } from "@/lib/utils/place";
+import { localizedPlaceLabel } from "@/lib/i18n/place-name";
 import { useSearchLabels } from "@/components/marketplace/search-labels";
 
 type SearchFlowStep = "where" | "when" | "who";
@@ -368,8 +369,8 @@ export function MarketplaceSearchFlowDialog({
                               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
                                 <MapPin className="h-5 w-5" strokeWidth={1.75} />
                               </span>
-                              <span className="block min-w-0 font-semibold text-foreground">
-                                {placeLabel(place)}
+                              <span className="notranslate block min-w-0 font-semibold text-foreground" translate="no">
+                                {localizedPlaceLabel(place, labels.locale)}
                               </span>
                             </button>
                           </li>

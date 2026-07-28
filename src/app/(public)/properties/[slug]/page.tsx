@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { CalendarDays, MapPin, Sparkles, Users, BedDouble, Bath, Bed } from "lucide-react";
+import { CalendarDays, MapPin, Sparkles, Users, BedDouble, Bath, Bed, Star } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,7 @@ import { getFavoriteListingIdSet } from "@/lib/services/favorite.service";
 import { getT, T, ti, tPlural } from "@/lib/i18n/t";
 import { formatPrice } from "@/lib/utils/format";
 import type { Metadata } from "next";
+import { getPublishedListingReviews } from "@/lib/services/review.service";
 
 interface ListingPageProps {
   params: Promise<{ slug: string }>;
@@ -87,6 +88,7 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
         rate: Number(r.nightlyRate),
       }))
     : [];
+  const reviewSummary = await getPublishedListingReviews(listing.id);
 
   const hostInitials = listing.host.profile?.hostDisplayName?.[0] ||
     listing.host.name.split(" ").map((n) => n[0]).join("").slice(0, 2);
@@ -136,7 +138,10 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
             <PreservedPlaceText text={listing.title} placeNames={protectedPlaceNames} />
           </h1>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-sm">
-            <span className="flex items-center gap-1 text-muted-foreground">
+            <span
+              className="notranslate flex items-center gap-1 text-muted-foreground"
+              translate="no"
+            >
               <MapPin className="h-4 w-4 shrink-0" />
               {locationLine}
             </span>
@@ -236,6 +241,51 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
           <Separator />
 
           <AmenityList amenities={listing.amenities} />
+
+          {reviewSummary.count > 0 ? (
+            <>
+              <Separator />
+              <section aria-labelledby="guest-reviews-heading">
+                <div className="mb-5 flex flex-wrap items-center gap-3">
+                  <h2 id="guest-reviews-heading" className="text-xl font-semibold">
+                    <T t={t} k="listing.guest_reviews" source="Guest reviews" />
+                  </h2>
+                  {reviewSummary.count >= 3 && reviewSummary.average != null ? (
+                    <span className="flex items-center gap-1 font-semibold">
+                      <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
+                      {reviewSummary.average.toFixed(2)}
+                    </span>
+                  ) : null}
+                  <span className="text-sm text-muted-foreground">
+                    {reviewSummary.count} {reviewSummary.count === 1 ? "review" : "reviews"}
+                  </span>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {reviewSummary.reviews.map((review) => {
+                    const overall = review.ratings.find(
+                      (rating) => rating.category === "OVERALL"
+                    )?.score;
+                    return (
+                      <article key={review.id} className="rounded-xl border p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="font-medium">{review.author?.name || "BookEasy guest"}</p>
+                          {overall ? (
+                            <span className="flex items-center gap-1 text-sm font-semibold">
+                              <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
+                              {overall}
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground">
+                          {review.publicComment}
+                        </p>
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            </>
+          ) : null}
         </div>
 
         <div className="relative">

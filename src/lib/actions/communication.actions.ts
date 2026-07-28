@@ -1,6 +1,7 @@
 "use server";
 
 import type {
+  ClaimKind,
   SafetyCasePriority,
   SafetyCaseStatus,
   SafetyCaseTargetType,
@@ -16,6 +17,8 @@ import {
 import {
   addUserSafetyCaseUpdate,
   createSafetyCase,
+  releaseClaimToRecipient,
+  respondToClaim,
   updateSafetyCaseByAdmin,
   type SafetyCaseEvidenceInput,
 } from "@/lib/services/safety-case.service";
@@ -72,6 +75,9 @@ export async function submitSafetyCaseAction(formData: FormData) {
       reportedUserId:
         String(formData.get("reportedUserId") ?? "") || undefined,
       evidence,
+      claimKind: String(formData.get("claimKind") ?? "") as ClaimKind,
+      requestedAmount: Number(formData.get("requestedAmount")),
+      currency: String(formData.get("currency") ?? "EUR"),
     });
     revalidatePath("/account/support");
     revalidatePath("/admin/cases");
@@ -80,6 +86,44 @@ export async function submitSafetyCaseAction(formData: FormData) {
     return {
       error:
         error instanceof Error ? error.message : "Could not submit the case",
+    };
+  }
+}
+
+export async function releaseClaimToRecipientAction(caseId: string) {
+  const admin = await requireAdmin();
+  try {
+    await releaseClaimToRecipient({ caseId, adminId: admin.id });
+    revalidatePath("/admin/cases");
+    revalidatePath(`/admin/cases/${caseId}`);
+    revalidatePath("/account/support");
+    revalidatePath(`/account/support/${caseId}`);
+    return { success: true };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Could not release the claim",
+    };
+  }
+}
+
+export async function respondToClaimAction(input: {
+  caseId: string;
+  response: "ACCEPT" | "REJECT" | "COUNTER";
+  note?: string;
+  counterAmount?: number;
+}) {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Sign in to respond" };
+  try {
+    await respondToClaim({ ...input, userId: session.user.id });
+    revalidatePath("/account/support");
+    revalidatePath(`/account/support/${input.caseId}`);
+    revalidatePath("/admin/cases");
+    revalidatePath(`/admin/cases/${input.caseId}`);
+    return { success: true };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Could not send your response",
     };
   }
 }

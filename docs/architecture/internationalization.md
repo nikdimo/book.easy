@@ -61,6 +61,10 @@ When reviewed fixed copy contains dynamic database or user-authored values, use
 `<TWithValues>` instead of interpolating the string and wrapping the entire result
 in `notranslate`. It protects only the reviewed grammar fragments and leaves values
 such as property types and listing content available to Google's page translator.
+Use `protectedValues` for identifiers and proper names that have already been
+localized by the application. City display names go through `localizePlaceName`
+before they are protected, so their script follows the selected locale without
+letting a generic translator mistake a name such as "Bitola" for a common noun.
 
 Plural copy must provide all CLDR forms through `pluralForms(...)`; selection is performed with `Intl.PluralRules`, not `count === 1`. This distinction matters: the CLDR category named `one` is not "the number 1". In Macedonian, 21 and 31 also select `one`, so an equality check would pick the wrong grammatical form.
 

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SafetyCaseReply } from "@/components/support/safety-case-reply";
+import { ClaimResponseControls } from "@/components/support/claim-response-controls";
 import { requireUserPage } from "@/lib/auth-helpers";
 import { getUserSafetyCase } from "@/lib/services/safety-case.service";
 
@@ -30,6 +31,40 @@ export default async function SafetyCasePage({ params }: { params: Promise<{ id:
           <p className="text-sm text-muted-foreground">{item.category}</p>
         </CardHeader>
         <CardContent className="space-y-6">
+          {item.type === "CLAIM" ? (
+            <div className="grid gap-3 rounded-xl bg-muted p-4 text-sm sm:grid-cols-2">
+              <div>
+                <span className="text-muted-foreground">Request</span>
+                <p>{item.claimKind?.replaceAll("_", " ") || "Booking claim"}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Amount</span>
+                <p className="text-lg font-semibold">
+                  {item.requestedAmount
+                    ? `${Number(item.requestedAmount).toFixed(2)} ${item.currency || "EUR"}`
+                    : "Not specified"}
+                </p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">From</span>
+                <p>{item.reporter.name}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Response</span>
+                <p>{item.responseStatus?.replaceAll("_", " ") || "Awaiting admin"}</p>
+              </div>
+            </div>
+          ) : null}
+          {item.type === "CLAIM" &&
+          item.reportedUserId === user.id &&
+          item.responseStatus === "AWAITING_RECIPIENT" &&
+          item.requestedAmount ? (
+            <ClaimResponseControls
+              caseId={item.id}
+              amount={Number(item.requestedAmount)}
+              currency={item.currency || "EUR"}
+            />
+          ) : null}
           <p className="whitespace-pre-wrap text-sm">{item.description}</p>
           {item.evidence.length ? (
             <div>

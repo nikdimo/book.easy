@@ -31,6 +31,11 @@ export default async function SupportCasesPage() {
                   <div>
                     <div className="flex flex-wrap gap-2">
                       <Badge variant="secondary">{item.type}</Badge>
+                      {item.type === "CLAIM" ? (
+                        <Badge variant="outline">
+                          {item.reporterId === user.id ? "SENT" : "RECEIVED"}
+                        </Badge>
+                      ) : null}
                       <Badge variant={item.status === "RESOLVED" ? "default" : "outline"}>
                         {item.status.replaceAll("_", " ")}
                       </Badge>
@@ -39,6 +44,12 @@ export default async function SupportCasesPage() {
                     <p className="text-sm text-muted-foreground">
                       {item.reference}{item.listing ? ` · ${item.listing.title}` : ""}
                     </p>
+                    {item.type === "CLAIM" && item.requestedAmount ? (
+                      <p className="mt-1 text-sm font-medium">
+                        {Number(item.requestedAmount).toFixed(2)} {item.currency || "EUR"} ·{" "}
+                        {item.responseStatus?.replaceAll("_", " ")}
+                      </p>
+                    ) : null}
                   </div>
                   <span className="text-xs text-muted-foreground">
                     {new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(item.createdAt)}

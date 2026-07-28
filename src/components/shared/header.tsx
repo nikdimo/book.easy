@@ -24,7 +24,10 @@ import {
   MessageCircle,
   LifeBuoy,
 } from "lucide-react";
-import { MarketplaceSearchBar } from "@/components/marketplace/marketplace-search-bar";
+import {
+  MarketplaceSearchBar,
+  resetRememberedMarketplaceSearch,
+} from "@/components/marketplace/marketplace-search-bar";
 import { GoogleTranslateWidget } from "@/components/shared/google-translate-widget";
 import {
   Tooltip,
@@ -123,6 +126,7 @@ export function Header({
         <div className="flex items-center min-w-0">
           <Link
             href="/"
+            onClick={resetRememberedMarketplaceSearch}
             className="notranslate flex items-center shrink-0"
             title={SITE_DOMAIN}
             translate="no"

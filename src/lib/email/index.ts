@@ -11,6 +11,7 @@ import { COMMUNICATION_BRAND } from "@/lib/communication-brand";
 import {
   communicationAppUrl,
   communicationFromAddress,
+  communicationReplyToAddress,
   communicationSupportEmail,
 } from "@/lib/communication-brand.server";
 
@@ -35,7 +36,8 @@ export async function sendTransactionalEmail(params: SendEmailParams): Promise<v
 
   if (provider === "console") {
     console.info("[email]", {
-      from: communicationFromAddress(params.sender),
+      from: communicationFromAddress(),
+      replyTo: communicationReplyToAddress(),
       to: params.to,
       subject: params.subject,
       preview: params.text.slice(0, 200),
@@ -46,7 +48,8 @@ export async function sendTransactionalEmail(params: SendEmailParams): Promise<v
   const transport = createSmtpTransport();
   await transport.sendMail({
     to: params.to,
-    from: communicationFromAddress(params.sender),
+    from: communicationFromAddress(),
+    replyTo: communicationReplyToAddress(),
     subject: params.subject,
     text: params.text,
     html: params.html,
@@ -328,4 +331,232 @@ export async function notifyHostBookingCancelledByGuest(bookingId: string): Prom
     subject: `[${COMMUNICATION_BRAND.name}] Booking cancelled: ${booking.listing.title}`,
     text: lines.join("\n"),
   });
+}
+
+export async function notifyReviewReminder(input: {
+  invitationId: string;
+  waitingForYourReview: boolean;
+}): Promise<void> {
+  const { db } = await import("@/lib/db");
+  const invitation = await db.reviewInvitation.findUnique({
+    where: { id: input.invitationId },
+    include: {
+      recipient: { select: { name: true, email: true } },
+      booking: { select: { id: true, listing: { select: { title: true } } } },
+    },
+  });
+  if (!invitation) return;
+
+  const link = communicationAppUrl(
+    `/account/bookings/${invitation.booking.id}/after-stay`
+  );
+  await sendTransactionalEmail({
+    to: invitation.recipient.email,
+    subject: input.waitingForYourReview
+      ? `[${COMMUNICATION_BRAND.name}] A private rating is waiting for you`
+      : `[${COMMUNICATION_BRAND.name}] How was ${invitation.booking.listing.title}?`,
+    text: [
+      `Hi ${invitation.recipient.name},`,
+      "",
+      input.waitingForYourReview
+        ? `The other party has submitted a private rating for "${invitation.booking.listing.title}".`
+        : `Your stay connected to "${invitation.booking.listing.title}" has ended.`,
+      input.waitingForYourReview
+        ? "Submit your own rating to unlock both after admin approval. We will not reveal their stars or comments beforehand."
+        : "Share an honest rating before the 14-day review window closes.",
+      "",
+      `Leave your rating: ${link}`,
+      `Deadline: ${formatDate(invitation.deadline)}`,
+      "",
+      COMMUNICATION_BRAND.name,
+    ].join("\n"),
+  });
+}
+
+export async function notifyReviewSubmitted(input: {
+  reviewId: string;
+}): Promise<void> {
+  const { db } = await import("@/lib/db");
+  const review = await db.review.findUnique({
+    where: { id: input.reviewId },
+    include: {
+      author: { select: { name: true, email: true } },
+      listing: { select: { title: true } },
+    },
+  });
+  if (!review?.author) return;
+
+  await Promise.allSettled([
+    sendTransactionalEmail({
+      to: review.author.email,
+      subject: `[${COMMUNICATION_BRAND.name}] Rating received`,
+      text: [
+        `Hi ${review.author.name},`,
+        "",
+        `We received your private rating for "${review.listing.title}".`,
+        "It will remain sealed until the other party submits or the review period closes, and an administrator approves the public content.",
+        "",
+        `Review status: ${communicationAppUrl(`/account/bookings/${review.bookingId}/after-stay`)}`,
+        "",
+        COMMUNICATION_BRAND.name,
+      ].join("\n"),
+    }),
+    sendTransactionalEmail({
+      to: communicationSupportEmail(),
+      sender: "support",
+      subject: `[${COMMUNICATION_BRAND.supportName}] Rating awaiting approval`,
+      text: [
+        `${review.listing.title}`,
+        `Booking: ${review.bookingId.slice(0, 8).toUpperCase()}`,
+        "",
+        communicationAppUrl(`/admin/ratings/${review.id}`),
+      ].join("\n"),
+    }),
+  ]);
+}
+
+export async function notifyReviewsPublished(input: {
+  bookingId: string;
+}): Promise<void> {
+  const { db } = await import("@/lib/db");
+  const booking = await db.booking.findUnique({
+    where: { id: input.bookingId },
+    select: {
+      id: true,
+      guest: { select: { name: true, email: true } },
+      listing: {
+        select: {
+          title: true,
+          host: { select: { name: true, email: true } },
+        },
+      },
+    },
+  });
+  if (!booking) return;
+
+  const link = communicationAppUrl(`/account/bookings/${booking.id}/after-stay`);
+  await Promise.allSettled(
+    [booking.guest, booking.listing.host].map((recipient) =>
+      sendTransactionalEmail({
+        to: recipient.email,
+        subject: `[${COMMUNICATION_BRAND.name}] Ratings are now available`,
+        text: [
+          `Hi ${recipient.name},`,
+          "",
+          `The approved ratings for "${booking.listing.title}" are now available.`,
+          "",
+          `View ratings: ${link}`,
+          "",
+          COMMUNICATION_BRAND.name,
+        ].join("\n"),
+      })
+    )
+  );
+}
+
+export async function notifyReviewRejected(input: {
+  reviewId: string;
+  reason: string;
+}): Promise<void> {
+  const { db } = await import("@/lib/db");
+  const review = await db.review.findUnique({
+    where: { id: input.reviewId },
+    include: {
+      author: { select: { name: true, email: true } },
+      listing: { select: { title: true } },
+    },
+  });
+  if (!review?.author) return;
+
+  await sendTransactionalEmail({
+    to: review.author.email,
+    sender: "support",
+    subject: `[${COMMUNICATION_BRAND.name}] Review moderation update`,
+    text: [
+      `Hi ${review.author.name},`,
+      "",
+      `Your review for "${review.listing.title}" was not approved for publication.`,
+      `Reason: ${input.reason}`,
+      "",
+      `View status: ${communicationAppUrl(`/account/bookings/${review.bookingId}/after-stay`)}`,
+      "",
+      COMMUNICATION_BRAND.supportName,
+    ].join("\n"),
+  });
+}
+
+export async function notifyClaimReleased(input: {
+  caseId: string;
+}): Promise<void> {
+  const { db } = await import("@/lib/db");
+  const claim = await db.safetyCase.findUnique({
+    where: { id: input.caseId },
+    include: {
+      reportedUser: { select: { name: true, email: true } },
+      reporter: { select: { name: true } },
+    },
+  });
+  if (!claim?.reportedUser || !claim.requestedAmount) return;
+
+  await sendTransactionalEmail({
+    to: claim.reportedUser.email,
+    sender: "support",
+    subject: `[${COMMUNICATION_BRAND.name}] Response required for ${claim.reference}`,
+    text: [
+      `Hi ${claim.reportedUser.name},`,
+      "",
+      `${claim.reporter.name} submitted a booking-related ${claim.claimKind?.toLowerCase() || "payment"} request.`,
+      `Amount: ${Number(claim.requestedAmount).toFixed(2)} ${claim.currency || "EUR"}`,
+      `Reason: ${claim.subject}`,
+      "",
+      "You can accept, counter, or reject after reviewing the evidence. You will not be silently charged for failing to respond.",
+      "",
+      `Respond securely: ${communicationAppUrl(`/account/support/${claim.id}`)}`,
+      "",
+      COMMUNICATION_BRAND.supportName,
+    ].join("\n"),
+  });
+}
+
+export async function notifyClaimResponse(input: {
+  caseId: string;
+}): Promise<void> {
+  const { db } = await import("@/lib/db");
+  const claim = await db.safetyCase.findUnique({
+    where: { id: input.caseId },
+    include: {
+      reporter: { select: { name: true, email: true } },
+    },
+  });
+  if (!claim) return;
+
+  await Promise.allSettled([
+    sendTransactionalEmail({
+      to: claim.reporter.email,
+      subject: `[${COMMUNICATION_BRAND.name}] Response to ${claim.reference}`,
+      text: [
+        `Hi ${claim.reporter.name},`,
+        "",
+        `The other party responded to your request.`,
+        `Response: ${claim.responseStatus?.replaceAll("_", " ") || "UPDATED"}`,
+        ...(claim.counterAmount
+          ? [`Counteroffer: ${Number(claim.counterAmount).toFixed(2)} ${claim.currency || "EUR"}`]
+          : []),
+        ...(claim.responseNote ? [`Note: ${claim.responseNote}`] : []),
+        "",
+        `View the case: ${communicationAppUrl(`/account/support/${claim.id}`)}`,
+        "",
+        COMMUNICATION_BRAND.name,
+      ].join("\n"),
+    }),
+    sendTransactionalEmail({
+      to: communicationSupportEmail(),
+      sender: "support",
+      subject: `[${COMMUNICATION_BRAND.supportName}] Claim response: ${claim.reference}`,
+      text: [
+        `Response: ${claim.responseStatus?.replaceAll("_", " ")}`,
+        communicationAppUrl(`/admin/cases/${claim.id}`),
+      ].join("\n"),
+    }),
+  ]);
 }

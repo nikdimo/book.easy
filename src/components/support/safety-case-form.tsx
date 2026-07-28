@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { COMMUNICATION_BRAND } from "@/lib/communication-brand";
+import type { ClaimKind } from "@prisma/client";
 
 const reportCategories = [
   "Safety concern",
@@ -44,6 +45,7 @@ export function SafetyCaseForm({
   bookingId,
   messageId,
   reportedUserId,
+  claimKind,
 }: {
   type: "REPORT" | "CLAIM";
   targetType: "USER" | "HOST" | "LISTING" | "BOOKING" | "MESSAGE";
@@ -51,6 +53,7 @@ export function SafetyCaseForm({
   bookingId?: string;
   messageId?: string;
   reportedUserId?: string;
+  claimKind?: ClaimKind;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -89,6 +92,9 @@ export function SafetyCaseForm({
     formData.set("messageId", messageId || "");
     formData.set("reportedUserId", reportedUserId || "");
     formData.set("evidence", JSON.stringify(evidence));
+    if (type === "CLAIM") {
+      formData.set("claimKind", String(formData.get("claimKind") || claimKind || ""));
+    }
     const result = await submitSafetyCaseAction(formData);
     setPending(false);
     if (result.error) {
@@ -101,6 +107,55 @@ export function SafetyCaseForm({
 
   return (
     <form action={(data) => void submit(data)} className="space-y-5">
+      {type === "CLAIM" ? (
+        <>
+          <div className="space-y-2">
+            <Label htmlFor="claimKind">Request type</Label>
+            <select
+              id="claimKind"
+              name="claimKind"
+              required
+              defaultValue={claimKind || ""}
+              className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
+            >
+              <option value="" disabled>Choose a request type</option>
+              <option value="EXPENSE">Extra expense</option>
+              <option value="DAMAGE">Property damage or missing item</option>
+              <option value="REFUND">Guest refund request</option>
+            </select>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-[1fr_9rem]">
+            <div className="space-y-2">
+              <Label htmlFor="requestedAmount">Requested amount</Label>
+              <Input
+                id="requestedAmount"
+                name="requestedAmount"
+                type="number"
+                inputMode="decimal"
+                min="0.01"
+                max="100000"
+                step="0.01"
+                required
+                placeholder="0.00"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="currency">Currency</Label>
+              <select
+                id="currency"
+                name="currency"
+                defaultValue="EUR"
+                className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
+              >
+                <option value="EUR">EUR</option>
+                <option value="MKD">MKD</option>
+                <option value="DKK">DKK</option>
+                <option value="USD">USD</option>
+              </select>
+            </div>
+          </div>
+        </>
+      ) : null}
       <div className="space-y-2">
         <Label htmlFor="category">Category</Label>
         <select

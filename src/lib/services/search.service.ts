@@ -66,8 +66,10 @@ function buildListingWhere(filters: SearchFilters): Prisma.ListingWhereInput {
 
   if (filters.minPrice || filters.maxPrice) {
     where.pricingRule = {
-      ...(filters.minPrice && { baseNightlyRate: { gte: filters.minPrice } }),
-      ...(filters.maxPrice && { baseNightlyRate: { lte: filters.maxPrice } }),
+      baseNightlyRate: {
+        ...(filters.minPrice && { gte: filters.minPrice }),
+        ...(filters.maxPrice && { lte: filters.maxPrice }),
+      },
     };
   }
 

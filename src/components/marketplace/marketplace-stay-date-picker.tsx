@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import {
+  differenceInCalendarDays,
   format,
   isAfter,
   isBefore,
@@ -21,6 +22,11 @@ import { CalendarRange, ChevronLeft, ChevronRight, Search, X } from "lucide-reac
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { GuestCounts } from "@/components/marketplace/marketplace-guest-selector";
 import { pluralText, useI18n } from "@/lib/i18n/client";
 import { useSearchLabels } from "@/components/marketplace/search-labels";
@@ -75,6 +81,7 @@ type DragCtx = {
   ) => void;
   dayMeta?: (date: Date) => MarketplaceDayMeta | undefined;
   dayVariant?: "default" | "availability";
+  minimumStayHint?: (date: Date) => Resolved | undefined;
 };
 
 export const FLEXIBILITY_VALUES = [0, 1, 2, 3, 7, 14] as const;
@@ -356,11 +363,12 @@ function MarketplaceRangeDayButton({
   onClick: upstreamClick,
   children,
   ...rest
-}: React.ComponentProps<typeof DayButton> & { locale?: Partial<Locale> }) {
+}: React.ComponentProps<typeof DayButton> & { locale?: Partial<Locale> }): React.ReactElement {
   const ctx = React.useContext(DragContext);
   const defaultClassNames = getDefaultClassNames();
   const ref = React.useRef<HTMLButtonElement>(null);
   const meta = ctx?.dayMeta?.(day.date);
+  const minimumStayHint = ctx?.minimumStayHint?.(day.date);
 
   void onPointerDown;
 
@@ -388,12 +396,45 @@ function MarketplaceRangeDayButton({
   };
 
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    if (minimumStayHint) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
     upstreamClick?.(e);
   };
 
-  if (ctx?.dayVariant === "availability") {
+  const withMinimumStayHint = (
+    button: React.ReactElement
+  ): React.ReactElement => {
+    if (!minimumStayHint) return button;
+
     return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            tabIndex={0}
+            aria-label={`${day.date.toLocaleDateString(locale?.code, {
+              dateStyle: "long",
+            })}. ${minimumStayHint.text}`}
+            className="block size-full cursor-not-allowed rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+          >
+            {button}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          <span className={minimumStayHint.translated ? "notranslate" : undefined}>
+            {minimumStayHint.text}
+          </span>
+        </TooltipContent>
+      </Tooltip>
+    );
+  };
+
+  if (ctx?.dayVariant === "availability") {
+    return withMinimumStayHint(
       <Button
+        {...rest}
         ref={ref}
         variant="ghost"
         size="icon"
@@ -401,12 +442,15 @@ function MarketplaceRangeDayButton({
         data-ymd={toYmd(day.date)}
         onPointerDown={handlePointerDown}
         onClick={handleClick}
+        aria-disabled={minimumStayHint ? true : rest["aria-disabled"]}
+        tabIndex={minimumStayHint ? -1 : rest.tabIndex}
         className={cn(
           "group/date relative z-10 flex h-full size-auto w-full min-w-(--cell-size) flex-col items-center justify-start border-0 bg-transparent px-1 py-1 font-normal leading-none shadow-none outline-none",
           "text-foreground hover:bg-transparent hover:text-foreground",
           modifiers.outside &&
             "text-muted-foreground/40 hover:text-muted-foreground/50",
-          modifiers.disabled && "cursor-default opacity-40",
+          (modifiers.disabled || minimumStayHint) &&
+            "cursor-not-allowed opacity-40",
           modifiers.range_middle &&
             "rounded-none bg-transparent text-foreground hover:bg-transparent",
           ctx?.hasRange &&
@@ -415,7 +459,6 @@ function MarketplaceRangeDayButton({
           defaultClassNames.day,
           className
         )}
-        {...rest}
       >
         <span
           className={cn(
@@ -424,6 +467,7 @@ function MarketplaceRangeDayButton({
               ? "bg-[hsl(0_0%_13%)] text-white shadow-[0_2px_8px_rgba(0,0,0,0.18)] group-hover/date:scale-[1.04]"
               : "text-foreground",
             !modifiers.disabled &&
+              !minimumStayHint &&
               !isEndpoint &&
               "group-hover/date:shadow-[inset_0_0_0_1.5px_hsl(0_0%_12%)] group-focus-visible/date:shadow-[inset_0_0_0_2px_hsl(0_0%_12%)]"
           )}
@@ -443,8 +487,9 @@ function MarketplaceRangeDayButton({
     );
   }
 
-  return (
+  return withMinimumStayHint(
     <Button
+      {...rest}
       ref={ref}
       variant="ghost"
       size="icon"
@@ -452,12 +497,15 @@ function MarketplaceRangeDayButton({
       data-ymd={toYmd(day.date)}
       onPointerDown={handlePointerDown}
       onClick={handleClick}
+      aria-disabled={minimumStayHint ? true : rest["aria-disabled"]}
+      tabIndex={minimumStayHint ? -1 : rest.tabIndex}
       className={cn(
         "group/date relative z-10 flex aspect-square size-auto w-full min-w-(--cell-size) items-center justify-center border-0 bg-transparent font-normal leading-none shadow-none outline-none",
         "text-foreground hover:bg-transparent hover:text-foreground",
         modifiers.outside &&
           "text-muted-foreground/40 hover:text-muted-foreground/50",
-        modifiers.disabled && "cursor-default opacity-40",
+        (modifiers.disabled || minimumStayHint) &&
+          "cursor-not-allowed opacity-40",
         modifiers.range_middle &&
           "rounded-none bg-transparent text-foreground hover:bg-transparent",
         ctx?.hasRange &&
@@ -466,7 +514,6 @@ function MarketplaceRangeDayButton({
         defaultClassNames.day,
         className
       )}
-      {...rest}
     >
       <span
         className={cn(
@@ -474,6 +521,7 @@ function MarketplaceRangeDayButton({
           isEndpoint &&
             "bg-[hsl(0_0%_13%)] text-white shadow-[0_2px_8px_rgba(0,0,0,0.18)] group-hover/date:scale-[1.04] group-hover/date:bg-[hsl(0_0%_18%)]",
           !modifiers.disabled &&
+            !minimumStayHint &&
             !isEndpoint &&
             "group-hover/date:shadow-[inset_0_0_0_1.5px_hsl(0_0%_12%)] group-focus-visible/date:shadow-[inset_0_0_0_2px_hsl(0_0%_12%)]"
         )}
@@ -499,6 +547,8 @@ export function DateRangeCalendarStep({
   dayVariant = "default",
   dateModifiers,
   dateModifiersClassNames,
+  minimumStayNights,
+  minimumStayMessage,
   fitViewport = false,
   pagedOnDesktop = false,
 }: {
@@ -511,6 +561,8 @@ export function DateRangeCalendarStep({
   dayVariant?: "default" | "availability";
   dateModifiers?: React.ComponentProps<typeof Calendar>["modifiers"];
   dateModifiersClassNames?: React.ComponentProps<typeof Calendar>["modifiersClassNames"];
+  minimumStayNights?: number;
+  minimumStayMessage?: Resolved;
   fitViewport?: boolean;
   pagedOnDesktop?: boolean;
 }) {
@@ -616,6 +668,23 @@ export function DateRangeCalendarStep({
   }, []);
 
   const hasRange = Boolean(selected?.from && selected?.to);
+  const minimumStayAnchor = React.useMemo(
+    () =>
+      selected?.from && !selected.to && minimumStayNights && minimumStayNights > 1
+        ? startOfDay(selected.from)
+        : undefined,
+    [minimumStayNights, selected]
+  );
+  const isMinimumStayRestricted = React.useCallback(
+    (date: Date) => {
+      if (!minimumStayAnchor || !minimumStayNights) return false;
+      const distance = Math.abs(
+        differenceInCalendarDays(startOfDay(date), minimumStayAnchor)
+      );
+      return distance > 0 && distance < minimumStayNights;
+    },
+    [minimumStayAnchor, minimumStayNights]
+  );
 
   const calendarStartMonth = React.useMemo(() => {
     if (dayVariant === "availability") {
@@ -797,8 +866,19 @@ export function DateRangeCalendarStep({
       onEndpointPointerDown: handleEndpointPointerDown,
       dayMeta,
       dayVariant,
+      minimumStayHint: (date) =>
+        minimumStayMessage && isMinimumStayRestricted(date)
+          ? minimumStayMessage
+          : undefined,
     }),
-    [dayMeta, dayVariant, hasRange, handleEndpointPointerDown]
+    [
+      dayMeta,
+      dayVariant,
+      handleEndpointPointerDown,
+      hasRange,
+      isMinimumStayRestricted,
+      minimumStayMessage,
+    ]
   );
 
   const calendarSelected = dragDisplayRange ?? selected;
@@ -1016,6 +1096,8 @@ export function MarketplaceStayDatePicker({
   dayVariant = "default",
   dateModifiers,
   dateModifiersClassNames,
+  minimumStayNights,
+  minimumStayMessage,
   renderDateFooter,
   pagedCalendarOnDesktop = false,
   sharedPillActive = false,
@@ -1055,6 +1137,8 @@ export function MarketplaceStayDatePicker({
   dayVariant?: "default" | "availability";
   dateModifiers?: React.ComponentProps<typeof Calendar>["modifiers"];
   dateModifiersClassNames?: React.ComponentProps<typeof Calendar>["modifiersClassNames"];
+  minimumStayNights?: number;
+  minimumStayMessage?: Resolved;
   renderDateFooter?: (controls: {
     canGoNext: boolean;
     closePicker: () => void;
@@ -1240,10 +1324,12 @@ export function MarketplaceStayDatePicker({
           <CalendarRange className="h-4 w-4 shrink-0 text-muted-foreground" />
           <span
             className={cn(
-              "truncate text-sm font-medium",
+              "notranslate truncate text-sm font-medium",
               !(checkIn && checkOut) && "text-muted-foreground",
               mobileDatesLabel.translated && "notranslate"
             )}
+            translate="no"
+            suppressHydrationWarning
           >
             {mobileDatesLabel.text}
           </span>
@@ -1268,9 +1354,11 @@ export function MarketplaceStayDatePicker({
             </span>
             <span
               className={cn(
-                "mt-px block truncate text-sm leading-5 font-normal",
+                "notranslate mt-px block truncate text-sm leading-5 font-normal",
                 mobileDatesLabel.translated && "notranslate"
               )}
+              translate="no"
+              suppressHydrationWarning
             >
               {mobileDatesLabel.text}
             </span>
@@ -1299,9 +1387,11 @@ export function MarketplaceStayDatePicker({
             </span>
             <span
               className={cn(
-                "mt-px block truncate text-sm leading-5 font-normal",
+                "notranslate mt-px block truncate text-sm leading-5 font-normal",
                 summaryText.translated && "notranslate"
               )}
+              translate="no"
+              suppressHydrationWarning
             >
               {summaryText.text}
             </span>
@@ -1334,10 +1424,12 @@ export function MarketplaceStayDatePicker({
               </span>
               <span
                 className={cn(
-                  "text-sm font-medium md:text-base",
+                  "notranslate text-sm font-medium md:text-base",
                   !checkIn && "text-muted-foreground",
                   checkInLabel.translated && "notranslate"
                 )}
+                translate="no"
+                suppressHydrationWarning
               >
                 {checkInLabel.text}
               </span>
@@ -1362,10 +1454,12 @@ export function MarketplaceStayDatePicker({
               </span>
               <span
                 className={cn(
-                  "text-sm font-medium md:text-base",
+                  "notranslate text-sm font-medium md:text-base",
                   !checkOut && "text-muted-foreground",
                   checkOutLabel.translated && "notranslate"
                 )}
+                translate="no"
+                suppressHydrationWarning
               >
                 {checkOutLabel.text}
               </span>
@@ -1503,9 +1597,11 @@ export function MarketplaceStayDatePicker({
                     </span>
                     <span
                       className={cn(
-                        "mt-1 block truncate text-[0.9rem] font-semibold leading-tight text-foreground md:text-base",
+                        "notranslate mt-1 block truncate text-[0.9rem] font-semibold leading-tight text-foreground md:text-base",
                         checkInLabel.translated && "notranslate"
                       )}
+                      translate="no"
+                      suppressHydrationWarning
                     >
                       {checkInLabel.text}
                     </span>
@@ -1530,9 +1626,11 @@ export function MarketplaceStayDatePicker({
                     </span>
                     <span
                       className={cn(
-                        "mt-1 block truncate text-[0.9rem] font-semibold leading-tight text-foreground md:text-base",
+                        "notranslate mt-1 block truncate text-[0.9rem] font-semibold leading-tight text-foreground md:text-base",
                         checkOutLabel.translated && "notranslate"
                       )}
+                      translate="no"
+                      suppressHydrationWarning
                     >
                       {checkOutLabel.text}
                     </span>
@@ -1553,9 +1651,11 @@ export function MarketplaceStayDatePicker({
                     </p>
                     <p
                       className={cn(
-                        "mt-1 text-base font-semibold text-foreground md:text-lg",
+                        "notranslate mt-1 text-base font-semibold text-foreground md:text-lg",
                         summaryText.translated && "notranslate"
                       )}
+                      translate="no"
+                      suppressHydrationWarning
                     >
                       {summaryText.text}
                     </p>
@@ -1610,6 +1710,8 @@ export function MarketplaceStayDatePicker({
                 dayVariant={dayVariant}
                 dateModifiers={dateModifiers}
                 dateModifiersClassNames={dateModifiersClassNames}
+                minimumStayNights={minimumStayNights}
+                minimumStayMessage={minimumStayMessage}
                 fitViewport={isPillLayout}
                 pagedOnDesktop={pagedCalendarOnDesktop}
               />

@@ -4,6 +4,7 @@ import type { ListingCardSerialized } from "@/lib/serializers/listing-card";
 import { getT, T, TWithValues, tPlural } from "@/lib/i18n/t";
 import { LocalizedPrice } from "@/components/shared/localized-price";
 import { PropertyCardSpotlightMedia } from "@/components/public/property-card-spotlight-media";
+import { localizePlaceName } from "@/lib/i18n/place-name";
 
 interface PropertyCardSpotlightProps {
   listing: ListingCardSerialized;
@@ -66,7 +67,8 @@ export async function PropertyCardSpotlight({ listing }: PropertyCardSpotlightPr
             t={t}
             k="property_card.type_in_city"
             source="{type} in {city}"
-            values={{ type: typeLabel, city: property.city }}
+            values={{ type: typeLabel, city: localizePlaceName(property.city, t.locale) }}
+            protectedValues={["city"]}
           />
         </h3>
         <p className="text-muted-foreground text-sm line-clamp-3">{description}</p>

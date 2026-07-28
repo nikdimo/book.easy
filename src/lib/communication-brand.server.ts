@@ -13,21 +13,15 @@ export function communicationSupportEmail() {
   return process.env.SUPPORT_EMAIL?.trim() || COMMUNICATION_BRAND.supportEmail;
 }
 
-export function communicationFromAddress(
-  kind: "customer" | "support" = "customer"
-) {
+export function communicationReplyToAddress() {
+  return process.env.EMAIL_REPLY_TO?.trim() || COMMUNICATION_BRAND.publicEmail;
+}
+
+export function communicationFromAddress() {
   const configured = process.env.EMAIL_FROM?.trim();
   const configuredAddress =
     configured?.match(/<([^<>@\s]+@[^<>@\s]+)>/)?.[1] ||
     configured?.match(/\b[^<>\s]+@[^<>\s]+\b/)?.[0];
-  const address =
-    configuredAddress ||
-    (kind === "support"
-      ? COMMUNICATION_BRAND.supportEmail
-      : COMMUNICATION_BRAND.publicEmail);
-  const name =
-    kind === "support"
-      ? COMMUNICATION_BRAND.supportName
-      : COMMUNICATION_BRAND.name;
-  return `"${name}" <${address}>`;
+  const address = configuredAddress || COMMUNICATION_BRAND.publicEmail;
+  return `"${COMMUNICATION_BRAND.name}" <${address}>`;
 }

@@ -70,3 +70,66 @@ describe("searchListings amenity filter", () => {
     expect(wifiAndPoolIds).toContain(listingB.id); // has both — must be included
   });
 });
+
+describe("searchListings price filter", () => {
+  let low: TestFixtures | undefined;
+  let withinRange: TestFixtures | undefined;
+  let high: TestFixtures | undefined;
+
+  afterEach(async () => {
+    if (low) await cleanupTestFixtures(low);
+    if (withinRange) await cleanupTestFixtures(withinRange);
+    if (high) await cleanupTestFixtures(high);
+    low = undefined;
+    withinRange = undefined;
+    high = undefined;
+  });
+
+  it("applies the minimum and maximum nightly price together", async () => {
+    const lowListing = await createTestHostAndListing();
+    low = {
+      hostId: lowListing.host.id,
+      propertyId: lowListing.property.id,
+      listingId: lowListing.listing.id,
+      extraUserIds: [],
+    };
+
+    const matchingListing = await createTestHostAndListing();
+    withinRange = {
+      hostId: matchingListing.host.id,
+      propertyId: matchingListing.property.id,
+      listingId: matchingListing.listing.id,
+      extraUserIds: [],
+    };
+
+    const highListing = await createTestHostAndListing();
+    high = {
+      hostId: highListing.host.id,
+      propertyId: highListing.property.id,
+      listingId: highListing.listing.id,
+      extraUserIds: [],
+    };
+
+    await Promise.all([
+      db.pricingRule.update({
+        where: { listingId: lowListing.listing.id },
+        data: { baseNightlyRate: 50 },
+      }),
+      db.pricingRule.update({
+        where: { listingId: matchingListing.listing.id },
+        data: { baseNightlyRate: 150 },
+      }),
+      db.pricingRule.update({
+        where: { listingId: highListing.listing.id },
+        data: { baseNightlyRate: 250 },
+      }),
+    ]);
+
+    const result = await searchListings({ minPrice: 100, maxPrice: 200 });
+    const resultIds = result.listings.map((listing) => listing.id);
+
+    expect(resultIds).not.toContain(lowListing.listing.id);
+    expect(resultIds).toContain(matchingListing.listing.id);
+    expect(resultIds).not.toContain(highListing.listing.id);
+  });
+});

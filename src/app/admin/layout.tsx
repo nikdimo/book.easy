@@ -3,6 +3,10 @@ import { GoogleTranslateWidget } from "@/components/shared/google-translate-widg
 import { requireAdminPage } from "@/lib/auth-helpers";
 import { getEnabledLanguages } from "@/lib/services/language.service";
 import { getPendingSuggestionCount } from "@/lib/services/admin.service";
+import {
+  getPendingCaseCount,
+  getUnreadReviewCount,
+} from "@/lib/services/review.service";
 
 export default async function AdminLayout({
   children,
@@ -11,15 +15,23 @@ export default async function AdminLayout({
 }) {
   // Defense in depth: middleware already gates `/admin/:path*`, but every admin page's
   // data queries should not run on the strength of the middleware matcher alone.
-  await requireAdminPage();
-  const [languages, pendingSuggestionCount] = await Promise.all([
+  const admin = await requireAdminPage();
+  const [languages, pendingSuggestionCount, unreadReviewCount, pendingCaseCount] =
+    await Promise.all([
     getEnabledLanguages(),
     getPendingSuggestionCount(),
+    getUnreadReviewCount(admin.id),
+    getPendingCaseCount(),
   ]);
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
-      <AdminSidebar languages={languages} pendingSuggestionCount={pendingSuggestionCount} />
+      <AdminSidebar
+        languages={languages}
+        pendingSuggestionCount={pendingSuggestionCount}
+        unreadReviewCount={unreadReviewCount}
+        pendingCaseCount={pendingCaseCount}
+      />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="hidden items-center justify-end border-b bg-background px-8 py-4 md:flex">
           <GoogleTranslateWidget languages={languages} />

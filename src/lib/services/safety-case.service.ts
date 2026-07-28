@@ -2,6 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import type {
+  ClaimKind,
   SafetyCasePriority,
   SafetyCaseStatus,
   SafetyCaseTargetType,
@@ -50,6 +51,9 @@ export interface CreateSafetyCaseInput {
   messageId?: string;
   reportedUserId?: string;
   evidence?: SafetyCaseEvidenceInput[];
+  claimKind?: ClaimKind;
+  requestedAmount?: number;
+  currency?: string;
 }
 
 function newReference() {
@@ -188,6 +192,22 @@ export async function createSafetyCase(input: CreateSafetyCaseInput) {
   const evidence = input.evidence ?? [];
   validateEvidence(evidence);
   const target = await resolveTarget(input);
+  let requestedAmount: number | undefined;
+  let currency: string | undefined;
+  if (input.type === "CLAIM") {
+    if (!input.claimKind || !["EXPENSE", "DAMAGE", "REFUND"].includes(input.claimKind)) {
+      throw new Error("Choose a valid request type");
+    }
+    requestedAmount = Number(input.requestedAmount);
+    if (!Number.isFinite(requestedAmount) || requestedAmount <= 0 || requestedAmount > 100_000) {
+      throw new Error("Enter a valid requested amount");
+    }
+    currency = (input.currency || "EUR").trim().toUpperCase();
+    if (!/^[A-Z]{3}$/.test(currency)) throw new Error("Choose a valid currency");
+    if (input.claimKind === "DAMAGE" && evidence.length === 0) {
+      throw new Error("Add at least one photo, invoice, or document for a damage claim");
+    }
+  }
 
   const safetyCase = await db.safetyCase.create({
     data: {
@@ -198,6 +218,10 @@ export async function createSafetyCase(input: CreateSafetyCaseInput) {
       subject,
       description,
       reporterId: input.reporterId,
+      claimKind: input.type === "CLAIM" ? input.claimKind : undefined,
+      requestedAmount,
+      currency,
+      responseStatus: input.type === "CLAIM" ? "AWAITING_ADMIN" : undefined,
       ...target,
       evidence: evidence.length
         ? {
@@ -248,8 +272,10 @@ export async function createSafetyCase(input: CreateSafetyCaseInput) {
 
 export function listUserSafetyCases(userId: string) {
   return db.safetyCase.findMany({
-    where: { reporterId: userId },
+    where: { OR: [{ reporterId: userId }, { reportedUserId: userId }] },
     include: {
+      reporter: { select: { id: true, name: true } },
+      reportedUser: { select: { id: true, name: true } },
       listing: { select: { id: true, title: true } },
       booking: { select: { id: true } },
       _count: { select: { evidence: true, updates: true } },
@@ -260,8 +286,12 @@ export function listUserSafetyCases(userId: string) {
 
 export function getUserSafetyCase(caseId: string, userId: string) {
   return db.safetyCase.findFirst({
-    where: { id: caseId, reporterId: userId },
+    where: {
+      id: caseId,
+      OR: [{ reporterId: userId }, { reportedUserId: userId }],
+    },
     include: {
+      reporter: { select: { id: true, name: true } },
       listing: { select: { id: true, title: true } },
       booking: {
         select: {
@@ -322,7 +352,10 @@ export async function addUserSafetyCaseUpdate(input: {
   body: string;
 }) {
   const safetyCase = await db.safetyCase.findFirst({
-    where: { id: input.caseId, reporterId: input.userId },
+    where: {
+      id: input.caseId,
+      OR: [{ reporterId: input.userId }, { reportedUserId: input.userId }],
+    },
     select: { id: true, reference: true, status: true },
   });
   if (!safetyCase) throw new Error("Case not found");
@@ -433,4 +466,160 @@ export async function updateSafetyCaseByAdmin(input: {
   }
 
   return safetyCase;
+}
+
+export async function releaseClaimToRecipient(input: {
+  caseId: string;
+  adminId: string;
+}) {
+  const existing = await db.safetyCase.findUnique({
+    where: { id: input.caseId },
+    select: {
+      id: true,
+      type: true,
+      reference: true,
+      subject: true,
+      reportedUserId: true,
+      responseStatus: true,
+    },
+  });
+  if (!existing || existing.type !== "CLAIM") throw new Error("Claim not found");
+  if (!existing.reportedUserId) throw new Error("This claim has no recipient");
+  if (existing.responseStatus !== "AWAITING_ADMIN") {
+    throw new Error("This claim has already been released");
+  }
+
+  const now = new Date();
+  const respondBy = new Date(now.getTime() + 72 * 60 * 60 * 1000);
+  const claim = await db.$transaction(async (tx) => {
+    const updated = await tx.safetyCase.update({
+      where: { id: input.caseId },
+      data: {
+        status: "UNDER_REVIEW",
+        responseStatus: "AWAITING_RECIPIENT",
+        adminApprovedAt: now,
+        assignedAdminId: input.adminId,
+        respondBy,
+      },
+    });
+    await tx.safetyCaseUpdate.create({
+      data: {
+        caseId: input.caseId,
+        authorId: input.adminId,
+        body: "The request passed initial admin review and was sent to the other party for a response.",
+      },
+    });
+    return updated;
+  });
+
+  await createAuditLog({
+    userId: input.adminId,
+    action: "claim.release_to_recipient",
+    entityType: "SafetyCase",
+    entityId: input.caseId,
+  });
+  await createUserNotification({
+    userId: existing.reportedUserId,
+    type: "CASE_UPDATED",
+    title: `Payment request ${existing.reference}`,
+    body: existing.subject,
+    route: `/account/support/${input.caseId}`,
+    data: { caseId: input.caseId, respondBy: respondBy.toISOString() },
+  });
+  void import("@/lib/email")
+    .then(({ notifyClaimReleased }) => notifyClaimReleased({ caseId: input.caseId }))
+    .catch(() => {});
+  return claim;
+}
+
+export async function respondToClaim(input: {
+  caseId: string;
+  userId: string;
+  response: "ACCEPT" | "REJECT" | "COUNTER";
+  note?: string;
+  counterAmount?: number;
+}) {
+  const claim = await db.safetyCase.findFirst({
+    where: {
+      id: input.caseId,
+      type: "CLAIM",
+      reportedUserId: input.userId,
+      responseStatus: "AWAITING_RECIPIENT",
+    },
+    select: {
+      id: true,
+      reporterId: true,
+      reference: true,
+      requestedAmount: true,
+      currency: true,
+    },
+  });
+  if (!claim) throw new Error("This request is not awaiting your response");
+
+  const note = input.note?.trim();
+  if ((input.response === "REJECT" || input.response === "COUNTER") && !note) {
+    throw new Error("Explain your response");
+  }
+  let counterAmount: number | undefined;
+  if (input.response === "COUNTER") {
+    counterAmount = Number(input.counterAmount);
+    if (
+      !Number.isFinite(counterAmount) ||
+      counterAmount <= 0 ||
+      counterAmount > 100_000
+    ) {
+      throw new Error("Enter a valid counteroffer");
+    }
+  }
+  const responseStatus =
+    input.response === "ACCEPT"
+      ? "ACCEPTED"
+      : input.response === "REJECT"
+        ? "REJECTED"
+        : "COUNTERED";
+  const amountLabel =
+    input.response === "COUNTER"
+      ? `${counterAmount!.toFixed(2)} ${claim.currency || "EUR"}`
+      : claim.requestedAmount
+        ? `${Number(claim.requestedAmount).toFixed(2)} ${claim.currency || "EUR"}`
+        : "";
+  const body =
+    input.response === "ACCEPT"
+      ? `The payment request was accepted for ${amountLabel}. Payment processing still requires admin confirmation.`
+      : input.response === "REJECT"
+        ? `The payment request was rejected. Reason: ${note}`
+        : `A counteroffer of ${amountLabel} was submitted. Reason: ${note}`;
+
+  const updated = await db.$transaction(async (tx) => {
+    const item = await tx.safetyCase.update({
+      where: { id: input.caseId },
+      data: {
+        responseStatus,
+        counterAmount,
+        responseNote: note || null,
+        status: "UNDER_REVIEW",
+      },
+    });
+    await tx.safetyCaseUpdate.create({
+      data: {
+        caseId: input.caseId,
+        authorId: input.userId,
+        body,
+      },
+    });
+    return item;
+  });
+
+  await createUserNotification({
+    userId: claim.reporterId,
+    type: "CASE_UPDATED",
+    title: `Response to ${claim.reference}`,
+    body: body.slice(0, 180),
+    route: `/account/support/${input.caseId}`,
+    data: { caseId: input.caseId },
+  });
+  void import("@/lib/email")
+    .then(({ notifyClaimResponse }) => notifyClaimResponse({ caseId: input.caseId }))
+    .catch(() => {});
+  return updated;
 }

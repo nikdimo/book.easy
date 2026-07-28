@@ -14,6 +14,7 @@ import {
   Users,
   MessagesSquare,
   ShieldAlert,
+  Star,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -24,6 +25,7 @@ const adminNav = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/listings", label: "Listings", icon: Home },
   { href: "/admin/reports", label: "Legacy listing reports", icon: Flag },
+  { href: "/admin/ratings", label: "Ratings & reviews", icon: Star },
   { href: "/admin/cases", label: "Cases", icon: ShieldAlert },
   { href: "/admin/communications", label: "Communications", icon: MessagesSquare },
   { href: "/admin/bookings", label: "Bookings", icon: CalendarDays },
@@ -37,9 +39,13 @@ type Languages = Awaited<ReturnType<typeof getEnabledLanguages>>;
 function AdminNavigation({
   onNavigate,
   pendingSuggestionCount,
+  unreadReviewCount,
+  pendingCaseCount,
 }: {
   onNavigate?: () => void;
   pendingSuggestionCount: number;
+  unreadReviewCount: number;
+  pendingCaseCount: number;
 }) {
   return (
     <div className="flex h-full flex-col">
@@ -62,6 +68,16 @@ function AdminNavigation({
                 {pendingSuggestionCount}
               </span>
             )}
+            {item.href === "/admin/ratings" && unreadReviewCount > 0 && (
+              <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-xs font-medium text-primary-foreground">
+                {unreadReviewCount}
+              </span>
+            )}
+            {item.href === "/admin/cases" && pendingCaseCount > 0 && (
+              <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 text-xs font-medium text-white">
+                {pendingCaseCount}
+              </span>
+            )}
           </Link>
         ))}
       </nav>
@@ -77,9 +93,13 @@ function AdminNavigation({
 export function AdminSidebar({
   languages,
   pendingSuggestionCount = 0,
+  unreadReviewCount = 0,
+  pendingCaseCount = 0,
 }: {
   languages: Languages;
   pendingSuggestionCount?: number;
+  unreadReviewCount?: number;
+  pendingCaseCount?: number;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -98,6 +118,8 @@ export function AdminSidebar({
               <AdminNavigation
                 onNavigate={() => setOpen(false)}
                 pendingSuggestionCount={pendingSuggestionCount}
+                unreadReviewCount={unreadReviewCount}
+                pendingCaseCount={pendingCaseCount}
               />
             </SheetContent>
           </Sheet>
@@ -106,7 +128,11 @@ export function AdminSidebar({
         <GoogleTranslateWidget languages={languages} />
       </header>
       <aside className="hidden min-h-screen w-60 shrink-0 border-r bg-muted/30 p-4 md:block">
-        <AdminNavigation pendingSuggestionCount={pendingSuggestionCount} />
+        <AdminNavigation
+          pendingSuggestionCount={pendingSuggestionCount}
+          unreadReviewCount={unreadReviewCount}
+          pendingCaseCount={pendingCaseCount}
+        />
       </aside>
     </>
   );

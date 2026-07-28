@@ -122,7 +122,12 @@ function ListingPreview({ pin }: { pin: MapPin }) {
       </div>
       <div className="space-y-1 px-4 py-3.5">
         <div className="flex items-start justify-between gap-3">
-          <p className="line-clamp-1 text-sm font-semibold">{pin.location}</p>
+          <p
+            className="notranslate line-clamp-1 text-sm font-semibold"
+            translate="no"
+          >
+            {pin.location}
+          </p>
           <span
             className="notranslate shrink-0 text-sm font-semibold"
             translate="no"
@@ -156,7 +161,10 @@ function GroupedListingPreview({ pins }: { pins: MapPin[] }) {
         >
           {countLabel.text}
         </p>
-        <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+        <p
+          className="notranslate mt-0.5 line-clamp-1 text-xs text-muted-foreground"
+          translate="no"
+        >
           {pins[0]?.location}
         </p>
       </div>

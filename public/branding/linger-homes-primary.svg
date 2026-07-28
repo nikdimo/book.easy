@@ -8,7 +8,7 @@
     <path fill="#FBF8F5" d="M71 69h10v10H71zM39 69h10v10H39z"/>
     <ellipse cx="60" cy="146" rx="25" ry="4" fill="#B84A24" opacity=".18"/>
   </g>
-  <text x="128" y="99" font-family="Manrope,Arial,sans-serif" font-size="66" font-weight="700" letter-spacing="-2.7">
-    <tspan fill="#B84A24">Linger</tspan><tspan fill="#252525"> Homes</tspan>
+  <text x="128" y="96" font-family="Fredoka,Arial,sans-serif" font-size="64" font-weight="500" letter-spacing="-2.8">
+    <tspan fill="#B84A24">linger</tspan><tspan fill="#252525"> homes</tspan>
   </text>
 </svg>

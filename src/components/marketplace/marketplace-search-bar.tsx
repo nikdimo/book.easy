@@ -4,10 +4,12 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
   type FormEvent,
+  useSyncExternalStore,
 } from "react";
 import { Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,7 +24,6 @@ import {
   guestsParamToCounts,
   guestCountsFromParams,
   guestCountsToParams,
-  type GuestCounts,
 } from "@/components/marketplace/marketplace-guest-selector";
 import {
   parsePropertyTypesFromSearchParams,
@@ -32,6 +33,14 @@ import { useSearchLabels } from "@/components/marketplace/search-labels";
 import type { Resolved } from "@/lib/i18n/t";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 import type { PlaceOption } from "@/lib/utils/place";
+import { localizePlaceName } from "@/lib/i18n/place-name";
+import {
+  clearActiveSearchState,
+  parseActiveSearchState,
+  ACTIVE_SEARCH_STORAGE_KEY,
+  writeActiveSearchState,
+  type ActiveSearchState,
+} from "@/lib/marketplace-search-state";
 
 type Variant = "hero" | "compact" | "pill" | "summary";
 type DesktopPanel = "where" | "when" | "who";
@@ -50,19 +59,14 @@ type PopoverGeometry = {
   maxHeight: number;
 };
 
-type SearchBarState = {
-  city: string;
-  /** Only set when `city` is a known exact match (picked from the list), so two
-   * same-named cities in different countries aren't conflated. */
-  country: string;
-  checkIn: string;
-  checkOut: string;
-  guestCounts: GuestCounts;
-  dateFlexibility: number;
-  propertyTypes: string[];
-};
+type SearchBarState = ActiveSearchState;
 
 let rememberedSearchState: SearchBarState | null = null;
+
+export function resetRememberedMarketplaceSearch(): void {
+  rememberedSearchState = null;
+  clearActiveSearchState();
+}
 
 function parseDateFlexibility(value: string | null): number {
   const parsed = Number(value);
@@ -90,6 +94,7 @@ function getInitialSearchBarState(args: {
   defaultCheckOut: string;
   defaultGuests: string;
   allPropertyTypeValues: string[];
+  rememberedState?: SearchBarState | null;
 }): SearchBarState {
   const {
     pathname,
@@ -100,38 +105,54 @@ function getInitialSearchBarState(args: {
     defaultCheckOut,
     defaultGuests,
     allPropertyTypeValues,
+    rememberedState,
   } = args;
-  const allowRememberedFallback = pathname !== "/properties";
+  const fallbackState = rememberedState ?? rememberedSearchState;
+  const hasExplicitSearchParams = [
+    "city",
+    "country",
+    "checkIn",
+    "checkOut",
+    "guests",
+    "adults",
+    "children",
+    "infants",
+    "pets",
+    "dateFlexibility",
+    "propertyTypes",
+  ].some((key) => searchParams.has(key));
+  const allowRememberedFallback =
+    pathname !== "/properties" || !hasExplicitSearchParams;
 
   const city = resolveStringValue(
     defaultCity,
     searchParams.get("city"),
-    rememberedSearchState?.city,
+    fallbackState?.city,
     allowRememberedFallback
   );
   const country = resolveStringValue(
     defaultCountry,
     searchParams.get("country"),
-    rememberedSearchState?.country,
+    fallbackState?.country,
     allowRememberedFallback
   );
   const checkIn = resolveStringValue(
     defaultCheckIn,
     searchParams.get("checkIn"),
-    rememberedSearchState?.checkIn,
+    fallbackState?.checkIn,
     allowRememberedFallback
   );
   const checkOut = resolveStringValue(
     defaultCheckOut,
     searchParams.get("checkOut"),
-    rememberedSearchState?.checkOut,
+    fallbackState?.checkOut,
     allowRememberedFallback
   );
   const guests = resolveStringValue(
     defaultGuests,
     searchParams.get("guests"),
-    rememberedSearchState
-      ? countsToGuestsParam(rememberedSearchState.guestCounts)
+    fallbackState
+      ? countsToGuestsParam(fallbackState.guestCounts)
       : undefined,
     allowRememberedFallback
   );
@@ -140,19 +161,19 @@ function getInitialSearchBarState(args: {
   // (e.g. a link that only ever set `guests`, like a property card).
   const guestCounts =
     guestCountsFromParams((key) => searchParams.get(key)) ??
-    (allowRememberedFallback ? rememberedSearchState?.guestCounts : undefined) ??
+    (allowRememberedFallback ? fallbackState?.guestCounts : undefined) ??
     guestsParamToCounts(guests);
   const propertyTypes =
     searchParams.get("propertyTypes") !== null
       ? parsePropertyTypesFromSearchParams(searchParams, allPropertyTypeValues)
-      : allowRememberedFallback && rememberedSearchState
-        ? rememberedSearchState.propertyTypes
+      : allowRememberedFallback && fallbackState
+        ? fallbackState.propertyTypes
         : [];
   const dateFlexibility =
     searchParams.get("dateFlexibility") !== null
       ? parseDateFlexibility(searchParams.get("dateFlexibility"))
-      : allowRememberedFallback && rememberedSearchState
-        ? rememberedSearchState.dateFlexibility
+        : allowRememberedFallback && fallbackState
+        ? fallbackState.dateFlexibility
         : 0;
 
   return {
@@ -225,6 +246,18 @@ export function MarketplaceSearchBar({
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const storedSearchRaw = useSyncExternalStore(
+    (onChange) => {
+      window.addEventListener("storage", onChange);
+      return () => window.removeEventListener("storage", onChange);
+    },
+    () => window.localStorage.getItem(ACTIVE_SEARCH_STORAGE_KEY),
+    () => null,
+  );
+  const storedSearchState = useMemo(
+    () => parseActiveSearchState(storedSearchRaw),
+    [storedSearchRaw],
+  );
   const allPropertyTypeValues = getAvailablePropertyTypeValues(
     availablePropertyTypesByCity
   );
@@ -237,13 +270,29 @@ export function MarketplaceSearchBar({
     defaultCheckOut,
     defaultGuests,
     allPropertyTypeValues,
+    rememberedState: storedSearchState,
   });
+  const hydratedInitialState = storedSearchState
+    ? getInitialSearchBarState({
+        pathname,
+        searchParams,
+        defaultCity,
+        defaultCountry,
+        defaultCheckIn,
+        defaultCheckOut,
+        defaultGuests,
+        allPropertyTypeValues,
+        rememberedState: storedSearchState,
+      })
+    : initialState;
   const showPropertyTypesInWhere = true;
 
   useEffect(() => {
     if (pathname !== "/properties") return;
-    rememberedSearchState = hasSearchBarState(initialState) ? initialState : null;
-  }, [initialState, pathname]);
+    rememberedSearchState = hasSearchBarState(hydratedInitialState)
+      ? hydratedInitialState
+      : null;
+  }, [hydratedInitialState, pathname]);
 
   const routeKey = [
     pathname,
@@ -259,7 +308,7 @@ export function MarketplaceSearchBar({
     <MarketplaceSearchBarInner
       key={routeKey}
       variant={variant}
-      initialState={initialState}
+      initialState={hydratedInitialState}
       showPropertyTypesInWhere={showPropertyTypesInWhere}
       popularCities={popularCities}
       availablePropertyTypesByCity={availablePropertyTypesByCity}
@@ -503,6 +552,7 @@ function MarketplaceSearchBarInner({
       dateFlexibility,
       propertyTypes,
     };
+    writeActiveSearchState(rememberedSearchState);
 
     const q = p.toString();
     router.push(q ? `/properties?${q}` : "/properties");
@@ -519,7 +569,7 @@ function MarketplaceSearchBarInner({
     setPlaceSelectorOpen(false);
     setDatePickerOpen(false);
     setDatePickerCanReturnToPlace(false);
-    rememberedSearchState = null;
+    resetRememberedMarketplaceSearch();
     router.push("/properties");
   };
 
@@ -550,6 +600,21 @@ function MarketplaceSearchBarInner({
     setDatePickerOpen(false);
     setPlaceSelectorOpen(false);
     window.requestAnimationFrame(() => setPlaceSelectorOpen(true));
+  };
+
+  const openDatesStep = () => {
+    if (pendingDatePickerCloseFrameRef.current !== null) {
+      window.cancelAnimationFrame(pendingDatePickerCloseFrameRef.current);
+      pendingDatePickerCloseFrameRef.current = null;
+    }
+    setDatePickerCanReturnToPlace(true);
+    setDatePickerInitialSegment("checkin");
+    setDatePickerInitialStep("dates");
+    setPlaceSelectorOpen(false);
+    setDatePickerOpen(false);
+    // Let Radix finish dismissing the destination dialog before mounting the
+    // date dialog. Otherwise its late close event can cancel this transition.
+    window.requestAnimationFrame(() => setDatePickerOpen(true));
   };
 
   const handlePlaceOpenChange = (nextOpen: boolean) => {
@@ -590,7 +655,9 @@ function MarketplaceSearchBarInner({
   };
 
   if (isSummary) {
-    const citySummary = city || labels.whereToPlaceholder.text;
+    const citySummary = city
+      ? localizePlaceName(city, labels.locale)
+      : labels.whereToPlaceholder.text;
     const dateSummary = formatDateSummary(checkIn, checkOut, labels.anyDates, labels.locale);
     const guestSummary = formatGuestSummary(guestCounts, labels);
 
@@ -603,11 +670,24 @@ function MarketplaceSearchBarInner({
           aria-label={labels.openSearch.text}
         >
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-semibold text-foreground">
+            <span
+              className={cn(
+                "block truncate text-sm font-semibold text-foreground",
+                (city || labels.whereToPlaceholder.translated) && "notranslate"
+              )}
+              translate="no"
+              suppressHydrationWarning
+            >
               {citySummary}
             </span>
             <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-              <span className={dateSummary.translated ? "notranslate" : undefined}>{dateSummary.text}</span> ·{" "}
+              <span
+                className="notranslate"
+                translate="no"
+                suppressHydrationWarning
+              >
+                {dateSummary.text}
+              </span> ·{" "}
               <span className={guestSummary.translated ? "notranslate" : undefined}>{guestSummary.text}</span>
             </span>
           </span>
@@ -639,6 +719,7 @@ function MarketplaceSearchBarInner({
             setPropertyTypes(next.propertyTypes);
 
             rememberedSearchState = next;
+            writeActiveSearchState(next);
             const p = new URLSearchParams();
             if (next.city.trim()) p.set("city", next.city.trim());
             if (next.country.trim()) p.set("country", next.country.trim());
@@ -708,13 +789,7 @@ function MarketplaceSearchBarInner({
               }}
               open={placeSelectorOpen}
               onOpenChange={handlePlaceOpenChange}
-              onNextToDates={() => {
-                setDatePickerCanReturnToPlace(true);
-                setDatePickerInitialSegment("checkin");
-                setDatePickerInitialStep("dates");
-                setPlaceSelectorOpen(false);
-                setDatePickerOpen(true);
-              }}
+              onNextToDates={openDatesStep}
               popularCities={popularCities}
               availablePropertyTypesByCity={availablePropertyTypesByCity}
               propertyTypes={propertyTypeOptions}
@@ -851,13 +926,7 @@ function MarketplaceSearchBarInner({
           }}
           open={placeSelectorOpen}
           onOpenChange={handlePlaceOpenChange}
-          onNextToDates={() => {
-            setDatePickerCanReturnToPlace(true);
-            setDatePickerInitialSegment("checkin");
-            setDatePickerInitialStep("dates");
-            setPlaceSelectorOpen(false);
-            setDatePickerOpen(true);
-          }}
+          onNextToDates={openDatesStep}
           popularCities={popularCities}
           availablePropertyTypesByCity={availablePropertyTypesByCity}
           propertyTypes={propertyTypeOptions}

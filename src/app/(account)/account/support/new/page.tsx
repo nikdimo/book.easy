@@ -4,6 +4,7 @@ import { SafetyCaseForm } from "@/components/support/safety-case-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUserPage } from "@/lib/auth-helpers";
+import type { ClaimKind } from "@prisma/client";
 
 const targetTypes = ["USER", "HOST", "LISTING", "BOOKING", "MESSAGE"] as const;
 
@@ -23,6 +24,11 @@ export default async function NewSafetyCasePage({
     : type === "CLAIM"
       ? "BOOKING"
       : "LISTING";
+  const requestedClaimKind =
+    typeof query.claimKind === "string" &&
+    ["EXPENSE", "DAMAGE", "REFUND"].includes(query.claimKind)
+      ? (query.claimKind as ClaimKind)
+      : undefined;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -44,6 +50,7 @@ export default async function NewSafetyCasePage({
             bookingId={typeof query.bookingId === "string" ? query.bookingId : undefined}
             messageId={typeof query.messageId === "string" ? query.messageId : undefined}
             reportedUserId={typeof query.reportedUserId === "string" ? query.reportedUserId : undefined}
+            claimKind={requestedClaimKind}
           />
         </CardContent>
       </Card>
