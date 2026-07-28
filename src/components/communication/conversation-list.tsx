@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/shared/empty-state";
+import { COMMUNICATION_BRAND } from "@/lib/communication-brand";
 
 export interface ConversationListItem {
   id: string;
@@ -50,7 +51,7 @@ export function ConversationList({
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="truncate font-semibold">
-                    {conversation.otherUser.name || "Linger Homes member"}
+                    {conversation.otherUser.name || `${COMMUNICATION_BRAND.name} member`}
                   </p>
                   <Badge variant="secondary">
                     {conversation.kind === "INQUIRY" ? "Inquiry" : "Booking"}

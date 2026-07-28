@@ -1,4 +1,3 @@
-import Link from "next/link";
 import Image from "next/image";
 import { getPropertyTypeLabel } from "@/lib/services/property-type.service";
 import type { ListingCardSerialized } from "@/lib/serializers/listing-card";
@@ -27,7 +26,7 @@ export async function PropertyCardSpotlight({ listing }: PropertyCardSpotlightPr
   const href = `/properties/${slug}`;
 
   return (
-    <Link
+    <a
       href={href}
       className="group grid grid-cols-1 sm:grid-cols-2 overflow-hidden rounded-2xl border bg-card transition-shadow hover:shadow-md"
     >
@@ -88,6 +87,6 @@ export async function PropertyCardSpotlight({ listing }: PropertyCardSpotlightPr
           </div>
         ) : null}
       </div>
-    </Link>
+    </a>
   );
 }

@@ -1,5 +1,5 @@
 [Unit]
-Description=book.easy.mk listing popularity recompute
+Description=Linger Homes listing popularity recompute
 After=network.target postgresql.service
 
 [Service]

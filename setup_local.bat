@@ -2,7 +2,7 @@
 setlocal
 cd /d "%~dp0"
 
-echo === book.easy.mk local setup ===
+echo === Linger Homes local setup ===
 echo.
 
 echo [1/4] Starting Postgres in Docker ^(skip if Docker is off; use your own Postgres on 5432^)...

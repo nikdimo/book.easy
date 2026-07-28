@@ -2,7 +2,6 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-  useCallback,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -10,8 +9,7 @@ import {
   type CSSProperties,
   type FormEvent,
 } from "react";
-import { createPortal } from "react-dom";
-import { Search } from "lucide-react";
+import { Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MarketplaceStayDatePicker } from "@/components/marketplace/marketplace-stay-date-picker";
@@ -319,6 +317,10 @@ function MarketplaceSearchBarInner({
     initialState.dateFlexibility
   );
   const [propertyTypes, setPropertyTypes] = useState(initialState.propertyTypes);
+  const hasSearchSelection = Boolean(
+    city || country || checkIn || checkOut || dateFlexibility ||
+      propertyTypes.length || countsToGuestsParam(guestCounts)
+  );
   const activeDesktopPanel: DesktopPanel | null = isPill
     ? placeSelectorOpen
       ? "where"
@@ -340,25 +342,9 @@ function MarketplaceSearchBarInner({
   const [desktopShellVisible, setDesktopShellVisible] = useState(false);
   const [popoverGeometry, setPopoverGeometry] =
     useState<PopoverGeometry | null>(null);
-  const [whereContentNode, setWhereContentNode] =
-    useState<HTMLDivElement | null>(null);
-  const [dateContentNode, setDateContentNode] =
-    useState<HTMLDivElement | null>(null);
-  const [desktopPanelHeight, setDesktopPanelHeight] = useState<number | null>(
-    null
-  );
   const visualDesktopPanel =
     activeDesktopPanel ??
     (desktopShellVisible ? renderedDesktopPanel : null);
-
-  const handleWhereContentRef = useCallback((node: HTMLDivElement | null) => {
-    setWhereContentNode(node);
-  }, []);
-  const handleDateContentRef = useCallback((node: HTMLDivElement | null) => {
-    setDateContentNode(node);
-  }, []);
-  const desktopContentNode =
-    activeDesktopPanel === "where" ? whereContentNode : dateContentNode;
 
   useEffect(
     () => () => {
@@ -474,24 +460,6 @@ function MarketplaceSearchBarInner({
     };
   }, [activeDesktopPanel, isPill, renderedDesktopPanel]);
 
-  useLayoutEffect(() => {
-    if (!desktopContentNode || !activeDesktopPanel || !popoverGeometry) return;
-
-    const updateHeight = () => {
-      const measuredHeight = desktopContentNode.getBoundingClientRect().height;
-      if (measuredHeight > 0) {
-        setDesktopPanelHeight(
-          Math.min(Math.ceil(measuredHeight), popoverGeometry.maxHeight)
-        );
-      }
-    };
-
-    updateHeight();
-    const resizeObserver = new ResizeObserver(updateHeight);
-    resizeObserver.observe(desktopContentNode);
-    return () => resizeObserver.disconnect();
-  }, [activeDesktopPanel, desktopContentNode, popoverGeometry]);
-
   const desktopContentStyle: CSSProperties | undefined = popoverGeometry
     ? {
         left: popoverGeometry.left,
@@ -540,6 +508,21 @@ function MarketplaceSearchBarInner({
     router.push(q ? `/properties?${q}` : "/properties");
   };
 
+  const clearSearch = () => {
+    setCity("");
+    setCountry("");
+    setCheckIn("");
+    setCheckOut("");
+    setGuestCounts({ adults: 0, children: 0, infants: 0, pets: 0 });
+    setDateFlexibility(0);
+    setPropertyTypes([]);
+    setPlaceSelectorOpen(false);
+    setDatePickerOpen(false);
+    setDatePickerCanReturnToPlace(false);
+    rememberedSearchState = null;
+    router.push("/properties");
+  };
+
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     submitQuery();
@@ -556,6 +539,17 @@ function MarketplaceSearchBarInner({
     setDatePickerOpen(false);
     setDatePickerInitialStep("guests");
     window.requestAnimationFrame(() => setDatePickerOpen(true));
+  };
+
+  const openPlaceStep = () => {
+    if (pendingDatePickerCloseFrameRef.current !== null) {
+      window.cancelAnimationFrame(pendingDatePickerCloseFrameRef.current);
+      pendingDatePickerCloseFrameRef.current = null;
+    }
+    setDatePickerCanReturnToPlace(false);
+    setDatePickerOpen(false);
+    setPlaceSelectorOpen(false);
+    window.requestAnimationFrame(() => setPlaceSelectorOpen(true));
   };
 
   const handlePlaceOpenChange = (nextOpen: boolean) => {
@@ -675,31 +669,6 @@ function MarketplaceSearchBarInner({
   if (isPill) {
     return (
       <>
-        {typeof document !== "undefined" &&
-        renderedDesktopPanel &&
-        popoverGeometry
-          ? createPortal(
-              <div
-                aria-hidden
-                className="desktop-search-popover-shell pointer-events-none fixed z-[51] overflow-hidden rounded-[1.75rem] border border-border/60 bg-background shadow-[0_10px_32px_rgba(0,0,0,0.16)]"
-                style={{
-                  left: popoverGeometry.left,
-                  top: popoverGeometry.top,
-                  width: popoverGeometry.width,
-                  height: desktopPanelHeight ?? 0,
-                  maxHeight: popoverGeometry.maxHeight,
-                  opacity:
-                    desktopShellVisible && desktopPanelHeight !== null ? 1 : 0,
-                  transform:
-                    desktopShellVisible && desktopPanelHeight !== null
-                      ? "translateY(0) scale(1)"
-                      : "translateY(-6px) scale(0.985)",
-                }}
-              />,
-              document.body
-            )
-          : null}
-
         <form
           ref={pillFormRef}
           data-desktop-search-pill
@@ -743,6 +712,7 @@ function MarketplaceSearchBarInner({
                 setDatePickerCanReturnToPlace(true);
                 setDatePickerInitialSegment("checkin");
                 setDatePickerInitialStep("dates");
+                setPlaceSelectorOpen(false);
                 setDatePickerOpen(true);
               }}
               popularCities={popularCities}
@@ -754,7 +724,6 @@ function MarketplaceSearchBarInner({
                 visualDesktopPanel === "where" ||
                 visualDesktopPanel === "when"
               }
-              desktopContentRef={handleWhereContentRef}
               desktopContentStyle={desktopContentStyle}
               useSharedDesktopShell
               dialogContentId="desktop-search-where-panel"
@@ -781,21 +750,20 @@ function MarketplaceSearchBarInner({
               onRangeStringsChange={({ checkIn: ci, checkOut: co }) => {
                 setCheckIn(ci);
                 setCheckOut(co);
+                if (co) openGuestsStep();
               }}
               onGuestCountsChange={setGuestCounts}
               onDateFlexibilityChange={setDateFlexibility}
               onBackToPlace={() => {
-                setDatePickerCanReturnToPlace(false);
-                setDatePickerOpen(false);
-                setPlaceSelectorOpen(true);
+                openPlaceStep();
               }}
               onSearchRequest={submitQuery}
+              showPillGuestAction
               sharedPillActive
               hidePillDivider={
                 visualDesktopPanel === "when" ||
                 visualDesktopPanel === "who"
               }
-              desktopContentRef={handleDateContentRef}
               desktopContentStyle={desktopContentStyle}
               useSharedDesktopShell
               dialogContentId="desktop-search-date-panel"
@@ -815,6 +783,17 @@ function MarketplaceSearchBarInner({
                 className="min-w-[14rem] flex-1"
               />
             </div>
+            {hasSearchSelection && (
+              <button
+                type="button"
+                onClick={clearSearch}
+                className="mr-1 inline-flex h-9 shrink-0 items-center gap-1 rounded-full px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                aria-label={labels.reset.text}
+              >
+                <X className="h-3.5 w-3.5" />
+                <span className="hidden xl:inline">{labels.reset.text}</span>
+              </button>
+            )}
             <Button
               type="submit"
               className={cn(
@@ -875,6 +854,8 @@ function MarketplaceSearchBarInner({
           onNextToDates={() => {
             setDatePickerCanReturnToPlace(true);
             setDatePickerInitialSegment("checkin");
+            setDatePickerInitialStep("dates");
+            setPlaceSelectorOpen(false);
             setDatePickerOpen(true);
           }}
           popularCities={popularCities}
@@ -899,13 +880,12 @@ function MarketplaceSearchBarInner({
           onRangeStringsChange={({ checkIn: ci, checkOut: co }) => {
             setCheckIn(ci);
             setCheckOut(co);
+            if (co) openGuestsStep();
           }}
           onGuestCountsChange={setGuestCounts}
           onDateFlexibilityChange={setDateFlexibility}
           onBackToPlace={() => {
-            setDatePickerCanReturnToPlace(false);
-            setDatePickerOpen(false);
-            setPlaceSelectorOpen(true);
+            openPlaceStep();
           }}
           onSearchRequest={submitQuery}
           className="flex min-w-0 flex-1"
@@ -925,6 +905,17 @@ function MarketplaceSearchBarInner({
             isCompact ? "px-1 pb-1 pt-0" : "p-2 md:justify-end md:pr-2"
           )}
         >
+          {hasSearchSelection && (
+            <button
+              type="button"
+              onClick={clearSearch}
+              className="flex items-center justify-center gap-1 px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              aria-label={labels.reset.text}
+            >
+              <X className="h-4 w-4" />
+              {labels.reset.text}
+            </button>
+          )}
           <Button
             type="submit"
             size={isCompact ? "default" : "lg"}

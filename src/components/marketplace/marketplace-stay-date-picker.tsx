@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import type { GuestCounts } from "@/components/marketplace/marketplace-guest-selector";
-import { pluralText } from "@/lib/i18n/client";
+import { pluralText, useI18n } from "@/lib/i18n/client";
 import { useSearchLabels } from "@/components/marketplace/search-labels";
 import type { SearchLabels } from "@/components/marketplace/search-labels";
 import type { Resolved } from "@/lib/i18n/t";
@@ -136,6 +136,8 @@ const EMPTY_GUEST_COUNTS: GuestCounts = {
   infants: 0,
   pets: 0,
 };
+const CAPACITY_LABEL_KEY = "mobile.builder.capacity";
+const CAPACITY_LABEL_SOURCE = "Capacity";
 
 const DragContext = React.createContext<DragCtx | null>(null);
 
@@ -156,12 +158,14 @@ function GuestRow({
   value,
   onChange,
   linkText,
+  increaseDisabled = false,
 }: {
   title: Resolved;
   subtitle?: Resolved;
   value: number;
   onChange: (next: number) => void;
   linkText?: Resolved;
+  increaseDisabled?: boolean;
 }) {
   return (
     <div className="flex items-center justify-between gap-4 border-b border-border/80 py-5 last:border-b-0">
@@ -211,8 +215,9 @@ function GuestRow({
         </span>
         <button
           type="button"
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/60 text-xl text-foreground"
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/60 text-xl text-foreground disabled:cursor-not-allowed disabled:opacity-35"
           onClick={() => onChange(Math.min(16, value + 1))}
+          disabled={increaseDisabled || value >= 16}
           aria-label={`Increase ${title.text}`}
         >
           +
@@ -240,6 +245,18 @@ export function GuestCountsStep({
   className?: string;
 }) {
   const labels = useSearchLabels();
+  const i18n = useI18n();
+  const occupancy = guestCounts.adults + guestCounts.children;
+  const capacityReached =
+    maxOccupancy !== undefined && occupancy >= maxOccupancy;
+  const capacityLabel = i18n.resolve(
+    CAPACITY_LABEL_KEY,
+    CAPACITY_LABEL_SOURCE
+  );
+  const maximumGuestLabel =
+    maxOccupancy === undefined
+      ? null
+      : pluralText(labels.guest, maxOccupancy, labels.locale);
   const setAdults = (adults: number) => {
     const available = maxOccupancy === undefined
       ? adults
@@ -265,13 +282,55 @@ export function GuestCountsStep({
         subtitle={labels.adultsHint}
         value={guestCounts.adults}
         onChange={setAdults}
+        increaseDisabled={capacityReached}
       />
       <GuestRow
         title={labels.children}
         subtitle={labels.childrenHint}
         value={guestCounts.children}
         onChange={setChildren}
+        increaseDisabled={capacityReached}
       />
+      {maxOccupancy !== undefined && maximumGuestLabel ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className={cn(
+            "my-3 rounded-xl border px-3 py-2.5 text-sm",
+            capacityReached
+              ? "border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100"
+              : "border-border bg-muted/30 text-muted-foreground"
+          )}
+        >
+          <p className="font-medium">
+            <span className={capacityLabel.translated ? "notranslate" : undefined}>
+              {capacityLabel.text}
+            </span>
+            {": "}
+            <span className={maximumGuestLabel.translated ? "notranslate" : undefined}>
+              {maximumGuestLabel.text}
+            </span>
+          </p>
+          <p className="mt-0.5">
+            <span className={labels.adults.translated ? "notranslate" : undefined}>
+              {labels.adults.text}
+            </span>
+            {" + "}
+            <span className={labels.children.translated ? "notranslate" : undefined}>
+              {labels.children.text}
+            </span>
+            {`: ${occupancy} / ${maxOccupancy} · `}
+            <span className={labels.infants.translated ? "notranslate" : undefined}>
+              {labels.infants.text}
+            </span>
+            {" + "}
+            <span className={labels.pets.translated ? "notranslate" : undefined}>
+              {labels.pets.text}
+            </span>
+            {": ∞"}
+          </p>
+        </div>
+      ) : null}
       <GuestRow
         title={labels.infants}
         subtitle={labels.infantsHint}
@@ -441,6 +500,7 @@ export function DateRangeCalendarStep({
   dateModifiers,
   dateModifiersClassNames,
   fitViewport = false,
+  pagedOnDesktop = false,
 }: {
   active: boolean;
   selected: DateRange | undefined;
@@ -452,6 +512,7 @@ export function DateRangeCalendarStep({
   dateModifiers?: React.ComponentProps<typeof Calendar>["modifiers"];
   dateModifiersClassNames?: React.ComponentProps<typeof Calendar>["modifiersClassNames"];
   fitViewport?: boolean;
+  pagedOnDesktop?: boolean;
 }) {
   const labels = useSearchLabels();
   const [isMobile, setIsMobile] = React.useState(false);
@@ -493,6 +554,8 @@ export function DateRangeCalendarStep({
     return () => mq.removeEventListener("change", apply);
   }, []);
 
+  const pagedCalendar = fitViewport || (pagedOnDesktop && !isMobile);
+
   React.useEffect(() => {
     const justOpened = active && !wasActiveRef.current;
     wasActiveRef.current = active;
@@ -506,17 +569,17 @@ export function DateRangeCalendarStep({
     // prior expansion doesn't leak into the next open. Selection changes must
     // not reset this state: hosts often select dates in a lazily loaded month.
     setVisibleMonthCount(
-      fitViewport
+      pagedCalendar
         ? INITIAL_DESKTOP_MONTH_COUNT
         : isMobile
           ? INITIAL_MOBILE_MONTH_COUNT
           : INITIAL_DESKTOP_MONTH_COUNT
     );
-    if (fitViewport) {
+    if (pagedCalendar) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setDisplayMonth(startOfMonth(selected?.from ?? new Date()));
     }
-  }, [active, fitViewport, isMobile, selected?.from]);
+  }, [active, isMobile, pagedCalendar, selected?.from]);
 
   // react-day-picker recalculates its internal month collection when
   // numberOfMonths changes. Restore the scroll offset in the same layout pass
@@ -782,7 +845,7 @@ export function DateRangeCalendarStep({
       <div
         ref={bodyScrollRef}
         onScroll={(e) => {
-          if (fitViewport) return;
+          if (pagedCalendar) return;
           const el = e.currentTarget;
           setCanScrollBack(el.scrollTop > 8);
           if (
@@ -799,13 +862,13 @@ export function DateRangeCalendarStep({
           }
         }}
         className={cn(
-          fitViewport
+          pagedCalendar
             ? "shrink-0 overflow-hidden px-5 py-5 md:px-7 md:py-6"
             : "flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain [overflow-anchor:none] px-4 py-5 md:px-6 md:py-6",
           isDragging && "cursor-grabbing select-none"
         )}
       >
-        {!fitViewport ? (
+        {!pagedCalendar ? (
           <div className="pointer-events-none sticky top-2 z-20 -mb-9 flex h-9 items-center justify-between">
             <button
               type="button"
@@ -838,8 +901,8 @@ export function DateRangeCalendarStep({
             selected={calendarSelected}
             onSelect={(range) => commitRange(range)}
             numberOfMonths={visibleMonthCount}
-            month={fitViewport ? displayMonth : undefined}
-            onMonthChange={fitViewport ? setDisplayMonth : undefined}
+            month={pagedCalendar ? displayMonth : undefined}
+            onMonthChange={pagedCalendar ? setDisplayMonth : undefined}
             disabled={disabledMatcher}
             defaultMonth={calendarStartMonth}
             showOutsideDays={false}
@@ -858,7 +921,7 @@ export function DateRangeCalendarStep({
               "mx-auto bg-transparent p-0",
               dayVariant === "availability"
                 ? "[--cell-size:3rem] md:[--cell-size:3.25rem]"
-                : fitViewport
+                : pagedCalendar
                   ? "[--cell-size:2.15rem] md:[--cell-size:2.55rem]"
                   : "[--cell-size:2.15rem] md:[--cell-size:2.8rem]"
             )}
@@ -876,13 +939,13 @@ export function DateRangeCalendarStep({
                   ? "md:w-[23rem] md:max-w-none"
                   : "md:w-[20rem] md:max-w-none"
               ),
-              nav: fitViewport
+              nav: pagedCalendar
                 ? "absolute inset-x-0 top-0 z-10 flex items-center justify-between px-1"
                 : "hidden",
-              button_previous: fitViewport
+              button_previous: pagedCalendar
                 ? "flex h-8 w-8 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted"
                 : "hidden",
-              button_next: fitViewport
+              button_next: pagedCalendar
                 ? "flex h-8 w-8 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted"
                 : "hidden",
               month_caption:
@@ -895,7 +958,7 @@ export function DateRangeCalendarStep({
               day: cn(
                 dayVariant === "availability"
                   ? "group/day relative h-[3.2rem] min-w-0 flex-1 p-0 text-center md:h-[3.6rem] md:w-[3.25rem] md:flex-none"
-                : fitViewport
+                : pagedCalendar
                   ? "group/day relative h-[2.2rem] min-w-0 flex-1 p-0 text-center md:h-10 md:w-10 md:flex-none"
                   : "group/day relative h-[2.2rem] min-w-0 flex-1 p-0 text-center md:h-11 md:w-11 md:flex-none",
                 "[&:first-child[data-range-end=true]]:rounded-l-full",
@@ -954,11 +1017,13 @@ export function MarketplaceStayDatePicker({
   dateModifiers,
   dateModifiersClassNames,
   renderDateFooter,
+  pagedCalendarOnDesktop = false,
   sharedPillActive = false,
   hidePillDivider = false,
   desktopContentRef,
   desktopContentStyle,
   useSharedDesktopShell = false,
+  showPillGuestAction = false,
   dialogContentId,
   className,
 }: {
@@ -996,11 +1061,13 @@ export function MarketplaceStayDatePicker({
     resetDates: () => void;
     summaryText: Resolved;
   }) => React.ReactNode;
+  pagedCalendarOnDesktop?: boolean;
   sharedPillActive?: boolean;
   hidePillDivider?: boolean;
   desktopContentRef?: React.Ref<HTMLDivElement>;
   desktopContentStyle?: React.CSSProperties;
   useSharedDesktopShell?: boolean;
+  showPillGuestAction?: boolean;
   dialogContentId?: string;
   className?: string;
 }) {
@@ -1346,7 +1413,7 @@ export function MarketplaceStayDatePicker({
           className={cn(
             "notranslate",
             useSharedDesktopShell
-              ? "fixed z-[52] flex h-auto flex-col overflow-hidden rounded-[1.75rem] border-transparent bg-transparent text-popover-foreground shadow-none outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:duration-150 data-[state=open]:delay-100 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-100"
+              ? "fixed z-[52] flex h-auto flex-col overflow-hidden rounded-[1.75rem] border border-border/60 bg-background text-popover-foreground shadow-[0_10px_32px_rgba(0,0,0,0.16)] outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2 data-[state=open]:duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-2 data-[state=closed]:duration-100"
               : "fixed z-50 flex flex-col overflow-hidden border border-border/60 bg-background text-popover-foreground shadow-[0_10px_32px_rgba(0,0,0,0.16)] outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-2",
             !useSharedDesktopShell &&
               "left-3 right-3 top-4 bottom-4 h-auto max-h-[calc(100dvh-2rem)] rounded-[2rem]",
@@ -1544,6 +1611,7 @@ export function MarketplaceStayDatePicker({
                 dateModifiers={dateModifiers}
                 dateModifiersClassNames={dateModifiersClassNames}
                 fitViewport={isPillLayout}
+                pagedOnDesktop={pagedCalendarOnDesktop}
               />
 
               <div className="shrink-0 border-t border-border bg-background">
@@ -1646,6 +1714,23 @@ export function MarketplaceStayDatePicker({
                   onGuestCountsChange={onGuestCountsChange}
                 />
               </div>
+
+              {isPillLayout && showPillGuestAction ? (
+                <div className="shrink-0 border-t border-border bg-background px-4 py-3 md:px-6">
+                  <Button
+                    type="button"
+                    className="w-full rounded-full"
+                    onClick={() => {
+                      if (onFinalAction) onFinalAction();
+                      else onSearchRequest();
+                      closePicker();
+                    }}
+                  >
+                    <Search className="mr-2 h-4 w-4" />
+                    {resolvedFinalActionLabel.text}
+                  </Button>
+                </div>
+              ) : null}
 
               {!isPillLayout ? (
                 <div className="shrink-0 border-t border-border bg-background px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:px-6 md:pb-4">

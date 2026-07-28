@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { COMMUNICATION_BRAND } from "@/lib/communication-brand";
 
 const reportCategories = [
   "Safety concern",
@@ -165,7 +166,7 @@ export function SafetyCaseForm({
         ) : null}
       </div>
       <div className="rounded-xl bg-muted p-4 text-sm text-muted-foreground">
-        We send confirmation by email and in the app. Linger Homes administrators can
+        We send confirmation by email and in the app. {COMMUNICATION_BRAND.name} administrators can
         review the related booking, listing, user, and reported message.
       </div>
       <Button type="submit" disabled={pending || uploading}>

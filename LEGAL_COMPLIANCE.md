@@ -1,6 +1,6 @@
 # Legal Compliance & GDPR Implementation Guide
 
-This document explains the privacy, cookie, and legal compliance system implemented in book.easy.mk to ensure EU GDPR compliance.
+This document explains the privacy, cookie, and legal compliance system implemented in Linger Homes to ensure EU GDPR compliance.
 
 ## Overview
 
@@ -171,7 +171,7 @@ NEXT_PUBLIC_GA_ID="G-XXXXXXXXXX"
 ```
 
 Get your GA_ID from [Google Analytics](https://analytics.google.com):
-- Create a new property for book.easy.mk
+- Create a new property for lingerhomes.com
 - Find the "G-" ID in Admin > Data Streams > Web
 
 ### 3. Deploy Changes

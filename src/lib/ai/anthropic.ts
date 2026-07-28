@@ -2,6 +2,12 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { languageEditorGuidance } from "@/lib/i18n/reviewed-languages";
 import {
+  multiLocalePrompt,
+  parseMultiLocaleTranslations,
+  TRANSLATION_RULES,
+  type TranslationTarget,
+} from "@/lib/ai/translation-batch";
+import {
   parseAndValidateTranslationJson,
   validateTranslationMap,
 } from "@/lib/i18n/translation-validation";
@@ -19,36 +25,22 @@ function getClient(): Anthropic {
   return client;
 }
 
-/** Translates a batch of {key: englishText} strings into `targetLanguageName` in one
- *  API call. Returns a {key: translatedText} map covering every input key. */
-export async function translateBatch(
+/** Translates a batch of {key: englishText} strings into every target locale in one
+ *  API call. Returns {locale: {key: translatedText}} covering every input key. */
+export async function translateBatchToLocales(
   texts: Record<string, string>,
-  targetLanguageName: string,
-  targetLocale?: string
-): Promise<Record<string, string>> {
-  const entries = Object.entries(texts);
-  if (entries.length === 0) return {};
+  targets: readonly TranslationTarget[]
+): Promise<Record<string, Record<string, string>>> {
+  if (Object.keys(texts).length === 0 || targets.length === 0) return {};
 
   const client = getClient();
   const response = await client.messages.create({
     model: process.env.ANTHROPIC_TRANSLATION_MODEL || "claude-sonnet-5",
-    max_tokens: 4096,
-    system:
-      "You translate short website UI strings (buttons, labels, headings) from English into the requested language. " +
-      "Keep translations concise and natural for a booking/rental website. Use each key as context; for plural keys ending " +
-      "in .zero, .one, .two, .few, .many, or .other, use the grammar required by that plural category. " +
-      "Preserve every placeholder like {name} exactly, without translating or removing it. " +
-      "Brand names, currency codes, city names, and product names must remain unchanged. " +
-      `${targetLocale ? languageEditorGuidance(targetLocale) : ""} ` +
-      "Respond with ONLY one valid JSON object containing exactly the input keys and string values — no markdown or commentary.",
-    messages: [
-      {
-        role: "user",
-        content: `Translate the values of this JSON object into ${targetLanguageName}. Keep the same keys.\n\n${JSON.stringify(
-          Object.fromEntries(entries)
-        )}`,
-      },
-    ],
+    // A multi-locale response is one translation per string per locale, so the
+    // ceiling has to scale past what a single-language batch needed.
+    max_tokens: 16384,
+    system: `${TRANSLATION_RULES} Respond with ONLY one valid JSON object — no markdown or commentary.`,
+    messages: [{ role: "user", content: multiLocalePrompt(texts, targets) }],
   });
 
   const textBlock = response.content.find((block) => block.type === "text");
@@ -56,7 +48,12 @@ export async function translateBatch(
     throw new Error("Unexpected response from translation API.");
   }
 
-  return parseAndValidateTranslationJson(texts, textBlock.text, "Translation API response");
+  return parseMultiLocaleTranslations(
+    texts,
+    targets,
+    textBlock.text,
+    "Translation API response"
+  );
 }
 
 /** Reviews existing translations as a native localization editor. The returned map
@@ -75,7 +72,7 @@ export async function reviewTranslationBatch(
       "Review every existing UI translation against its English source and key context. Return the existing wording unchanged when it is already natural; otherwise rewrite it so it sounds authored by a native product writer, not machine-translated. " +
       "Keep labels concise, preserve meaning and tone, use consistent marketplace terminology, and preserve every {placeholder} exactly. " +
       "For plural keys ending in .zero, .one, .two, .few, .many, or .other, use grammar for that exact CLDR category. " +
-      "Never translate brands, currency codes, city names, or product names. " +
+      "Preserve proper nouns exactly as written, including brands, property names, city/town/village/region/country names, currency codes, and product names; never translate a place name semantically. " +
       `${languageEditorGuidance(targetLanguage.code)} ` +
       "Every returned value must be a non-empty translated string. Respond with ONLY one valid JSON object containing exactly the input keys and final string values—no markdown or commentary.",
     messages: [

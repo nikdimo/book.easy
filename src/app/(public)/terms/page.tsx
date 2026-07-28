@@ -1,7 +1,7 @@
 /* eslint-disable react/no-unescaped-entities -- Long-form legal prose is clearer in source form. */
 import { Metadata } from "next";
 import Link from "next/link";
-import { SITE_DOMAIN } from "@/lib/branding";
+import { SITE_DOMAIN, SUPPORT_EMAIL } from "@/lib/branding";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
@@ -379,7 +379,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-2xl font-semibold mb-4">17. Contact Us</h2>
             <p>
-              Questions about these Terms? Contact us at support@{SITE_DOMAIN.split(".")[0]}.mk
+              Questions about these Terms? Contact us at {SUPPORT_EMAIL}
             </p>
           </section>
         </article>

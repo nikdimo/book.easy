@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 150" role="img" aria-labelledby="title desc">
+  <title id="title">Linger Homes symbol</title>
+  <desc id="desc">A welcoming home inside a location marker.</desc>
+  <path fill="#B84A24" d="M60 4C29.1 4 8 26.7 8 57.3c0 39.2 45.2 83.5 47.1 85.4a6.9 6.9 0 0 0 9.8 0C66.8 140.8 112 96.5 112 57.3 112 26.7 90.9 4 60 4Z"/>
+  <path fill="#FBF8F5" d="m31 58 29-25 29 25v31a7 7 0 0 1-7 7H38a7 7 0 0 1-7-7V58Z"/>
+  <path fill="#B84A24" d="M52 70h16v26H52z"/>
+  <path fill="#FBF8F5" d="M71 69h10v10H71zM39 69h10v10H39z"/>
+  <ellipse cx="60" cy="146" rx="25" ry="4" fill="#B84A24" opacity=".18"/>
+</svg>

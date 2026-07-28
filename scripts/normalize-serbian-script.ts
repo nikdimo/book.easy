@@ -1,6 +1,6 @@
 import { db } from "../src/lib/db";
 
-const PROTECTED_TOKEN_RE = /(\{[A-Za-z][A-Za-z0-9_]*\}|book\.easy\.mk|easy\.mk|Book Easy|EUR|Alt\+T|SMS|URL|Wi-?Fi)/gi;
+const PROTECTED_TOKEN_RE = /(\{[A-Za-z][A-Za-z0-9_]*\}|lingerhomes\.com|Linger Homes|EUR|Alt\+T|SMS|URL|Wi-?Fi)/gi;
 
 const LETTERS: Record<string, string> = {
   A: "А", B: "Б", C: "Ц", Č: "Ч", Ć: "Ћ", D: "Д", Đ: "Ђ", E: "Е", F: "Ф",

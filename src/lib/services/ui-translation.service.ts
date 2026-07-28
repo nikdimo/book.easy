@@ -1,6 +1,8 @@
 import "server-only";
 import { db } from "@/lib/db";
-import { translateBatch } from "@/lib/ai/anthropic";
+import { translateBatchToLocales } from "@/lib/ai/anthropic";
+import { translateBatchToLocalesWithGemini } from "@/lib/ai/gemini";
+import type { TranslationTarget } from "@/lib/ai/translation-batch";
 import generatedCatalog from "@/lib/i18n/generated-ui-strings.json";
 import { CURATED_TRANSLATION_OVERRIDES } from "@/lib/i18n/curated-overrides";
 
@@ -11,8 +13,13 @@ interface GeneratedUiString {
 }
 
 const UI_CATALOG = generatedCatalog as GeneratedUiString[];
+/** One request now translates a batch into every target locale at once, so the
+ * request budget is the product of strings and locales rather than the string
+ * count alone: 20 strings across 15 languages costs the same output as 300
+ * single-language strings. */
+const MAX_TRANSLATIONS_PER_REQUEST = 300;
+const MAX_SOURCE_CHARACTERS_PER_REQUEST = 30_000;
 const MAX_BATCH_STRINGS = 40;
-const MAX_BATCH_CHARACTERS = 12_000;
 const DEFAULT_SYNC_CONCURRENCY = 3;
 
 const SYNC_LOCK_ID = "ui-translation-sync";
@@ -60,7 +67,22 @@ async function releaseSyncLock(owner: string): Promise<void> {
 
 type TranslationEntry = Pick<GeneratedUiString, "key" | "sourceText">;
 
-function chunks(entries: TranslationEntry[]): TranslationEntry[][] {
+function chunks(
+  entries: TranslationEntry[],
+  localeCount: number,
+): TranslationEntry[][] {
+  const maxStrings = Math.max(
+    1,
+    Math.min(
+      MAX_BATCH_STRINGS,
+      Math.floor(MAX_TRANSLATIONS_PER_REQUEST / Math.max(localeCount, 1)),
+    ),
+  );
+  const maxCharacters = Math.max(
+    1,
+    Math.floor(MAX_SOURCE_CHARACTERS_PER_REQUEST / Math.max(localeCount, 1)),
+  );
+
   const result: TranslationEntry[][] = [];
   let current: TranslationEntry[] = [];
   let characters = 0;
@@ -68,8 +90,7 @@ function chunks(entries: TranslationEntry[]): TranslationEntry[][] {
     const size = entry.key.length + entry.sourceText.length;
     if (
       current.length &&
-      (current.length >= MAX_BATCH_STRINGS ||
-        characters + size > MAX_BATCH_CHARACTERS)
+      (current.length >= maxStrings || characters + size > maxCharacters)
     ) {
       result.push(current);
       current = [];
@@ -93,7 +114,15 @@ function syncConcurrency(): number {
 
 function isPermanentTranslationApiFailure(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
-  return /credit balance|billing|quota|ANTHROPIC_API_KEY is not configured/i.test(
+  return /credit balance|billing|quota|rate.?limit|429|ANTHROPIC_API_KEY is not configured|GOOGLE_API_KEY is not configured/i.test(
+    message,
+  );
+}
+
+function shouldUseGeminiFallback(error: unknown): boolean {
+  if (!process.env.GOOGLE_API_KEY) return false;
+  const message = error instanceof Error ? error.message : String(error);
+  return /credit balance|billing|quota|rate.?limit|429|ANTHROPIC_API_KEY is not configured|529|503|502/i.test(
     message,
   );
 }
@@ -221,8 +250,10 @@ export interface SyncResult {
 }
 
 /** For every enabled language with useAiTranslation on, translates whatever
- * UiStrings are missing or stale. Bounded concurrency keeps deployment syncs fast
- * without creating an uncontrolled burst of Anthropic requests.
+ * UiStrings are missing or stale. Languages that need the same keys — the normal
+ * case, since a copy change lands in every locale at once — are translated by a
+ * single grouped request per batch, which keeps a routine sync to one or two
+ * provider calls instead of one per language.
  *
  * Batches are independent: a batch that fails validation is recorded in the result
  * while the successful batches stay committed, so a single bad model response can't
@@ -258,54 +289,109 @@ export async function syncTranslations(): Promise<SyncResult[]> {
       }),
     );
 
-    const tasks = plans.flatMap(({ language, needsTranslation }) => {
-      const batches = chunks(needsTranslation);
+    // Languages needing exactly the same keys share one request: the source copy is
+    // sent once and the model returns every locale, instead of repeating the same
+    // batch per language and spending one provider request on each.
+    const groups = new Map<
+      string,
+      { languages: TranslationTarget[]; entries: TranslationEntry[] }
+    >();
+    for (const { language, needsTranslation } of plans) {
+      if (needsTranslation.length === 0) continue;
+      const signature = needsTranslation
+        .map((entry) => entry.key)
+        .join(" ");
+      const target = { code: language.code, name: language.name };
+      const group = groups.get(signature);
+      if (group) group.languages.push(target);
+      else
+        groups.set(signature, {
+          languages: [target],
+          entries: needsTranslation,
+        });
+    }
+
+    const tasks = [...groups.values()].flatMap(({ languages, entries }) => {
+      const batches = chunks(entries, languages.length);
       return batches.map((batch, batchIndex) => ({
-        language,
+        languages,
         batch,
         batchIndex,
         batchCount: batches.length,
       }));
     });
 
+    if (tasks.length && !process.env.ANTHROPIC_API_KEY && !process.env.GOOGLE_API_KEY) {
+      throw new Error(
+        "ANTHROPIC_API_KEY is not configured and no GOOGLE_API_KEY fallback is available.",
+      );
+    }
+
+    // Anthropic failures here are provider-wide (billing, quota, missing key), so
+    // once one batch proves it unusable the rest of the run goes straight to Gemini
+    // rather than paying the same failing round trip for every remaining batch.
+    let anthropicUnavailable = !process.env.ANTHROPIC_API_KEY;
+
     const translateTask = async ({
-      language,
+      languages,
       batch,
       batchIndex,
       batchCount,
     }: (typeof tasks)[number]) => {
-      const translated = await translateBatch(
-        Object.fromEntries(batch.map((entry) => [entry.key, entry.sourceText])),
-        language.name,
-        language.code,
+      const texts = Object.fromEntries(
+        batch.map((entry) => [entry.key, entry.sourceText]),
       );
-      await db.$transaction(
-        batch.map((entry) =>
-          db.uiTranslation.upsert({
-            where: { locale_key: { locale: language.code, key: entry.key } },
-            create: {
-              locale: language.code,
-              key: entry.key,
-              value: translated[entry.key],
-              sourceTextSnapshot: entry.sourceText,
-              isManuallyEdited: false,
-            },
-            update: {
-              value: translated[entry.key],
-              sourceTextSnapshot: entry.sourceText,
-              isManuallyEdited: false,
-            },
-          }),
-        ),
-      );
+      const locales = languages.map((language) => language.code).join(", ");
+
+      let translated: Record<string, Record<string, string>> | null = null;
+      if (!anthropicUnavailable) {
+        try {
+          translated = await translateBatchToLocales(texts, languages);
+        } catch (error) {
+          if (!shouldUseGeminiFallback(error)) throw error;
+          anthropicUnavailable = true;
+          console.warn(
+            `[i18n] Anthropic unavailable; using Gemini for the rest of this run — ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+        }
+      }
+      if (!translated) {
+        translated = await translateBatchToLocalesWithGemini(texts, languages);
+      }
+
+      for (const language of languages) {
+        const values = translated[language.code];
+        await db.$transaction(
+          batch.map((entry) =>
+            db.uiTranslation.upsert({
+              where: { locale_key: { locale: language.code, key: entry.key } },
+              create: {
+                locale: language.code,
+                key: entry.key,
+                value: values[entry.key],
+                sourceTextSnapshot: entry.sourceText,
+                isManuallyEdited: false,
+              },
+              update: {
+                value: values[entry.key],
+                sourceTextSnapshot: entry.sourceText,
+                isManuallyEdited: false,
+              },
+            }),
+          ),
+        );
+      }
       console.info(
-        `[i18n] ${language.code}: completed batch ${batchIndex + 1}/${batchCount} (${batch.length} strings)`,
+        `[i18n] completed batch ${batchIndex + 1}/${batchCount} — ${batch.length} strings × ${languages.length} locale(s) (${locales})`,
       );
     };
 
-    // Probe with one batch before opening the bounded worker pool. Billing, quota,
-    // and missing-key failures affect every language, so launching all locale calls
-    // would only repeat the same paid-provider error many times.
+    // Probe with one batch before opening the bounded worker pool. The probe also
+    // settles which provider this run uses, so the pool never races several batches
+    // into the same billing/quota failure. A probe that still fails has exhausted
+    // both providers, and the remaining batches would only repeat that error.
     const failures: { item: (typeof tasks)[number]; error: unknown }[] = [];
     if (tasks.length) {
       const [probe, ...remaining] = tasks;
@@ -344,17 +430,24 @@ export async function syncTranslations(): Promise<SyncResult[]> {
       { count: number; errors: string[] }
     >();
     for (const { item, error } of failures) {
-      const locale = item.language.code;
-      const entry = failedByLocale.get(locale) ?? { count: 0, errors: [] };
-      entry.count += item.batch.length;
-      entry.errors.push(
-        `batch ${item.batchIndex + 1}/${item.batchCount}: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
-      failedByLocale.set(locale, entry);
+      const message = error instanceof Error ? error.message : String(error);
+      // A grouped batch covers several locales, so one failure has to be charged to
+      // every locale it would have written.
+      for (const language of item.languages) {
+        const entry = failedByLocale.get(language.code) ?? {
+          count: 0,
+          errors: [],
+        };
+        entry.count += item.batch.length;
+        entry.errors.push(
+          `batch ${item.batchIndex + 1}/${item.batchCount}: ${message}`,
+        );
+        failedByLocale.set(language.code, entry);
+      }
       console.error(
-        `[i18n] ${locale}: batch ${item.batchIndex + 1}/${item.batchCount} failed —`,
+        `[i18n] batch ${item.batchIndex + 1}/${item.batchCount} failed for ${item.languages
+          .map((language) => language.code)
+          .join(", ")} —`,
         error,
       );
     }

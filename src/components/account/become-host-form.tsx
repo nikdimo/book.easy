@@ -83,7 +83,7 @@ export function BecomeHostForm({ existingPhone, userName }: BecomeHostFormProps)
               className="mt-0.5"
             />
             <span className="text-sm text-muted-foreground">
-              I agree to the book.easy.mk host terms of service and understand that my listings
+              I agree to the Linger Homes host terms of service and understand that my listings
               are subject to platform review and approval.
             </span>
           </label>

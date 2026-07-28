@@ -1,6 +1,6 @@
 # GDPR Data Management & User Deletion Guide
 
-This document explains the complete data access, deletion, and retention management system for book.easy.mk users and administrators.
+This document explains the complete data access, deletion, and retention management system for Linger Homes users and administrators.
 
 ## User-Facing Features
 
@@ -68,7 +68,7 @@ Users can permanently delete their account with all personal data removed:
 
 **Example Request:**
 ```bash
-curl -X POST https://book.easy.mk/api/gdpr/delete \
+curl -X POST https://lingerhomes.com/api/gdpr/delete \
   -H "Content-Type: application/json" \
   -b "next-auth.session-token=..." \
   -d '{
@@ -200,7 +200,7 @@ Add to `/etc/crontab` or via `crontab -e`:
 
 ```bash
 # Run GDPR cleanup daily at 2:00 AM
-0 2 * * * cd /path/to/book.easy.mk && npx tsx scripts/gdpr-cleanup.ts >> /var/log/gdpr-cleanup.log 2>&1
+0 2 * * * cd /path/to/lingerhomes && npx tsx scripts/gdpr-cleanup.ts >> /var/log/lingerhomes-gdpr-cleanup.log 2>&1
 ```
 
 #### Option 2: Docker/Container
@@ -237,7 +237,7 @@ labels:
 gcloud scheduler jobs create http gdpr-cleanup \
   --schedule="0 2 * * *" \
   --http-method=POST \
-  --uri="https://book.easy.mk/api/admin/gdpr/cleanup" \
+  --uri="https://lingerhomes.com/api/admin/gdpr/cleanup" \
   --headers="Authorization: Bearer YOUR_ADMIN_TOKEN"
 ```
 
@@ -248,7 +248,7 @@ import requests
 
 def lambda_handler(event, context):
     response = requests.post(
-        'https://book.easy.mk/api/admin/gdpr/cleanup',
+        'https://lingerhomes.com/api/admin/gdpr/cleanup',
         headers={'Authorization': f'Bearer {ADMIN_TOKEN}'}
     )
     return response.json()

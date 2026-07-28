@@ -3,7 +3,7 @@ import { LoginForm } from "@/components/auth/login-form";
 
 export const metadata = {
   title: "Log In",
-  description: "Log in to your book.easy.mk account",
+  description: "Log in to your Linger Homes account",
 };
 
 export default function LoginPage() {

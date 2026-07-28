@@ -284,9 +284,11 @@ export function MarketplaceSearchFlowDialog({
                   }
 
                   setDraftCheckIn(format(range.from, "yyyy-MM-dd"));
-                  setDraftCheckOut(
-                    range.to ? format(range.to, "yyyy-MM-dd") : ""
-                  );
+                  const nextCheckOut = range.to
+                    ? format(range.to, "yyyy-MM-dd")
+                    : "";
+                  setDraftCheckOut(nextCheckOut);
+                  if (nextCheckOut) setStep("who");
                 }}
               />
               <div className="shrink-0 border-t border-border bg-background px-4 py-3 md:px-6">

@@ -1,5 +1,5 @@
 [Unit]
-Description=book.easy.mk nightly database backup
+Description=Linger Homes nightly database backup
 After=network.target postgresql.service
 
 [Service]

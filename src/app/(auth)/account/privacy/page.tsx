@@ -339,8 +339,8 @@ export default function PrivacyPage() {
             </p>
             <p className="pt-4 border-t border-border text-muted-foreground">
               <strong>Questions?</strong> Contact our Data Protection Officer at{' '}
-              <a href="mailto:privacy@book.easy.mk" className="text-primary hover:underline">
-                privacy@book.easy.mk
+              <a href="mailto:privacy@lingerhomes.com" className="text-primary hover:underline">
+                privacy@lingerhomes.com
               </a>
             </p>
           </div>

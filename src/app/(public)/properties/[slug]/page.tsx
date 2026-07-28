@@ -1,10 +1,13 @@
 import { notFound } from "next/navigation";
-import { MapPin, Users, BedDouble, Bath, Bed } from "lucide-react";
+import { CalendarDays, MapPin, Sparkles, Users, BedDouble, Bath, Bed } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { ImageGallery } from "@/components/public/image-gallery";
-import { ExpandableDescription } from "@/components/public/expandable-description";
+import {
+  ExpandableDescription,
+  PreservedPlaceText,
+} from "@/components/public/expandable-description";
 import { AmenityList } from "@/components/public/amenity-list";
 import { BookingWidget } from "@/components/public/booking-widget";
 import { ListingActions } from "@/components/public/listing-actions";
@@ -18,6 +21,7 @@ import { getPropertyTypeLabel } from "@/lib/services/property-type.service";
 import { auth } from "@/lib/auth";
 import { getFavoriteListingIdSet } from "@/lib/services/favorite.service";
 import { getT, T, ti, tPlural } from "@/lib/i18n/t";
+import { formatPrice } from "@/lib/utils/format";
 import type { Metadata } from "next";
 
 interface ListingPageProps {
@@ -97,6 +101,14 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
   const bedroomCount = tPlural(t, "listing.bedrooms", listing.bedrooms, "{n} bedroom", "{n} bedrooms");
   const bedCount = tPlural(t, "listing.beds", listing.beds, "{n} bed", "{n} beds");
   const bathCount = tPlural(t, "listing.baths", listing.bathrooms, "{n} bath", "{n} baths");
+  const minimumNights = tPlural(
+    t,
+    "listing.minimum_nights",
+    listing.pricingRule?.minNights ?? 1,
+    "{n} night minimum",
+    "{n} nights minimum"
+  );
+  const cleaningFeeLabel = ti(t, "listing.cleaning_fee", "Cleaning fee", {});
   const hostedBy = ti(t, "listing.hosted_by", "Hosted by {name}", { name: hostName });
   const session = await auth();
   const isSaved = session?.user
@@ -109,6 +121,11 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
   ]
     .filter(Boolean)
     .join(", ");
+  const protectedPlaceNames = [
+    listing.property.city,
+    listing.property.area,
+    listing.property.country,
+  ].filter((value): value is string => Boolean(value));
 
   return (
     <div className="max-w-[1120px] mx-auto px-4 md:px-6 pt-6 md:pt-8 pb-28 lg:pb-8">
@@ -116,7 +133,7 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between gap-y-4 mb-6">
         <div className="min-w-0 flex-1">
           <h1 className="text-xl md:text-[26px] font-semibold tracking-tight text-foreground leading-tight">
-            {listing.title}
+            <PreservedPlaceText text={listing.title} placeNames={protectedPlaceNames} />
           </h1>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-sm">
             <span className="flex items-center gap-1 text-muted-foreground">
@@ -175,6 +192,21 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
               <Bath className="h-4 w-4" />
               <span className={bathCount.translated ? "notranslate" : undefined}>{bathCount.text}</span>
             </span>
+            {listing.pricingRule && (
+              <>
+                <span className="flex items-center gap-1.5">
+                  <CalendarDays className="h-4 w-4" />
+                  <span className={minimumNights.translated ? "notranslate" : undefined}>{minimumNights.text}</span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Sparkles className="h-4 w-4" />
+                  <span>
+                    <span className={cleaningFeeLabel.translated ? "notranslate" : undefined}>{cleaningFeeLabel.text}</span>{" "}
+                    {formatPrice(Number(listing.pricingRule.cleaningFee), listing.pricingRule.currency, t.locale)}
+                  </span>
+                </span>
+              </>
+            )}
           </div>
 
           <div className="flex items-center gap-4">
@@ -195,7 +227,10 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
 
           <div>
             <h2 className="text-xl font-semibold mb-4"><T t={t} k="listing.about" source="About this space" /></h2>
-            <ExpandableDescription text={listing.description} />
+            <ExpandableDescription
+              text={listing.description}
+              preservePlaceNames={protectedPlaceNames}
+            />
           </div>
 
           <Separator />

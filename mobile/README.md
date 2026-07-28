@@ -1,4 +1,4 @@
-# Property host mobile workspace
+# Linger Homes mobile workspace
 
 Working-name Expo/React Native host application for the existing property platform.
 The product name, bundle identifiers, and store metadata can be changed later without
@@ -12,7 +12,7 @@ The same project runs on iOS, Android, and in a browser for control-panel testin
 3. Open `http://localhost:8081`, or open `http://localhost:3000/host/mobile`
    for the control-panel launch instructions.
 
-On Windows, `BookEasy_Mobile_Preview.bat` starts both processes.
+On Windows, `BookEasy_Mobile_Preview.bat` starts both processes (the filename is retained for local compatibility).
 
 The browser preview reuses the authenticated Next.js host session. Google and email-link
 login use the existing Auth.js providers.

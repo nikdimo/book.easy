@@ -12,7 +12,7 @@ import {
 
 const SOURCE_LANGUAGE = DEFAULT_LOCALE;
 
-/** Reads Book Easy's explicit locale preference. The Google cookie remains a
+/** Reads Linger Homes' explicit locale preference. The Google cookie remains a
  *  migration fallback for visitors who selected a language before this cookie was
  *  introduced. */
 export const getLocale = cache(async (): Promise<string> => {

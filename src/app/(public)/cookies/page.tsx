@@ -1,7 +1,7 @@
 /* eslint-disable react/no-unescaped-entities -- Long-form legal prose is clearer in source form. */
 import { Metadata } from "next";
 import Link from "next/link";
-import { SITE_DOMAIN } from "@/lib/branding";
+import { PRIVACY_EMAIL } from "@/lib/branding";
 
 export const metadata: Metadata = {
   title: "Cookie Policy",
@@ -274,7 +274,7 @@ export default function CookiesPage() {
           <section>
             <h2 className="text-2xl font-semibold mb-4">10. Contact Us</h2>
             <p>
-              Questions about our cookie practices? Contact us at privacy@{SITE_DOMAIN.split(".")[0]}.mk
+              Questions about our cookie practices? Contact us at {PRIVACY_EMAIL}
             </p>
             <p className="mt-4">
               See our <Link href="/privacy" className="text-primary hover:underline">

@@ -9,7 +9,7 @@ set "REMOTE_DIR=/home/niki/book-easy"
 cls
 echo.
 echo ============================================
-echo   book.easy.mk - Web Control Panel
+echo   Linger Homes - Web Control Panel
 echo ============================================
 echo.
 echo   [A] PREVIEW
@@ -17,7 +17,7 @@ echo   1. Start Dev Server (migrations + Next.js)
 echo   M. Start Mobile App Preview (web + React Native)
 echo.
 echo   [B] DEPLOY
-echo   2. Deploy to book.easy.mk
+echo   2. Deploy to lingerhomes.com
 echo.
 echo   [C] VERSION CONTROL
 echo   3. Save version to GitHub
@@ -68,7 +68,7 @@ if exist ".next\dev" rmdir /s /q ".next\dev"
 if exist ".next\dev" (
     echo.
     echo   ERROR - Could not clear .next\dev.
-    echo   Close any other book.easy.mk server windows and try again.
+    echo   Close any other Linger Homes server windows and try again.
     pause
     goto MENU
 )
@@ -142,7 +142,7 @@ if exist ".next\dev" rmdir /s /q ".next\dev"
 if exist ".next\dev" (
     echo.
     echo   ERROR - Could not clear .next\dev. Another Next.js process may still be running.
-    echo   Close any other book.easy.mk server windows and try again.
+    echo   Close any other Linger Homes server windows and try again.
     pause
     goto MENU
 )
@@ -162,7 +162,7 @@ goto MENU
 cls
 echo.
 echo ============================================
-echo   Deploy to book.easy.mk
+echo   Deploy to lingerhomes.com
 echo ============================================
 echo.
 goto DEPLOY_BODY
@@ -190,7 +190,7 @@ if errorlevel 1 (
 
 echo.
 echo ============================================
-echo   SUCCESS - Live at https://book.easy.mk
+echo   SUCCESS - Live at https://lingerhomes.com
 echo ============================================
 echo.
 pause
@@ -224,7 +224,7 @@ echo ============================================
 echo   Save Version + Deploy (full release)
 echo ============================================
 echo.
-echo [preflight] Exporting the complete reviewed AI translation snapshot...
+echo [preflight] Refreshing the UI catalog...
 call npm run i18n:extract
 if errorlevel 1 (
     echo.
@@ -232,44 +232,29 @@ if errorlevel 1 (
     pause
     goto MENU
 )
-call npm run i18n:export-reviewed
+
+echo.
+echo [preflight] Translating new or changed UI copy...
+call npm run i18n:sync
 if errorlevel 1 (
     echo.
     echo   The local translation database is incomplete or stale.
-    echo   Restoring the committed reviewed snapshot before using paid AI...
-    echo.
-    call npm run i18n:import-reviewed
-    if not errorlevel 1 (
-        echo.
-        echo   Reviewed snapshot restored. Re-validating the local database...
-        call npm run i18n:export-reviewed
-    )
+    echo   Automatic translation did not finish. Check the provider message above.
+    echo   Configure ANTHROPIC_API_KEY or GOOGLE_API_KEY, then run option 5 again.
+    echo   Nothing was saved or deployed.
+    pause
+    goto MENU
 )
+
+echo.
+echo [preflight] Exporting the complete reviewed AI translation snapshot...
+call npm run i18n:export-reviewed
 if errorlevel 1 (
     echo.
-    echo   Reviewed translations contain genuinely new or changed UI copy.
-    echo   Attempting to translate only that copy with Anthropic...
-    echo.
-    call npm run i18n:sync
-    if errorlevel 1 (
-        echo.
-        echo   ERROR - Automatic Anthropic translation did not finish.
-        echo   Check the API message above. If credit or quota is unavailable,
-        echo   add credit or resolve billing, then run option 6 again.
-        echo   Nothing was saved or deployed.
-        pause
-        goto MENU
-    )
-    echo.
-    echo   Anthropic translation completed. Re-validating the reviewed snapshot...
-    call npm run i18n:export-reviewed
-    if errorlevel 1 (
-        echo.
-        echo   ERROR - Translations are still incomplete or stale after the API sync.
-        echo   Nothing was saved or deployed. Review the errors above.
-        pause
-        goto MENU
-    )
+    echo   ERROR - Translations are still incomplete or stale after the API sync.
+    echo   Nothing was saved or deployed. Review the errors above.
+    pause
+    goto MENU
 )
 echo.
 echo [preflight] Auditing reviewed translations...
@@ -288,7 +273,7 @@ call npm run amenities:export
 if errorlevel 1 (
     echo.
     echo   ERROR - Local amenities could not be exported.
-    echo   Make sure the local database is running, then run option 6 again.
+    echo   Make sure the local database is running, then run option 5 again.
     echo   Nothing was saved or deployed.
     pause
     goto MENU
@@ -304,7 +289,7 @@ if errorlevel 1 (
 )
 echo.
 echo ============================================
-echo   Deploy to book.easy.mk
+echo   Deploy to lingerhomes.com
 echo ============================================
 echo.
 goto DEPLOY_BODY

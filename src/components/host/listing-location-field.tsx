@@ -1140,7 +1140,7 @@ export function ListingLocationField({
             </DialogTitle>
             <DialogDescription className="break-words leading-relaxed">
               Choose yes only if you are physically at the property. Your
-              browser will then ask whether book.easy.mk may use your current
+              browser will then ask whether Linger Homes may use your current
               location. You can deny the request and continue by searching or
               selecting the property on the map.
             </DialogDescription>

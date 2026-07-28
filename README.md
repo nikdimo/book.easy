@@ -1,6 +1,6 @@
-# book.easy.mk (Book)
+# Linger Homes
 
-**book.easy.mk** is the stays & bookings product in the **easy.mk** family of SaaS tools. Guests discover and book, hosts manage listings, admins operate the platform.
+**Linger Homes** is a two-sided marketplace for holiday homes and stays. Guests discover and book, hosts manage listings, and admins operate the platform at **lingerhomes.com**.
 
 ## Tech Stack
 
@@ -37,7 +37,7 @@ DATABASE_URL="postgresql://postgres:postgres@localhost:5432/bookeasy?schema=publ
 AUTH_SECRET="your-random-secret-here"
 AUTH_URL="http://localhost:3000"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
-NEXT_PUBLIC_APP_NAME="book.easy.mk"
+NEXT_PUBLIC_APP_NAME="Linger Homes"
 ```
 
 Generate a secret: `openssl rand -base64 32`

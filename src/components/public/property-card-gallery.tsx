@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -139,7 +138,7 @@ export function PropertyCardGallery({
         setIsVideoPlaying(false);
       }}
     >
-      <Link href={href} className="absolute inset-0 z-0">
+      <a href={href} className="absolute inset-0 z-0">
         {cover ? (
           <Image
             src={cover.url}
@@ -153,7 +152,7 @@ export function PropertyCardGallery({
             <Tx k="property_card.no_photos" source="No photos" />
           </div>
         )}
-      </Link>
+      </a>
 
       {videoUrl && (
         <video

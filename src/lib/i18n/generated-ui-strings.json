@@ -1150,6 +1150,11 @@
     "filePath": "src/app/(public)/properties/[slug]/page.tsx"
   },
   {
+    "key": "listing.cleaning_fee",
+    "sourceText": "Cleaning fee",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
     "key": "listing.guests.few",
     "sourceText": "{n} guests",
     "filePath": "src/app/(public)/properties/[slug]/page.tsx"
@@ -1193,6 +1198,36 @@
     "key": "listing.link_copied_clipboard",
     "sourceText": "Link copied to clipboard",
     "filePath": "src/components/public/listing-actions.tsx"
+  },
+  {
+    "key": "listing.minimum_nights.few",
+    "sourceText": "{n} nights minimum",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.minimum_nights.many",
+    "sourceText": "{n} nights minimum",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.minimum_nights.one",
+    "sourceText": "{n} night minimum",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.minimum_nights.other",
+    "sourceText": "{n} nights minimum",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.minimum_nights.two",
+    "sourceText": "{n} nights minimum",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.minimum_nights.zero",
+    "sourceText": "{n} nights minimum",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
   },
   {
     "key": "listing.remove_saved",

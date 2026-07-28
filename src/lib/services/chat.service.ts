@@ -3,6 +3,7 @@ import "server-only";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import { createUserNotification } from "@/lib/services/notification.service";
+import { COMMUNICATION_BRAND } from "@/lib/communication-brand";
 
 const MESSAGE_MAX_LENGTH = 2000;
 const EMAIL_PATTERN = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i;
@@ -281,7 +282,7 @@ export async function sendConversationMessage(input: {
     (EMAIL_PATTERN.test(body) || URL_PATTERN.test(body) || PHONE_PATTERN.test(body))
   ) {
     throw new Error(
-      "Keep contact details and external links inside Linger Homes until a booking is confirmed"
+      `Keep contact details and external links inside ${COMMUNICATION_BRAND.name} until a booking is confirmed`
     );
   }
 
@@ -334,7 +335,7 @@ export async function sendConversationMessage(input: {
         type: membership.role === "SUPPORT" ? "SUPPORT_MESSAGE" : "CHAT_MESSAGE",
         title:
           membership.role === "SUPPORT"
-            ? "Linger Homes Support"
+            ? COMMUNICATION_BRAND.supportName
             : membership.user.name,
         body: `${membership.conversation.listing.title}: ${body.slice(0, 140)}`,
         route: `/messages/${input.conversationId}`,

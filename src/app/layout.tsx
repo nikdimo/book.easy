@@ -5,7 +5,12 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { ConsentBanner } from "@/components/shared/consent-banner";
 import "./globals.css";
-import { SITE_DOMAIN, SITE_TITLE_DEFAULT, SITE_TITLE_SUFFIX } from "@/lib/branding";
+import {
+  PRODUCT_NAME,
+  SITE_TITLE_DEFAULT,
+  SITE_TITLE_SUFFIX,
+  SITE_URL,
+} from "@/lib/branding";
 import { getT, localeDirection } from "@/lib/i18n/t";
 import { I18nProvider } from "@/lib/i18n/client";
 
@@ -40,9 +45,13 @@ export const metadata: Metadata = {
     default: SITE_TITLE_DEFAULT,
     template: `%s | ${SITE_TITLE_SUFFIX}`,
   },
-  description:
-    `Discover and book unique stays around the world on ${SITE_DOMAIN}.`,
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"),
+  description: `Discover and book unique holiday homes and stays with ${PRODUCT_NAME}.`,
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || SITE_URL),
+  openGraph: {
+    type: "website",
+    siteName: PRODUCT_NAME,
+    url: SITE_URL,
+  },
 };
 
 export default async function RootLayout({

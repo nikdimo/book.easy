@@ -337,15 +337,15 @@ export default function AdminLegalPage() {
               <div className="space-y-3 text-sm">
                 <div>
                   <p className="font-medium">Data Protection Officer (DPO)</p>
-                  <p className="text-muted-foreground">dpo@book.easy.mk</p>
+                  <p className="text-muted-foreground">privacy@lingerhomes.com</p>
                 </div>
                 <div>
                   <p className="font-medium">Privacy Inquiries</p>
-                  <p className="text-muted-foreground">privacy@book.easy.mk</p>
+                  <p className="text-muted-foreground">privacy@lingerhomes.com</p>
                 </div>
                 <div>
                   <p className="font-medium">Legal Support</p>
-                  <p className="text-muted-foreground">support@book.easy.mk</p>
+                  <p className="text-muted-foreground">support@lingerhomes.com</p>
                 </div>
               </div>
             </div>

@@ -37,6 +37,7 @@ yarn-error.log*
 
 # local dev secrets / test accounts (do not publish)
 test-users.txt
+/.secrets/
 
 # uploads
 /public/uploads

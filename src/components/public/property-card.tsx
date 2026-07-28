@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { formatDateShort, formatPrice } from "@/lib/utils/format";
 import { getPropertyTypeLabel } from "@/lib/services/property-type.service";
@@ -101,7 +100,7 @@ export async function PropertyCard({
         isAuthenticated={!!session?.user}
       />
 
-      <Link
+      <a
         href={href}
         className="flex flex-col gap-1 px-0.5 group/link"
       >
@@ -147,7 +146,7 @@ export async function PropertyCard({
             <span className="text-muted-foreground text-[0.83rem]"><T t={t} k="property_card.per_night" source="night" /></span>
           </div>
         ) : null}
-      </Link>
+      </a>
     </div>
   );
 }

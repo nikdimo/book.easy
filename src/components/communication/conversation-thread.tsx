@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { COMMUNICATION_BRAND } from "@/lib/communication-brand";
 
 interface ThreadPayload {
   conversation: {
@@ -101,7 +102,7 @@ export function ConversationThread({
       <div className="flex flex-wrap items-center justify-between gap-3 border-b p-4">
         <div className="min-w-0">
           <h1 className="truncate font-semibold">
-            {other?.user.name || "Linger Homes conversation"}
+            {other?.user.name || `${COMMUNICATION_BRAND.name} conversation`}
           </h1>
           <p className="truncate text-sm text-muted-foreground">
             {thread.conversation.listing.title}
@@ -120,7 +121,7 @@ export function ConversationThread({
       {thread.conversation.kind === "INQUIRY" ? (
         <div className="flex gap-2 border-b bg-amber-50 px-4 py-3 text-sm text-amber-950">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          Keep payment and contact details inside Linger Homes until the booking is confirmed.
+          Keep payment and contact details inside {COMMUNICATION_BRAND.name} until the booking is confirmed.
         </div>
       ) : null}
 
@@ -128,7 +129,7 @@ export function ConversationThread({
         {!thread.messages.length ? (
           <div className="mx-auto max-w-md py-12 text-center text-sm text-muted-foreground">
             Start the conversation. Messages stay private between the guest, host, and
-            Linger Homes Support if support joins.
+            {COMMUNICATION_BRAND.supportName} if support joins.
           </div>
         ) : null}
         {thread.messages.map((message) => {
@@ -142,7 +143,7 @@ export function ConversationThread({
                 {!mine ? (
                   <p className="mb-1 px-1 text-xs text-muted-foreground">
                     {message.senderRole === "SUPPORT"
-                      ? "Linger Homes Support"
+                      ? COMMUNICATION_BRAND.supportName
                       : message.sender.name || "Member"}
                   </p>
                 ) : null}

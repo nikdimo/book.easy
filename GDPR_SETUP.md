@@ -1,6 +1,6 @@
 # GDPR Compliance Setup - Quick Start Guide
 
-Complete setup guide for GDPR/privacy compliance features in book.easy.mk.
+Complete setup guide for GDPR/privacy compliance features in Linger Homes.
 
 ## What's Included
 
@@ -62,7 +62,7 @@ Choose one option:
 **Option A: Cron Job (Linux/Mac)**
 ```bash
 # Add to crontab (runs daily at 2:00 AM)
-0 2 * * * cd /path/to/book.easy.mk && npx tsx scripts/gdpr-cleanup.ts
+0 2 * * * cd /path/to/lingerhomes && npx tsx scripts/gdpr-cleanup.ts
 ```
 
 **Option B: Docker**
@@ -235,7 +235,7 @@ Returns: {success, deletedRecords object}
 ## File Structure
 
 ```
-book.easy.mk/
+lingerhomes/
 ├── src/
 │   ├── app/
 │   │   ├── (public)/

@@ -20,7 +20,7 @@ export default async function BecomeHostPage() {
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold mb-2">Become a Host</h1>
         <p className="text-muted-foreground">
-          Share your property with travelers and earn income on book.easy.mk
+          Share your property with travelers and earn income with Linger Homes
         </p>
       </div>
       <BecomeHostForm

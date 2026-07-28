@@ -1,5 +1,5 @@
 [Unit]
-Description=Recompute book.easy.mk listing popularity hourly
+Description=Recompute Linger Homes listing popularity hourly
 
 [Timer]
 # Hourly is far more often than the score meaningfully moves (its half-life is weeks),

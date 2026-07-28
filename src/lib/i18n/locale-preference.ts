@@ -57,7 +57,7 @@ export interface LocalePreference {
 }
 
 /**
- * An explicit Book Easy choice always wins. The legacy Google cookie is accepted
+ * An explicit Linger Homes choice always wins. The legacy Google cookie is accepted
  * next so existing visitors keep their selection while migrating to the dedicated
  * application cookie.
  */

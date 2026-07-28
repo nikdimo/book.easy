@@ -1,5 +1,5 @@
 [Unit]
-Description=Run book.easy.mk database backup nightly
+Description=Run Linger Homes database backup nightly
 
 [Timer]
 OnCalendar=*-*-* 03:30:00

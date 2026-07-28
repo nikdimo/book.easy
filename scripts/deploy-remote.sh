@@ -93,4 +93,4 @@ else
   sudo -n /usr/bin/systemctl enable book-easy-web
 fi
 
-echo "[deploy] Done. Live at https://book.easy.mk"
+echo "[deploy] Done. Live at https://lingerhomes.com"

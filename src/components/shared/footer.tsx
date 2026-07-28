@@ -1,5 +1,10 @@
 import Link from "next/link";
-import { BRAND_TAGLINE, PRODUCT_FAMILY, SITE_DOMAIN } from "@/lib/branding";
+import {
+  BRAND_TAGLINE,
+  PRODUCT_FAMILY,
+  PRODUCT_NAME,
+  SITE_DOMAIN,
+} from "@/lib/branding";
 import { BrandLogo } from "@/components/shared/brand-logo";
 import { getAvailableCities } from "@/lib/services/search.service";
 import { getT, ti } from "@/lib/i18n/t";
@@ -143,7 +148,7 @@ export async function Footer() {
         <div className="container mx-auto px-4 md:px-8 flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-muted-foreground max-w-[1760px]">
           <div className="flex flex-wrap items-center justify-center gap-4">
             <span className="notranslate" translate="no">
-              Copyright {new Date().getFullYear()} book.easy, Inc.
+              Copyright {new Date().getFullYear()} {PRODUCT_NAME}.
             </span>
             <Link
               href="/terms"

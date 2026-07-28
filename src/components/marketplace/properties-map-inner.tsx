@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import Image from "next/image";
 import {
   MapContainer,
@@ -101,7 +100,7 @@ function ListingPreview({ pin }: { pin: MapPin }) {
   const i18n = useI18n();
 
   return (
-    <Link
+    <a
       href={`/properties/${pin.slug}${pin.query ? `?${pin.query}` : ""}`}
       className="group block overflow-hidden rounded-2xl bg-background text-foreground"
       aria-label={i18n.resolve("map.view_listing", "View listing").text}
@@ -133,7 +132,7 @@ function ListingPreview({ pin }: { pin: MapPin }) {
         </div>
         <p className="line-clamp-2 text-sm text-muted-foreground">{pin.title}</p>
       </div>
-    </Link>
+    </a>
   );
 }
 
@@ -163,7 +162,7 @@ function GroupedListingPreview({ pins }: { pins: MapPin[] }) {
       </div>
       <div className="max-h-72 overflow-y-auto">
         {pins.map((pin) => (
-          <Link
+          <a
             key={pin.id}
             href={`/properties/${pin.slug}${pin.query ? `?${pin.query}` : ""}`}
             className="group flex gap-3 border-b border-border/70 p-3 last:border-b-0 hover:bg-muted/50"
@@ -189,7 +188,7 @@ function GroupedListingPreview({ pins }: { pins: MapPin[] }) {
                 {pin.label}
               </p>
             </div>
-          </Link>
+          </a>
         ))}
       </div>
     </div>

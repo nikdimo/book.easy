@@ -1,7 +1,7 @@
 /* eslint-disable react/no-unescaped-entities -- Long-form legal prose is clearer in source form. */
 import { Metadata } from "next";
 import Link from "next/link";
-import { SITE_DOMAIN } from "@/lib/branding";
+import { PRIVACY_EMAIL, SITE_DOMAIN } from "@/lib/branding";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -274,7 +274,7 @@ export default function PrivacyPage() {
             </ul>
             <p className="mt-4">
               To exercise any of these rights, contact us at{" "}
-              <strong>privacy@{SITE_DOMAIN.split(".")[0]}.mk</strong>.
+              <strong>{PRIVACY_EMAIL}</strong>.
             </p>
           </section>
 
@@ -337,10 +337,10 @@ export default function PrivacyPage() {
             </p>
             <ul className="list-disc pl-6 space-y-2">
               <li>
-                <strong>Email:</strong> privacy@{SITE_DOMAIN.split(".")[0]}.mk
+                <strong>Email:</strong> {PRIVACY_EMAIL}
               </li>
               <li>
-                <strong>Data Protection Officer (DPO):</strong> dpo@{SITE_DOMAIN.split(".")[0]}.mk
+                <strong>Data Protection Officer (DPO):</strong> {PRIVACY_EMAIL}
               </li>
               <li>
                 <strong>Mailing Address:</strong> book.easy, Inc., North Macedonia

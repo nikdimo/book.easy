@@ -1762,8 +1762,8 @@ export function ListingForm({
               Your listing is live. You can return to My Listings or continue editing
               it now. Our team will still review the content shortly, so keep it
               accurate. Questions? Contact{" "}
-              <a href="mailto:hello@book.easy.mk" className="underline underline-offset-2">
-                hello@book.easy.mk
+              <a href="mailto:hello@lingerhomes.com" className="underline underline-offset-2">
+                hello@lingerhomes.com
               </a>
               .
             </DialogDescription>
@@ -2135,7 +2135,7 @@ function ListingGuestPreview({
                 BE
               </div>
               <div>
-                <p className="font-semibold">Hosted by Book Easy</p>
+                <p className="font-semibold">Hosted by Linger Homes</p>
                 <p className="text-sm text-muted-foreground">Fast replies and local support.</p>
               </div>
             </div>

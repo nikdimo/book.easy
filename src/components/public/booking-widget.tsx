@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { addDays, format } from "date-fns";
 import { computeStayPricing, parseLocalYmd } from "@/lib/utils/stay-pricing";
 import { validateBookingSelection } from "@/lib/utils/booking-selection";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -172,6 +173,8 @@ export function BookingWidget({
   const { data: session } = useSession();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [dateFlexibility, setDateFlexibility] = useState(0);
   const [checkInStr, setCheckInStr] = useState(initialCheckIn);
   const [checkOutStr, setCheckOutStr] = useState(initialCheckOut);
   const [guestDetails, setGuestDetails] = useState(() => {
@@ -364,6 +367,7 @@ export function BookingWidget({
   function clearSelection() {
     setCheckInStr("");
     setCheckOutStr("");
+    setDateFlexibility(0);
     setGuestDetails({ adults: 1, children: 0, infants: 0, pets: 0 });
     setNote("");
     setError(null);
@@ -472,56 +476,40 @@ export function BookingWidget({
         <div className="space-y-2">
           <Label><Tx k="booking.dates" source="Dates" /></Label>
           <MarketplaceStayDatePicker
-            layout="field"
+            layout="pill"
             checkIn={checkInStr}
             checkOut={checkOutStr}
-            showDateFlexibility={false}
+            open={datePickerOpen}
+            onOpenChange={setDatePickerOpen}
+            dateFlexibility={dateFlexibility}
+            showDateFlexibility
+            onDateFlexibilityChange={setDateFlexibility}
             showGuestStep={false}
+            pagedCalendarOnDesktop
             disabledDateRanges={disabledDateRanges}
             onRangeStringsChange={({ checkIn: ci, checkOut: co }) => {
+              const startDate = ci ? parseLocalYmd(ci) : undefined;
+              const nextCheckOut =
+                co ||
+                (startDate
+                  ? format(addDays(startDate, minNights), "yyyy-MM-dd")
+                  : "");
               setCheckInStr(ci);
-              setCheckOutStr(co);
+              setCheckOutStr(nextCheckOut);
               setError(null);
+              if (ci && nextCheckOut) {
+                window.requestAnimationFrame(() => setDatePickerOpen(false));
+              }
             }}
-            renderDateFooter={({ canGoNext, closePicker, resetDates }) => (
-              <div className="space-y-3">
-                <p
-                  aria-live="polite"
-                  className={
-                    selectionValidation.status === "minimum-stay" ||
-                    selectionValidation.status === "unavailable"
-                      ? "text-sm font-medium text-destructive"
-                      : "text-sm text-muted-foreground"
-                  }
-                >
-                  <span className={pickerMessage.translated ? "notranslate" : undefined}>
-                    {pickerMessage.text}
-                  </span>
-                </p>
-                <div className="flex items-center justify-between gap-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="rounded-full sm:min-w-[7rem]"
-                    onClick={resetDates}
-                  >
-                    <Tx k="search.reset" source="Reset" />
-                  </Button>
-                  <Button
-                    type="button"
-                    className="min-w-[7rem] rounded-full"
-                    disabled={
-                      !canGoNext || selectionValidation.status !== "valid"
-                    }
-                    onClick={closePicker}
-                  >
-                    <Tx k="common.done" source="Done" />
-                  </Button>
-                </div>
-              </div>
-            )}
             className="w-full"
           />
+          {selectionValidation.status !== "valid" && checkInStr && checkOutStr && (
+            <p aria-live="polite" className="text-sm text-destructive">
+              <span className={pickerMessage.translated ? "notranslate" : undefined}>
+                {pickerMessage.text}
+              </span>
+            </p>
+          )}
         </div>
 
         <div className="space-y-2">

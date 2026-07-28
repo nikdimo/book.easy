@@ -5,15 +5,21 @@
  */
 
 import "server-only";
-import { SITE_DOMAIN } from "@/lib/branding";
 import { formatDate, formatPrice } from "@/lib/utils/format";
 import { createSmtpTransport } from "@/lib/email/smtp-transport";
+import { COMMUNICATION_BRAND } from "@/lib/communication-brand";
+import {
+  communicationAppUrl,
+  communicationFromAddress,
+  communicationSupportEmail,
+} from "@/lib/communication-brand.server";
 
 export interface SendEmailParams {
   to: string;
   subject: string;
   text: string;
   html?: string;
+  sender?: "customer" | "support";
 }
 
 function resolveProvider(): "console" | "smtp" {
@@ -29,6 +35,7 @@ export async function sendTransactionalEmail(params: SendEmailParams): Promise<v
 
   if (provider === "console") {
     console.info("[email]", {
+      from: communicationFromAddress(params.sender),
       to: params.to,
       subject: params.subject,
       preview: params.text.slice(0, 200),
@@ -39,18 +46,11 @@ export async function sendTransactionalEmail(params: SendEmailParams): Promise<v
   const transport = createSmtpTransport();
   await transport.sendMail({
     to: params.to,
-    from: process.env.EMAIL_FROM,
+    from: communicationFromAddress(params.sender),
     subject: params.subject,
     text: params.text,
     html: params.html,
   });
-}
-
-function appUrl(path: string) {
-  const base =
-    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
-    `https://${SITE_DOMAIN}`;
-  return `${base}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
 export async function notifyConversationMessage(input: {
@@ -79,14 +79,15 @@ export async function notifyConversationMessage(input: {
   if (!conversation || !sender) return;
 
   const senderName = input.supportSender
-    ? "Linger Homes Support"
+    ? COMMUNICATION_BRAND.supportName
     : sender.name;
-  const link = appUrl(`/messages/${input.conversationId}`);
+  const link = communicationAppUrl(`/messages/${input.conversationId}`);
   await Promise.allSettled(
     recipients.map((recipient) =>
       sendTransactionalEmail({
         to: recipient.email,
-        subject: `[Linger Homes] New message about ${conversation.listing.title}`,
+        sender: input.supportSender ? "support" : "customer",
+        subject: `[${COMMUNICATION_BRAND.name}] New message about ${conversation.listing.title}`,
         text: [
           `Hi ${recipient.name},`,
           "",
@@ -94,9 +95,9 @@ export async function notifyConversationMessage(input: {
           "",
           input.preview,
           "",
-          `Reply securely in Linger Homes: ${link}`,
+          `Reply securely in ${COMMUNICATION_BRAND.name}: ${link}`,
           "",
-          "For your privacy, keep the conversation inside Linger Homes.",
+          `For your privacy, keep the conversation inside ${COMMUNICATION_BRAND.name}.`,
         ].join("\n"),
       })
     )
@@ -115,10 +116,11 @@ export async function notifySafetyCaseSubmitted(input: {
   });
   if (!safetyCase) return;
 
-  const link = appUrl(`/account/support/${safetyCase.id}`);
+  const link = communicationAppUrl(`/account/support/${safetyCase.id}`);
   await sendTransactionalEmail({
     to: safetyCase.reporter.email,
-    subject: `[Linger Homes] ${safetyCase.type === "CLAIM" ? "Claim" : "Report"} received: ${safetyCase.reference}`,
+    sender: "support",
+    subject: `[${COMMUNICATION_BRAND.name}] ${safetyCase.type === "CLAIM" ? "Claim" : "Report"} received: ${safetyCase.reference}`,
     text: [
       `Hi ${safetyCase.reporter.name},`,
       "",
@@ -128,21 +130,20 @@ export async function notifySafetyCaseSubmitted(input: {
       "",
       `Follow the case: ${link}`,
       "",
-      "Linger Homes Support",
+      COMMUNICATION_BRAND.supportName,
     ].join("\n"),
   });
 
-  const supportEmail =
-    process.env.SUPPORT_EMAIL ?? `support@${SITE_DOMAIN}`;
   await sendTransactionalEmail({
-    to: supportEmail,
-    subject: `[Linger Homes Support] New ${safetyCase.type.toLowerCase()}: ${safetyCase.reference}`,
+    to: communicationSupportEmail(),
+    sender: "support",
+    subject: `[${COMMUNICATION_BRAND.supportName}] New ${safetyCase.type.toLowerCase()}: ${safetyCase.reference}`,
     text: [
       `${safetyCase.reference}: ${safetyCase.subject}`,
       `Category: ${safetyCase.category}`,
       `Priority: ${safetyCase.priority}`,
       "",
-      appUrl(`/admin/cases/${safetyCase.id}`),
+      communicationAppUrl(`/admin/cases/${safetyCase.id}`),
     ].join("\n"),
   });
 }
@@ -162,16 +163,17 @@ export async function notifySafetyCaseUpdated(input: {
 
   await sendTransactionalEmail({
     to: safetyCase.reporter.email,
-    subject: `[Linger Homes] Update for ${safetyCase.reference}`,
+    sender: "support",
+    subject: `[${COMMUNICATION_BRAND.name}] Update for ${safetyCase.reference}`,
     text: [
       `Hi ${safetyCase.reporter.name},`,
       "",
       input.message,
       `Current status: ${safetyCase.status.replaceAll("_", " ")}`,
       "",
-      `View and respond: ${appUrl(`/account/support/${safetyCase.id}`)}`,
+      `View and respond: ${communicationAppUrl(`/account/support/${safetyCase.id}`)}`,
       "",
-      "Linger Homes Support",
+      COMMUNICATION_BRAND.supportName,
     ].join("\n"),
   });
 }
@@ -200,12 +202,12 @@ export async function notifyHostNewBookingRequest(bookingId: string): Promise<vo
     `${booking.guest.name} (${booking.guest.email}) requested a booking for "${booking.listing.title}".`,
     `Check your host dashboard to confirm or reject.`,
     ``,
-    `— ${SITE_DOMAIN}`,
+    `— ${COMMUNICATION_BRAND.name}`,
   ];
 
   await sendTransactionalEmail({
     to: hostEmail,
-    subject: `[${SITE_DOMAIN}] New booking request: ${booking.listing.title}`,
+    subject: `[${COMMUNICATION_BRAND.name}] New booking request: ${booking.listing.title}`,
     text: lines.join("\n"),
   });
 }
@@ -229,12 +231,12 @@ export async function notifyGuestBookingConfirmed(bookingId: string): Promise<vo
     `Check-out: ${formatDate(booking.checkOut)}`,
     `Total: ${formatPrice(Number(booking.totalPrice))}`,
     ``,
-    `— ${SITE_DOMAIN}`,
+    `— ${COMMUNICATION_BRAND.name}`,
   ];
 
   await sendTransactionalEmail({
     to: booking.guest.email,
-    subject: `[${SITE_DOMAIN}] Booking confirmed: ${booking.listing.title}`,
+    subject: `[${COMMUNICATION_BRAND.name}] Booking confirmed: ${booking.listing.title}`,
     text: lines.join("\n"),
   });
 }
@@ -258,12 +260,12 @@ export async function notifyGuestBookingRejected(bookingId: string): Promise<voi
     ``,
     `You won't be charged. Feel free to look for other stays.`,
     ``,
-    `— ${SITE_DOMAIN}`,
+    `— ${COMMUNICATION_BRAND.name}`,
   ];
 
   await sendTransactionalEmail({
     to: booking.guest.email,
-    subject: `[${SITE_DOMAIN}] Booking request declined: ${booking.listing.title}`,
+    subject: `[${COMMUNICATION_BRAND.name}] Booking request declined: ${booking.listing.title}`,
     text: lines.join("\n"),
   });
 }
@@ -286,12 +288,12 @@ export async function notifyGuestBookingCancelled(bookingId: string): Promise<vo
     `Your booking for "${booking.listing.title}" (${formatDate(booking.checkIn)} – ${formatDate(booking.checkOut)}) has been cancelled.`,
     ...(booking.cancellationReason ? [``, `Reason: ${booking.cancellationReason}`] : []),
     ``,
-    `— ${SITE_DOMAIN}`,
+    `— ${COMMUNICATION_BRAND.name}`,
   ];
 
   await sendTransactionalEmail({
     to: booking.guest.email,
-    subject: `[${SITE_DOMAIN}] Booking cancelled: ${booking.listing.title}`,
+    subject: `[${COMMUNICATION_BRAND.name}] Booking cancelled: ${booking.listing.title}`,
     text: lines.join("\n"),
   });
 }
@@ -318,12 +320,12 @@ export async function notifyHostBookingCancelledByGuest(bookingId: string): Prom
     ``,
     `${booking.guest.name} cancelled their booking for "${booking.listing.title}" (${formatDate(booking.checkIn)} – ${formatDate(booking.checkOut)}). Those dates are available again.`,
     ``,
-    `— ${SITE_DOMAIN}`,
+    `— ${COMMUNICATION_BRAND.name}`,
   ];
 
   await sendTransactionalEmail({
     to: booking.listing.host.email,
-    subject: `[${SITE_DOMAIN}] Booking cancelled: ${booking.listing.title}`,
+    subject: `[${COMMUNICATION_BRAND.name}] Booking cancelled: ${booking.listing.title}`,
     text: lines.join("\n"),
   });
 }
