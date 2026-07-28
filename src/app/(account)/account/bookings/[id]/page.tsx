@@ -29,6 +29,12 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
 
   const statusConfig = BOOKING_STATUSES.find((s) => s.value === booking.status);
   const canCancel = booking.status === "PENDING" || booking.status === "CONFIRMED";
+  const priceBreakdown = booking.priceBreakdown as {
+    accommodationSubtotal?: number;
+  } | null;
+  const accommodationSubtotal =
+    priceBreakdown?.accommodationSubtotal ??
+    Number(booking.nightlyRate) * booking.numberOfNights;
 
   return (
     <div className="max-w-2xl">
@@ -89,19 +95,32 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
 
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span>{formatPrice(Number(booking.nightlyRate))} x {booking.numberOfNights} nights</span>
-              <span>{formatPrice(Number(booking.nightlyRate) * booking.numberOfNights)}</span>
+              <span>Accommodation · {booking.numberOfNights} nights</span>
+              <span>{formatPrice(accommodationSubtotal, booking.currency)}</span>
             </div>
             {Number(booking.cleaningFee) > 0 && (
               <div className="flex justify-between">
                 <span>Cleaning fee</span>
-                <span>{formatPrice(Number(booking.cleaningFee))}</span>
+                <span>{formatPrice(Number(booking.cleaningFee), booking.currency)}</span>
+              </div>
+            )}
+            {Number(booking.discountAmount) > 0 && (
+              <div className="flex justify-between text-green-700">
+                <span>{booking.promotionType === "FREE_CLEANING" ? "Free cleaning" : "Special offer"}</span>
+                <span>−{formatPrice(Number(booking.discountAmount), booking.currency)}</span>
               </div>
             )}
             <Separator />
             <div className="flex justify-between font-semibold text-base">
               <span>Total</span>
-              <span>{formatPrice(Number(booking.totalPrice))}</span>
+              <span className="flex items-baseline gap-2">
+                {booking.originalTotal && Number(booking.discountAmount) > 0 ? (
+                  <span className="text-sm font-normal text-muted-foreground line-through">
+                    {formatPrice(Number(booking.originalTotal), booking.currency)}
+                  </span>
+                ) : null}
+                <span>{formatPrice(Number(booking.totalPrice), booking.currency)}</span>
+              </span>
             </div>
           </div>
 

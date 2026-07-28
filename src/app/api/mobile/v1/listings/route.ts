@@ -34,6 +34,14 @@ export async function GET(request: Request) {
         ? Number(listing.pricingRule.baseNightlyRate)
         : null,
       currency: listing.pricingRule?.currency ?? "EUR",
+      promotion: listing.promotions[0]
+        ? {
+            id: listing.promotions[0].id,
+            type: listing.promotions[0].type,
+            discountPercent: listing.promotions[0].discountPercent,
+            minimumNights: listing.promotions[0].minimumNights,
+          }
+        : null,
       bookingCount: listing._count.bookings,
       updatedAt: listing.updatedAt.toISOString(),
     })),

@@ -133,3 +133,79 @@ describe("searchListings price filter", () => {
     expect(resultIds).not.toContain(highListing.listing.id);
   });
 });
+
+describe("searchListings minimum-stay filter", () => {
+  let shortStay: TestFixtures | undefined;
+  let longStay: TestFixtures | undefined;
+
+  afterEach(async () => {
+    if (shortStay) await cleanupTestFixtures(shortStay);
+    if (longStay) await cleanupTestFixtures(longStay);
+    shortStay = undefined;
+    longStay = undefined;
+  });
+
+  it("excludes listings whose minimum stay is longer than the selected dates", async () => {
+    const city = `Minimum Stay Test ${Date.now()}`;
+    const shortStayListing = await createTestHostAndListing();
+    shortStay = {
+      hostId: shortStayListing.host.id,
+      propertyId: shortStayListing.property.id,
+      listingId: shortStayListing.listing.id,
+      extraUserIds: [],
+    };
+
+    const longStayListing = await createTestHostAndListing();
+    longStay = {
+      hostId: longStayListing.host.id,
+      propertyId: longStayListing.property.id,
+      listingId: longStayListing.listing.id,
+      extraUserIds: [],
+    };
+
+    await Promise.all([
+      db.property.update({
+        where: { id: shortStayListing.property.id },
+        data: { city },
+      }),
+      db.property.update({
+        where: { id: longStayListing.property.id },
+        data: { city },
+      }),
+      db.pricingRule.update({
+        where: { listingId: shortStayListing.listing.id },
+        data: { minNights: 3 },
+      }),
+      db.pricingRule.update({
+        where: { listingId: longStayListing.listing.id },
+        data: { minNights: 7 },
+      }),
+    ]);
+
+    const fiveNightFilters = {
+      city,
+      country: "North Macedonia",
+      checkIn: "2026-08-23",
+      checkOut: "2026-08-28",
+    };
+    const fiveNightResults = await searchListings(fiveNightFilters);
+
+    expect(fiveNightResults.listings.map((listing) => listing.id)).toEqual([
+      shortStayListing.listing.id,
+    ]);
+    expect(fiveNightResults.total).toBe(1);
+
+    const sevenNightResults = await searchListings({
+      ...fiveNightFilters,
+      checkOut: "2026-08-30",
+    });
+
+    expect(sevenNightResults.listings.map((listing) => listing.id)).toEqual(
+      expect.arrayContaining([
+        shortStayListing.listing.id,
+        longStayListing.listing.id,
+      ])
+    );
+    expect(sevenNightResults.total).toBe(2);
+  });
+});

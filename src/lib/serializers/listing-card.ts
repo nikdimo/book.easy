@@ -24,9 +24,17 @@ export type ListingCardSerialized = {
   video: { url: string } | null;
   pricingRule: {
     baseNightlyRate: number;
+    cleaningFee: number;
     currency: string;
     minNights: number;
   } | null;
+  promotion: {
+    id: string;
+    type: "PERCENT_DISCOUNT" | "FREE_CLEANING";
+    discountPercent: number | null;
+    minimumNights: number | null;
+  } | null;
+  priceOverrides: { date: string; rate: number }[];
 };
 
 /** Looks up each listing's first VIDEO media item in one query, keyed by listing id —
@@ -70,15 +78,35 @@ export const listingCardSelect = {
     },
   },
   images: { where: { mediaType: "IMAGE" }, select: { url: true, alt: true } },
-  pricingRule: { select: { baseNightlyRate: true, currency: true, minNights: true } },
+  pricingRule: {
+    select: {
+      baseNightlyRate: true,
+      cleaningFee: true,
+      currency: true,
+      minNights: true,
+    },
+  },
+  promotions: {
+    where: { disabledAt: null },
+    select: {
+      id: true,
+      type: true,
+      discountPercent: true,
+      minimumNights: true,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 1,
+  },
 } satisfies Prisma.ListingSelect;
 
 type ListingForCard = Prisma.ListingGetPayload<{ select: typeof listingCardSelect }>;
 
 export function serializeListingCard(
   listing: ListingForCard,
-  videoUrl?: string | null
+  videoUrl?: string | null,
+  priceOverrides: { date: string; rate: number }[] = []
 ): ListingCardSerialized {
+  const promotion = listing.promotions[0] ?? null;
   return {
     id: listing.id,
     slug: listing.slug,
@@ -102,9 +130,19 @@ export function serializeListingCard(
     pricingRule: listing.pricingRule
       ? {
           baseNightlyRate: Number(listing.pricingRule.baseNightlyRate),
+          cleaningFee: Number(listing.pricingRule.cleaningFee),
           currency: listing.pricingRule.currency,
           minNights: listing.pricingRule.minNights,
         }
       : null,
+    promotion: promotion
+      ? {
+          id: promotion.id,
+          type: promotion.type,
+          discountPercent: promotion.discountPercent,
+          minimumNights: promotion.minimumNights,
+        }
+      : null,
+    priceOverrides,
   };
 }

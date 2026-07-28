@@ -22,6 +22,7 @@ import type { MapPin } from "@/components/marketplace/properties-map";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { getT, T, ti, tPlural } from "@/lib/i18n/t";
 import { getMarketplaceSettings } from "@/lib/services/marketplace-settings.service";
+import { computeStayQuote, parseLocalYmd } from "@/lib/utils/stay-pricing";
 
 interface SearchPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
@@ -152,9 +153,22 @@ export default async function PropertiesPage({ searchParams }: SearchPageProps) 
     if (l.pricingRule) {
       const nightly = Number(l.pricingRule.baseNightlyRate);
       const cur = l.pricingRule.currency;
+      const quote =
+        filters.checkIn && filters.checkOut
+          ? computeStayQuote({
+              baseNightly: nightly,
+              cleaningFee: l.pricingRule.cleaningFee,
+              checkIn: parseLocalYmd(filters.checkIn),
+              checkOut: parseLocalYmd(filters.checkOut),
+              overrides: new Map(
+                l.priceOverrides.map((row) => [row.date, row.rate])
+              ),
+              promotion: l.promotion,
+            })
+          : null;
       label =
-        nightCount != null
-          ? formatPrice(nightly * nightCount, cur, t.locale)
+        quote
+          ? formatPrice(quote.total, cur, t.locale)
           : formatPrice(nightly, cur, t.locale);
     }
     return [{

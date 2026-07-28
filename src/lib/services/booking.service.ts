@@ -1,8 +1,8 @@
 import "server-only";
 import { db } from "@/lib/db";
-import { BookingStatus, BlockType } from "@prisma/client";
+import { BookingStatus, BlockType, type Prisma } from "@prisma/client";
 import { differenceInDays } from "date-fns";
-import { buildPriceOverrideMap, computeStayPricing } from "@/lib/utils/stay-pricing";
+import { buildPriceOverrideMap, computeStayQuote } from "@/lib/utils/stay-pricing";
 import { isAvailabilityOverlapConstraintError } from "@/lib/utils/db-errors";
 
 /** Fire a notification without letting failures — including a failed dynamic import of
@@ -116,7 +116,14 @@ export async function createBooking(input: CreateBookingInput) {
       // 1. Verify listing exists and is approved
       const listing = await tx.listing.findFirst({
         where: { id: listingId, status: "APPROVED" },
-        include: { pricingRule: true },
+        include: {
+          pricingRule: true,
+          promotions: {
+            where: { disabledAt: null },
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
+        },
       });
 
       if (!listing) {
@@ -164,16 +171,52 @@ export async function createBooking(input: CreateBookingInput) {
         },
       });
       const overrideMap = buildPriceOverrideMap(overrideRows);
-      const { subtotal, averageNightly } = computeStayPricing(
+      const activePromotion = listing.promotions[0] ?? null;
+      const quote = computeStayQuote({
         baseNightly,
+        cleaningFee: Number(listing.pricingRule.cleaningFee),
         checkIn,
         checkOut,
-        overrideMap
-      );
-      const nightlyRate = averageNightly;
-      const cleaningFee = listing.pricingRule.cleaningFee;
+        overrides: overrideMap,
+        promotion: activePromotion
+          ? {
+              id: activePromotion.id,
+              type: activePromotion.type,
+              discountPercent: activePromotion.discountPercent,
+              minimumNights: activePromotion.minimumNights,
+            }
+          : null,
+      });
+      const nightlyRate = quote.effectiveAverageNightly;
+      const cleaningFee = quote.cleaningFee;
       const serviceFee = 0; // Placeholder for future platform fee
-      const totalPrice = subtotal + Number(cleaningFee) + Number(serviceFee);
+      const totalPrice = quote.total + Number(serviceFee);
+      const appliedPromotion = quote.appliedPromotion;
+      const priceBreakdown = {
+        version: 1,
+        currency: listing.pricingRule.currency,
+        nights: quote.nightlyBreakdown.map((night) => ({
+          ...night,
+          source: overrideMap.has(night.date) ? "DATE_OVERRIDE" : "BASE_RATE",
+        })),
+        originalAccommodationSubtotal: quote.originalAccommodationSubtotal,
+        accommodationDiscount: quote.accommodationDiscount,
+        accommodationSubtotal: quote.accommodationSubtotal,
+        originalCleaningFee: quote.originalCleaningFee,
+        cleaningDiscount: quote.cleaningDiscount,
+        cleaningFee: quote.cleaningFee,
+        originalTotal: quote.originalTotal,
+        totalSavings: quote.discountAmount,
+        finalTotal: totalPrice,
+        appliedPromotion: appliedPromotion
+          ? {
+              id: appliedPromotion.id,
+              type: appliedPromotion.type,
+              discountPercent: appliedPromotion.discountPercent ?? null,
+              minimumNights: appliedPromotion.minimumNights ?? null,
+            }
+          : null,
+      } satisfies Prisma.InputJsonObject;
 
       // 6. Create booking
       const created = await tx.booking.create({
@@ -183,10 +226,17 @@ export async function createBooking(input: CreateBookingInput) {
           checkIn,
           checkOut,
           guestCount,
+          currency: listing.pricingRule.currency,
           nightlyRate,
           cleaningFee,
           serviceFee,
           totalPrice,
+          originalTotal: quote.originalTotal,
+          discountAmount: quote.discountAmount,
+          promotionId: appliedPromotion?.id ?? null,
+          promotionType: appliedPromotion?.type ?? null,
+          priceBreakdown,
+          priceBreakdownVersion: 1,
           numberOfNights,
           status: BookingStatus.PENDING,
           guestNote,

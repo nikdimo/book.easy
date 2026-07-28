@@ -9,6 +9,11 @@ import { getFavoriteListingIdSet } from "@/lib/services/favorite.service";
 import { getT, T, TWithValues, ti, tPlural } from "@/lib/i18n/t";
 import { localizePlaceName } from "@/lib/i18n/place-name";
 import { Moon, UserRound } from "lucide-react";
+import {
+  computeStayQuote,
+  parseLocalYmd,
+  type StayPromotion,
+} from "@/lib/utils/stay-pricing";
 
 interface PropertyCardProps {
   listing: {
@@ -27,9 +32,12 @@ interface PropertyCardProps {
     video?: { url: string } | null;
     pricingRule?: {
       baseNightlyRate: number;
+      cleaningFee: number;
       currency: string;
       minNights: number;
     } | null;
+    promotion?: StayPromotion | null;
+    priceOverrides?: { date: string; rate: number }[];
   };
   /** When set with checkOut, card shows trip dates and total price (Airbnb-style). */
   checkIn?: string;
@@ -52,7 +60,7 @@ export async function PropertyCard({
   mapListingId,
 }: PropertyCardProps) {
   const t = await getT();
-  const { slug, title, property, images, video, pricingRule } = listing;
+  const { slug, title, property, images, video, pricingRule, promotion } = listing;
   const displayImages = images.filter((img) => img.url?.trim());
   const city = localizePlaceName(property.city, t.locale);
   const typeLabel = await getPropertyTypeLabel(property.propertyType);
@@ -75,7 +83,20 @@ export async function PropertyCard({
     `${formatDateShort(parseISO(checkIn!), t.locale)} – ${formatDateShort(parseISO(checkOut!), t.locale)}`;
 
   const nightly = pricingRule ? Number(pricingRule.baseNightlyRate) : 0;
-  const tripTotal = showTrip && pricingRule ? nightly * nightCount! : null;
+  const quote =
+    showTrip && pricingRule
+      ? computeStayQuote({
+          baseNightly: nightly,
+          cleaningFee: pricingRule.cleaningFee,
+          checkIn: parseLocalYmd(checkIn!),
+          checkOut: parseLocalYmd(checkOut!),
+          overrides: new Map(
+            (listing.priceOverrides ?? []).map((row) => [row.date, row.rate])
+          ),
+          promotion,
+        })
+      : null;
+  const tripTotal = quote?.total ?? null;
   const belowMinStay =
     showTrip && pricingRule != null && nightCount! < pricingRule.minNights;
   const minimumStay = pricingRule
@@ -93,6 +114,32 @@ export async function PropertyCard({
         price: formatPrice(tripTotal, pricingRule.currency, t.locale),
       })
     : null;
+  const originalTotalPrice =
+    pricingRule && quote?.promotionEligible && quote.discountAmount > 0
+      ? formatPrice(quote.originalTotal, pricingRule.currency, t.locale)
+      : null;
+  const promotionMinimum = promotion?.minimumNights;
+  const promotionLabel = promotion
+    ? promotion.type === "PERCENT_DISCOUNT"
+      ? promotionMinimum
+        ? ti(t, "promotion.percent_min_nights", "{percent}% off · {n}+ nights", {
+            percent: promotion.discountPercent ?? 0,
+            n: promotionMinimum,
+          })
+        : ti(t, "promotion.percent_off", "{percent}% off", {
+            percent: promotion.discountPercent ?? 0,
+          })
+      : promotionMinimum
+        ? ti(t, "promotion.free_cleaning_min_nights", "Free cleaning · {n}+ nights", {
+            n: promotionMinimum,
+          })
+        : ti(t, "promotion.free_cleaning", "Free cleaning", {})
+    : null;
+  const showPromotionBadge =
+    Boolean(promotionLabel?.text) &&
+    (!showTrip ||
+      !quote?.promotionEligible ||
+      promotion?.type === "FREE_CLEANING");
 
   return (
     <div
@@ -135,6 +182,19 @@ export async function PropertyCard({
 
         <p className="truncate text-[0.9rem] leading-5 text-muted-foreground">{title}</p>
 
+        {showPromotionBadge ? (
+          <Badge
+            variant="secondary"
+            className="mt-1 w-fit rounded-md text-xs font-medium"
+          >
+            <span className={promotionLabel?.translated ? "notranslate" : undefined}>
+              {quote?.promotionEligible && promotion?.type === "FREE_CLEANING"
+                ? ti(t, "promotion.free_cleaning_included", "Free cleaning included", {}).text
+                : promotionLabel?.text}
+            </span>
+          </Badge>
+        ) : null}
+
         {dateLine ? (
           <p
             className="notranslate text-[0.9rem] leading-5 text-muted-foreground"
@@ -145,7 +205,13 @@ export async function PropertyCard({
         ) : null}
 
         {pricingRule && tripTotal != null ? (
-          <div className="mt-1">
+          <div className="mt-1 flex items-baseline gap-2">
+            {promotion?.type === "PERCENT_DISCOUNT" &&
+            originalTotalPrice ? (
+              <span className="text-[0.9rem] text-muted-foreground line-through">
+                {originalTotalPrice}
+              </span>
+            ) : null}
             <span className="text-[0.95rem] font-semibold text-foreground underline decoration-1 underline-offset-2">
               <span className={totalPrice?.translated ? "notranslate" : undefined}>{totalPrice?.text}</span>
             </span>

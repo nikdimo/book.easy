@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Calendar, Eye } from "lucide-react";
+import { Calendar, Eye, Tag } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -67,6 +67,19 @@ export function HostListingCard({ listing }: HostListingCardProps) {
             </TooltipTrigger>
             <TooltipContent>Edit listing</TooltipContent>
           </Tooltip>
+
+          {listing.status === "APPROVED" && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/host/listings/${listing.id}/promotion`}>
+                    <Tag className="h-3 w-3" />
+                  </Link>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Special offer</TooltipContent>
+            </Tooltip>
+          )}
 
           <Tooltip>
             <TooltipTrigger asChild>

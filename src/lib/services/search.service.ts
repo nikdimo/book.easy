@@ -15,6 +15,8 @@ import type {
   SearchFilterPreview,
   SearchFilters,
 } from "@/lib/types/search";
+import { dateKey } from "@/lib/utils/stay-pricing";
+import { getNightCount } from "@/lib/utils/format";
 
 /** Invalidated on-demand (via revalidateTag) whenever a listing's public visibility
  * changes — see submitNewListing/updateListing in lib/actions/listing.actions.ts and
@@ -31,6 +33,10 @@ function buildListingWhere(filters: SearchFilters): Prisma.ListingWhereInput {
   const where: Prisma.ListingWhereInput = {
     status: ListingStatus.APPROVED,
   };
+  const requestedNights =
+    filters.checkIn && filters.checkOut
+      ? getNightCount(filters.checkIn, filters.checkOut)
+      : undefined;
 
   if (filters.city && filters.country) {
     // Exact (city, country) pair — known from the autocomplete — so two same-named
@@ -64,12 +70,23 @@ function buildListingWhere(filters: SearchFilters): Prisma.ListingWhereInput {
     };
   }
 
-  if (filters.minPrice || filters.maxPrice) {
+  if (
+    filters.minPrice ||
+    filters.maxPrice ||
+    (requestedNights != null && requestedNights > 0)
+  ) {
     where.pricingRule = {
-      baseNightlyRate: {
-        ...(filters.minPrice && { gte: filters.minPrice }),
-        ...(filters.maxPrice && { lte: filters.maxPrice }),
-      },
+      ...(filters.minPrice || filters.maxPrice
+        ? {
+            baseNightlyRate: {
+              ...(filters.minPrice && { gte: filters.minPrice }),
+              ...(filters.maxPrice && { lte: filters.maxPrice }),
+            },
+          }
+        : {}),
+      ...(requestedNights != null && requestedNights > 0
+        ? { minNights: { lte: requestedNights } }
+        : {}),
     };
   }
 
@@ -133,10 +150,40 @@ export async function searchListings(filters: SearchFilters) {
     db.listing.count({ where }),
   ]);
 
-  const videoUrls = await getFirstVideoUrlsByListingIds(listings.map((l) => l.id));
+  const listingIds = listings.map((l) => l.id);
+  const [videoUrls, datePrices] = await Promise.all([
+    getFirstVideoUrlsByListingIds(listingIds),
+    filters.checkIn && filters.checkOut && listingIds.length > 0
+      ? db.listingDatePrice.findMany({
+          where: {
+            listingId: { in: listingIds },
+            date: {
+              gte: new Date(filters.checkIn),
+              lt: new Date(filters.checkOut),
+            },
+          },
+          select: { listingId: true, date: true, nightlyRate: true },
+        })
+      : Promise.resolve([]),
+  ]);
+  const pricesByListing = new Map<
+    string,
+    { date: string; rate: number }[]
+  >();
+  for (const row of datePrices) {
+    const values = pricesByListing.get(row.listingId) ?? [];
+    values.push({ date: dateKey(row.date), rate: Number(row.nightlyRate) });
+    pricesByListing.set(row.listingId, values);
+  }
 
   return {
-    listings: listings.map((l) => serializeListingCard(l, videoUrls.get(l.id))),
+    listings: listings.map((l) =>
+      serializeListingCard(
+        l,
+        videoUrls.get(l.id),
+        pricesByListing.get(l.id) ?? []
+      )
+    ),
     total,
     page,
     totalPages: Math.ceil(total / ITEMS_PER_PAGE),

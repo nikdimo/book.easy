@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { createBooking } from "@/lib/services/booking.service";
+import { db } from "@/lib/db";
 import {
   createTestHostAndListing,
   createTestGuest,
@@ -79,5 +80,50 @@ describe("createBooking concurrency", () => {
         guestCount: 1,
       })
     ).rejects.toThrow(/no longer available/i);
+  });
+});
+
+describe("createBooking promotion snapshot", () => {
+  let fixtures: TestFixtures | undefined;
+
+  afterEach(async () => {
+    if (fixtures) await cleanupTestFixtures(fixtures);
+    fixtures = undefined;
+  });
+
+  it("stores the applied percentage offer and keeps the cleaning fee unchanged", async () => {
+    const { host, property, listing } = await createTestHostAndListing();
+    const guest = await createTestGuest();
+    fixtures = {
+      hostId: host.id,
+      propertyId: property.id,
+      listingId: listing.id,
+      extraUserIds: [guest.id],
+    };
+
+    const promotion = await db.listingPromotion.create({
+      data: {
+        listingId: listing.id,
+        type: "PERCENT_DISCOUNT",
+        discountPercent: 20,
+        minimumNights: 3,
+      },
+    });
+
+    const booking = await createBooking({
+      listingId: listing.id,
+      guestId: guest.id,
+      checkIn: new Date("2031-08-01"),
+      checkOut: new Date("2031-08-04"),
+      guestCount: 2,
+    });
+
+    expect(booking.promotionId).toBe(promotion.id);
+    expect(booking.promotionType).toBe("PERCENT_DISCOUNT");
+    expect(Number(booking.originalTotal)).toBe(160);
+    expect(Number(booking.discountAmount)).toBe(30);
+    expect(Number(booking.cleaningFee)).toBe(10);
+    expect(Number(booking.totalPrice)).toBe(130);
+    expect(booking.priceBreakdownVersion).toBe(1);
   });
 });

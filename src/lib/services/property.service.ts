@@ -12,6 +12,11 @@ export async function getListingBySlug(slug: string) {
       },
       images: { orderBy: { displayOrder: "asc" } },
       pricingRule: true,
+      promotions: {
+        where: { disabledAt: null },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      },
       amenities: {
         include: { amenity: true },
         orderBy: { amenity: { category: "asc" } },

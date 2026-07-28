@@ -1,10 +1,12 @@
 import Image from "next/image";
 import { getPropertyTypeLabel } from "@/lib/services/property-type.service";
 import type { ListingCardSerialized } from "@/lib/serializers/listing-card";
-import { getT, T, TWithValues, tPlural } from "@/lib/i18n/t";
+import { getT, T, TWithValues, ti, tPlural } from "@/lib/i18n/t";
 import { LocalizedPrice } from "@/components/shared/localized-price";
 import { PropertyCardSpotlightMedia } from "@/components/public/property-card-spotlight-media";
 import { localizePlaceName } from "@/lib/i18n/place-name";
+import { Moon, UserRound } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface PropertyCardSpotlightProps {
   listing: ListingCardSerialized;
@@ -16,15 +18,47 @@ interface PropertyCardSpotlightProps {
  * there's enough inventory to fill a dense grid). */
 export async function PropertyCardSpotlight({ listing }: PropertyCardSpotlightProps) {
   const t = await getT();
-  const { slug, title, description, property, images, video, pricingRule } = listing;
+  const {
+    slug,
+    title,
+    description,
+    property,
+    images,
+    video,
+    pricingRule,
+    promotion,
+  } = listing;
   const displayImages = images.filter((img) => img.url?.trim());
   const [main, ...rest] = displayImages;
   const sideImages = rest.slice(0, 2);
   const typeLabel = await getPropertyTypeLabel(property.propertyType);
   const guests = tPlural(t, "listing.guests", listing.maxGuests, "{n} guest", "{n} guests");
-  const bedrooms = tPlural(t, "listing.bedrooms", listing.bedrooms, "{n} bedroom", "{n} bedrooms");
-  const baths = tPlural(t, "listing.baths", listing.bathrooms, "{n} bath", "{n} baths");
+  const minimumStay = pricingRule
+    ? tPlural(
+        t,
+        "property_card.minimum_nights",
+        pricingRule.minNights,
+        "{n}-night min.",
+        "{n}-night min."
+      )
+    : null;
   const href = `/properties/${slug}`;
+  const promotionLabel = promotion
+    ? promotion.type === "PERCENT_DISCOUNT"
+      ? promotion.minimumNights
+        ? ti(t, "promotion.percent_min_nights", "{percent}% off · {n}+ nights", {
+            percent: promotion.discountPercent ?? 0,
+            n: promotion.minimumNights,
+          })
+        : ti(t, "promotion.percent_off", "{percent}% off", {
+            percent: promotion.discountPercent ?? 0,
+          })
+      : promotion.minimumNights
+        ? ti(t, "promotion.free_cleaning_min_nights", "Free cleaning · {n}+ nights", {
+            n: promotion.minimumNights,
+          })
+        : ti(t, "promotion.free_cleaning", "Free cleaning", {})
+    : null;
 
   return (
     <a
@@ -72,20 +106,43 @@ export async function PropertyCardSpotlight({ listing }: PropertyCardSpotlightPr
           />
         </h3>
         <p className="text-muted-foreground text-sm line-clamp-3">{description}</p>
-        <p className="text-muted-foreground text-xs">
-          <span className={guests.translated ? "notranslate" : undefined}>{guests.text}</span> ·{" "}
-          <span className={bedrooms.translated ? "notranslate" : undefined}>{bedrooms.text}</span> ·{" "}
-          <span className={baths.translated ? "notranslate" : undefined}>{baths.text}</span>
-        </p>
+        {promotionLabel ? (
+          <Badge variant="secondary" className="w-fit rounded-md">
+            <span className={promotionLabel.translated ? "notranslate" : undefined}>
+              {promotionLabel.text}
+            </span>
+          </Badge>
+        ) : null}
         {pricingRule ? (
-          <div className="mt-1 flex items-baseline gap-1">
-            <LocalizedPrice
-              amount={pricingRule.baseNightlyRate}
-              currency={pricingRule.currency}
-              locale={t.locale}
-              className="text-base font-semibold text-foreground"
-            />
-            <span className="text-muted-foreground text-sm"><T t={t} k="property_card.per_night" source="night" /></span>
+          <div className="mt-1 flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+            <span
+              className="flex shrink-0 items-center gap-1"
+              aria-label={guests.text}
+            >
+              <UserRound className="size-4" aria-hidden="true" />
+              <span>{listing.maxGuests}</span>
+            </span>
+            <span aria-hidden="true">·</span>
+            <span className="flex min-w-0 items-center gap-1">
+              <Moon className="size-4 shrink-0" aria-hidden="true" />
+              <span
+                className={`truncate ${minimumStay?.translated ? "notranslate" : ""}`}
+              >
+                {minimumStay?.text}
+              </span>
+            </span>
+            <span aria-hidden="true">·</span>
+            <span className="flex shrink-0 items-baseline gap-1">
+              <LocalizedPrice
+                amount={pricingRule.baseNightlyRate}
+                currency={pricingRule.currency}
+                locale={t.locale}
+                className="text-base font-semibold text-foreground"
+              />
+              <span className="text-sm text-muted-foreground">
+                <T t={t} k="property_card.per_night" source="night" />
+              </span>
+            </span>
           </div>
         ) : null}
       </div>

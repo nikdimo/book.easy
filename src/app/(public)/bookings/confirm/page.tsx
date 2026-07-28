@@ -35,6 +35,12 @@ export default async function BookingConfirmPage({ searchParams }: ConfirmPagePr
   const reference = ti(t, "booking.reference", "Booking reference: {reference}", {
     reference: booking.id.slice(0, 8).toUpperCase(),
   });
+  const priceBreakdown = booking.priceBreakdown as {
+    accommodationSubtotal?: number;
+  } | null;
+  const accommodationSubtotal =
+    priceBreakdown?.accommodationSubtotal ??
+    Number(booking.nightlyRate) * booking.numberOfNights;
 
   return (
     <div className="container mx-auto px-4 py-16 max-w-2xl">
@@ -105,19 +111,34 @@ export default async function BookingConfirmPage({ searchParams }: ConfirmPagePr
 
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span><LocalizedPrice amount={Number(booking.nightlyRate)} locale={t.locale} /> × <span className={nights.translated ? "notranslate" : undefined}>{nights.text}</span></span>
-              <LocalizedPrice amount={Number(booking.nightlyRate) * booking.numberOfNights} locale={t.locale} />
+              <span><T t={t} k="booking.accommodation" source="Accommodation" /> · <span className={nights.translated ? "notranslate" : undefined}>{nights.text}</span></span>
+              <LocalizedPrice amount={accommodationSubtotal} currency={booking.currency} locale={t.locale} />
             </div>
             {Number(booking.cleaningFee) > 0 && (
               <div className="flex justify-between">
                 <span><T t={t} k="booking.cleaning_fee" source="Cleaning fee" /></span>
-                <LocalizedPrice amount={Number(booking.cleaningFee)} locale={t.locale} />
+                <LocalizedPrice amount={Number(booking.cleaningFee)} currency={booking.currency} locale={t.locale} />
+              </div>
+            )}
+            {Number(booking.discountAmount) > 0 && (
+              <div className="flex justify-between text-green-700">
+                <span>
+                  {booking.promotionType === "FREE_CLEANING"
+                    ? <T t={t} k="promotion.free_cleaning" source="Free cleaning" />
+                    : <T t={t} k="promotion.special_offer" source="Special offer" />}
+                </span>
+                <span>−<LocalizedPrice amount={Number(booking.discountAmount)} currency={booking.currency} locale={t.locale} /></span>
               </div>
             )}
             <Separator />
             <div className="flex justify-between font-semibold text-base">
               <span><T t={t} k="booking.total" source="Total" /></span>
-              <LocalizedPrice amount={Number(booking.totalPrice)} locale={t.locale} />
+              <span className="flex items-baseline gap-2">
+                {booking.originalTotal && Number(booking.discountAmount) > 0 ? (
+                  <LocalizedPrice amount={Number(booking.originalTotal)} currency={booking.currency} locale={t.locale} className="text-sm font-normal text-muted-foreground line-through" />
+                ) : null}
+                <LocalizedPrice amount={Number(booking.totalPrice)} currency={booking.currency} locale={t.locale} />
+              </span>
             </div>
           </div>
 

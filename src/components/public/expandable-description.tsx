@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import { splitDescriptionPreview } from "@/lib/utils/description-preview";
+import { useI18n } from "@/lib/i18n/client";
+import { cn } from "@/lib/utils";
 
 export function PreservedPlaceText({
   text,
@@ -45,26 +47,34 @@ export function ExpandableDescription({
   preservePlaceNames?: string[];
 }) {
   const [expanded, setExpanded] = useState(false);
-  const { visible, truncated } = splitDescriptionPreview(text);
+  const descriptionId = useId();
+  const i18n = useI18n();
+  const { truncated } = splitDescriptionPreview(text);
+  const showMore = i18n.resolve("description.show_more", "Show more");
+  const showLess = i18n.resolve("description.show_less", "Show less");
 
   return (
     <div>
-      <p className="whitespace-pre-line leading-relaxed text-muted-foreground">
-        {expanded || !truncated ? (
-          <PreservedPlaceText text={text} placeNames={preservePlaceNames} />
-        ) : (
-          <>
-            <PreservedPlaceText text={visible} placeNames={preservePlaceNames} />…
-          </>
+      <p
+        id={descriptionId}
+        className={cn(
+          "whitespace-pre-line leading-relaxed text-muted-foreground",
+          truncated && !expanded && "line-clamp-5"
         )}
+      >
+        <PreservedPlaceText text={text} placeNames={preservePlaceNames} />
       </p>
       {truncated && (
         <button
           type="button"
           onClick={() => setExpanded((current) => !current)}
-          className="mt-2 text-sm font-semibold text-foreground underline underline-offset-2 hover:text-foreground/80"
+          aria-controls={descriptionId}
+          aria-expanded={expanded}
+          className="notranslate mt-2 text-sm font-semibold text-foreground underline underline-offset-2 hover:text-foreground/80"
+          translate="no"
         >
-          {expanded ? "Show less" : "Show more"}
+          <span hidden={expanded}>{showMore.text}</span>
+          <span hidden={!expanded}>{showLess.text}</span>
         </button>
       )}
     </div>

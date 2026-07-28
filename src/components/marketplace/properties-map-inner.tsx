@@ -96,6 +96,32 @@ type PinPointProperties = {
 
 type PinClusterProperties = Record<string, never>;
 
+type PinClusterIndex = Supercluster<
+  PinPointProperties,
+  PinClusterProperties
+>;
+
+function getClusterTargetZoom(index: PinClusterIndex, rootClusterId: number) {
+  let targetZoom = index.getClusterExpansionZoom(rootClusterId);
+  const pendingClusterIds = [rootClusterId];
+
+  while (pendingClusterIds.length > 0 && targetZoom <= MAP_MAX_ZOOM) {
+    const clusterId = pendingClusterIds.pop()!;
+    for (const child of index.getChildren(clusterId)) {
+      if (!("cluster" in child.properties)) continue;
+
+      const childClusterId = child.properties.cluster_id;
+      targetZoom = Math.max(
+        targetZoom,
+        index.getClusterExpansionZoom(childClusterId)
+      );
+      pendingClusterIds.push(childClusterId);
+    }
+  }
+
+  return Math.min(MAP_MAX_ZOOM, targetZoom);
+}
+
 function ListingPreview({ pin }: { pin: MapPin }) {
   const i18n = useI18n();
 
@@ -304,6 +330,13 @@ function ClusteredMarkers({
     }).load(points);
   }, [pins]);
 
+  React.useEffect(() => {
+    // FitBounds runs after the map's first render. Refresh on the next frame so
+    // the cluster query uses those fitted bounds instead of the initial view.
+    const frame = window.requestAnimationFrame(updateViewport);
+    return () => window.cancelAnimationFrame(frame);
+  }, [index, updateViewport]);
+
   const clusters = React.useMemo(
     () =>
       index.getClusters(
@@ -321,6 +354,7 @@ function ClusteredMarkers({
         point_count: count,
       } = feature.properties;
       const expansionZoom = index.getClusterExpansionZoom(clusterId);
+      const targetZoom = getClusterTargetZoom(index, clusterId);
       const terminal =
         viewport.zoom >= MAP_MAX_ZOOM || expansionZoom > MAP_MAX_ZOOM;
       const groupedPins = terminal
@@ -341,11 +375,11 @@ function ClusteredMarkers({
               : {
                   click: () => {
                     map.closePopup();
-                    map.setView(
-                      [lat, lng],
-                      Math.min(MAP_MAX_ZOOM, expansionZoom),
-                      { animate: true }
-                    );
+                    map.stop();
+                    map.flyTo([lat, lng], targetZoom, {
+                      animate: true,
+                      duration: 0.65,
+                    });
                   },
                 }
           }

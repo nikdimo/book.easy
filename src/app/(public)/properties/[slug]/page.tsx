@@ -89,6 +89,7 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
       }))
     : [];
   const reviewSummary = await getPublishedListingReviews(listing.id);
+  const promotion = listing.promotions[0] ?? null;
 
   const hostInitials = listing.host.profile?.hostDisplayName?.[0] ||
     listing.host.name.split(" ").map((n) => n[0]).join("").slice(0, 2);
@@ -297,6 +298,16 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
               cleaningFee={Number(listing.pricingRule.cleaningFee)}
               currency={listing.pricingRule.currency}
               minNights={listing.pricingRule.minNights}
+              promotion={
+                promotion
+                  ? {
+                      id: promotion.id,
+                      type: promotion.type,
+                      discountPercent: promotion.discountPercent,
+                      minimumNights: promotion.minimumNights,
+                    }
+                  : null
+              }
               disabledDateRanges={disabledDateRanges}
               priceOverrides={priceOverrides}
               initialCheckIn={initialCheckIn}

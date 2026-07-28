@@ -13,6 +13,11 @@ export async function getHostListings(hostId: string) {
       property: true,
       images: { where: { isPrimary: true }, take: 1 },
       pricingRule: true,
+      promotions: {
+        where: { disabledAt: null },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      },
       _count: { select: { bookings: true } },
     },
     orderBy: { updatedAt: "desc" },

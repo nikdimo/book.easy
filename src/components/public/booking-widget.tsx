@@ -3,10 +3,15 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { computeStayPricing, parseLocalYmd } from "@/lib/utils/stay-pricing";
+import {
+  computeStayQuote,
+  parseLocalYmd,
+  type StayPromotion,
+} from "@/lib/utils/stay-pricing";
 import { validateBookingSelection } from "@/lib/utils/booking-selection";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { MarketplaceStayDatePicker } from "@/components/marketplace/marketplace-stay-date-picker";
 import { GuestCountsStep } from "@/components/marketplace/marketplace-stay-date-picker";
@@ -30,7 +35,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { Resolved } from "@/lib/i18n/t";
-import { Tx, useI18n } from "@/lib/i18n/client";
+import { interpolate, Tx, useI18n } from "@/lib/i18n/client";
 
 interface BookingWidgetProps {
   listingId: string;
@@ -39,6 +44,7 @@ interface BookingWidgetProps {
   cleaningFee: number;
   currency: string;
   minNights: number;
+  promotion?: StayPromotion | null;
   disabledDateRanges: { from: Date; to: Date }[];
   /** yyyy-MM-dd → override nightly rate for that night */
   priceOverrides?: { date: string; rate: number }[];
@@ -159,6 +165,7 @@ export function BookingWidget({
   cleaningFee,
   currency,
   minNights,
+  promotion,
   disabledDateRanges,
   priceOverrides = [],
   initialCheckIn = "",
@@ -222,10 +229,17 @@ export function BookingWidget({
 
   const stayPricing =
     checkIn && checkOut
-      ? computeStayPricing(nightlyRate, checkIn, checkOut, overrideMap)
+      ? computeStayQuote({
+          baseNightly: nightlyRate,
+          cleaningFee,
+          checkIn,
+          checkOut,
+          overrides: overrideMap,
+          promotion,
+        })
       : null;
-  const subtotal = stayPricing?.subtotal ?? 0;
-  const total = subtotal + cleaningFee;
+  const subtotal = stayPricing?.originalAccommodationSubtotal ?? 0;
+  const total = stayPricing?.total ?? 0;
   const hasVariableRates = priceOverrides.length > 0;
 
   const guests = guestDetails.adults + guestDetails.children;
@@ -278,6 +292,33 @@ export function BookingWidget({
     selectionValidation.status === "minimum-stay" ||
     selectionValidation.status === "unavailable" ||
     selectionValidation.status === "invalid";
+  const promotionLabel = promotion
+    ? promotion.type === "PERCENT_DISCOUNT"
+      ? promotion.minimumNights
+        ? interpolate(
+            i18n.resolve(
+              "promotion.percent_min_nights",
+              "{percent}% off · {n}+ nights"
+            ),
+            {
+              percent: promotion.discountPercent ?? 0,
+              n: promotion.minimumNights,
+            }
+          )
+        : interpolate(
+            i18n.resolve("promotion.percent_off", "{percent}% off"),
+            { percent: promotion.discountPercent ?? 0 }
+          )
+      : promotion.minimumNights
+        ? interpolate(
+            i18n.resolve(
+              "promotion.free_cleaning_min_nights",
+              "Free cleaning · {n}+ nights"
+            ),
+            { n: promotion.minimumNights }
+          )
+        : i18n.resolve("promotion.free_cleaning", "Free cleaning")
+    : null;
 
   function handleSubmit() {
     setError(null);
@@ -387,10 +428,52 @@ export function BookingWidget({
           <span><Tx k="booking.subtotal" source="Subtotal (stay)" /></span>
           <LocalizedPrice amount={subtotal} currency={currency} locale={i18n.locale} />
         </div>
-        {cleaningFee > 0 && (
+        {stayPricing.accommodationDiscount > 0 && (
+          <div className="flex justify-between text-green-700">
+            <span className={promotionLabel?.translated ? "notranslate" : undefined}>
+              {promotionLabel?.text}
+            </span>
+            <span>
+              −<LocalizedPrice
+                amount={stayPricing.accommodationDiscount}
+                currency={currency}
+                locale={i18n.locale}
+              />
+            </span>
+          </div>
+        )}
+        {stayPricing.originalCleaningFee > 0 && (
           <div className="flex justify-between">
             <span><Tx k="booking.cleaning_fee" source="Cleaning fee" /></span>
-            <LocalizedPrice amount={cleaningFee} currency={currency} locale={i18n.locale} />
+            {stayPricing.cleaningDiscount > 0 ? (
+              <span className="flex items-baseline gap-2">
+                <LocalizedPrice
+                  amount={stayPricing.originalCleaningFee}
+                  currency={currency}
+                  locale={i18n.locale}
+                  className="text-muted-foreground line-through"
+                />
+                <LocalizedPrice amount={0} currency={currency} locale={i18n.locale} />
+              </span>
+            ) : (
+              <LocalizedPrice
+                amount={stayPricing.cleaningFee}
+                currency={currency}
+                locale={i18n.locale}
+              />
+            )}
+          </div>
+        )}
+        {stayPricing.cleaningDiscount > 0 && (
+          <div className="flex justify-between text-green-700">
+            <span><Tx k="promotion.free_cleaning" source="Free cleaning" /></span>
+            <span>
+              −<LocalizedPrice
+                amount={stayPricing.cleaningDiscount}
+                currency={currency}
+                locale={i18n.locale}
+              />
+            </span>
           </div>
         )}
         <Separator />
@@ -424,6 +507,13 @@ export function BookingWidget({
               <Tx k="booking.variable_rate_notice" source="Selected dates may use custom nightly rates shown in the breakdown below." />
             </span>
           )}
+          {promotionLabel ? (
+            <Badge variant="secondary" className="mt-1 w-fit rounded-md">
+              <span className={promotionLabel.translated ? "notranslate" : undefined}>
+                {promotionLabel.text}
+              </span>
+            </Badge>
+          ) : null}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 pt-0">
@@ -518,12 +608,22 @@ export function BookingWidget({
                   {desktopPriceDetailsOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                 </button>
               </div>
-              <LocalizedPrice
-                amount={total}
-                currency={currency}
-                locale={i18n.locale}
-                className="text-xl font-semibold"
-              />
+              <span className="flex flex-col items-end">
+                {stayPricing.discountAmount > 0 ? (
+                  <LocalizedPrice
+                    amount={stayPricing.originalTotal}
+                    currency={currency}
+                    locale={i18n.locale}
+                    className="text-sm text-muted-foreground line-through"
+                  />
+                ) : null}
+                <LocalizedPrice
+                  amount={total}
+                  currency={currency}
+                  locale={i18n.locale}
+                  className="text-xl font-semibold"
+                />
+              </span>
             </div>
             {desktopPriceDetailsOpen && (
               <div className="mt-3 border-t border-border/60 pt-3">

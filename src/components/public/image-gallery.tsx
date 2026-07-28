@@ -99,7 +99,12 @@ export function ImageGallery({ images }: ImageGalleryProps) {
           onTouchStart={heroSwipe.onTouchStart}
           onTouchEnd={heroSwipe.onTouchEnd}
         >
-          <GalleryMedia item={images[heroIndex]} fill preload sizes="100vw" />
+          <GalleryMedia
+            item={images[heroIndex]}
+            fill
+            fetchPriority="high"
+            sizes="100vw"
+          />
           <PreloadImages
             images={images}
             indices={preloadIndicesFor(heroIndex, loadedUpTo, images.length)}
@@ -133,7 +138,12 @@ export function ImageGallery({ images }: ImageGalleryProps) {
             )}
             onClick={() => { setGalleryOpen(true); setActiveIndex(0); }}
           >
-            <GalleryMedia item={mainImage} fill preload sizes="(max-width: 768px) 100vw, 50vw" />
+            <GalleryMedia
+              item={mainImage}
+              fill
+              fetchPriority="high"
+              sizes="(max-width: 768px) 100vw, 50vw"
+            />
           </div>
           {gridImages.map((img, i) => (
             <div
@@ -238,7 +248,8 @@ export function ImageGallery({ images }: ImageGalleryProps) {
                   item={images[activeIndex]}
                   fill
                   contain
-                  preload
+                  eager
+                  fetchPriority="high"
                   sizes="100vw"
                 />
                 <PreloadImages
@@ -300,17 +311,17 @@ export function ImageGallery({ images }: ImageGalleryProps) {
 function GalleryMedia({
   item,
   fill,
-  preload,
   eager,
+  fetchPriority,
   sizes,
   contain = false,
 }: {
   item: ListingMediaItem;
   fill?: boolean;
-  preload?: boolean;
   /** Fetch immediately rather than waiting on lazy-load, for off-screen images
    * being warmed up ahead of a swipe. */
   eager?: boolean;
+  fetchPriority?: "high" | "low" | "auto";
   sizes?: string;
   contain?: boolean;
 }) {
@@ -333,8 +344,8 @@ function GalleryMedia({
       alt={item.alt || i18n.resolve("gallery.property_photo", "Property photo").text}
       fill={fill}
       className={contain ? "object-contain" : "object-cover"}
-      preload={preload}
       loading={eager ? "eager" : undefined}
+      fetchPriority={fetchPriority}
       sizes={sizes}
     />
   );

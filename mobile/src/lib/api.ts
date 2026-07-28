@@ -57,6 +57,12 @@ export interface ListingSummary {
   imageUrl: string | null;
   nightlyRate: number | null;
   currency: string;
+  promotion: {
+    id: string;
+    type: "PERCENT_DISCOUNT" | "FREE_CLEANING";
+    discountPercent: number | null;
+    minimumNights: number | null;
+  } | null;
   bookingCount: number;
   updatedAt: string;
 }
