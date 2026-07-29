@@ -9,7 +9,6 @@ import {
   Popup,
   ZoomControl,
   useMap,
-  useMapEvents,
 } from "react-leaflet";
 import L from "leaflet";
 import Supercluster from "supercluster";
@@ -34,17 +33,70 @@ export type MapPin = {
 
 const MAP_MAX_ZOOM = 18;
 
+/**
+ * Content signature for a pin set. `pins` is rebuilt by the server component, so
+ * a fresh RSC payload hands us an array with the same coordinates but a new
+ * identity. Keying the fit on coordinates instead of identity keeps a re-render
+ * from yanking the map back out from under the user.
+ */
+function positionsKey(positions: [number, number][]) {
+  return positions
+    .map(([la, ln]) => `${la.toFixed(5)},${ln.toFixed(5)}`)
+    .sort()
+    .join("|");
+}
+
 function FitBounds({ positions }: { positions: [number, number][] }) {
   const map = useMap();
-  React.useEffect(() => {
+  const key = positionsKey(positions);
+  const fittedKey = React.useRef<string | null>(null);
+
+  // Layout effect so the fit lands before ClusteredMarkers' passive effect reads
+  // the bounds, regardless of where either sits in the JSX.
+  React.useLayoutEffect(() => {
     if (positions.length === 0) return;
-    if (positions.length === 1) {
-      map.setView(positions[0]!, 12, { animate: false });
-      return;
-    }
-    const b = L.latLngBounds(positions.map(([la, ln]) => [la, ln] as L.LatLngTuple));
-    map.fitBounds(b, { padding: [48, 48], maxZoom: 14, animate: false });
-  }, [map, positions]);
+    // Same listings as the last fit — the current view is the user's to keep.
+    if (fittedKey.current === key) return;
+
+    const fit = () => {
+      if (fittedKey.current === key) return true;
+
+      // Measure the DOM, not map.getSize(): if the map was created while the
+      // container was unsized, Leaflet caches 0x0 and keeps returning it until
+      // something calls invalidateSize(). On a slow first paint fitBounds would
+      // then clamp to maxZoom at the wrong centre and, since we fit only once
+      // per pin set, the map would stay there.
+      const container = map.getContainer();
+      if (container.clientWidth < 2 || container.clientHeight < 2) return false;
+      fittedKey.current = key;
+      map.invalidateSize({ pan: false, animate: false });
+
+      if (positions.length === 1) {
+        map.setView(positions[0]!, 12, { animate: false });
+      } else {
+        const b = L.latLngBounds(
+          positions.map(([la, ln]) => [la, ln] as L.LatLngTuple)
+        );
+        map.fitBounds(b, { padding: [48, 48], maxZoom: 14, animate: false });
+      }
+      return true;
+    };
+
+    if (fit()) return;
+
+    // Retry on a timer rather than waiting for a resize event: `resize` only
+    // comes from invalidateSize(), which MapResize drives off a ResizeObserver
+    // — and ResizeObserver, like requestAnimationFrame, never fires while the
+    // tab is in the background. setTimeout does.
+    let attempts = 0;
+    let timer = window.setTimeout(function retry() {
+      if (fit() || (attempts += 1) > 20) return;
+      timer = window.setTimeout(retry, 100);
+    }, 0);
+    return () => window.clearTimeout(timer);
+    // `positions` is intentionally not a dep: `key` is its content signature.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, key]);
   return null;
 }
 
@@ -81,12 +133,63 @@ function clusterDivIcon(count: number, terminal: boolean) {
   });
 }
 
-function MapResize({ when }: { when: boolean }) {
+/**
+ * Leaflet's keyboard handler focuses the map container on mousedown, then tries
+ * to undo the scroll that focus causes with `window.scrollTo(...)`. That only
+ * works when the page itself is the scroller. Here the map lives inside an
+ * `overflow-y-auto` panel, so the compensation misses and the panel jumps
+ * mid-click: mousedown and mouseup land on different elements, Leaflet never
+ * registers the marker click, and the first click on a cluster appears to do
+ * nothing (every click after works, because Leaflet skips a focused container).
+ *
+ * Focus it ourselves on pointerdown — which precedes mousedown — without
+ * scrolling. Leaflet then sees an already-focused container and does nothing.
+ */
+function KeepFocusFromScrolling() {
   const map = useMap();
   React.useEffect(() => {
-    const t = window.setTimeout(() => map.invalidateSize(), 150);
-    return () => window.clearTimeout(t);
-  }, [when, map]);
+    const container = map.getContainer();
+    const onPointerDown = () => {
+      if (document.activeElement !== container) {
+        container.focus({ preventScroll: true });
+      }
+    };
+    container.addEventListener("pointerdown", onPointerDown, true);
+    return () =>
+      container.removeEventListener("pointerdown", onPointerDown, true);
+  }, [map]);
+  return null;
+}
+
+function MapResize() {
+  const map = useMap();
+  React.useEffect(() => {
+    const container = map.getContainer();
+    const syncSize = () => {
+      const size = map.getSize();
+      if (
+        container.clientWidth !== size.x ||
+        container.clientHeight !== size.y
+      ) {
+        map.invalidateSize();
+      }
+    };
+
+    // ResizeObserver reacts precisely to fullscreen toggles and layout shifts,
+    // but it is delivered on the rendering lifecycle and so never fires while
+    // the tab is backgrounded. Pair it with a timer-based catch-up, which does
+    // run there, so a map opened in a background tab is still sized correctly.
+    const observer = new ResizeObserver(syncSize);
+    observer.observe(container);
+    const initial = window.setTimeout(syncSize, 150);
+    window.addEventListener("resize", syncSize);
+
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(initial);
+      window.removeEventListener("resize", syncSize);
+    };
+  }, [map]);
   return null;
 }
 
@@ -120,6 +223,72 @@ function getClusterTargetZoom(index: PinClusterIndex, rootClusterId: number) {
   }
 
   return Math.min(MAP_MAX_ZOOM, targetZoom);
+}
+
+/**
+ * The Leaflet map is an external mutable store, so subscribe to it rather than
+ * mirroring it into state. This matters for the very first paint: the initial
+ * fit happens in FitBounds' layout effect, which runs *after* this component
+ * renders but *before* React subscribes here — so the fit's moveend/zoomend
+ * never reach a listener. useSyncExternalStore re-reads the snapshot when it
+ * subscribes and catches that change, with no event, timer, or animation frame
+ * to race against (a requestAnimationFrame would never fire in a background
+ * tab, stranding the map on its pre-fit viewport).
+ *
+ * The snapshot is a string so React's Object.is check stays stable, and it is
+ * cached rather than read live: React re-reads the snapshot after every render,
+ * so sampling the map directly would hand back a different value on each render
+ * while the map is mid-animation (a popup's autoPan is enough) and re-render
+ * forever. The cache only advances when a subscribed event says the map settled.
+ */
+function useMapViewport(map: L.Map) {
+  const cached = React.useRef<string | null>(null);
+
+  const read = React.useCallback(() => {
+    const b = map.getBounds();
+    return `${b.getWest()},${b.getSouth()},${b.getEast()},${b.getNorth()},${map.getZoom()}`;
+  }, [map]);
+
+  const subscribe = React.useCallback(
+    (onChange: () => void) => {
+      // The initial fit ran in FitBounds' layout effect, before this
+      // subscription existed. Refresh once here; React re-reads the snapshot
+      // right after subscribing and picks the new value up.
+      cached.current = read();
+
+      const handleChange = () => {
+        const next = read();
+        if (next === cached.current) return;
+        cached.current = next;
+        onChange();
+      };
+
+      map.on("moveend zoomend resize", handleChange);
+      return () => {
+        map.off("moveend zoomend resize", handleChange);
+      };
+    },
+    [map, read]
+  );
+
+  const getSnapshot = React.useCallback(() => {
+    cached.current ??= read();
+    return cached.current;
+  }, [read]);
+
+  const snapshot = React.useSyncExternalStore(
+    subscribe,
+    getSnapshot,
+    () => "0,0,0,0,0"
+  );
+
+  return React.useMemo(() => {
+    const [west, south, east, north, zoom] = snapshot.split(",").map(Number);
+    return {
+      bounds: [west, south, east, north] as [number, number, number, number],
+      zoom: zoom!,
+    };
+  }, [snapshot]);
 }
 
 function ListingPreview({ pin }: { pin: MapPin }) {
@@ -280,36 +449,7 @@ function ClusteredMarkers({
   onHovered: (id: string | null) => void;
 }) {
   const map = useMap();
-  const [viewport, setViewport] = React.useState(() => {
-    const bounds = map.getBounds();
-    return {
-      bounds: [
-        bounds.getWest(),
-        bounds.getSouth(),
-        bounds.getEast(),
-        bounds.getNorth(),
-      ] as [number, number, number, number],
-      zoom: map.getZoom(),
-    };
-  });
-
-  const updateViewport = React.useCallback(() => {
-    const bounds = map.getBounds();
-    setViewport({
-      bounds: [
-        bounds.getWest(),
-        bounds.getSouth(),
-        bounds.getEast(),
-        bounds.getNorth(),
-      ],
-      zoom: map.getZoom(),
-    });
-  }, [map]);
-
-  useMapEvents({
-    moveend: updateViewport,
-    zoomend: updateViewport,
-  });
+  const viewport = useMapViewport(map);
 
   const index = React.useMemo(() => {
     const points: Supercluster.PointFeature<PinPointProperties>[] = pins.map(
@@ -329,13 +469,6 @@ function ClusteredMarkers({
       minPoints: 2,
     }).load(points);
   }, [pins]);
-
-  React.useEffect(() => {
-    // FitBounds runs after the map's first render. Refresh on the next frame so
-    // the cluster query uses those fitted bounds instead of the initial view.
-    const frame = window.requestAnimationFrame(updateViewport);
-    return () => window.cancelAnimationFrame(frame);
-  }, [index, updateViewport]);
 
   const clusters = React.useMemo(
     () =>
@@ -375,7 +508,10 @@ function ClusteredMarkers({
               : {
                   click: () => {
                     map.closePopup();
-                    map.stop();
+                    // No map.stop() here: Leaflet's stop() calls setZoom() ->
+                    // setView(), which fires a synchronous moveend and forces a
+                    // re-render mid-click. flyTo() already cancels any in-flight
+                    // animation itself.
                     map.flyTo([lat, lng], targetZoom, {
                       animate: true,
                       duration: 0.65,
@@ -466,7 +602,8 @@ export default function PropertiesMapInner({
         zoomControl={false}
         maxZoom={MAP_MAX_ZOOM}
       >
-        <MapResize when={expanded} />
+        <KeepFocusFromScrolling />
+        <MapResize />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
