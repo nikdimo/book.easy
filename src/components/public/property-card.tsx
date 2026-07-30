@@ -167,6 +167,17 @@ export async function PropertyCard({
     (!showTrip ||
       !quote?.promotionEligible ||
       promotion?.type === "FREE_CLEANING");
+  const freeCleaningApplied = ti(
+    t,
+    "promotion.free_cleaning_included",
+    "Free cleaning included",
+    {},
+  );
+  const coverPromotion = showPromotionBadge
+    ? quote?.promotionEligible && promotion?.type === "FREE_CLEANING"
+      ? freeCleaningApplied
+      : promotionLabel
+    : null;
 
   return (
     <div className="flex flex-col gap-3" data-map-listing-id={mapListingId}>
@@ -178,6 +189,7 @@ export async function PropertyCard({
         listingId={listing.id}
         initialSaved={isSaved}
         isAuthenticated={!!session?.user}
+        promotionLabel={coverPromotion}
       />
 
       <a href={href} className="group/link flex min-w-0 flex-col gap-0.5 px-1">
@@ -208,26 +220,6 @@ export async function PropertyCard({
         <p className="truncate text-[0.9rem] leading-5 text-muted-foreground">
           {title}
         </p>
-
-        {showPromotionBadge ? (
-          <Badge
-            variant="secondary"
-            className="mt-1 w-fit rounded-md text-xs font-medium"
-          >
-            <span
-              className={promotionLabel?.translated ? "notranslate" : undefined}
-            >
-              {quote?.promotionEligible && promotion?.type === "FREE_CLEANING"
-                ? ti(
-                    t,
-                    "promotion.free_cleaning_included",
-                    "Free cleaning included",
-                    {},
-                  ).text
-                : promotionLabel?.text}
-            </span>
-          </Badge>
-        ) : null}
 
         {dateLine ? (
           <p

@@ -649,7 +649,11 @@ export function DateRangeCalendarStep({
 
   const pagedCalendar = fitViewport || (pagedOnDesktop && !isMobile);
   const pagedMonthCount =
-    pagedDesktopMonthCount === 2 && pagedMonthCapacity === 2 ? 2 : 1;
+    !isMobile &&
+    pagedDesktopMonthCount === 2 &&
+    pagedMonthCapacity === 2
+      ? 2
+      : 1;
 
   React.useEffect(() => {
     if (!pagedCalendar || pagedDesktopMonthCount === 1) return;

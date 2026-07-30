@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Globe } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -102,6 +103,29 @@ function googleLanguageOptions(displayLocale: string): AutomaticLanguage[] {
     .filter((option) => option.name);
 }
 
+function reapplyGoogleTranslation(locale: string): boolean {
+  const select = document.querySelector<HTMLSelectElement>(
+    `#${ELEMENT_ID} .goog-te-combo`,
+  );
+  if (!select) return false;
+
+  const target =
+    [...select.options].find((option) => option.value === locale)?.value ??
+    [...select.options].find(
+      (option) => option.value === locale.split("-")[0],
+    )?.value;
+  if (!target) return false;
+
+  // The Google widget is mounted in the persistent root layout. Next.js client
+  // navigation replaces page content without remounting that widget, so Google
+  // otherwise leaves newly rendered host/admin screens in the source language.
+  // Dispatch even when the select already shows the target: its change handler
+  // performs the translation pass over the newly committed route.
+  select.value = target;
+  select.dispatchEvent(new Event("change", { bubbles: true }));
+  return true;
+}
+
 function ensureGoogleTranslateContainer(): HTMLElement {
   const existing = document.getElementById(ELEMENT_ID);
   if (existing) return existing;
@@ -169,6 +193,7 @@ export function GoogleTranslateWidget({
   currentLocale?: string;
 }) {
   const i18n = useI18n();
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [automaticLanguages, setAutomaticLanguages] = useState<
     AutomaticLanguage[]
@@ -209,7 +234,34 @@ export function GoogleTranslateWidget({
         );
       }
       collectLanguages();
+      reapplyGoogleTranslation(current);
     };
+
+    let overlayTranslationTimer: number | undefined;
+    const overlayObserver = new MutationObserver((mutations) => {
+      const addedOverlay = mutations.some((mutation) =>
+        [...mutation.addedNodes].some(
+          (node) =>
+            node instanceof Element &&
+            (node.matches(
+              '[role="dialog"], [data-radix-popper-content-wrapper]',
+            ) ||
+              Boolean(
+                node.querySelector(
+                  '[role="dialog"], [data-radix-popper-content-wrapper]',
+                ),
+              )),
+        ),
+      );
+      if (!addedOverlay) return;
+
+      window.clearTimeout(overlayTranslationTimer);
+      overlayTranslationTimer = window.setTimeout(
+        () => reapplyGoogleTranslation(current),
+        0,
+      );
+    });
+    overlayObserver.observe(document.body, { childList: true, subtree: true });
 
     window.googleTranslateElementInit = initialize;
     if (document.getElementById(SCRIPT_ID)) {
@@ -223,8 +275,12 @@ export function GoogleTranslateWidget({
       document.body.appendChild(script);
     }
 
-    return () => observer.disconnect();
-  }, [current]);
+    return () => {
+      observer.disconnect();
+      overlayObserver.disconnect();
+      window.clearTimeout(overlayTranslationTimer);
+    };
+  }, [current, pathname]);
 
   const reviewed = languages.filter(
     (language) => language.isDefault || language.useAiTranslation,

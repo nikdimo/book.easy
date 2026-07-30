@@ -169,7 +169,35 @@ export function Header({
             languages={languages}
             currentLocale={currentLocale}
           />
-          {user ? <NotificationBell enabled /> : null}
+          {user ? (
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-full"
+                    asChild
+                  >
+                    <Link
+                      href="/account/favorites"
+                      aria-label={navLabels.favorites.text}
+                    >
+                      <Heart className="h-5 w-5" />
+                    </Link>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent
+                  className={
+                    navLabels.favorites.translated ? "notranslate" : undefined
+                  }
+                >
+                  {navLabels.favorites.text}
+                </TooltipContent>
+              </Tooltip>
+              <NotificationBell enabled />
+            </>
+          ) : null}
           {user?.isHost ? (
             <Button
               variant="ghost"
@@ -242,6 +270,20 @@ export function Header({
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
+                  <Link href="/account/favorites">
+                    <Heart className="mr-2 h-4 w-4" />
+                    <span
+                      className={
+                        navLabels.favorites.translated
+                          ? "notranslate"
+                          : undefined
+                      }
+                    >
+                      {navLabels.favorites.text}
+                    </span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
                   <Link href="/properties">
                     <Home className="mr-2 h-4 w-4" />
                     <span
@@ -262,20 +304,6 @@ export function Header({
                       }
                     >
                       {navLabels.trips.text}
-                    </span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/account/favorites">
-                    <Heart className="mr-2 h-4 w-4" />
-                    <span
-                      className={
-                        navLabels.favorites.translated
-                          ? "notranslate"
-                          : undefined
-                      }
-                    >
-                      {navLabels.favorites.text}
                     </span>
                   </Link>
                 </DropdownMenuItem>

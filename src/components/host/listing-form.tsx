@@ -1050,16 +1050,21 @@ export function ListingForm({
         >
           {isEditing && (
             <header className="z-20 shrink-0 border-b bg-background px-5 pb-3 pt-5 shadow-sm md:px-8">
-              <div className="flex items-center gap-3">
-                <h1 className="shrink-0 text-2xl font-bold">Edit Listing</h1>
+              <div className="min-w-0">
+                <h1 className="text-2xl font-bold">Edit Listing</h1>
                 {availabilityHref && (
-                  <Button className="ml-auto shrink-0 shadow-sm" asChild>
+                  <Button
+                    className="mt-3 h-auto min-h-10 max-w-full justify-start whitespace-normal py-2 text-left shadow-sm"
+                    asChild
+                  >
                     <Link
                       href={availabilityHref}
                       onClick={confirmManagementNavigation}
                     >
-                      <CalendarDays className="mr-2 h-4 w-4" />
-                      Manage availability, pricing &amp; promotions
+                      <CalendarDays className="mr-2 h-4 w-4 shrink-0" />
+                      <span className="min-w-0 break-words">
+                        Manage availability, pricing &amp; promotions
+                      </span>
                     </Link>
                   </Button>
                 )}

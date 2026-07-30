@@ -5,8 +5,7 @@ import { getT, T, TWithValues, ti, tPlural } from "@/lib/i18n/t";
 import { LocalizedPrice } from "@/components/shared/localized-price";
 import { PropertyCardSpotlightMedia } from "@/components/public/property-card-spotlight-media";
 import { localizePlaceName } from "@/lib/i18n/place-name";
-import { Moon, UserRound } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Moon, Sparkles, UserRound } from "lucide-react";
 import { splitDescriptionPreviewTiers } from "@/lib/utils/description-preview";
 
 interface PropertyCardSpotlightProps {
@@ -120,6 +119,16 @@ export async function PropertyCardSpotlight({
             />
           </div>
         ))}
+        {promotionLabel ? (
+          <div className="pointer-events-none absolute left-3 top-3 z-10 flex max-w-[75%] items-center gap-1.5 rounded-full bg-gradient-to-r from-rose-600 to-orange-500 px-3 py-1.5 text-white shadow-lg shadow-black/20 ring-1 ring-white/25">
+            <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
+            <span
+              className={`truncate text-[0.75rem] font-semibold leading-none tracking-tight ${promotionLabel.translated ? "notranslate" : ""}`}
+            >
+              {promotionLabel.text}
+            </span>
+          </div>
+        ) : null}
       </div>
 
       <div className="flex flex-col justify-center gap-2 p-5 sm:p-6">
@@ -139,15 +148,6 @@ export async function PropertyCardSpotlight({
           {descriptionPreview.landing}
           {descriptionPreview.landingTruncated ? "…" : ""}
         </p>
-        {promotionLabel ? (
-          <Badge variant="secondary" className="w-fit rounded-md">
-            <span
-              className={promotionLabel.translated ? "notranslate" : undefined}
-            >
-              {promotionLabel.text}
-            </span>
-          </Badge>
-        ) : null}
         {pricingRule ? (
           <div className="mt-1 flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
             <span

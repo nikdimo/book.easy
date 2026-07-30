@@ -190,17 +190,19 @@ function InlineDateScope({
 }) {
   const input = range?.from ? calendarRangeToInput(range) : null;
   return (
-    <div className="flex items-center justify-between gap-3">
-      <p className="text-sm font-semibold">{label}</p>
+    <div className="flex min-w-0 items-start justify-between gap-3">
+      <p className="min-w-0 break-words text-sm font-semibold">{label}</p>
       <button
         type="button"
         onClick={onOpen}
-        className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary transition-colors hover:text-primary/75"
+        className="inline-flex max-w-[48%] shrink-0 items-start justify-end gap-1.5 text-right text-xs font-semibold whitespace-normal text-primary transition-colors hover:text-primary/75"
       >
-        <CalendarRange className="size-3.5" />
-        {input
-          ? `${rangeLabel(input.startDate, input.lastDate)} · Change dates`
-          : "Select dates"}
+        <CalendarRange className="mt-0.5 size-3.5 shrink-0" />
+        <span className="min-w-0 break-words">
+          {input
+            ? `${rangeLabel(input.startDate, input.lastDate)} · Change dates`
+            : "Select dates"}
+        </span>
       </button>
     </div>
   );
@@ -240,7 +242,7 @@ function RangePickerDialog({
         <div className="min-h-0 overflow-y-auto">
           <DateRangeCalendarStep
             active={open}
-            pagedOnDesktop
+            fitViewport
             selected={draft}
             onRangeChange={setDraft}
             dayVariant="availability"
@@ -617,27 +619,30 @@ function EditorDialog({
           if (!open && !pickerOpen) onClose();
         }}
       >
-        <DialogContent className="max-h-[90vh] gap-0 overflow-y-auto p-0 sm:max-w-[34rem]">
-          <DialogHeader>
-            <div className="flex items-start gap-3 border-b px-6 py-5 pr-12 text-left">
+        <DialogContent className="flex h-[calc(100dvh-1rem)] max-h-[calc(100dvh-1rem)] max-w-[calc(100%-1rem)] flex-col gap-0 overflow-hidden p-0 sm:h-auto sm:max-h-[90dvh] sm:max-w-[34rem]">
+          <DialogHeader className="shrink-0">
+            <div className="flex min-w-0 items-start gap-3 border-b px-6 py-5 pr-12 text-left">
               <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
                 <HeaderIcon className="size-5" />
               </span>
-              <div>
-                <DialogTitle>{editorMeta.title}</DialogTitle>
-                <DialogDescription className="mt-0.5">
+              <div className="min-w-0">
+                <DialogTitle className="break-words leading-snug">
+                  {editorMeta.title}
+                </DialogTitle>
+                <DialogDescription className="mt-0.5 break-words">
                   {editorMeta.description}
                 </DialogDescription>
               </div>
             </div>
           </DialogHeader>
-          <div className="border-b bg-muted/25 px-6 py-3 text-xs font-medium">
-            <span className="flex items-center gap-2">
-              <CalendarRange className="size-3.5 text-muted-foreground" />
-              {currentRangeText}
+          <div className="shrink-0 border-b bg-muted/25 px-6 py-3 text-xs font-medium">
+            <span className="flex min-w-0 items-start gap-2">
+              <CalendarRange className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+              <span className="min-w-0 break-words">{currentRangeText}</span>
             </span>
           </div>
 
+          <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
           {state.kind === "availability" ? (
             <div className="space-y-5 p-6">
               <InlineDateScope
@@ -819,7 +824,10 @@ function EditorDialog({
                     : "New default nightly price"}
                 </Label>
                 <div className="relative mt-2">
-                  <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-xl font-semibold text-muted-foreground">
+                  <span
+                    className="notranslate pointer-events-none absolute inset-y-0 left-4 flex items-center text-xl font-semibold text-muted-foreground"
+                    translate="no"
+                  >
                     €
                   </span>
                   <Input
@@ -865,8 +873,9 @@ function EditorDialog({
                     >
                       <span className="text-xs font-semibold">{label}</span>
                       <span
+                        translate="no"
                         className={cn(
-                          "mt-0.5 text-[0.65rem]",
+                          "notranslate mt-0.5 text-[0.65rem]",
                           selected ? "text-primary" : "text-muted-foreground",
                         )}
                       >
@@ -938,24 +947,39 @@ function EditorDialog({
                 </p>
               </div>
               <div className="sticky bottom-0 z-10 -mx-6 -mb-6 border-t bg-background/95 px-6 py-4 shadow-[0_-8px_20px_rgba(0,0,0,0.04)] backdrop-blur">
-                <div className="mb-3 flex items-center justify-between rounded-lg bg-muted/40 px-3 py-2 text-xs">
-                  <span className="text-muted-foreground">
+                <div className="mb-3 grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 text-xs">
+                  <span className="min-w-0 break-words text-muted-foreground">
                     {isDateScoped ? "Default" : "Current default"}{" "}
-                    <strong className="text-foreground">
+                    <strong
+                      className="notranslate whitespace-nowrap text-foreground"
+                      translate="no"
+                    >
                       €{baseNightlyRate}
                     </strong>
                   </span>
                   <ArrowRight className="size-3.5 text-muted-foreground" />
-                  <span className="text-primary">
+                  <span className="min-w-0 break-words text-primary">
                     {isDateScoped ? "Custom price" : "New default"}{" "}
-                    <strong>€{price || "0"}</strong>
+                    <strong className="notranslate whitespace-nowrap" translate="no">
+                      €{price || "0"}
+                    </strong>
                   </span>
                 </div>
-                <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={onClose}>
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-auto min-h-8 whitespace-normal"
+                    onClick={onClose}
+                  >
                     Cancel
                   </Button>
-                  <Button type="button" disabled={pending} onClick={savePrice}>
+                  <Button
+                    type="button"
+                    className="h-auto min-h-8 whitespace-normal"
+                    disabled={pending}
+                    onClick={savePrice}
+                  >
                     {isDateScoped
                       ? "Save custom price"
                       : "Save default pricing"}
@@ -1080,6 +1104,7 @@ function EditorDialog({
               </div>
             </div>
           ) : null}
+          </div>
         </DialogContent>
       </Dialog>
       {pickerOpen ? (
@@ -1332,7 +1357,7 @@ export function CalendarWorkspace({
       >
         <DateRangeCalendarStep
           active
-          pagedOnDesktop
+          fitViewport
           pagedDesktopMonthCount={2}
           selected={range}
           onRangeChange={setRange}
