@@ -8,7 +8,7 @@ import {
   unblockDateRange,
   upsertListingDatePriceRange,
 } from "@/lib/actions/availability.actions";
-import { unpublishListing } from "@/lib/actions/listing.actions";
+import { submitForReview, unpublishListing } from "@/lib/actions/listing.actions";
 import { saveListingPricing } from "@/lib/actions/pricing.actions";
 import {
   disableListingPromotion,
@@ -122,4 +122,13 @@ export async function hideListingFromCalendar(listingId: string) {
   return result?.error
     ? { error: result.error }
     : { success: "Listing hidden from the site." };
+}
+
+/** Counterpart to hideListingFromCalendar — puts a hidden/draft listing back on the
+ * site, so the visibility switch in the calendar editor works in both directions. */
+export async function publishListingFromCalendar(listingId: string) {
+  const result = await submitForReview(listingId);
+  return result?.error
+    ? { error: result.error }
+    : { success: "Listing is live on the site." };
 }

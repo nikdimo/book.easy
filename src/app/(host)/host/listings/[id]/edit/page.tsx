@@ -54,7 +54,7 @@ export default async function EditListingPage({ params }: EditListingPageProps) 
   const statusConfig = LISTING_STATUSES.find((s) => s.value === listing.status);
 
   return (
-    <div className="host-split-view xl:h-full xl:overflow-hidden">
+    <div className="host-split-view h-full min-h-0 overflow-hidden">
       <ListingForm
         amenities={amenities}
         propertyTypes={propertyTypes}

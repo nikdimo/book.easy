@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { translatedClass, useI18n } from "@/lib/i18n/client";
 import {
   Popover,
   PopoverContent,
@@ -51,6 +52,7 @@ import {
   blockCalendarRange,
   clearCalendarDatePrice,
   hideListingFromCalendar,
+  publishListingFromCalendar,
   openCalendarRange,
   removeCalendarPromotion,
   saveCalendarDefaultPricing,
@@ -414,6 +416,8 @@ function EditorDialog({
   onClose: () => void;
 }) {
   const router = useRouter();
+  const i18n = useI18n();
+  const resolveReviewed = i18n.resolve;
   const [pending, startTransition] = useTransition();
   const [range, setRange] = useState<DateRange | undefined>(
     state.range === null
@@ -491,8 +495,21 @@ function EditorDialog({
 
   function saveAvailability() {
     if (!selectedInput) {
+      const isPublished = listingStatus === "APPROVED";
       if (visibility === "visible") {
-        toast.success("Listing remains visible.");
+        if (isPublished) {
+          toast.success("Listing remains visible.");
+          onClose();
+          return;
+        }
+        report(
+          () => publishListingFromCalendar(listingId),
+          "Listing is live on the site.",
+        );
+        return;
+      }
+      if (!isPublished) {
+        toast.success("Listing is already hidden.");
         onClose();
         return;
       }
@@ -610,6 +627,13 @@ function EditorDialog({
   const guestRate = roundPromotion
     ? Math.ceil(rawGuestRate / 5) * 5
     : Number(rawGuestRate.toFixed(2));
+  const availabilityCta = selectedInput
+    ? availability === "blocked"
+      ? resolveReviewed("mobile.calendar.block_selected", "Block selected range")
+      : resolveReviewed("mobile.calendar.make_available", "Make available")
+    : visibility === "hidden"
+      ? resolveReviewed("mobile.listings.hide_site", "Hide from site")
+      : resolveReviewed("mobile.calendar.make_available", "Make available");
 
   return (
     <>
@@ -795,13 +819,9 @@ function EditorDialog({
                   disabled={pending}
                   onClick={saveAvailability}
                 >
-                  {selectedInput
-                    ? availability === "blocked"
-                      ? "Block dates"
-                      : "Make available"
-                    : visibility === "hidden"
-                      ? "Hide from site"
-                      : "Keep visible"}
+                  <span className={translatedClass(availabilityCta)}>
+                    {availabilityCta.text}
+                  </span>
                 </Button>
               </div>
             </div>

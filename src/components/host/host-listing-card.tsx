@@ -12,7 +12,10 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { DeleteListingButton } from "@/components/host/delete-listing-button";
-import { UnpublishListingButton } from "@/components/host/unpublish-listing-button";
+import {
+  ListingVisibilityToggle,
+  isHostVisibilityToggleable,
+} from "@/components/host/listing-visibility-toggle";
 import { formatPrice } from "@/lib/utils/format";
 import { LISTING_STATUSES } from "@/lib/constants";
 
@@ -32,6 +35,8 @@ export function HostListingCard({ listing }: HostListingCardProps) {
   const router = useRouter();
   const statusConfig = LISTING_STATUSES.find((s) => s.value === listing.status);
   const editHref = `/host/listings/${listing.id}/edit`;
+  const statusLabel = statusConfig?.label || listing.status;
+  const canToggleVisibility = isHostVisibilityToggleable(listing.status);
 
   function stop(e: React.MouseEvent) {
     e.stopPropagation();
@@ -54,7 +59,9 @@ export function HostListingCard({ listing }: HostListingCardProps) {
             <Badge
               variant={listing.status === "APPROVED" ? "default" : "secondary"}
             >
-              {statusConfig?.label || listing.status}
+              <span className="notranslate" translate="no">
+                {statusLabel}
+              </span>
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground">
@@ -71,7 +78,11 @@ export function HostListingCard({ listing }: HostListingCardProps) {
           <Tooltip>
             <TooltipTrigger asChild>
               <Button variant="outline" size="sm" asChild>
-                <Link href={editHref}>Edit</Link>
+                <Link href={editHref}>
+                  <span className="notranslate" translate="no">
+                    Edit
+                  </span>
+                </Link>
               </Button>
             </TooltipTrigger>
             <TooltipContent>Edit listing</TooltipContent>
@@ -100,17 +111,23 @@ export function HostListingCard({ listing }: HostListingCardProps) {
                     aria-label={`Preview ${listing.title}`}
                   >
                     <Eye className="h-3 w-3" />
+                    <span className="notranslate" translate="no">
+                      Preview
+                    </span>
                   </Link>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Preview</TooltipContent>
+              <TooltipContent className="max-w-64">
+                Open the public page for this listing, exactly as guests see it.
+              </TooltipContent>
             </Tooltip>
           )}
 
-          {listing.status === "APPROVED" && (
-            <UnpublishListingButton
+          {canToggleVisibility && (
+            <ListingVisibilityToggle
               listingId={listing.id}
               title={listing.title}
+              status={listing.status}
             />
           )}
 

@@ -821,7 +821,9 @@ export function ListingForm({
 
   function scrollToEditSection(sectionId: string) {
     const container = editorScrollRef.current;
-    const section = document.getElementById(`edit-section-${sectionId}`);
+    const section = container?.querySelector<HTMLElement>(
+      `#edit-section-${sectionId}`,
+    );
     if (!container || !section) return;
     const containerTop = container.getBoundingClientRect().top;
     const sectionTop = section.getBoundingClientRect().top;
@@ -1163,7 +1165,7 @@ export function ListingForm({
             <div
               ref={editorScrollRef}
               onScroll={isEditing ? updateActiveEditSection : undefined}
-            className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-5 py-4 [scrollbar-gutter:stable] md:px-8"
+            className="min-h-0 flex-1 touch-pan-y space-y-4 overflow-y-auto overscroll-contain px-5 py-4 [-webkit-overflow-scrolling:touch] [scrollbar-gutter:stable] md:px-8"
           >
           {isEditing && state?.error && (
             <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{state.error}</div>
