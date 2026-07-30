@@ -4,6 +4,7 @@ import {
   listUserConversations,
 } from "@/lib/services/chat.service";
 import { mobileJson, mobileOptions, requireMobileUser } from "@/lib/mobile-api";
+import { conversationStartSchema } from "@/lib/validations/communication.schema";
 
 export async function OPTIONS(request: Request) {
   return mobileOptions(request);
@@ -39,15 +40,21 @@ export async function POST(request: Request) {
   const access = await requireMobileUser(request);
   if ("response" in access) return access.response;
 
-  let input: { bookingId?: string; listingId?: string };
+  let raw: unknown;
   try {
-    input = await request.json();
+    raw = await request.json();
   } catch {
     return mobileJson(request, { error: "Invalid JSON body" }, { status: 400 });
   }
-  if (!input.bookingId && !input.listingId) {
-    return mobileJson(request, { error: "A booking or listing is required" }, { status: 400 });
+  const parsed = conversationStartSchema.safeParse(raw);
+  if (!parsed.success) {
+    return mobileJson(
+      request,
+      { error: parsed.error.issues[0]?.message ?? "Invalid request" },
+      { status: 400 }
+    );
   }
+  const input = parsed.data;
 
   try {
     const conversation = input.bookingId

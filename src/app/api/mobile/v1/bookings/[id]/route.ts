@@ -31,6 +31,13 @@ export async function PATCH(
     if (input.action === "confirm") {
       await confirmBooking(id, access.user.id);
     } else if (input.action === "reject") {
+      if (!input.reason?.trim()) {
+        return mobileJson(
+          request,
+          { error: "Decline reason is required" },
+          { status: 400 }
+        );
+      }
       await rejectBooking(id, access.user.id, input.reason);
     } else if (input.action === "cancel") {
       if (!input.reason?.trim()) {

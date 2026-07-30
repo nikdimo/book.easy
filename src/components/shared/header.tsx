@@ -40,6 +40,11 @@ import type { PlaceOption } from "@/lib/utils/place";
 import type { Resolved } from "@/lib/i18n/t";
 import { BrandLogo } from "@/components/shared/brand-logo";
 import { Tx } from "@/lib/i18n/client";
+import { NotificationBell } from "@/components/communication/notification-bell";
+import {
+  CountBadge,
+  useAttentionSummary,
+} from "@/components/communication/attention-indicator";
 
 export interface HeaderNavLabels {
   switchToHosting: Resolved;
@@ -99,6 +104,7 @@ export function Header({
   const router = useRouter();
   const { data: session, update } = useSession();
   const user = session?.user;
+  const { summary } = useAttentionSummary(Boolean(user));
   const initials = user?.name
     ?.split(" ")
     .map((n) => n[0])
@@ -163,6 +169,7 @@ export function Header({
             languages={languages}
             currentLocale={currentLocale}
           />
+          {user ? <NotificationBell enabled /> : null}
           {user?.isHost ? (
             <Button
               variant="ghost"
@@ -179,6 +186,10 @@ export function Header({
                 >
                   {navLabels.switchToHosting.text}
                 </span>
+                <CountBadge
+                  value={summary?.host?.total}
+                  label="hosting items needing attention"
+                />
               </Link>
             </Button>
           ) : (
@@ -272,6 +283,11 @@ export function Header({
                   <Link href="/account/messages">
                     <MessageCircle className="mr-2 h-4 w-4" />
                     <Tx k="nav.messages" source="Messages" />
+                    <CountBadge
+                      value={summary?.host?.unreadThreads}
+                      label="unread conversations"
+                      className="ml-auto"
+                    />
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
@@ -307,6 +323,11 @@ export function Header({
                         >
                           {navLabels.hostingDashboard.text}
                         </span>
+                        <CountBadge
+                          value={summary?.host?.total}
+                          label="hosting items needing attention"
+                          className="ml-auto"
+                        />
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>

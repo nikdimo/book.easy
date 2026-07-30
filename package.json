@@ -25,6 +25,7 @@
     "amenities:import": "node --conditions=react-server --import tsx scripts/import-amenity-catalog.ts",
     "popularity:recompute": "node --conditions=react-server --import tsx scripts/recompute-popularity.ts",
     "reviews:reminders": "node --conditions=react-server --import tsx scripts/send-review-reminders.ts",
+    "bookings:process": "node --conditions=react-server --import tsx scripts/process-booking-requests.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "mobile:web": "npm --prefix mobile run web -- --port 8081",

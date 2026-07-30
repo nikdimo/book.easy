@@ -56,6 +56,23 @@ export interface UserDataExport {
     marketing: boolean;
     consentedAt: Date;
   }>;
+  communicationPreferences?: {
+    messageEmail: boolean;
+    reviewEmail: boolean;
+    operationalPush: boolean;
+  };
+  marketingConsentHistory: Array<{
+    channel: string;
+    audience: string;
+    status: string;
+    statementVersion?: string;
+    statementText?: string;
+    events: Array<{
+      action: string;
+      source: string;
+      occurredAt: Date;
+    }>;
+  }>;
   notifications: Array<{
     type: string;
     title: string;
@@ -114,11 +131,26 @@ export async function exportUserData(userId: string): Promise<UserDataExport> {
   });
 
   // Get consent history
-  const consentHistory = await db.userConsent.findMany({
-    where: { userId },
-    orderBy: { consentedAt: 'desc' },
-    take: 50,
-  });
+  const [consentHistory, communicationPreferences, marketingContact] =
+    await Promise.all([
+      db.userConsent.findMany({
+        where: { userId },
+        orderBy: { consentedAt: 'desc' },
+        take: 50,
+      }),
+      db.communicationPreference.findUnique({ where: { userId } }),
+      db.marketingContact.findUnique({
+        where: { userId },
+        include: {
+          preferences: {
+            include: {
+              statement: true,
+              events: { orderBy: { occurredAt: 'asc' } },
+            },
+          },
+        },
+      }),
+    ]);
 
   return {
     account: {
@@ -180,6 +212,27 @@ export async function exportUserData(userId: string): Promise<UserDataExport> {
       marketing: consent.marketing,
       consentedAt: consent.consentedAt,
     })),
+    communicationPreferences: communicationPreferences
+      ? {
+          messageEmail: communicationPreferences.messageEmail,
+          reviewEmail: communicationPreferences.reviewEmail,
+          operationalPush: communicationPreferences.operationalPush,
+        }
+      : undefined,
+    marketingConsentHistory: (marketingContact?.preferences || []).map(
+      (preference) => ({
+        channel: preference.channel,
+        audience: preference.audience,
+        status: preference.status,
+        statementVersion: preference.statement?.version,
+        statementText: preference.statement?.text,
+        events: preference.events.map((event) => ({
+          action: event.action,
+          source: event.source,
+          occurredAt: event.occurredAt,
+        })),
+      })
+    ),
     notifications: user.notifications.map((notification) => ({
       type: notification.type,
       title: notification.title,
@@ -212,6 +265,61 @@ export async function deleteUserAccount(userId: string): Promise<{
   try {
     // Start a transaction to ensure atomicity
     await db.$transaction(async (tx) => {
+      // Preserve a minimal suppression record after deletion so the address cannot
+      // accidentally be re-imported into marketing. Consent evidence remains detached
+      // from the deleted account for the applicable limitation period.
+      const marketingContact = await tx.marketingContact.findUnique({
+        where: { userId },
+        include: {
+          preferences: { select: { id: true, statementId: true } },
+        },
+      });
+      if (marketingContact) {
+        const now = new Date();
+        await Promise.all(
+          ['EMAIL', 'PUSH'].map((channel) =>
+            tx.marketingSuppression.upsert({
+              where: {
+                contactId_channel: {
+                  contactId: marketingContact.id,
+                  channel: channel as 'EMAIL' | 'PUSH',
+                },
+              },
+              create: {
+                contactId: marketingContact.id,
+                channel: channel as 'EMAIL' | 'PUSH',
+                reason: 'PRIVACY_OBJECTION',
+                source: 'account-deletion',
+              },
+              update: {
+                reason: 'PRIVACY_OBJECTION',
+                source: 'account-deletion',
+                createdAt: now,
+              },
+            })
+          )
+        );
+        await tx.marketingPreference.updateMany({
+          where: { contactId: marketingContact.id },
+          data: { status: 'SUPPRESSED', withdrawnAt: now },
+        });
+        if (marketingContact.preferences.length) {
+          await tx.marketingConsentEvent.createMany({
+            data: marketingContact.preferences.map((preference) => ({
+              preferenceId: preference.id,
+              statementId: preference.statementId,
+              action: 'SUPPRESSED',
+              source: 'account-deletion',
+            })),
+          });
+        }
+        await tx.marketingContact.update({
+          where: { id: marketingContact.id },
+          data: { userId: null },
+        });
+        anonymizedRecords['marketingConsent'] = marketingContact.preferences.length;
+      }
+
       // 1. Anonymize audit logs (keep for compliance, remove user ID linkage)
       const auditLogsToUpdate = await tx.auditLog.findMany({
         where: { userId },

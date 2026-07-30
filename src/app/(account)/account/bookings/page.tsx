@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Calendar, MapPin } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { getGuestBookings } from "@/lib/services/booking.service";
@@ -44,6 +45,17 @@ export default async function MyBookingsPage() {
             <Link key={booking.id} href={`/account/bookings/${booking.id}`}>
               <Card className="hover:shadow-md transition-shadow">
                 <CardContent className="flex gap-4 p-4">
+                  {booking.listing.images[0]?.url ? (
+                    <span className="relative h-24 w-28 shrink-0 overflow-hidden rounded-lg sm:h-28 sm:w-40">
+                      <Image
+                        src={booking.listing.images[0].url}
+                        alt={booking.listing.images[0].alt || booking.listing.title}
+                        fill
+                        sizes="(max-width: 640px) 112px, 160px"
+                        className="object-cover"
+                      />
+                    </span>
+                  ) : null}
                   <div className="flex-1">
                     <div className="flex flex-wrap items-start justify-between gap-2 mb-1">
                       <h3 className="min-w-0 flex-1 font-semibold">{booking.listing.title}</h3>
@@ -51,6 +63,9 @@ export default async function MyBookingsPage() {
                         {statusConfig?.label || booking.status}
                       </Badge>
                     </div>
+                    <p className="text-xs font-medium text-muted-foreground">
+                      {booking.reference}
+                    </p>
                     <p className="text-sm text-muted-foreground flex items-center gap-1">
                       <MapPin className="h-3 w-3" />
                       {booking.listing.property.city}

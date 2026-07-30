@@ -14,6 +14,7 @@ import {
   communicationReplyToAddress,
   communicationSupportEmail,
 } from "@/lib/communication-brand.server";
+import { renderBookingEmail } from "@/lib/email/booking-template";
 
 export interface SendEmailParams {
   to: string;
@@ -21,6 +22,7 @@ export interface SendEmailParams {
   text: string;
   html?: string;
   sender?: "customer" | "support";
+  headers?: Record<string, string>;
 }
 
 function resolveProvider(): "console" | "smtp" {
@@ -41,6 +43,7 @@ export async function sendTransactionalEmail(params: SendEmailParams): Promise<v
       to: params.to,
       subject: params.subject,
       preview: params.text.slice(0, 200),
+      headers: params.headers,
     });
     return;
   }
@@ -53,6 +56,7 @@ export async function sendTransactionalEmail(params: SendEmailParams): Promise<v
     subject: params.subject,
     text: params.text,
     html: params.html,
+    headers: params.headers,
   });
 }
 
@@ -76,7 +80,11 @@ export async function notifyConversationMessage(input: {
     }),
     db.user.findMany({
       where: { id: { in: input.recipientIds }, isActive: true },
-      select: { name: true, email: true },
+      select: {
+        name: true,
+        email: true,
+        communicationPreference: { select: { messageEmail: true } },
+      },
     }),
   ]);
   if (!conversation || !sender) return;
@@ -85,8 +93,10 @@ export async function notifyConversationMessage(input: {
     ? COMMUNICATION_BRAND.supportName
     : sender.name;
   const link = communicationAppUrl(`/messages/${input.conversationId}`);
-  await Promise.allSettled(
-    recipients.map((recipient) =>
+  await Promise.all(
+    recipients
+      .filter((recipient) => recipient.communicationPreference?.messageEmail !== false)
+      .map((recipient) =>
       sendTransactionalEmail({
         to: recipient.email,
         sender: input.supportSender ? "support" : "customer",
@@ -181,28 +191,134 @@ export async function notifySafetyCaseUpdated(input: {
   });
 }
 
-export async function notifyHostNewBookingRequest(bookingId: string): Promise<void> {
+async function loadBookingEmailContext(bookingId: string) {
   const { db } = await import("@/lib/db");
-  const booking = await db.booking.findUnique({
+  return db.booking.findUnique({
     where: { id: bookingId },
     include: {
       guest: { select: { name: true, email: true } },
       listing: {
         select: {
           title: true,
+          slug: true,
+          images: {
+            where: { isPrimary: true },
+            orderBy: { displayOrder: "asc" },
+            take: 1,
+            select: { url: true },
+          },
+          property: { select: { city: true, country: true } },
           host: { select: { email: true, name: true } },
         },
       },
     },
   });
+}
+
+type BookingEmailContext = NonNullable<
+  Awaited<ReturnType<typeof loadBookingEmailContext>>
+>;
+
+function bookingEmailLinks(booking: BookingEmailContext) {
+  return {
+    guest: communicationAppUrl(`/account/bookings/${booking.id}`),
+    host: communicationAppUrl(`/host/bookings/${booking.id}`),
+    listing: communicationAppUrl(`/properties/${booking.listing.slug}`),
+  };
+}
+
+function bookingEmailDetails(booking: BookingEmailContext) {
+  return [
+    { label: "Check-in", value: formatDate(booking.checkIn) },
+    { label: "Check-out", value: formatDate(booking.checkOut) },
+    {
+      label: "Guests",
+      value: `${booking.guestCount} guest${booking.guestCount === 1 ? "" : "s"}`,
+    },
+    {
+      label: "Total",
+      value: formatPrice(Number(booking.totalPrice), booking.currency),
+    },
+  ];
+}
+
+function bookingLocation(booking: BookingEmailContext) {
+  return [booking.listing.property.city, booking.listing.property.country]
+    .filter(Boolean)
+    .join(", ");
+}
+
+function bookingDeadline(booking: BookingEmailContext) {
+  return new Intl.DateTimeFormat("en", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZoneName: "short",
+    timeZone: process.env.BOOKING_TIME_ZONE || "Europe/Skopje",
+  }).format(booking.responseDueAt);
+}
+
+export async function notifyGuestBookingRequestReceived(bookingId: string): Promise<void> {
+  const booking = await loadBookingEmailContext(bookingId);
+  if (!booking) return;
+  const links = bookingEmailLinks(booking);
+  const deadline = bookingDeadline(booking);
+
+  await sendTransactionalEmail({
+    to: booking.guest.email,
+    subject: `Request received · ${booking.reference} · ${booking.listing.title}`,
+    text: [
+      `Hi ${booking.guest.name},`,
+      "",
+      `Your request for "${booking.listing.title}" has been sent to ${booking.listing.host.name}.`,
+      `This booking is not confirmed yet. The host has until ${deadline} to respond.`,
+      `No payment has been collected for this request.`,
+      "",
+      `Reference: ${booking.reference}`,
+      `Check-in: ${formatDate(booking.checkIn)}`,
+      `Check-out: ${formatDate(booking.checkOut)}`,
+      `Guests: ${booking.guestCount}`,
+      `Total: ${formatPrice(Number(booking.totalPrice), booking.currency)}`,
+      "",
+      `View request: ${links.guest}`,
+      `View listing: ${links.listing}`,
+      "",
+      `— ${COMMUNICATION_BRAND.name}`,
+    ].join("\n"),
+    html: renderBookingEmail({
+      preheader: `Your request is awaiting host approval until ${deadline}.`,
+      eyebrow: "Request sent · Awaiting host approval",
+      headline: `Your request has been sent to ${booking.listing.host.name}`,
+      intro: "This is a booking request, not a confirmed reservation yet.",
+      reference: booking.reference,
+      listingTitle: booking.listing.title,
+      listingHref: links.listing,
+      imageUrl: booking.listing.images[0]?.url,
+      location: bookingLocation(booking),
+      details: bookingEmailDetails(booking),
+      callout: `The host has until ${deadline} to accept or decline. No payment has been collected for this request.`,
+      buttons: [
+        { label: "View request", href: links.guest },
+        { label: "View listing", href: links.listing, secondary: true },
+      ],
+    }),
+  });
+}
+
+export async function notifyHostNewBookingRequest(bookingId: string): Promise<void> {
+  const booking = await loadBookingEmailContext(bookingId);
 
   if (!booking) return;
 
+  const links = bookingEmailLinks(booking);
+  const deadline = bookingDeadline(booking);
   const hostEmail = booking.listing.host.email;
   const lines = [
     `Hello ${booking.listing.host.name},`,
     ``,
-    `${booking.guest.name} (${booking.guest.email}) requested a booking for "${booking.listing.title}".`,
+    `${booking.guest.name} requested a booking for "${booking.listing.title}".`,
     `Check your host dashboard to confirm or reject.`,
     ``,
     `— ${COMMUNICATION_BRAND.name}`,
@@ -210,21 +326,70 @@ export async function notifyHostNewBookingRequest(bookingId: string): Promise<vo
 
   await sendTransactionalEmail({
     to: hostEmail,
-    subject: `[${COMMUNICATION_BRAND.name}] New booking request: ${booking.listing.title}`,
+    subject: `Action required · ${booking.reference} · ${formatDate(booking.checkIn)}–${formatDate(booking.checkOut)}`,
     text: lines.join("\n"),
+    html: renderBookingEmail({
+      preheader: `${booking.guest.name} requested ${formatDate(booking.checkIn)}–${formatDate(booking.checkOut)}. Respond by ${deadline}.`,
+      eyebrow: "New booking request · Action required",
+      headline: `${booking.guest.name} wants to stay at your place`,
+      intro: booking.guestNote
+        ? `Guest message: “${booking.guestNote}”`
+        : "Review the stay details and respond before the request expires.",
+      reference: booking.reference,
+      listingTitle: booking.listing.title,
+      listingHref: links.listing,
+      imageUrl: booking.listing.images[0]?.url,
+      location: bookingLocation(booking),
+      details: bookingEmailDetails(booking),
+      callout: `Accept or decline by ${deadline}. Opening the request does not change its status.`,
+      buttons: [
+        { label: "Review request", href: links.host },
+        { label: "View listing", href: links.listing, secondary: true },
+      ],
+    }),
+  });
+}
+
+export async function notifyHostBookingRequestReminder(bookingId: string): Promise<void> {
+  const booking = await loadBookingEmailContext(bookingId);
+  if (!booking || booking.status !== "PENDING") return;
+  const links = bookingEmailLinks(booking);
+  const deadline = bookingDeadline(booking);
+
+  await sendTransactionalEmail({
+    to: booking.listing.host.email,
+    subject: `Reminder · ${booking.reference} · Booking request awaiting response`,
+    text: [
+      `Hello ${booking.listing.host.name},`,
+      "",
+      `${booking.guest.name}'s booking request is still waiting for your response.`,
+      `Respond by ${deadline}.`,
+      `Reference: ${booking.reference}`,
+      `Review request: ${links.host}`,
+      "",
+      `— ${COMMUNICATION_BRAND.name}`,
+    ].join("\n"),
+    html: renderBookingEmail({
+      preheader: `${booking.reference} is still waiting for your response.`,
+      eyebrow: "Reminder · Response required",
+      headline: "A booking request is waiting",
+      intro: `${booking.guest.name} is still waiting for your decision.`,
+      reference: booking.reference,
+      listingTitle: booking.listing.title,
+      listingHref: links.listing,
+      imageUrl: booking.listing.images[0]?.url,
+      location: bookingLocation(booking),
+      details: bookingEmailDetails(booking),
+      callout: `Respond by ${deadline} or the request will expire automatically.`,
+      buttons: [{ label: "Review request", href: links.host }],
+    }),
   });
 }
 
 export async function notifyGuestBookingConfirmed(bookingId: string): Promise<void> {
-  const { db } = await import("@/lib/db");
-  const booking = await db.booking.findUnique({
-    where: { id: bookingId },
-    include: {
-      guest: { select: { name: true, email: true } },
-      listing: { select: { title: true } },
-    },
-  });
+  const booking = await loadBookingEmailContext(bookingId);
   if (!booking) return;
+  const links = bookingEmailLinks(booking);
 
   const lines = [
     `Hi ${booking.guest.name},`,
@@ -239,21 +404,32 @@ export async function notifyGuestBookingConfirmed(bookingId: string): Promise<vo
 
   await sendTransactionalEmail({
     to: booking.guest.email,
-    subject: `[${COMMUNICATION_BRAND.name}] Booking confirmed: ${booking.listing.title}`,
+    subject: `Confirmed · ${booking.reference} · ${booking.listing.title}`,
     text: lines.join("\n"),
+    html: renderBookingEmail({
+      preheader: `Your stay at ${booking.listing.title} is confirmed.`,
+      eyebrow: "Booking confirmed",
+      headline: "You’re all set",
+      intro: `${booking.listing.host.name} accepted your booking request.`,
+      reference: booking.reference,
+      listingTitle: booking.listing.title,
+      listingHref: links.listing,
+      imageUrl: booking.listing.images[0]?.url,
+      location: bookingLocation(booking),
+      details: bookingEmailDetails(booking),
+      callout: "Keep your messages and any payment arrangements inside Linger Homes for support and security.",
+      buttons: [
+        { label: "View booking", href: links.guest },
+        { label: "View listing", href: links.listing, secondary: true },
+      ],
+    }),
   });
 }
 
 export async function notifyGuestBookingRejected(bookingId: string): Promise<void> {
-  const { db } = await import("@/lib/db");
-  const booking = await db.booking.findUnique({
-    where: { id: bookingId },
-    include: {
-      guest: { select: { name: true, email: true } },
-      listing: { select: { title: true } },
-    },
-  });
+  const booking = await loadBookingEmailContext(bookingId);
   if (!booking) return;
+  const links = bookingEmailLinks(booking);
 
   const lines = [
     `Hi ${booking.guest.name},`,
@@ -261,29 +437,75 @@ export async function notifyGuestBookingRejected(bookingId: string): Promise<voi
     `Unfortunately your booking request for "${booking.listing.title}" (${formatDate(booking.checkIn)} – ${formatDate(booking.checkOut)}) was declined by the host.`,
     ...(booking.cancellationReason ? [``, `Reason: ${booking.cancellationReason}`] : []),
     ``,
-    `You won't be charged. Feel free to look for other stays.`,
+    `No payment was collected for this request.`,
     ``,
     `— ${COMMUNICATION_BRAND.name}`,
   ];
 
   await sendTransactionalEmail({
     to: booking.guest.email,
-    subject: `[${COMMUNICATION_BRAND.name}] Booking request declined: ${booking.listing.title}`,
+    subject: `Request update · ${booking.reference} · ${booking.listing.title}`,
     text: lines.join("\n"),
+    html: renderBookingEmail({
+      preheader: `Your request for ${booking.listing.title} was not accepted.`,
+      eyebrow: "Booking request declined",
+      headline: "This stay wasn’t confirmed",
+      intro: booking.cancellationReason
+        ? `Host’s reason: ${booking.cancellationReason}`
+        : "The host was unable to accept this request.",
+      reference: booking.reference,
+      listingTitle: booking.listing.title,
+      listingHref: links.listing,
+      imageUrl: booking.listing.images[0]?.url,
+      location: bookingLocation(booking),
+      details: bookingEmailDetails(booking),
+      callout: "No payment was collected. Your dates are free to use for another booking.",
+      buttons: [{ label: "View request", href: links.guest }],
+    }),
   });
 }
 
 /** Booking cancelled by the host or an admin — notify the guest. */
-export async function notifyGuestBookingCancelled(bookingId: string): Promise<void> {
-  const { db } = await import("@/lib/db");
-  const booking = await db.booking.findUnique({
-    where: { id: bookingId },
-    include: {
-      guest: { select: { name: true, email: true } },
-      listing: { select: { title: true } },
-    },
-  });
+export async function notifyGuestBookingExpired(bookingId: string): Promise<void> {
+  const booking = await loadBookingEmailContext(bookingId);
   if (!booking) return;
+  const links = bookingEmailLinks(booking);
+
+  await sendTransactionalEmail({
+    to: booking.guest.email,
+    subject: `Request expired · ${booking.reference} · ${booking.listing.title}`,
+    text: [
+      `Hi ${booking.guest.name},`,
+      "",
+      `The host did not respond in time to your request for "${booking.listing.title}".`,
+      `Reference: ${booking.reference}`,
+      `No payment was collected for this request.`,
+      "",
+      `View request: ${links.guest}`,
+      "",
+      `— ${COMMUNICATION_BRAND.name}`,
+    ].join("\n"),
+    html: renderBookingEmail({
+      preheader: `The host did not respond to ${booking.reference} in time.`,
+      eyebrow: "Booking request expired",
+      headline: "The host didn’t respond in time",
+      intro: "This request expired and did not become a confirmed reservation.",
+      reference: booking.reference,
+      listingTitle: booking.listing.title,
+      listingHref: links.listing,
+      imageUrl: booking.listing.images[0]?.url,
+      location: bookingLocation(booking),
+      details: bookingEmailDetails(booking),
+      callout: "No payment was collected. Your dates are free to use for another booking.",
+      buttons: [{ label: "View request", href: links.guest }],
+    }),
+  });
+}
+
+export async function notifyGuestBookingCancelled(bookingId: string): Promise<void> {
+  const booking = await loadBookingEmailContext(bookingId);
+  if (!booking) return;
+  const links = bookingEmailLinks(booking);
 
   const lines = [
     `Hi ${booking.guest.name},`,
@@ -296,27 +518,32 @@ export async function notifyGuestBookingCancelled(bookingId: string): Promise<vo
 
   await sendTransactionalEmail({
     to: booking.guest.email,
-    subject: `[${COMMUNICATION_BRAND.name}] Booking cancelled: ${booking.listing.title}`,
+    subject: `Cancelled · ${booking.reference} · ${booking.listing.title}`,
     text: lines.join("\n"),
+    html: renderBookingEmail({
+      preheader: `Booking ${booking.reference} has been cancelled.`,
+      eyebrow: "Booking cancelled",
+      headline: "This booking is no longer active",
+      intro: booking.cancellationReason
+        ? `Reason: ${booking.cancellationReason}`
+        : "The booking has been cancelled.",
+      reference: booking.reference,
+      listingTitle: booking.listing.title,
+      listingHref: links.listing,
+      imageUrl: booking.listing.images[0]?.url,
+      location: bookingLocation(booking),
+      details: bookingEmailDetails(booking),
+      callout: "View the booking page for the current status and contact support if you need help.",
+      buttons: [{ label: "View booking", href: links.guest }],
+    }),
   });
 }
 
 /** Booking cancelled by the guest — notify the host so they know the dates are free again. */
 export async function notifyHostBookingCancelledByGuest(bookingId: string): Promise<void> {
-  const { db } = await import("@/lib/db");
-  const booking = await db.booking.findUnique({
-    where: { id: bookingId },
-    include: {
-      guest: { select: { name: true } },
-      listing: {
-        select: {
-          title: true,
-          host: { select: { email: true, name: true } },
-        },
-      },
-    },
-  });
+  const booking = await loadBookingEmailContext(bookingId);
   if (!booking) return;
+  const links = bookingEmailLinks(booking);
 
   const lines = [
     `Hello ${booking.listing.host.name},`,
@@ -328,8 +555,22 @@ export async function notifyHostBookingCancelledByGuest(bookingId: string): Prom
 
   await sendTransactionalEmail({
     to: booking.listing.host.email,
-    subject: `[${COMMUNICATION_BRAND.name}] Booking cancelled: ${booking.listing.title}`,
+    subject: `Guest cancelled · ${booking.reference} · ${booking.listing.title}`,
     text: lines.join("\n"),
+    html: renderBookingEmail({
+      preheader: `${booking.guest.name} cancelled booking ${booking.reference}.`,
+      eyebrow: "Booking cancelled by guest",
+      headline: `${booking.guest.name} cancelled their booking`,
+      intro: "The reserved dates have been released in your calendar.",
+      reference: booking.reference,
+      listingTitle: booking.listing.title,
+      listingHref: links.listing,
+      imageUrl: booking.listing.images[0]?.url,
+      location: bookingLocation(booking),
+      details: bookingEmailDetails(booking),
+      callout: "No action is required from you.",
+      buttons: [{ label: "View booking", href: links.host }],
+    }),
   });
 }
 
@@ -341,11 +582,18 @@ export async function notifyReviewReminder(input: {
   const invitation = await db.reviewInvitation.findUnique({
     where: { id: input.invitationId },
     include: {
-      recipient: { select: { name: true, email: true } },
+      recipient: {
+        select: {
+          name: true,
+          email: true,
+          communicationPreference: { select: { reviewEmail: true } },
+        },
+      },
       booking: { select: { id: true, listing: { select: { title: true } } } },
     },
   });
   if (!invitation) return;
+  if (invitation.recipient.communicationPreference?.reviewEmail === false) return;
 
   const link = communicationAppUrl(
     `/account/bookings/${invitation.booking.id}/after-stay`

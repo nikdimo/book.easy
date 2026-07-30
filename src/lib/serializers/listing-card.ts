@@ -28,12 +28,17 @@ export type ListingCardSerialized = {
     currency: string;
     minNights: number;
   } | null;
-  promotion: {
+  promotions: {
     id: string;
     type: "PERCENT_DISCOUNT" | "FREE_CLEANING";
-    discountPercent: number | null;
+    discountPercent: number;
     minimumNights: number | null;
-  } | null;
+    freeCleaning: boolean;
+    roundUpToNearestFive: boolean;
+    startDate: string | null;
+    endDate: string | null;
+    createdAt: string;
+  }[];
   priceOverrides: { date: string; rate: number }[];
 };
 
@@ -41,7 +46,7 @@ export type ListingCardSerialized = {
  * a separate query because Prisma can't select the same `images` relation twice with
  * different filters in one `select`. */
 export async function getFirstVideoUrlsByListingIds(
-  listingIds: string[]
+  listingIds: string[],
 ): Promise<Map<string, string>> {
   if (listingIds.length === 0) return new Map();
   const videos = await db.listingImage.findMany({
@@ -93,20 +98,25 @@ export const listingCardSelect = {
       type: true,
       discountPercent: true,
       minimumNights: true,
+      freeCleaning: true,
+      roundUpToNearestFive: true,
+      startDate: true,
+      endDate: true,
+      createdAt: true,
     },
     orderBy: { createdAt: "desc" },
-    take: 1,
   },
 } satisfies Prisma.ListingSelect;
 
-type ListingForCard = Prisma.ListingGetPayload<{ select: typeof listingCardSelect }>;
+type ListingForCard = Prisma.ListingGetPayload<{
+  select: typeof listingCardSelect;
+}>;
 
 export function serializeListingCard(
   listing: ListingForCard,
   videoUrl?: string | null,
-  priceOverrides: { date: string; rate: number }[] = []
+  priceOverrides: { date: string; rate: number }[] = [],
 ): ListingCardSerialized {
-  const promotion = listing.promotions[0] ?? null;
   return {
     id: listing.id,
     slug: listing.slug,
@@ -135,14 +145,17 @@ export function serializeListingCard(
           minNights: listing.pricingRule.minNights,
         }
       : null,
-    promotion: promotion
-      ? {
-          id: promotion.id,
-          type: promotion.type,
-          discountPercent: promotion.discountPercent,
-          minimumNights: promotion.minimumNights,
-        }
-      : null,
+    promotions: listing.promotions.map((promotion) => ({
+      id: promotion.id,
+      type: promotion.type,
+      discountPercent: promotion.discountPercent,
+      minimumNights: promotion.minimumNights,
+      freeCleaning: promotion.freeCleaning,
+      roundUpToNearestFive: promotion.roundUpToNearestFive,
+      startDate: promotion.startDate?.toISOString() ?? null,
+      endDate: promotion.endDate?.toISOString() ?? null,
+      createdAt: promotion.createdAt.toISOString(),
+    })),
     priceOverrides,
   };
 }

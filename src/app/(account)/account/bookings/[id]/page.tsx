@@ -1,5 +1,6 @@
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Calendar, MapPin, Users, ArrowLeft, Star } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { getGuestBookingWithHost } from "@/lib/services/booking.service";
@@ -11,6 +12,7 @@ import { CancelBookingButton } from "@/components/account/cancel-booking-button"
 import { formatDate, formatPrice, formatGuestCount } from "@/lib/utils/format";
 import { BOOKING_STATUSES } from "@/lib/constants";
 import { StartConversationButton } from "@/components/communication/start-conversation-button";
+import { BookingStatusHero } from "@/components/booking/booking-status-hero";
 
 interface BookingDetailProps {
   params: Promise<{ id: string }>;
@@ -45,7 +47,25 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
         </Link>
       </Button>
 
-      <Card>
+      <BookingStatusHero
+        status={booking.status}
+        reference={booking.reference}
+        responseDueAt={booking.responseDueAt}
+        hostName={booking.listing.host.profile?.hostDisplayName || booking.listing.host.name}
+      />
+
+      <Card className="mt-6 overflow-hidden">
+        {booking.listing.images[0]?.url ? (
+          <Link href={`/properties/${booking.listing.slug}`} className="relative block h-56 sm:h-72">
+            <Image
+              src={booking.listing.images[0].url}
+              alt={booking.listing.images[0].alt || booking.listing.title}
+              fill
+              sizes="(max-width: 672px) 100vw, 672px"
+              className="object-cover"
+            />
+          </Link>
+        ) : null}
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle>Booking Details</CardTitle>
@@ -54,12 +74,17 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground">
-            Ref: {booking.id.slice(0, 8).toUpperCase()}
+            Ref: {booking.reference}
           </p>
         </CardHeader>
         <CardContent className="space-y-6">
           <div>
-            <h3 className="font-semibold text-lg">{booking.listing.title}</h3>
+            <Link
+              href={`/properties/${booking.listing.slug}`}
+              className="text-lg font-semibold underline-offset-4 hover:underline"
+            >
+              {booking.listing.title}
+            </Link>
             <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
               <MapPin className="h-3 w-3" />
               {booking.listing.property.area && `${booking.listing.property.area}, `}

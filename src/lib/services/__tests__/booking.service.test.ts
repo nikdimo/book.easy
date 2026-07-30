@@ -1,5 +1,9 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { createBooking } from "@/lib/services/booking.service";
+import {
+  confirmBooking,
+  createBooking,
+  rejectBooking,
+} from "@/lib/services/booking.service";
 import { db } from "@/lib/db";
 import {
   createTestHostAndListing,
@@ -125,5 +129,105 @@ describe("createBooking promotion snapshot", () => {
     expect(Number(booking.cleaningFee)).toBe(10);
     expect(Number(booking.totalPrice)).toBe(130);
     expect(booking.priceBreakdownVersion).toBe(1);
+  });
+});
+
+describe("booking response deadline and delivery guarantees", () => {
+  let fixtures: TestFixtures | undefined;
+
+  afterEach(async () => {
+    if (fixtures) await cleanupTestFixtures(fixtures);
+    fixtures = undefined;
+  });
+
+  it("expires an overdue request instead of allowing a stale host confirmation", async () => {
+    const { host, property, listing } = await createTestHostAndListing();
+    const guest = await createTestGuest();
+    fixtures = {
+      hostId: host.id,
+      propertyId: property.id,
+      listingId: listing.id,
+      extraUserIds: [guest.id],
+    };
+
+    const booking = await createBooking({
+      listingId: listing.id,
+      guestId: guest.id,
+      checkIn: new Date("2032-03-01"),
+      checkOut: new Date("2032-03-04"),
+      guestCount: 2,
+    });
+    await db.booking.update({
+      where: { id: booking.id },
+      data: { responseDueAt: new Date(Date.now() - 60_000) },
+    });
+
+    await expect(confirmBooking(booking.id, host.id)).rejects.toThrow(/expired/i);
+
+    const [stored, hold, expiredDeliveries] = await Promise.all([
+      db.booking.findUniqueOrThrow({ where: { id: booking.id } }),
+      db.availabilityBlock.count({ where: { bookingId: booking.id } }),
+      db.bookingEmailDelivery.count({
+        where: { bookingId: booking.id, kind: "GUEST_EXPIRED" },
+      }),
+    ]);
+    expect(stored.status).toBe("EXPIRED");
+    expect(hold).toBe(0);
+    expect(expiredDeliveries).toBe(1);
+  });
+
+  it("requires a reason before a host can decline a request", async () => {
+    const { host, property, listing } = await createTestHostAndListing();
+    const guest = await createTestGuest();
+    fixtures = {
+      hostId: host.id,
+      propertyId: property.id,
+      listingId: listing.id,
+      extraUserIds: [guest.id],
+    };
+
+    const booking = await createBooking({
+      listingId: listing.id,
+      guestId: guest.id,
+      checkIn: new Date("2032-04-01"),
+      checkOut: new Date("2032-04-03"),
+      guestCount: 1,
+    });
+
+    await expect(rejectBooking(booking.id, host.id, "  ")).rejects.toThrow(
+      /reason is required/i
+    );
+    expect(
+      (await db.booking.findUniqueOrThrow({ where: { id: booking.id } })).status
+    ).toBe("PENDING");
+  });
+
+  it("creates exactly one durable delivery per initial recipient", async () => {
+    const { host, property, listing } = await createTestHostAndListing();
+    const guest = await createTestGuest();
+    fixtures = {
+      hostId: host.id,
+      propertyId: property.id,
+      listingId: listing.id,
+      extraUserIds: [guest.id],
+    };
+
+    const booking = await createBooking({
+      listingId: listing.id,
+      guestId: guest.id,
+      checkIn: new Date("2032-05-01"),
+      checkOut: new Date("2032-05-03"),
+      guestCount: 1,
+    });
+    const deliveries = await db.bookingEmailDelivery.findMany({
+      where: { bookingId: booking.id },
+      select: { kind: true },
+      orderBy: { kind: "asc" },
+    });
+
+    expect(deliveries.map((delivery) => delivery.kind)).toEqual([
+      "GUEST_REQUEST_RECEIVED",
+      "HOST_NEW_REQUEST",
+    ]);
   });
 });

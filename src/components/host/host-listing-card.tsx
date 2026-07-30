@@ -2,11 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Calendar, Eye, Tag } from "lucide-react";
+import { Calendar, Eye } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { DeleteListingButton } from "@/components/host/delete-listing-button";
 import { UnpublishListingButton } from "@/components/host/unpublish-listing-button";
 import { formatPrice } from "@/lib/utils/format";
@@ -47,7 +51,9 @@ export function HostListingCard({ listing }: HostListingCardProps) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <h3 className="font-semibold truncate">{listing.title}</h3>
-            <Badge variant={listing.status === "APPROVED" ? "default" : "secondary"}>
+            <Badge
+              variant={listing.status === "APPROVED" ? "default" : "secondary"}
+            >
               {statusConfig?.label || listing.status}
             </Badge>
           </div>
@@ -58,7 +64,10 @@ export function HostListingCard({ listing }: HostListingCardProps) {
             {` · ${listing._count.bookings} booking${listing._count.bookings !== 1 ? "s" : ""}`}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 shrink-0" onClick={stop}>
+        <div
+          className="flex flex-wrap items-center gap-2 shrink-0"
+          onClick={stop}
+        >
           <Tooltip>
             <TooltipTrigger asChild>
               <Button variant="outline" size="sm" asChild>
@@ -68,35 +77,28 @@ export function HostListingCard({ listing }: HostListingCardProps) {
             <TooltipContent>Edit listing</TooltipContent>
           </Tooltip>
 
-          {listing.status === "APPROVED" && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/host/listings/${listing.id}/promotion`}>
-                    <Tag className="h-3 w-3" />
-                  </Link>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Special offer</TooltipContent>
-            </Tooltip>
-          )}
-
           <Tooltip>
             <TooltipTrigger asChild>
               <Button variant="outline" size="sm" asChild>
-                <Link href={`/host/listings/${listing.id}/availability`}>
+                <Link
+                  href={`/host/listings/${listing.id}/availability`}
+                  aria-label={`Manage availability, pricing, and promotions for ${listing.title}`}
+                >
                   <Calendar className="h-3 w-3" />
                 </Link>
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Availability &amp; pricing</TooltipContent>
+            <TooltipContent>Calendar, pricing &amp; promotions</TooltipContent>
           </Tooltip>
 
           {listing.status === "APPROVED" && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button variant="outline" size="sm" asChild>
-                  <Link href={`/properties/${listing.slug}`}>
+                  <Link
+                    href={`/properties/${listing.slug}`}
+                    aria-label={`Preview ${listing.title}`}
+                  >
                     <Eye className="h-3 w-3" />
                   </Link>
                 </Button>
@@ -106,7 +108,10 @@ export function HostListingCard({ listing }: HostListingCardProps) {
           )}
 
           {listing.status === "APPROVED" && (
-            <UnpublishListingButton listingId={listing.id} title={listing.title} />
+            <UnpublishListingButton
+              listingId={listing.id}
+              title={listing.title}
+            />
           )}
 
           <DeleteListingButton listingId={listing.id} title={listing.title} />

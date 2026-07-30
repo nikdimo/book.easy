@@ -28,6 +28,9 @@ export interface ListingDraftData {
   baseNightlyRate?: string;
   cleaningFee?: string;
   minNights?: string;
+  promotionType?: string;
+  promotionPercent?: string;
+  promotionMinimumNights?: string;
   latitude?: string;
   longitude?: string;
   mediaItems?: ListingMediaItem[];

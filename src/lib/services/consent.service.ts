@@ -1,9 +1,18 @@
 import { db } from '@/lib/db';
+import { createHmac } from 'node:crypto';
 
 export interface ConsentPreferences {
   essential: boolean;
   analytics: boolean;
   marketing: boolean;
+}
+
+export function hashConsentNetworkAddress(address: string): string {
+  const secret =
+    process.env.CONSENT_AUDIT_SALT ||
+    process.env.AUTH_SECRET ||
+    'development-only-consent-audit-salt';
+  return createHmac('sha256', secret).update(address).digest('hex');
 }
 
 export async function saveUserConsent(
@@ -21,6 +30,8 @@ export async function saveUserConsent(
         essential: preferences.essential,
         analytics: preferences.analytics,
         marketing: preferences.marketing,
+        ipAddress,
+        userAgent,
         updatedAt: new Date(),
       },
       create: {

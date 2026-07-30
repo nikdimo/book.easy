@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle, Calendar, MapPin, Users } from "lucide-react";
+import Image from "next/image";
+import { Calendar, MapPin, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,13 +11,15 @@ import { auth } from "@/lib/auth";
 import { getGuestBookingForConfirmation } from "@/lib/services/booking.service";
 import { formatDate } from "@/lib/utils/format";
 import { getT, T, ti, tPlural } from "@/lib/i18n/t";
+import { BookingStatusHero } from "@/components/booking/booking-status-hero";
+import { BOOKING_STATUSES } from "@/lib/constants";
 
 interface ConfirmPageProps {
   searchParams: Promise<{ id?: string }>;
 }
 
 export const metadata = {
-  title: "Booking Confirmed",
+  title: "Booking request",
 };
 
 export default async function BookingConfirmPage({ searchParams }: ConfirmPageProps) {
@@ -33,7 +36,7 @@ export default async function BookingConfirmPage({ searchParams }: ConfirmPagePr
   const guests = tPlural(t, "booking.guests", booking.guestCount, "{n} guest", "{n} guests");
   const nights = tPlural(t, "booking.nights", booking.numberOfNights, "{n} night", "{n} nights");
   const reference = ti(t, "booking.reference", "Booking reference: {reference}", {
-    reference: booking.id.slice(0, 8).toUpperCase(),
+    reference: booking.reference,
   });
   const priceBreakdown = booking.priceBreakdown as {
     accommodationSubtotal?: number;
@@ -41,27 +44,61 @@ export default async function BookingConfirmPage({ searchParams }: ConfirmPagePr
   const accommodationSubtotal =
     priceBreakdown?.accommodationSubtotal ??
     Number(booking.nightlyRate) * booking.numberOfNights;
+  const status = BOOKING_STATUSES.find((item) => item.value === booking.status);
+  const isPending = booking.status === "PENDING";
 
   return (
     <div className="container mx-auto px-4 py-16 max-w-2xl">
-      <div className="text-center mb-8">
-        <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-        <h1 className="text-3xl font-bold mb-2"><T t={t} k="booking.request_sent" source="Booking request sent!" /></h1>
-        <p className="text-muted-foreground">
-          <T t={t} k="booking.request_sent_description" source="Your booking request has been submitted. The host will review and respond." />
-        </p>
-      </div>
+      <BookingStatusHero
+        status={booking.status}
+        reference={booking.reference}
+        responseDueAt={booking.responseDueAt}
+        titleOverride={
+          isPending ? <T t={t} k="booking.request_sent" source="Booking request sent!" /> : undefined
+        }
+        bodyOverride={
+          isPending ? (
+            <T
+              t={t}
+              k="booking.request_sent_description"
+              source="Your booking request has been submitted. The host will review and respond."
+            />
+          ) : undefined
+        }
+      />
 
-      <Card>
+      <Card className="mt-6 overflow-hidden">
+        {booking.listing.images[0]?.url ? (
+          <Link href={`/properties/${booking.listing.slug}`} className="relative block h-56 sm:h-72">
+            <Image
+              src={booking.listing.images[0].url}
+              alt={booking.listing.images[0].alt || booking.listing.title}
+              fill
+              sizes="(max-width: 672px) 100vw, 672px"
+              className="object-cover"
+            />
+          </Link>
+        ) : null}
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle className="text-lg"><T t={t} k="booking.details" source="Booking details" /></CardTitle>
-            <Badge variant="secondary"><T t={t} k="booking.pending" source="Pending" /></Badge>
+            <Badge variant="secondary">
+              {isPending ? (
+                <T t={t} k="booking.pending" source="Pending" />
+              ) : (
+                status?.label ?? booking.status
+              )}
+            </Badge>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <h3 className="font-semibold">{booking.listing.title}</h3>
+            <Link
+              href={`/properties/${booking.listing.slug}`}
+              className="font-semibold underline-offset-4 hover:underline"
+            >
+              {booking.listing.title}
+            </Link>
             <div
               className="notranslate flex items-center gap-1 text-sm text-muted-foreground mt-1"
               translate="no"
@@ -148,7 +185,7 @@ export default async function BookingConfirmPage({ searchParams }: ConfirmPagePr
 
       <div className="flex gap-3 mt-6 justify-center">
         <Button asChild>
-          <Link href="/account/bookings"><T t={t} k="booking.view_bookings" source="View my bookings" /></Link>
+          <Link href={`/account/bookings/${booking.id}`}><T t={t} k="booking.view_bookings" source="View my bookings" /></Link>
         </Button>
         <Button variant="outline" asChild>
           <Link href="/properties"><T t={t} k="booking.continue_browsing" source="Continue browsing" /></Link>

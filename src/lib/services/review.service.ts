@@ -82,6 +82,7 @@ async function getEligibleBooking(bookingId: string, userId: string) {
     where: { id: bookingId },
     select: {
       id: true,
+      reference: true,
       status: true,
       guestId: true,
       checkIn: true,

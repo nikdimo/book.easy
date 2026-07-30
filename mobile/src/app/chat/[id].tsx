@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocalSearchParams } from "expo-router";
 import {
   ActivityIndicator,
+  AppState,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -15,8 +17,57 @@ import {
 import { useAuth } from "@/context/auth-context";
 import { useNotifications } from "@/context/notification-context";
 import { useLanguage } from "@/context/language-context";
-import { apiFetch, ChatResponse, formatRelativeTime } from "@/lib/api";
+import {
+  absoluteMediaUrl,
+  apiFetch,
+  ChatResponse,
+  formatDate,
+  formatRelativeTime,
+} from "@/lib/api";
 import { colors, radii, spacing } from "@/theme";
+
+const bookingEventCopy: Record<string, string> = {
+  REQUESTED: "Booking requested",
+  CONFIRMED: "Booking confirmed",
+  REJECTED: "Booking request declined",
+  EXPIRED: "Booking request expired",
+  CANCELLED_BY_GUEST: "Booking cancelled by the guest",
+  CANCELLED_BY_HOST: "Booking cancelled by the host",
+  CANCELLED_BY_ADMIN: "Booking cancelled by support",
+  COMPLETED: "Stay completed",
+};
+
+function createClientMessageId() {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (character) => {
+    const random = Math.floor(Math.random() * 16);
+    const value = character === "x" ? random : (random & 0x3) | 0x8;
+    return value.toString(16);
+  });
+}
+
+function buildTimeline(chat: ChatResponse | null) {
+  if (!chat) return [];
+  return [
+    ...chat.messages.map((value) => ({
+      kind: "message" as const,
+      createdAt: value.createdAt,
+      value,
+    })),
+    ...chat.bookingEvents.map((value) => ({
+      kind: "booking" as const,
+      createdAt: value.createdAt,
+      value,
+    })),
+    ...chat.damageReports.map((value) => ({
+      kind: "damage" as const,
+      createdAt: value.createdAt,
+      value,
+    })),
+  ].sort(
+    (left, right) =>
+      new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime()
+  );
+}
 
 export default function ChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -37,6 +88,13 @@ export default function ChatScreen() {
       );
       setChat(result);
       setError(null);
+      const lastMessage = result.messages.at(-1);
+      if (lastMessage) {
+        void apiFetch(`/api/mobile/v1/conversations/${id}/read`, {
+          method: "POST",
+          body: JSON.stringify({ lastMessageId: lastMessage.id }),
+        });
+      }
       void refreshNotifications();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Conversation unavailable");
@@ -46,9 +104,13 @@ export default function ChatScreen() {
   useEffect(() => {
     const initial = setTimeout(() => void load(), 0);
     const poller = setInterval(() => void load(), 5_000);
+    const appState = AppState.addEventListener("change", (state) => {
+      if (state === "active") void load();
+    });
     return () => {
       clearTimeout(initial);
       clearInterval(poller);
+      appState.remove();
     };
   }, [load]);
 
@@ -60,7 +122,7 @@ export default function ChatScreen() {
       setDraft("");
       await apiFetch(`/api/mobile/v1/conversations/${id}/messages`, {
         method: "POST",
-        body: JSON.stringify({ body }),
+        body: JSON.stringify({ body, clientId: createClientMessageId() }),
       });
       await load();
       requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
@@ -84,10 +146,35 @@ export default function ChatScreen() {
         style={styles.flex}
       >
         <View style={styles.context}>
-          <Text style={styles.person}>{other?.name ?? t("Guest")}</Text>
-          <Text numberOfLines={1} style={styles.listing}>
-            {chat?.conversation.listing.title ?? t("Booking conversation")}
-          </Text>
+          <View style={styles.bookingRow}>
+            {chat?.conversation.listing.imageUrl ? (
+              <Image
+                source={{
+                  uri: absoluteMediaUrl(chat.conversation.listing.imageUrl),
+                }}
+                style={styles.bookingImage}
+              />
+            ) : null}
+            <View style={styles.bookingCopy}>
+              <Text style={styles.person}>{other?.name ?? t("Guest")}</Text>
+              <Text numberOfLines={1} style={styles.listing}>
+                {chat?.conversation.listing.title ?? t("Booking conversation")}
+              </Text>
+              {chat?.conversation.booking ? (
+                <>
+                  <Text style={styles.bookingMeta}>
+                    {formatDate(chat.conversation.booking.checkIn, locale)} –{" "}
+                    {formatDate(chat.conversation.booking.checkOut, locale)}
+                  </Text>
+                  <Text style={styles.bookingMeta}>
+                    {chat.conversation.booking.numberOfNights} {t("nights")} ·{" "}
+                    {chat.conversation.booking.currency}{" "}
+                    {chat.conversation.booking.totalPrice.toFixed(2)}
+                  </Text>
+                </>
+              ) : null}
+            </View>
+          </View>
         </View>
 
         {!chat && !error ? (
@@ -110,7 +197,37 @@ export default function ChatScreen() {
               </Text>
             </View>
           ) : null}
-          {chat?.messages.map((message) => {
+          {buildTimeline(chat).map((item) => {
+            if (item.kind === "booking") {
+              return (
+                <View key={`booking-${item.value.id}`} style={styles.systemEvent}>
+                  <Text style={styles.systemTitle}>
+                    {t(bookingEventCopy[item.value.type] ?? item.value.type)}
+                  </Text>
+                  <Text style={styles.time}>
+                    {formatRelativeTime(item.value.createdAt, locale, t)}
+                  </Text>
+                </View>
+              );
+            }
+            if (item.kind === "damage") {
+              return (
+                <View key={`damage-${item.value.id}`} style={styles.damageCard}>
+                  <Text style={styles.systemTitle}>{t("Damage reported")}</Text>
+                  {item.value.evidence[0] ? (
+                    <Image
+                      source={{
+                        uri: absoluteMediaUrl(item.value.evidence[0].url),
+                      }}
+                      style={styles.damageImage}
+                    />
+                  ) : null}
+                  <Text style={styles.body}>{item.value.description}</Text>
+                  <Text style={styles.time}>{t(item.value.status)}</Text>
+                </View>
+              );
+            }
+            const message = item.value;
             const mine = message.senderId === user?.id;
             return (
               <View
@@ -174,6 +291,10 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
     backgroundColor: colors.surface,
   },
+  bookingRow: { flexDirection: "row", gap: spacing.md, alignItems: "center" },
+  bookingImage: { width: 68, height: 58, borderRadius: radii.md },
+  bookingCopy: { flex: 1 },
+  bookingMeta: { color: colors.muted, fontSize: 10, marginTop: 3 },
   person: { color: colors.ink, fontSize: 15, fontWeight: "900" },
   listing: { color: colors.primary, fontSize: 11, marginTop: 3 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
@@ -199,6 +320,29 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 6,
   },
+  systemEvent: {
+    alignSelf: "center",
+    alignItems: "center",
+    maxWidth: "84%",
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    backgroundColor: colors.surface,
+  },
+  systemTitle: { color: colors.ink, fontSize: 13, fontWeight: "900" },
+  damageCard: {
+    alignSelf: "flex-start",
+    maxWidth: "88%",
+    gap: spacing.sm,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    backgroundColor: colors.surface,
+  },
+  damageImage: { width: 240, maxWidth: "100%", height: 160, borderRadius: radii.md },
   messageWrap: { maxWidth: "82%" },
   mineWrap: { alignSelf: "flex-end", alignItems: "flex-end" },
   theirsWrap: { alignSelf: "flex-start", alignItems: "flex-start" },

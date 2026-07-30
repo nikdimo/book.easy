@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Percent, Sparkles, X } from "lucide-react";
+import { CalendarRange, Percent, Sparkles, X } from "lucide-react";
 import { saveListingPromotion } from "@/lib/actions/promotion.actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -81,11 +81,72 @@ export function ListingPromotionForm({
     type !== "NONE" && eligibility === "MINIMUM"
       ? ` · ${minimumNights || "0"}+ nights`
       : "";
+  const recommendedOffers = [
+    {
+      percent: 15,
+      nights: 5,
+      title: "Recommended",
+      description: "15% off stays of 5+ nights",
+    },
+    {
+      percent: 20,
+      nights: 10,
+      title: "Long stay",
+      description: "20% off stays of 10+ nights",
+    },
+    {
+      percent: 30,
+      nights: 30,
+      title: "Monthly stay",
+      description: "30% off stays of 30+ nights",
+    },
+  ];
 
   return (
     <form action={formAction} className="space-y-7">
       <input type="hidden" name="type" value={type} />
       <input type="hidden" name="eligibility" value={eligibility} />
+
+      <fieldset className="space-y-3">
+        <legend className="text-sm font-semibold">Ready-made offers</legend>
+        <p className="text-sm text-muted-foreground">
+          Choose a proven offer with one click, then save when you are ready.
+        </p>
+        <div className="grid gap-3 md:grid-cols-3">
+          {recommendedOffers.map((offer) => {
+            const selected =
+              type === "PERCENT_DISCOUNT" &&
+              percent === String(offer.percent) &&
+              eligibility === "MINIMUM" &&
+              minimumNights === String(offer.nights);
+            return (
+              <button
+                key={offer.nights}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => {
+                  setType("PERCENT_DISCOUNT");
+                  setPercent(String(offer.percent));
+                  setEligibility("MINIMUM");
+                  setMinimumNights(String(offer.nights));
+                }}
+                className={cn(
+                  "rounded-xl border p-4 text-left transition-colors",
+                  selected
+                    ? "border-primary bg-primary/5 ring-1 ring-primary"
+                    : "hover:border-primary/40"
+                )}
+              >
+                <CalendarRange className="mb-3 size-5" aria-hidden="true" />
+                <span className="block font-semibold">{offer.title}</span>
+                <span className="mt-1 block text-sm text-muted-foreground">
+                  {offer.description}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
 
       <fieldset className="space-y-3">
         <legend className="text-sm font-semibold">Choose an offer</legend>
@@ -120,9 +181,22 @@ export function ListingPromotionForm({
       </fieldset>
 
       {type === "PERCENT_DISCOUNT" && (
-        <div className="max-w-xs space-y-2">
+        <div className="space-y-3">
           <Label htmlFor="discountPercent">Discount percentage</Label>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap gap-2">
+            {[10, 15, 20, 30].map((value) => (
+              <Button
+                key={value}
+                type="button"
+                variant={percent === String(value) ? "default" : "outline"}
+                className="min-w-16"
+                onClick={() => setPercent(String(value))}
+              >
+                {value}%
+              </Button>
+            ))}
+          </div>
+          <div className="flex max-w-xs items-center gap-2">
             <Input
               id="discountPercent"
               name="discountPercent"
@@ -134,7 +208,7 @@ export function ListingPromotionForm({
               value={percent}
               onChange={(event) => setPercent(event.target.value)}
             />
-            <span className="text-sm text-muted-foreground">%</span>
+            <span className="text-sm text-muted-foreground">% custom</span>
           </div>
         </div>
       )}

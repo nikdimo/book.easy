@@ -34,12 +34,28 @@ export async function GET(request: Request) {
         ? Number(listing.pricingRule.baseNightlyRate)
         : null,
       currency: listing.pricingRule?.currency ?? "EUR",
+      promotions: listing.promotions.map((promotion) => ({
+        id: promotion.id,
+        type: promotion.type,
+        discountPercent: promotion.discountPercent,
+        minimumNights: promotion.minimumNights,
+        freeCleaning: promotion.freeCleaning,
+        roundUpToNearestFive: promotion.roundUpToNearestFive,
+        startDate: promotion.startDate?.toISOString() ?? null,
+        endDate: promotion.endDate?.toISOString() ?? null,
+      })),
+      // Kept temporarily for older mobile clients. New clients should use
+      // `promotions` so they can evaluate threshold and date precedence.
       promotion: listing.promotions[0]
         ? {
             id: listing.promotions[0].id,
             type: listing.promotions[0].type,
             discountPercent: listing.promotions[0].discountPercent,
             minimumNights: listing.promotions[0].minimumNights,
+            freeCleaning: listing.promotions[0].freeCleaning,
+            roundUpToNearestFive: listing.promotions[0].roundUpToNearestFive,
+            startDate: listing.promotions[0].startDate?.toISOString() ?? null,
+            endDate: listing.promotions[0].endDate?.toISOString() ?? null,
           }
         : null,
       bookingCount: listing._count.bookings,

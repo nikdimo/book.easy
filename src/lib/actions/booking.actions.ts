@@ -38,6 +38,7 @@ export async function createBookingAction(formData: FormData) {
     return { error: firstZodMessage(parsed.error) };
   }
 
+  let bookingId: string;
   try {
     const booking = await createBooking({
       listingId: parsed.data.listingId,
@@ -47,15 +48,12 @@ export async function createBookingAction(formData: FormData) {
       guestCount: parsed.data.guestCount,
       guestNote: parsed.data.guestNote,
     });
-
-    redirect(`/bookings/confirm?id=${booking.id}`);
+    bookingId = booking.id;
   } catch (error: unknown) {
-    if (error && typeof error === "object" && "digest" in error) {
-      throw error; // Re-throw Next.js redirect
-    }
     const message = error instanceof Error ? error.message : "Failed to create booking";
     return { error: message };
   }
+  redirect(`/bookings/confirm?id=${bookingId}`);
 }
 
 export async function cancelBookingAction(bookingId: string) {
@@ -95,6 +93,8 @@ export async function confirmBookingAction(bookingId: string) {
       metadata: { confirmedBy: "host" },
     });
     revalidatePath("/host/bookings");
+    revalidatePath(`/host/bookings/${bookingId}`);
+    revalidatePath(`/account/bookings/${bookingId}`);
     return { success: true };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to confirm";
@@ -107,9 +107,12 @@ export async function rejectBookingAction(bookingId: string, reason?: string) {
   if (!session?.user?.id || !session.user.isHost) {
     return { error: "Not authorized" };
   }
+  if (!reason?.trim()) {
+    return { error: "Please provide a brief reason for declining" };
+  }
 
   try {
-    await rejectBooking(bookingId, session.user.id, reason);
+    await rejectBooking(bookingId, session.user.id, reason.trim());
     await createAuditLog({
       userId: session.user.id,
       action: "booking.reject",
@@ -118,6 +121,8 @@ export async function rejectBookingAction(bookingId: string, reason?: string) {
       metadata: { rejectedBy: "host", reason },
     });
     revalidatePath("/host/bookings");
+    revalidatePath(`/host/bookings/${bookingId}`);
+    revalidatePath(`/account/bookings/${bookingId}`);
     return { success: true };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to reject";

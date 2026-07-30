@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { AppScreen, EmptyNotice, LoadingState, Pill } from "@/components/ui";
 import { useLanguage } from "@/context/language-context";
 import {
@@ -15,6 +15,7 @@ const statusLabels: Record<string, string> = {
   PENDING: "Pending",
   CONFIRMED: "Confirmed",
   REJECTED: "Rejected",
+  EXPIRED: "Expired",
   CANCELLED_BY_GUEST: "Cancelled by Guest",
   CANCELLED_BY_HOST: "Cancelled by Host",
   CANCELLED_BY_ADMIN: "Cancelled by Admin",
@@ -27,6 +28,7 @@ export default function BookingsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [cancelId, setCancelId] = useState<string | null>(null);
+  const [rejectId, setRejectId] = useState<string | null>(null);
   const [reason, setReason] = useState("");
 
   const load = useCallback(async () => {
@@ -47,14 +49,18 @@ export default function BookingsScreen() {
     booking: BookingSummary,
     action: "confirm" | "reject" | "cancel"
   ) {
-    if (action === "cancel" && !reason.trim()) return;
+    if ((action === "cancel" || action === "reject") && !reason.trim()) return;
     try {
       setBusyId(booking.id);
       await apiFetch(`/api/mobile/v1/bookings/${booking.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ action, reason: action === "cancel" ? reason.trim() : undefined }),
+        body: JSON.stringify({
+          action,
+          reason: action === "cancel" || action === "reject" ? reason.trim() : undefined,
+        }),
       });
       setCancelId(null);
+      setRejectId(null);
       setReason("");
       await load();
     } catch (caught) {
@@ -80,6 +86,14 @@ export default function BookingsScreen() {
       <View style={styles.list}>
         {data?.bookings.map((booking) => (
           <View key={booking.id} style={styles.card}>
+            {booking.imageUrl ? (
+              <Image
+                accessibilityLabel={booking.listingTitle}
+                alt={booking.listingTitle}
+                source={{ uri: booking.imageUrl }}
+                style={styles.image}
+              />
+            ) : null}
             <View style={styles.header}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.title}>{booking.listingTitle}</Text>
@@ -93,11 +107,21 @@ export default function BookingsScreen() {
 
             <View style={styles.details}>
               <Detail label="Guest" value={booking.guestName} />
+              <Detail label="Reference" value={booking.reference} />
               <Detail
                 label="Dates"
                 value={`${formatDate(booking.checkIn, locale)} – ${formatDate(booking.checkOut, locale)}`}
               />
               <Detail label="Guests" value={String(booking.guestCount)} />
+              {booking.status === "PENDING" ? (
+                <Detail
+                  label="Respond by"
+                  value={new Intl.DateTimeFormat(resolveIntlLocale(locale), {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  }).format(new Date(booking.responseDueAt))}
+                />
+              ) : null}
               <Detail
                 label="Total"
                 value={new Intl.NumberFormat(resolveIntlLocale(locale), {
@@ -114,19 +138,66 @@ export default function BookingsScreen() {
               </View>
             ) : null}
 
-            {booking.status === "PENDING" ? (
+            {booking.status === "PENDING" && rejectId !== booking.id ? (
               <View style={styles.actions}>
                 <ActionButton
                   disabled={busyId === booking.id}
                   label={t("Confirm")}
-                  onPress={() => void updateBooking(booking, "confirm")}
+                  onPress={() =>
+                    Alert.alert(
+                      t("Confirm booking"),
+                      t("Accept this request and reserve these dates for the guest?"),
+                      [
+                        { text: t("Not yet"), style: "cancel" },
+                        {
+                          text: t("Confirm"),
+                          onPress: () => void updateBooking(booking, "confirm"),
+                        },
+                      ]
+                    )
+                  }
                 />
                 <ActionButton
                   disabled={busyId === booking.id}
                   label={t("Reject")}
-                  onPress={() => void updateBooking(booking, "reject")}
+                  onPress={() => {
+                    setRejectId(booking.id);
+                    setReason("");
+                  }}
                   secondary
                 />
+              </View>
+            ) : null}
+
+            {booking.status === "PENDING" && rejectId === booking.id ? (
+              <View style={styles.cancelForm}>
+                <Text style={styles.warning}>
+                  {t("Tell the guest why you cannot accept this request. A reason is required.")}
+                </Text>
+                <TextInput
+                  multiline
+                  onChangeText={setReason}
+                  placeholder={t("Decline reason (required)")}
+                  placeholderTextColor={colors.muted}
+                  style={styles.input}
+                  value={reason}
+                />
+                <View style={styles.actions}>
+                  <ActionButton
+                    destructive
+                    disabled={busyId === booking.id || !reason.trim()}
+                    label={t("Decline request")}
+                    onPress={() => void updateBooking(booking, "reject")}
+                  />
+                  <ActionButton
+                    label={t("Keep request")}
+                    onPress={() => {
+                      setRejectId(null);
+                      setReason("");
+                    }}
+                    secondary
+                  />
+                </View>
               </View>
             ) : null}
 
@@ -230,6 +301,14 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     backgroundColor: colors.surface,
     padding: spacing.md,
+    overflow: "hidden",
+  },
+  image: {
+    width: "100%",
+    height: 150,
+    borderRadius: radii.md,
+    marginBottom: spacing.md,
+    backgroundColor: colors.surfaceAlt,
   },
   header: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm },
   title: { color: colors.ink, fontSize: 14, fontWeight: "800" },

@@ -54,6 +54,9 @@ function draftDataFromForm(formData: FormData): Prisma.InputJsonValue {
     baseNightlyRate: str("baseNightlyRate"),
     cleaningFee: str("cleaningFee"),
     minNights: str("minNights"),
+    promotionType: str("promotionType"),
+    promotionPercent: str("promotionPercent"),
+    promotionMinimumNights: str("promotionMinimumNights"),
     mediaItems: parseMediaItemsFromForm(formData) as unknown as Prisma.InputJsonValue,
     amenityIds: formData.getAll("amenityIds").filter((v): v is string => typeof v === "string"),
   } as Prisma.InputJsonValue;
@@ -211,6 +214,9 @@ export async function submitNewListing(
     baseNightlyRate: formData.get("baseNightlyRate"),
     cleaningFee: formData.get("cleaningFee") || "0",
     minNights: formData.get("minNights") || "1",
+    promotionType: formData.get("promotionType") || "NONE",
+    promotionPercent: formData.get("promotionPercent") || "15",
+    promotionMinimumNights: formData.get("promotionMinimumNights") || "5",
     amenityIds: formData.getAll("amenityIds"),
   };
 
@@ -220,6 +226,32 @@ export async function submitNewListing(
   }
 
   const data = parsed.data;
+  const promotionType =
+    raw.promotionType === "PERCENT_DISCOUNT" ||
+    raw.promotionType === "FREE_CLEANING"
+      ? raw.promotionType
+      : "NONE";
+  const promotionPercent = Number(raw.promotionPercent);
+  const promotionMinimumNights = Number(raw.promotionMinimumNights);
+  if (
+    promotionType === "PERCENT_DISCOUNT" &&
+    (!Number.isInteger(promotionPercent) ||
+      promotionPercent < 5 ||
+      promotionPercent > 50)
+  ) {
+    return { error: "Choose a discount between 5% and 50%." };
+  }
+  if (
+    promotionType !== "NONE" &&
+    (!Number.isInteger(promotionMinimumNights) ||
+      promotionMinimumNights < 1 ||
+      promotionMinimumNights > 365)
+  ) {
+    return { error: "Promotion minimum stay must be between 1 and 365 nights." };
+  }
+  if (promotionType === "FREE_CLEANING" && data.cleaningFee <= 0) {
+    return { error: "Add a cleaning fee before offering free cleaning." };
+  }
   const mediaItems = parseMediaItemsFromForm(formData);
   const primaryImageIndex = firstImageIndex(mediaItems);
   if (mediaItems.filter((item) => item.mediaType === "IMAGE").length < 3) {
@@ -272,6 +304,23 @@ export async function submitNewListing(
           minNights: data.minNights,
         },
       },
+      ...(promotionType !== "NONE"
+        ? {
+            promotions: {
+              create: {
+                type: promotionType,
+                discountPercent:
+                  promotionType === "PERCENT_DISCOUNT"
+                    ? promotionPercent
+                    : 0,
+                minimumNights: promotionMinimumNights,
+                freeCleaning: promotionType === "FREE_CLEANING",
+                roundUpToNearestFive:
+                  promotionType === "PERCENT_DISCOUNT",
+              },
+            },
+          }
+        : {}),
       ...(data.amenityIds && data.amenityIds.length > 0
         ? {
             amenities: {

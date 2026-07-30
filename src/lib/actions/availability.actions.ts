@@ -26,6 +26,7 @@ async function getListingForManager(userId: string, role: string, listingId: str
 
 function revalidateListingPaths(listingId: string, slug?: string | null) {
   revalidatePath(`/host/listings/${listingId}/availability`);
+  revalidatePath(`/host/listings/${listingId}/pricing`);
   revalidatePath(`/admin/listings/${listingId}`);
   if (slug) revalidatePath(`/properties/${slug}`);
 }

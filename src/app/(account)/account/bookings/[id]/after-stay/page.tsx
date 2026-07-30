@@ -127,7 +127,7 @@ export default async function AfterStayPage({
         <CardHeader className="border-b">
           <CardTitle>{booking.listing.title}</CardTitle>
           <p className="text-xs text-muted-foreground">
-            Booking reference {booking.id.slice(0, 8).toUpperCase()}
+            Booking reference {booking.reference}
           </p>
         </CardHeader>
         <CardContent>

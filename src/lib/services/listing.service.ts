@@ -2,7 +2,10 @@ import "server-only";
 import { db } from "@/lib/db";
 import { ListingStatus } from "@prisma/client";
 import slugify from "slugify";
-import { completePastBookings } from "@/lib/services/booking.service";
+import {
+  completePastBookings,
+  expirePendingBookings,
+} from "@/lib/services/booking.service";
 import { getStorageAdapter } from "@/lib/storage";
 import { isLocalUploadUrl } from "@/lib/utils/upload-url";
 
@@ -16,7 +19,6 @@ export async function getHostListings(hostId: string) {
       promotions: {
         where: { disabledAt: null },
         orderBy: { createdAt: "desc" },
-        take: 1,
       },
       _count: { select: { bookings: true } },
     },
@@ -48,12 +50,22 @@ export async function getHostListingDraft(draftId: string, hostId: string) {
 }
 
 export async function getHostBookings(hostId: string) {
+  await expirePendingBookings();
   await completePastBookings();
   return db.booking.findMany({
     where: { listing: { hostId } },
     include: {
-      listing: { include: { property: true } },
-      guest: { select: { id: true, name: true, email: true } },
+      listing: {
+        include: {
+          property: true,
+          images: {
+            where: { isPrimary: true },
+            orderBy: { displayOrder: "asc" },
+            take: 1,
+          },
+        },
+      },
+      guest: { select: { id: true, name: true } },
     },
     orderBy: { createdAt: "desc" },
   });
@@ -73,9 +85,7 @@ export async function generateUniqueSlug(title: string): Promise<string> {
 }
 
 export type ArchiveOrDeleteListingResult =
-  | { outcome: "archived" }
-  | { outcome: "deleted" }
-  | { error: string };
+  { outcome: "archived" } | { outcome: "deleted" } | { error: string };
 
 /**
  * Deletes a listing that has never had a booking, or archives it (status = ARCHIVED)
@@ -86,7 +96,7 @@ export type ArchiveOrDeleteListingResult =
  */
 export async function archiveOrDeleteListing(
   listingId: string,
-  hostId: string
+  hostId: string,
 ): Promise<ArchiveOrDeleteListingResult> {
   const listing = await db.listing.findFirst({
     where: { id: listingId, hostId },
@@ -99,7 +109,7 @@ export async function archiveOrDeleteListing(
   if (!listing) return { error: "Listing not found" };
 
   const hasActiveBooking = listing.bookings.some(
-    (b) => b.status === "PENDING" || b.status === "CONFIRMED"
+    (b) => b.status === "PENDING" || b.status === "CONFIRMED",
   );
   if (hasActiveBooking) {
     return {
@@ -117,7 +127,9 @@ export async function archiveOrDeleteListing(
   }
 
   const propertyId = listing.propertyId;
-  const localImageUrls = listing.images.map((img) => img.url).filter(isLocalUploadUrl);
+  const localImageUrls = listing.images
+    .map((img) => img.url)
+    .filter(isLocalUploadUrl);
   if (localImageUrls.length > 0) {
     const storage = getStorageAdapter();
     await Promise.all(localImageUrls.map((url) => storage.delete(url)));
@@ -135,12 +147,13 @@ export async function archiveOrDeleteListing(
 
 export async function getHostDashboardStats(hostId: string) {
   await completePastBookings();
-  const [listings, pendingBookings, confirmedBookings, totalBookings] = await Promise.all([
-    db.listing.count({ where: { hostId } }),
-    db.booking.count({ where: { listing: { hostId }, status: "PENDING" } }),
-    db.booking.count({ where: { listing: { hostId }, status: "CONFIRMED" } }),
-    db.booking.count({ where: { listing: { hostId } } }),
-  ]);
+  const [listings, pendingBookings, confirmedBookings, totalBookings] =
+    await Promise.all([
+      db.listing.count({ where: { hostId } }),
+      db.booking.count({ where: { listing: { hostId }, status: "PENDING" } }),
+      db.booking.count({ where: { listing: { hostId }, status: "CONFIRMED" } }),
+      db.booking.count({ where: { listing: { hostId } } }),
+    ]);
 
   return { listings, pendingBookings, confirmedBookings, totalBookings };
 }

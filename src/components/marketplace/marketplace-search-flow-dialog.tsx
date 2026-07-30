@@ -277,6 +277,7 @@ export function MarketplaceSearchFlowDialog({
               <DateRangeCalendarStep
                 active={open && step === "when"}
                 selected={selectedRange}
+                pagedOnDesktop
                 onRangeChange={(range) => {
                   if (!range?.from) {
                     setDraftCheckIn("");

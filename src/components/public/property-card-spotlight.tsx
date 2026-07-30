@@ -7,6 +7,7 @@ import { PropertyCardSpotlightMedia } from "@/components/public/property-card-sp
 import { localizePlaceName } from "@/lib/i18n/place-name";
 import { Moon, UserRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { splitDescriptionPreviewTiers } from "@/lib/utils/description-preview";
 
 interface PropertyCardSpotlightProps {
   listing: ListingCardSerialized;
@@ -16,7 +17,9 @@ interface PropertyCardSpotlightProps {
  * collage plus a real description reads as "curated" rather than "empty grid with one
  * tile in it" (see PropertyCard, which is the compact single-photo variant used once
  * there's enough inventory to fill a dense grid). */
-export async function PropertyCardSpotlight({ listing }: PropertyCardSpotlightProps) {
+export async function PropertyCardSpotlight({
+  listing,
+}: PropertyCardSpotlightProps) {
   const t = await getT();
   const {
     slug,
@@ -26,39 +29,63 @@ export async function PropertyCardSpotlight({ listing }: PropertyCardSpotlightPr
     images,
     video,
     pricingRule,
-    promotion,
+    promotions,
   } = listing;
+  const promotion =
+    [...promotions].sort((left, right) => {
+      const leftSpecific = left.startDate && left.endDate ? 1 : 0;
+      const rightSpecific = right.startDate && right.endDate ? 1 : 0;
+      if (leftSpecific !== rightSpecific) return leftSpecific - rightSpecific;
+      return (left.minimumNights ?? 1) - (right.minimumNights ?? 1);
+    })[0] ?? null;
   const displayImages = images.filter((img) => img.url?.trim());
   const [main, ...rest] = displayImages;
   const sideImages = rest.slice(0, 2);
   const typeLabel = await getPropertyTypeLabel(property.propertyType);
-  const guests = tPlural(t, "listing.guests", listing.maxGuests, "{n} guest", "{n} guests");
+  const guests = tPlural(
+    t,
+    "listing.guests",
+    listing.maxGuests,
+    "{n} guest",
+    "{n} guests",
+  );
   const minimumStay = pricingRule
     ? tPlural(
         t,
         "property_card.minimum_nights",
         pricingRule.minNights,
         "{n}-night min.",
-        "{n}-night min."
+        "{n}-night min.",
       )
     : null;
   const href = `/properties/${slug}`;
   const promotionLabel = promotion
     ? promotion.type === "PERCENT_DISCOUNT"
       ? promotion.minimumNights
-        ? ti(t, "promotion.percent_min_nights", "{percent}% off · {n}+ nights", {
-            percent: promotion.discountPercent ?? 0,
-            n: promotion.minimumNights,
-          })
+        ? ti(
+            t,
+            "promotion.percent_min_nights",
+            "{percent}% off · {n}+ nights",
+            {
+              percent: promotion.discountPercent ?? 0,
+              n: promotion.minimumNights,
+            },
+          )
         : ti(t, "promotion.percent_off", "{percent}% off", {
             percent: promotion.discountPercent ?? 0,
           })
       : promotion.minimumNights
-        ? ti(t, "promotion.free_cleaning_min_nights", "Free cleaning · {n}+ nights", {
-            n: promotion.minimumNights,
-          })
+        ? ti(
+            t,
+            "promotion.free_cleaning_min_nights",
+            "Free cleaning · {n}+ nights",
+            {
+              n: promotion.minimumNights,
+            },
+          )
         : ti(t, "promotion.free_cleaning", "Free cleaning", {})
     : null;
+  const descriptionPreview = splitDescriptionPreviewTiers(description);
 
   return (
     <a
@@ -101,14 +128,22 @@ export async function PropertyCardSpotlight({ listing }: PropertyCardSpotlightPr
             t={t}
             k="property_card.type_in_city"
             source="{type} in {city}"
-            values={{ type: typeLabel, city: localizePlaceName(property.city, t.locale) }}
+            values={{
+              type: typeLabel,
+              city: localizePlaceName(property.city, t.locale),
+            }}
             protectedValues={["city"]}
           />
         </h3>
-        <p className="text-muted-foreground text-sm line-clamp-3">{description}</p>
+        <p className="text-muted-foreground text-sm line-clamp-3">
+          {descriptionPreview.landing}
+          {descriptionPreview.landingTruncated ? "…" : ""}
+        </p>
         {promotionLabel ? (
           <Badge variant="secondary" className="w-fit rounded-md">
-            <span className={promotionLabel.translated ? "notranslate" : undefined}>
+            <span
+              className={promotionLabel.translated ? "notranslate" : undefined}
+            >
               {promotionLabel.text}
             </span>
           </Badge>

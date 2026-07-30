@@ -33,7 +33,9 @@ export const metadata = {
   description: "Browse and search properties around the world",
 };
 
-export default async function PropertiesPage({ searchParams }: SearchPageProps) {
+export default async function PropertiesPage({
+  searchParams,
+}: SearchPageProps) {
   const t = await getT();
   const params = await searchParams;
   const marketplaceSettings = await getMarketplaceSettings();
@@ -63,9 +65,18 @@ export default async function PropertiesPage({ searchParams }: SearchPageProps) 
   const propertyTypes = await getActivePropertyTypes();
   const allPropertyTypeValues = propertyTypes.map((t) => t.value);
 
-  const selectedPropertyTypes = parsePropertyTypesSelectionFromParams(params, allPropertyTypeValues);
-  const propertyTypesFilter = propertyTypesForSearchQuery(selectedPropertyTypes, allPropertyTypeValues);
-  const propertyTypesQuery = stringifyPropertyTypesParam(selectedPropertyTypes, allPropertyTypeValues);
+  const selectedPropertyTypes = parsePropertyTypesSelectionFromParams(
+    params,
+    allPropertyTypeValues,
+  );
+  const propertyTypesFilter = propertyTypesForSearchQuery(
+    selectedPropertyTypes,
+    allPropertyTypeValues,
+  );
+  const propertyTypesQuery = stringifyPropertyTypesParam(
+    selectedPropertyTypes,
+    allPropertyTypeValues,
+  );
 
   const filters = {
     city: typeof params.city === "string" ? params.city : undefined,
@@ -82,7 +93,10 @@ export default async function PropertiesPage({ searchParams }: SearchPageProps) 
         ? params.amenities
         : [params.amenities]
       : undefined,
-    sort: typeof params.sort === "string" ? (params.sort as "price_asc" | "price_desc" | "newest") : undefined,
+    sort:
+      typeof params.sort === "string"
+        ? (params.sort as "price_asc" | "price_desc" | "newest")
+        : undefined,
     page: params.page ? Number(params.page) : 1,
   };
 
@@ -96,11 +110,7 @@ export default async function PropertiesPage({ searchParams }: SearchPageProps) 
     if (typeof value === "string" && value) guestBreakdownParams[key] = value;
   }
 
-  const [
-    results,
-    amenities,
-    filterPreview,
-  ] = await Promise.all([
+  const [results, amenities, filterPreview] = await Promise.all([
     searchListings(filters),
     getAvailableAmenities(),
     getSearchFilterPreview(filters),
@@ -115,20 +125,36 @@ export default async function PropertiesPage({ searchParams }: SearchPageProps) 
     if (filters.checkIn) p.set("checkIn", filters.checkIn);
     if (filters.checkOut) p.set("checkOut", filters.checkOut);
     if (filters.guests) p.set("guests", String(filters.guests));
-    Object.entries(guestBreakdownParams).forEach(([key, value]) => p.set(key, value));
+    Object.entries(guestBreakdownParams).forEach(([key, value]) =>
+      p.set(key, value),
+    );
     if (filters.minPrice) p.set("minPrice", String(filters.minPrice));
     if (filters.maxPrice) p.set("maxPrice", String(filters.maxPrice));
     if (filters.bedrooms) p.set("bedrooms", String(filters.bedrooms));
     if (propertyTypesQuery) p.set("propertyTypes", propertyTypesQuery);
-    if (filters.amenities) filters.amenities.forEach((a) => p.append("amenities", a));
+    if (filters.amenities)
+      filters.amenities.forEach((a) => p.append("amenities", a));
     if (filters.sort) p.set("sort", filters.sort);
     p.set("page", String(page));
     return `/properties?${p.toString()}`;
   }
 
-  const totalLabel = filters.checkIn && filters.checkOut
-    ? tPlural(t, "properties.results_with_dates", results.total, "{n} home · dates applied in filters", "{n} homes · dates applied in filters")
-    : tPlural(t, "properties.results", results.total, "{n} home", "{n} homes");
+  const totalLabel =
+    filters.checkIn && filters.checkOut
+      ? tPlural(
+          t,
+          "properties.results_with_dates",
+          results.total,
+          "{n} home · dates applied in filters",
+          "{n} homes · dates applied in filters",
+        )
+      : tPlural(
+          t,
+          "properties.results",
+          results.total,
+          "{n} home",
+          "{n} homes",
+        );
 
   const nightCount =
     filters.checkIn && filters.checkOut
@@ -142,7 +168,7 @@ export default async function PropertiesPage({ searchParams }: SearchPageProps) 
   if (filters.checkOut) listingQuery.set("checkOut", filters.checkOut);
   if (filters.guests) listingQuery.set("guests", String(filters.guests));
   Object.entries(guestBreakdownParams).forEach(([key, value]) =>
-    listingQuery.set(key, value)
+    listingQuery.set(key, value),
   );
   const listingQueryString = listingQuery.toString();
 
@@ -161,37 +187,55 @@ export default async function PropertiesPage({ searchParams }: SearchPageProps) 
               checkIn: parseLocalYmd(filters.checkIn),
               checkOut: parseLocalYmd(filters.checkOut),
               overrides: new Map(
-                l.priceOverrides.map((row) => [row.date, row.rate])
+                l.priceOverrides.map((row) => [row.date, row.rate]),
               ),
-              promotion: l.promotion,
+              promotions: l.promotions,
             })
           : null;
-      label =
-        quote
-          ? formatPrice(quote.total, cur, t.locale)
-          : formatPrice(nightly, cur, t.locale);
+      label = quote
+        ? formatPrice(quote.total, cur, t.locale)
+        : formatPrice(nightly, cur, t.locale);
     }
-    return [{
-      id: l.id,
-      slug: l.slug,
-      lat: coordinates.lat,
-      lng: coordinates.lng,
-      label,
-      title: l.title,
-      location: [l.property.area, l.property.city].filter(Boolean).join(", "),
-      imageUrl: l.images.find((image) => image.url?.trim())?.url,
-      imageAlt: l.images.find((image) => image.url?.trim())?.alt ?? undefined,
-      query: listingQueryString,
-    }];
+    return [
+      {
+        id: l.id,
+        slug: l.slug,
+        lat: coordinates.lat,
+        lng: coordinates.lng,
+        label,
+        title: l.title,
+        location: [l.property.area, l.property.city].filter(Boolean).join(", "),
+        imageUrl: l.images.find((image) => image.url?.trim())?.url,
+        imageAlt: l.images.find((image) => image.url?.trim())?.alt ?? undefined,
+        query: listingQueryString,
+      },
+    ];
   });
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <h1 className="sr-only">
-        {filters.city ? (() => { const value = ti(t, "properties.stays_in_city", "Stays in {city}", { city: filters.city }); return <span className={value.translated ? "notranslate" : undefined}>{value.text}</span>; })() : <T t={t} k="properties.explore" source="Explore properties" />}
+        {filters.city ? (
+          (() => {
+            const value = ti(t, "properties.stays_in_city", "Stays in {city}", {
+              city: filters.city,
+            });
+            return (
+              <span className={value.translated ? "notranslate" : undefined}>
+                {value.text}
+              </span>
+            );
+          })()
+        ) : (
+          <T t={t} k="properties.explore" source="Explore properties" />
+        )}
       </h1>
       <div className="flex-1 w-full">
-        <Suspense fallback={<div className="animate-pulse h-40 bg-muted mb-8 mx-4 md:mx-8 rounded-xl" />}>
+        <Suspense
+          fallback={
+            <div className="animate-pulse h-40 bg-muted mb-8 mx-4 md:mx-8 rounded-xl" />
+          }
+        >
           <PropertiesExplorerClient
             amenities={amenities}
             propertyTypes={propertyTypes}
@@ -229,7 +273,23 @@ export default async function PropertiesPage({ searchParams }: SearchPageProps) 
                       </Button>
                     )}
                     <span className="text-sm text-muted-foreground px-4">
-                      {(() => { const value = ti(t, "pagination.page_of", "Page {page} of {pages}", { page: results.page, pages: results.totalPages }); return <span className={value.translated ? "notranslate" : undefined}>{value.text}</span>; })()}
+                      {(() => {
+                        const value = ti(
+                          t,
+                          "pagination.page_of",
+                          "Page {page} of {pages}",
+                          { page: results.page, pages: results.totalPages },
+                        );
+                        return (
+                          <span
+                            className={
+                              value.translated ? "notranslate" : undefined
+                            }
+                          >
+                            {value.text}
+                          </span>
+                        );
+                      })()}
                     </span>
                     {results.page < results.totalPages && (
                       <Button variant="outline" size="sm" asChild>
@@ -244,11 +304,23 @@ export default async function PropertiesPage({ searchParams }: SearchPageProps) 
               </>
             ) : (
               <EmptyState
-                title={t.resolve("properties.none_found", "No properties found")}
-                description={t.resolve("properties.none_description", "Try adjusting your search filters or explore a different area.")}
+                title={t.resolve(
+                  "properties.none_found",
+                  "No properties found",
+                )}
+                description={t.resolve(
+                  "properties.none_description",
+                  "Try adjusting your search filters or explore a different area.",
+                )}
               >
                 <Button variant="outline" asChild>
-                  <Link href="/properties"><T t={t} k="properties.clear_filters" source="Clear filters" /></Link>
+                  <Link href="/properties">
+                    <T
+                      t={t}
+                      k="properties.clear_filters"
+                      source="Clear filters"
+                    />
+                  </Link>
                 </Button>
               </EmptyState>
             )}

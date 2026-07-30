@@ -1,0 +1,9 @@
+[Unit]
+Description=Linger Homes booking request reminders and expiry
+After=network.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/var/www/book.easy.mk
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node --conditions=react-server --import tsx scripts/process-booking-requests.ts

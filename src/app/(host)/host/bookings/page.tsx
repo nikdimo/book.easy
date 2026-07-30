@@ -10,6 +10,7 @@ import { formatDate, formatPrice } from "@/lib/utils/format";
 import { BOOKING_STATUSES } from "@/lib/constants";
 import { StartConversationButton } from "@/components/communication/start-conversation-button";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Star } from "lucide-react";
 
@@ -40,9 +41,21 @@ export default async function HostBookingsPage() {
             <Card key={booking.id}>
               <CardContent className="p-4 space-y-3">
                 <div className="flex flex-wrap items-start justify-between gap-2">
+                  {booking.listing.images[0]?.url ? (
+                    <span className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg">
+                      <Image
+                        src={booking.listing.images[0].url}
+                        alt={booking.listing.images[0].alt || booking.listing.title}
+                        fill
+                        sizes="112px"
+                        className="object-cover"
+                      />
+                    </span>
+                  ) : null}
                   <div className="min-w-0 flex-1">
                     <h3 className="break-words font-semibold">{booking.listing.title}</h3>
                     <p className="text-sm text-muted-foreground">{booking.listing.property.city}</p>
+                    <p className="text-xs font-medium text-muted-foreground">{booking.reference}</p>
                   </div>
                   <Badge variant={booking.status === "CONFIRMED" ? "default" : "secondary"}>
                     {statusConfig?.label || booking.status}
@@ -76,6 +89,9 @@ export default async function HostBookingsPage() {
                   <HostCancelBookingButton bookingId={booking.id} />
                 )}
                 <div className="flex flex-wrap gap-2">
+                  <Button asChild>
+                    <Link href={`/host/bookings/${booking.id}`}>View details</Link>
+                  </Button>
                   <StartConversationButton bookingId={booking.id} label="Message guest" />
                   {booking.status === "COMPLETED" ? (
                     <Button asChild>

@@ -123,8 +123,9 @@ export default function PrivacyPage() {
                 hosting, and communication services you request
               </li>
               <li>
-                <strong>Consent:</strong> Analytics, marketing, and non-essential cookies (you can
-                withdraw at any time via cookie settings)
+                <strong>Consent:</strong> Analytics and non-essential cookies through cookie
+                settings, and separate affirmative consent for each marketing channel. Accepting
+                marketing cookies does not subscribe you to email or push marketing.
               </li>
               <li>
                 <strong>Legal Obligation:</strong> Anti-fraud detection, tax compliance, and
@@ -171,7 +172,10 @@ export default function PrivacyPage() {
                 <strong>Session Data:</strong> Automatically deleted after 24 hours of inactivity
               </li>
               <li>
-                <strong>Marketing Data:</strong> Retained until you unsubscribe or request deletion
+                <strong>Marketing Data:</strong> Active preferences are retained while used.
+                Consent evidence and a minimal suppression record may be retained after withdrawal
+                for the applicable limitation period so we can demonstrate compliance and avoid
+                contacting you again.
               </li>
               <li>
                 <strong>Inactive Accounts:</strong> May be purged after 2 years of inactivity,
@@ -193,7 +197,8 @@ export default function PrivacyPage() {
             <p>We share data with third parties who help us operate the Service:</p>
             <ul className="list-disc pl-6 space-y-2">
               <li>
-                <strong>Resend (Email Service):</strong> Transactional and marketing emails
+                <strong>Email Delivery Provider:</strong> Delivery of account, booking, and
+                consented marketing email
               </li>
               <li>
                 <strong>Payment Processors:</strong> Payment authorization and processing

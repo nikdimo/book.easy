@@ -36,7 +36,7 @@ interface PropertyCardProps {
       currency: string;
       minNights: number;
     } | null;
-    promotion?: StayPromotion | null;
+    promotions?: StayPromotion[];
     priceOverrides?: { date: string; rate: number }[];
   };
   /** When set with checkOut, card shows trip dates and total price (Airbnb-style). */
@@ -60,7 +60,8 @@ export async function PropertyCard({
   mapListingId,
 }: PropertyCardProps) {
   const t = await getT();
-  const { slug, title, property, images, video, pricingRule, promotion } = listing;
+  const { slug, title, property, images, video, pricingRule, promotions } =
+    listing;
   const displayImages = images.filter((img) => img.url?.trim());
   const city = localizePlaceName(property.city, t.locale);
   const typeLabel = await getPropertyTypeLabel(property.propertyType);
@@ -91,29 +92,45 @@ export async function PropertyCard({
           checkIn: parseLocalYmd(checkIn!),
           checkOut: parseLocalYmd(checkOut!),
           overrides: new Map(
-            (listing.priceOverrides ?? []).map((row) => [row.date, row.rate])
+            (listing.priceOverrides ?? []).map((row) => [row.date, row.rate]),
           ),
-          promotion,
+          promotions,
         })
       : null;
   const tripTotal = quote?.total ?? null;
+  const promotion =
+    quote?.appliedPromotion ??
+    [...(promotions ?? [])].sort((left, right) => {
+      const leftSpecific = left.startDate && left.endDate ? 1 : 0;
+      const rightSpecific = right.startDate && right.endDate ? 1 : 0;
+      if (leftSpecific !== rightSpecific) return leftSpecific - rightSpecific;
+      return (left.minimumNights ?? 1) - (right.minimumNights ?? 1);
+    })[0] ??
+    null;
   const belowMinStay =
     showTrip && pricingRule != null && nightCount! < pricingRule.minNights;
   const minimumStay = pricingRule
-    ? tPlural(t, "property_card.minimum_nights", pricingRule.minNights, "{n}-night min.", "{n}-night min.")
+    ? tPlural(
+        t,
+        "property_card.minimum_nights",
+        pricingRule.minNights,
+        "{n}-night min.",
+        "{n}-night min.",
+      )
     : null;
   const guestsLabel = tPlural(
     t,
     "listing.guests",
     listing.maxGuests,
     "{n} guest",
-    "{n} guests"
+    "{n} guests",
   );
-  const totalPrice = pricingRule && tripTotal != null
-    ? ti(t, "property_card.price_total", "{price} total", {
-        price: formatPrice(tripTotal, pricingRule.currency, t.locale),
-      })
-    : null;
+  const totalPrice =
+    pricingRule && tripTotal != null
+      ? ti(t, "property_card.price_total", "{price} total", {
+          price: formatPrice(tripTotal, pricingRule.currency, t.locale),
+        })
+      : null;
   const originalTotalPrice =
     pricingRule && quote?.promotionEligible && quote.discountAmount > 0
       ? formatPrice(quote.originalTotal, pricingRule.currency, t.locale)
@@ -122,17 +139,27 @@ export async function PropertyCard({
   const promotionLabel = promotion
     ? promotion.type === "PERCENT_DISCOUNT"
       ? promotionMinimum
-        ? ti(t, "promotion.percent_min_nights", "{percent}% off · {n}+ nights", {
-            percent: promotion.discountPercent ?? 0,
-            n: promotionMinimum,
-          })
+        ? ti(
+            t,
+            "promotion.percent_min_nights",
+            "{percent}% off · {n}+ nights",
+            {
+              percent: promotion.discountPercent ?? 0,
+              n: promotionMinimum,
+            },
+          )
         : ti(t, "promotion.percent_off", "{percent}% off", {
             percent: promotion.discountPercent ?? 0,
           })
       : promotionMinimum
-        ? ti(t, "promotion.free_cleaning_min_nights", "Free cleaning · {n}+ nights", {
-            n: promotionMinimum,
-          })
+        ? ti(
+            t,
+            "promotion.free_cleaning_min_nights",
+            "Free cleaning · {n}+ nights",
+            {
+              n: promotionMinimum,
+            },
+          )
         : ti(t, "promotion.free_cleaning", "Free cleaning", {})
     : null;
   const showPromotionBadge =
@@ -142,10 +169,7 @@ export async function PropertyCard({
       promotion?.type === "FREE_CLEANING");
 
   return (
-    <div
-      className="flex flex-col gap-3"
-      data-map-listing-id={mapListingId}
-    >
+    <div className="flex flex-col gap-3" data-map-listing-id={mapListingId}>
       <PropertyCardGallery
         href={href}
         title={title}
@@ -156,10 +180,7 @@ export async function PropertyCard({
         isAuthenticated={!!session?.user}
       />
 
-      <a
-        href={href}
-        className="group/link flex min-w-0 flex-col gap-0.5 px-1"
-      >
+      <a href={href} className="group/link flex min-w-0 flex-col gap-0.5 px-1">
         <div className="flex min-w-0 items-baseline justify-between gap-3">
           <h3 className="min-w-0 flex-1 truncate text-[0.95rem] font-semibold leading-snug text-foreground group-hover/link:underline underline-offset-2">
             <TWithValues
@@ -175,21 +196,34 @@ export async function PropertyCard({
               variant="secondary"
               className="shrink-0 font-medium text-xs rounded-md"
             >
-              <span className={minimumStay?.translated ? "notranslate" : undefined}>{minimumStay?.text}</span>
+              <span
+                className={minimumStay?.translated ? "notranslate" : undefined}
+              >
+                {minimumStay?.text}
+              </span>
             </Badge>
           ) : null}
         </div>
 
-        <p className="truncate text-[0.9rem] leading-5 text-muted-foreground">{title}</p>
+        <p className="truncate text-[0.9rem] leading-5 text-muted-foreground">
+          {title}
+        </p>
 
         {showPromotionBadge ? (
           <Badge
             variant="secondary"
             className="mt-1 w-fit rounded-md text-xs font-medium"
           >
-            <span className={promotionLabel?.translated ? "notranslate" : undefined}>
+            <span
+              className={promotionLabel?.translated ? "notranslate" : undefined}
+            >
               {quote?.promotionEligible && promotion?.type === "FREE_CLEANING"
-                ? ti(t, "promotion.free_cleaning_included", "Free cleaning included", {}).text
+                ? ti(
+                    t,
+                    "promotion.free_cleaning_included",
+                    "Free cleaning included",
+                    {},
+                  ).text
                 : promotionLabel?.text}
             </span>
           </Badge>
@@ -206,14 +240,17 @@ export async function PropertyCard({
 
         {pricingRule && tripTotal != null ? (
           <div className="mt-1 flex items-baseline gap-2">
-            {promotion?.type === "PERCENT_DISCOUNT" &&
-            originalTotalPrice ? (
+            {promotion?.type === "PERCENT_DISCOUNT" && originalTotalPrice ? (
               <span className="text-[0.9rem] text-muted-foreground line-through">
                 {originalTotalPrice}
               </span>
             ) : null}
             <span className="text-[0.95rem] font-semibold text-foreground underline decoration-1 underline-offset-2">
-              <span className={totalPrice?.translated ? "notranslate" : undefined}>{totalPrice?.text}</span>
+              <span
+                className={totalPrice?.translated ? "notranslate" : undefined}
+              >
+                {totalPrice?.text}
+              </span>
             </span>
           </div>
         ) : pricingRule ? (

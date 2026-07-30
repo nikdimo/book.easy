@@ -1,5 +1,14 @@
 import { notFound } from "next/navigation";
-import { CalendarDays, MapPin, Sparkles, Users, BedDouble, Bath, Bed, Star } from "lucide-react";
+import {
+  CalendarDays,
+  MapPin,
+  Sparkles,
+  Users,
+  BedDouble,
+  Bath,
+  Bed,
+  Star,
+} from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -30,11 +39,15 @@ interface ListingPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-export async function generateMetadata({ params }: ListingPageProps): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+}: ListingPageProps): Promise<Metadata> {
   const { slug } = await params;
   const listing = await getListingBySlug(slug);
   if (!listing) return { title: "Not Found" };
-  const ogImage = listing.images.find((item) => item.mediaType === "IMAGE")?.url;
+  const ogImage = listing.images.find(
+    (item) => item.mediaType === "IMAGE",
+  )?.url;
 
   return {
     title: listing.title,
@@ -47,15 +60,20 @@ export async function generateMetadata({ params }: ListingPageProps): Promise<Me
   };
 }
 
-export default async function ListingDetailPage({ params, searchParams }: ListingPageProps) {
+export default async function ListingDetailPage({
+  params,
+  searchParams,
+}: ListingPageProps) {
   const { slug } = await params;
   const search = await searchParams;
   const listing = await getListingBySlug(slug);
 
   if (!listing) notFound();
 
-  const initialCheckIn = typeof search.checkIn === "string" ? search.checkIn : undefined;
-  const initialCheckOut = typeof search.checkOut === "string" ? search.checkOut : undefined;
+  const initialCheckIn =
+    typeof search.checkIn === "string" ? search.checkIn : undefined;
+  const initialCheckOut =
+    typeof search.checkOut === "string" ? search.checkOut : undefined;
   const hasExplicitSearchSelection = [
     "checkIn",
     "checkOut",
@@ -81,38 +99,67 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
 
   const disabledDateRanges = await getBlockedDateRangesForListing(listing.id);
   const priceOverrides = listing.pricingRule
-    ? (
-        await getFutureDatePriceRowsForListing(listing.id)
-      ).map((r) => ({
+    ? (await getFutureDatePriceRowsForListing(listing.id)).map((r) => ({
         date: dateKey(new Date(r.date)),
         rate: Number(r.nightlyRate),
       }))
     : [];
   const reviewSummary = await getPublishedListingReviews(listing.id);
-  const promotion = listing.promotions[0] ?? null;
 
-  const hostInitials = listing.host.profile?.hostDisplayName?.[0] ||
-    listing.host.name.split(" ").map((n) => n[0]).join("").slice(0, 2);
-  const hostName = listing.host.profile?.hostDisplayName || listing.host.name.split(" ")[0];
+  const hostInitials =
+    listing.host.profile?.hostDisplayName?.[0] ||
+    listing.host.name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .slice(0, 2);
+  const hostName =
+    listing.host.profile?.hostDisplayName || listing.host.name.split(" ")[0];
   const typeLabel = await getPropertyTypeLabel(listing.property.propertyType);
   const t = await getT();
   const reserveTooltip = t.resolve(
     "booking_widget.reserve_tooltip",
-    "Send a booking request to the host — you won't be charged yet."
+    "Send a booking request to the host — you won't be charged yet.",
   );
-  const guestCount = tPlural(t, "listing.guests", listing.maxGuests, "{n} guest", "{n} guests");
-  const bedroomCount = tPlural(t, "listing.bedrooms", listing.bedrooms, "{n} bedroom", "{n} bedrooms");
-  const bedCount = tPlural(t, "listing.beds", listing.beds, "{n} bed", "{n} beds");
-  const bathCount = tPlural(t, "listing.baths", listing.bathrooms, "{n} bath", "{n} baths");
+  const guestCount = tPlural(
+    t,
+    "listing.guests",
+    listing.maxGuests,
+    "{n} guest",
+    "{n} guests",
+  );
+  const bedroomCount = tPlural(
+    t,
+    "listing.bedrooms",
+    listing.bedrooms,
+    "{n} bedroom",
+    "{n} bedrooms",
+  );
+  const bedCount = tPlural(
+    t,
+    "listing.beds",
+    listing.beds,
+    "{n} bed",
+    "{n} beds",
+  );
+  const bathCount = tPlural(
+    t,
+    "listing.baths",
+    listing.bathrooms,
+    "{n} bath",
+    "{n} baths",
+  );
   const minimumNights = tPlural(
     t,
     "listing.minimum_nights",
     listing.pricingRule?.minNights ?? 1,
     "{n} night minimum",
-    "{n} nights minimum"
+    "{n} nights minimum",
   );
   const cleaningFeeLabel = ti(t, "listing.cleaning_fee", "Cleaning fee", {});
-  const hostedBy = ti(t, "listing.hosted_by", "Hosted by {name}", { name: hostName });
+  const hostedBy = ti(t, "listing.hosted_by", "Hosted by {name}", {
+    name: hostName,
+  });
   const session = await auth();
   const isSaved = session?.user
     ? (await getFavoriteListingIdSet(session.user.id)).has(listing.id)
@@ -136,7 +183,10 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between gap-y-4 mb-6">
         <div className="min-w-0 flex-1">
           <h1 className="text-xl md:text-[26px] font-semibold tracking-tight text-foreground leading-tight">
-            <PreservedPlaceText text={listing.title} placeNames={protectedPlaceNames} />
+            <PreservedPlaceText
+              text={listing.title}
+              placeNames={protectedPlaceNames}
+            />
           </h1>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-sm">
             <span
@@ -161,7 +211,9 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
               )}
             {typeLabel && (
               <>
-                <span className="text-muted-foreground hidden sm:inline">·</span>
+                <span className="text-muted-foreground hidden sm:inline">
+                  ·
+                </span>
                 <Badge variant="secondary" className="font-normal rounded-md">
                   {typeLabel}
                 </Badge>
@@ -184,31 +236,61 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground pb-2 border-b border-border/80">
             <span className="flex items-center gap-1.5">
               <Users className="h-4 w-4" />
-              <span className={guestCount.translated ? "notranslate" : undefined}>{guestCount.text}</span>
+              <span
+                className={guestCount.translated ? "notranslate" : undefined}
+              >
+                {guestCount.text}
+              </span>
             </span>
             <span className="flex items-center gap-1.5">
               <BedDouble className="h-4 w-4" />
-              <span className={bedroomCount.translated ? "notranslate" : undefined}>{bedroomCount.text}</span>
+              <span
+                className={bedroomCount.translated ? "notranslate" : undefined}
+              >
+                {bedroomCount.text}
+              </span>
             </span>
             <span className="flex items-center gap-1.5">
               <Bed className="h-4 w-4" />
-              <span className={bedCount.translated ? "notranslate" : undefined}>{bedCount.text}</span>
+              <span className={bedCount.translated ? "notranslate" : undefined}>
+                {bedCount.text}
+              </span>
             </span>
             <span className="flex items-center gap-1.5">
               <Bath className="h-4 w-4" />
-              <span className={bathCount.translated ? "notranslate" : undefined}>{bathCount.text}</span>
+              <span
+                className={bathCount.translated ? "notranslate" : undefined}
+              >
+                {bathCount.text}
+              </span>
             </span>
             {listing.pricingRule && (
               <>
                 <span className="flex items-center gap-1.5">
                   <CalendarDays className="h-4 w-4" />
-                  <span className={minimumNights.translated ? "notranslate" : undefined}>{minimumNights.text}</span>
+                  <span
+                    className={
+                      minimumNights.translated ? "notranslate" : undefined
+                    }
+                  >
+                    {minimumNights.text}
+                  </span>
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Sparkles className="h-4 w-4" />
                   <span>
-                    <span className={cleaningFeeLabel.translated ? "notranslate" : undefined}>{cleaningFeeLabel.text}</span>{" "}
-                    {formatPrice(Number(listing.pricingRule.cleaningFee), listing.pricingRule.currency, t.locale)}
+                    <span
+                      className={
+                        cleaningFeeLabel.translated ? "notranslate" : undefined
+                      }
+                    >
+                      {cleaningFeeLabel.text}
+                    </span>{" "}
+                    {formatPrice(
+                      Number(listing.pricingRule.cleaningFee),
+                      listing.pricingRule.currency,
+                      t.locale,
+                    )}
                   </span>
                 </span>
               </>
@@ -217,10 +299,20 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
 
           <div className="flex items-center gap-4">
             <Avatar className="h-14 w-14 border-2 border-border">
-              <AvatarFallback className="text-lg font-medium">{hostInitials}</AvatarFallback>
+              <AvatarFallback className="text-lg font-medium">
+                {hostInitials}
+              </AvatarFallback>
             </Avatar>
             <div>
-              <p className={hostedBy.translated ? "notranslate font-semibold" : "font-semibold"}>{hostedBy.text}</p>
+              <p
+                className={
+                  hostedBy.translated
+                    ? "notranslate font-semibold"
+                    : "font-semibold"
+                }
+              >
+                {hostedBy.text}
+              </p>
               {listing.host.profile?.hostBio && (
                 <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
                   {listing.host.profile.hostBio}
@@ -232,7 +324,9 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
           <Separator />
 
           <div>
-            <h2 className="text-xl font-semibold mb-4"><T t={t} k="listing.about" source="About this space" /></h2>
+            <h2 className="text-xl font-semibold mb-4">
+              <T t={t} k="listing.about" source="About this space" />
+            </h2>
             <ExpandableDescription
               text={listing.description}
               preservePlaceNames={protectedPlaceNames}
@@ -248,7 +342,10 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
               <Separator />
               <section aria-labelledby="guest-reviews-heading">
                 <div className="mb-5 flex flex-wrap items-center gap-3">
-                  <h2 id="guest-reviews-heading" className="text-xl font-semibold">
+                  <h2
+                    id="guest-reviews-heading"
+                    className="text-xl font-semibold"
+                  >
                     <T t={t} k="listing.guest_reviews" source="Guest reviews" />
                   </h2>
                   {reviewSummary.count >= 3 && reviewSummary.average != null ? (
@@ -258,18 +355,24 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
                     </span>
                   ) : null}
                   <span className="text-sm text-muted-foreground">
-                    {reviewSummary.count} {reviewSummary.count === 1 ? "review" : "reviews"}
+                    {reviewSummary.count}{" "}
+                    {reviewSummary.count === 1 ? "review" : "reviews"}
                   </span>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   {reviewSummary.reviews.map((review) => {
                     const overall = review.ratings.find(
-                      (rating) => rating.category === "OVERALL"
+                      (rating) => rating.category === "OVERALL",
                     )?.score;
                     return (
-                      <article key={review.id} className="rounded-xl border p-4">
+                      <article
+                        key={review.id}
+                        className="rounded-xl border p-4"
+                      >
                         <div className="flex items-center justify-between gap-3">
-                          <p className="font-medium">{review.author?.name || "BookEasy guest"}</p>
+                          <p className="font-medium">
+                            {review.author?.name || "BookEasy guest"}
+                          </p>
                           {overall ? (
                             <span className="flex items-center gap-1 text-sm font-semibold">
                               <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
@@ -298,16 +401,17 @@ export default async function ListingDetailPage({ params, searchParams }: Listin
               cleaningFee={Number(listing.pricingRule.cleaningFee)}
               currency={listing.pricingRule.currency}
               minNights={listing.pricingRule.minNights}
-              promotion={
-                promotion
-                  ? {
-                      id: promotion.id,
-                      type: promotion.type,
-                      discountPercent: promotion.discountPercent,
-                      minimumNights: promotion.minimumNights,
-                    }
-                  : null
-              }
+              promotions={listing.promotions.map((promotion) => ({
+                id: promotion.id,
+                type: promotion.type,
+                discountPercent: promotion.discountPercent,
+                minimumNights: promotion.minimumNights,
+                freeCleaning: promotion.freeCleaning,
+                roundUpToNearestFive: promotion.roundUpToNearestFive,
+                startDate: promotion.startDate,
+                endDate: promotion.endDate,
+                createdAt: promotion.createdAt,
+              }))}
               disabledDateRanges={disabledDateRanges}
               priceOverrides={priceOverrides}
               initialCheckIn={initialCheckIn}

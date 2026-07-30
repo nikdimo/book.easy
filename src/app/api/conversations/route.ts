@@ -4,6 +4,7 @@ import {
   ensureInquiryConversation,
 } from "@/lib/services/chat.service";
 import { rateLimit } from "@/lib/rate-limit";
+import { conversationStartSchema } from "@/lib/validations/communication.schema";
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -19,12 +20,20 @@ export async function POST(request: Request) {
     );
   }
 
-  let input: { listingId?: string; bookingId?: string };
+  let raw: unknown;
   try {
-    input = await request.json();
+    raw = await request.json();
   } catch {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
+  const parsed = conversationStartSchema.safeParse(raw);
+  if (!parsed.success) {
+    return Response.json(
+      { error: parsed.error.issues[0]?.message ?? "Invalid request" },
+      { status: 400 }
+    );
+  }
+  const input = parsed.data;
 
   try {
     const conversation = input.bookingId

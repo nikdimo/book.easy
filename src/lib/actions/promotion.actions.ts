@@ -1,129 +1,279 @@
 "use server";
 
+import { PromotionType } from "@prisma/client";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { createAuditLog } from "@/lib/services/audit.service";
+import { compareYmd, ymdToDbDate } from "@/lib/utils/date-only";
 import { revalidatePublicListingCaches } from "@/lib/utils/revalidate-public-listing-caches";
-import { revalidatePath } from "next/cache";
 
 export type PromotionActionState = {
   error?: string;
   success?: string;
 };
 
-const promotionSchema = z
+export type ListingPromotionInput = {
+  promotionId?: string;
+  discountPercent: number;
+  minimumNights: number;
+  freeCleaning: boolean;
+  roundUpToNearestFive: boolean;
+  startDate?: string;
+  endDate?: string;
+};
+
+const promotionInputSchema = z
   .object({
-    type: z.enum(["NONE", "PERCENT_DISCOUNT", "FREE_CLEANING"]),
-    discountPercent: z.coerce.number().int().min(5).max(50).optional(),
-    minimumNights: z.coerce.number().int().min(1).max(365).optional(),
+    promotionId: z.string().cuid().optional(),
+    discountPercent: z.coerce.number().int().min(0).max(50),
+    minimumNights: z.coerce.number().int().min(1).max(365),
+    freeCleaning: z.boolean(),
+    roundUpToNearestFive: z.boolean(),
+    startDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
+    endDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional(),
   })
   .superRefine((value, ctx) => {
-    if (
-      value.type === "PERCENT_DISCOUNT" &&
-      value.discountPercent == null
-    ) {
+    if (value.discountPercent === 0 && !value.freeCleaning) {
       ctx.addIssue({
         code: "custom",
         path: ["discountPercent"],
-        message: "Choose a discount between 5% and 50%.",
+        message: "Add a discount, free cleaning, or both.",
+      });
+    }
+    if (Boolean(value.startDate) !== Boolean(value.endDate)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["startDate"],
+        message: "Choose both a start date and an end date.",
+      });
+    }
+    if (
+      value.startDate &&
+      value.endDate &&
+      compareYmd(value.endDate, value.startDate) <= 0
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["endDate"],
+        message: "The promotion end date must be after its start date.",
       });
     }
   });
 
-export async function saveListingPromotion(
-  listingId: string,
-  _previousState: PromotionActionState,
-  formData: FormData
-): Promise<PromotionActionState> {
+function promotionTypeFor(input: ListingPromotionInput): PromotionType {
+  return input.discountPercent > 0
+    ? PromotionType.PERCENT_DISCOUNT
+    : PromotionType.FREE_CLEANING;
+}
+
+function revalidatePromotionPaths(listingId: string, slug: string) {
+  revalidatePath(`/host/listings/${listingId}/availability`);
+  revalidatePath(`/host/listings/${listingId}/pricing`);
+  revalidatePath(`/host/listings/${listingId}/promotion`);
+  revalidatePath(`/host/listings/${listingId}/edit`);
+  revalidatePath("/host/listings");
+  revalidatePath(`/properties/${slug}`);
+  revalidatePublicListingCaches();
+}
+
+async function requirePromotionListing(listingId: string) {
   const session = await auth();
   if (!session?.user?.id || !session.user.isHost) {
-    return { error: "Not authorized." };
-  }
-
-  const parsed = promotionSchema.safeParse({
-    type: formData.get("type"),
-    discountPercent:
-      formData.get("type") === "PERCENT_DISCOUNT"
-        ? formData.get("discountPercent")
-        : undefined,
-    minimumNights:
-      formData.get("eligibility") === "MINIMUM"
-        ? formData.get("minimumNights")
-        : undefined,
-  });
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid promotion." };
+    return { error: "Not authorized." as const };
   }
 
   const listing = await db.listing.findFirst({
     where: { id: listingId, hostId: session.user.id },
-    include: { pricingRule: true },
+    include: {
+      pricingRule: true,
+      promotions: { where: { disabledAt: null } },
+    },
   });
-  if (!listing) return { error: "Listing not found." };
+  if (!listing) return { error: "Listing not found." as const };
   if (listing.status !== "APPROVED") {
-    return { error: "Publish the listing before adding a special offer." };
-  }
-  if (!listing.pricingRule) return { error: "Listing pricing is not configured." };
-
-  const data = parsed.data;
-  if (
-    data.type === "FREE_CLEANING" &&
-    Number(listing.pricingRule.cleaningFee) <= 0
-  ) {
-    return { error: "Add a cleaning fee before offering free cleaning." };
-  }
-  if (
-    data.minimumNights != null &&
-    data.minimumNights > listing.pricingRule.maxNights
-  ) {
     return {
-      error: `The offer minimum cannot exceed ${listing.pricingRule.maxNights} nights.`,
+      error: "Publish the listing before adding a special offer." as const,
+    };
+  }
+  if (!listing.pricingRule) {
+    return { error: "Listing pricing is not configured." as const };
+  }
+
+  return { listing, userId: session.user.id };
+}
+
+export async function upsertListingPromotion(
+  listingId: string,
+  input: ListingPromotionInput,
+): Promise<PromotionActionState> {
+  const parsed = promotionInputSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      error: parsed.error.issues[0]?.message ?? "Invalid promotion.",
     };
   }
 
-  const now = new Date();
-  const created = await db.$transaction(async (tx) => {
-    await tx.listingPromotion.updateMany({
-      where: { listingId, disabledAt: null },
-      data: { disabledAt: now },
-    });
+  const managed = await requirePromotionListing(listingId);
+  if ("error" in managed) return { error: managed.error };
+  const { listing, userId } = managed;
+  const pricingRule = listing.pricingRule;
+  if (!pricingRule) return { error: "Listing pricing is not configured." };
+  const data = parsed.data;
 
-    if (data.type === "NONE") return null;
+  if (
+    data.promotionId &&
+    !listing.promotions.some((promotion) => promotion.id === data.promotionId)
+  ) {
+    return { error: "Promotion not found." };
+  }
 
-    return tx.listingPromotion.create({
-      data: {
-        listingId,
-        type: data.type,
-        discountPercent:
-          data.type === "PERCENT_DISCOUNT" ? data.discountPercent : null,
-        minimumNights: data.minimumNights ?? null,
-      },
-    });
+  if (data.freeCleaning && Number(pricingRule.cleaningFee) <= 0) {
+    return { error: "Add a cleaning fee before offering free cleaning." };
+  }
+  if (data.minimumNights > pricingRule.maxNights) {
+    return {
+      error: `The offer minimum cannot exceed ${pricingRule.maxNights} nights.`,
+    };
+  }
+
+  const startDate = data.startDate ? ymdToDbDate(data.startDate) : null;
+  const endDate = data.endDate ? ymdToDbDate(data.endDate) : null;
+  const conflict = listing.promotions.find((promotion) => {
+    if (promotion.id === data.promotionId) return false;
+    const existingMinimum = promotion.minimumNights ?? pricingRule.minNights;
+    if (existingMinimum !== data.minimumNights) return false;
+
+    const existingAlways = !promotion.startDate && !promotion.endDate;
+    const incomingAlways = !startDate && !endDate;
+    if (existingAlways || incomingAlways) {
+      return existingAlways && incomingAlways;
+    }
+    return promotion.startDate! < endDate! && promotion.endDate! > startDate!;
   });
+  if (conflict) {
+    return {
+      error:
+        "Another promotion already uses this minimum stay for an overlapping date scope.",
+    };
+  }
+
+  const saved = data.promotionId
+    ? await db.listingPromotion.update({
+        where: { id: data.promotionId, listingId },
+        data: {
+          type: promotionTypeFor(data),
+          discountPercent: data.discountPercent,
+          minimumNights: data.minimumNights,
+          freeCleaning: data.freeCleaning,
+          roundUpToNearestFive:
+            data.discountPercent > 0 && data.roundUpToNearestFive,
+          startDate,
+          endDate,
+        },
+      })
+    : await db.listingPromotion.create({
+        data: {
+          listingId,
+          type: promotionTypeFor(data),
+          discountPercent: data.discountPercent,
+          minimumNights: data.minimumNights,
+          freeCleaning: data.freeCleaning,
+          roundUpToNearestFive:
+            data.discountPercent > 0 && data.roundUpToNearestFive,
+          startDate,
+          endDate,
+        },
+      });
 
   await createAuditLog({
-    userId: session.user.id,
-    action: created ? "listing.promotion_saved" : "listing.promotion_disabled",
+    userId,
+    action: data.promotionId
+      ? "listing.promotion_updated"
+      : "listing.promotion_created",
     entityType: "Listing",
     entityId: listingId,
-    metadata: created
-      ? {
-          promotionId: created.id,
-          type: created.type,
-          discountPercent: created.discountPercent,
-          minimumNights: created.minimumNights,
-        }
-      : undefined,
+    metadata: {
+      promotionId: saved.id,
+      discountPercent: saved.discountPercent,
+      minimumNights: saved.minimumNights,
+      freeCleaning: saved.freeCleaning,
+      roundUpToNearestFive: saved.roundUpToNearestFive,
+      startDate: saved.startDate?.toISOString() ?? null,
+      endDate: saved.endDate?.toISOString() ?? null,
+    },
   });
 
-  revalidatePath(`/host/listings/${listingId}/promotion`);
-  revalidatePath(`/host/listings/${listingId}/edit`);
-  revalidatePath("/host/listings");
-  revalidatePath(`/properties/${listing.slug}`);
-  revalidatePublicListingCaches();
-
+  revalidatePromotionPaths(listingId, listing.slug);
   return {
-    success: created ? "Special offer saved." : "Special offer turned off.",
+    success: data.promotionId ? "Promotion updated." : "Promotion created.",
   };
+}
+
+export async function disableListingPromotion(
+  listingId: string,
+  promotionId: string,
+): Promise<PromotionActionState> {
+  const managed = await requirePromotionListing(listingId);
+  if ("error" in managed) return { error: managed.error };
+  const { listing, userId } = managed;
+
+  const promotion = listing.promotions.find((row) => row.id === promotionId);
+  if (!promotion) return { error: "Promotion not found." };
+
+  await db.listingPromotion.update({
+    where: { id: promotionId },
+    data: { disabledAt: new Date() },
+  });
+  await createAuditLog({
+    userId,
+    action: "listing.promotion_disabled",
+    entityType: "Listing",
+    entityId: listingId,
+    metadata: { promotionId },
+  });
+
+  revalidatePromotionPaths(listingId, listing.slug);
+  return { success: "Promotion removed." };
+}
+
+/**
+ * Compatibility adapter for the existing standalone form. The unified calendar
+ * uses upsertListingPromotion directly.
+ */
+export async function saveListingPromotion(
+  listingId: string,
+  _previousState: PromotionActionState,
+  formData: FormData,
+): Promise<PromotionActionState> {
+  const type = String(formData.get("type") ?? "NONE");
+  if (type === "NONE") {
+    const managed = await requirePromotionListing(listingId);
+    if ("error" in managed) return { error: managed.error };
+    await db.listingPromotion.updateMany({
+      where: { listingId, disabledAt: null },
+      data: { disabledAt: new Date() },
+    });
+    revalidatePromotionPaths(listingId, managed.listing.slug);
+    return { success: "Special offers turned off." };
+  }
+
+  const minimumNights =
+    formData.get("eligibility") === "MINIMUM"
+      ? Number(formData.get("minimumNights"))
+      : 1;
+  return upsertListingPromotion(listingId, {
+    discountPercent:
+      type === "PERCENT_DISCOUNT" ? Number(formData.get("discountPercent")) : 0,
+    minimumNights,
+    freeCleaning: type === "FREE_CLEANING",
+    roundUpToNearestFive: formData.get("roundUpToNearestFive") !== "false",
+  });
 }

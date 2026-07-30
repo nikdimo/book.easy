@@ -5,7 +5,11 @@ export const LISTING_STEPS = [
   { title: "Amenities", description: "Choose what your property offers." },
   { title: "Photos", description: "Add at least 3 photos and choose the best one first." },
   { title: "Description", description: "Give guests a clear, inviting overview." },
-  { title: "Pricing", description: "Set the price and minimum stay, then publish." },
+  { title: "Pricing", description: "Set the price and minimum stay." },
+  {
+    title: "Special offer",
+    description: "Optionally launch with a discount that helps attract guests.",
+  },
 ] as const;
 
 export function normalizeListingStep(value: unknown) {

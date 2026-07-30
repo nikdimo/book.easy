@@ -4,6 +4,7 @@ import {
 } from "@/lib/services/chat.service";
 import { rateLimit } from "@/lib/rate-limit";
 import { mobileJson, mobileOptions, requireMobileUser } from "@/lib/mobile-api";
+import { sendMessageSchema } from "@/lib/validations/communication.schema";
 
 export async function OPTIONS(request: Request) {
   return mobileOptions(request);
@@ -18,7 +19,9 @@ export async function GET(
   const { id } = await context.params;
 
   try {
-    const result = await getConversationMessages(id, access.user.id);
+    const url = new URL(request.url);
+    const cursor = url.searchParams.get("cursor") ?? undefined;
+    const result = await getConversationMessages(id, access.user.id, { cursor });
     return mobileJson(request, {
       conversation: {
         ...result.conversation,
@@ -30,6 +33,15 @@ export async function GET(
             }
           : null,
       },
+      nextCursor: result.nextCursor,
+      bookingEvents: result.bookingEvents.map((event) => ({
+        ...event,
+        createdAt: event.createdAt.toISOString(),
+      })),
+      damageReports: result.damageReports.map((report) => ({
+        ...report,
+        createdAt: report.createdAt.toISOString(),
+      })),
       messages: result.messages.map((message) => ({
         ...message,
         createdAt: message.createdAt.toISOString(),
@@ -55,26 +67,42 @@ export async function POST(
   const { id } = await context.params;
 
   const limit = rateLimit(`chat:${access.user.id}`, 40, 60_000);
-  if (!limit.success) {
+  const threadLimit = rateLimit(`chat-thread:${id}`, 120, 60_000);
+  if (!limit.success || !threadLimit.success) {
+    const resetAt = Math.max(limit.resetAt, threadLimit.resetAt);
     return mobileJson(
       request,
       { error: "Too many messages. Please wait a moment." },
-      { status: 429, headers: { "Retry-After": String(Math.ceil((limit.resetAt - Date.now()) / 1000)) } }
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.max(1, Math.ceil((resetAt - Date.now()) / 1000))),
+        },
+      }
     );
   }
 
-  let input: { body?: string };
+  let raw: unknown;
   try {
-    input = await request.json();
+    raw = await request.json();
   } catch {
     return mobileJson(request, { error: "Invalid JSON body" }, { status: 400 });
+  }
+  const parsed = sendMessageSchema.safeParse(raw);
+  if (!parsed.success) {
+    return mobileJson(
+      request,
+      { error: parsed.error.issues[0]?.message ?? "Invalid message" },
+      { status: 400 }
+    );
   }
 
   try {
     const message = await sendConversationMessage({
       conversationId: id,
       senderId: access.user.id,
-      body: input.body ?? "",
+      body: parsed.data.body,
+      clientId: parsed.data.clientId,
     });
     return mobileJson(
       request,

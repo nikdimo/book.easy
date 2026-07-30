@@ -110,17 +110,19 @@ export interface ListingDraftResponse {
 
 export interface BookingSummary {
   id: string;
+  reference: string;
   listingId: string;
   listingTitle: string;
+  imageUrl: string | null;
   city: string;
   guestName: string;
-  guestEmail: string;
   guestCount: number;
   guestNote: string | null;
   checkIn: string;
   checkOut: string;
   totalPrice: number;
   status: string;
+  responseDueAt: string;
   cancellationReason: string | null;
   createdAt: string;
 }
@@ -205,6 +207,7 @@ export interface ConversationsResponse {
 
 export interface ChatMessage {
   id: string;
+  clientId: string | null;
   body: string;
   sender: { id: string; name: string; image: string | null };
   senderId: string | null;
@@ -221,18 +224,47 @@ export interface ChatResponse {
     status: "OPEN" | "FROZEN" | "CLOSED";
     booking: {
       id: string;
+      reference: string;
       status: string;
       checkIn: string;
       checkOut: string;
+      numberOfNights: number;
+      guestCount: number;
+      currency: string;
+      totalPrice: number;
+      detailsUrl: string;
     } | null;
-    listing: { id: string; title: string };
+    listing: { id: string; title: string; imageUrl: string | null };
     participants: {
       userId: string;
       role: "MEMBER" | "SUPPORT";
       user: { id: string; name: string; image: string | null };
     }[];
   };
+  nextCursor: string | null;
   messages: ChatMessage[];
+  bookingEvents: {
+    id: string;
+    type: string;
+    actorId: string | null;
+    data: unknown;
+    createdAt: string;
+  }[];
+  damageReports: {
+    id: string;
+    description: string;
+    status: string;
+    reporterId: string | null;
+    createdAt: string;
+    reporter: { id: string; name: string; image: string | null } | null;
+    evidence: {
+      id: string;
+      url: string;
+      fileName: string;
+      mimeType: string;
+      sizeBytes: number;
+    }[];
+  }[];
 }
 
 export interface LanguageOption {

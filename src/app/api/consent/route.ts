@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { saveUserConsent } from '@/lib/services/consent.service';
+import {
+  getUserConsent,
+  hashConsentNetworkAddress,
+  saveUserConsent,
+} from '@/lib/services/consent.service';
+import { clientIpFromHeaders } from '@/lib/rate-limit';
 import { randomBytes } from 'crypto';
 
 export async function POST(request: NextRequest) {
@@ -25,9 +30,7 @@ export async function POST(request: NextRequest) {
       sessionId = randomBytes(16).toString('hex');
     }
 
-    const ipAddress = request.headers.get('x-forwarded-for') ||
-                     request.headers.get('x-real-ip') ||
-                     '0.0.0.0';
+    const ipAddress = hashConsentNetworkAddress(clientIpFromHeaders(request.headers));
     const userAgent = request.headers.get('user-agent') || undefined;
 
     await saveUserConsent(
@@ -76,11 +79,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // In a real app, you'd fetch from the database here
-    // For now, return a basic response
+    const consent = await getUserConsent(sessionId);
+    if (!consent) {
+      return NextResponse.json({ error: 'No preferences found' }, { status: 404 });
+    }
     return NextResponse.json({
-      sessionId,
-      message: 'Use POST to set preferences, check localStorage for current preferences',
+      essential: consent.essential,
+      analytics: consent.analytics,
+      marketing: consent.marketing,
+      updatedAt: consent.updatedAt,
     });
   } catch (error) {
     console.error('Consent GET error:', error);

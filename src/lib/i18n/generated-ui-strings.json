@@ -740,6 +740,11 @@
     "filePath": "src/components/shared/footer.tsx"
   },
   {
+    "key": "footer.communication_preferences",
+    "sourceText": "Communication preferences",
+    "filePath": "src/components/shared/footer.tsx"
+  },
+  {
     "key": "footer.discover",
     "sourceText": "Discover",
     "filePath": "src/components/shared/footer.tsx"
@@ -777,6 +782,11 @@
   {
     "key": "footer.manage_privacy_settings",
     "sourceText": "Manage your privacy settings and cookies",
+    "filePath": "src/components/shared/footer.tsx"
+  },
+  {
+    "key": "footer.newsletter",
+    "sourceText": "Newsletter",
     "filePath": "src/components/shared/footer.tsx"
   },
   {
@@ -2388,6 +2398,41 @@
     "key": "nav.support_cases",
     "sourceText": "Support cases",
     "filePath": "src/components/shared/header.tsx"
+  },
+  {
+    "key": "newsletter.consent",
+    "sourceText": "I would like to receive inspiration, special offers and news from Linger Homes by email. I can unsubscribe at any time.",
+    "filePath": "src/app/(public)/newsletter/newsletter-form.tsx"
+  },
+  {
+    "key": "newsletter.description",
+    "sourceText": "Optional promotional email is separate from account and booking communication. We will only subscribe you after you confirm the link sent to your inbox.",
+    "filePath": "src/app/(public)/newsletter/page.tsx"
+  },
+  {
+    "key": "newsletter.email_address",
+    "sourceText": "Email address",
+    "filePath": "src/app/(public)/newsletter/newsletter-form.tsx"
+  },
+  {
+    "key": "newsletter.guest_offers",
+    "sourceText": "Travel and guest offers",
+    "filePath": "src/app/(public)/newsletter/newsletter-form.tsx"
+  },
+  {
+    "key": "newsletter.host_offers",
+    "sourceText": "Hosting news and offers",
+    "filePath": "src/app/(public)/newsletter/newsletter-form.tsx"
+  },
+  {
+    "key": "newsletter.interest",
+    "sourceText": "I am interested in",
+    "filePath": "src/app/(public)/newsletter/newsletter-form.tsx"
+  },
+  {
+    "key": "newsletter.title",
+    "sourceText": "Linger Homes news and offers",
+    "filePath": "src/app/(public)/newsletter/page.tsx"
   },
   {
     "key": "pagination.next",

@@ -1,9 +1,12 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { createUserNotification } from "@/lib/services/notification.service";
+import { dispatchNotificationPushes } from "@/lib/services/notification.service";
 import { COMMUNICATION_BRAND } from "@/lib/communication-brand";
+import { kickMessageEmailDelivery } from "@/lib/services/message-email-outbox.service";
+import { publishConversationChanged } from "@/lib/services/communication-realtime.service";
 
 const MESSAGE_MAX_LENGTH = 2000;
 const EMAIL_PATTERN = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i;
@@ -31,27 +34,43 @@ export async function ensureBookingConversation(bookingId: string, requiredUserI
 
   let conversation = await db.conversation.findUnique({ where: { bookingId } });
   if (!conversation) {
-    const inquiry = await db.conversation.findUnique({
-      where: {
-        listingId_inquiryGuestId: {
-          listingId: booking.listingId,
-          inquiryGuestId: booking.guestId,
-        },
-      },
-    });
-    conversation = inquiry
-      ? await db.conversation.update({
-          where: { id: inquiry.id },
-          data: { bookingId, kind: "BOOKING", status: "OPEN" },
-        })
-      : await db.conversation.create({
-          data: {
-            bookingId,
+    try {
+      const inquiry = await db.conversation.findUnique({
+        where: {
+          listingId_inquiryGuestId: {
             listingId: booking.listingId,
-            kind: "BOOKING",
-            startedById: booking.guestId,
+            inquiryGuestId: booking.guestId,
           },
-        });
+        },
+      });
+      conversation = inquiry
+        ? await db.conversation.update({
+            where: { id: inquiry.id },
+            data: {
+              bookingId,
+              inquiryGuestId: null,
+              kind: "BOOKING",
+              status: "OPEN",
+            },
+          })
+        : await db.conversation.create({
+            data: {
+              bookingId,
+              listingId: booking.listingId,
+              kind: "BOOKING",
+              startedById: booking.guestId,
+            },
+          });
+    } catch (error) {
+      if (
+        !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+        error.code !== "P2002"
+      ) {
+        throw error;
+      }
+      conversation = await db.conversation.findUnique({ where: { bookingId } });
+      if (!conversation) throw error;
+    }
   }
 
   await db.conversationParticipant.createMany({
@@ -103,19 +122,23 @@ export async function ensureInquiryConversation(listingId: string, guestId: stri
   return conversation;
 }
 
-async function ensureUserBookingConversations(userId: string) {
-  const bookings = await db.booking.findMany({
-    where: {
-      OR: [{ guestId: userId }, { listing: { hostId: userId } }],
-    },
+export async function ensureMissingBookingConversations(limit = 100) {
+  const missing = await db.booking.findMany({
+    where: { conversation: null },
     select: { id: true },
+    orderBy: { createdAt: "asc" },
+    take: limit,
   });
-  await Promise.all(bookings.map(({ id }) => ensureBookingConversation(id)));
+  const results = await Promise.allSettled(
+    missing.map(({ id }) => ensureBookingConversation(id))
+  );
+  return {
+    processed: results.filter((result) => result.status === "fulfilled").length,
+    failed: results.filter((result) => result.status === "rejected").length,
+  };
 }
 
 export async function listUserConversations(userId: string) {
-  await ensureUserBookingConversations(userId);
-
   const rows = await db.conversation.findMany({
     where: { participants: { some: { userId } } },
     include: {
@@ -179,53 +202,151 @@ export async function listUserConversations(userId: string) {
   });
 }
 
-export async function getConversationMessages(conversationId: string, userId: string) {
+export async function assertConversationMembership(
+  conversationId: string,
+  userId: string
+) {
+  const membership = await db.conversationParticipant.findUnique({
+    where: { conversationId_userId: { conversationId, userId } },
+    select: { userId: true },
+  });
+  if (!membership) throw new Error("Conversation not found");
+}
+
+export async function getConversationMessages(
+  conversationId: string,
+  userId: string,
+  options: { cursor?: string; limit?: number } = {}
+) {
   const membership = await db.conversationParticipant.findUnique({
     where: { conversationId_userId: { conversationId, userId } },
   });
   if (!membership) throw new Error("Conversation not found");
 
-  const [conversation, messages] = await db.$transaction([
+  const limit = Math.min(100, Math.max(1, options.limit ?? 50));
+  const [conversation, messageRows] = await db.$transaction([
     db.conversation.findUniqueOrThrow({
       where: { id: conversationId },
-      include: {
+      select: {
+        id: true,
+        kind: true,
+        status: true,
         booking: {
-          select: { id: true, status: true, checkIn: true, checkOut: true },
+          select: {
+            id: true,
+            reference: true,
+            status: true,
+            checkIn: true,
+            checkOut: true,
+            numberOfNights: true,
+            guestCount: true,
+            currency: true,
+            totalPrice: true,
+            guestId: true,
+            listing: { select: { hostId: true } },
+            timelineEvents: {
+              select: {
+                id: true,
+                type: true,
+                actorId: true,
+                data: true,
+                createdAt: true,
+              },
+              orderBy: { createdAt: "asc" },
+            },
+          },
         },
-        listing: { select: { id: true, title: true } },
+        listing: {
+          select: {
+            id: true,
+            title: true,
+            images: {
+              where: { isPrimary: true },
+              orderBy: { displayOrder: "asc" },
+              take: 1,
+              select: { url: true },
+            },
+          },
+        },
         participants: {
-          include: { user: { select: { id: true, name: true, image: true } } },
+          select: {
+            userId: true,
+            role: true,
+            user: { select: { id: true, name: true, image: true } },
+          },
+        },
+        damageReports: {
+          select: {
+            id: true,
+            description: true,
+            status: true,
+            reporterId: true,
+            createdAt: true,
+            reporter: { select: { id: true, name: true, image: true } },
+            evidence: {
+              select: {
+                id: true,
+                url: true,
+                fileName: true,
+                mimeType: true,
+                sizeBytes: true,
+              },
+            },
+          },
+          orderBy: { createdAt: "asc" },
         },
       },
     }),
     db.message.findMany({
       where: { conversationId },
-      orderBy: { createdAt: "asc" },
-      take: 150,
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: limit + 1,
+      ...(options.cursor
+        ? { cursor: { id: options.cursor }, skip: 1 }
+        : {}),
       include: {
         sender: { select: { id: true, name: true, image: true } },
       },
     }),
-    db.conversationParticipant.update({
-      where: { conversationId_userId: { conversationId, userId } },
-      data: { unreadCount: 0, lastReadAt: new Date() },
-    }),
   ]);
 
-  await db.notification.updateMany({
-    where: {
-      userId,
-      type: { in: ["CHAT_MESSAGE", "SUPPORT_MESSAGE"] },
-      readAt: null,
-      data: { path: ["conversationId"], equals: conversationId },
-    },
-    data: { readAt: new Date() },
-  });
+  const hasMore = messageRows.length > limit;
+  const page = hasMore ? messageRows.slice(0, limit) : messageRows;
+  const messages = page.reverse();
 
   return {
-    conversation,
+    conversation: {
+      id: conversation.id,
+      kind: conversation.kind,
+      status: conversation.status,
+      listing: {
+        id: conversation.listing.id,
+        title: conversation.listing.title,
+        imageUrl: conversation.listing.images[0]?.url ?? null,
+      },
+      booking: conversation.booking
+        ? {
+            id: conversation.booking.id,
+            reference: conversation.booking.reference,
+            status: conversation.booking.status,
+            checkIn: conversation.booking.checkIn,
+            checkOut: conversation.booking.checkOut,
+            numberOfNights: conversation.booking.numberOfNights,
+            guestCount: conversation.booking.guestCount,
+            currency: conversation.booking.currency,
+            totalPrice: Number(conversation.booking.totalPrice),
+            detailsUrl:
+              conversation.booking.listing.hostId === userId
+                ? `/host/bookings/${conversation.booking.id}`
+                : `/account/bookings/${conversation.booking.id}`,
+          }
+        : null,
+      participants: conversation.participants,
+    },
+    nextCursor: hasMore ? messages[0]?.id ?? null : null,
     messages: messages.map((message) => ({
       id: message.id,
+      clientId: message.clientId,
       body: message.deletedAt ? "Message removed" : message.body,
       sender: message.sender ?? { id: "", name: "Deleted user", image: null },
       senderId: message.senderId,
@@ -237,18 +358,113 @@ export async function getConversationMessages(conversationId: string, userId: st
       editedAt: message.editedAt,
       deletedAt: message.deletedAt,
     })),
+    bookingEvents:
+      conversation.booking?.timelineEvents.map((event) => ({
+        id: event.id,
+        type: event.type,
+        actorId: event.actorId,
+        data: event.data,
+        createdAt: event.createdAt,
+      })) ?? [],
+    damageReports: conversation.damageReports,
   };
+}
+
+export async function markConversationRead(input: {
+  conversationId: string;
+  userId: string;
+  lastMessageId: string;
+}) {
+  const message = await db.message.findFirst({
+    where: {
+      id: input.lastMessageId,
+      conversationId: input.conversationId,
+    },
+    select: { createdAt: true },
+  });
+  if (!message) throw new Error("Message not found");
+
+  await db.$transaction(async (tx) => {
+    const locked = await tx.$queryRaw<Array<{ userId: string }>>`
+      SELECT "userId"
+      FROM "ConversationParticipant"
+      WHERE "conversationId" = ${input.conversationId}
+        AND "userId" = ${input.userId}
+      FOR UPDATE
+    `;
+    if (locked.length === 0) throw new Error("Conversation not found");
+
+    const remainingUnread = await tx.message.count({
+      where: {
+        conversationId: input.conversationId,
+        senderId: { not: input.userId },
+        createdAt: { gt: message.createdAt },
+      },
+    });
+    const readMessageIds = await tx.message.findMany({
+      where: {
+        conversationId: input.conversationId,
+        senderId: { not: input.userId },
+        createdAt: { lte: message.createdAt },
+      },
+      select: { id: true },
+    });
+    await tx.conversationParticipant.update({
+      where: {
+        conversationId_userId: {
+          conversationId: input.conversationId,
+          userId: input.userId,
+        },
+      },
+      data: {
+        unreadCount: remainingUnread,
+        lastReadAt: message.createdAt,
+      },
+    });
+    await tx.notification.updateMany({
+      where: {
+        userId: input.userId,
+        type: { in: ["CHAT_MESSAGE", "SUPPORT_MESSAGE"] },
+        readAt: null,
+        OR: [
+          { messageId: { in: readMessageIds.map(({ id }) => id) } },
+          {
+            messageId: null,
+            data: { path: ["conversationId"], equals: input.conversationId },
+          },
+        ],
+      },
+      data: { readAt: new Date() },
+    });
+  });
 }
 
 export async function sendConversationMessage(input: {
   conversationId: string;
   senderId: string;
   body: string;
+  clientId?: string;
 }) {
   const body = input.body.trim();
+  const clientId = input.clientId ?? randomUUID();
   if (!body) throw new Error("Message cannot be empty");
   if (body.length > MESSAGE_MAX_LENGTH) {
     throw new Error(`Messages can be up to ${MESSAGE_MAX_LENGTH} characters`);
+  }
+  if (input.clientId) {
+    const existing = await db.message.findUnique({
+      where: { clientId },
+      include: {
+        sender: { select: { id: true, name: true, image: true } },
+      },
+    });
+    if (
+      existing?.conversationId === input.conversationId &&
+      existing.senderId === input.senderId
+    ) {
+      return existing;
+    }
+    if (existing) throw new Error("Invalid message ID");
   }
 
   const membership = await db.conversationParticipant.findUnique({
@@ -286,79 +502,129 @@ export async function sendConversationMessage(input: {
     );
   }
 
-  const { message, recipients } = await db.$transaction(async (tx) => {
-    const message = await tx.message.create({
-      data: {
-        conversationId: input.conversationId,
-        senderId: input.senderId,
-        body,
-      },
-      include: {
-        sender: { select: { id: true, name: true, image: true } },
-      },
+  let result;
+  try {
+    result = await db.$transaction(async (tx) => {
+      const currentMembership = await tx.conversationParticipant.findUnique({
+        where: {
+          conversationId_userId: {
+            conversationId: input.conversationId,
+            userId: input.senderId,
+          },
+        },
+        include: {
+          conversation: { select: { status: true } },
+        },
+      });
+      if (!currentMembership) throw new Error("Conversation not found");
+      if (
+        currentMembership.conversation.status !== "OPEN" &&
+        currentMembership.role !== "SUPPORT"
+      ) {
+        throw new Error("This conversation is not accepting new messages");
+      }
+
+      const message = await tx.message.create({
+        data: {
+          clientId,
+          conversationId: input.conversationId,
+          senderId: input.senderId,
+          body,
+        },
+        include: {
+          sender: { select: { id: true, name: true, image: true } },
+        },
+      });
+
+      await tx.conversation.update({
+        where: { id: input.conversationId },
+        data: {
+          lastMessageAt: message.createdAt,
+          lastMessagePreview: body.slice(0, 180),
+        },
+      });
+
+      const recipients = await tx.conversationParticipant.findMany({
+        where: {
+          conversationId: input.conversationId,
+          userId: { not: input.senderId },
+        },
+        select: { userId: true, role: true },
+      });
+
+      await tx.conversationParticipant.updateMany({
+        where: {
+          conversationId: input.conversationId,
+          userId: { not: input.senderId },
+        },
+        data: { unreadCount: { increment: 1 } },
+      });
+
+      const notifications = await Promise.all(
+        recipients.map(({ userId, role }) =>
+          tx.notification.create({
+            data: {
+              userId,
+              type:
+                membership.role === "SUPPORT"
+                  ? "SUPPORT_MESSAGE"
+                  : "CHAT_MESSAGE",
+              title:
+                membership.role === "SUPPORT"
+                  ? COMMUNICATION_BRAND.supportName
+                  : membership.user.name,
+              body: `${membership.conversation.listing.title}: ${body.slice(0, 140)}`,
+              route: `/messages/${input.conversationId}`,
+              messageId: message.id,
+              data: {
+                conversationId: input.conversationId,
+                recipientRole: role,
+              } satisfies Prisma.InputJsonObject,
+            },
+            select: { id: true },
+          })
+        )
+      );
+      await tx.messageEmailDelivery.createMany({
+        data: recipients.map(({ userId }) => ({
+          messageId: message.id,
+          recipientId: userId,
+        })),
+        skipDuplicates: true,
+      });
+      return {
+        message,
+        recipients,
+        notificationIds: notifications.map(({ id }) => id),
+        created: true,
+      };
     });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      const existing = await db.message.findUnique({
+        where: { clientId },
+        include: {
+          sender: { select: { id: true, name: true, image: true } },
+        },
+      });
+      if (
+        existing?.conversationId === input.conversationId &&
+        existing.senderId === input.senderId
+      ) {
+        return existing;
+      }
+    }
+    throw error;
+  }
 
-    await tx.conversation.update({
-      where: { id: input.conversationId },
-      data: {
-        lastMessageAt: message.createdAt,
-        lastMessagePreview: body.slice(0, 180),
-      },
-    });
+  void dispatchNotificationPushes(result.notificationIds);
+  kickMessageEmailDelivery(result.message.id);
+  publishConversationChanged(input.conversationId);
 
-    const recipients = await tx.conversationParticipant.findMany({
-      where: {
-        conversationId: input.conversationId,
-        userId: { not: input.senderId },
-      },
-      select: { userId: true, role: true },
-    });
-
-    await tx.conversationParticipant.updateMany({
-      where: {
-        conversationId: input.conversationId,
-        userId: { not: input.senderId },
-      },
-      data: { unreadCount: { increment: 1 } },
-    });
-
-    return { message, recipients };
-  });
-
-  const notificationData = {
-    conversationId: input.conversationId,
-  } satisfies Prisma.InputJsonObject;
-  await Promise.all(
-    recipients.map(({ userId, role }) =>
-      createUserNotification({
-        userId,
-        type: membership.role === "SUPPORT" ? "SUPPORT_MESSAGE" : "CHAT_MESSAGE",
-        title:
-          membership.role === "SUPPORT"
-            ? COMMUNICATION_BRAND.supportName
-            : membership.user.name,
-        body: `${membership.conversation.listing.title}: ${body.slice(0, 140)}`,
-        route: `/messages/${input.conversationId}`,
-        data: { ...notificationData, recipientRole: role },
-      })
-    )
-  );
-
-  void import("@/lib/email")
-    .then(({ notifyConversationMessage }) =>
-      notifyConversationMessage({
-        conversationId: input.conversationId,
-        senderId: input.senderId,
-        recipientIds: recipients.map(({ userId }) => userId),
-        preview: body.slice(0, 180),
-        supportSender: membership.role === "SUPPORT",
-      })
-    )
-    .catch(() => {
-      // The message and durable notifications are authoritative. Email is best-effort.
-    });
-
-  return message;
+  return result.message;
 }
 
 export async function listAdminConversations() {

@@ -9,9 +9,10 @@ export const LISTING_STATUSES = [
 ] as const;
 
 export const BOOKING_STATUSES = [
-  { value: "PENDING", label: "Pending", color: "warning" },
+  { value: "PENDING", label: "Awaiting host approval", color: "warning" },
   { value: "CONFIRMED", label: "Confirmed", color: "success" },
   { value: "REJECTED", label: "Rejected", color: "destructive" },
+  { value: "EXPIRED", label: "Expired", color: "secondary" },
   { value: "CANCELLED_BY_GUEST", label: "Cancelled by Guest", color: "secondary" },
   { value: "CANCELLED_BY_HOST", label: "Cancelled by Host", color: "secondary" },
   { value: "CANCELLED_BY_ADMIN", label: "Cancelled by Admin", color: "destructive" },

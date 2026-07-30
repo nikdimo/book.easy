@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   Users,
   MessagesSquare,
+  Megaphone,
   ShieldAlert,
   Star,
 } from "lucide-react";
@@ -30,6 +31,7 @@ const adminNav = [
   { href: "/admin/communications", label: "Communications", icon: MessagesSquare },
   { href: "/admin/bookings", label: "Bookings", icon: CalendarDays },
   { href: "/admin/users", label: "Users", icon: Users },
+  { href: "/admin/marketing", label: "Marketing consent", icon: Megaphone },
   { href: "/admin/audit-log", label: "Audit Log", icon: FileText },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];

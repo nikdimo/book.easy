@@ -28,18 +28,24 @@ import {
   GripVertical,
   Smartphone,
   MessageCircle,
+  Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SITE_DOMAIN } from "@/lib/branding";
 import { BrandLogo } from "@/components/shared/brand-logo";
 import { GoogleTranslateWidget } from "@/components/shared/google-translate-widget";
 import type { getEnabledLanguages } from "@/lib/services/language.service";
+import {
+  CountBadge,
+  useAttentionSummary,
+} from "@/components/communication/attention-indicator";
 
 const hostNav = [
   { href: "/host", label: "Dashboard", icon: LayoutDashboard },
   { href: "/host/listings", label: "My Listings", icon: Home },
   { href: "/host/bookings", label: "Bookings", icon: CalendarDays },
   { href: "/host/inbox", label: "Inbox", icon: MessageCircle },
+  { href: "/account/notifications", label: "Notifications", icon: Bell },
   { href: "/host/mobile", label: "Mobile Preview", icon: Smartphone },
 ];
 
@@ -51,6 +57,7 @@ function SidebarNavLinks({
   className?: string;
 }) {
   const pathname = usePathname();
+  const { summary } = useAttentionSummary();
 
   return (
     <nav className={cn("space-y-1", className)}>
@@ -59,6 +66,16 @@ function SidebarNavLinks({
           item.href === "/host"
             ? pathname === "/host" || pathname === "/host/"
             : pathname === item.href || pathname.startsWith(`${item.href}/`);
+        const count =
+          item.href === "/host"
+            ? summary?.host?.total
+            : item.href === "/host/bookings"
+              ? summary?.host?.pendingBookings
+              : item.href === "/host/inbox"
+                ? summary?.host?.unreadThreads
+                : item.href === "/account/notifications"
+                  ? summary?.unreadNotifications
+                  : undefined;
         return (
           <Link
             key={item.href}
@@ -73,6 +90,11 @@ function SidebarNavLinks({
           >
             <item.icon className="h-4 w-4 shrink-0" />
             {item.label}
+            <CountBadge
+              value={count}
+              label={`${item.label.toLowerCase()} items needing attention`}
+              className="ml-auto"
+            />
           </Link>
         );
       })}

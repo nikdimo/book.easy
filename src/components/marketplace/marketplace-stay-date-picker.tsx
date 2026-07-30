@@ -13,12 +13,14 @@ import {
   startOfToday,
 } from "date-fns";
 import type { DateRange } from "react-day-picker";
+import { DayButton, getDefaultClassNames, type Locale } from "react-day-picker";
 import {
-  DayButton,
-  getDefaultClassNames,
-  type Locale,
-} from "react-day-picker";
-import { CalendarRange, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
+  CalendarRange,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  X,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -45,7 +47,10 @@ function toYmd(d: Date): string {
 }
 
 function formatMonthDay(d: Date, locale: string): string {
-  return new Intl.DateTimeFormat(locale, { month: "short", day: "numeric" }).format(d);
+  return new Intl.DateTimeFormat(locale, {
+    month: "short",
+    day: "numeric",
+  }).format(d);
 }
 
 function suppressNextClick() {
@@ -56,7 +61,7 @@ function suppressNextClick() {
   document.addEventListener("click", handler, { once: true, capture: true });
   const timer = window.setTimeout(
     () => document.removeEventListener("click", handler, { capture: true }),
-    300
+    300,
   );
   return () => {
     window.clearTimeout(timer);
@@ -77,7 +82,7 @@ type DragCtx = {
   onEndpointPointerDown: (
     edge: "from" | "to",
     date: Date,
-    e: React.PointerEvent<HTMLButtonElement>
+    e: React.PointerEvent<HTMLButtonElement>,
   ) => void;
   dayMeta?: (date: Date) => MarketplaceDayMeta | undefined;
   dayVariant?: "default" | "availability";
@@ -119,7 +124,7 @@ export function DateFlexibilityRow({
             value === optionValue
               ? "border-foreground bg-background text-foreground"
               : "border-border bg-background text-foreground hover:bg-muted/40",
-            optionLabels[optionValue].translated && "notranslate"
+            optionLabels[optionValue].translated && "notranslate",
           )}
         >
           {optionLabels[optionValue].text}
@@ -154,8 +159,8 @@ function getNightCount(range?: DateRange) {
     1,
     Math.round(
       (startOfDay(range.to).getTime() - startOfDay(range.from).getTime()) /
-        86400000
-    )
+        86400000,
+    ),
   );
 }
 
@@ -180,7 +185,7 @@ function GuestRow({
         <p
           className={cn(
             "text-base font-semibold text-foreground md:text-lg",
-            title.translated && "notranslate"
+            title.translated && "notranslate",
           )}
         >
           {title.text}
@@ -189,7 +194,7 @@ function GuestRow({
           <p
             className={cn(
               "mt-1 text-sm text-muted-foreground",
-              subtitle.translated && "notranslate"
+              subtitle.translated && "notranslate",
             )}
           >
             {subtitle.text}
@@ -200,7 +205,7 @@ function GuestRow({
             type="button"
             className={cn(
               "mt-1 text-sm text-muted-foreground underline underline-offset-4",
-              linkText.translated && "notranslate"
+              linkText.translated && "notranslate",
             )}
           >
             {linkText.text}
@@ -256,32 +261,37 @@ export function GuestCountsStep({
   const occupancy = guestCounts.adults + guestCounts.children;
   const capacityReached =
     maxOccupancy !== undefined && occupancy >= maxOccupancy;
-  const capacityLabel = i18n.resolve(
-    CAPACITY_LABEL_KEY,
-    CAPACITY_LABEL_SOURCE
-  );
+  const capacityLabel = i18n.resolve(CAPACITY_LABEL_KEY, CAPACITY_LABEL_SOURCE);
   const maximumGuestLabel =
     maxOccupancy === undefined
       ? null
       : pluralText(labels.guest, maxOccupancy, labels.locale);
   const setAdults = (adults: number) => {
-    const available = maxOccupancy === undefined
-      ? adults
-      : Math.max(0, maxOccupancy - guestCounts.children);
-    onGuestCountsChange({ ...guestCounts, adults: Math.min(adults, available) });
+    const available =
+      maxOccupancy === undefined
+        ? adults
+        : Math.max(0, maxOccupancy - guestCounts.children);
+    onGuestCountsChange({
+      ...guestCounts,
+      adults: Math.min(adults, available),
+    });
   };
   const setChildren = (children: number) => {
-    const available = maxOccupancy === undefined
-      ? children
-      : Math.max(0, maxOccupancy - guestCounts.adults);
-    onGuestCountsChange({ ...guestCounts, children: Math.min(children, available) });
+    const available =
+      maxOccupancy === undefined
+        ? children
+        : Math.max(0, maxOccupancy - guestCounts.adults);
+    onGuestCountsChange({
+      ...guestCounts,
+      children: Math.min(children, available),
+    });
   };
 
   return (
     <div
       className={cn(
         "mx-auto w-full max-w-2xl rounded-[1.75rem] border border-border bg-background px-4 md:px-6",
-        className
+        className,
       )}
     >
       <GuestRow
@@ -306,32 +316,46 @@ export function GuestCountsStep({
             "my-3 rounded-xl border px-3 py-2.5 text-sm",
             capacityReached
               ? "border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100"
-              : "border-border bg-muted/30 text-muted-foreground"
+              : "border-border bg-muted/30 text-muted-foreground",
           )}
         >
           <p className="font-medium">
-            <span className={capacityLabel.translated ? "notranslate" : undefined}>
+            <span
+              className={capacityLabel.translated ? "notranslate" : undefined}
+            >
               {capacityLabel.text}
             </span>
             {": "}
-            <span className={maximumGuestLabel.translated ? "notranslate" : undefined}>
+            <span
+              className={
+                maximumGuestLabel.translated ? "notranslate" : undefined
+              }
+            >
               {maximumGuestLabel.text}
             </span>
           </p>
           <p className="mt-0.5">
-            <span className={labels.adults.translated ? "notranslate" : undefined}>
+            <span
+              className={labels.adults.translated ? "notranslate" : undefined}
+            >
               {labels.adults.text}
             </span>
             {" + "}
-            <span className={labels.children.translated ? "notranslate" : undefined}>
+            <span
+              className={labels.children.translated ? "notranslate" : undefined}
+            >
               {labels.children.text}
             </span>
             {`: ${occupancy} / ${maxOccupancy} · `}
-            <span className={labels.infants.translated ? "notranslate" : undefined}>
+            <span
+              className={labels.infants.translated ? "notranslate" : undefined}
+            >
               {labels.infants.text}
             </span>
             {" + "}
-            <span className={labels.pets.translated ? "notranslate" : undefined}>
+            <span
+              className={labels.pets.translated ? "notranslate" : undefined}
+            >
               {labels.pets.text}
             </span>
             {": ∞"}
@@ -363,7 +387,9 @@ function MarketplaceRangeDayButton({
   onClick: upstreamClick,
   children,
   ...rest
-}: React.ComponentProps<typeof DayButton> & { locale?: Partial<Locale> }): React.ReactElement {
+}: React.ComponentProps<typeof DayButton> & {
+  locale?: Partial<Locale>;
+}): React.ReactElement {
   const ctx = React.useContext(DragContext);
   const defaultClassNames = getDefaultClassNames();
   const ref = React.useRef<HTMLButtonElement>(null);
@@ -405,7 +431,7 @@ function MarketplaceRangeDayButton({
   };
 
   const withMinimumStayHint = (
-    button: React.ReactElement
+    button: React.ReactElement,
   ): React.ReactElement => {
     if (!minimumStayHint) return button;
 
@@ -414,16 +440,21 @@ function MarketplaceRangeDayButton({
         <TooltipTrigger asChild>
           <span
             tabIndex={0}
-            aria-label={`${day.date.toLocaleDateString(locale?.code, {
-              dateStyle: "long",
-            })}. ${minimumStayHint.text}`}
+            aria-label={`${day.date.toLocaleDateString(
+              locale?.code ?? "en-US",
+              {
+                dateStyle: "long",
+              },
+            )}. ${minimumStayHint.text}`}
             className="block size-full cursor-not-allowed rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
           >
             {button}
           </span>
         </TooltipTrigger>
         <TooltipContent>
-          <span className={minimumStayHint.translated ? "notranslate" : undefined}>
+          <span
+            className={minimumStayHint.translated ? "notranslate" : undefined}
+          >
             {minimumStayHint.text}
           </span>
         </TooltipContent>
@@ -438,7 +469,7 @@ function MarketplaceRangeDayButton({
         ref={ref}
         variant="ghost"
         size="icon"
-        data-day={day.date.toLocaleDateString(locale?.code)}
+        data-day={toYmd(day.date)}
         data-ymd={toYmd(day.date)}
         onPointerDown={handlePointerDown}
         onClick={handleClick}
@@ -457,7 +488,7 @@ function MarketplaceRangeDayButton({
             (modifiers.range_start || modifiers.range_end) &&
             "touch-none cursor-grab active:cursor-grabbing select-none",
           defaultClassNames.day,
-          className
+          className,
         )}
       >
         <span
@@ -469,7 +500,7 @@ function MarketplaceRangeDayButton({
             !modifiers.disabled &&
               !minimumStayHint &&
               !isEndpoint &&
-              "group-hover/date:shadow-[inset_0_0_0_1.5px_hsl(0_0%_12%)] group-focus-visible/date:shadow-[inset_0_0_0_2px_hsl(0_0%_12%)]"
+              "group-hover/date:shadow-[inset_0_0_0_1.5px_hsl(0_0%_12%)] group-focus-visible/date:shadow-[inset_0_0_0_2px_hsl(0_0%_12%)]",
           )}
         >
           {day.date.getDate()}
@@ -477,13 +508,15 @@ function MarketplaceRangeDayButton({
         <span
           className={cn(
             "mt-1 text-[0.58rem] leading-none md:text-[0.62rem]",
-            meta?.isCustomPrice ? "font-semibold text-primary" : "text-muted-foreground",
-            modifiers.disabled && "opacity-0"
+            meta?.isCustomPrice
+              ? "font-semibold text-primary"
+              : "text-muted-foreground",
+            modifiers.disabled && "opacity-0",
           )}
         >
           {meta?.sublabel ?? ""}
         </span>
-      </Button>
+      </Button>,
     );
   }
 
@@ -493,7 +526,7 @@ function MarketplaceRangeDayButton({
       ref={ref}
       variant="ghost"
       size="icon"
-      data-day={day.date.toLocaleDateString(locale?.code)}
+      data-day={toYmd(day.date)}
       data-ymd={toYmd(day.date)}
       onPointerDown={handlePointerDown}
       onClick={handleClick}
@@ -510,9 +543,9 @@ function MarketplaceRangeDayButton({
           "rounded-none bg-transparent text-foreground hover:bg-transparent",
         ctx?.hasRange &&
           (modifiers.range_start || modifiers.range_end) &&
-            "touch-none cursor-grab active:cursor-grabbing select-none",
+          "touch-none cursor-grab active:cursor-grabbing select-none",
         defaultClassNames.day,
-        className
+        className,
       )}
     >
       <span
@@ -523,12 +556,12 @@ function MarketplaceRangeDayButton({
           !modifiers.disabled &&
             !minimumStayHint &&
             !isEndpoint &&
-            "group-hover/date:shadow-[inset_0_0_0_1.5px_hsl(0_0%_12%)] group-focus-visible/date:shadow-[inset_0_0_0_2px_hsl(0_0%_12%)]"
+            "group-hover/date:shadow-[inset_0_0_0_1.5px_hsl(0_0%_12%)] group-focus-visible/date:shadow-[inset_0_0_0_2px_hsl(0_0%_12%)]",
         )}
       >
         {children}
       </span>
-    </Button>
+    </Button>,
   );
 }
 
@@ -551,6 +584,8 @@ export function DateRangeCalendarStep({
   minimumStayMessage,
   fitViewport = false,
   pagedOnDesktop = false,
+  pagedDesktopMonthCount = 1,
+  locale,
 }: {
   active: boolean;
   selected: DateRange | undefined;
@@ -560,25 +595,31 @@ export function DateRangeCalendarStep({
   dayMeta?: (date: Date) => MarketplaceDayMeta | undefined;
   dayVariant?: "default" | "availability";
   dateModifiers?: React.ComponentProps<typeof Calendar>["modifiers"];
-  dateModifiersClassNames?: React.ComponentProps<typeof Calendar>["modifiersClassNames"];
+  dateModifiersClassNames?: React.ComponentProps<
+    typeof Calendar
+  >["modifiersClassNames"];
   minimumStayNights?: number;
   minimumStayMessage?: Resolved;
   fitViewport?: boolean;
   pagedOnDesktop?: boolean;
+  pagedDesktopMonthCount?: 1 | 2;
+  locale?: string;
 }) {
   const labels = useSearchLabels();
+  const calendarLocale = locale ?? labels.locale;
   const [isMobile, setIsMobile] = React.useState(false);
   const [visibleMonthCount, setVisibleMonthCount] = React.useState(
-    INITIAL_DESKTOP_MONTH_COUNT
+    INITIAL_DESKTOP_MONTH_COUNT,
   );
   const [displayMonth, setDisplayMonth] = React.useState(() =>
-    startOfMonth(selected?.from ?? new Date())
+    startOfMonth(selected?.from ?? new Date()),
   );
   const [dragDisplayRange, setDragDisplayRange] = React.useState<
     DateRange | undefined
   >(undefined);
   const [isDragging, setIsDragging] = React.useState(false);
   const [canScrollBack, setCanScrollBack] = React.useState(false);
+  const [pagedMonthCapacity, setPagedMonthCapacity] = React.useState<1 | 2>(1);
   const [, startMonthAppendTransition] = React.useTransition();
   const bodyScrollRef = React.useRef<HTMLDivElement>(null);
   const wasActiveRef = React.useRef(false);
@@ -607,6 +648,20 @@ export function DateRangeCalendarStep({
   }, []);
 
   const pagedCalendar = fitViewport || (pagedOnDesktop && !isMobile);
+  const pagedMonthCount =
+    pagedDesktopMonthCount === 2 && pagedMonthCapacity === 2 ? 2 : 1;
+
+  React.useEffect(() => {
+    if (!pagedCalendar || pagedDesktopMonthCount === 1) return;
+    const node = bodyScrollRef.current;
+    if (!node) return;
+
+    const observer = new ResizeObserver(([entry]) => {
+      setPagedMonthCapacity(entry.contentRect.width >= 820 ? 2 : 1);
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [pagedCalendar, pagedDesktopMonthCount]);
 
   React.useEffect(() => {
     const justOpened = active && !wasActiveRef.current;
@@ -625,7 +680,7 @@ export function DateRangeCalendarStep({
         ? INITIAL_DESKTOP_MONTH_COUNT
         : isMobile
           ? INITIAL_MOBILE_MONTH_COUNT
-          : INITIAL_DESKTOP_MONTH_COUNT
+          : INITIAL_DESKTOP_MONTH_COUNT,
     );
     if (pagedCalendar) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -670,20 +725,23 @@ export function DateRangeCalendarStep({
   const hasRange = Boolean(selected?.from && selected?.to);
   const minimumStayAnchor = React.useMemo(
     () =>
-      selected?.from && !selected.to && minimumStayNights && minimumStayNights > 1
+      selected?.from &&
+      !selected.to &&
+      minimumStayNights &&
+      minimumStayNights > 1
         ? startOfDay(selected.from)
         : undefined,
-    [minimumStayNights, selected]
+    [minimumStayNights, selected],
   );
   const isMinimumStayRestricted = React.useCallback(
     (date: Date) => {
       if (!minimumStayAnchor || !minimumStayNights) return false;
       const distance = Math.abs(
-        differenceInCalendarDays(startOfDay(date), minimumStayAnchor)
+        differenceInCalendarDays(startOfDay(date), minimumStayAnchor),
       );
       return distance > 0 && distance < minimumStayNights;
     },
-    [minimumStayAnchor, minimumStayNights]
+    [minimumStayAnchor, minimumStayNights],
   );
 
   const calendarStartMonth = React.useMemo(() => {
@@ -698,14 +756,14 @@ export function DateRangeCalendarStep({
       onRangeChange(range);
       if (range?.from && !range?.to) onFromOnlySelected?.();
     },
-    [onRangeChange, onFromOnlySelected]
+    [onRangeChange, onFromOnlySelected],
   );
 
   const handleEndpointPointerDown = React.useCallback(
     (
       edge: "from" | "to",
       date: Date,
-      e: React.PointerEvent<HTMLButtonElement>
+      e: React.PointerEvent<HTMLButtonElement>,
     ) => {
       const from = selected?.from;
       const to = selected?.to;
@@ -794,9 +852,8 @@ export function DateRangeCalendarStep({
         // Keep the loop alive at the current boundary while lazy months render;
         // once their height is committed, the same stationary pointer continues
         // scrolling without needing a wiggle from the user.
-        dragAutoScrollFrameRef.current = window.requestAnimationFrame(
-          runEdgeAutoScroll
-        );
+        dragAutoScrollFrameRef.current =
+          window.requestAnimationFrame(runEdgeAutoScroll);
       };
 
       const onMove = (ev: PointerEvent) => {
@@ -814,9 +871,8 @@ export function DateRangeCalendarStep({
         dragPointerRef.current = { x: ev.clientX, y: ev.clientY };
         updateDateUnderPointer(ev.clientX, ev.clientY);
         if (dragAutoScrollFrameRef.current === null) {
-          dragAutoScrollFrameRef.current = window.requestAnimationFrame(
-            runEdgeAutoScroll
-          );
+          dragAutoScrollFrameRef.current =
+            window.requestAnimationFrame(runEdgeAutoScroll);
         }
       };
 
@@ -857,7 +913,7 @@ export function DateRangeCalendarStep({
       document.addEventListener("pointerup", onUp);
       document.addEventListener("pointercancel", onUp);
     },
-    [selected, commitRange]
+    [selected, commitRange],
   );
 
   const dragCtx = React.useMemo<DragCtx>(
@@ -878,13 +934,13 @@ export function DateRangeCalendarStep({
       hasRange,
       isMinimumStayRestricted,
       minimumStayMessage,
-    ]
+    ],
   );
 
   const calendarSelected = dragDisplayRange ?? selected;
   const disabledMatcher = React.useMemo(
     () => [{ before: startOfToday() }, ...disabledDateRanges],
-    [disabledDateRanges]
+    [disabledDateRanges],
   );
 
   const scrollCalendar = React.useCallback(
@@ -897,16 +953,12 @@ export function DateRangeCalendarStep({
         scrollContainer.scrollTop + scrollContainer.clientHeight >=
         scrollContainer.scrollHeight - 48;
 
-      if (
-        direction === 1 &&
-        isNearEnd &&
-        visibleMonthCount < MAX_MONTH_COUNT
-      ) {
+      if (direction === 1 && isNearEnd && visibleMonthCount < MAX_MONTH_COUNT) {
         pendingMonthAppendScrollTopRef.current = scrollContainer.scrollTop;
         pendingArrowScrollRef.current = 1;
         startMonthAppendTransition(() => {
           setVisibleMonthCount((current) =>
-            Math.min(MAX_MONTH_COUNT, current + MONTH_LOAD_STEP)
+            Math.min(MAX_MONTH_COUNT, current + MONTH_LOAD_STEP),
           );
         });
         return;
@@ -917,7 +969,7 @@ export function DateRangeCalendarStep({
         behavior: "smooth",
       });
     },
-    [visibleMonthCount]
+    [visibleMonthCount],
   );
 
   return (
@@ -936,7 +988,7 @@ export function DateRangeCalendarStep({
             pendingMonthAppendScrollTopRef.current = el.scrollTop;
             startMonthAppendTransition(() => {
               setVisibleMonthCount((current) =>
-                Math.min(MAX_MONTH_COUNT, current + MONTH_LOAD_STEP)
+                Math.min(MAX_MONTH_COUNT, current + MONTH_LOAD_STEP),
               );
             });
           }
@@ -945,7 +997,7 @@ export function DateRangeCalendarStep({
           pagedCalendar
             ? "shrink-0 overflow-hidden px-5 py-5 md:px-7 md:py-6"
             : "flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain [overflow-anchor:none] px-4 py-5 md:px-6 md:py-6",
-          isDragging && "cursor-grabbing select-none"
+          isDragging && "cursor-grabbing select-none",
         )}
       >
         {!pagedCalendar ? (
@@ -969,10 +1021,7 @@ export function DateRangeCalendarStep({
             </button>
           </div>
         ) : null}
-        <div
-          className="notranslate mx-auto w-full"
-          translate="no"
-        >
+        <div className="notranslate mx-auto w-full" translate="no">
           <Calendar
             mode="range"
             required={false}
@@ -980,7 +1029,7 @@ export function DateRangeCalendarStep({
             excludeDisabled
             selected={calendarSelected}
             onSelect={(range) => commitRange(range)}
-            numberOfMonths={visibleMonthCount}
+            numberOfMonths={pagedCalendar ? pagedMonthCount : visibleMonthCount}
             month={pagedCalendar ? displayMonth : undefined}
             onMonthChange={pagedCalendar ? setDisplayMonth : undefined}
             disabled={disabledMatcher}
@@ -988,12 +1037,14 @@ export function DateRangeCalendarStep({
             showOutsideDays={false}
             formatters={{
               formatCaption: (date) =>
-                new Intl.DateTimeFormat(labels.locale, {
+                new Intl.DateTimeFormat(calendarLocale, {
                   month: "long",
                   year: "numeric",
                 }).format(date),
               formatWeekdayName: (date) =>
-                new Intl.DateTimeFormat(labels.locale, { weekday: "short" }).format(date),
+                new Intl.DateTimeFormat(calendarLocale, {
+                  weekday: "short",
+                }).format(date),
             }}
             modifiers={dateModifiers}
             modifiersClassNames={dateModifiersClassNames}
@@ -1003,33 +1054,42 @@ export function DateRangeCalendarStep({
                 ? "[--cell-size:3rem] md:[--cell-size:3.25rem]"
                 : pagedCalendar
                   ? "[--cell-size:2.15rem] md:[--cell-size:2.55rem]"
-                  : "[--cell-size:2.15rem] md:[--cell-size:2.8rem]"
+                  : "[--cell-size:2.15rem] md:[--cell-size:2.8rem]",
             )}
             classNames={{
               root: "mx-auto w-full",
               months: cn(
-                "mx-auto grid w-full grid-cols-1 justify-center gap-y-8 md:gap-y-10",
-                dayVariant === "availability"
-                  ? "md:grid-cols-2 md:gap-x-6"
-                  : "md:w-fit md:grid-cols-2 md:gap-x-8"
+                "relative mx-auto grid w-full grid-cols-1 justify-center gap-y-8 md:gap-y-10",
+                pagedCalendar
+                  ? pagedMonthCount === 2
+                    ? "max-w-[49rem] md:grid-cols-2 md:gap-x-6"
+                    : "w-fit"
+                  : dayVariant === "availability"
+                    ? "md:grid-cols-2 md:gap-x-6"
+                    : "md:w-fit md:grid-cols-2 md:gap-x-8",
               ),
               month: cn(
                 "mx-auto w-full max-w-[19rem]",
                 dayVariant === "availability"
                   ? "md:w-[23rem] md:max-w-none"
-                  : "md:w-[20rem] md:max-w-none"
+                  : "md:w-[20rem] md:max-w-none",
               ),
               nav: pagedCalendar
-                ? "absolute inset-x-0 top-0 z-10 flex items-center justify-between px-1"
+                ? cn(
+                    "absolute left-1/2 top-0 z-10 flex h-10 -translate-x-1/2 items-center justify-between",
+                    pagedMonthCount === 2
+                      ? "w-full max-w-[49rem]"
+                      : "w-[17rem]",
+                  )
                 : "hidden",
               button_previous: pagedCalendar
-                ? "flex h-8 w-8 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted"
+                ? "flex h-10 w-10 items-center justify-center rounded-full bg-muted/70 text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 [&_svg]:size-5"
                 : "hidden",
               button_next: pagedCalendar
-                ? "flex h-8 w-8 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted"
+                ? "flex h-10 w-10 items-center justify-center rounded-full bg-muted/70 text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 [&_svg]:size-5"
                 : "hidden",
               month_caption:
-                "mb-3 flex h-8 w-full items-center justify-center text-base font-semibold text-foreground md:mb-4",
+                "mb-3 flex h-10 w-full items-center justify-center text-lg font-semibold text-foreground md:mb-4",
               table: "mx-auto w-full border-collapse",
               weekdays: "flex w-full",
               weekday:
@@ -1038,11 +1098,11 @@ export function DateRangeCalendarStep({
               day: cn(
                 dayVariant === "availability"
                   ? "group/day relative h-[3.2rem] min-w-0 flex-1 p-0 text-center md:h-[3.6rem] md:w-[3.25rem] md:flex-none"
-                : pagedCalendar
-                  ? "group/day relative h-[2.2rem] min-w-0 flex-1 p-0 text-center md:h-10 md:w-10 md:flex-none"
-                  : "group/day relative h-[2.2rem] min-w-0 flex-1 p-0 text-center md:h-11 md:w-11 md:flex-none",
+                  : pagedCalendar
+                    ? "group/day relative h-[2.2rem] min-w-0 flex-1 p-0 text-center md:h-10 md:w-10 md:flex-none"
+                    : "group/day relative h-[2.2rem] min-w-0 flex-1 p-0 text-center md:h-11 md:w-11 md:flex-none",
                 "[&:first-child[data-range-end=true]]:rounded-l-full",
-                "[&:last-child[data-range-start=true]]:rounded-r-full"
+                "[&:last-child[data-range-start=true]]:rounded-r-full",
               ),
               // Selection tint is painted via an inset box-shadow rather than a
               // background-color utility. Blocked/booked days already carry their own
@@ -1106,6 +1166,7 @@ export function MarketplaceStayDatePicker({
   desktopContentStyle,
   useSharedDesktopShell = false,
   showPillGuestAction = false,
+  closeOnRangeComplete = false,
   dialogContentId,
   className,
 }: {
@@ -1136,7 +1197,9 @@ export function MarketplaceStayDatePicker({
   dayMeta?: (date: Date) => MarketplaceDayMeta | undefined;
   dayVariant?: "default" | "availability";
   dateModifiers?: React.ComponentProps<typeof Calendar>["modifiers"];
-  dateModifiersClassNames?: React.ComponentProps<typeof Calendar>["modifiersClassNames"];
+  dateModifiersClassNames?: React.ComponentProps<
+    typeof Calendar
+  >["modifiersClassNames"];
   minimumStayNights?: number;
   minimumStayMessage?: Resolved;
   renderDateFooter?: (controls: {
@@ -1152,12 +1215,14 @@ export function MarketplaceStayDatePicker({
   desktopContentStyle?: React.CSSProperties;
   useSharedDesktopShell?: boolean;
   showPillGuestAction?: boolean;
+  closeOnRangeComplete?: boolean;
   dialogContentId?: string;
   className?: string;
 }) {
   const labels = useSearchLabels();
   const resolvedDialogTitle = dateDialogTitle ?? labels.chooseDates;
-  const resolvedDialogDescription = dateDialogDescription ?? labels.chooseDatesDescription;
+  const resolvedDialogDescription =
+    dateDialogDescription ?? labels.chooseDatesDescription;
   const resolvedFinalActionLabel =
     finalActionLabel ?? (showGuestStep ? labels.search : labels.done);
   const isPillLayout = layout === "pill";
@@ -1171,12 +1236,17 @@ export function MarketplaceStayDatePicker({
   const openingFromTriggerRef = React.useRef(false);
   const open = controlledOpen ?? uncontrolledOpen;
   const setOpen = onOpenChange ?? setUncontrolledOpen;
+  const closePicker = React.useCallback(() => {
+    setOpen(false);
+    setStep("dates");
+    setActiveSegment("checkin");
+  }, [setOpen]);
   const changeStep = React.useCallback(
     (nextStep: Step) => {
       setStep(nextStep);
       onStepChange?.(nextStep);
     },
-    [onStepChange]
+    [onStepChange],
   );
 
   React.useEffect(() => {
@@ -1228,17 +1298,24 @@ export function MarketplaceStayDatePicker({
         checkIn: toYmd(range.from),
         checkOut: toYmd(range.to),
       });
+      if (closeOnRangeComplete) closePicker();
     },
-    [onRangeStringsChange]
+    [closeOnRangeComplete, closePicker, onRangeStringsChange],
   );
 
   const checkInLabel: Resolved =
     selectedRange?.from && checkIn
-      ? { text: formatMonthDay(selectedRange.from, labels.locale), translated: false }
+      ? {
+          text: formatMonthDay(selectedRange.from, labels.locale),
+          translated: false,
+        }
       : labels.addDates;
   const checkOutLabel: Resolved =
     selectedRange?.to && checkOut
-      ? { text: formatMonthDay(selectedRange.to, labels.locale), translated: false }
+      ? {
+          text: formatMonthDay(selectedRange.to, labels.locale),
+          translated: false,
+        }
       : labels.addDates;
   const mobileDatesLabel: Resolved =
     checkIn && checkOut && selectedRange?.from && selectedRange?.to
@@ -1247,14 +1324,18 @@ export function MarketplaceStayDatePicker({
           translated: false,
         }
       : labels.addDates;
-  const summaryText: Resolved = selectedRange?.from && selectedRange?.to
-    ? {
-        text: `${formatMonthDay(selectedRange.from, labels.locale)} - ${formatMonthDay(selectedRange.to, labels.locale)}`,
-        translated: false,
-      }
-    : selectedRange?.from
-      ? { text: formatMonthDay(selectedRange.from, labels.locale), translated: false }
-      : labels.addDates;
+  const summaryText: Resolved =
+    selectedRange?.from && selectedRange?.to
+      ? {
+          text: `${formatMonthDay(selectedRange.from, labels.locale)} - ${formatMonthDay(selectedRange.to, labels.locale)}`,
+          translated: false,
+        }
+      : selectedRange?.from
+        ? {
+            text: formatMonthDay(selectedRange.from, labels.locale),
+            translated: false,
+          }
+        : labels.addDates;
   const nightCount = getNightCount(selectedRange);
   const canGoNext =
     dayVariant === "availability"
@@ -1281,20 +1362,14 @@ export function MarketplaceStayDatePicker({
     onGuestCountsChange({ adults: 0, children: 0, infants: 0, pets: 0 });
   }, [onGuestCountsChange]);
 
-  const closePicker = () => {
-    setOpen(false);
-    setStep("dates");
-    setActiveSegment("checkin");
-  };
-
   const pillSeg = (seg: "checkin" | "checkout") =>
     cn(
-    "flex-1 min-w-0 rounded-full px-6 py-2.5 text-left outline-none transition-[background-color,box-shadow,transform] duration-200 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+      "flex-1 min-w-0 rounded-full px-6 py-2.5 text-left outline-none transition-[background-color,box-shadow,transform] duration-200 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
       segmentActive(seg)
         ? sharedPillActive
           ? ""
           : "bg-white shadow-[0_2px_10px_rgba(15,23,42,0.12)]"
-        : "hover:bg-black/[0.035]"
+        : "hover:bg-black/[0.035]",
     );
 
   const heroSeg = (seg: "checkin" | "checkout") =>
@@ -1307,7 +1382,7 @@ export function MarketplaceStayDatePicker({
         ? "border-border/70 bg-background shadow-[0_10px_24px_rgba(15,23,42,0.08)] md:rounded-2xl"
         : layout === "compact"
           ? "border-transparent bg-transparent hover:border-border/60 hover:bg-muted/25"
-          : "hover:bg-muted/25"
+          : "hover:bg-muted/25",
     );
 
   const triggers = (
@@ -1326,7 +1401,7 @@ export function MarketplaceStayDatePicker({
             className={cn(
               "notranslate truncate text-sm font-medium",
               !(checkIn && checkOut) && "text-muted-foreground",
-              mobileDatesLabel.translated && "notranslate"
+              mobileDatesLabel.translated && "notranslate",
             )}
             translate="no"
             suppressHydrationWarning
@@ -1347,7 +1422,7 @@ export function MarketplaceStayDatePicker({
             <span
               className={cn(
                 "block text-[0.72rem] font-semibold leading-4 text-foreground",
-                labels.when.translated && "notranslate"
+                labels.when.translated && "notranslate",
               )}
             >
               {labels.when.text}
@@ -1355,7 +1430,7 @@ export function MarketplaceStayDatePicker({
             <span
               className={cn(
                 "notranslate mt-px block truncate text-sm leading-5 font-normal",
-                mobileDatesLabel.translated && "notranslate"
+                mobileDatesLabel.translated && "notranslate",
               )}
               translate="no"
               suppressHydrationWarning
@@ -1370,7 +1445,7 @@ export function MarketplaceStayDatePicker({
               "relative hidden sm:block after:absolute after:right-0 after:top-1/2 after:h-8 after:w-px after:-translate-y-1/2 after:bg-black/8 after:transition-opacity after:duration-150",
               segmentActive("checkin") && "after:opacity-0",
               segmentActive("checkout") && "after:opacity-0",
-              hidePillDivider && "after:opacity-0"
+              hidePillDivider && "after:opacity-0",
             )}
             onClick={() => openSegment("checkin")}
             aria-expanded={open}
@@ -1380,7 +1455,7 @@ export function MarketplaceStayDatePicker({
             <span
               className={cn(
                 "block text-[0.72rem] font-semibold leading-4 text-foreground",
-                labels.when.translated && "notranslate"
+                labels.when.translated && "notranslate",
               )}
             >
               {labels.when.text}
@@ -1388,7 +1463,7 @@ export function MarketplaceStayDatePicker({
             <span
               className={cn(
                 "notranslate mt-px block truncate text-sm leading-5 font-normal",
-                summaryText.translated && "notranslate"
+                summaryText.translated && "notranslate",
               )}
               translate="no"
               suppressHydrationWarning
@@ -1401,7 +1476,7 @@ export function MarketplaceStayDatePicker({
         <div
           className={cn(
             "flex flex-1 min-w-0 divide-x divide-border/80",
-            layout === "compact" && "flex-row"
+            layout === "compact" && "flex-row",
           )}
         >
           <button
@@ -1417,7 +1492,7 @@ export function MarketplaceStayDatePicker({
               <span
                 className={cn(
                   "block text-xs font-semibold tracking-wide",
-                  labels.checkIn.translated && "notranslate"
+                  labels.checkIn.translated && "notranslate",
                 )}
               >
                 {labels.checkIn.text}
@@ -1426,7 +1501,7 @@ export function MarketplaceStayDatePicker({
                 className={cn(
                   "notranslate text-sm font-medium md:text-base",
                   !checkIn && "text-muted-foreground",
-                  checkInLabel.translated && "notranslate"
+                  checkInLabel.translated && "notranslate",
                 )}
                 translate="no"
                 suppressHydrationWarning
@@ -1447,7 +1522,7 @@ export function MarketplaceStayDatePicker({
               <span
                 className={cn(
                   "block text-xs font-semibold tracking-wide",
-                  labels.checkOut.translated && "notranslate"
+                  labels.checkOut.translated && "notranslate",
                 )}
               >
                 {labels.checkOut.text}
@@ -1456,7 +1531,7 @@ export function MarketplaceStayDatePicker({
                 className={cn(
                   "notranslate text-sm font-medium md:text-base",
                   !checkOut && "text-muted-foreground",
-                  checkOutLabel.translated && "notranslate"
+                  checkOutLabel.translated && "notranslate",
                 )}
                 translate="no"
                 suppressHydrationWarning
@@ -1496,7 +1571,7 @@ export function MarketplaceStayDatePicker({
             "fixed inset-0 z-50",
             isPillLayout
               ? "bg-transparent"
-              : "bg-black/10 supports-backdrop-filter:backdrop-blur-xs"
+              : "bg-black/10 supports-backdrop-filter:backdrop-blur-xs",
           )}
         />
         <DialogPrimitive.Content
@@ -1518,7 +1593,7 @@ export function MarketplaceStayDatePicker({
               : !useSharedDesktopShell && dayVariant === "availability"
                 ? "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-[50rem] md:max-h-[calc(100dvh-5rem)] md:w-[58rem] md:max-w-[calc(100vw-4rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[2rem]"
                 : !useSharedDesktopShell &&
-                    "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-[50rem] md:max-h-[calc(100dvh-5rem)] md:w-[44rem] md:max-w-[calc(100vw-6rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[2rem]"
+                  "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-[50rem] md:max-h-[calc(100dvh-5rem)] md:w-[44rem] md:max-w-[calc(100vw-6rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[2rem]",
           )}
           onPointerDownOutside={(event) => {
             const target = event.target;
@@ -1542,10 +1617,25 @@ export function MarketplaceStayDatePicker({
           }}
         >
           <div className="sr-only">
-            <DialogPrimitive.Title className={(step === "dates" ? resolvedDialogTitle : labels.who).translated ? "notranslate" : undefined}>
+            <DialogPrimitive.Title
+              className={
+                (step === "dates" ? resolvedDialogTitle : labels.who).translated
+                  ? "notranslate"
+                  : undefined
+              }
+            >
               {step === "dates" ? resolvedDialogTitle.text : labels.who.text}
             </DialogPrimitive.Title>
-            <DialogPrimitive.Description className={(step === "dates" ? resolvedDialogDescription : labels.chooseGuestsDescription).translated ? "notranslate" : undefined}>
+            <DialogPrimitive.Description
+              className={
+                (step === "dates"
+                  ? resolvedDialogDescription
+                  : labels.chooseGuestsDescription
+                ).translated
+                  ? "notranslate"
+                  : undefined
+              }
+            >
               {step === "dates"
                 ? resolvedDialogDescription.text
                 : labels.chooseGuestsDescription.text}
@@ -1553,142 +1643,148 @@ export function MarketplaceStayDatePicker({
           </div>
 
           {!isPillLayout ? (
-          <div className="border-b border-border/70 bg-background px-4 pt-4 pb-4 md:px-6 md:pt-5">
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <p
-                className={cn(
-                  "text-lg font-semibold text-foreground md:text-2xl",
-                  (step === "dates" ? resolvedDialogTitle : labels.who).translated &&
-                    "notranslate"
-                )}
-              >
-                {step === "dates" ? resolvedDialogTitle.text : labels.who.text}
-              </p>
-              <button
-                type="button"
-                onClick={closePicker}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                aria-label={labels.closePicker.text}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            {step === "dates" ? (
-              hideDateSegmentCards ? null : (
-                <div className="grid grid-cols-2 gap-2 md:gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setActiveSegment("checkin")}
-                    className={cn(
-                      "min-w-0 rounded-xl border px-2 py-2.5 text-left transition-colors md:rounded-2xl md:px-4 md:py-3",
-                      segmentActive("checkin")
-                        ? "border-foreground bg-muted/40"
-                        : "border-border bg-background hover:bg-muted/30"
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "block truncate text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-foreground md:text-[11px] md:tracking-[0.14em]",
-                        labels.checkIn.translated && "notranslate"
-                      )}
-                    >
-                      {labels.checkIn.text}
-                    </span>
-                    <span
-                      className={cn(
-                        "notranslate mt-1 block truncate text-[0.9rem] font-semibold leading-tight text-foreground md:text-base",
-                        checkInLabel.translated && "notranslate"
-                      )}
-                      translate="no"
-                      suppressHydrationWarning
-                    >
-                      {checkInLabel.text}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveSegment("checkout")}
-                    className={cn(
-                      "min-w-0 rounded-xl border px-2 py-2.5 text-left transition-colors md:rounded-2xl md:px-4 md:py-3",
-                      segmentActive("checkout")
-                        ? "border-foreground bg-muted/40"
-                        : "border-border bg-background hover:bg-muted/30"
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        "block truncate text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-foreground md:text-[11px] md:tracking-[0.14em]",
-                        labels.checkOut.translated && "notranslate"
-                      )}
-                    >
-                      {labels.checkOut.text}
-                    </span>
-                    <span
-                      className={cn(
-                        "notranslate mt-1 block truncate text-[0.9rem] font-semibold leading-tight text-foreground md:text-base",
-                        checkOutLabel.translated && "notranslate"
-                      )}
-                      translate="no"
-                      suppressHydrationWarning
-                    >
-                      {checkOutLabel.text}
-                    </span>
-                  </button>
-                </div>
-              )
-            ) : (
-              <div className="rounded-[1.5rem] border border-border bg-muted/20 px-4 py-4 md:px-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <p
-                      className={cn(
-                        "text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground",
-                        labels.when.translated && "notranslate"
-                      )}
-                    >
-                      {labels.when.text}
-                    </p>
-                    <p
-                      className={cn(
-                        "notranslate mt-1 text-base font-semibold text-foreground md:text-lg",
-                        summaryText.translated && "notranslate"
-                      )}
-                      translate="no"
-                      suppressHydrationWarning
-                    >
-                      {summaryText.text}
-                    </p>
-                    {nightCount > 0 ? (
-                      (() => {
-                        const nightLabel = pluralText(labels.night, nightCount, labels.locale);
-                        return (
-                          <p
-                            className={cn(
-                              "mt-1 text-sm text-muted-foreground",
-                              nightLabel.translated && "notranslate"
-                            )}
-                          >
-                            {nightLabel.text}
-                          </p>
-                        );
-                      })()
-                    ) : null}
-                  </div>
-                  <button
-                    type="button"
-                    className={cn(
-                      "shrink-0 text-sm font-semibold text-foreground",
-                      labels.edit.translated && "notranslate"
-                    )}
-                    onClick={() => changeStep("dates")}
-                  >
-                    {labels.edit.text}
-                  </button>
-                </div>
+            <div className="border-b border-border/70 bg-background px-4 pt-4 pb-4 md:px-6 md:pt-5">
+              <div className="mb-4 flex items-start justify-between gap-4">
+                <p
+                  className={cn(
+                    "text-lg font-semibold text-foreground md:text-2xl",
+                    (step === "dates" ? resolvedDialogTitle : labels.who)
+                      .translated && "notranslate",
+                  )}
+                >
+                  {step === "dates"
+                    ? resolvedDialogTitle.text
+                    : labels.who.text}
+                </p>
+                <button
+                  type="button"
+                  onClick={closePicker}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  aria-label={labels.closePicker.text}
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
-            )}
-          </div>
+
+              {step === "dates" ? (
+                hideDateSegmentCards ? null : (
+                  <div className="grid grid-cols-2 gap-2 md:gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setActiveSegment("checkin")}
+                      className={cn(
+                        "min-w-0 rounded-xl border px-2 py-2.5 text-left transition-colors md:rounded-2xl md:px-4 md:py-3",
+                        segmentActive("checkin")
+                          ? "border-foreground bg-muted/40"
+                          : "border-border bg-background hover:bg-muted/30",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "block truncate text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-foreground md:text-[11px] md:tracking-[0.14em]",
+                          labels.checkIn.translated && "notranslate",
+                        )}
+                      >
+                        {labels.checkIn.text}
+                      </span>
+                      <span
+                        className={cn(
+                          "notranslate mt-1 block truncate text-[0.9rem] font-semibold leading-tight text-foreground md:text-base",
+                          checkInLabel.translated && "notranslate",
+                        )}
+                        translate="no"
+                        suppressHydrationWarning
+                      >
+                        {checkInLabel.text}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveSegment("checkout")}
+                      className={cn(
+                        "min-w-0 rounded-xl border px-2 py-2.5 text-left transition-colors md:rounded-2xl md:px-4 md:py-3",
+                        segmentActive("checkout")
+                          ? "border-foreground bg-muted/40"
+                          : "border-border bg-background hover:bg-muted/30",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "block truncate text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-foreground md:text-[11px] md:tracking-[0.14em]",
+                          labels.checkOut.translated && "notranslate",
+                        )}
+                      >
+                        {labels.checkOut.text}
+                      </span>
+                      <span
+                        className={cn(
+                          "notranslate mt-1 block truncate text-[0.9rem] font-semibold leading-tight text-foreground md:text-base",
+                          checkOutLabel.translated && "notranslate",
+                        )}
+                        translate="no"
+                        suppressHydrationWarning
+                      >
+                        {checkOutLabel.text}
+                      </span>
+                    </button>
+                  </div>
+                )
+              ) : (
+                <div className="rounded-[1.5rem] border border-border bg-muted/20 px-4 py-4 md:px-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p
+                        className={cn(
+                          "text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground",
+                          labels.when.translated && "notranslate",
+                        )}
+                      >
+                        {labels.when.text}
+                      </p>
+                      <p
+                        className={cn(
+                          "notranslate mt-1 text-base font-semibold text-foreground md:text-lg",
+                          summaryText.translated && "notranslate",
+                        )}
+                        translate="no"
+                        suppressHydrationWarning
+                      >
+                        {summaryText.text}
+                      </p>
+                      {nightCount > 0
+                        ? (() => {
+                            const nightLabel = pluralText(
+                              labels.night,
+                              nightCount,
+                              labels.locale,
+                            );
+                            return (
+                              <p
+                                className={cn(
+                                  "mt-1 text-sm text-muted-foreground",
+                                  nightLabel.translated && "notranslate",
+                                )}
+                              >
+                                {nightLabel.text}
+                              </p>
+                            );
+                          })()
+                        : null}
+                    </div>
+                    <button
+                      type="button"
+                      className={cn(
+                        "shrink-0 text-sm font-semibold text-foreground",
+                        labels.edit.translated && "notranslate",
+                      )}
+                      onClick={() => changeStep("dates")}
+                    >
+                      {labels.edit.text}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           ) : null}
 
           {step === "dates" ? (
@@ -1697,7 +1793,7 @@ export function MarketplaceStayDatePicker({
               className={cn(
                 useSharedDesktopShell
                   ? "desktop-search-panel-content flex min-h-0 flex-1 flex-col"
-                  : "contents"
+                  : "contents",
               )}
             >
               <DateRangeCalendarStep
@@ -1730,7 +1826,7 @@ export function MarketplaceStayDatePicker({
                   <div
                     className={cn(
                       "bg-background px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:px-6 md:pb-4",
-                      showDateFlexibility && "border-t border-border"
+                      showDateFlexibility && "border-t border-border",
                     )}
                   >
                     {renderDateFooter ? (
@@ -1747,7 +1843,7 @@ export function MarketplaceStayDatePicker({
                           variant="outline"
                           className={cn(
                             "self-start rounded-full sm:min-w-[7rem]",
-                            labels.reset.translated && "notranslate"
+                            labels.reset.translated && "notranslate",
                           )}
                           onClick={resetDates}
                         >
@@ -1760,7 +1856,7 @@ export function MarketplaceStayDatePicker({
                               variant="outline"
                               className={cn(
                                 "min-w-[7rem] rounded-full",
-                                labels.back.translated && "notranslate"
+                                labels.back.translated && "notranslate",
                               )}
                               onClick={onBackToPlace}
                             >
@@ -1771,8 +1867,10 @@ export function MarketplaceStayDatePicker({
                             type="button"
                             className={cn(
                               "min-w-[7rem] rounded-full",
-                              (showGuestStep ? labels.next : resolvedFinalActionLabel)
-                                .translated && "notranslate"
+                              (showGuestStep
+                                ? labels.next
+                                : resolvedFinalActionLabel
+                              ).translated && "notranslate",
                             )}
                             disabled={!canGoNext}
                             onClick={() => {
@@ -1789,7 +1887,9 @@ export function MarketplaceStayDatePicker({
                               closePicker();
                             }}
                           >
-                            {showGuestStep ? labels.next.text : resolvedFinalActionLabel.text}
+                            {showGuestStep
+                              ? labels.next.text
+                              : resolvedFinalActionLabel.text}
                           </Button>
                         </div>
                       </div>
@@ -1804,7 +1904,7 @@ export function MarketplaceStayDatePicker({
               className={cn(
                 useSharedDesktopShell
                   ? "desktop-search-panel-content flex min-h-0 flex-1 flex-col"
-                  : "contents"
+                  : "contents",
               )}
             >
               <div
@@ -1842,7 +1942,7 @@ export function MarketplaceStayDatePicker({
                       variant="outline"
                       className={cn(
                         "self-start rounded-full sm:min-w-[7rem]",
-                        labels.reset.translated && "notranslate"
+                        labels.reset.translated && "notranslate",
                       )}
                       onClick={resetGuests}
                     >
@@ -1854,7 +1954,7 @@ export function MarketplaceStayDatePicker({
                         variant="outline"
                         className={cn(
                           "min-w-[7rem] rounded-full",
-                          labels.back.translated && "notranslate"
+                          labels.back.translated && "notranslate",
                         )}
                         onClick={() => changeStep("dates")}
                       >
@@ -1864,7 +1964,7 @@ export function MarketplaceStayDatePicker({
                         type="button"
                         className={cn(
                           "min-w-[7rem] rounded-full",
-                          resolvedFinalActionLabel.translated && "notranslate"
+                          resolvedFinalActionLabel.translated && "notranslate",
                         )}
                         onClick={() => {
                           if (onFinalAction) {

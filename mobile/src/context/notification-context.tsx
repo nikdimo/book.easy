@@ -25,6 +25,8 @@ import {
 function nativeRoute(route: string): Href {
   const messageMatch = route.match(/^\/messages\/([^/?#]+)/);
   if (messageMatch) return `/chat/${messageMatch[1]}` as Href;
+  if (/^\/host\/bookings(?:\/|$)/.test(route)) return "/(tabs)/bookings" as Href;
+  if (/^\/account\/bookings(?:\/|$)/.test(route)) return "/(tabs)/bookings" as Href;
   return route as Href;
 }
 

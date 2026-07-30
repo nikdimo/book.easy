@@ -107,7 +107,8 @@ export default function CookiesPage() {
                   <br />
                   <strong>Consent Required:</strong> Yes (opt-in via cookie banner)
                   <br />
-                  <strong>Partners:</strong> Google Ads, Facebook Ads, Resend
+                  <strong>Partners:</strong> Any enabled advertising providers identified in this
+                  policy and the consent banner
                 </p>
               </div>
             </div>
@@ -145,9 +146,6 @@ export default function CookiesPage() {
               </li>
               <li>
                 <strong>Google Analytics:</strong> Sets analytics cookies (consent-based)
-              </li>
-              <li>
-                <strong>Resend Email Service:</strong> May set marketing cookies (consent-based)
               </li>
               <li>
                 <strong>Map Provider (Leaflet/Mapbox):</strong> May set performance cookies (necessary)

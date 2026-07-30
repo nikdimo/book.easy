@@ -49,10 +49,29 @@ enum BookingStatus {
   PENDING
   CONFIRMED
   REJECTED
+  EXPIRED
   CANCELLED_BY_GUEST
   CANCELLED_BY_HOST
   CANCELLED_BY_ADMIN
   COMPLETED
+}
+
+enum BookingEmailKind {
+  GUEST_REQUEST_RECEIVED
+  HOST_NEW_REQUEST
+  HOST_REQUEST_REMINDER
+  GUEST_CONFIRMED
+  GUEST_REJECTED
+  GUEST_EXPIRED
+  GUEST_CANCELLED
+  HOST_CANCELLED_BY_GUEST
+}
+
+enum BookingEmailDeliveryStatus {
+  QUEUED
+  PROCESSING
+  SENT
+  FAILED
 }
 
 enum BlockType {
@@ -85,6 +104,24 @@ enum ConversationStatus {
 enum ConversationParticipantRole {
   MEMBER
   SUPPORT
+}
+
+enum BookingTimelineEventType {
+  REQUESTED
+  CONFIRMED
+  REJECTED
+  EXPIRED
+  CANCELLED_BY_GUEST
+  CANCELLED_BY_HOST
+  CANCELLED_BY_ADMIN
+  COMPLETED
+}
+
+enum DamageReportStatus {
+  REPORTED
+  ACKNOWLEDGED
+  ESCALATED
+  RESOLVED
 }
 
 enum SafetyCaseType {
@@ -176,6 +213,62 @@ enum NotificationType {
   SYSTEM
 }
 
+enum CommunicationChannel {
+  EMAIL
+  PUSH
+}
+
+enum MarketingAudience {
+  GUEST
+  HOST
+}
+
+enum MarketingPreferenceStatus {
+  NOT_SUBSCRIBED
+  PENDING
+  SUBSCRIBED
+  UNSUBSCRIBED
+  SUPPRESSED
+}
+
+enum MarketingConsentAction {
+  REQUESTED
+  CONFIRMED
+  WITHDRAWN
+  SUPPRESSED
+}
+
+enum MarketingSuppressionReason {
+  UNSUBSCRIBE
+  COMPLAINT
+  HARD_BOUNCE
+  MANUAL
+  PRIVACY_OBJECTION
+}
+
+enum MarketingTokenPurpose {
+  CONFIRM_EMAIL
+  UNSUBSCRIBE_EMAIL
+}
+
+enum MarketingCampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum MarketingDeliveryStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  BOUNCED
+  COMPLAINED
+  FAILED
+  SKIPPED
+}
+
 // ─── User & Profile ─────────────────────────────────────────────────────────────
 
 model User {
@@ -208,6 +301,9 @@ model User {
   pushTokens              PushToken[]
   conversationMemberships ConversationParticipant[]
   sentMessages            Message[]                 @relation("MessageSender")
+  messageEmailDeliveries  MessageEmailDelivery[]    @relation("MessageEmailRecipient")
+  bookingTimelineEvents   BookingTimelineEvent[]    @relation("BookingTimelineActor")
+  damageReports           DamageReport[]            @relation("DamageReporter")
   startedConversations    Conversation[]            @relation("ConversationStarter")
   inquiryConversations    Conversation[]            @relation("ConversationInquiryGuest")
   submittedSafetyCases    SafetyCase[]              @relation("SafetyCaseReporter")
@@ -219,6 +315,8 @@ model User {
   moderatedReviews        Review[]                  @relation("ReviewModerator")
   reviewInvitations       ReviewInvitation[]
   reviewAdminReads        ReviewAdminRead[]
+  communicationPreference CommunicationPreference?
+  marketingContact        MarketingContact?
 
   @@index([email])
   @@index([role])
@@ -581,24 +679,29 @@ model PricingRule {
 }
 
 /**
- * A host-funded public offer. Previous rows are retained for support/history; the
- * partial unique index in the migration permits only one row with disabledAt = NULL
- * for a listing at a time.
+ * A host-funded public offer. A listing may have several active offers. At quote
+ * time, date-specific offers take precedence and the highest qualifying
+ * minimum-night threshold wins.
  */
 model ListingPromotion {
-  id              String        @id @default(cuid())
-  listingId       String
-  type            PromotionType
-  discountPercent Int?
-  minimumNights   Int?
-  disabledAt      DateTime?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  id                   String        @id @default(cuid())
+  listingId            String
+  type                 PromotionType
+  discountPercent      Int           @default(0)
+  minimumNights        Int?
+  freeCleaning         Boolean       @default(false)
+  roundUpToNearestFive Boolean       @default(true)
+  startDate            DateTime?     @db.Date
+  endDate              DateTime?     @db.Date
+  disabledAt           DateTime?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
 
   listing  Listing   @relation(fields: [listingId], references: [id], onDelete: Cascade)
   bookings Booking[]
 
   @@index([listingId, disabledAt])
+  @@index([listingId, startDate, endDate])
 }
 
 model ListingDatePrice {
@@ -638,44 +741,72 @@ model AvailabilityBlock {
 // ─── Booking ────────────────────────────────────────────────────────────────────
 
 model Booking {
-  id                 String        @id @default(cuid())
-  listingId          String
-  guestId            String
-  checkIn            DateTime      @db.Date
-  checkOut           DateTime      @db.Date
-  guestCount         Int
-  currency           String        @default("EUR")
-  nightlyRate        Decimal       @db.Decimal(10, 2)
-  cleaningFee        Decimal       @default(0) @db.Decimal(10, 2)
-  serviceFee         Decimal       @default(0) @db.Decimal(10, 2)
-  totalPrice         Decimal       @db.Decimal(10, 2)
-  originalTotal      Decimal?      @db.Decimal(10, 2)
-  discountAmount     Decimal       @default(0) @db.Decimal(10, 2)
-  promotionId        String?
-  promotionType      PromotionType?
-  priceBreakdown     Json?
+  id                    String         @id @default(cuid())
+  reference             String         @unique @default(cuid())
+  listingId             String
+  guestId               String
+  checkIn               DateTime       @db.Date
+  checkOut              DateTime       @db.Date
+  guestCount            Int
+  currency              String         @default("EUR")
+  nightlyRate           Decimal        @db.Decimal(10, 2)
+  cleaningFee           Decimal        @default(0) @db.Decimal(10, 2)
+  serviceFee            Decimal        @default(0) @db.Decimal(10, 2)
+  totalPrice            Decimal        @db.Decimal(10, 2)
+  originalTotal         Decimal?       @db.Decimal(10, 2)
+  discountAmount        Decimal        @default(0) @db.Decimal(10, 2)
+  promotionId           String?
+  promotionType         PromotionType?
+  priceBreakdown        Json?
   priceBreakdownVersion Int?
-  numberOfNights     Int
-  status             BookingStatus @default(PENDING)
-  guestNote          String?
-  hostNote           String?
-  cancellationReason String?
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
+  numberOfNights        Int
+  status                BookingStatus  @default(PENDING)
+  responseDueAt         DateTime       @default(dbgenerated("(CURRENT_TIMESTAMP + INTERVAL '24 hours')"))
+  respondedAt           DateTime?
+  hostReminderSentAt    DateTime?
+  guestNote             String?
+  hostNote              String?
+  cancellationReason    String?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
 
-  listing            Listing             @relation(fields: [listingId], references: [id])
-  guest              User                @relation(fields: [guestId], references: [id])
-  promotion          ListingPromotion?   @relation(fields: [promotionId], references: [id], onDelete: SetNull)
+  listing            Listing                @relation(fields: [listingId], references: [id])
+  guest              User                   @relation(fields: [guestId], references: [id])
+  promotion          ListingPromotion?      @relation(fields: [promotionId], references: [id], onDelete: SetNull)
   availabilityBlocks AvailabilityBlock[]
   conversation       Conversation?
   safetyCases        SafetyCase[]
   reviews            Review[]
   reviewInvitations  ReviewInvitation[]
+  emailDeliveries    BookingEmailDelivery[]
+  timelineEvents     BookingTimelineEvent[]
+  damageReports      DamageReport[]
 
   @@index([listingId, status])
   @@index([guestId])
+  @@index([status, responseDueAt])
   @@index([promotionId])
   @@index([listingId, checkIn, checkOut])
+}
+
+model BookingEmailDelivery {
+  id          String                     @id @default(cuid())
+  bookingId   String
+  kind        BookingEmailKind
+  status      BookingEmailDeliveryStatus @default(QUEUED)
+  attempts    Int                        @default(0)
+  availableAt DateTime                   @default(now())
+  lockedAt    DateTime?
+  sentAt      DateTime?
+  lastError   String?
+  createdAt   DateTime                   @default(now())
+  updatedAt   DateTime                   @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@unique([bookingId, kind])
+  @@index([status, availableAt])
+  @@index([bookingId, status])
 }
 
 // ─── Notifications & booking chat ─────────────────────────────────────────────
@@ -685,20 +816,28 @@ model Booking {
  * record, not the source of truth, so unread state survives across devices.
  */
 model Notification {
-  id        String           @id @default(cuid())
-  userId    String
-  type      NotificationType
-  title     String
-  body      String
-  route     String?
-  data      Json?
-  readAt    DateTime?
-  createdAt DateTime         @default(now())
+  id              String           @id @default(cuid())
+  userId          String
+  type            NotificationType
+  title           String
+  body            String
+  route           String?
+  data            Json?
+  messageId       String?
+  readAt          DateTime?
+  createdAt       DateTime         @default(now())
+  pushAttempts    Int              @default(0)
+  pushAvailableAt DateTime         @default(now())
+  pushLockedAt    DateTime?
+  pushSentAt      DateTime?
+  pushLastError   String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, readAt, createdAt])
   @@index([userId, createdAt])
+  @@index([userId, messageId])
+  @@index([pushSentAt, pushAvailableAt])
 }
 
 /**
@@ -737,13 +876,14 @@ model Conversation {
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
-  booking      Booking?                  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  listing      Listing                   @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  startedBy    User?                     @relation("ConversationStarter", fields: [startedById], references: [id], onDelete: SetNull)
-  inquiryGuest User?                     @relation("ConversationInquiryGuest", fields: [inquiryGuestId], references: [id], onDelete: SetNull)
-  participants ConversationParticipant[]
-  messages     Message[]
-  safetyCases  SafetyCase[]
+  booking       Booking?                  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  listing       Listing                   @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  startedBy     User?                     @relation("ConversationStarter", fields: [startedById], references: [id], onDelete: SetNull)
+  inquiryGuest  User?                     @relation("ConversationInquiryGuest", fields: [inquiryGuestId], references: [id], onDelete: SetNull)
+  participants  ConversationParticipant[]
+  messages      Message[]
+  safetyCases   SafetyCase[]
+  damageReports DamageReport[]
 
   @@unique([listingId, inquiryGuestId])
   @@index([listingId])
@@ -768,6 +908,7 @@ model ConversationParticipant {
 
 model Message {
   id             String    @id @default(cuid())
+  clientId       String?   @unique
   conversationId String
   senderId       String?
   body           String    @db.Text
@@ -775,12 +916,83 @@ model Message {
   deletedAt      DateTime?
   createdAt      DateTime  @default(now())
 
-  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender       User?        @relation("MessageSender", fields: [senderId], references: [id], onDelete: SetNull)
-  safetyCases  SafetyCase[]
+  conversation    Conversation           @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender          User?                  @relation("MessageSender", fields: [senderId], references: [id], onDelete: SetNull)
+  safetyCases     SafetyCase[]
+  emailDeliveries MessageEmailDelivery[]
 
   @@index([conversationId, createdAt])
   @@index([senderId])
+}
+
+model MessageEmailDelivery {
+  id          String                     @id @default(cuid())
+  messageId   String
+  recipientId String
+  status      BookingEmailDeliveryStatus @default(QUEUED)
+  attempts    Int                        @default(0)
+  availableAt DateTime                   @default(now())
+  lockedAt    DateTime?
+  sentAt      DateTime?
+  lastError   String?
+  createdAt   DateTime                   @default(now())
+  updatedAt   DateTime                   @updatedAt
+
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  recipient User    @relation("MessageEmailRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, recipientId])
+  @@index([status, availableAt])
+  @@index([recipientId, status])
+}
+
+model BookingTimelineEvent {
+  id             String                   @id @default(cuid())
+  bookingId      String
+  type           BookingTimelineEventType
+  actorId        String?
+  idempotencyKey String                   @unique
+  data           Json?
+  createdAt      DateTime                 @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  actor   User?   @relation("BookingTimelineActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([bookingId, createdAt])
+}
+
+model DamageReport {
+  id             String             @id @default(cuid())
+  bookingId      String
+  conversationId String
+  reporterId     String?
+  description    String             @db.Text
+  status         DamageReportStatus @default(REPORTED)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  booking      Booking                @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  conversation Conversation           @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  reporter     User?                  @relation("DamageReporter", fields: [reporterId], references: [id], onDelete: SetNull)
+  evidence     DamageReportEvidence[]
+
+  @@index([bookingId, createdAt])
+  @@index([conversationId, createdAt])
+  @@index([status, createdAt])
+}
+
+model DamageReportEvidence {
+  id             String   @id @default(cuid())
+  damageReportId String
+  url            String
+  fileName       String
+  mimeType       String
+  sizeBytes      Int
+  createdAt      DateTime @default(now())
+
+  damageReport DamageReport @relation(fields: [damageReportId], references: [id], onDelete: Cascade)
+
+  @@index([damageReportId])
 }
 
 // ─── Safety reports & booking claims ──────────────────────────────────────────
@@ -1081,4 +1293,179 @@ model UserConsent {
 
   @@index([userId])
   @@index([consentedAt])
+}
+
+/**
+ * User-controlled preferences for non-essential operational communications.
+ * Essential account, security, payment, and active-booking messages are not
+ * represented here because they cannot be disabled while the service is used.
+ */
+model CommunicationPreference {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  messageEmail    Boolean  @default(true)
+  reviewEmail     Boolean  @default(true)
+  operationalPush Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/**
+ * A durable marketing identity. It is intentionally separate from User so
+ * suppression records can survive account deletion and prevent re-import.
+ */
+model MarketingContact {
+  id        String   @id @default(cuid())
+  userId    String?  @unique
+  email     String   @unique
+  locale    String   @default("en")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User?                  @relation(fields: [userId], references: [id], onDelete: SetNull)
+  preferences  MarketingPreference[]
+  suppressions MarketingSuppression[]
+  deliveries   MarketingDelivery[]
+
+  @@index([createdAt])
+}
+
+/**
+ * Immutable wording shown when consent was requested. New wording requires a
+ * new version so Linger Homes can prove exactly what a person accepted.
+ */
+model ConsentStatement {
+  id            String               @id @default(cuid())
+  version       String               @unique
+  legalEntity   String
+  senderName    String
+  text          String               @db.Text
+  channel       CommunicationChannel
+  audience      MarketingAudience
+  locale        String               @default("en")
+  contentHash   String
+  effectiveFrom DateTime             @default(now())
+  retiredAt     DateTime?
+
+  preferences MarketingPreference[]
+  events      MarketingConsentEvent[]
+
+  @@index([channel, audience, retiredAt])
+}
+
+model MarketingPreference {
+  id          String                    @id @default(cuid())
+  contactId   String
+  channel     CommunicationChannel
+  audience    MarketingAudience
+  status      MarketingPreferenceStatus @default(NOT_SUBSCRIBED)
+  statementId String?
+  requestedAt DateTime?
+  confirmedAt DateTime?
+  withdrawnAt DateTime?
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+
+  contact    MarketingContact        @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  statement  ConsentStatement?       @relation(fields: [statementId], references: [id], onDelete: SetNull)
+  events     MarketingConsentEvent[]
+  tokens     MarketingToken[]
+  deliveries MarketingDelivery[]
+
+  @@unique([contactId, channel, audience])
+  @@index([status, channel, audience])
+  @@index([statementId])
+}
+
+/**
+ * Append-only consent evidence. metadata may contain a one-way request
+ * fingerprint, user agent, referrer, and the UI source, but never a raw IP.
+ */
+model MarketingConsentEvent {
+  id           String                 @id @default(cuid())
+  preferenceId String
+  statementId  String?
+  action       MarketingConsentAction
+  source       String
+  metadata     Json?
+  occurredAt   DateTime               @default(now())
+
+  preference MarketingPreference @relation(fields: [preferenceId], references: [id], onDelete: Cascade)
+  statement  ConsentStatement?   @relation(fields: [statementId], references: [id], onDelete: SetNull)
+
+  @@index([preferenceId, occurredAt])
+  @@index([action, occurredAt])
+}
+
+model MarketingSuppression {
+  id        String                     @id @default(cuid())
+  contactId String
+  channel   CommunicationChannel
+  reason    MarketingSuppressionReason
+  source    String
+  createdAt DateTime                   @default(now())
+
+  contact MarketingContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([contactId, channel])
+  @@index([reason, createdAt])
+}
+
+model MarketingToken {
+  id           String                @id @default(cuid())
+  preferenceId String
+  purpose      MarketingTokenPurpose
+  tokenHash    String                @unique
+  expiresAt    DateTime?
+  usedAt       DateTime?
+  createdAt    DateTime              @default(now())
+
+  preference MarketingPreference @relation(fields: [preferenceId], references: [id], onDelete: Cascade)
+
+  @@index([preferenceId, purpose])
+  @@index([expiresAt])
+}
+
+model MarketingCampaign {
+  id          String                  @id @default(cuid())
+  name        String
+  subject     String
+  templateKey String
+  audience    MarketingAudience
+  channel     CommunicationChannel
+  status      MarketingCampaignStatus @default(DRAFT)
+  scheduledAt DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+
+  deliveries MarketingDelivery[]
+
+  @@index([status, scheduledAt])
+  @@index([createdAt])
+}
+
+model MarketingDelivery {
+  id                String                  @id @default(cuid())
+  campaignId        String
+  contactId         String
+  preferenceId      String?
+  status            MarketingDeliveryStatus @default(QUEUED)
+  providerMessageId String?
+  failureReason     String?
+  sentAt            DateTime?
+  deliveredAt       DateTime?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
+
+  campaign   MarketingCampaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  contact    MarketingContact     @relation(fields: [contactId], references: [id], onDelete: Restrict)
+  preference MarketingPreference? @relation(fields: [preferenceId], references: [id], onDelete: SetNull)
+
+  @@unique([campaignId, contactId])
+  @@index([status, createdAt])
+  @@index([contactId, createdAt])
 }

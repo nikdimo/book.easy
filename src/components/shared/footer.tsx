@@ -41,6 +41,11 @@ export async function Footer() {
   );
   const eur = t.resolve("footer.eur", "EUR");
   const englishUs = t.resolve("footer.english_us", "English (US)");
+  const newsletter = t.resolve("footer.newsletter", "Newsletter");
+  const communicationPreferences = t.resolve(
+    "footer.communication_preferences",
+    "Communication preferences"
+  );
 
   return (
     <footer className="mt-auto border-t bg-muted/30">
@@ -140,6 +145,19 @@ export async function Footer() {
                   )}
                 >
                   {logIn.text}
+                </Link>
+              </li>
+              <li>
+                <Link href="/newsletter" className="hover:text-foreground transition-colors">
+                  {newsletter.text}
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/account/communications"
+                  className="hover:text-foreground transition-colors"
+                >
+                  {communicationPreferences.text}
                 </Link>
               </li>
             </ul>

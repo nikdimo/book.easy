@@ -15,7 +15,6 @@ export async function getListingBySlug(slug: string) {
       promotions: {
         where: { disabledAt: null },
         orderBy: { createdAt: "desc" },
-        take: 1,
       },
       amenities: {
         include: { amenity: true },

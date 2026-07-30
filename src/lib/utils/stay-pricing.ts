@@ -15,7 +15,9 @@ export function eachStayNight(checkIn: Date, checkOut: Date): Date[] {
   return eachDayOfInterval({ start: checkIn, end: addDays(checkOut, -1) });
 }
 
-export function buildPriceOverrideMap(rows: { date: Date; nightlyRate: unknown }[]): Map<string, number> {
+export function buildPriceOverrideMap(
+  rows: { date: Date; nightlyRate: unknown }[],
+): Map<string, number> {
   const map = new Map<string, number>();
   for (const row of rows) {
     map.set(dateKey(row.date), Number(row.nightlyRate));
@@ -27,7 +29,7 @@ export function computeStayPricing(
   baseNightly: number,
   checkIn: Date,
   checkOut: Date,
-  overrides: Map<string, number>
+  overrides: Map<string, number>,
 ): {
   nights: number;
   subtotal: number;
@@ -42,7 +44,7 @@ export function computeStayPricing(
   });
   const subtotalCents = nightlyBreakdown.reduce(
     (sum, n) => sum + toCents(n.rate),
-    0
+    0,
   );
   const subtotal = fromCents(subtotalCents);
   const n = nightlyBreakdown.length;
@@ -59,7 +61,65 @@ export type StayPromotion = {
   type: "PERCENT_DISCOUNT" | "FREE_CLEANING";
   discountPercent?: number | null;
   minimumNights?: number | null;
+  freeCleaning?: boolean;
+  roundUpToNearestFive?: boolean;
+  startDate?: Date | string | null;
+  endDate?: Date | string | null;
+  createdAt?: Date | string;
 };
+
+function promotionDate(value: Date | string | null | undefined): Date | null {
+  if (!value) return null;
+  const parsed = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+export function selectApplicablePromotion(
+  promotions: StayPromotion[],
+  checkIn: Date,
+  checkOut: Date,
+  nights: number,
+): StayPromotion | null {
+  const eligible = promotions.filter((promotion) => {
+    const minimumNights = promotion.minimumNights ?? 1;
+    if (nights < minimumNights) return false;
+
+    const startDate = promotionDate(promotion.startDate);
+    const endDate = promotionDate(promotion.endDate);
+    if (!startDate && !endDate) return true;
+    if (!startDate || !endDate) return false;
+
+    return checkIn >= startDate && checkOut <= endDate;
+  });
+
+  eligible.sort((left, right) => {
+    const leftSpecific = left.startDate && left.endDate ? 1 : 0;
+    const rightSpecific = right.startDate && right.endDate ? 1 : 0;
+    if (leftSpecific !== rightSpecific) return rightSpecific - leftSpecific;
+
+    const minimumDifference =
+      (right.minimumNights ?? 1) - (left.minimumNights ?? 1);
+    if (minimumDifference !== 0) return minimumDifference;
+
+    const percentDifference =
+      (right.discountPercent ?? 0) - (left.discountPercent ?? 0);
+    if (percentDifference !== 0) return percentDifference;
+
+    const leftCleaning =
+      left.freeCleaning || left.type === "FREE_CLEANING" ? 1 : 0;
+    const rightCleaning =
+      right.freeCleaning || right.type === "FREE_CLEANING" ? 1 : 0;
+    if (leftCleaning !== rightCleaning) return rightCleaning - leftCleaning;
+
+    const leftCreated = promotionDate(left.createdAt)?.getTime() ?? 0;
+    const rightCreated = promotionDate(right.createdAt)?.getTime() ?? 0;
+    if (leftCreated !== rightCreated) return rightCreated - leftCreated;
+
+    return (right.id ?? "").localeCompare(left.id ?? "");
+  });
+
+  return eligible[0] ?? null;
+}
 
 export function toCents(amount: number): number {
   return Math.round(amount * 100);
@@ -80,6 +140,7 @@ export function computeStayQuote({
   checkIn,
   checkOut,
   overrides,
+  promotions,
   promotion,
 }: {
   baseNightly: number;
@@ -87,33 +148,60 @@ export function computeStayQuote({
   checkIn: Date;
   checkOut: Date;
   overrides: Map<string, number>;
+  promotions?: StayPromotion[];
+  /** @deprecated Pass promotions when more than one offer may be active. */
   promotion?: StayPromotion | null;
 }) {
   const stay = computeStayPricing(baseNightly, checkIn, checkOut, overrides);
   const accommodationCents = toCents(stay.subtotal);
   const cleaningCents = toCents(cleaningFee);
-  const promotionEligible =
-    Boolean(promotion) &&
-    stay.nights > 0 &&
-    stay.nights >= (promotion?.minimumNights ?? 1);
+  const applicablePromotion =
+    stay.nights > 0
+      ? selectApplicablePromotion(
+          promotions ?? (promotion ? [promotion] : []),
+          checkIn,
+          checkOut,
+          stay.nights,
+        )
+      : null;
+  const promotionEligible = Boolean(applicablePromotion);
 
   let accommodationDiscountCents = 0;
   let cleaningDiscountCents = 0;
 
+  const discountPercent = applicablePromotion?.discountPercent ?? 0;
+  if (promotionEligible && discountPercent > 0) {
+    if (applicablePromotion?.roundUpToNearestFive) {
+      accommodationDiscountCents = stay.nightlyBreakdown.reduce(
+        (totalDiscount, night) => {
+          const originalNightCents = toCents(night.rate);
+          const discountedNightCents = Math.round(
+            (originalNightCents * (100 - discountPercent)) / 100,
+          );
+          const roundedNightCents = Math.min(
+            originalNightCents,
+            Math.ceil(discountedNightCents / 500) * 500,
+          );
+          return totalDiscount + originalNightCents - roundedNightCents;
+        },
+        0,
+      );
+    } else {
+      accommodationDiscountCents = Math.round(
+        (accommodationCents * discountPercent) / 100,
+      );
+    }
+  }
+
   if (
     promotionEligible &&
-    promotion?.type === "PERCENT_DISCOUNT" &&
-    promotion.discountPercent != null
+    (applicablePromotion?.freeCleaning ||
+      applicablePromotion?.type === "FREE_CLEANING")
   ) {
-    accommodationDiscountCents = Math.round(
-      (accommodationCents * promotion.discountPercent) / 100
-    );
-  } else if (promotionEligible && promotion?.type === "FREE_CLEANING") {
     cleaningDiscountCents = cleaningCents;
   }
 
-  const discountCents =
-    accommodationDiscountCents + cleaningDiscountCents;
+  const discountCents = accommodationDiscountCents + cleaningDiscountCents;
   const originalTotalCents = accommodationCents + cleaningCents;
   const totalCents = originalTotalCents - discountCents;
   const discountedAccommodationCents =
@@ -132,11 +220,9 @@ export function computeStayQuote({
     discountAmount: fromCents(discountCents),
     effectiveAverageNightly:
       stay.nights > 0
-        ? fromCents(
-            Math.round(discountedAccommodationCents / stay.nights)
-          )
+        ? fromCents(Math.round(discountedAccommodationCents / stay.nights))
         : 0,
     promotionEligible,
-    appliedPromotion: promotionEligible ? promotion ?? null : null,
+    appliedPromotion: applicablePromotion,
   };
 }

@@ -8,7 +8,7 @@ describe("normalizeListingStep", () => {
   it("keeps valid step indexes", () => {
     expect(normalizeListingStep(0)).toBe(0);
     expect(normalizeListingStep("3")).toBe(3);
-    expect(normalizeListingStep(LISTING_STEPS.length - 1)).toBe(6);
+    expect(normalizeListingStep(LISTING_STEPS.length - 1)).toBe(7);
   });
 
   it("clamps out-of-range values", () => {

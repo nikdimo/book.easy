@@ -52,6 +52,7 @@ interface DatePriceRow {
 }
 
 interface PropertyAvailabilityCalendarProps {
+  mode?: "availability" | "pricing";
   listingId: string;
   baseNightlyRate: number;
   currency: string;
@@ -85,6 +86,7 @@ interface PendingAction {
 }
 
 export function PropertyAvailabilityCalendar({
+  mode = "availability",
   listingId,
   baseNightlyRate,
   currency,
@@ -264,10 +266,20 @@ export function PropertyAvailabilityCalendar({
     });
   }, [currency, existingBlocks, groupedPriceRanges]);
 
+  const visibleUpcomingExceptions = useMemo(
+    () =>
+      upcomingExceptions.filter((item) =>
+        mode === "pricing"
+          ? item.kind === "CUSTOM_PRICE"
+          : item.kind !== "CUSTOM_PRICE"
+      ),
+    [mode, upcomingExceptions]
+  );
+
   const filteredUpcomingExceptions = useMemo(() => {
-    if (activityFilter === "ALL") return upcomingExceptions;
-    return upcomingExceptions.filter((item) => item.kind === activityFilter);
-  }, [activityFilter, upcomingExceptions]);
+    if (activityFilter === "ALL") return visibleUpcomingExceptions;
+    return visibleUpcomingExceptions.filter((item) => item.kind === activityFilter);
+  }, [activityFilter, visibleUpcomingExceptions]);
 
   function requestConfirm(title: string, description: string, run: () => Promise<void>) {
     setPendingAction({ title, description, run });
@@ -401,21 +413,28 @@ export function PropertyAvailabilityCalendar({
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">Calendar</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Select a date range, then apply availability or pricing actions.
+            {mode === "pricing"
+              ? "Select a date range to set or remove a custom nightly price."
+              : "Select a date range to block it or make it available."}
           </p>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5">
-              <span className="size-3 rounded-sm bg-muted border" /> Manual block
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="size-3 rounded-sm bg-destructive/25 border border-destructive/30" />{" "}
-              Booking
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <span className="size-3 rounded-sm ring-2 ring-primary ring-inset" /> Custom price
-            </span>
+            {mode === "availability" ? (
+              <>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="size-3 rounded-sm bg-muted border" /> Manual block
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="size-3 rounded-sm bg-destructive/25 border border-destructive/30" />{" "}
+                  Booking
+                </span>
+              </>
+            ) : (
+              <span className="inline-flex items-center gap-1.5">
+                <span className="size-3 rounded-sm ring-2 ring-primary ring-inset" /> Custom price
+              </span>
+            )}
           </div>
 
           <div className="rounded-xl border bg-card p-3">
@@ -426,24 +445,32 @@ export function PropertyAvailabilityCalendar({
               showDateFlexibility={false}
               showGuestStep={false}
               finalActionLabel={{ text: "Done", translated: false }}
-              dateDialogTitle={{ text: "Availability", translated: false }}
+              dateDialogTitle={{
+                text: mode === "pricing" ? "Custom pricing" : "Availability",
+                translated: false,
+              }}
               dateDialogDescription={{
-                text: "Select dates to block, reopen, or adjust nightly price.",
+                text:
+                  mode === "pricing"
+                    ? "Select dates to adjust their nightly price."
+                    : "Select dates to block or reopen.",
                 translated: false,
               }}
               hideDateSegmentCards
               dayVariant="availability"
               dayMeta={(day) => {
                 const key = dateKey(day);
-                return {
-                  sublabel: compactPriceFormatter.format(
-                    priceByKey.get(key) ?? baseNightlyRate
-                  ),
-                  isCustomPrice:
-                    priceByKey.has(key) &&
-                    !manualKeys.has(key) &&
-                    !bookingKeys.has(key),
-                };
+                return mode === "pricing"
+                  ? {
+                      sublabel: compactPriceFormatter.format(
+                        priceByKey.get(key) ?? baseNightlyRate
+                      ),
+                      isCustomPrice:
+                        priceByKey.has(key) &&
+                        !manualKeys.has(key) &&
+                        !bookingKeys.has(key),
+                    }
+                  : {};
               }}
               dateModifiers={{
                 manualBlock: (day) => manualKeys.has(dateKey(day)),
@@ -451,6 +478,7 @@ export function PropertyAvailabilityCalendar({
                 customPrice: (day) => {
                   const key = dateKey(day);
                   return (
+                    mode === "pricing" &&
                     priceByKey.has(key) &&
                     !manualKeys.has(key) &&
                     !bookingKeys.has(key)
@@ -478,24 +506,26 @@ export function PropertyAvailabilityCalendar({
                             <Badge variant="secondary">
                               {selectedStats.totalDays} day{selectedStats.totalDays === 1 ? "" : "s"}
                             </Badge>
-                            <Badge variant="outline">
-                              {selectedUniformRate != null
-                                ? `${compactPriceFormatter.format(selectedUniformRate)} / night`
-                                : "Mixed prices"}
-                            </Badge>
-                            {selectedStats.customPriceDays > 0 ? (
+                            {mode === "pricing" ? (
+                              <Badge variant="outline">
+                                {selectedUniformRate != null
+                                  ? `${compactPriceFormatter.format(selectedUniformRate)} / night`
+                                  : "Mixed prices"}
+                              </Badge>
+                            ) : null}
+                            {mode === "pricing" && selectedStats.customPriceDays > 0 ? (
                               <Badge variant="outline">
                                 {selectedStats.customPriceDays} custom price day
                                 {selectedStats.customPriceDays === 1 ? "" : "s"}
                               </Badge>
                             ) : null}
-                            {selectedStats.manualDays > 0 ? (
+                            {mode === "availability" && selectedStats.manualDays > 0 ? (
                               <Badge variant="outline">
                                 {selectedStats.manualDays} blocked day
                                 {selectedStats.manualDays === 1 ? "" : "s"}
                               </Badge>
                             ) : null}
-                            {selectedStats.bookingDays > 0 ? (
+                            {mode === "availability" && selectedStats.bookingDays > 0 ? (
                               <Badge variant="outline">
                                 {selectedStats.bookingDays} booked day
                                 {selectedStats.bookingDays === 1 ? "" : "s"}
@@ -505,17 +535,19 @@ export function PropertyAvailabilityCalendar({
                         ) : null}
                       </div>
 
-                      <div className="max-w-sm space-y-2">
-                        <Label htmlFor="availability-reason" className="text-xs text-muted-foreground">
-                          Block reason (optional)
-                        </Label>
-                        <Input
-                          id="availability-reason"
-                          value={reasonInput}
-                          onChange={(e) => setReasonInput(e.target.value)}
-                          placeholder="e.g. Maintenance, private stay"
-                        />
-                      </div>
+                      {mode === "availability" ? (
+                        <div className="max-w-sm space-y-2">
+                          <Label htmlFor="availability-reason" className="text-xs text-muted-foreground">
+                            Block reason (optional)
+                          </Label>
+                          <Input
+                            id="availability-reason"
+                            value={reasonInput}
+                            onChange={(e) => setReasonInput(e.target.value)}
+                            placeholder="e.g. Maintenance, private stay"
+                          />
+                        </div>
+                      ) : null}
                     </div>
 
                     <div className="flex w-full flex-wrap items-center justify-end gap-3 lg:w-auto">
@@ -527,57 +559,61 @@ export function PropertyAvailabilityCalendar({
                       >
                         Cancel
                       </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="min-w-[7rem] rounded-full"
-                        disabled={!rangeParts || pending}
-                        onClick={() => {
-                          openPriceDialog();
-                        }}
-                      >
-                        Edit price
-                      </Button>
-                      {selectedStats.hasCustomPrice ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="min-w-[7rem] rounded-full"
-                          disabled={!rangeParts || pending}
-                          onClick={() => startTransition(runResetCustomPrice)}
-                        >
-                          Reset price
-                        </Button>
-                      ) : null}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="min-w-[8rem] rounded-full"
-                        disabled={!rangeParts || pending}
-                        onClick={() =>
-                          requestConfirm(
-                            "Make selected range available",
-                            `This removes manual blocks in ${selectedLabel}. Booking holds stay untouched.`,
-                            runMakeRangeAvailable
-                          )
-                        }
-                      >
-                        Make available
-                      </Button>
-                      <Button
-                        type="button"
-                        className="min-w-[7rem] rounded-full"
-                        disabled={!rangeParts || pending}
-                        onClick={() =>
-                          requestConfirm(
-                            "Block selected range",
-                            `This will block ${selectedLabel} for booking requests.`,
-                            runBlockRange
-                          )
-                        }
-                      >
-                        Block
-                      </Button>
+                      {mode === "pricing" ? (
+                        <>
+                          <Button
+                            type="button"
+                            className="min-w-[7rem] rounded-full"
+                            disabled={!rangeParts || pending}
+                            onClick={openPriceDialog}
+                          >
+                            Edit price
+                          </Button>
+                          {selectedStats.hasCustomPrice ? (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="min-w-[7rem] rounded-full"
+                              disabled={!rangeParts || pending}
+                              onClick={() => startTransition(runResetCustomPrice)}
+                            >
+                              Reset price
+                            </Button>
+                          ) : null}
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="min-w-[8rem] rounded-full"
+                            disabled={!rangeParts || pending}
+                            onClick={() =>
+                              requestConfirm(
+                                "Make selected range available",
+                                `This removes manual blocks in ${selectedLabel}. Booking holds stay untouched.`,
+                                runMakeRangeAvailable
+                              )
+                            }
+                          >
+                            Make available
+                          </Button>
+                          <Button
+                            type="button"
+                            className="min-w-[7rem] rounded-full"
+                            disabled={!rangeParts || pending}
+                            onClick={() =>
+                              requestConfirm(
+                                "Block selected range",
+                                `This will block ${selectedLabel} for booking requests.`,
+                                runBlockRange
+                              )
+                            }
+                          >
+                            Block
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -591,6 +627,7 @@ export function PropertyAvailabilityCalendar({
         </CardContent>
       </Card>
 
+      {mode === "availability" ? (
       <Card className="border-border/70 shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">Bulk Future Actions</CardTitle>
@@ -633,30 +670,38 @@ export function PropertyAvailabilityCalendar({
           </div>
         </CardContent>
       </Card>
+      ) : null}
 
       <Card className="border-border/70 shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">Upcoming Exceptions</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Review the upcoming blocked dates, bookings, and custom price periods in one timeline.
+            {mode === "pricing"
+              ? "Review and remove upcoming custom price periods."
+              : "Review upcoming blocked dates and bookings."}
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-2">
             {[
-              { value: "ALL", label: `All (${upcomingExceptions.length})` },
-              {
-                value: "MANUAL_BLOCK",
-                label: `Blocks (${upcomingExceptions.filter((item) => item.kind === "MANUAL_BLOCK").length})`,
-              },
-              {
-                value: "BOOKING_HOLD",
-                label: `Bookings (${upcomingExceptions.filter((item) => item.kind === "BOOKING_HOLD").length})`,
-              },
-              {
-                value: "CUSTOM_PRICE",
-                label: `Prices (${upcomingExceptions.filter((item) => item.kind === "CUSTOM_PRICE").length})`,
-              },
+              { value: "ALL", label: `All (${visibleUpcomingExceptions.length})` },
+              ...(mode === "pricing"
+                ? [
+                    {
+                      value: "CUSTOM_PRICE",
+                      label: `Prices (${visibleUpcomingExceptions.length})`,
+                    },
+                  ]
+                : [
+                    {
+                      value: "MANUAL_BLOCK",
+                      label: `Blocks (${visibleUpcomingExceptions.filter((item) => item.kind === "MANUAL_BLOCK").length})`,
+                    },
+                    {
+                      value: "BOOKING_HOLD",
+                      label: `Bookings (${visibleUpcomingExceptions.filter((item) => item.kind === "BOOKING_HOLD").length})`,
+                    },
+                  ]),
             ].map((filterOption) => (
               <Button
                 key={filterOption.value}
@@ -742,6 +787,7 @@ export function PropertyAvailabilityCalendar({
         </CardContent>
       </Card>
 
+      {mode === "pricing" ? (
       <Dialog open={priceDialogOpen} onOpenChange={setPriceDialogOpen}>
         <DialogContent showCloseButton={false} className="sm:max-w-sm">
           <DialogHeader>
@@ -786,6 +832,7 @@ export function PropertyAvailabilityCalendar({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      ) : null}
 
       <Dialog open={Boolean(pendingAction)} onOpenChange={(open) => !open && setPendingAction(null)}>
         <DialogContent>

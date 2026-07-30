@@ -1,10 +1,10 @@
 "use client";
 
 import { useActionState, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Bath, Bed, BedDouble, Building, CalendarDays, ChevronLeft, ChevronRight, CircleAlert, CircleDollarSign, Coffee, CookingPot, Eye, Flame, GripVertical, HeartPulse, Laptop, ListChecks, Loader2, MapPin, Microwave, Minus, Mountain, Pencil, Plus, Refrigerator, Shirt, Shield, ShieldCheck, Sparkles, Sun, Thermometer, Trees, Tv, Users, Waves, Wind, Wifi, Car } from "lucide-react";
+import { Bath, Bed, BedDouble, Building, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, CircleAlert, CircleDollarSign, Coffee, CookingPot, Eye, Flame, GripVertical, HeartPulse, Laptop, ListChecks, Loader2, MapPin, Microwave, Minus, Mountain, Pencil, Percent, Plus, Refrigerator, Shirt, Shield, ShieldCheck, Sparkles, Sun, Thermometer, Trees, Tv, Users, Waves, Wind, Wifi, Car } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   saveListingDraft,
@@ -32,7 +32,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatPrice } from "@/lib/utils/format";
-import { splitDescriptionPreview } from "@/lib/utils/description-preview";
+import { splitDescriptionPreviewTiers } from "@/lib/utils/description-preview";
 import { toast } from "sonner";
 import {
   ListingImagesField,
@@ -95,6 +95,9 @@ type ListingFormValues = {
   baseNightlyRate: string;
   cleaningFee: string;
   minNights: string;
+  promotionType: string;
+  promotionPercent: string;
+  promotionMinimumNights: string;
 };
 
 const FALLBACK_TITLE = "Your listing title";
@@ -222,6 +225,9 @@ function listingInitialValues(
       baseNightlyRate: listing.pricingRule ? String(listing.pricingRule.baseNightlyRate) : "",
       cleaningFee: listing.pricingRule ? String(listing.pricingRule.cleaningFee) : "0",
       minNights: listing.pricingRule ? String(listing.pricingRule.minNights) : "1",
+      promotionType: "NONE",
+      promotionPercent: "15",
+      promotionMinimumNights: "5",
     };
   }
 
@@ -251,6 +257,9 @@ function listingInitialValues(
     baseNightlyRate: draft?.baseNightlyRate ?? "",
     cleaningFee: draft?.cleaningFee || "0",
     minNights: draft?.minNights || "1",
+    promotionType: draft?.promotionType || "NONE",
+    promotionPercent: draft?.promotionPercent || "15",
+    promotionMinimumNights: draft?.promotionMinimumNights || "5",
   };
 }
 
@@ -450,6 +459,19 @@ export function ListingForm({
   );
   const hasUnpublishedChanges =
     isEditing && currentEditSignature !== lastPublishedSignature;
+
+  function confirmManagementNavigation(
+    event: ReactMouseEvent<HTMLAnchorElement>
+  ) {
+    if (
+      hasUnpublishedChanges &&
+      !window.confirm(
+        "You have unpublished listing changes. Leave this page without publishing them?"
+      )
+    ) {
+      event.preventDefault();
+    }
+  }
   const photoCount = mediaItems.filter(
     (item) => item.mediaType !== "VIDEO"
   ).length;
@@ -1028,12 +1050,17 @@ export function ListingForm({
         >
           {isEditing && (
             <header className="z-20 shrink-0 border-b bg-background px-5 pb-3 pt-5 shadow-sm md:px-8">
-              <div className="flex flex-wrap items-center gap-3">
-                <h1 className="text-2xl font-bold">Edit Listing</h1>
-                {editStatusLabel && <Badge variant={editStatusApproved ? "default" : "secondary"}>{editStatusLabel}</Badge>}
+              <div className="flex items-center gap-3">
+                <h1 className="shrink-0 text-2xl font-bold">Edit Listing</h1>
                 {availabilityHref && (
-                  <Button variant="outline" size="sm" className="ml-auto" asChild>
-                    <Link href={availabilityHref}><CalendarDays className="mr-2 h-4 w-4" />Availability &amp; pricing</Link>
+                  <Button className="ml-auto shrink-0 shadow-sm" asChild>
+                    <Link
+                      href={availabilityHref}
+                      onClick={confirmManagementNavigation}
+                    >
+                      <CalendarDays className="mr-2 h-4 w-4" />
+                      Manage availability, pricing &amp; promotions
+                    </Link>
                   </Button>
                 )}
               </div>
@@ -1424,6 +1451,212 @@ export function ListingForm({
           </FieldSection>
           </div>
 
+          {!isEditing && (
+            <div className={currentStep === 7 ? "block" : "hidden"}>
+              <FieldSection title="Launch with a special offer">
+                <div className="space-y-6">
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      This is optional. Choose one ready-made offer or publish without
+                      a promotion.
+                    </p>
+                    <div className="mt-4 grid gap-3 md:grid-cols-3">
+                      {[
+                        {
+                          title: "Recommended",
+                          description: "15% off stays of 5+ nights",
+                          percent: "15",
+                          nights: "5",
+                        },
+                        {
+                          title: "Long stay",
+                          description: "20% off stays of 10+ nights",
+                          percent: "20",
+                          nights: "10",
+                        },
+                        {
+                          title: "Monthly stay",
+                          description: "30% off stays of 30+ nights",
+                          percent: "30",
+                          nights: "30",
+                        },
+                      ].map((offer) => {
+                        const selected =
+                          values.promotionType === "PERCENT_DISCOUNT" &&
+                          values.promotionPercent === offer.percent &&
+                          values.promotionMinimumNights === offer.nights;
+                        return (
+                          <button
+                            key={offer.nights}
+                            type="button"
+                            aria-pressed={selected}
+                            onClick={() => {
+                              setField("promotionType", "PERCENT_DISCOUNT");
+                              setField("promotionPercent", offer.percent);
+                              setField("promotionMinimumNights", offer.nights);
+                              setTimeout(() => void autosaveDraft(), 0);
+                            }}
+                            className={cn(
+                              "rounded-xl border p-4 text-left transition-colors",
+                              selected
+                                ? "border-primary bg-primary/5 ring-1 ring-primary"
+                                : "hover:border-primary/40"
+                            )}
+                          >
+                            <CalendarRange className="mb-3 size-5" aria-hidden="true" />
+                            <span className="block font-semibold">{offer.title}</span>
+                            <span className="mt-1 block text-sm text-muted-foreground">
+                              {offer.description}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      aria-pressed={values.promotionType === "NONE"}
+                      onClick={() => {
+                        setField("promotionType", "NONE");
+                        setTimeout(() => void autosaveDraft(), 0);
+                      }}
+                      className={cn(
+                        "rounded-xl border p-4 text-left transition-colors",
+                        values.promotionType === "NONE"
+                          ? "border-primary bg-primary/5 ring-1 ring-primary"
+                          : "hover:border-primary/40"
+                      )}
+                    >
+                      <Shield className="mb-3 size-5" aria-hidden="true" />
+                      <span className="block font-semibold">No promotion</span>
+                      <span className="mt-1 block text-sm text-muted-foreground">
+                        Publish now and add an offer later.
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={Number(values.cleaningFee) <= 0}
+                      aria-pressed={values.promotionType === "FREE_CLEANING"}
+                      onClick={() => {
+                        setField("promotionType", "FREE_CLEANING");
+                        setField(
+                          "promotionMinimumNights",
+                          String(Math.max(1, Number(values.minNights) || 1))
+                        );
+                        setTimeout(() => void autosaveDraft(), 0);
+                      }}
+                      className={cn(
+                        "rounded-xl border p-4 text-left transition-colors",
+                        values.promotionType === "FREE_CLEANING"
+                          ? "border-primary bg-primary/5 ring-1 ring-primary"
+                          : "hover:border-primary/40",
+                        Number(values.cleaningFee) <= 0 &&
+                          "cursor-not-allowed opacity-50"
+                      )}
+                    >
+                      <Sparkles className="mb-3 size-5" aria-hidden="true" />
+                      <span className="block font-semibold">Free cleaning</span>
+                      <span className="mt-1 block text-sm text-muted-foreground">
+                        {Number(values.cleaningFee) > 0
+                          ? "Guests save the full cleaning fee."
+                          : "Add a cleaning fee in the previous step first."}
+                      </span>
+                    </button>
+                  </div>
+
+                  {values.promotionType === "PERCENT_DISCOUNT" && (
+                    <div className="rounded-xl border p-4">
+                      <Label className="text-sm font-semibold">
+                        Discount percentage
+                      </Label>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {["10", "15", "20", "30"].map((percent) => (
+                          <Button
+                            key={percent}
+                            type="button"
+                            variant={
+                              values.promotionPercent === percent
+                                ? "default"
+                                : "outline"
+                            }
+                            onClick={() => {
+                              setField("promotionPercent", percent);
+                              setTimeout(() => void autosaveDraft(), 0);
+                            }}
+                          >
+                            {percent}%
+                          </Button>
+                        ))}
+                      </div>
+                      <div className="mt-4 grid max-w-md gap-4 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="promotionPercent">Custom percentage</Label>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              id="promotionPercent"
+                              name="promotionPercent"
+                              type="number"
+                              min={5}
+                              max={50}
+                              value={values.promotionPercent}
+                              onChange={(event) =>
+                                setField("promotionPercent", event.target.value)
+                              }
+                              onBlur={() => void autosaveDraft()}
+                            />
+                            <Percent className="size-4 text-muted-foreground" />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="promotionMinimumNights">
+                            Minimum nights
+                          </Label>
+                          <Input
+                            id="promotionMinimumNights"
+                            name="promotionMinimumNights"
+                            type="number"
+                            min={1}
+                            max={365}
+                            value={values.promotionMinimumNights}
+                            onChange={(event) =>
+                              setField(
+                                "promotionMinimumNights",
+                                event.target.value
+                              )
+                            }
+                            onBlur={() => void autosaveDraft()}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <input
+                    type="hidden"
+                    name="promotionType"
+                    value={values.promotionType}
+                  />
+                  {values.promotionType !== "PERCENT_DISCOUNT" && (
+                    <>
+                      <input
+                        type="hidden"
+                        name="promotionPercent"
+                        value={values.promotionPercent}
+                      />
+                      <input
+                        type="hidden"
+                        name="promotionMinimumNights"
+                        value={values.promotionMinimumNights}
+                      />
+                    </>
+                  )}
+                </div>
+              </FieldSection>
+            </div>
+          )}
+
           <div id={isEditing ? "edit-section-amenities" : undefined} className={isEditing || currentStep === 3 ? "scroll-mt-32 block" : "hidden"}>
           <FieldSection>
             <div className="space-y-7">
@@ -1474,6 +1707,18 @@ export function ListingForm({
           </div>
           {isEditing && (
             <footer className="z-20 shrink-0 border-t bg-background px-5 py-4 shadow-[0_-2px_8px_rgb(0_0_0/0.04)] md:px-8">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              {availabilityHref && (
+                <Button variant="outline" size="lg" asChild>
+                  <Link
+                    href={availabilityHref}
+                    onClick={confirmManagementNavigation}
+                  >
+                    <CalendarDays className="mr-2 h-4 w-4" />
+                    Manage availability, pricing &amp; promotions
+                  </Link>
+                </Button>
+              )}
               {mediaUploadState.active ? (
                 <MediaUploadStatus
                   state={mediaUploadState}
@@ -1510,6 +1755,7 @@ export function ListingForm({
                   </TooltipContent>
                 </Tooltip>
               )}
+              </div>
             </footer>
           )}
           {!isEditing && (
@@ -1619,9 +1865,18 @@ export function ListingForm({
               <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                 Guest booking preview
               </h2>
-              <Badge variant="secondary" className="rounded-md">
-                Live
-              </Badge>
+              <div className="flex shrink-0 items-center gap-2">
+                {editStatusLabel && (
+                  <Badge
+                    variant={editStatusApproved ? "default" : "secondary"}
+                  >
+                    {editStatusLabel}
+                  </Badge>
+                )}
+                <Badge variant="secondary" className="rounded-md">
+                  Live
+                </Badge>
+              </div>
             </div>
             <nav className="mt-4 hidden flex-wrap gap-1 md:flex" aria-label="Preview sections">
               {EDIT_SECTIONS.map((section) => (
@@ -2021,9 +2276,15 @@ function CapacityCounter({
 }
 
 function DescriptionPreviewSplit({ description }: { description: string }) {
-  const { visible, hidden, truncated } = splitDescriptionPreview(description);
+  const {
+    landing,
+    property,
+    expanded,
+    landingTruncated,
+    expandedTruncated,
+  } = splitDescriptionPreviewTiers(description);
 
-  if (!truncated) {
+  if (!landingTruncated) {
     return (
       <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
         {description}
@@ -2034,18 +2295,34 @@ function DescriptionPreviewSplit({ description }: { description: string }) {
   return (
     <div>
       <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
-        {visible}…
+        {landing}…
       </p>
       <div className="my-4 flex items-center gap-3">
         <span className="h-0 flex-1 border-t border-dashed border-muted-foreground/40" />
         <span className="whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-muted-foreground/70">
-          Visible only after &quot;Show more&quot;
+          Landing page preview ends here
         </span>
         <span className="h-0 flex-1 border-t border-dashed border-muted-foreground/40" />
       </div>
-      <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground/50">
-        {hidden}
-      </p>
+      {property && (
+        <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
+          {property}{expandedTruncated ? "…" : ""}
+        </p>
+      )}
+      {expandedTruncated && (
+        <>
+          <div className="my-4 flex items-center gap-3">
+            <span className="h-0 flex-1 border-t border-dashed border-muted-foreground/40" />
+            <span className="whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-muted-foreground/70">
+              Visible only after &quot;Show more&quot;
+            </span>
+            <span className="h-0 flex-1 border-t border-dashed border-muted-foreground/40" />
+          </div>
+          <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground/50">
+            {expanded}
+          </p>
+        </>
+      )}
     </div>
   );
 }
