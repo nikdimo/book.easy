@@ -10,11 +10,6 @@
     "filePath": "src/app/(public)/bookings/confirm/page.tsx"
   },
   {
-    "key": "booking.add_dates_total",
-    "sourceText": "Add dates for total",
-    "filePath": "src/components/public/booking-widget.tsx"
-  },
-  {
     "key": "booking.add_guests",
     "sourceText": "Add guests",
     "filePath": "src/components/public/booking-widget.tsx"
@@ -325,8 +320,18 @@
     "filePath": "src/components/public/booking-widget.tsx"
   },
   {
+    "key": "booking.select_dates_cta",
+    "sourceText": "Select dates",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
     "key": "booking.select_dates_error",
     "sourceText": "Please select check-in and check-out dates",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.select_guests_cta",
+    "sourceText": "Select guests",
     "filePath": "src/components/public/booking-widget.tsx"
   },
   {
@@ -2765,6 +2770,11 @@
     "filePath": "src/components/marketplace/search-labels.ts"
   },
   {
+    "key": "search.clear_destination",
+    "sourceText": "Clear destination",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
     "key": "search.close_destination_picker",
     "sourceText": "Close destination picker",
     "filePath": "src/components/marketplace/search-labels.ts"
@@ -2897,6 +2907,11 @@
   {
     "key": "search.matching_cities",
     "sourceText": "Matching cities",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.minimum_stay_earliest",
+    "sourceText": "Choose {date} or later for check-out.",
     "filePath": "src/components/marketplace/search-labels.ts"
   },
   {

@@ -7,6 +7,8 @@ import {
   type CalendarLens,
 } from "@/components/host/calendar-workspace";
 import { ListingBottomNav } from "@/components/host/listing-bottom-nav";
+import { CalendarHeaderActions } from "@/components/host/calendar-header-actions";
+import { ListingPublishBar } from "@/components/host/listing-publish-bar";
 import {
   LISTING_WORKSPACE_STOPS,
   listingStopHref,
@@ -125,9 +127,10 @@ export async function CalendarLensPage({
     initialFrom && initialTo ? `?from=${initialFrom}&to=${initialTo}` : "";
 
   return (
-    // pb-16 on mobile keeps the last row clear of the fixed bottom bar.
-    <div className="mx-auto max-w-7xl space-y-3 pb-16 md:pb-0">
-      <div className="flex items-start justify-between gap-3">
+    // pb-36 on mobile keeps the last row clear of the fixed nav plus action row.
+    <div className="mx-auto max-w-7xl space-y-3 pb-36 md:pb-0">
+      {/* Phones get these two in the shell header instead — see below. */}
+      <div className="hidden items-start justify-between gap-3 md:flex">
         <div className="flex min-w-0 items-start gap-2.5">
           <Link
             href="/host/listings"
@@ -166,10 +169,15 @@ export async function CalendarLensPage({
         </Popover>
       </div>
 
-      <ListingManagementTabs
-        listingId={listing.id}
-        preserveQuery={selectionQuery}
-      />
+      <CalendarHeaderActions heading={copy.heading} help={copy.help} />
+
+      {/* The bottom nav is the lens switcher on phones, so the tabs are desktop-only. */}
+      <div className="hidden md:block">
+        <ListingManagementTabs
+          listingId={listing.id}
+          preserveQuery={selectionQuery}
+        />
+      </div>
 
       {listing.pricingRule ? (
         <CalendarWorkspace
@@ -244,13 +252,22 @@ export async function CalendarLensPage({
         )}
       </div>
 
-      {/* Same bar as the edit screen. It is fixed here because this page scrolls
-          inside the host shell's main area rather than owning its own flex column. */}
-      <ListingBottomNav
-        listingId={listing.id}
-        active={lens}
-        className="fixed inset-x-0 bottom-0"
-      />
+      {/* Same nav and action row as the edit screen. They are fixed here because this
+          page scrolls inside the host shell's main area rather than owning its own
+          flex column. */}
+      <div className="fixed inset-x-0 bottom-0 z-30 md:hidden">
+        <ListingBottomNav
+          listingId={listing.id}
+          active={lens}
+          omitPreview
+          /* The action row below owns the safe-area inset now. */
+          className="pb-0"
+        />
+        <ListingPublishBar
+          listingId={listing.id}
+          published={listing.status === "APPROVED"}
+        />
+      </div>
     </div>
   );
 }

@@ -326,6 +326,25 @@ export function MarketplaceSearchFlowDialog({
                       placeholder={labels.searchListingCities.text}
                       className="w-full min-w-0 border-0 bg-transparent p-0 text-base font-medium text-foreground outline-none placeholder:text-muted-foreground/80"
                     />
+                    {/* Clearing the city is what returns the list below from
+                        "matching cities" to the full "cities with listings" set, so
+                        this doubles as the way back to the unfiltered state. */}
+                    {draftCity ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDraftCity("");
+                          inputRef.current?.focus();
+                        }}
+                        aria-label={labels.clearDestination.text}
+                        className={cn(
+                          "-mr-1 grid size-9 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:size-7",
+                          labels.clearDestination.translated && "notranslate"
+                        )}
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    ) : null}
                   </div>
                 </div>
 

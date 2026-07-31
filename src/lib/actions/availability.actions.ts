@@ -74,35 +74,58 @@ export async function blockDates(formData: FormData) {
 
   const range = validateRange(startDate, endDate);
   if ("error" in range) return { error: range.error };
-  const { start, end } = range;
+  const { startDate: rangeStartYmd, endDate: rangeEndYmd, start, end } = range;
 
+  let coveredNights = 0;
   try {
     await db.$transaction(async (tx) => {
       // Same lock key as createBooking's transaction so a manual block and a concurrent
       // booking request for this listing can't both pass their overlap check at once.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${listingId}))`;
 
-      const overlap = await tx.availabilityBlock.findFirst({
+      const existing = await tx.availabilityBlock.findMany({
         where: {
           listingId,
           startDate: { lt: end },
           endDate: { gt: start },
         },
+        orderBy: { startDate: "asc" },
+        select: { startDate: true, endDate: true },
       });
 
-      if (overlap) {
-        throw new Error("These dates overlap with an existing block or booking");
+      // Blocking means "none of these nights are bookable", so an overlap is not a
+      // conflict to refuse — the nights already blocked or booked are simply
+      // nothing to do. Fill only the gaps between them, same as blockAllFutureDates.
+      async function blockGap(fromYmd: string, toYmd: string) {
+        if (compareYmd(toYmd, fromYmd) <= 0) return;
+        await tx.availabilityBlock.create({
+          data: {
+            listingId,
+            startDate: ymdToDbDate(fromYmd),
+            endDate: ymdToDbDate(toYmd),
+            blockType: BlockType.MANUAL_BLOCK,
+            reason: reason || null,
+          },
+        });
+        coveredNights += eachYmdExclusive(fromYmd, toYmd).length;
       }
 
-      await tx.availabilityBlock.create({
-        data: {
-          listingId,
-          startDate: start,
-          endDate: end,
-          blockType: BlockType.MANUAL_BLOCK,
-          reason: reason || null,
-        },
-      });
+      let cursorYmd = rangeStartYmd;
+      for (const block of existing) {
+        const blockStartYmd = dbDateToYmd(block.startDate);
+        const blockEndYmd = dbDateToYmd(block.endDate);
+        if (compareYmd(blockStartYmd, cursorYmd) > 0) {
+          await blockGap(
+            cursorYmd,
+            compareYmd(blockStartYmd, rangeEndYmd) < 0
+              ? blockStartYmd
+              : rangeEndYmd,
+          );
+        }
+        if (compareYmd(blockEndYmd, cursorYmd) > 0) cursorYmd = blockEndYmd;
+        if (compareYmd(cursorYmd, rangeEndYmd) >= 0) break;
+      }
+      await blockGap(cursorYmd, rangeEndYmd);
     });
   } catch (error) {
     if (isAvailabilityOverlapConstraintError(error)) {
@@ -112,6 +135,9 @@ export async function blockDates(formData: FormData) {
   }
 
   revalidateListingPaths(listingId, listing.slug);
+  if (coveredNights === 0) {
+    return { success: "These dates were already blocked or booked." };
+  }
   return { success: true };
 }
 

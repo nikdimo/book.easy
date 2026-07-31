@@ -482,8 +482,8 @@ export function ListingImagesField({
 
           <DragOverlay>
             {activeItem ? (
-              <div className="aspect-[4/3] w-40 overflow-hidden rounded-lg border border-border bg-muted shadow-2xl">
-                <MediaThumb item={activeItem} />
+              <div className="relative aspect-[4/3] w-40 overflow-hidden rounded-lg border border-border bg-muted shadow-2xl">
+                <MediaThumb item={activeItem} interactive={false} />
               </div>
             ) : null}
           </DragOverlay>

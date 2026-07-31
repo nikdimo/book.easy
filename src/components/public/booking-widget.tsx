@@ -71,24 +71,35 @@ function BookingGuestEditor({
   value,
   summary,
   maxGuests,
+  open,
+  onOpenChange,
   onChange,
 }: {
   value: GuestDetails;
   summary: Resolved;
   maxGuests: number;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   onChange: (next: GuestDetails) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(value);
+  const wasOpenRef = useRef(open);
+
+  // Seed the draft on every open, whether it came from the trigger below or
+  // from the sticky "Select guests" action.
+  useEffect(() => {
+    if (open && !wasOpenRef.current) setDraft(value);
+    wasOpenRef.current = open;
+  }, [open, value]);
 
   function openEditor() {
     setDraft(value);
-    setOpen(true);
+    onOpenChange(true);
   }
 
   function commitAndClose() {
     onChange(draft);
-    setOpen(false);
+    onOpenChange(false);
   }
 
   function handleOpenChange(nextOpen: boolean) {
@@ -182,6 +193,7 @@ export function BookingWidget({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [guestEditorOpen, setGuestEditorOpen] = useState(false);
   const [dateFlexibility, setDateFlexibility] = useState(0);
   const [checkInStr, setCheckInStr] = useState(initialCheckIn);
   const [checkOutStr, setCheckOutStr] = useState(initialCheckOut);
@@ -195,6 +207,18 @@ export function BookingWidget({
         : 1,
     };
   });
+  // Guests always hold a valid value, so the guest step is about intent rather
+  // than validity: it is already satisfied when the guest arrived from a search
+  // that carried guest counts, and otherwise the moment they open the editor.
+  const [guestsConfirmed, setGuestsConfirmed] = useState(
+    () =>
+      Boolean(initialGuests) ||
+      initialGuestDetails.adults +
+        initialGuestDetails.children +
+        initialGuestDetails.infants +
+        initialGuestDetails.pets >
+        0,
+  );
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [priceDetailsOpen, setPriceDetailsOpen] = useState(false);
@@ -304,6 +328,8 @@ export function BookingWidget({
     translated:
       bookingsUnavailableMessage.translated && selectDatesMessage.translated,
   };
+  // "The selection is wrong" (worth an error message) is a different thing from
+  // "the selection isn't finished yet" (the primary button says what's next).
   const reserveProblem: Resolved | null =
     selectionValidation.status === "unavailable"
       ? unavailableDatesMessage
@@ -312,18 +338,28 @@ export function BookingWidget({
         : selectionValidation.status === "valid"
           ? null
           : selectDatesMessage;
+  const blockingProblem: Resolved | null =
+    selectionValidation.status === "incomplete" ? null : reserveProblem;
+  const reserveStep: "dates" | "guests" | "reserve" =
+    selectionValidation.status !== "valid"
+      ? "dates"
+      : guestsConfirmed
+        ? "reserve"
+        : "guests";
+  const primaryActionLabel =
+    reserveStep === "dates"
+      ? i18n.resolve("booking.select_dates_cta", "Select dates")
+      : reserveStep === "guests"
+        ? i18n.resolve("booking.select_guests_cta", "Select guests")
+        : i18n.resolve("booking.reserve", "Reserve");
   const pickerMessage =
     selectionValidation.status === "unavailable"
       ? unavailableDatesMessage
       : minimumStayMessage;
   const bookingMessage = error
     ? { text: error, translated: false }
-    : reserveProblem;
-  const bookingMessageIsError =
-    Boolean(error) ||
-    selectionValidation.status === "minimum-stay" ||
-    selectionValidation.status === "unavailable" ||
-    selectionValidation.status === "invalid";
+    : blockingProblem;
+  const bookingMessageIsError = Boolean(bookingMessage);
   const appliedPromotion = stayPricing?.appliedPromotion ?? null;
   const promotionLabel = appliedPromotion
     ? (appliedPromotion.discountPercent ?? 0) > 0
@@ -351,6 +387,26 @@ export function BookingWidget({
           )
         : i18n.resolve("promotion.free_cleaning", "Free cleaning")
     : null;
+
+  /**
+   * The primary button never dead-ends: until the selection is complete it
+   * opens whichever step is missing, and only then does it reserve.
+   */
+  function handlePrimaryAction() {
+    setError(null);
+
+    if (reserveStep === "dates") {
+      setDatePickerOpen(true);
+      return;
+    }
+
+    if (reserveStep === "guests") {
+      setGuestEditorOpen(true);
+      return;
+    }
+
+    handleSubmit();
+  }
 
   function handleSubmit() {
     setError(null);
@@ -395,6 +451,7 @@ export function BookingWidget({
     setCheckOutStr("");
     setDateFlexibility(0);
     setGuestDetails({ adults: 1, children: 0, infants: 0, pets: 0 });
+    setGuestsConfirmed(false);
     setNote("");
     setError(null);
     setPriceDetailsOpen(false);
@@ -631,6 +688,9 @@ export function BookingWidget({
                 checkOut={checkOutStr}
                 open={datePickerOpen}
                 onOpenChange={setDatePickerOpen}
+                initialSegment={
+                  checkInStr && !checkOutStr ? "checkout" : "checkin"
+                }
                 dateFlexibility={dateFlexibility}
                 showDateFlexibility
                 onDateFlexibilityChange={setDateFlexibility}
@@ -652,8 +712,11 @@ export function BookingWidget({
                   value={guestDetails}
                   summary={guestSummary}
                   maxGuests={maxGuests}
+                  open={guestEditorOpen}
+                  onOpenChange={setGuestEditorOpen}
                   onChange={(next) => {
                     setGuestDetails(next);
+                    setGuestsConfirmed(true);
                     setError(null);
                   }}
                 />
@@ -788,26 +851,26 @@ export function BookingWidget({
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                onClick={handleSubmit}
+                onClick={handlePrimaryAction}
                 className="hidden w-full rounded-lg text-base font-semibold py-6 disabled:bg-muted disabled:text-muted-foreground lg:flex"
                 size="lg"
-                disabled={isPending || Boolean(reserveProblem)}
+                disabled={isPending}
               >
                 {isPending ? (
                   <Tx k="booking.sending_request" source="Sending request…" />
                 ) : (
-                  <Tx k="booking.reserve" source="Reserve" />
+                  primaryActionLabel.text
                 )}
               </Button>
             </TooltipTrigger>
             <TooltipContent
               className={
-                (reserveProblem ?? reserveTooltip).translated
+                (blockingProblem ?? reserveTooltip).translated
                   ? "notranslate"
                   : undefined
               }
             >
-              {(reserveProblem ?? reserveTooltip).text}
+              {(blockingProblem ?? reserveTooltip).text}
             </TooltipContent>
           </Tooltip>
 
@@ -876,25 +939,30 @@ export function BookingWidget({
                     / <Tx k="property_card.per_night" source="night" />
                   </span>
                 </span>
-                <span className="text-xs text-muted-foreground">
-                  <Tx
-                    k="booking.add_dates_total"
-                    source="Add dates for total"
-                  />
-                </span>
+                {/* The button already says "Select dates", so this line goes to
+                    the one constraint worth knowing before opening the picker. */}
+                {minNights > 1 && (
+                  <span
+                    className={`text-xs text-muted-foreground ${
+                      minimumStayMessage.translated ? "notranslate" : ""
+                    }`}
+                  >
+                    {minimumStayMessage.text}
+                  </span>
+                )}
               </>
             )}
           </button>
           <Button
-            onClick={handleSubmit}
-            className="shrink-0 rounded-xl px-8 font-semibold disabled:bg-muted disabled:text-muted-foreground"
+            onClick={handlePrimaryAction}
+            className="shrink-0 rounded-xl px-6 font-semibold disabled:bg-muted disabled:text-muted-foreground"
             size="lg"
-            disabled={isPending || Boolean(reserveProblem)}
+            disabled={isPending}
           >
             {isPending ? (
               <Tx k="booking.sending" source="Sending…" />
             ) : (
-              <Tx k="booking.reserve" source="Reserve" />
+              primaryActionLabel.text
             )}
           </Button>
         </div>

@@ -22,6 +22,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { DateRange } from "react-day-picker";
 import { toast } from "sonner";
 import { DateRangeCalendarStep } from "@/components/marketplace/marketplace-stay-date-picker";
@@ -242,6 +243,14 @@ function rangeLabel(from: string, to: string, includeYear = false) {
   )}`;
 }
 
+/**
+ * The commit row stays on screen instead of waiting at the end of a long scroll.
+ * Pricing already did this; availability and promotions were the odd ones out.
+ * The negative margins cancel the section's own p-6 so it spans the sheet.
+ */
+const STICKY_FOOTER =
+  "sticky bottom-0 z-10 -mx-6 -mb-6 border-t bg-background/95 px-6 py-4 shadow-[0_-8px_20px_rgba(0,0,0,0.04)] backdrop-blur";
+
 function calendarRangeToInput(range: DateRange) {
   const from = range.from!;
   const to = range.to ?? range.from!;
@@ -255,6 +264,51 @@ function calendarRangeToInput(range: DateRange) {
   };
 }
 
+/**
+ * How much of a selection is already unavailable, and why. Drives which of the
+ * two availability actions is offered: only manual blocks can be opened, and
+ * there is nothing left to block once every night is blocked or booked.
+ */
+function countSelectionNights(
+  input: { startDate: string; endDate: string },
+  blockedDates: Set<string>,
+  bookedDates: Set<string>,
+) {
+  let blocked = 0;
+  let booked = 0;
+  let nights = 0;
+  for (const day of eachYmdExclusive(input.startDate, input.endDate)) {
+    nights += 1;
+    // A booking wins the label: it is the reason the night cannot be opened.
+    if (bookedDates.has(day)) booked += 1;
+    else if (blockedDates.has(day)) blocked += 1;
+  }
+  return { nights, blocked, booked, open: nights - blocked - booked };
+}
+
+function selectionSummary({
+  nights,
+  blocked,
+  booked,
+}: {
+  nights: number;
+  blocked: number;
+  booked: number;
+}) {
+  const label = `${nights} ${nights === 1 ? "night" : "nights"} selected`;
+  if (blocked === 0 && booked === 0) {
+    return `${label}, all open. Blocking stops new booking requests.`;
+  }
+  const parts = [
+    blocked > 0 ? `${blocked} blocked` : null,
+    booked > 0 ? `${booked} booked` : null,
+  ].filter(Boolean);
+  if (blocked + booked === nights) {
+    return `${label}, all unavailable (${parts.join(", ")}).`;
+  }
+  return `${label}, ${parts.join(" and ")}. Blocking leaves bookings untouched.`;
+}
+
 function dbPromotionRange(
   promotion: WorkspacePromotion,
 ): DateRange | undefined {
@@ -262,35 +316,6 @@ function dbPromotionRange(
   const from = parseLocalYmd(dbDateToYmd(promotion.startDate));
   const lastDate = addDaysToYmd(dbDateToYmd(promotion.endDate), -1);
   return { from, to: parseLocalYmd(lastDate) };
-}
-
-function InlineDateScope({
-  label,
-  range,
-  onOpen,
-}: {
-  label: string;
-  range?: DateRange;
-  onOpen: () => void;
-}) {
-  const input = range?.from ? calendarRangeToInput(range) : null;
-  return (
-    <div className="flex min-w-0 items-start justify-between gap-3">
-      <p className="min-w-0 break-words text-sm font-semibold">{label}</p>
-      <button
-        type="button"
-        onClick={onOpen}
-        className="inline-flex max-w-[48%] shrink-0 items-start justify-end gap-1.5 text-right text-sm md:text-xs font-semibold whitespace-normal text-primary transition-colors hover:text-primary/75"
-      >
-        <CalendarRange className="mt-0.5 size-3.5 shrink-0" />
-        <span className="min-w-0 break-words">
-          {input
-            ? `${rangeLabel(input.startDate, input.lastDate)} · Change dates`
-            : "Select dates"}
-        </span>
-      </button>
-    </div>
-  );
 }
 
 function RangePickerDialog({
@@ -331,6 +356,7 @@ function RangePickerDialog({
             selected={draft}
             onRangeChange={setDraft}
             dayVariant="availability"
+            dragToSelect
             locale={locale}
           />
         </div>
@@ -484,6 +510,8 @@ function EditorDialog({
   cleaningFee,
   minNights,
   locale,
+  blockedDates,
+  bookedDates,
   state,
   onStateChange,
   onClose,
@@ -494,6 +522,8 @@ function EditorDialog({
   cleaningFee: number;
   minNights: number;
   locale: string;
+  blockedDates: Set<string>;
+  bookedDates: Set<string>;
   state: EditorState;
   onStateChange: (state: EditorState) => void;
   onClose: () => void;
@@ -509,9 +539,6 @@ function EditorDialog({
           (state.promotion ? dbPromotionRange(state.promotion) : undefined)),
   );
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [availability, setAvailability] = useState<"available" | "blocked">(
-    "blocked",
-  );
   const [visibility, setVisibility] = useState<"visible" | "hidden">(
     listingStatus === "APPROVED" ? "visible" : "hidden",
   );
@@ -576,7 +603,7 @@ function EditorDialog({
     });
   }
 
-  function saveAvailability() {
+  function saveAvailability(intent: "available" | "blocked") {
     if (!selectedInput) {
       const isPublished = listingStatus === "APPROVED";
       if (visibility === "visible") {
@@ -599,7 +626,7 @@ function EditorDialog({
       report(() => hideListingFromCalendar(listingId), "Listing hidden.");
       return;
     }
-    if (availability === "blocked") {
+    if (intent === "blocked") {
       report(
         () =>
           blockCalendarRange(listingId, {
@@ -705,18 +732,53 @@ function EditorDialog({
         ? `Default nightly price · €${baseNightlyRate}`
         : "Always active · no end date";
 
+  /** The action the footer's primary button would run, for the Enter key. */
+  function submitEditor() {
+    if (state.kind === "price") {
+      savePrice();
+      return;
+    }
+    if (state.kind === "promotion") {
+      savePromotion();
+      return;
+    }
+    if (!isDateScoped) {
+      saveAvailability(visibility === "hidden" ? "blocked" : "available");
+      return;
+    }
+    if (selectionCounts.open === 0) return;
+    saveAvailability("blocked");
+  }
+
+  function handleEditorKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+    if (pickerOpen || pending) return;
+    // Buttons and links already act on Enter, and a textarea needs it for newlines.
+    const target = event.target as HTMLElement | null;
+    if (target?.closest("button, a, textarea, [role='button']")) return;
+    event.preventDefault();
+    submitEditor();
+  }
+
   const numericDiscount = Math.min(50, Math.max(0, Number(discount) || 0));
   const rawGuestRate = baseNightlyRate * (1 - numericDiscount / 100);
   const guestRate = roundPromotion
     ? Math.ceil(rawGuestRate / 5) * 5
     : Number(rawGuestRate.toFixed(2));
-  const availabilityCta = selectedInput
-    ? availability === "blocked"
-      ? resolveReviewed("mobile.calendar.block_selected", "Block selected range")
-      : resolveReviewed("mobile.calendar.make_available", "Make available")
-    : visibility === "hidden"
+  // The short verb key, not `block_selected`: its reviewed translations read
+  // "Block selected range", which does not fit a half-width button.
+  const blockCta = resolveReviewed("mobile.calendar.block", "Block dates");
+  const openCta = resolveReviewed(
+    "mobile.calendar.make_available",
+    "Make available",
+  );
+  const visibilityCta =
+    visibility === "hidden"
       ? resolveReviewed("mobile.listings.hide_site", "Hide from site")
       : resolveReviewed("mobile.calendar.make_available", "Make available");
+  const selectionCounts = selectedInput
+    ? countSelectionNights(selectedInput, blockedDates, bookedDates)
+    : { nights: 0, blocked: 0, booked: 0, open: 0 };
 
   return (
     <>
@@ -728,38 +790,43 @@ function EditorDialog({
       >
         <DialogContent
           variant="sheet"
+          onKeyDown={handleEditorKeyDown}
           className="flex flex-col gap-0 overflow-hidden p-0 md:h-auto md:max-h-[90dvh] md:max-w-[34rem]"
         >
+          {/* Two single lines, not two stacked blocks: on a phone the header used
+              three rows and the scope row below repeated the dates a third time,
+              which pushed the actual controls under the fold. */}
           <DialogHeader className="shrink-0">
-            <div className="flex min-w-0 items-start gap-3 border-b px-6 py-5 pr-12 text-left">
-              <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
-                <HeaderIcon className="size-5" />
+            <div className="flex min-w-0 items-center gap-2.5 border-b px-6 py-3.5 pr-12 text-left">
+              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                <HeaderIcon className="size-4" />
               </span>
-              <div className="min-w-0">
-                <DialogTitle className="break-words leading-snug">
-                  {editorMeta.title}
-                </DialogTitle>
-                <DialogDescription className="mt-0.5 break-words">
-                  {editorMeta.description}
-                </DialogDescription>
-              </div>
+              <DialogTitle className="min-w-0 truncate text-base leading-snug">
+                {editorMeta.title}
+              </DialogTitle>
+              {/* Radix needs a description; the body says the same thing louder. */}
+              <DialogDescription className="sr-only">
+                {editorMeta.description}
+              </DialogDescription>
             </div>
           </DialogHeader>
-          <div className="shrink-0 border-b bg-muted/25 px-6 py-3 text-sm md:text-xs font-medium">
-            <span className="flex min-w-0 items-start gap-2">
-              <CalendarRange className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-              <span className="min-w-0 break-words">{currentRangeText}</span>
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b bg-muted/25 px-6 py-2.5 text-sm md:text-xs font-medium">
+            <span className="flex min-w-0 items-center gap-2">
+              <CalendarRange className="size-3.5 shrink-0 text-muted-foreground" />
+              <span className="min-w-0 truncate">{currentRangeText}</span>
             </span>
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              className="shrink-0 font-semibold text-primary transition-colors hover:text-primary/75"
+            >
+              {isDateScoped ? "Change" : "Select dates"}
+            </button>
           </div>
 
           <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
           {state.kind === "availability" ? (
-            <div className="space-y-5 p-6">
-              <InlineDateScope
-                label="What would you like to manage?"
-                range={range}
-                onOpen={() => setPickerOpen(true)}
-              />
+            <div className="space-y-4 p-6">
               {!isDateScoped ? (
                 <>
                   <fieldset>
@@ -827,99 +894,78 @@ function EditorDialog({
                 </>
               ) : (
                 <>
-                  <fieldset>
-                    <legend className="text-sm font-semibold">
-                      Availability for these dates
-                    </legend>
-                    <div className="mt-3 grid grid-cols-2 gap-3">
-                      {(
-                        [
-                          {
-                            value: "available",
-                            label: "Available",
-                            description: "Remove manual blocks",
-                            icon: BedDouble,
-                          },
-                          {
-                            value: "blocked",
-                            label: "Blocked",
-                            description: "Prevent new booking requests",
-                            icon: LockKeyhole,
-                          },
-                        ] as const
-                      ).map((option) => {
-                        const selected = availability === option.value;
-                        const Icon = option.icon;
-                        return (
-                          <button
-                            key={option.value}
-                            type="button"
-                            aria-pressed={selected}
-                            onClick={() => setAvailability(option.value)}
-                            className={cn(
-                              "relative rounded-xl border p-4 text-left",
-                              selected
-                                ? "border-primary bg-primary/5 ring-1 ring-primary"
-                                : "hover:border-primary/35",
-                            )}
-                          >
-                            <Icon className="size-5 text-primary" />
-                            <span className="mt-4 block text-sm font-semibold">
-                              {option.label}
-                            </span>
-                            <span className="mt-1 block text-sm md:text-xs text-muted-foreground">
-                              {option.description}
-                            </span>
-                            {selected ? (
-                              <span className="absolute top-3 right-3 grid size-5 place-items-center rounded-full bg-primary text-primary-foreground">
-                                <Check className="size-3" />
-                              </span>
-                            ) : null}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </fieldset>
-                  {availability === "blocked" ? (
-                    <div>
-                      <Label htmlFor="block-reason">
-                        Block reason (optional)
-                      </Label>
-                      <Input
-                        id="block-reason"
-                        className="mt-1.5"
-                        value={reason}
-                        onChange={(event) => setReason(event.target.value)}
-                        placeholder="e.g. Maintenance or private stay"
-                      />
-                    </div>
-                  ) : null}
+                  {/* Picking a state and then confirming it made two steps out of
+                      one. The two buttons below are the choice, so this only has
+                      to say where the dates stand and what a block would change. */}
+                  <p className="text-sm font-medium">
+                    {selectionSummary(selectionCounts)}
+                  </p>
+                  <div>
+                    <Label htmlFor="block-reason">Block reason (optional)</Label>
+                    <Input
+                      id="block-reason"
+                      className="mt-1.5"
+                      value={reason}
+                      onChange={(event) => setReason(event.target.value)}
+                      placeholder="e.g. Maintenance or private stay"
+                    />
+                    <p className="mt-1.5 text-sm md:text-xs text-muted-foreground">
+                      Only saved when you block. Guests never see it.
+                    </p>
+                  </div>
                 </>
               )}
-              <div className="flex justify-end gap-2 border-t pt-4">
-                <Button type="button" variant="outline" onClick={onClose}>
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  disabled={pending}
-                  onClick={saveAvailability}
-                >
-                  <span className={translatedClass(availabilityCta)}>
-                    {availabilityCta.text}
-                  </span>
-                </Button>
-              </div>
+              {isDateScoped ? (
+                <div className={cn(STICKY_FOOTER, "flex items-stretch gap-2")}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    disabled={pending || selectionCounts.blocked === 0}
+                    onClick={() => saveAvailability("available")}
+                  >
+                    <BedDouble className="size-4" />
+                    <span className={translatedClass(openCta)}>
+                      {openCta.text}
+                    </span>
+                  </Button>
+                  <Button
+                    type="button"
+                    className="flex-1"
+                    disabled={pending || selectionCounts.open === 0}
+                    onClick={() => saveAvailability("blocked")}
+                  >
+                    <LockKeyhole className="size-4" />
+                    <span className={translatedClass(blockCta)}>
+                      {blockCta.text}
+                    </span>
+                  </Button>
+                </div>
+              ) : (
+                <div className={cn(STICKY_FOOTER, "flex justify-end gap-2")}>
+                  <Button type="button" variant="outline" onClick={onClose}>
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={pending}
+                    onClick={() =>
+                      saveAvailability(
+                        visibility === "hidden" ? "blocked" : "available",
+                      )
+                    }
+                  >
+                    <span className={translatedClass(visibilityCta)}>
+                      {visibilityCta.text}
+                    </span>
+                  </Button>
+                </div>
+              )}
             </div>
           ) : null}
 
           {state.kind === "price" ? (
-            <div className="space-y-5 p-6">
-              <InlineDateScope
-                label="What price would you like to change?"
-                range={range}
-                onOpen={() => setPickerOpen(true)}
-              />
+            <div className="space-y-4 p-6">
               <div className="rounded-2xl border-2 border-primary/30 bg-primary/[0.035] p-4 shadow-sm">
                 <Label
                   htmlFor="nightly-price"
@@ -1052,7 +1098,7 @@ function EditorDialog({
                     : "Existing custom-priced dates remain unchanged. The new default applies everywhere else."}
                 </p>
               </div>
-              <div className="sticky bottom-0 z-10 -mx-6 -mb-6 border-t bg-background/95 px-6 py-4 shadow-[0_-8px_20px_rgba(0,0,0,0.04)] backdrop-blur">
+              <div className={STICKY_FOOTER}>
                 <div className="mb-3 grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 text-sm md:text-xs">
                   <span className="min-w-0 break-words text-muted-foreground">
                     {isDateScoped ? "Default" : "Current default"}{" "}
@@ -1096,12 +1142,7 @@ function EditorDialog({
           ) : null}
 
           {state.kind === "promotion" ? (
-            <div className="space-y-5 p-6">
-              <InlineDateScope
-                label="When should this promotion apply?"
-                range={range}
-                onOpen={() => setPickerOpen(true)}
-              />
+            <div className="space-y-4 p-6">
               <fieldset>
                 <legend className="text-sm font-semibold">
                   Recommended offers
@@ -1125,8 +1166,7 @@ function EditorDialog({
                       }}
                       className="rounded-xl border p-3 text-left hover:border-primary/35 aria-pressed:border-primary aria-pressed:bg-primary/5"
                     >
-                      <CalendarRange className="size-4 text-primary" />
-                      <span className="mt-3 block text-sm md:text-xs font-semibold">
+                      <span className="block text-sm md:text-xs font-semibold">
                         {offer.title}
                       </span>
                       <span className="text-xs md:text-[0.65rem] text-muted-foreground">
@@ -1196,7 +1236,7 @@ function EditorDialog({
                   </p>
                 </div>
               </div>
-              <div className="flex justify-end gap-2 border-t pt-4">
+              <div className={cn(STICKY_FOOTER, "flex justify-end gap-2")}>
                 <Button type="button" variant="outline" onClick={onClose}>
                   Cancel
                 </Button>
@@ -1427,12 +1467,15 @@ export function CalendarWorkspace({
 
   const selection = range?.from ? calendarRangeToInput(range) : null;
   const selectionNights = selection?.nights ?? 0;
+  const selectionCounts = selection
+    ? countSelectionNights(selection, manualDates, bookingDates)
+    : { nights: 0, blocked: 0, booked: 0, open: 0 };
   const primaryAction =
     lens === "availability"
       ? {
-          label: selection ? "Block or open these dates" : "Show or hide listing",
+          label: "Show or hide listing",
           detail: selection
-            ? `Applies to the ${selectionNights} selected ${selectionNights === 1 ? "night" : "nights"}.`
+            ? selectionSummary(selectionCounts)
             : "With no dates selected this controls the whole listing.",
           icon: LockKeyhole,
         }
@@ -1484,6 +1527,18 @@ export function CalendarWorkspace({
       setRange(undefined);
       router.refresh();
     });
+  }
+
+  function openSelectedRange() {
+    if (!selection) return;
+    report(
+      () =>
+        openCalendarRange(listingId, {
+          startDate: selection.startDate,
+          endDate: selection.endDate,
+        }),
+      "Dates made available.",
+    );
   }
 
   function editChange(change: ScheduledChange) {
@@ -1548,6 +1603,7 @@ export function CalendarWorkspace({
           selected={range}
           onRangeChange={setRange}
           dayVariant="availability"
+          dragToSelect
           locale={locale}
           dayMeta={(day) => {
             const key = dateKey(day);
@@ -1645,22 +1701,57 @@ export function CalendarWorkspace({
             </p>
           ) : null}
           <div className="mx-auto w-full max-w-3xl space-y-2">
-            <Button
-              type="button"
-              size="lg"
-              className="w-full"
-              onClick={() =>
-                setEditor({
-                  kind: meta.editorKind,
-                  range: range?.from
-                    ? { from: range.from, to: range.to ?? range.from }
-                    : undefined,
-                })
-              }
-            >
-              <PrimaryActionIcon className="size-4" />
-              {primaryAction.label}
-            </Button>
+            {lens === "availability" && selection ? (
+              // Blocking and opening are opposite commits, not one "manage" step,
+              // so each gets its own button and goes dim when it would be a no-op.
+              // Opening needs no options, so it acts straight away; blocking opens
+              // the sheet because it can carry a reason.
+              <div className="flex items-stretch gap-2">
+                <Button
+                  type="button"
+                  size="lg"
+                  variant="outline"
+                  className="flex-1"
+                  disabled={pending || selectionCounts.blocked === 0}
+                  onClick={openSelectedRange}
+                >
+                  <BedDouble className="size-4" />
+                  Make available
+                </Button>
+                <Button
+                  type="button"
+                  size="lg"
+                  className="flex-1"
+                  disabled={pending || selectionCounts.open === 0}
+                  onClick={() =>
+                    setEditor({
+                      kind: "availability",
+                      range: { from: range!.from!, to: range!.to ?? range!.from! },
+                    })
+                  }
+                >
+                  <LockKeyhole className="size-4" />
+                  Block dates
+                </Button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                size="lg"
+                className="w-full"
+                onClick={() =>
+                  setEditor({
+                    kind: meta.editorKind,
+                    range: range?.from
+                      ? { from: range.from, to: range.to ?? range.from }
+                      : undefined,
+                  })
+                }
+              >
+                <PrimaryActionIcon className="size-4" />
+                {primaryAction.label}
+              </Button>
+            )}
             <p className="text-center text-xs md:text-[0.65rem] text-muted-foreground">
               {primaryAction.detail}
             </p>
@@ -1865,6 +1956,8 @@ export function CalendarWorkspace({
           cleaningFee={cleaningFee}
           minNights={minNights}
           locale={locale}
+          blockedDates={manualDates}
+          bookedDates={bookingDates}
           state={editor}
           onStateChange={setEditor}
           onClose={() => setEditor(null)}

@@ -112,7 +112,9 @@ export async function POST(
     return mobileJson(request, { error: "Invalid JSON body" }, { status: 400 });
   }
 
-  let result: { success?: boolean; error?: string };
+  // blockDates returns a message instead of `true` when the range was already
+  // fully covered, so the client can say so rather than claim a no-op worked.
+  let result: { success?: boolean | string; error?: string };
   if (input.action === "blockAllFuture") {
     result = await blockAllFutureDates(id);
   } else if (input.action === "makeAllFutureAvailable") {

@@ -23,6 +23,7 @@ export interface SearchLabels {
   searchDestinations: Resolved;
   destinationDescription: Resolved;
   closeDestinationPicker: Resolved;
+  clearDestination: Resolved;
   searchListingCities: Resolved;
   matchingCities: Resolved;
   citiesWithListings: Resolved;
@@ -42,6 +43,7 @@ export interface SearchLabels {
   checkIn: Resolved;
   checkOut: Resolved;
   closePicker: Resolved;
+  minimumStayEarliest: Resolved;
   exactDates: Resolved;
   flexible1: Resolved;
   flexible2: Resolved;
@@ -99,6 +101,10 @@ export function useSearchLabels(): SearchLabels {
         "search.close_destination_picker",
         "Close destination picker"
       ),
+      clearDestination: i18n.resolve(
+        "search.clear_destination",
+        "Clear destination"
+      ),
       searchListingCities: i18n.resolve("search.search_listing_cities", "Search listing cities"),
       matchingCities: i18n.resolve("search.matching_cities", "Matching cities"),
       citiesWithListings: i18n.resolve("search.cities_with_listings", "Cities with listings"),
@@ -130,6 +136,10 @@ export function useSearchLabels(): SearchLabels {
       checkIn: i18n.resolve("search.check_in", "Check in"),
       checkOut: i18n.resolve("search.check_out", "Check out"),
       closePicker: i18n.resolve("search.close_picker", "Close picker"),
+      minimumStayEarliest: i18n.resolve(
+        "search.minimum_stay_earliest",
+        "Choose {date} or later for check-out."
+      ),
       exactDates: i18n.resolve("search.exact_dates", "Exact dates"),
       flexible1: i18n.resolve("search.flexible_1", "+- 1 day"),
       flexible2: i18n.resolve("search.flexible_2", "+- 2 days"),

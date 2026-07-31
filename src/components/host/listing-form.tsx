@@ -4,7 +4,7 @@ import { useActionState, useCallback, useEffect, useMemo, useRef, useState, useT
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Bath, Bed, BedDouble, Building, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, CircleAlert, CircleDollarSign, Coffee, CookingPot, Flame, GripVertical, HeartPulse, Laptop, ListChecks, Loader2, MapPin, Microwave, Minus, Mountain, Percent, Plus, Refrigerator, Shirt, Shield, ShieldCheck, Sparkles, Sun, Thermometer, Trees, Tv, Users, Waves, Wind, Wifi, Car } from "lucide-react";
+import { Bath, Bed, BedDouble, Building, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, CircleAlert, CircleDollarSign, Coffee, CookingPot, Eye, Flame, GripVertical, HeartPulse, Laptop, ListChecks, Loader2, MapPin, Microwave, Minus, Mountain, Pencil, Percent, Plus, Refrigerator, Shirt, Shield, ShieldCheck, Sparkles, Sun, Thermometer, Trees, Tv, Users, Waves, Wind, Wifi, Car } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   saveListingDraft,
@@ -1666,7 +1666,10 @@ export function ListingForm({
               {Object.entries(groupedAmenities).map(([category, items]) => (
                 <div key={category}>
                   <p className="mb-3 text-sm font-semibold text-foreground">{category}</p>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {/* Sized off the container, not the viewport: the editor is a
+                      resizable pane, so viewport breakpoints put one card per row
+                      even when there is room for three. */}
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-2.5">
                     {items.map((amenity) => {
                       const checked = selectedAmenityIds.includes(amenity.id);
                       const Icon = AMENITY_ICON_MAP[amenity.icon ?? ""] ?? Sparkles;
@@ -1677,20 +1680,20 @@ export function ListingForm({
                           aria-pressed={checked}
                           onClick={() => toggleAmenity(amenity.id, !checked)}
                           className={cn(
-                            "group flex min-h-[76px] cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-left transition-all",
+                            "group flex min-h-[64px] cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-all",
                             checked
                               ? "border-primary bg-primary/[0.08] text-foreground shadow-sm ring-1 ring-primary/20"
                               : "border-border/70 bg-card hover:-translate-y-0.5 hover:border-primary/40 hover:bg-muted/30 hover:shadow-sm"
                           )}
                         >
                           <span className={cn(
-                            "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg transition-colors",
+                            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors",
                             checked ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
                           )}>
-                            <Icon className="h-5 w-5" aria-hidden="true" />
+                            <Icon className="h-[1.125rem] w-[1.125rem]" aria-hidden="true" />
                           </span>
-                          <span className="flex-1 text-sm font-medium">{amenity.name}</span>
-                          <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", checked ? "bg-primary" : "bg-border")} aria-hidden="true" />
+                          <span className="flex-1 text-[0.8125rem] font-medium leading-snug">{amenity.name}</span>
+                          <span className={cn("h-2 w-2 shrink-0 rounded-full", checked ? "bg-primary" : "bg-border")} aria-hidden="true" />
                           {checked && <input type="hidden" name="amenityIds" value={amenity.id} />}
                         </button>
                       );
@@ -1940,30 +1943,12 @@ export function ListingForm({
         </aside>
       </div>
 
-      {/* Publish is a commit, not a destination, so it sits above the bar rather than
-          in it — a slot-sized target between navigation items invites mis-taps. It
-          also only exists when there is something to publish, which keeps the
-          permanently greyed-out button (which reads as broken) off the screen. */}
-      {isEditing && (mediaUploadState.active || hasUnpublishedChanges) && (
-        <div className="z-30 shrink-0 border-t bg-background px-4 py-2.5 md:hidden">
-          {mediaUploadState.active ? (
-            <MediaUploadStatus state={mediaUploadState} />
-          ) : (
-            <Button
-              type="submit"
-              size="lg"
-              disabled={isPending}
-              className="w-full"
-            >
-              {isPending ? "Publishing changes…" : "Publish changes"}
-            </Button>
-          )}
-        </div>
-      )}
-
       <ListingBottomNav
         listingId={listing?.id ?? ""}
         paneOnly={!isEditing || !listing?.id}
+        omitPreview={isEditing}
+        /* The action row below owns the safe-area inset now. */
+        className={isEditing ? "pb-0" : undefined}
         active={mobilePane === "preview" ? "preview" : "edit"}
         onSelectPane={selectMobilePane}
         onNavigate={confirmManagementNavigation}
@@ -1975,6 +1960,55 @@ export function ListingForm({
           document.getElementById(`listing-${pane}-tab`)?.focus();
         }}
       />
+
+      {/* The two commits sit last, under the navigation: Preview swaps the pane and
+          Publish saves, and both are actions on the listing rather than places to
+          go. Publish stays visible but disabled with nothing to save, so the pair
+          keeps a stable shape instead of the row appearing and shifting the nav. */}
+      {isEditing && (
+        <div className="z-30 shrink-0 border-t bg-background px-4 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] md:hidden">
+          {mediaUploadState.active ? (
+            <MediaUploadStatus state={mediaUploadState} />
+          ) : (
+            <div className="flex items-stretch gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                className="flex-1"
+                aria-controls={
+                  mobilePane === "preview"
+                    ? "listing-editor-pane"
+                    : "listing-preview-pane"
+                }
+                onClick={() =>
+                  selectMobilePane(mobilePane === "preview" ? "edit" : "preview")
+                }
+              >
+                {mobilePane === "preview" ? (
+                  <>
+                    <Pencil className="h-4 w-4" />
+                    Back to editor
+                  </>
+                ) : (
+                  <>
+                    <Eye className="h-4 w-4" />
+                    Preview
+                  </>
+                )}
+              </Button>
+              <Button
+                type="submit"
+                size="lg"
+                disabled={isPending || !hasUnpublishedChanges}
+                className="flex-1"
+              >
+                {isPending ? "Publishing…" : "Publish"}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
 
       {!isEditing && (
         <Dialog open={stepsOpen} onOpenChange={setStepsOpen}>

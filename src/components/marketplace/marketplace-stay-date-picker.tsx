@@ -3,6 +3,7 @@
 import * as React from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import {
+  addDays,
   differenceInCalendarDays,
   format,
   isAfter,
@@ -18,6 +19,7 @@ import {
   CalendarRange,
   ChevronLeft,
   ChevronRight,
+  Info,
   Search,
   X,
 } from "lucide-react";
@@ -30,7 +32,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { GuestCounts } from "@/components/marketplace/marketplace-guest-selector";
-import { pluralText, useI18n } from "@/lib/i18n/client";
+import { interpolate, pluralText, useI18n } from "@/lib/i18n/client";
 import { useSearchLabels } from "@/components/marketplace/search-labels";
 import type { SearchLabels } from "@/components/marketplace/search-labels";
 import type { Resolved } from "@/lib/i18n/t";
@@ -88,9 +90,17 @@ type DragCtx = {
     date: Date,
     e: React.PointerEvent<HTMLButtonElement>,
   ) => void;
+  /** Only set where drag-to-select is enabled; absent means taps only. */
+  onDayPointerDown?: (
+    date: Date,
+    e: React.PointerEvent<HTMLButtonElement>,
+  ) => void;
   dayMeta?: (date: Date) => MarketplaceDayMeta | undefined;
   dayVariant?: "default" | "availability";
   minimumStayHint?: (date: Date) => Resolved | undefined;
+  /** Fired when a day blocked purely by the minimum stay is pressed. Touch users get
+   *  no tooltip, so the picker answers the tap by re-announcing its persistent hint. */
+  onMinimumStayBlocked?: () => void;
 };
 
 export const FLEXIBILITY_VALUES = [0, 1, 2, 3, 7, 14] as const;
@@ -152,6 +162,8 @@ const EMPTY_GUEST_COUNTS: GuestCounts = {
   infants: 0,
   pets: 0,
 };
+/** Long enough not to fire while a finger is flicking the month list past a day. */
+const LONG_PRESS_MS = 300;
 const CAPACITY_LABEL_KEY = "mobile.builder.capacity";
 const CAPACITY_LABEL_SOURCE = "Capacity";
 
@@ -422,6 +434,11 @@ function MarketplaceRangeDayButton({
       const edge: "from" | "to" =
         modifiers.range_start && !modifiers.range_end ? "from" : "to";
       ctx.onEndpointPointerDown(edge, day.date, e);
+      return;
+    }
+
+    if (ctx?.onDayPointerDown && !minimumStayHint && !modifiers.disabled) {
+      ctx.onDayPointerDown(day.date, e);
     }
   };
 
@@ -429,6 +446,8 @@ function MarketplaceRangeDayButton({
     if (minimumStayHint) {
       e.preventDefault();
       e.stopPropagation();
+      // A silent no-op reads as "this date is taken". Bounce the hint instead.
+      ctx?.onMinimumStayBlocked?.();
       return;
     }
     upstreamClick?.(e);
@@ -543,8 +562,10 @@ function MarketplaceRangeDayButton({
         "text-foreground hover:bg-transparent hover:text-foreground",
         modifiers.outside &&
           "text-muted-foreground/40 hover:text-muted-foreground/50",
-        (modifiers.disabled || minimumStayHint) &&
-          "cursor-not-allowed opacity-40",
+        modifiers.disabled && "cursor-not-allowed opacity-40",
+        // Deliberately lighter than `disabled`: a minimum-stay day is still bookable
+        // as a check-in, so it must not read as "taken" the way a booked day does.
+        !modifiers.disabled && minimumStayHint && "cursor-not-allowed opacity-60",
         modifiers.range_middle &&
           "rounded-none bg-transparent text-foreground hover:bg-transparent",
         ctx?.hasRange &&
@@ -557,6 +578,10 @@ function MarketplaceRangeDayButton({
       <span
         className={cn(
           "flex size-full items-center justify-center rounded-full transition-[box-shadow,background-color,color,transform] duration-150 ease-out",
+          // Only genuinely unbookable days are struck through, which is what keeps
+          // them distinguishable from the minimum-stay window (dimmed, no line) and
+          // from past days (dimmed by `disabled`, but never crossed out).
+          modifiers.unavailable && "line-through decoration-[1.5px]",
           isEndpoint &&
             "bg-[hsl(0_0%_13%)] text-white shadow-[0_2px_8px_rgba(0,0,0,0.18)] group-hover/date:scale-[1.04] group-hover/date:bg-[hsl(0_0%_18%)]",
           !modifiers.disabled &&
@@ -588,9 +613,11 @@ export function DateRangeCalendarStep({
   dateModifiersClassNames,
   minimumStayNights,
   minimumStayMessage,
+  onMinimumStayBlocked,
   fitViewport = false,
   pagedOnDesktop = false,
   pagedDesktopMonthCount = 1,
+  dragToSelect = false,
   locale,
 }: {
   active: boolean;
@@ -606,9 +633,13 @@ export function DateRangeCalendarStep({
   >["modifiersClassNames"];
   minimumStayNights?: number;
   minimumStayMessage?: Resolved;
+  onMinimumStayBlocked?: () => void;
   fitViewport?: boolean;
   pagedOnDesktop?: boolean;
   pagedDesktopMonthCount?: 1 | 2;
+  /** Press (or long-press on touch) a day and sweep to draw a range in one gesture.
+   *  Host-side only: guests keep the plain tap-in / tap-out flow. */
+  dragToSelect?: boolean;
   locale?: string;
 }) {
   const labels = useSearchLabels();
@@ -636,14 +667,20 @@ export function DateRangeCalendarStep({
   const dragPointerRef = React.useRef<{ x: number; y: number } | null>(null);
   const pendingDragDateRef = React.useRef<Date | null>(null);
 
+  // "sweep" is a fresh range drawn from an anchor day; "from"/"to" move an edge of
+  // the range that is already selected.
   const dragRef = React.useRef<{
-    edge: "from" | "to";
+    edge: "from" | "to" | "sweep";
+    anchor: Date;
     currentFrom: Date;
     currentTo: Date;
     startX: number;
     startY: number;
     moved: boolean;
   } | null>(null);
+  const longPressRef = React.useRef<(() => void) | null>(null);
+
+  React.useEffect(() => () => longPressRef.current?.(), []);
 
   React.useEffect(() => {
     const mq = window.matchMedia("(max-width: 767px)");
@@ -743,11 +780,15 @@ export function DateRangeCalendarStep({
         : undefined,
     [minimumStayNights, selected],
   );
+  // Forward-only: a day *before* the check-in is not a too-short checkout, it is a
+  // perfectly good new check-in, and blocking it just doubles the grey the guest has
+  // to interpret. Tapping one restarts the range, as it already does further back.
   const isMinimumStayRestricted = React.useCallback(
     (date: Date) => {
       if (!minimumStayAnchor || !minimumStayNights) return false;
-      const distance = Math.abs(
-        differenceInCalendarDays(startOfDay(date), minimumStayAnchor),
+      const distance = differenceInCalendarDays(
+        startOfDay(date),
+        minimumStayAnchor,
       );
       return distance > 0 && distance < minimumStayNights;
     },
@@ -763,37 +804,77 @@ export function DateRangeCalendarStep({
 
   const commitRange = React.useCallback(
     (range: DateRange | undefined) => {
+      // A day picked *before* the anchor is a new check-in, not a one-night stay:
+      // react-day-picker would otherwise extend the range backwards and land under
+      // the minimum. Only the backward side reaches here — forward days inside the
+      // window are blocked on the cell itself.
+      if (
+        minimumStayAnchor &&
+        minimumStayNights &&
+        range?.from &&
+        range.to &&
+        differenceInCalendarDays(startOfDay(range.to), startOfDay(range.from)) <
+          minimumStayNights
+      ) {
+        const restart = isSameDay(startOfDay(range.from), minimumStayAnchor)
+          ? range.to
+          : range.from;
+        onRangeChange({ from: startOfDay(restart), to: undefined });
+        onFromOnlySelected?.();
+        return;
+      }
+
       onRangeChange(range);
       if (range?.from && !range?.to) onFromOnlySelected?.();
     },
-    [onRangeChange, onFromOnlySelected],
+    [
+      minimumStayAnchor,
+      minimumStayNights,
+      onRangeChange,
+      onFromOnlySelected,
+    ],
   );
 
-  const handleEndpointPointerDown = React.useCallback(
-    (
-      edge: "from" | "to",
-      date: Date,
-      e: React.PointerEvent<HTMLButtonElement>,
-    ) => {
-      const from = selected?.from;
-      const to = selected?.to;
-      if (!from || !to) return;
-
+  const beginDrag = React.useCallback(
+    (init: {
+      edge: "from" | "to" | "sweep";
+      anchor: Date;
+      from: Date;
+      to: Date;
+      startX: number;
+      startY: number;
+      /** A long press already committed to the gesture, so preview from the start. */
+      engaged: boolean;
+    }) => {
       dragRef.current = {
-        edge,
-        currentFrom: startOfDay(from),
-        currentTo: startOfDay(to),
-        startX: e.clientX,
-        startY: e.clientY,
-        moved: false,
+        edge: init.edge,
+        anchor: startOfDay(init.anchor),
+        currentFrom: startOfDay(init.from),
+        currentTo: startOfDay(init.to),
+        startX: init.startX,
+        startY: init.startY,
+        moved: init.engaged,
       };
+
+      if (init.engaged) {
+        setIsDragging(true);
+        setDragDisplayRange({
+          from: dragRef.current.currentFrom,
+          to: dragRef.current.currentTo,
+        });
+      }
 
       const updateDragPreview = (nextDate: Date) => {
         const dr = dragRef.current;
         if (!dr) return;
         const d0 = startOfDay(nextDate);
 
-        if (dr.edge === "from") {
+        if (dr.edge === "sweep") {
+          // Sweeping backwards past the anchor is the same gesture in reverse.
+          const before = isBefore(d0, dr.anchor);
+          dr.currentFrom = before ? d0 : dr.anchor;
+          dr.currentTo = before ? dr.anchor : d0;
+        } else if (dr.edge === "from") {
           if (
             isAfter(d0, dr.currentTo) ||
             isSameDay(d0, dr.currentTo) ||
@@ -886,10 +967,18 @@ export function DateRangeCalendarStep({
         }
       };
 
+      // Once the sweep owns the gesture the month list must stop scrolling under it.
+      // touch-action cannot be changed mid-gesture, so the move is cancelled directly;
+      // the listener has to be non-passive for that to take effect.
+      const blockTouchScroll = (ev: TouchEvent) => {
+        if (dragRef.current?.moved && ev.cancelable) ev.preventDefault();
+      };
+
       const onUp = () => {
         document.removeEventListener("pointermove", onMove);
         document.removeEventListener("pointerup", onUp);
         document.removeEventListener("pointercancel", onUp);
+        document.removeEventListener("touchmove", blockTouchScroll);
 
         if (dragFrameRef.current !== null) {
           window.cancelAnimationFrame(dragFrameRef.current);
@@ -910,40 +999,131 @@ export function DateRangeCalendarStep({
         setIsDragging(false);
         setDragDisplayRange(undefined);
 
+        // A sweep that never moved is just a tap: leave it to DayPicker's own click
+        // handling so tap-start/tap-end still works exactly as before.
+        if (dr?.edge === "sweep" && !dr.moved) return;
+
         suppressNextClick();
+
+        if (dr?.edge === "sweep") {
+          commitRange(
+            isSameDay(dr.currentFrom, dr.currentTo)
+              ? { from: dr.currentFrom, to: undefined }
+              : { from: dr.currentFrom, to: dr.currentTo },
+          );
+          return;
+        }
 
         if (dr?.moved) {
           commitRange({ from: dr.currentFrom, to: dr.currentTo });
         } else {
-          commitRange({ from: date, to: undefined });
+          commitRange({ from: dr?.anchor ?? init.anchor, to: undefined });
         }
       };
 
       document.addEventListener("pointermove", onMove);
       document.addEventListener("pointerup", onUp);
       document.addEventListener("pointercancel", onUp);
+      document.addEventListener("touchmove", blockTouchScroll, {
+        passive: false,
+      });
     },
-    [selected, commitRange],
+    [commitRange],
+  );
+
+  const handleEndpointPointerDown = React.useCallback(
+    (
+      edge: "from" | "to",
+      date: Date,
+      e: React.PointerEvent<HTMLButtonElement>,
+    ) => {
+      const from = selected?.from;
+      const to = selected?.to;
+      if (!from || !to) return;
+
+      beginDrag({
+        edge,
+        anchor: date,
+        from,
+        to,
+        startX: e.clientX,
+        startY: e.clientY,
+        engaged: false,
+      });
+    },
+    [beginDrag, selected],
+  );
+
+  const handleDayPointerDown = React.useCallback(
+    (date: Date, e: React.PointerEvent<HTMLButtonElement>) => {
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const start = {
+        edge: "sweep" as const,
+        anchor: date,
+        from: date,
+        to: date,
+        startX,
+        startY,
+      };
+
+      if (e.pointerType !== "touch") {
+        beginDrag({ ...start, engaged: false });
+        return;
+      }
+
+      // On touch, pressing a day is also how the month list is scrolled. The sweep
+      // only takes the gesture after a deliberate hold; any movement before that
+      // means the finger was scrolling, so the hold is abandoned.
+      const cancel = () => {
+        window.clearTimeout(timer);
+        document.removeEventListener("pointermove", onMoveBeforeHold);
+        document.removeEventListener("pointerup", cancel);
+        document.removeEventListener("pointercancel", cancel);
+        longPressRef.current = null;
+      };
+
+      const onMoveBeforeHold = (ev: PointerEvent) => {
+        if (Math.hypot(ev.clientX - startX, ev.clientY - startY) > 10) cancel();
+      };
+
+      const timer = window.setTimeout(() => {
+        cancel();
+        navigator.vibrate?.(10);
+        beginDrag({ ...start, engaged: true });
+      }, LONG_PRESS_MS);
+
+      longPressRef.current = cancel;
+      document.addEventListener("pointermove", onMoveBeforeHold);
+      document.addEventListener("pointerup", cancel);
+      document.addEventListener("pointercancel", cancel);
+    },
+    [beginDrag],
   );
 
   const dragCtx = React.useMemo<DragCtx>(
     () => ({
       hasRange,
       onEndpointPointerDown: handleEndpointPointerDown,
+      onDayPointerDown: dragToSelect ? handleDayPointerDown : undefined,
       dayMeta,
       dayVariant,
       minimumStayHint: (date) =>
         minimumStayMessage && isMinimumStayRestricted(date)
           ? minimumStayMessage
           : undefined,
+      onMinimumStayBlocked,
     }),
     [
       dayMeta,
       dayVariant,
+      dragToSelect,
+      handleDayPointerDown,
       handleEndpointPointerDown,
       hasRange,
       isMinimumStayRestricted,
       minimumStayMessage,
+      onMinimumStayBlocked,
     ],
   );
 
@@ -951,6 +1131,17 @@ export function DateRangeCalendarStep({
   const disabledMatcher = React.useMemo(
     () => [{ before: startOfToday() }, ...disabledDateRanges],
     [disabledDateRanges],
+  );
+
+  // `disabled` also covers past days, so booked days need their own modifier before
+  // the day cell can mark them — and only them — as unavailable. The host lens paints
+  // its own blocked backgrounds and opts out.
+  const calendarModifiers = React.useMemo(
+    () =>
+      dayVariant === "availability" || disabledDateRanges.length === 0
+        ? dateModifiers
+        : { ...dateModifiers, unavailable: disabledDateRanges },
+    [dateModifiers, dayVariant, disabledDateRanges],
   );
 
   const scrollCalendar = React.useCallback(
@@ -1056,7 +1247,7 @@ export function DateRangeCalendarStep({
                   weekday: "short",
                 }).format(date),
             }}
-            modifiers={dateModifiers}
+            modifiers={calendarModifiers}
             modifiersClassNames={dateModifiersClassNames}
             className={cn(
               "mx-auto bg-transparent p-0",
@@ -1346,6 +1537,50 @@ export function MarketplaceStayDatePicker({
             translated: false,
           }
         : labels.addDates;
+  // Mirrors the calendar's own restriction, so the rule is on screen for exactly as
+  // long as the greyed-out window is — hovering a day was never an option on touch.
+  const minimumStayHint = React.useMemo<Resolved | null>(() => {
+    if (!minimumStayMessage || !minimumStayNights || minimumStayNights < 2) {
+      return null;
+    }
+    if (!selectedRange?.from || selectedRange.to) return null;
+
+    const earliest = interpolate(labels.minimumStayEarliest, {
+      date: formatMonthDay(
+        addDays(selectedRange.from, minimumStayNights),
+        labels.locale,
+      ),
+    });
+    return {
+      text: `${minimumStayMessage.text}. ${earliest.text}`,
+      translated: minimumStayMessage.translated && earliest.translated,
+    };
+  }, [labels, minimumStayMessage, minimumStayNights, selectedRange]);
+
+  const [minimumStayNudgeKey, setMinimumStayNudgeKey] = React.useState(0);
+  const [minimumStayNudging, setMinimumStayNudging] = React.useState(false);
+  const minimumStayNudgeTimerRef = React.useRef<number | null>(null);
+  const nudgeMinimumStayHint = React.useCallback(() => {
+    setMinimumStayNudgeKey((key) => key + 1);
+    setMinimumStayNudging(true);
+    navigator.vibrate?.(10);
+    if (minimumStayNudgeTimerRef.current !== null) {
+      window.clearTimeout(minimumStayNudgeTimerRef.current);
+    }
+    minimumStayNudgeTimerRef.current = window.setTimeout(
+      () => setMinimumStayNudging(false),
+      1000,
+    );
+  }, []);
+  React.useEffect(
+    () => () => {
+      if (minimumStayNudgeTimerRef.current !== null) {
+        window.clearTimeout(minimumStayNudgeTimerRef.current);
+      }
+    },
+    [],
+  );
+
   const nightCount = getNightCount(selectedRange);
   const canGoNext =
     dayVariant === "availability"
@@ -1818,11 +2053,36 @@ export function MarketplaceStayDatePicker({
                 dateModifiersClassNames={dateModifiersClassNames}
                 minimumStayNights={minimumStayNights}
                 minimumStayMessage={minimumStayMessage}
+                onMinimumStayBlocked={nudgeMinimumStayHint}
                 fitViewport={isPillLayout}
                 pagedOnDesktop={pagedCalendarOnDesktop}
               />
 
               <div className="shrink-0 border-t border-border bg-background">
+                {minimumStayHint ? (
+                  <div
+                    key={minimumStayNudgeKey}
+                    aria-live="polite"
+                    className={cn(
+                      "flex items-start gap-2 px-4 py-2.5 text-[0.8rem] leading-snug transition-colors duration-200 animate-in fade-in-0 zoom-in-[0.99] md:px-6",
+                      (showDateFlexibility || !isPillLayout) &&
+                        "border-b border-border",
+                      minimumStayNudging
+                        ? "bg-muted/60 font-medium text-foreground"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    <Info className="mt-px h-4 w-4 shrink-0" aria-hidden="true" />
+                    <span
+                      className={
+                        minimumStayHint.translated ? "notranslate" : undefined
+                      }
+                    >
+                      {minimumStayHint.text}
+                    </span>
+                  </div>
+                ) : null}
+
                 {showDateFlexibility ? (
                   <div className="overflow-x-auto overflow-y-hidden px-4 py-3 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x md:px-6">
                     <DateFlexibilityRow

@@ -31,9 +31,11 @@ import {
   Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { nextHeaderHidden } from "@/lib/host/header-collapse";
 import { SITE_DOMAIN } from "@/lib/branding";
 import { BrandLogo } from "@/components/shared/brand-logo";
 import { GoogleTranslateWidget } from "@/components/shared/google-translate-widget";
+import { HOST_HEADER_ACTIONS_ID } from "@/components/host/host-header-portal";
 import type { getEnabledLanguages } from "@/lib/services/language.service";
 import {
   CountBadge,
@@ -250,6 +252,9 @@ export function HostSidebar({
   const [sidebarWidth, setSidebarWidth] = useState(232);
   const dragRef = useRef<{ startX: number; startWidth: number } | null>(null);
   const [headerHidden, setHeaderHidden] = useState(false);
+  // Mirrors headerHidden so the scroll listener can read the current value without
+  // re-subscribing on every toggle.
+  const headerHiddenRef = useRef(false);
 
   // The mobile bar is a flex sibling of the scroll area, not a sticky overlay, so it
   // permanently costs ~64px of an already short screen. Give it back while the host
@@ -257,38 +262,46 @@ export function HostSidebar({
   // always one gesture away rather than a scroll-to-top hunt.
   useEffect(() => {
     const lastTop = new WeakMap<EventTarget, number>();
+    let lockedUntil = 0;
+
+    function apply(next: boolean) {
+      if (headerHiddenRef.current === next) return;
+      headerHiddenRef.current = next;
+      // Toggling resizes the scroll area, and the browser answers by clamping
+      // scrollTop — which arrives here as a scroll event in the opposite direction.
+      // Ignore events until the transition has settled so that echo cannot flip the
+      // header straight back.
+      lockedUntil = performance.now() + 350;
+      setHeaderHidden(next);
+    }
 
     function onScroll(event: Event) {
       const target = event.target;
       if (!target) return;
-      const top =
-        target instanceof Document
-          ? window.scrollY
-          : target instanceof HTMLElement
-            ? target.scrollTop
-            : 0;
+      const element = target instanceof HTMLElement ? target : null;
+      const isDocument = target instanceof Document;
+      const top = isDocument ? window.scrollY : (element?.scrollTop ?? 0);
       const previous = lastTop.get(target) ?? 0;
       lastTop.set(target, top);
 
-      // Collapsing while a field is focused makes iOS fight the keyboard for the
-      // viewport and the input jumps under the user's thumb.
       const active = document.activeElement;
-      if (
-        active instanceof HTMLElement &&
-        (active.tagName === "INPUT" ||
-          active.tagName === "TEXTAREA" ||
-          active.isContentEditable)
-      ) {
-        return;
-      }
-
-      if (top <= 8) {
-        setHeaderHidden(false);
-        return;
-      }
-      const delta = top - previous;
-      if (Math.abs(delta) < 6) return;
-      setHeaderHidden(delta > 0);
+      const next = nextHeaderHidden({
+        top,
+        previous,
+        viewport: isDocument
+          ? window.innerHeight
+          : (element?.clientHeight ?? 0),
+        total: isDocument
+          ? document.documentElement.scrollHeight
+          : (element?.scrollHeight ?? 0),
+        editing:
+          active instanceof HTMLElement &&
+          (active.tagName === "INPUT" ||
+            active.tagName === "TEXTAREA" ||
+            active.isContentEditable),
+        locked: performance.now() < lockedUntil,
+      });
+      if (next !== null) apply(next);
     }
 
     // Capture: the scrolling element is whichever pane is active, not the document.
@@ -354,7 +367,11 @@ export function HostSidebar({
             <BrandLogo className="h-10 max-w-36" />
           </Link>
         </div>
-        <GoogleTranslateWidget languages={languages} />
+        <div className="flex items-center gap-1">
+          {/* Pages hand their own top-bar controls (back, help) to this slot. */}
+          <div id={HOST_HEADER_ACTIONS_ID} className="flex items-center gap-1" />
+          <GoogleTranslateWidget languages={languages} />
+        </div>
       </div>
 
       <div

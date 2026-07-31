@@ -417,6 +417,24 @@ export function MarketplacePlaceSelector({
                   placeholder={labels.searchListingCities.text}
                   className="w-full min-w-0 border-0 bg-transparent p-0 text-base font-medium text-foreground outline-none placeholder:text-muted-foreground/80"
                 />
+                {/* Mirrors the clear control in the mobile search flow: emptying the
+                    field is what restores the full "cities with listings" list. */}
+                {draftCity ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDraftCity("");
+                      inputRef.current?.focus();
+                    }}
+                    aria-label={labels.clearDestination.text}
+                    className={cn(
+                      "-mr-1 grid size-9 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:size-7",
+                      labels.clearDestination.translated && "notranslate"
+                    )}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                ) : null}
               </div>
             </div>
           </div>

@@ -27,15 +27,16 @@ const ITEM_CLASS =
  * stops being a place you can navigate from — which is exactly what happened when
  * it only existed inside the edit form.
  *
- * Publish is deliberately absent: it is a commit, not a destination, and only the
- * edit form has anything to publish (the calendar screens save on each action). The
- * form renders its own publish strip above this bar when there are unsaved changes.
+ * Publish is deliberately absent: it is a commit, not a destination, and a
+ * slot-sized target between navigation items invites mis-taps. The edit form
+ * renders its own Preview/Publish action row below this bar.
  */
 export function ListingBottomNav({
   listingId,
   active,
   className,
   paneOnly = false,
+  omitPreview = false,
   onSelectPane,
   onNavigate,
   onKeyDown,
@@ -45,11 +46,17 @@ export function ListingBottomNav({
   className?: string;
   /** A draft has no id-based calendar routes yet, so it shows the panes only. */
   paneOnly?: boolean;
+  /** Set where Preview lives in an action row instead, so it isn't offered twice. */
+  omitPreview?: boolean;
   /** Provided by the edit form, where Preview and Edit are panes, not routes. */
   onSelectPane?: (pane: "edit" | "preview") => void;
   onNavigate?: (event: ReactMouseEvent<HTMLAnchorElement>) => void;
   onKeyDown?: (event: React.KeyboardEvent<HTMLDivElement>) => void;
 }) {
+  const paneStops = LISTING_WORKSPACE_STOPS.slice(0, 2).filter(
+    ({ stop }) => !(omitPreview && stop === "preview"),
+  );
+
   return (
     <nav
       aria-label="Listing workspace"
@@ -59,12 +66,12 @@ export function ListingBottomNav({
       )}
     >
       <div
-        role={onSelectPane ? "tablist" : undefined}
-        aria-label={onSelectPane ? "Editor and preview" : undefined}
-        onKeyDown={onKeyDown}
-        className="flex flex-[2]"
+        role={onSelectPane && !omitPreview ? "tablist" : undefined}
+        aria-label={onSelectPane && !omitPreview ? "Editor and preview" : undefined}
+        onKeyDown={omitPreview ? undefined : onKeyDown}
+        className={cn("flex", omitPreview ? "flex-1" : "flex-[2]")}
       >
-        {LISTING_WORKSPACE_STOPS.slice(0, 2).map(({ stop, label }) => {
+        {paneStops.map(({ stop, label }) => {
           const Icon = STOP_ICONS[stop];
           const pane = stop === "preview" ? "preview" : "edit";
           const current = active === stop;
@@ -91,9 +98,10 @@ export function ListingBottomNav({
             <button
               key={stop}
               type="button"
-              role="tab"
-              aria-selected={current}
-              tabIndex={current ? 0 : -1}
+              role={omitPreview ? undefined : "tab"}
+              aria-selected={omitPreview ? undefined : current}
+              aria-current={omitPreview && current ? "page" : undefined}
+              tabIndex={omitPreview || current ? 0 : -1}
               aria-controls={`listing-${pane === "edit" ? "editor" : "preview"}-pane`}
               id={`listing-${pane}-tab`}
               onClick={() => onSelectPane(pane)}
