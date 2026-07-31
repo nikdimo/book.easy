@@ -33,7 +33,7 @@ export function HostCancelBookingButton({ bookingId }: { bookingId: string }) {
           placeholder="Reason (required)"
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          className="h-8 text-xs w-56"
+          className="h-8 text-sm md:text-xs w-56"
         />
         <Button
           variant="destructive"

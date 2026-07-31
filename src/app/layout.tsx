@@ -4,6 +4,7 @@ import { SessionProvider } from "next-auth/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { ConsentBanner } from "@/components/shared/consent-banner";
+import { TranslateDomGuard } from "@/components/shared/translate-dom-guard";
 import "./globals.css";
 import {
   PRODUCT_NAME,
@@ -69,6 +70,7 @@ export default async function RootLayout({
       className={`${manrope.variable} ${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <TranslateDomGuard />
         <I18nProvider locale={translator.locale} messages={translator.messages}>
           <SessionProvider refetchOnWindowFocus={false} refetchInterval={0}>
             <TooltipProvider>

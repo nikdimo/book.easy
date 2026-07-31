@@ -80,7 +80,7 @@ export default async function HostBookingDetailPage({
         </CardHeader>
         <CardContent className="space-y-6">
           <section>
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <p className="text-sm md:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Guest
             </p>
             <p className="mt-1 text-lg font-semibold">{booking.guest.name}</p>
@@ -123,7 +123,7 @@ export default async function HostBookingDetailPage({
             <>
               <Separator />
               <section className="rounded-xl bg-muted p-4">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <p className="text-sm md:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Guest message
                 </p>
                 <p className="mt-2 text-sm leading-6">“{booking.guestNote}”</p>

@@ -85,7 +85,7 @@ export function ListingPricingForm({
                   required
                   className="text-right font-semibold tabular-nums"
                 />
-                <span className="w-20 shrink-0 text-xs text-muted-foreground">
+                <span className="w-20 shrink-0 text-sm md:text-xs text-muted-foreground">
                   {field.suffix}
                 </span>
               </div>

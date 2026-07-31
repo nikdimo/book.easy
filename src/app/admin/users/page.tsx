@@ -58,7 +58,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
         ))}
       </div>
       <div className="hidden border rounded-lg md:block">
-        <Table>
+        <Table className="table-stacked">
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
@@ -75,20 +75,20 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
           <TableBody>
             {filteredUsers.map((user) => (
               <TableRow key={user.id}>
-                <TableCell className="font-medium">{user.name}</TableCell>
-                <TableCell className="text-sm">{user.email}</TableCell>
-                <TableCell>
+                <TableCell className="font-medium" data-label="Name">{user.name}</TableCell>
+                <TableCell className="text-sm" data-label="Email">{user.email}</TableCell>
+                <TableCell data-label="Role">
                   <Badge variant={user.role === "ADMIN" ? "default" : "secondary"}>{user.role}</Badge>
                 </TableCell>
-                <TableCell>{user.isHost ? "Yes" : "No"}</TableCell>
-                <TableCell>
+                <TableCell data-label="Host">{user.isHost ? "Yes" : "No"}</TableCell>
+                <TableCell data-label="Active">
                   <Badge variant={user.isActive ? "default" : "destructive"}>
                     {user.isActive ? "Active" : "Inactive"}
                   </Badge>
                 </TableCell>
-                <TableCell>{user._count.listings}</TableCell>
-                <TableCell>{user._count.bookings}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{formatDate(user.createdAt)}</TableCell>
+                <TableCell data-label="Listings">{user._count.listings}</TableCell>
+                <TableCell data-label="Bookings">{user._count.bookings}</TableCell>
+                <TableCell className="text-sm text-muted-foreground" data-label="Joined">{formatDate(user.createdAt)}</TableCell>
                 <TableCell>
                   {user.role !== "ADMIN" && (
                     <AdminUserActions userId={user.id} isActive={user.isActive} />

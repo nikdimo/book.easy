@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  addDays,
-  eachDayOfInterval,
-  format,
-  isAfter,
-  isBefore,
-  isWithinInterval,
-} from "date-fns";
+import { eachDayOfInterval, format, isAfter, isBefore } from "date-fns";
 import {
   ArrowRight,
   BadgePercent,
@@ -26,7 +19,8 @@ import {
   Trash2,
   UnlockKeyhole,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { DateRange } from "react-day-picker";
 import { toast } from "sonner";
@@ -98,10 +92,19 @@ export interface WorkspacePromotion {
   createdAt: Date | string;
 }
 
+/**
+ * The three host calendar screens are one grid seen through three lenses. Splitting
+ * them into separate components would mean three date grids to keep in sync, so the
+ * lens only changes what a day cell says, which legend is shown, which action the
+ * footer offers, and which scheduled changes are listed.
+ */
+export type CalendarLens = "availability" | "pricing" | "promotions";
+
 export interface CalendarWorkspaceProps {
   listingId: string;
   listingTitle: string;
   listingStatus: string;
+  lens: CalendarLens;
   locale: string;
   currency: string;
   baseNightlyRate: number;
@@ -110,6 +113,14 @@ export interface CalendarWorkspaceProps {
   datePrices: WorkspaceDatePrice[];
   blocks: WorkspaceBlock[];
   promotions: WorkspacePromotion[];
+  /**
+   * Dates the host selected on another lens, carried over in the URL. The common task
+   * is "these dates are peak" — block a couple, reprice the rest, discount the week —
+   * so losing the selection on every lens switch would make the split worse than the
+   * single crowded screen it replaced.
+   */
+  initialFrom?: string;
+  initialTo?: string;
 }
 
 type EditorKind = "availability" | "price" | "promotion";
@@ -142,6 +153,78 @@ const FILTERS: { value: ChangeFilter; label: string }[] = [
   { value: "promotion", label: "Promotions" },
   { value: "booking", label: "Reservations" },
 ];
+
+const LENS_META: Record<
+  CalendarLens,
+  {
+    heading: string;
+    segment: string;
+    editorKind: EditorKind;
+    changeKinds: ChangeKind[];
+    changesTitle: string;
+    changesDescription: string;
+    emptyLabel: string;
+  }
+> = {
+  availability: {
+    heading: "Availability",
+    segment: "availability",
+    editorKind: "availability",
+    changeKinds: ["block", "booking"],
+    changesTitle: "Blocked dates and reservations",
+    changesDescription: "Dates guests cannot book, and why.",
+    emptyLabel: "Every upcoming date is open for booking.",
+  },
+  pricing: {
+    heading: "Pricing",
+    segment: "pricing",
+    editorKind: "price",
+    changeKinds: ["price"],
+    changesTitle: "Custom prices",
+    changesDescription: "Dates priced differently from the base rate.",
+    emptyLabel: "Every date uses the base nightly rate.",
+  },
+  promotions: {
+    heading: "Promotions",
+    segment: "promotion",
+    editorKind: "promotion",
+    changeKinds: ["promotion"],
+    changesTitle: "Active promotions",
+    changesDescription: "Always-active and date-specific discounts.",
+    emptyLabel: "No promotions are running.",
+  },
+};
+
+/** Days a dated promotion covers, mapped to the shortest badge that fits a cell. */
+function promotionLabelByDate(promotions: WorkspacePromotion[]) {
+  // Rank, not label, decides which promotion a day shows: a cell has room for one
+  // badge and the biggest discount is the one worth surfacing. Free cleaning ranks
+  // above "no benefit" but below any percentage.
+  const best = new Map<string, { rank: number; label: string }>();
+  for (const promotion of promotions) {
+    if (!promotion.startDate || !promotion.endDate) continue;
+    const rank =
+      promotion.discountPercent > 0
+        ? promotion.discountPercent
+        : promotion.freeCleaning
+          ? 0.5
+          : 0;
+    const label =
+      promotion.discountPercent > 0
+        ? `-${promotion.discountPercent}%`
+        : promotion.freeCleaning
+          ? "free"
+          : "promo";
+    for (const day of eachYmdExclusive(
+      dbDateToYmd(promotion.startDate),
+      dbDateToYmd(promotion.endDate),
+    )) {
+      const existing = best.get(day);
+      if (!existing || rank > existing.rank) best.set(day, { rank, label });
+    }
+  }
+  return new Map([...best].map(([day, value]) => [day, value.label]));
+}
 
 function rangeLabel(from: string, to: string, includeYear = false) {
   const start = parseLocalYmd(from);
@@ -197,7 +280,7 @@ function InlineDateScope({
       <button
         type="button"
         onClick={onOpen}
-        className="inline-flex max-w-[48%] shrink-0 items-start justify-end gap-1.5 text-right text-xs font-semibold whitespace-normal text-primary transition-colors hover:text-primary/75"
+        className="inline-flex max-w-[48%] shrink-0 items-start justify-end gap-1.5 text-right text-sm md:text-xs font-semibold whitespace-normal text-primary transition-colors hover:text-primary/75"
       >
         <CalendarRange className="mt-0.5 size-3.5 shrink-0" />
         <span className="min-w-0 break-words">
@@ -232,7 +315,7 @@ function RangePickerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] gap-0 overflow-hidden p-0 sm:max-w-[52rem]">
+      <DialogContent variant="sheet" className="gap-0 overflow-hidden p-0 md:max-h-[92vh] md:max-w-[52rem]">
         <DialogHeader>
           <div className="border-b px-6 py-5 pr-12 text-left">
             <DialogTitle>{title}</DialogTitle>
@@ -307,10 +390,10 @@ function DateFilter({
         >
           <CalendarDays className="size-3.5 text-muted-foreground" />
           <span>
-            <span className="block text-[0.55rem] font-semibold tracking-wide text-muted-foreground uppercase">
+            <span className="block text-[0.7rem] md:text-[0.55rem] font-semibold tracking-wide text-muted-foreground uppercase">
               {label}
             </span>
-            <span className="block text-xs font-medium">
+            <span className="block text-sm md:text-xs font-medium">
               {value ? format(value, "MMM d, yyyy") : "Any date"}
             </span>
           </span>
@@ -331,7 +414,7 @@ function DateFilter({
               type="button"
               variant="ghost"
               size="sm"
-              className="w-full text-xs"
+              className="w-full text-sm md:text-xs"
               onClick={() => {
                 onChange(undefined);
                 setOpen(false);
@@ -371,8 +454,8 @@ function Toggle({
       )}
     >
       <span>
-        <span className="block text-xs font-semibold">{label}</span>
-        <span className="mt-0.5 block text-[0.65rem] text-muted-foreground">
+        <span className="block text-sm md:text-xs font-semibold">{label}</span>
+        <span className="mt-0.5 block text-xs md:text-[0.65rem] text-muted-foreground">
           {description}
         </span>
       </span>
@@ -643,7 +726,10 @@ function EditorDialog({
           if (!open && !pickerOpen) onClose();
         }}
       >
-        <DialogContent className="flex h-[calc(100dvh-1rem)] max-h-[calc(100dvh-1rem)] max-w-[calc(100%-1rem)] flex-col gap-0 overflow-hidden p-0 sm:h-auto sm:max-h-[90dvh] sm:max-w-[34rem]">
+        <DialogContent
+          variant="sheet"
+          className="flex flex-col gap-0 overflow-hidden p-0 md:h-auto md:max-h-[90dvh] md:max-w-[34rem]"
+        >
           <DialogHeader className="shrink-0">
             <div className="flex min-w-0 items-start gap-3 border-b px-6 py-5 pr-12 text-left">
               <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary">
@@ -659,7 +745,7 @@ function EditorDialog({
               </div>
             </div>
           </DialogHeader>
-          <div className="shrink-0 border-b bg-muted/25 px-6 py-3 text-xs font-medium">
+          <div className="shrink-0 border-b bg-muted/25 px-6 py-3 text-sm md:text-xs font-medium">
             <span className="flex min-w-0 items-start gap-2">
               <CalendarRange className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
               <span className="min-w-0 break-words">{currentRangeText}</span>
@@ -717,7 +803,7 @@ function EditorDialog({
                             <span className="mt-4 block text-sm font-semibold">
                               {option.label}
                             </span>
-                            <span className="mt-1 block text-xs text-muted-foreground">
+                            <span className="mt-1 block text-sm md:text-xs text-muted-foreground">
                               {option.description}
                             </span>
                             {selected ? (
@@ -732,7 +818,7 @@ function EditorDialog({
                   </fieldset>
                   <div className="flex gap-3 rounded-xl border bg-muted/25 p-3">
                     <ShieldCheck className="mt-0.5 size-4 shrink-0" />
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-sm md:text-xs text-muted-foreground">
                       Existing reservations remain protected. A hidden listing
                       must be submitted for review again before guests can book
                       it.
@@ -781,7 +867,7 @@ function EditorDialog({
                             <span className="mt-4 block text-sm font-semibold">
                               {option.label}
                             </span>
-                            <span className="mt-1 block text-xs text-muted-foreground">
+                            <span className="mt-1 block text-sm md:text-xs text-muted-foreground">
                               {option.description}
                             </span>
                             {selected ? (
@@ -859,11 +945,11 @@ function EditorDialog({
                     value={price}
                     onChange={(event) => setPrice(event.target.value)}
                   />
-                  <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-xs text-muted-foreground">
+                  <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm md:text-xs text-muted-foreground">
                     per night
                   </span>
                 </div>
-                <p className="mt-2 text-xs text-muted-foreground">
+                <p className="mt-2 text-sm md:text-xs text-muted-foreground">
                   Enter an exact amount or choose a quick adjustment below.
                 </p>
               </div>
@@ -891,11 +977,11 @@ function EditorDialog({
                           : "bg-background hover:border-primary/35 hover:bg-muted/30",
                       )}
                     >
-                      <span className="text-xs font-semibold">{label}</span>
+                      <span className="text-sm md:text-xs font-semibold">{label}</span>
                       <span
                         translate="no"
                         className={cn(
-                          "notranslate mt-0.5 text-[0.65rem]",
+                          "notranslate mt-0.5 text-xs md:text-[0.65rem]",
                           selected ? "text-primary" : "text-muted-foreground",
                         )}
                       >
@@ -929,7 +1015,7 @@ function EditorDialog({
               />
               {!isDateScoped ? (
                 <div className="rounded-xl border bg-muted/20 p-4">
-                  <p className="text-xs font-semibold text-muted-foreground">
+                  <p className="text-sm md:text-xs font-semibold text-muted-foreground">
                     Additional default settings
                   </p>
                   <div className="mt-3 grid grid-cols-2 gap-3">
@@ -960,14 +1046,14 @@ function EditorDialog({
               ) : null}
               <div className="flex gap-3 px-1">
                 <ShieldCheck className="mt-0.5 size-4 shrink-0" />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-sm md:text-xs text-muted-foreground">
                   {isDateScoped
                     ? "This custom price overrides the default only for the selected dates."
                     : "Existing custom-priced dates remain unchanged. The new default applies everywhere else."}
                 </p>
               </div>
               <div className="sticky bottom-0 z-10 -mx-6 -mb-6 border-t bg-background/95 px-6 py-4 shadow-[0_-8px_20px_rgba(0,0,0,0.04)] backdrop-blur">
-                <div className="mb-3 grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 text-xs">
+                <div className="mb-3 grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 text-sm md:text-xs">
                   <span className="min-w-0 break-words text-muted-foreground">
                     {isDateScoped ? "Default" : "Current default"}{" "}
                     <strong
@@ -1040,10 +1126,10 @@ function EditorDialog({
                       className="rounded-xl border p-3 text-left hover:border-primary/35 aria-pressed:border-primary aria-pressed:bg-primary/5"
                     >
                       <CalendarRange className="size-4 text-primary" />
-                      <span className="mt-3 block text-xs font-semibold">
+                      <span className="mt-3 block text-sm md:text-xs font-semibold">
                         {offer.title}
                       </span>
-                      <span className="text-[0.65rem] text-muted-foreground">
+                      <span className="text-xs md:text-[0.65rem] text-muted-foreground">
                         {offer.percent}% · {offer.nights}+ nights
                       </span>
                     </button>
@@ -1059,7 +1145,7 @@ function EditorDialog({
                   value={discount}
                   onChange={(event) => setDiscount(event.target.value)}
                 />
-                <span className="text-xs text-muted-foreground">% off</span>
+                <span className="text-sm md:text-xs text-muted-foreground">% off</span>
                 <Input
                   aria-label="Promotion minimum stay"
                   type="number"
@@ -1068,7 +1154,7 @@ function EditorDialog({
                   value={promotionMinimum}
                   onChange={(event) => setPromotionMinimum(event.target.value)}
                 />
-                <span className="text-xs text-muted-foreground">nights</span>
+                <span className="text-sm md:text-xs text-muted-foreground">nights</span>
               </div>
               <Toggle
                 checked={freeCleaning}
@@ -1087,7 +1173,7 @@ function EditorDialog({
               <div className="flex items-start gap-3 rounded-xl bg-primary/7 p-3">
                 <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
                 <div>
-                  <p className="text-[0.65rem] font-medium tracking-wide text-muted-foreground uppercase">
+                  <p className="text-xs md:text-[0.65rem] font-medium tracking-wide text-muted-foreground uppercase">
                     Guests will see
                   </p>
                   <p className="mt-0.5 text-sm font-semibold">
@@ -1097,14 +1183,14 @@ function EditorDialog({
                     {` · ${promotionMinimum || "0"}+ nights`}
                   </p>
                   {numericDiscount > 0 ? (
-                    <p className="mt-0.5 text-xs text-muted-foreground">
+                    <p className="mt-0.5 text-sm md:text-xs text-muted-foreground">
                       Estimated default-night price: €{guestRate}
                       {roundPromotion
                         ? ` · rounded up from €${Number(rawGuestRate.toFixed(2))}`
                         : ""}
                     </p>
                   ) : null}
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className="mt-1 text-sm md:text-xs text-muted-foreground">
                     Date-specific offers take priority. Otherwise, the highest
                     qualifying minimum-stay threshold wins.
                   </p>
@@ -1148,6 +1234,7 @@ export function CalendarWorkspace({
   listingId,
   listingTitle,
   listingStatus,
+  lens,
   locale,
   currency,
   baseNightlyRate,
@@ -1156,9 +1243,20 @@ export function CalendarWorkspace({
   datePrices,
   blocks,
   promotions,
+  initialFrom,
+  initialTo,
 }: CalendarWorkspaceProps) {
   const router = useRouter();
-  const [range, setRange] = useState<DateRange | undefined>();
+  const pathname = usePathname();
+  const meta = LENS_META[lens];
+  const [range, setRange] = useState<DateRange | undefined>(() =>
+    initialFrom
+      ? {
+          from: parseLocalYmd(initialFrom),
+          to: parseLocalYmd(initialTo ?? initialFrom),
+        }
+      : undefined,
+  );
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [filter, setFilter] = useState<ChangeFilter>("all");
   const [filterFrom, setFilterFrom] = useState<Date>();
@@ -1175,7 +1273,9 @@ export function CalendarWorkspace({
       if (calendarInteractionRef.current?.contains(target)) return;
       if (
         target instanceof Element &&
-        target.closest('[role="dialog"], [data-radix-popper-content-wrapper]')
+        target.closest(
+          '[role="dialog"], [data-radix-popper-content-wrapper], [data-keeps-calendar-selection]',
+        )
       ) {
         return;
       }
@@ -1186,6 +1286,34 @@ export function CalendarWorkspace({
     return () => document.removeEventListener("pointerdown", dismissSelection);
   }, [range?.from]);
 
+  // Mirror the selection into the URL so switching lenses keeps it, and so a
+  // reloaded or shared link reopens the same dates. Debounced because
+  // onRangeChange fires on every step of a drag and each replace refetches the
+  // server component.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams(window.location.search);
+      if (range?.from) {
+        params.set("from", dateKey(range.from));
+        params.set("to", dateKey(range.to ?? range.from));
+      } else {
+        params.delete("from");
+        params.delete("to");
+      }
+      const query = params.toString();
+      const next = query ? `${pathname}?${query}` : pathname;
+      if (next === window.location.pathname + window.location.search) return;
+      router.replace(next, { scroll: false });
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [range, pathname, router]);
+
+  const selectionQuery = range?.from
+    ? `?from=${dateKey(range.from)}&to=${dateKey(range.to ?? range.from)}`
+    : "";
+  const lensHref = (target: CalendarLens) =>
+    `/host/listings/${listingId}/${LENS_META[target].segment}${selectionQuery}`;
+
   const priceByDate = useMemo(() => {
     const map = new Map<string, number>();
     for (const row of datePrices) {
@@ -1193,6 +1321,11 @@ export function CalendarWorkspace({
     }
     return map;
   }, [datePrices]);
+
+  const promotionByDate = useMemo(
+    () => promotionLabelByDate(promotions),
+    [promotions],
+  );
 
   const { manualDates, bookingDates } = useMemo(() => {
     const manual = new Set<string>();
@@ -1292,7 +1425,42 @@ export function CalendarWorkspace({
     );
   }, [baseNightlyRate, blocks, currency, datePrices, minNights, promotions]);
 
-  const filteredChanges = changes.filter((change) => {
+  const selection = range?.from ? calendarRangeToInput(range) : null;
+  const selectionNights = selection?.nights ?? 0;
+  const primaryAction =
+    lens === "availability"
+      ? {
+          label: selection ? "Block or open these dates" : "Show or hide listing",
+          detail: selection
+            ? `Applies to the ${selectionNights} selected ${selectionNights === 1 ? "night" : "nights"}.`
+            : "With no dates selected this controls the whole listing.",
+          icon: LockKeyhole,
+        }
+      : lens === "pricing"
+        ? {
+            label: selection ? "Set price for these dates" : "Change base price",
+            detail: selection
+              ? `Applies to the ${selectionNights} selected ${selectionNights === 1 ? "night" : "nights"}. Existing bookings keep the price guests already paid.`
+              : `The base rate every date without a custom price uses. Currently ${new Intl.NumberFormat(
+                  "en",
+                  { style: "currency", currency, maximumFractionDigits: 0 },
+                ).format(baseNightlyRate)}.`,
+            icon: CircleDollarSign,
+          }
+        : {
+            label: selection ? "Discount these dates" : "Create a promotion",
+            detail: selection
+              ? `Applies to the ${selectionNights} selected ${selectionNights === 1 ? "night" : "nights"}. Date-specific promotions take priority over always-active ones.`
+              : "With no dates selected the promotion is always active.",
+            icon: BadgePercent,
+          };
+  const PrimaryActionIcon = primaryAction.icon;
+
+  const lensChanges = changes.filter((change) =>
+    meta.changeKinds.includes(change.kind),
+  );
+
+  const filteredChanges = lensChanges.filter((change) => {
     if (filter !== "all" && change.kind !== filter) return false;
     if (!change.from || !change.to) return true;
     const from = parseLocalYmd(change.from);
@@ -1301,8 +1469,6 @@ export function CalendarWorkspace({
     if (filterTo && isAfter(from, filterTo)) return false;
     return true;
   });
-
-  const selection = range?.from ? calendarRangeToInput(range) : null;
 
   function report(
     action: () => Promise<{ success?: string; error?: string } | undefined>,
@@ -1383,120 +1549,146 @@ export function CalendarWorkspace({
           onRangeChange={setRange}
           dayVariant="availability"
           locale={locale}
-          dayMeta={(day) => ({
-            sublabel: new Intl.NumberFormat("en", {
-              style: "currency",
-              currency,
-              maximumFractionDigits: 0,
-            }).format(priceByDate.get(dateKey(day)) ?? baseNightlyRate),
-            isCustomPrice: priceByDate.has(dateKey(day)),
-          })}
+          dayMeta={(day) => {
+            const key = dateKey(day);
+            // Each lens gets the whole sublabel line, so a cell never has to carry
+            // three facts at once. Availability spells out its states rather than
+            // relying on the fill colour alone.
+            if (lens === "availability") {
+              if (bookingDates.has(key)) return { sublabel: "Booked" };
+              if (manualDates.has(key)) return { sublabel: "Blocked" };
+              return { sublabel: "" };
+            }
+            if (lens === "pricing") {
+              return {
+                sublabel: new Intl.NumberFormat("en", {
+                  style: "currency",
+                  currency,
+                  maximumFractionDigits: 0,
+                }).format(priceByDate.get(key) ?? baseNightlyRate),
+                isCustomPrice: priceByDate.has(key),
+              };
+            }
+            return {
+              sublabel: promotionByDate.get(key) ?? "",
+              sublabelTone: "amber" as const,
+            };
+          }}
           dateModifiers={{
-            manualBlock: (day) => manualDates.has(dateKey(day)),
+            // Reservations stay visible on every lens: they are the context that
+            // explains why a date cannot be changed, whichever lens you are in.
             bookingHold: (day) => bookingDates.has(dateKey(day)),
-            customPrice: (day) => priceByDate.has(dateKey(day)),
-            promotion: (day) =>
-              promotions.some((promotion) => {
-                if (!promotion.startDate || !promotion.endDate) return false;
-                return isWithinInterval(day, {
-                  start: parseLocalYmd(dbDateToYmd(promotion.startDate)),
-                  end: addDays(
-                    parseLocalYmd(dbDateToYmd(promotion.endDate)),
-                    -1,
-                  ),
-                });
-              }),
+            ...(lens === "availability"
+              ? { manualBlock: (day: Date) => manualDates.has(dateKey(day)) }
+              : {}),
+            ...(lens === "pricing"
+              ? { customPrice: (day: Date) => priceByDate.has(dateKey(day)) }
+              : {}),
+            ...(lens === "promotions"
+              ? { promotion: (day: Date) => promotionByDate.has(dateKey(day)) }
+              : {}),
           }}
           dateModifiersClassNames={{
             manualBlock:
               "bg-muted after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:bg-[repeating-linear-gradient(-45deg,rgba(15,23,42,0.09)_0,rgba(15,23,42,0.09)_4px,transparent_4px,transparent_8px)]",
             bookingHold: "bg-destructive/20",
             customPrice: "ring-2 ring-primary/40 ring-inset",
-            promotion:
-              "before:absolute before:right-1 before:top-1 before:size-1.5 before:rounded-full before:bg-amber-500",
+            promotion: "bg-amber-500/15",
           }}
         />
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t px-5 py-2 text-[0.68rem] text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t px-5 py-2 text-xs md:text-[0.68rem] text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             <span className="size-2.5 rounded-[2px] bg-destructive/25" />
             Booked
           </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="size-2.5 rounded-[2px] bg-[repeating-linear-gradient(-45deg,rgba(15,23,42,0.18)_0,rgba(15,23,42,0.18)_2px,transparent_2px,transparent_4px)]" />
-            Blocked
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-amber-500" />
-            Promotion
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <span className="size-2.5 rounded-[2px] border-2 border-primary/50" />
-            Custom price
-          </span>
+          {lens === "availability" ? (
+            <span className="inline-flex items-center gap-1.5">
+              <span className="size-2.5 rounded-[2px] bg-[repeating-linear-gradient(-45deg,rgba(15,23,42,0.18)_0,rgba(15,23,42,0.18)_2px,transparent_2px,transparent_4px)]" />
+              Blocked
+            </span>
+          ) : null}
+          {lens === "pricing" ? (
+            <>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="size-2.5 rounded-[2px] border-2 border-primary/50" />
+                Custom price
+              </span>
+              <span>
+                Dates without a custom price use the base rate of{" "}
+                {new Intl.NumberFormat("en", {
+                  style: "currency",
+                  currency,
+                  maximumFractionDigits: 0,
+                }).format(baseNightlyRate)}
+                .
+              </span>
+            </>
+          ) : null}
+          {lens === "promotions" ? (
+            <>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="size-2.5 rounded-[2px] bg-amber-500/30" />
+                Promotion
+              </span>
+              <span>
+                Always-active promotions apply to every date and are not shaded
+                here.
+              </span>
+            </>
+          ) : null}
         </div>
         <div className="border-t bg-stone-50 px-5 py-3">
           {selection ? (
-            <p className="mb-2 text-center text-xs font-medium text-muted-foreground">
+            <p className="mb-2 text-center text-sm md:text-xs font-medium text-muted-foreground">
               {rangeLabel(selection.startDate, selection.lastDate, true)} ·{" "}
               {selection.nights} {selection.nights === 1 ? "night" : "nights"}
             </p>
           ) : null}
-          <div className="mx-auto flex w-full max-w-3xl flex-col justify-center gap-2 sm:flex-row">
-            {[
-              {
-                kind: "availability" as const,
-                label: selection ? "Availability" : "Listing availability",
-                detail: selection
-                  ? "Open or block dates"
-                  : "Show or hide listing",
-                icon: LockKeyhole,
-              },
-              {
-                kind: "price" as const,
-                label: selection ? "Custom price" : "Default price",
-                detail: selection
-                  ? "Price selected dates"
-                  : `Currently €${baseNightlyRate}`,
-                icon: CircleDollarSign,
-              },
-              {
-                kind: "promotion" as const,
-                label: selection ? "Promotion" : "Create promotion",
-                detail: selection
-                  ? "Promote selected dates"
-                  : "Always active or dated",
-                icon: BadgePercent,
-              },
-            ].map((action) => {
-              const Icon = action.icon;
-              return (
-                <button
-                  key={action.kind}
-                  type="button"
-                  onClick={() =>
-                    setEditor({
-                      kind: action.kind,
-                      range: range?.from
-                        ? { from: range.from, to: range.to ?? range.from }
-                        : undefined,
-                    })
-                  }
-                  className="group flex flex-1 items-center gap-3 rounded-xl border bg-background px-3 py-2.5 text-left shadow-xs transition-all hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-sm"
-                >
-                  <span className="grid size-8 place-items-center rounded-lg bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary">
-                    <Icon className="size-4" />
-                  </span>
-                  <span>
-                    <span className="block text-xs font-semibold">
-                      {action.label}
-                    </span>
-                    <span className="block text-[0.65rem] text-muted-foreground">
-                      {action.detail}
-                    </span>
-                  </span>
-                </button>
-              );
-            })}
+          <div className="mx-auto w-full max-w-3xl space-y-2">
+            <Button
+              type="button"
+              size="lg"
+              className="w-full"
+              onClick={() =>
+                setEditor({
+                  kind: meta.editorKind,
+                  range: range?.from
+                    ? { from: range.from, to: range.to ?? range.from }
+                    : undefined,
+                })
+              }
+            >
+              <PrimaryActionIcon className="size-4" />
+              {primaryAction.label}
+            </Button>
+            <p className="text-center text-xs md:text-[0.65rem] text-muted-foreground">
+              {primaryAction.detail}
+            </p>
+            {selection ? (
+              // Peak dates are rarely a one-lens job. Once a range is chosen, offer
+              // the other two lenses directly instead of making the host reselect.
+              <div
+                data-keeps-calendar-selection
+                className="flex flex-wrap justify-center gap-x-4 gap-y-1 pt-0.5"
+              >
+                {(["availability", "pricing", "promotions"] as const)
+                  .filter((target) => target !== lens)
+                  .map((target) => (
+                    <Link
+                      key={target}
+                      href={lensHref(target)}
+                      className="inline-flex items-center gap-1 text-xs md:text-[0.68rem] font-semibold text-primary transition-colors hover:text-primary/75"
+                    >
+                      {target === "availability"
+                        ? "Also block these dates"
+                        : target === "pricing"
+                          ? "Also price these dates"
+                          : "Also discount these dates"}
+                      <ArrowRight className="size-3" />
+                    </Link>
+                  ))}
+              </div>
+            ) : null}
           </div>
         </div>
       </section>
@@ -1505,37 +1697,63 @@ export function CalendarWorkspace({
         <div className="border-b px-5 py-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h2 className="font-semibold">Scheduled changes</h2>
-              <p className="text-xs text-muted-foreground">
-                Availability, custom prices, promotions, and protected
-                reservations.
+              <h2 className="font-semibold">{meta.changesTitle}</h2>
+              <p className="text-sm md:text-xs text-muted-foreground">
+                {meta.changesDescription}
               </p>
             </div>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-sm md:text-xs text-muted-foreground">
               {filteredChanges.length} shown
             </span>
           </div>
           <div className="mt-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            {/* Only availability lists two kinds of row; on the other lenses the
+                chips would all filter to the same thing. */}
             <div className="flex flex-wrap gap-1.5">
-              {FILTERS.map((item) => {
+              {(meta.changeKinds.length > 1
+                ? FILTERS.filter(
+                    (item) =>
+                      item.value === "all" ||
+                      meta.changeKinds.includes(item.value as ChangeKind),
+                  )
+                : []
+              ).map((item) => {
                 const count =
                   item.value === "all"
-                    ? changes.length
-                    : changes.filter((change) => change.kind === item.value)
+                    ? lensChanges.length
+                    : lensChanges.filter((change) => change.kind === item.value)
                         .length;
                 return (
+                  // No double-click to reset: on touch a double tap is the browser's
+                  // zoom gesture, so that shortcut was unreachable on a phone and
+                  // undiscoverable everywhere else. The Clear control below replaces it.
                   <button
                     key={item.value}
                     type="button"
                     aria-pressed={filter === item.value}
                     onClick={() => setFilter(item.value)}
-                    onDoubleClick={() => setFilter("all")}
-                    className="rounded-full border px-3 py-1.5 text-xs font-medium aria-pressed:border-foreground aria-pressed:bg-foreground aria-pressed:text-background"
+                    className="min-h-9 rounded-full border px-3 py-1.5 text-sm md:text-xs font-medium aria-pressed:border-foreground aria-pressed:bg-foreground aria-pressed:text-background md:min-h-0"
                   >
                     {item.label} ({count})
                   </button>
                 );
               })}
+              {filter !== "all" || filterFrom || filterTo ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground"
+                  onClick={() => {
+                    setFilter("all");
+                    setFilterFrom(undefined);
+                    setFilterTo(undefined);
+                  }}
+                >
+                  <RotateCcw className="size-3.5" />
+                  Clear filters
+                </Button>
+              ) : null}
             </div>
             <div className="flex flex-wrap gap-2">
               <DateFilter
@@ -1549,7 +1767,9 @@ export function CalendarWorkspace({
         </div>
         {filteredChanges.length === 0 ? (
           <div className="px-5 py-10 text-center text-sm text-muted-foreground">
-            Nothing matches these filters.
+            {lensChanges.length === 0
+              ? meta.emptyLabel
+              : "Nothing matches these filters."}
           </div>
         ) : (
           <div className="divide-y">
@@ -1580,19 +1800,19 @@ export function CalendarWorkspace({
                   className="grid gap-3 px-5 py-3.5 sm:grid-cols-[8rem_8rem_minmax(0,1fr)_13rem] sm:items-center"
                 >
                   <span className="text-sm font-medium">{dates}</span>
-                  <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[0.68rem] font-medium">
+                  <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs md:text-[0.68rem] font-medium">
                     <Icon className="size-3.5" /> {typeLabel}
                   </span>
                   <span className="min-w-0">
                     <span className="block text-sm font-medium">
                       {change.label}
                     </span>
-                    <span className="block truncate text-xs text-muted-foreground">
+                    <span className="block truncate text-sm md:text-xs text-muted-foreground">
                       {change.detail} · {change.source}
                     </span>
                   </span>
                   {change.kind === "booking" ? (
-                    <span className="text-right text-xs text-muted-foreground">
+                    <span className="text-right text-sm md:text-xs text-muted-foreground">
                       Protected reservation
                     </span>
                   ) : (

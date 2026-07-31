@@ -47,21 +47,46 @@ function DialogOverlay({
   )
 }
 
+// A centered modal is the wrong shape for a thumb: it floats mid-screen, away from
+// where the hand is, and a tall one fights the keyboard. `variant="sheet"` pins the
+// content to the bottom edge below `md` — full width, rounded top, safe-area padded,
+// sliding up rather than zooming — and reverts to the centered dialog from `md` up.
+const DIALOG_BASE =
+  "fixed z-50 grid gap-4 bg-popover text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0"
+
+const DIALOG_CENTERED =
+  "top-1/2 left-1/2 w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-xl p-4 sm:max-w-sm data-open:zoom-in-95 data-closed:zoom-out-95"
+
+const DIALOG_SHEET = [
+  // Mobile: bottom sheet.
+  "inset-x-0 bottom-0 top-auto max-h-[90dvh] w-full rounded-t-2xl rounded-b-none p-4",
+  "pb-[calc(1rem+env(safe-area-inset-bottom))]",
+  "data-open:slide-in-from-bottom data-closed:slide-out-to-bottom",
+  // Desktop: the centered dialog again.
+  "md:inset-x-auto md:bottom-auto md:top-1/2 md:left-1/2 md:max-h-none md:max-w-[calc(100%-2rem)]",
+  "md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-xl md:pb-4",
+  "md:data-open:zoom-in-95 md:data-closed:zoom-out-95",
+].join(" ")
+
 function DialogContent({
   className,
   children,
   showCloseButton = true,
+  variant = "dialog",
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
+  variant?: "dialog" | "sheet"
 }) {
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
+        data-variant={variant}
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          DIALOG_BASE,
+          variant === "sheet" ? DIALOG_SHEET : DIALOG_CENTERED,
           className
         )}
         {...props}

@@ -57,7 +57,7 @@ export function HostBookingActions({ bookingId }: { bookingId: string }) {
       </div>
 
       <Dialog open={decision !== null} onOpenChange={(open) => !open && setDecision(null)}>
-        <DialogContent>
+        <DialogContent variant="sheet">
           <DialogHeader>
             <DialogTitle>
               {decision === "accept" ? "Confirm this booking?" : "Decline this request?"}

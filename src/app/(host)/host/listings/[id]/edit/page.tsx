@@ -10,15 +10,19 @@ import type { ListingMediaItem } from "@/lib/types/listing-media";
 
 interface EditListingPageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 export const metadata = { title: "Edit Listing" };
 
-export default async function EditListingPage({ params }: EditListingPageProps) {
+export default async function EditListingPage({
+  params,
+  searchParams,
+}: EditListingPageProps) {
   const session = await auth();
   if (!session?.user?.isHost) redirect("/account/become-host");
 
-  const { id } = await params;
+  const [{ id }, query] = await Promise.all([params, searchParams]);
   const listing = await getHostListing(id, session.user.id);
   if (!listing) notFound();
 
@@ -64,6 +68,7 @@ export default async function EditListingPage({ params }: EditListingPageProps) 
         editStatusApproved={listing.status === "APPROVED"}
         availabilityHref={`/host/listings/${listing.id}/availability`}
         moderationNote={listing.moderationNote}
+        initialPane={query.pane === "preview" ? "preview" : "edit"}
       />
     </div>
   );

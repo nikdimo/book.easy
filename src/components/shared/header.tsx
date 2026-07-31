@@ -153,7 +153,9 @@ export function Header({
             />
           </div>
 
-          <div className="flex 2xl:hidden w-full max-w-md items-center justify-center">
+          {/* A container so the summary trigger collapses based on the space it actually
+              has here, not on the viewport width. */}
+          <div className="@container flex 2xl:hidden w-full max-w-md items-center justify-center">
             <MarketplaceSearchBar
               variant="summary"
               {...searchDefaults}

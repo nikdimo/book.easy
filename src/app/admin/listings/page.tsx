@@ -103,7 +103,7 @@ function ListingsTable({ listings }: { listings: AdminListing[] }) {
         })}
       </div>
       <div className="hidden border rounded-lg md:block">
-        <Table>
+        <Table className="table-stacked">
         <TableHeader>
           <TableRow>
             <TableHead>Title</TableHead>
@@ -120,13 +120,13 @@ function ListingsTable({ listings }: { listings: AdminListing[] }) {
             const statusConfig = LISTING_STATUSES.find((s) => s.value === listing.status);
             return (
               <TableRow key={listing.id}>
-                <TableCell className="font-medium max-w-[200px] truncate">{listing.title}</TableCell>
-                <TableCell>
+                <TableCell className="font-medium max-w-[200px] truncate" data-label="Title">{listing.title}</TableCell>
+                <TableCell data-label="Host">
                   <div className="text-sm">{listing.host.name}</div>
                   <div className="text-xs text-muted-foreground">{listing.host.email}</div>
                 </TableCell>
-                <TableCell>{listing.property.city}</TableCell>
-                <TableCell>
+                <TableCell data-label="City">{listing.property.city}</TableCell>
+                <TableCell data-label="Status">
                   <div className="flex flex-wrap items-center gap-1">
                     <Badge variant={listing.status === "APPROVED" ? "default" : "secondary"}>
                       {statusConfig?.label || listing.status}
@@ -138,8 +138,8 @@ function ListingsTable({ listings }: { listings: AdminListing[] }) {
                     )}
                   </div>
                 </TableCell>
-                <TableCell>{listing._count.bookings}</TableCell>
-                <TableCell className="text-sm text-muted-foreground">{formatDate(listing.createdAt)}</TableCell>
+                <TableCell data-label="Bookings">{listing._count.bookings}</TableCell>
+                <TableCell className="text-sm text-muted-foreground" data-label="Created">{formatDate(listing.createdAt)}</TableCell>
                 <TableCell>
                   <Button variant="outline" size="sm" asChild>
                     <Link href={`/admin/listings/${listing.id}`}>Review</Link>

@@ -302,3 +302,67 @@ body {
     width: min(280px, calc(100vw - 3rem)) !important;
   }
 }
+
+/* Admin tables carry 6–10 columns. Below md they previously scrolled sideways, which
+   hides most of every row behind a gesture people rarely discover. Stacking each row
+   into a labelled card keeps the whole record visible in one vertical scroll.
+   Cells opt in by carrying `data-label`; anything without one (action buttons) spans
+   the full width instead of showing an empty label column. */
+@media (max-width: 767px) {
+  .table-stacked thead {
+    display: none;
+  }
+
+  .table-stacked tbody {
+    display: block;
+  }
+
+  .table-stacked tr {
+    display: block;
+    margin-bottom: 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 0.25rem 0.75rem;
+  }
+
+  .table-stacked td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border: 0;
+    padding: 0.5rem 0;
+    text-align: right;
+  }
+
+  .table-stacked td:not(:last-child) {
+    border-bottom: 1px solid color-mix(in oklab, var(--border) 60%, transparent);
+  }
+
+  .table-stacked td[data-label]::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    text-align: left;
+    font-weight: 500;
+    color: var(--muted-foreground);
+  }
+
+  .table-stacked td:not([data-label]) {
+    justify-content: flex-end;
+  }
+
+  /* Column widths and truncation exist to keep a wide row on one line. Stacked, the
+     cell owns the full card width, so let the value wrap instead of clipping it.
+     The attribute selector outranks the Tailwind utility without needing !important. */
+  .table-stacked td[data-label] {
+    max-width: none;
+    overflow: visible;
+    white-space: normal;
+    text-overflow: clip;
+  }
+
+  /* The value half of the row: keeps long text from shoving the label off-screen. */
+  .table-stacked td[data-label] > * {
+    min-width: 0;
+  }
+}

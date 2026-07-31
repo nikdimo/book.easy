@@ -41,6 +41,7 @@ const datePrices: WorkspaceDatePrice[] = Array.from(
 
 export const labProps: CalendarWorkspaceProps = {
   locale: "en",
+  lens: "availability",
   listingId: "lab-listing",
   listingTitle: "Cozy 2BR Garden Apartment in Nea Flogita",
   listingStatus: "APPROVED",

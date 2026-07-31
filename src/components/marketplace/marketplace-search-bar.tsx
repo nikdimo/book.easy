@@ -661,15 +661,20 @@ function MarketplaceSearchBarInner({
     const dateSummary = formatDateSummary(checkIn, checkOut, labels.anyDates, labels.locale);
     const guestSummary = formatGuestSummary(guestCounts, labels);
 
+    // The trigger fills whatever room the header gives it and only collapses to the bare
+    // search icon when its container is too narrow for the "Where to?" summary. Container
+    // queries (the header wraps this in `@container`) rather than viewport breakpoints, so
+    // it reacts to the space left over by the account/notification controls beside it.
+    // aria-label carries the meaning that the visible text otherwise would.
     return (
-      <div className="w-full">
+      <div className="flex w-full justify-center @min-[200px]:block">
         <button
           type="button"
-          className="flex h-11 w-full items-center gap-2 rounded-full border border-border/70 bg-background px-3 text-left shadow-[0_10px_26px_rgba(15,23,42,0.08)] transition-shadow hover:shadow-[0_14px_32px_rgba(15,23,42,0.12)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-left transition-shadow focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background @min-[200px]:w-full @min-[200px]:justify-start @min-[200px]:gap-2 @min-[200px]:border @min-[200px]:border-border/70 @min-[200px]:bg-background @min-[200px]:px-3 @min-[200px]:shadow-[0_10px_26px_rgba(15,23,42,0.08)] @min-[200px]:hover:shadow-[0_14px_32px_rgba(15,23,42,0.12)]"
           onClick={() => setSearchFlowOpen(true)}
           aria-label={labels.openSearch.text}
         >
-          <span className="min-w-0 flex-1">
+          <span className="hidden min-w-0 flex-1 @min-[200px]:block">
             <span
               className={cn(
                 "block truncate text-sm font-semibold text-foreground",
@@ -691,7 +696,7 @@ function MarketplaceSearchBarInner({
               <span className={guestSummary.translated ? "notranslate" : undefined}>{guestSummary.text}</span>
             </span>
           </span>
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_10px_26px_rgba(15,23,42,0.08)] @min-[200px]:h-8 @min-[200px]:w-8 @min-[200px]:shadow-none">
             <Search className="h-4 w-4" strokeWidth={2.5} />
           </span>
         </button>

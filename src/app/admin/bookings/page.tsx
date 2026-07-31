@@ -66,7 +66,7 @@ export default async function AdminBookingsPage({
         })}
       </div>
       <div className="hidden border rounded-lg md:block">
-        <Table>
+        <Table className="table-stacked">
           <TableHeader>
             <TableRow>
               <TableHead>Listing</TableHead>
@@ -83,19 +83,19 @@ export default async function AdminBookingsPage({
               const canCancel = booking.status === "PENDING" || booking.status === "CONFIRMED";
               return (
                 <TableRow key={booking.id}>
-                  <TableCell>
+                  <TableCell data-label="Listing">
                     <div className="text-sm font-medium max-w-[200px] truncate">{booking.listing.title}</div>
                     <div className="text-xs text-muted-foreground">{booking.listing.property.city}</div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell data-label="Guest">
                     <div className="text-sm">{booking.guest.name}</div>
                     <div className="text-xs text-muted-foreground">{booking.guest.email}</div>
                   </TableCell>
-                  <TableCell className="text-sm">
+                  <TableCell className="text-sm" data-label="Dates">
                     {formatDate(booking.checkIn)} – {formatDate(booking.checkOut)}
                   </TableCell>
-                  <TableCell className="font-medium">{formatPrice(Number(booking.totalPrice))}</TableCell>
-                  <TableCell>
+                  <TableCell className="font-medium" data-label="Total">{formatPrice(Number(booking.totalPrice))}</TableCell>
+                  <TableCell data-label="Status">
                     <Badge variant={booking.status === "CONFIRMED" ? "default" : "secondary"}>
                       {statusConfig?.label || booking.status}
                     </Badge>

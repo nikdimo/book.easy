@@ -4,7 +4,7 @@ import { useActionState, useCallback, useEffect, useMemo, useRef, useState, useT
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Bath, Bed, BedDouble, Building, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, CircleAlert, CircleDollarSign, Coffee, CookingPot, Eye, Flame, GripVertical, HeartPulse, Laptop, ListChecks, Loader2, MapPin, Microwave, Minus, Mountain, Pencil, Percent, Plus, Refrigerator, Shirt, Shield, ShieldCheck, Sparkles, Sun, Thermometer, Trees, Tv, Users, Waves, Wind, Wifi, Car } from "lucide-react";
+import { Bath, Bed, BedDouble, Building, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, CircleAlert, CircleDollarSign, Coffee, CookingPot, Flame, GripVertical, HeartPulse, Laptop, ListChecks, Loader2, MapPin, Microwave, Minus, Mountain, Percent, Plus, Refrigerator, Shirt, Shield, ShieldCheck, Sparkles, Sun, Thermometer, Trees, Tv, Users, Waves, Wind, Wifi, Car } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   saveListingDraft,
@@ -12,6 +12,8 @@ import {
   updateListing,
 } from "@/lib/actions/listing.actions";
 import { listingFormSchema } from "@/lib/validations/listing.schema";
+import { ListingBottomNav } from "@/components/host/listing-bottom-nav";
+import { listingStopHref } from "@/lib/host/listing-workspace";
 import { zodFieldErrors } from "@/lib/utils/zod-error";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -67,6 +69,7 @@ interface ListingFormProps {
   editStatusApproved?: boolean;
   availabilityHref?: string;
   moderationNote?: string | null;
+  initialPane?: "edit" | "preview";
 }
 
 type ListingFormValues = {
@@ -396,6 +399,7 @@ export function ListingForm({
   editStatusApproved = false,
   availabilityHref,
   moderationNote,
+  initialPane,
 }: ListingFormProps) {
   const isEditing = !!listing;
   const router = useRouter();
@@ -417,6 +421,7 @@ export function ListingForm({
     Set<string>
   >(new Set());
   const [activeEditSection, setActiveEditSection] = useState("basics");
+  const editSectionNavRef = useRef<HTMLElement>(null);
   const [activePreviewSection, setActivePreviewSection] = useState("basics");
   const [values, setValues] = useState<ListingFormValues>(() =>
     listingInitialValues(listing, initialDraft)
@@ -441,7 +446,11 @@ export function ListingForm({
   const initialStep = isEditing ? 0 : normalizeListingStep(initialDraft?.currentStep);
   const [currentStep, setCurrentStep] = useState(initialStep);
   const currentStepRef = useRef(initialStep);
-  const [mobilePane, setMobilePane] = useState<"edit" | "preview">("edit");
+  // Tapping Preview in the bottom bar from a calendar screen has to land on the
+  // preview pane, not the editor, so the bar behaves the same on all five screens.
+  const [mobilePane, setMobilePane] = useState<"edit" | "preview">(
+    initialPane === "preview" ? "preview" : "edit",
+  );
   const [editorWidthPercent, setEditorWidthPercent] = useState(48);
   const [stepsOpen, setStepsOpen] = useState(false);
   const [publishChecklistOpen, setPublishChecklistOpen] = useState(false);
@@ -819,6 +828,19 @@ export function ListingForm({
     }
   }
 
+  // The chip row scrolls horizontally on mobile, so the chip marking where you are
+  // can sit off-screen. Keep it in view without scrolling the form underneath it.
+  useEffect(() => {
+    const nav = editSectionNavRef.current;
+    const chip = nav?.querySelector<HTMLElement>(
+      `[data-section-chip="${activeEditSection}"]`,
+    );
+    if (!nav || !chip) return;
+    const offset =
+      chip.offsetLeft - nav.clientWidth / 2 + chip.clientWidth / 2;
+    nav.scrollTo({ left: Math.max(0, offset), behavior: "smooth" });
+  }, [activeEditSection]);
+
   function scrollToEditSection(sectionId: string) {
     const container = editorScrollRef.current;
     const section = container?.querySelector<HTMLElement>(
@@ -993,50 +1015,12 @@ export function ListingForm({
             className="mt-2 inline-flex min-h-8 items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
           >
             <ListChecks className="h-4 w-4" />
-            Step {currentStep + 1} of {STEPS.length}: {STEPS[currentStep].title}
+            <span className="notranslate" translate="no">
+              {`Step ${currentStep + 1} of ${STEPS.length}: ${STEPS[currentStep].title}`}
+            </span>
           </button>
         </div>
       )}
-
-      <div
-        role="tablist"
-        aria-label="Listing workspace"
-        onKeyDown={(event) => {
-          if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-          event.preventDefault();
-          const pane = mobilePane === "edit" ? "preview" : "edit";
-          selectMobilePane(pane);
-          document.getElementById(`listing-${pane}-tab`)?.focus();
-        }}
-        className="grid shrink-0 grid-cols-2 border-b bg-background p-1.5 md:hidden"
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mobilePane === "edit"}
-          tabIndex={mobilePane === "edit" ? 0 : -1}
-          aria-controls="listing-editor-pane"
-          id="listing-edit-tab"
-          onClick={() => selectMobilePane("edit")}
-          className={`flex min-h-10 items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors ${mobilePane === "edit" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted"}`}
-        >
-          <Pencil className="h-4 w-4" />
-          Edit
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={mobilePane === "preview"}
-          tabIndex={mobilePane === "preview" ? 0 : -1}
-          aria-controls="listing-preview-pane"
-          id="listing-preview-tab"
-          onClick={() => selectMobilePane("preview")}
-          className={`flex min-h-10 items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors ${mobilePane === "preview" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:bg-muted"}`}
-        >
-          <Eye className="h-4 w-4" />
-          Preview
-        </button>
-      </div>
 
       <div
         ref={workspaceRef}
@@ -1051,8 +1035,12 @@ export function ListingForm({
           className={`${mobilePane === "edit" ? "flex" : "hidden"} h-full min-h-0 flex-col overflow-hidden`}
         >
           {isEditing && (
-            <header className="z-20 shrink-0 border-b bg-background px-5 pb-3 pt-5 shadow-sm md:px-8">
-              <div className="min-w-0">
+            <header className="z-20 shrink-0 border-b bg-background px-5 pb-2.5 pt-2.5 shadow-sm md:pb-3 md:pt-5 md:px-8">
+              {/* On mobile the heading only repeats the Edit tab in the bottom bar,
+                  and the management link is a bottom-bar destination, so both are
+                  desktop-only. That leaves the section chips as the one thing pinned
+                  above the form. */}
+              <div className="hidden min-w-0 md:block">
                 <h1 className="text-2xl font-bold">Edit Listing</h1>
                 {availabilityHref && (
                   <Button
@@ -1071,9 +1059,15 @@ export function ListingForm({
                   </Button>
                 )}
               </div>
-              <nav className="mt-4 flex flex-wrap gap-1" aria-label="Listing sections">
+              {/* One scrollable row on mobile: wrapping these seven chips cost three
+                  stacked rows of the little vertical space the form has. */}
+              <nav
+                ref={editSectionNavRef}
+                className="-mx-5 flex gap-1 overflow-x-auto px-5 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] md:mx-0 md:mt-4 md:flex-wrap md:px-0 [&::-webkit-scrollbar]:hidden"
+                aria-label="Listing sections"
+              >
                 {EDIT_SECTIONS.map((section) => (
-                  <button key={section.id} type="button" aria-current={activeEditSection === section.id ? "location" : undefined} onClick={() => scrollToEditSection(section.id)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${activeEditSection === section.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>
+                  <button key={section.id} type="button" data-section-chip={section.id} aria-current={activeEditSection === section.id ? "location" : undefined} onClick={() => scrollToEditSection(section.id)} className={`shrink-0 rounded-full px-3 py-1.5 text-sm md:text-xs font-medium transition-colors ${activeEditSection === section.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>
                     {section.label}
                   </button>
                 ))}
@@ -1144,11 +1138,11 @@ export function ListingForm({
                 <button
                   type="button"
                   onClick={() => setStepsOpen(true)}
-                  className="inline-flex min-w-0 shrink items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                  className="inline-flex min-w-0 shrink items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-sm md:text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
                 >
                   <ListChecks className="h-4 w-4 shrink-0" />
-                  <span className="truncate">
-                    Step {currentStep + 1} of {STEPS.length}: {STEPS[currentStep].title}
+                  <span className="notranslate truncate" translate="no">
+                    {`Step ${currentStep + 1} of ${STEPS.length}: ${STEPS[currentStep].title}`}
                   </span>
                 </button>
                 <div className="h-1.5 min-w-16 flex-1 overflow-hidden rounded-full bg-muted">
@@ -1174,7 +1168,7 @@ export function ListingForm({
             <div className="rounded-lg bg-destructive/10 p-4 text-destructive"><p className="text-sm font-medium">Moderation feedback:</p><p className="mt-1 text-sm">{moderationNote}</p></div>
           )}
           <div className={isEditing || currentStep !== 1 ? undefined : "hidden"}>
-            {!isEditing && <p className="text-xs font-semibold uppercase tracking-wide text-primary md:hidden">Step {currentStep + 1} of {STEPS.length}</p>}
+            {!isEditing && <p className="notranslate text-sm md:text-xs font-semibold uppercase tracking-wide text-primary md:hidden" translate="no">{`Step ${currentStep + 1} of ${STEPS.length}`}</p>}
             <h2 className="mt-1 text-2xl font-semibold">{isEditing ? "Listing details" : STEPS[currentStep].title}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{isEditing ? "Build the listing exactly as guests will understand it." : STEPS[currentStep].description}</p>
           </div>
@@ -1211,8 +1205,8 @@ export function ListingForm({
                 <span
                   className={
                     values.description.trim().length < 20
-                      ? "text-xs text-destructive"
-                      : "text-xs text-muted-foreground"
+                      ? "text-sm md:text-xs text-destructive"
+                      : "text-sm md:text-xs text-muted-foreground"
                   }
                 >
                   {values.description.trim().length}/20 min
@@ -1362,8 +1356,10 @@ export function ListingForm({
               onItemsChange={handleMediaItemsChange}
               onUploadStateChange={handleMediaUploadStateChange}
             />
-            <p className="text-sm text-muted-foreground">
-              {photoCount} of 3 required photos added
+            {/* Translate rewrites these text nodes in place, so React's updates land on
+                nodes that are no longer displayed and the count freezes at its first value. */}
+            <p className="notranslate text-sm text-muted-foreground" translate="no">
+              {`${photoCount} of 3 required photos added`}
             </p>
             <FieldError message={fieldErrors.media} />
           </FieldSection>
@@ -1711,9 +1707,24 @@ export function ListingForm({
             </div>
           </FieldSection>
           </div>
+          {/* Reaching the end of the form is the natural moment to move on to the
+              calendar, so say so instead of leaving the host to find the bar. */}
+          {isEditing && listing?.id && (
+            <div className="flex justify-end pt-6">
+              <Button variant="outline" asChild>
+                <Link
+                  href={listingStopHref(listing.id, "availability")}
+                  onClick={confirmManagementNavigation}
+                >
+                  Next: Availability
+                  <ChevronRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          )}
           </div>
           {isEditing && (
-            <footer className="z-20 shrink-0 border-t bg-background px-5 py-4 shadow-[0_-2px_8px_rgb(0_0_0/0.04)] md:px-8">
+            <footer className="z-20 hidden shrink-0 border-t bg-background px-5 py-4 shadow-[0_-2px_8px_rgb(0_0_0/0.04)] md:block md:px-8">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               {availabilityHref && (
                 <Button variant="outline" size="lg" asChild>
@@ -1892,7 +1903,7 @@ export function ListingForm({
                   type="button"
                   aria-current={activePreviewSection === section.id ? "location" : undefined}
                   onClick={() => scrollToPreviewSection(section.id)}
-                  className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                  className={`shrink-0 rounded-full px-3 py-1.5 text-sm md:text-xs font-medium transition-colors ${
                     activePreviewSection === section.id
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted text-muted-foreground hover:text-foreground"
@@ -1922,16 +1933,52 @@ export function ListingForm({
               amenities={selectedAmenities}
             />
           </div>
-          <footer className="hidden shrink-0 items-center gap-2 border-t bg-background px-5 py-3 text-xs text-muted-foreground shadow-[0_-2px_8px_rgb(0_0_0/0.04)] md:flex md:px-6">
+          <footer className="hidden shrink-0 items-center gap-2 border-t bg-background px-5 py-3 text-sm md:text-xs text-muted-foreground shadow-[0_-2px_8px_rgb(0_0_0/0.04)] md:flex md:px-6">
             <span className="size-2 rounded-full bg-emerald-500" aria-hidden="true" />
             Preview updates as you edit
           </footer>
         </aside>
       </div>
 
+      {/* Publish is a commit, not a destination, so it sits above the bar rather than
+          in it — a slot-sized target between navigation items invites mis-taps. It
+          also only exists when there is something to publish, which keeps the
+          permanently greyed-out button (which reads as broken) off the screen. */}
+      {isEditing && (mediaUploadState.active || hasUnpublishedChanges) && (
+        <div className="z-30 shrink-0 border-t bg-background px-4 py-2.5 md:hidden">
+          {mediaUploadState.active ? (
+            <MediaUploadStatus state={mediaUploadState} />
+          ) : (
+            <Button
+              type="submit"
+              size="lg"
+              disabled={isPending}
+              className="w-full"
+            >
+              {isPending ? "Publishing changes…" : "Publish changes"}
+            </Button>
+          )}
+        </div>
+      )}
+
+      <ListingBottomNav
+        listingId={listing?.id ?? ""}
+        paneOnly={!isEditing || !listing?.id}
+        active={mobilePane === "preview" ? "preview" : "edit"}
+        onSelectPane={selectMobilePane}
+        onNavigate={confirmManagementNavigation}
+        onKeyDown={(event) => {
+          if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+          event.preventDefault();
+          const pane = mobilePane === "edit" ? "preview" : "edit";
+          selectMobilePane(pane);
+          document.getElementById(`listing-${pane}-tab`)?.focus();
+        }}
+      />
+
       {!isEditing && (
         <Dialog open={stepsOpen} onOpenChange={setStepsOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent variant="sheet" className="md:max-w-md">
             <DialogHeader>
               <DialogTitle>Listing steps</DialogTitle>
               <DialogDescription>
@@ -1965,12 +2012,12 @@ export function ListingForm({
                         : "hover:bg-muted disabled:hover:bg-transparent"
                     }`}
                   >
-                    <span className={`flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${currentStep === index ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                    <span className={`flex size-7 shrink-0 items-center justify-center rounded-full text-sm md:text-xs font-semibold ${currentStep === index ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
                       {index + 1}
                     </span>
                     <span className="min-w-0">
                       <span className="block text-sm font-medium">{step.title}</span>
-                      <span className="block truncate text-xs text-muted-foreground">
+                      <span className="block truncate text-sm md:text-xs text-muted-foreground">
                         {disabled
                           ? `Complete ${STEPS[blockingStep].title} first`
                           : step.description}
@@ -1985,7 +2032,7 @@ export function ListingForm({
       )}
 
       <Dialog open={publishChecklistOpen} onOpenChange={setPublishChecklistOpen}>
-        <DialogContent>
+        <DialogContent variant="sheet">
           <DialogHeader>
             <DialogTitle>Finish your listing before publishing</DialogTitle>
             <DialogDescription>Select an item to go directly to that step.</DialogDescription>
@@ -2017,7 +2064,7 @@ export function ListingForm({
           }
         }}
       >
-        <DialogContent>
+        <DialogContent variant="sheet">
           <DialogHeader>
             <DialogTitle>Listing published successfully</DialogTitle>
             <DialogDescription className="pt-2 text-foreground">
@@ -2101,7 +2148,7 @@ function StepRequirementStatus({
         />
       )}
       {issues.length > 0 && (
-        <p className="flex items-start gap-1.5 text-right text-xs leading-relaxed text-destructive">
+        <p className="flex items-start gap-1.5 text-right text-sm md:text-xs leading-relaxed text-destructive">
           <CircleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
           <span>{issues.map((issue) => issue.message).join(" · ")}</span>
         </p>
@@ -2112,7 +2159,7 @@ function StepRequirementStatus({
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
-  return <p className="text-xs text-destructive">{message}</p>;
+  return <p className="text-sm md:text-xs text-destructive">{message}</p>;
 }
 
 function MediaUploadStatus({
@@ -2130,7 +2177,7 @@ function MediaUploadStatus({
     >
       <Loader2 className="h-5 w-5 shrink-0 animate-spin text-primary" />
       <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-3 text-xs">
+        <div className="flex items-center justify-between gap-3 text-sm md:text-xs">
           <span className="truncate font-medium">{state.message}</span>
           <span className="shrink-0 tabular-nums text-muted-foreground">
             {state.progress}%
@@ -2199,7 +2246,7 @@ function PricingField({
           required={id !== "cleaningFee"}
           className="text-right font-semibold tabular-nums"
         />
-        <span className="w-20 shrink-0 text-xs text-muted-foreground">{suffix}</span>
+        <span className="w-20 shrink-0 text-sm md:text-xs text-muted-foreground">{suffix}</span>
       </div>
     </div>
   );
@@ -2306,7 +2353,7 @@ function DescriptionPreviewSplit({ description }: { description: string }) {
       </p>
       <div className="my-4 flex items-center gap-3">
         <span className="h-0 flex-1 border-t border-dashed border-muted-foreground/40" />
-        <span className="whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-muted-foreground/70">
+        <span className="whitespace-nowrap text-sm md:text-xs font-semibold uppercase tracking-wide text-muted-foreground/70">
           Landing page preview ends here
         </span>
         <span className="h-0 flex-1 border-t border-dashed border-muted-foreground/40" />
@@ -2320,7 +2367,7 @@ function DescriptionPreviewSplit({ description }: { description: string }) {
         <>
           <div className="my-4 flex items-center gap-3">
             <span className="h-0 flex-1 border-t border-dashed border-muted-foreground/40" />
-            <span className="whitespace-nowrap text-xs font-semibold uppercase tracking-wide text-muted-foreground/70">
+            <span className="whitespace-nowrap text-sm md:text-xs font-semibold uppercase tracking-wide text-muted-foreground/70">
               Visible only after &quot;Show more&quot;
             </span>
             <span className="h-0 flex-1 border-t border-dashed border-muted-foreground/40" />
@@ -2467,7 +2514,7 @@ function ListingGuestPreview({
             <div className="space-y-4 px-6 pb-6">
               <div className="space-y-2">
                 <p className="text-sm font-medium">Dates</p>
-                <div className="grid grid-cols-2 overflow-hidden rounded-xl border bg-background text-xs">
+                <div className="grid grid-cols-2 overflow-hidden rounded-xl border bg-background text-sm md:text-xs">
                   <div className="border-r p-3">
                     <p className="font-semibold uppercase">Check-in</p>
                     <p className="mt-1 text-muted-foreground">Select date</p>

@@ -263,7 +263,7 @@ export function ListingPromotionForm({
 
       {type !== "NONE" && (
         <div className="rounded-xl bg-muted/50 p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <p className="text-sm md:text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Guests will see
           </p>
           <p className="mt-1 font-semibold">

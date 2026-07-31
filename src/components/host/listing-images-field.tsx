@@ -7,7 +7,8 @@ import {
   DndContext,
   DragOverlay,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   type DragEndEvent,
   type DragStartEvent,
   type UniqueIdentifier,
@@ -27,6 +28,7 @@ import {
   GripVertical,
   ImagePlus,
   Loader2,
+  Play,
   RotateCcw,
   Trash2,
   Upload,
@@ -176,9 +178,14 @@ export function ListingImagesField({
     index,
   }));
   const activeItem = sortableItems.find((item) => item.id === activeId) ?? null;
+  // Mouse drags start after a small move so ordinary clicks still work; touch
+  // drags need a press-and-hold so a swipe across the grid still scrolls the page.
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(MouseSensor, {
       activationConstraint: { distance: 8 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 250, tolerance: 8 },
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
@@ -542,7 +549,7 @@ function PendingUploadTile({
           failed ? "bg-black/65" : "bg-gradient-to-t from-black/75 via-black/20 to-black/10"
         )}
       >
-        <p className="truncate text-xs font-medium" title={task.file.name}>
+        <p className="truncate text-sm md:text-xs font-medium" title={task.file.name}>
           {task.file.name}
         </p>
         {failed ? (
@@ -626,8 +633,9 @@ function SortableImageTile({
   return (
     <li
       ref={setNodeRef}
+      {...listeners}
       className={cn(
-        "group relative aspect-[4/3] overflow-hidden rounded-lg border bg-muted transition-shadow",
+        "group relative aspect-[4/3] cursor-grab touch-manipulation select-none overflow-hidden rounded-lg border bg-muted transition-shadow active:cursor-grabbing",
         isDragging && "z-10 shadow-2xl"
       )}
       style={{
@@ -635,31 +643,34 @@ function SortableImageTile({
         transition,
       }}
     >
-      <MediaThumb item={item} />
+      <MediaThumb item={item} interactive={false} />
       <button
         type="button"
         ref={setActivatorNodeRef}
         {...attributes}
         {...listeners}
         aria-label={`Reorder media item ${index + 1}`}
-        className="absolute left-1 top-1 inline-flex touch-none cursor-grab select-none items-center gap-1 rounded-md bg-background/90 px-1.5 py-1 text-[10px] font-medium shadow-sm transition-transform hover:scale-[1.02] active:cursor-grabbing"
+        className="absolute left-1 top-1 inline-flex min-h-9 touch-none cursor-grab select-none items-center gap-1 rounded-md bg-background/90 px-2 py-1.5 text-xs md:text-[10px] font-medium shadow-sm transition-transform hover:scale-[1.02] active:cursor-grabbing md:min-h-0 md:px-1.5 md:py-1"
       >
         <GripVertical className="h-3 w-3" />
         Drag
       </button>
-      <div className="absolute right-1 top-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+      {/* Hover cannot reveal anything on a touch screen, so the delete control is
+          always visible below md and only hides behind hover on pointer devices. */}
+      <div className="absolute right-1 top-1 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
         <Button
           type="button"
           size="icon"
           variant="destructive"
-          className="h-7 w-7"
+          className="h-9 w-9 md:h-7 md:w-7"
+          onPointerDown={(e) => e.stopPropagation()}
           onClick={onRemove}
         >
           <Trash2 className="h-3 w-3" />
         </Button>
       </div>
       {isCover && (
-        <span className="absolute bottom-1 left-1 rounded bg-background/90 px-1.5 py-0.5 text-[10px] font-medium shadow-sm">
+        <span className="absolute bottom-1 left-1 rounded bg-background/90 px-1.5 py-0.5 text-xs md:text-[10px] font-medium shadow-sm">
           Cover
         </span>
       )}
@@ -667,22 +678,50 @@ function SortableImageTile({
   );
 }
 
-function MediaThumb({ item }: { item: ListingMediaItem }) {
+function MediaThumb({
+  item,
+  interactive = true,
+}: {
+  item: ListingMediaItem;
+  interactive?: boolean;
+}) {
   if (item.mediaType === "VIDEO") {
+    // Inside a sortable tile the native controls would swallow the drag, so the
+    // video renders as a plain poster with a play badge instead.
     return (
-      <video
-        src={item.url}
-        className="h-full w-full object-cover"
-        controls
-        muted
-        playsInline
-        preload="metadata"
-      />
+      <>
+        <video
+          src={item.url}
+          className={cn(
+            "h-full w-full object-cover",
+            !interactive && "pointer-events-none"
+          )}
+          controls={interactive}
+          muted
+          playsInline
+          preload="metadata"
+        />
+        {!interactive && (
+          <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <span className="flex size-9 items-center justify-center rounded-full bg-black/55 text-white">
+              <Play className="h-4 w-4 fill-current" />
+            </span>
+          </span>
+        )}
+      </>
     );
   }
 
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={item.url} alt="" className="h-full w-full object-cover" />
+    <img
+      src={item.url}
+      alt=""
+      className={cn(
+        "h-full w-full object-cover",
+        !interactive && "pointer-events-none"
+      )}
+      draggable={false}
+    />
   );
 }

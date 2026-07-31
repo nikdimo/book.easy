@@ -1,0 +1,256 @@
+import { format } from "date-fns";
+import { ArrowLeft, ChevronLeft, ChevronRight, CircleHelp } from "lucide-react";
+import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
+import {
+  CalendarWorkspace,
+  type CalendarLens,
+} from "@/components/host/calendar-workspace";
+import { ListingBottomNav } from "@/components/host/listing-bottom-nav";
+import {
+  LISTING_WORKSPACE_STOPS,
+  listingStopHref,
+  withSelectionQuery,
+} from "@/lib/host/listing-workspace";
+import { Button } from "@/components/ui/button";
+import { ListingManagementTabs } from "@/components/host/listing-management-tabs";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { getLocale } from "@/lib/i18n/t";
+import { ymdToDbDate } from "@/lib/utils/date-only";
+
+/** Availability, pricing and promotions are one calendar seen three ways, so they
+ *  share this shell and differ only by `lens`. */
+const LENS_COPY: Record<
+  CalendarLens,
+  { heading: string; hint: string; help: string[] }
+> = {
+  availability: {
+    heading: "Availability",
+    hint: "Which dates guests can book.",
+    help: [
+      "Select one date or drag across a range, then block or open it.",
+      "Reservations are protected — they cannot be blocked or opened here.",
+      "With no dates selected, the action shows or hides the whole listing.",
+    ],
+  },
+  pricing: {
+    heading: "Pricing",
+    hint: "What each night costs.",
+    help: [
+      "Every date shows the price a guest would pay for that night.",
+      "Dates without a custom price follow the base rate from the listing editor.",
+      "Changing a price never changes what an existing booking already paid.",
+    ],
+  },
+  promotions: {
+    heading: "Promotions",
+    hint: "Discounts running on your dates.",
+    help: [
+      "Shaded dates are covered by a date-specific promotion.",
+      "Always-active promotions apply to every date and are listed below.",
+      "Date-specific promotions take priority over always-active ones.",
+    ],
+  },
+};
+
+const YMD = /^\d{4}-\d{2}-\d{2}$/;
+
+function readYmd(value: string | string[] | undefined) {
+  if (typeof value !== "string" || !YMD.test(value)) return undefined;
+  return value;
+}
+
+export interface CalendarLensPageProps {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+  lens: CalendarLens;
+}
+
+export async function CalendarLensPage({
+  params,
+  searchParams,
+  lens,
+}: CalendarLensPageProps) {
+  const [session, locale] = await Promise.all([auth(), getLocale()]);
+  if (!session?.user?.id) redirect("/login");
+
+  const [{ id }, query] = await Promise.all([params, searchParams]);
+  const listing = await db.listing.findFirst({
+    where: { id, hostId: session.user.id },
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      pricingRule: true,
+      promotions: {
+        where: { disabledAt: null },
+        orderBy: [{ minimumNights: "asc" }, { createdAt: "asc" }],
+      },
+    },
+  });
+  if (!listing) notFound();
+
+  const today = ymdToDbDate(format(new Date(), "yyyy-MM-dd"));
+  const [blocks, datePrices] = await Promise.all([
+    db.availabilityBlock.findMany({
+      where: { listingId: listing.id, endDate: { gte: today } },
+      include: {
+        booking: {
+          select: { id: true, guest: { select: { name: true } }, status: true },
+        },
+      },
+      orderBy: { startDate: "asc" },
+    }),
+    db.listingDatePrice.findMany({
+      where: { listingId: listing.id, date: { gte: today } },
+      orderBy: { date: "asc" },
+    }),
+  ]);
+
+  const copy = LENS_COPY[lens];
+  const stopIndex = LISTING_WORKSPACE_STOPS.findIndex(
+    (item) => item.stop === lens,
+  );
+  const previousStop = LISTING_WORKSPACE_STOPS[stopIndex - 1];
+  const nextStop = LISTING_WORKSPACE_STOPS[stopIndex + 1];
+  const initialFrom = readYmd(query.from);
+  const initialTo = readYmd(query.to);
+  const selectionQuery =
+    initialFrom && initialTo ? `?from=${initialFrom}&to=${initialTo}` : "";
+
+  return (
+    // pb-16 on mobile keeps the last row clear of the fixed bottom bar.
+    <div className="mx-auto max-w-7xl space-y-3 pb-16 md:pb-0">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-2.5">
+          <Link
+            href="/host/listings"
+            aria-label="Back to listings"
+            className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <ArrowLeft className="size-4.5" />
+          </Link>
+          <div className="min-w-0">
+            <h1 className="text-xl font-semibold tracking-tight">
+              {copy.heading}
+            </h1>
+            <p className="mt-0.5 truncate text-sm text-muted-foreground">
+              {listing.title} · {copy.hint}
+            </p>
+          </div>
+        </div>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              aria-label={`How ${copy.heading.toLowerCase()} works`}
+              className="grid size-8 shrink-0 place-items-center rounded-full border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <CircleHelp className="size-4.5" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-80 p-4">
+            <p className="text-sm font-semibold">{copy.heading}</p>
+            <ul className="mt-2 space-y-2 text-sm md:text-xs leading-relaxed text-muted-foreground">
+              {copy.help.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      <ListingManagementTabs
+        listingId={listing.id}
+        preserveQuery={selectionQuery}
+      />
+
+      {listing.pricingRule ? (
+        <CalendarWorkspace
+          listingId={listing.id}
+          listingTitle={listing.title}
+          listingStatus={listing.status}
+          lens={lens}
+          locale={locale}
+          currency={listing.pricingRule.currency}
+          baseNightlyRate={Number(listing.pricingRule.baseNightlyRate)}
+          cleaningFee={Number(listing.pricingRule.cleaningFee)}
+          minNights={listing.pricingRule.minNights}
+          initialFrom={initialFrom}
+          initialTo={initialTo}
+          datePrices={datePrices.map((row) => ({
+            id: row.id,
+            date: row.date,
+            nightlyRate: Number(row.nightlyRate),
+          }))}
+          blocks={blocks}
+          promotions={listing.promotions.map((promotion) => ({
+            id: promotion.id,
+            type: promotion.type,
+            discountPercent: promotion.discountPercent,
+            minimumNights: promotion.minimumNights,
+            freeCleaning: promotion.freeCleaning,
+            roundUpToNearestFive: promotion.roundUpToNearestFive,
+            startDate: promotion.startDate,
+            endDate: promotion.endDate,
+            createdAt: promotion.createdAt,
+          }))}
+        />
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          Add pricing on the listing edit page before managing the calendar.
+        </p>
+      )}
+
+      {/* Explicit step controls rather than navigating on scroll: overscrolling at
+          the end of a list is constant on touch, and a scroll that changes screens
+          would fire navigations nobody asked for. */}
+      <div className="flex items-center justify-between gap-3 pt-1">
+        {previousStop ? (
+          <Button variant="ghost" asChild>
+            <Link
+              href={withSelectionQuery(
+                listingStopHref(listing.id, previousStop.stop),
+                selectionQuery,
+              )}
+            >
+              <ChevronLeft className="size-4" />
+              {previousStop.label}
+            </Link>
+          </Button>
+        ) : (
+          <span />
+        )}
+        {nextStop ? (
+          <Button variant="outline" asChild>
+            <Link
+              href={withSelectionQuery(
+                listingStopHref(listing.id, nextStop.stop),
+                selectionQuery,
+              )}
+            >
+              Next: {nextStop.label}
+              <ChevronRight className="size-4" />
+            </Link>
+          </Button>
+        ) : (
+          <span />
+        )}
+      </div>
+
+      {/* Same bar as the edit screen. It is fixed here because this page scrolls
+          inside the host shell's main area rather than owning its own flex column. */}
+      <ListingBottomNav
+        listingId={listing.id}
+        active={lens}
+        className="fixed inset-x-0 bottom-0"
+      />
+    </div>
+  );
+}

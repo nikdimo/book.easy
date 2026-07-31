@@ -30,7 +30,7 @@ export default async function AuditLogPage() {
         ))}
       </div>
       <div className="hidden border rounded-lg md:block">
-        <Table>
+        <Table className="table-stacked">
           <TableHeader>
             <TableRow>
               <TableHead>Timestamp</TableHead>
@@ -43,20 +43,20 @@ export default async function AuditLogPage() {
           <TableBody>
             {logs.map((log) => (
               <TableRow key={log.id}>
-                <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                <TableCell className="text-sm text-muted-foreground whitespace-nowrap" data-label="Timestamp">
                   {format(log.createdAt, "yyyy-MM-dd HH:mm")}
                 </TableCell>
-                <TableCell>
+                <TableCell data-label="User">
                   <div className="text-sm">{log.user.name}</div>
                   <div className="text-xs text-muted-foreground">{log.user.email}</div>
                 </TableCell>
-                <TableCell>
+                <TableCell data-label="Action">
                   <Badge variant="secondary">{log.action}</Badge>
                 </TableCell>
-                <TableCell className="text-sm">
+                <TableCell className="text-sm" data-label="Entity">
                   {log.entityType} <span className="text-muted-foreground text-xs">{log.entityId.slice(0, 8)}</span>
                 </TableCell>
-                <TableCell className="text-xs text-muted-foreground max-w-[300px] truncate">
+                <TableCell className="text-xs text-muted-foreground max-w-[300px] truncate" data-label="Details">
                   {log.metadata ? JSON.stringify(log.metadata) : "—"}
                 </TableCell>
               </TableRow>

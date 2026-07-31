@@ -140,7 +140,7 @@ function SidebarContent({
       <SidebarNavLinks onNavigate={onNavigate} />
 
       <div className="mt-6 pt-6 border-t border-border space-y-1">
-        <p className="px-3 text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+        <p className="px-3 text-sm md:text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
           Guest
         </p>
         <Link
@@ -164,7 +164,7 @@ function SidebarContent({
       <div className="mt-auto pt-6 border-t border-border space-y-2">
         {languages && (
           <div className="flex items-center justify-between rounded-lg px-1 py-1">
-            <span className="px-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            <span className="px-2 text-sm md:text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Language
             </span>
             <GoogleTranslateWidget languages={languages} />
@@ -178,7 +178,7 @@ function SidebarContent({
                 className="w-full justify-start gap-2 h-auto py-2 px-3 rounded-lg border-border"
               >
                 <Avatar className="h-8 w-8">
-                  <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+                  <AvatarFallback className="text-sm md:text-xs bg-primary text-primary-foreground">
                     {initials}
                   </AvatarFallback>
                 </Avatar>
@@ -188,7 +188,7 @@ function SidebarContent({
             <DropdownMenuContent align="start" className="w-56">
               <div className="px-2 py-1.5">
                 <p className="text-sm font-medium">{user.name}</p>
-                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                <p className="text-sm md:text-xs text-muted-foreground truncate">{user.email}</p>
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
@@ -249,6 +249,52 @@ export function HostSidebar({
   const [open, setOpen] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(232);
   const dragRef = useRef<{ startX: number; startWidth: number } | null>(null);
+  const [headerHidden, setHeaderHidden] = useState(false);
+
+  // The mobile bar is a flex sibling of the scroll area, not a sticky overlay, so it
+  // permanently costs ~64px of an already short screen. Give it back while the host
+  // is reading downwards and return it the moment they scroll up, so the menu is
+  // always one gesture away rather than a scroll-to-top hunt.
+  useEffect(() => {
+    const lastTop = new WeakMap<EventTarget, number>();
+
+    function onScroll(event: Event) {
+      const target = event.target;
+      if (!target) return;
+      const top =
+        target instanceof Document
+          ? window.scrollY
+          : target instanceof HTMLElement
+            ? target.scrollTop
+            : 0;
+      const previous = lastTop.get(target) ?? 0;
+      lastTop.set(target, top);
+
+      // Collapsing while a field is focused makes iOS fight the keyboard for the
+      // viewport and the input jumps under the user's thumb.
+      const active = document.activeElement;
+      if (
+        active instanceof HTMLElement &&
+        (active.tagName === "INPUT" ||
+          active.tagName === "TEXTAREA" ||
+          active.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (top <= 8) {
+        setHeaderHidden(false);
+        return;
+      }
+      const delta = top - previous;
+      if (Math.abs(delta) < 6) return;
+      setHeaderHidden(delta > 0);
+    }
+
+    // Capture: the scrolling element is whichever pane is active, not the document.
+    document.addEventListener("scroll", onScroll, true);
+    return () => document.removeEventListener("scroll", onScroll, true);
+  }, []);
 
   useEffect(() => {
     const stored = window.localStorage.getItem("bookeasy:host-sidebar-width");
@@ -277,7 +323,14 @@ export function HostSidebar({
 
   return (
     <>
-      <div className="z-40 flex shrink-0 items-center justify-between gap-3 border-b bg-background/95 px-4 py-3 backdrop-blur xl:hidden">
+      <div
+        className={cn(
+          "z-40 flex shrink-0 items-center justify-between gap-3 overflow-hidden border-b bg-background/95 px-4 backdrop-blur transition-[max-height,padding,opacity] duration-200 xl:hidden",
+          headerHidden
+            ? "max-h-0 py-0 opacity-0"
+            : "max-h-20 py-3 opacity-100",
+        )}
+      >
         <div className="flex items-center gap-3 min-w-0">
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>

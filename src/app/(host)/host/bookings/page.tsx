@@ -55,7 +55,7 @@ export default async function HostBookingsPage() {
                   <div className="min-w-0 flex-1">
                     <h3 className="break-words font-semibold">{booking.listing.title}</h3>
                     <p className="text-sm text-muted-foreground">{booking.listing.property.city}</p>
-                    <p className="text-xs font-medium text-muted-foreground">{booking.reference}</p>
+                    <p className="text-sm md:text-xs font-medium text-muted-foreground">{booking.reference}</p>
                   </div>
                   <Badge variant={booking.status === "CONFIRMED" ? "default" : "secondary"}>
                     {statusConfig?.label || booking.status}

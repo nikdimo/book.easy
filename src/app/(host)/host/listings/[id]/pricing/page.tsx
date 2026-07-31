@@ -1,10 +1,19 @@
-import { redirect } from "next/navigation";
+import { CalendarLensPage } from "../_calendar/lens-page";
+
+export const metadata = { title: "Pricing" };
 
 export default async function PricingPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { id } = await params;
-  redirect(`/host/listings/${id}/availability`);
+  return (
+    <CalendarLensPage
+      params={params}
+      searchParams={searchParams}
+      lens="pricing"
+    />
+  );
 }

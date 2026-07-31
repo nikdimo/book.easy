@@ -133,7 +133,7 @@ function LocationSummaryRow({
     >
       <div className="min-w-0">
         <p className="text-sm font-medium">{label}</p>
-        <div className="truncate text-xs text-muted-foreground">{summary}</div>
+        <div className="truncate text-sm md:text-xs text-muted-foreground">{summary}</div>
       </div>
       <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
     </button>
@@ -643,7 +643,7 @@ export function ListingLocationField({
                 className="h-full w-full"
                 onChange={() => undefined}
               />
-              <span className="absolute left-3 top-3 rounded-full bg-background/95 px-2.5 py-1 text-xs font-medium shadow">
+              <span className="absolute left-3 top-3 rounded-full bg-background/95 px-2.5 py-1 text-sm md:text-xs font-medium shadow">
                 Map
               </span>
             </div>
@@ -657,7 +657,7 @@ export function ListingLocationField({
                 readOnly
                 fill
               />
-              <span className="absolute left-3 top-3 z-10 rounded-full bg-background/95 px-2.5 py-1 text-xs font-medium shadow">
+              <span className="absolute left-3 top-3 z-10 rounded-full bg-background/95 px-2.5 py-1 text-sm md:text-xs font-medium shadow">
                 Street View
               </span>
             </div>
@@ -665,37 +665,37 @@ export function ListingLocationField({
 
           <dl className="grid gap-x-6 gap-y-4 p-4 text-sm sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <dt className="text-sm md:text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Address
               </dt>
               <dd className="mt-1 font-medium">{value.address || "—"}</dd>
             </div>
             <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <dt className="text-sm md:text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 City
               </dt>
               <dd className="mt-1">{value.city || "—"}</dd>
             </div>
             <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <dt className="text-sm md:text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Postal code
               </dt>
               <dd className="mt-1">{value.postalCode || "—"}</dd>
             </div>
             <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <dt className="text-sm md:text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Area
               </dt>
               <dd className="mt-1">{value.area || "—"}</dd>
             </div>
             <div>
-              <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <dt className="text-sm md:text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Country
               </dt>
               <dd className="mt-1">{value.country || "—"}</dd>
             </div>
             <div className="sm:col-span-2">
-              <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              <dt className="text-sm md:text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 Exact location
               </dt>
               <dd className="mt-1 text-muted-foreground">
@@ -846,7 +846,7 @@ export function ListingLocationField({
                     )}
                   </div>
                   {searchError && (
-                    <p className="rounded-lg bg-background/95 px-3 py-2 text-xs text-destructive shadow">
+                    <p className="rounded-lg bg-background/95 px-3 py-2 text-sm md:text-xs text-destructive shadow">
                       {searchError}
                     </p>
                   )}
@@ -924,7 +924,7 @@ export function ListingLocationField({
                     <p className="text-sm font-semibold">
                       {hasPin ? "Confirm the details" : "Choose a point on the map"}
                     </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="mt-1 text-sm md:text-xs text-muted-foreground">
                       {hasPin
                         ? "Drag the pin if you need to fine-tune the entrance."
                         : "Search above or click the map to place the property pin."}
@@ -938,7 +938,7 @@ export function ListingLocationField({
                           <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                           <span>{locationSummary}</span>
                         </p>
-                        <p className="mt-2 pl-6 text-xs text-muted-foreground">
+                        <p className="mt-2 pl-6 text-sm md:text-xs text-muted-foreground">
                           {latitude.toFixed(6)}, {longitude.toFixed(6)}
                         </p>
                       </div>
@@ -946,7 +946,7 @@ export function ListingLocationField({
                       <div className="space-y-3" aria-busy={resolving}>
                         <div
                           className={cn(
-                            "flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/[0.06] px-3 py-2 text-xs font-medium text-primary",
+                            "flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/[0.06] px-3 py-2 text-sm md:text-xs font-medium text-primary",
                             !resolving && "hidden"
                           )}
                           aria-live="polite"
@@ -975,7 +975,7 @@ export function ListingLocationField({
                             )}
                           />
                           {addressErrors?.address && (
-                            <p className="text-xs text-destructive">
+                            <p className="text-sm md:text-xs text-destructive">
                               {addressErrors.address}
                             </p>
                           )}
@@ -1001,7 +1001,7 @@ export function ListingLocationField({
                               )}
                             />
                             {addressErrors?.city && (
-                              <p className="text-xs text-destructive">
+                              <p className="text-sm md:text-xs text-destructive">
                                 {addressErrors.city}
                               </p>
                             )}
@@ -1068,7 +1068,7 @@ export function ListingLocationField({
                               )}
                             />
                             {addressErrors?.country && (
-                              <p className="text-xs text-destructive">
+                              <p className="text-sm md:text-xs text-destructive">
                                 {addressErrors.country}
                               </p>
                             )}
@@ -1080,7 +1080,7 @@ export function ListingLocationField({
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-sm font-medium">Street View</p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-sm md:text-xs text-muted-foreground">
                               Turn the camera to the view guests should see.
                             </p>
                           </div>
@@ -1105,7 +1105,7 @@ export function ListingLocationField({
                 </div>
 
                 <div className="flex items-center justify-between gap-3 border-t p-4">
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-sm md:text-xs text-muted-foreground">
                     {resolving ? "Finding the address…" : locationMessage}
                   </span>
                   <Button
@@ -1133,7 +1133,7 @@ export function ListingLocationField({
       </Dialog>
 
       <Dialog open={locationDialogOpen} onOpenChange={setLocationDialogOpen}>
-        <DialogContent className="max-h-[calc(100dvh-2rem)] min-w-0 w-[calc(100vw-2rem)] max-w-lg overflow-x-hidden overflow-y-auto">
+        <DialogContent variant="sheet" className="min-w-0 overflow-x-hidden overflow-y-auto md:max-h-[calc(100dvh-2rem)] md:w-[calc(100vw-2rem)] md:max-w-lg">
           <DialogHeader>
             <DialogTitle className="pr-8 leading-snug">
               Are you at the property now?

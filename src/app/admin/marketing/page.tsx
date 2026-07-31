@@ -71,7 +71,7 @@ export default async function MarketingAdminPage({
         ))}
       </div>
       <div className="overflow-x-auto rounded-lg border">
-        <Table>
+        <Table className="table-stacked">
           <TableHeader>
             <TableRow>
               <TableHead>Email</TableHead>
@@ -86,19 +86,19 @@ export default async function MarketingAdminPage({
           <TableBody>
             {overview.preferences.map((preference) => (
               <TableRow key={preference.id}>
-                <TableCell>{preference.contact.email}</TableCell>
-                <TableCell>{preference.channel}</TableCell>
-                <TableCell>{preference.audience}</TableCell>
-                <TableCell><Badge variant="secondary">{preference.status}</Badge></TableCell>
-                <TableCell className="max-w-xs text-xs">
+                <TableCell data-label="Email">{preference.contact.email}</TableCell>
+                <TableCell data-label="Channel">{preference.channel}</TableCell>
+                <TableCell data-label="Audience">{preference.audience}</TableCell>
+                <TableCell data-label="Status"><Badge variant="secondary">{preference.status}</Badge></TableCell>
+                <TableCell className="max-w-xs text-xs" data-label="Consent wording">
                   {preference.statement?.version || "—"}
                 </TableCell>
-                <TableCell className="text-xs">
+                <TableCell className="text-xs" data-label="Latest evidence">
                   {preference.events[0]
                     ? `${preference.events[0].action} · ${preference.events[0].source}`
                     : "—"}
                 </TableCell>
-                <TableCell className="text-xs text-muted-foreground">
+                <TableCell className="text-xs text-muted-foreground" data-label="Updated">
                   {formatDate(preference.updatedAt)}
                 </TableCell>
               </TableRow>

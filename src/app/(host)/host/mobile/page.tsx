@@ -11,7 +11,7 @@ export default function MobilePreviewPage() {
     <div className="mx-auto flex h-full min-h-[720px] max-w-7xl flex-col px-4 py-5 sm:px-6">
       <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+          <div className="mb-2 flex items-center gap-2 text-sm md:text-xs font-semibold uppercase tracking-[0.16em] text-primary">
             <MonitorSmartphone className="size-4" />
             React Native workspace
           </div>
@@ -48,7 +48,7 @@ export default function MobilePreviewPage() {
               Keep the main web app running, then start the Expo web server in a second
               terminal.
             </p>
-            <code className="mt-3 flex items-center gap-2 rounded-xl bg-muted px-3 py-3 text-xs">
+            <code className="mt-3 flex items-center gap-2 rounded-xl bg-muted px-3 py-3 text-sm md:text-xs">
               <Terminal className="size-4 shrink-0" />
               npm run mobile:preview
             </code>

@@ -75,6 +75,10 @@ type Step = "dates" | "guests";
 type MarketplaceDayMeta = {
   sublabel?: string;
   isCustomPrice?: boolean;
+  // The host calendar reuses this cell for three different lenses, so the sublabel
+  // is not always a price. `isCustomPrice` stays as the marketplace-side shorthand
+  // for the primary tone.
+  sublabelTone?: "muted" | "primary" | "amber";
 };
 
 type DragCtx = {
@@ -508,9 +512,11 @@ function MarketplaceRangeDayButton({
         <span
           className={cn(
             "mt-1 text-[0.58rem] leading-none md:text-[0.62rem]",
-            meta?.isCustomPrice
-              ? "font-semibold text-primary"
-              : "text-muted-foreground",
+            meta?.sublabelTone === "amber"
+              ? "font-semibold text-amber-600"
+              : meta?.sublabelTone === "primary" || meta?.isCustomPrice
+                ? "font-semibold text-primary"
+                : "text-muted-foreground",
             modifiers.disabled && "opacity-0",
           )}
         >
