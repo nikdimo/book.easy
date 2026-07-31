@@ -67,12 +67,14 @@ export async function getAllListingsForAdmin() {
   return db.listing.findMany({
     include: {
       property: { select: { city: true } },
+      pricingRule: { select: { baseNightlyRate: true, currency: true } },
       host: { select: { name: true, email: true } },
       _count: { select: { bookings: true } },
     },
     orderBy: [{ status: "asc" }, { updatedAt: "desc" }],
   });
 }
+
 
 export async function getListingForAdminReview(id: string) {
   const listing = await db.listing.findUnique({

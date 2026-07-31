@@ -393,3 +393,117 @@ export function formatRelativeTime(
   if (Math.abs(diffDays) < 7) return formatter.format(diffDays, "day");
   return formatDate(value, locale);
 }
+
+// ---------------------------------------------------------------------------
+// ADMIN API CONTRACTS & HELPERS
+// ---------------------------------------------------------------------------
+
+export interface AdminStats {
+  totalUsers: number;
+  totalHosts: number;
+  totalListings: number;
+  pendingListings: number;
+  approvedListings: number;
+  totalBookings: number;
+  pendingBookings: number;
+  confirmedBookings: number;
+  pendingSuggestions: number;
+}
+
+export interface AdminListingSummary {
+  id: string;
+  slug: string;
+  title: string;
+  status: string;
+  needsReview: boolean;
+  city: string;
+  hostName: string;
+  hostEmail: string;
+  bookingCount: number;
+  nightlyRate: number | null;
+  currency: string;
+  updatedAt: string;
+}
+
+export interface AdminListingDetail {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  status: string;
+  needsReview: boolean;
+  moderationNote: string | null;
+  propertyType: string;
+  city: string;
+  country: string;
+  address: string;
+  maxGuests: number;
+  bedrooms: number;
+  beds: number;
+  bathrooms: number;
+  nightlyRate: number | null;
+  currency: string;
+  host: {
+    id: string;
+    name: string;
+    email: string;
+    image: string | null;
+  };
+  images: { id: string; url: string; caption: string | null }[];
+  amenities: string[];
+  updatedAt: string;
+  createdAt: string;
+}
+
+export interface AdminUserItem {
+  id: string;
+  name: string | null;
+  email: string | null;
+  role: string;
+  isHost: boolean;
+  isActive: boolean;
+  image: string | null;
+  listingsCount: number;
+  bookingsCount: number;
+  createdAt: string;
+}
+
+export async function fetchAdminStats(): Promise<{ stats: AdminStats }> {
+  return apiFetch<{ stats: AdminStats }>("/api/mobile/v1/admin/stats");
+}
+
+export async function fetchAdminListings(): Promise<{ listings: AdminListingSummary[] }> {
+  return apiFetch<{ listings: AdminListingSummary[] }>("/api/mobile/v1/admin/listings");
+}
+
+export async function fetchAdminListingDetail(
+  id: string
+): Promise<{ listing: AdminListingDetail }> {
+  return apiFetch<{ listing: AdminListingDetail }>(`/api/mobile/v1/admin/listings/${id}`);
+}
+
+export async function reviewAdminListing(
+  id: string,
+  action: "approve" | "suspend",
+  reason?: string
+): Promise<{ success: boolean }> {
+  return apiFetch<{ success: boolean }>(`/api/mobile/v1/admin/listings/${id}`, {
+    method: "POST",
+    body: JSON.stringify({ action, reason }),
+  });
+}
+
+export async function fetchAdminUsers(): Promise<{ users: AdminUserItem[] }> {
+  return apiFetch<{ users: AdminUserItem[] }>("/api/mobile/v1/admin/users");
+}
+
+export async function toggleUserStatus(
+  userId: string,
+  isActive: boolean
+): Promise<{ success: boolean }> {
+  return apiFetch<{ success: boolean }>("/api/mobile/v1/admin/users", {
+    method: "POST",
+    body: JSON.stringify({ userId, isActive }),
+  });
+}
+

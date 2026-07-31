@@ -97,3 +97,21 @@ export async function requireMobileUser(request: Request) {
 
   return { user: session.user };
 }
+
+export async function requireMobileAdmin(request: Request) {
+  const access = await requireMobileUser(request);
+  if ("response" in access) return access;
+
+  if (access.user.role !== "ADMIN" && access.user.role !== "SUPERADMIN") {
+    return {
+      response: mobileJson(
+        request,
+        { error: "Admin access required", code: "ADMIN_REQUIRED" },
+        { status: 403 }
+      ),
+    };
+  }
+
+  return access;
+}
+

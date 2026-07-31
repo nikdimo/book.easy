@@ -9,6 +9,7 @@ const icons: Record<string, string> = {
   listings: "▤",
   bookings: "◇",
   inbox: "✉",
+  admin: "🛡",
   more: "•••",
 };
 
@@ -16,6 +17,8 @@ export default function TabLayout() {
   const { loading, user } = useAuth();
   const { t } = useLanguage();
   if (!loading && !user) return <Redirect href="/login" />;
+
+  const isAdmin = user?.role === "ADMIN" || user?.role === "SUPERADMIN";
 
   return (
     <Tabs
@@ -45,7 +48,16 @@ export default function TabLayout() {
       <Tabs.Screen name="listings" options={{ title: t("My Listings") }} />
       <Tabs.Screen name="bookings" options={{ title: t("Bookings") }} />
       <Tabs.Screen name="inbox" options={{ title: t("Inbox") }} />
+      <Tabs.Screen
+        name="admin"
+        options={{
+          title: t("Admin"),
+          href: isAdmin ? ("/admin" as any) : null,
+        }}
+      />
+
       <Tabs.Screen name="more" options={{ title: t("Account") }} />
     </Tabs>
   );
 }
+
