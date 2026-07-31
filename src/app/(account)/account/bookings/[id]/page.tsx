@@ -39,7 +39,7 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
     Number(booking.nightlyRate) * booking.numberOfNights;
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-2xl mx-auto">
       <Button variant="ghost" size="sm" asChild className="mb-4">
         <Link href="/account/bookings">
           <ArrowLeft className="h-4 w-4 mr-1" />
