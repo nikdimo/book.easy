@@ -4,7 +4,7 @@ import {
   getHostListings,
 } from "@/lib/services/listing.service";
 import { mobileJson, mobileOptions, requireMobileHost } from "@/lib/mobile-api";
-import { normalizeListingStep } from "@/lib/constants/listing-steps";
+import { resolveMobileDraftStep } from "@/lib/mobile-listing-steps";
 
 export async function OPTIONS(request: Request) {
   return mobileOptions(request);
@@ -66,7 +66,7 @@ export async function GET(request: Request) {
       return {
         id: draft.id,
         title: data.title?.trim() || "Untitled draft",
-        currentStep: normalizeListingStep(data.currentStep),
+        step: resolveMobileDraftStep(data),
         updatedAt: draft.updatedAt.toISOString(),
       };
     }),

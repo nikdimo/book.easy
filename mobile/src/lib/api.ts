@@ -69,7 +69,14 @@ export interface ListingSummary {
 
 export interface ListingsResponse {
   listings: ListingSummary[];
-  drafts: { id: string; title: string; currentStep: number; updatedAt: string }[];
+  drafts: {
+    id: string;
+    title: string;
+    /** Resolved server-side from the canonical step list, so this screen carries
+     *  no step titles or totals of its own. */
+    step: { id: string; title: string; position: number; total: number };
+    updatedAt: string;
+  }[];
 }
 
 export interface ListingDraftData {

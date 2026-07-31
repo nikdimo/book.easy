@@ -14,16 +14,6 @@ import {
 import { colors, radii, spacing } from "@/theme";
 import { confirmAction } from "@/lib/confirm";
 
-const stepTitles = [
-  "Property type",
-  "Location",
-  "Property details",
-  "Amenities",
-  "Photos",
-  "Description",
-  "Pricing",
-];
-
 const statusLabels: Record<string, string> = {
   DRAFT: "Draft",
   PENDING_REVIEW: "Pending Review",
@@ -125,10 +115,15 @@ export default function ListingsScreen() {
                     <Text numberOfLines={1} style={styles.title}>{draft.title}</Text>
                     <Pill label="Draft" />
                   </View>
-                  <Text style={styles.strongMeta}>
-                    {t("Stopped at Step")} {draft.currentStep + 1} {t("of")} 7:{" "}
-                    {t(stepTitles[draft.currentStep])}
-                  </Text>
+                  {draft.step ? (
+                    <Text style={styles.strongMeta}>
+                      {t("Stopped at Step {step} of {total}: {title}", {
+                        step: draft.step.position,
+                        total: draft.step.total,
+                        title: t(draft.step.title),
+                      })}
+                    </Text>
+                  ) : null}
                   <Text style={styles.meta}>
                     {t("Last edited")} {formatDate(draft.updatedAt, locale)}
                   </Text>
