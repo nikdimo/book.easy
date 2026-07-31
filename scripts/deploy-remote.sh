@@ -51,6 +51,12 @@ echo "[deploy] Clearing stale .next/ before typecheck"
 # regardless, so there's nothing lost by removing it here.
 rm -rf .next
 
+echo "[deploy] Refreshing the UI catalog before validation"
+# Regenerate on the target platform so i18n:check validates the current checkout
+# rather than relying on a platform-specific generated artifact from the release
+# machine (Windows and Linux can differ in path/line-ending normalization).
+npm run i18n:extract
+
 echo "[deploy] Lint + typecheck (fail fast before touching the DB or building)"
 npm run lint
 npm run typecheck
