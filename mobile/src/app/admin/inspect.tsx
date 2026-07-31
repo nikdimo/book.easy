@@ -49,7 +49,8 @@ export default function ListingInspectScreen() {
   }, [listingId]);
 
   useEffect(() => {
-    void loadData();
+    const timer = setTimeout(() => void loadData(), 0);
+    return () => clearTimeout(timer);
   }, [loadData]);
 
   const handleApprove = async () => {
@@ -140,6 +141,7 @@ export default function ListingInspectScreen() {
           {detail.images.map((img) => (
             <Image
               key={img.id}
+              alt={img.caption ?? detail.title}
               source={{ uri: absoluteMediaUrl(img.url) }}
               style={styles.galleryImage}
               resizeMode="cover"

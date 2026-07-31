@@ -41,6 +41,8 @@
     "Listing-Explorer",
     ".codex-backups",
     ".tmp.driveupload",
+    "replit",
+    "replit-ui-export-*",
     "src/generated",
     "mobile"
   ]

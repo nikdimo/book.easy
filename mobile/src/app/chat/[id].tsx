@@ -149,6 +149,7 @@ export default function ChatScreen() {
           <View style={styles.bookingRow}>
             {chat?.conversation.listing.imageUrl ? (
               <Image
+                alt={chat.conversation.listing.title}
                 source={{
                   uri: absoluteMediaUrl(chat.conversation.listing.imageUrl),
                 }}
@@ -216,6 +217,7 @@ export default function ChatScreen() {
                   <Text style={styles.systemTitle}>{t("Damage reported")}</Text>
                   {item.value.evidence[0] ? (
                     <Image
+                      alt=""
                       source={{
                         uri: absoluteMediaUrl(item.value.evidence[0].url),
                       }}

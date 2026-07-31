@@ -207,6 +207,7 @@ export function TWithValues({
               key={`${placeholder}-${index}`}
               className={isProtected ? "notranslate" : undefined}
               translate={isProtected ? "no" : undefined}
+              suppressHydrationWarning
             >
               {values[placeholder]}
             </span>
@@ -214,11 +215,21 @@ export function TWithValues({
         }
         if (!part) return null;
         return translated ? (
-          <span className="notranslate" key={`text-${index}`}>
+          <span
+            className="notranslate"
+            key={`text-${index}`}
+            translate="no"
+            suppressHydrationWarning
+          >
             {part}
           </span>
         ) : (
-          part
+          // Google Translate replaces text nodes with <font> wrappers. Keeping each
+          // translatable fragment inside its own hydration-tolerant span prevents
+          // that third-party mutation from invalidating the surrounding React tree.
+          <span key={`text-${index}`} suppressHydrationWarning>
+            {part}
+          </span>
         );
       })}
     </>

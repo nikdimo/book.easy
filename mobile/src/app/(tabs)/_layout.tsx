@@ -1,4 +1,4 @@
-import { Redirect, Tabs } from "expo-router";
+import { Redirect, Tabs, type Href } from "expo-router";
 import { Text, View } from "react-native";
 import { useAuth } from "@/context/auth-context";
 import { useLanguage } from "@/context/language-context";
@@ -52,7 +52,7 @@ export default function TabLayout() {
         name="admin"
         options={{
           title: t("Admin"),
-          href: isAdmin ? ("/admin" as any) : null,
+          href: isAdmin ? ("/admin" as Href) : null,
         }}
       />
 

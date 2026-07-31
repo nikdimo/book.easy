@@ -56,3 +56,7 @@ next-env.d.ts
 /.tmp.driveupload/
 /Listing-Explorer/
 /.claude/
+
+# Local Replit UI export workspaces (large generated copies, including node_modules)
+/replit/
+/replit-ui-export-*/

@@ -16,6 +16,8 @@ const eslintConfig = defineConfig([
     ".codex-backups/**",
     ".tmp.driveupload/**",
     "Listing-Explorer/**",
+    "replit/**",
+    "replit-ui-export-*/**",
     "src/generated/**",
     // Expo owns generated output; its source is checked with `npm run mobile:typecheck`
     // and `npm --prefix mobile run lint`.

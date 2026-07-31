@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, type Href } from "expo-router";
 import { AppScreen, EmptyNotice, LoadingState, SectionHeader } from "@/components/ui";
 import { useLanguage } from "@/context/language-context";
 import { AdminStats, fetchAdminStats } from "@/lib/api";
@@ -30,7 +30,8 @@ export default function AdminScreen() {
   }, []);
 
   useEffect(() => {
-    void loadData();
+    const timer = setTimeout(() => void loadData(), 0);
+    return () => clearTimeout(timer);
   }, [loadData]);
 
   if (loading) {
@@ -65,7 +66,7 @@ export default function AdminScreen() {
       {stats.pendingListings > 0 ? (
         <Pressable
           accessibilityRole="button"
-          onPress={() => router.push("/admin/pending-listings" as any)}
+          onPress={() => router.push("/admin/pending-listings" as Href)}
           style={({ pressed }) => [styles.alertCard, pressed && { opacity: 0.8 }]}
         >
           <View style={styles.alertBadge}>
@@ -88,19 +89,19 @@ export default function AdminScreen() {
           value={stats.pendingListings}
           accent={stats.pendingListings > 0 ? colors.warm : colors.muted}
           highlight={stats.pendingListings > 0}
-          onPress={() => router.push("/admin/pending-listings" as any)}
+          onPress={() => router.push("/admin/pending-listings" as Href)}
         />
         <StatCard
           label="Approved Listings"
           value={stats.approvedListings}
           accent={colors.success}
-          onPress={() => router.push("/admin/pending-listings" as any)}
+          onPress={() => router.push("/admin/pending-listings" as Href)}
         />
         <StatCard
           label="Total Users"
           value={stats.totalUsers}
           subtext={`${stats.totalHosts} hosts`}
-          onPress={() => router.push("/admin/users" as any)}
+          onPress={() => router.push("/admin/users" as Href)}
         />
         <StatCard
           label="Total Bookings"
@@ -116,14 +117,14 @@ export default function AdminScreen() {
           subtitle="Review submitted host properties and decide on approval or suspension."
           icon="📋"
           badge={stats.pendingListings > 0 ? `${stats.pendingListings} pending` : undefined}
-          onPress={() => router.push("/admin/pending-listings" as any)}
+          onPress={() => router.push("/admin/pending-listings" as Href)}
         />
         <WorkflowCard
           title="User & Host Management"
           subtitle="Inspect registered platform users, view activity, and manage account statuses."
           icon="👥"
           badge={`${stats.totalUsers} accounts`}
-          onPress={() => router.push("/admin/users" as any)}
+          onPress={() => router.push("/admin/users" as Href)}
         />
       </View>
 

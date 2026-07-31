@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useRouter, type Href } from "expo-router";
 import { AppScreen, EmptyNotice, LoadingState, Pill, SectionHeader } from "@/components/ui";
 import { useLanguage } from "@/context/language-context";
 import {
@@ -38,7 +38,8 @@ export default function PendingListingsScreen() {
   }, []);
 
   useEffect(() => {
-    void loadData();
+    const timer = setTimeout(() => void loadData(), 0);
+    return () => clearTimeout(timer);
   }, [loadData]);
 
   const handleApprove = async (id: string) => {
@@ -161,10 +162,9 @@ export default function PendingListingsScreen() {
                 <Pressable
                   accessibilityRole="button"
                   onPress={() =>
-                    router.push({
-                      pathname: "/admin/inspect" as any,
-                      params: { id: item.id },
-                    })
+                    router.push(
+                      `/admin/inspect?id=${encodeURIComponent(item.id)}` as Href
+                    )
                   }
                   style={({ pressed }) => [styles.inspectButton, pressed && { opacity: 0.7 }]}
                 >
