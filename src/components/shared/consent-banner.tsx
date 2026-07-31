@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Tx } from '@/lib/i18n/client';
 import { usePathname } from 'next/navigation';
+import { GoogleTranslateWidget } from '@/components/shared/google-translate-widget';
 
 export interface ConsentPreferences {
   essential: boolean;
@@ -82,7 +83,18 @@ function ToggleSwitch({
   );
 }
 
-export function ConsentBanner() {
+export function ConsentBanner({
+  languages,
+  currentLocale,
+}: {
+  languages: {
+    code: string;
+    name: string;
+    isDefault: boolean;
+    useAiTranslation: boolean;
+  }[];
+  currentLocale?: string;
+}) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
@@ -189,20 +201,30 @@ export function ConsentBanner() {
       >
         {/* Header with close button */}
         <div className="flex items-start justify-between gap-4 mb-4">
-          <h2 className="text-lg font-bold">
-            <Tx k="consent.dialog_title" source="We use cookies" />
-          </h2>
-          {canClose && (
-            <button
-              onClick={handleClose}
-              className="p-1 hover:bg-muted rounded transition-colors flex-shrink-0"
-            >
-              <X className="w-5 h-5" />
-              <span className="sr-only">
-                <Tx k="common.close" source="Close" />
-              </span>
-            </button>
-          )}
+          <div className="min-w-0 flex-1 space-y-3">
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="text-lg font-bold">
+                <Tx k="consent.dialog_title" source="We use cookies" />
+              </h2>
+              {canClose && (
+                <button
+                  onClick={handleClose}
+                  className="p-1 hover:bg-muted rounded transition-colors flex-shrink-0"
+                >
+                  <X className="w-5 h-5" />
+                  <span className="sr-only">
+                    <Tx k="common.close" source="Close" />
+                  </span>
+                </button>
+              )}
+            </div>
+            <div className="flex justify-end">
+              <GoogleTranslateWidget
+                languages={languages}
+                currentLocale={currentLocale}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Main content */}

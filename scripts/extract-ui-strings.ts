@@ -17,6 +17,11 @@ const UI_SCOPES = [
   "src/app/(public)/",
   "src/components/marketplace/",
   "src/components/public/",
+  // The host panel is catalog-covered so hosts get server-rendered copy rather than
+  // Google's post-paint DOM translation. Admin is deliberately still outside: it is
+  // staff-facing and remains on the Google layer until it is migrated too.
+  "src/app/(host)/",
+  "src/components/host/",
 ];
 const UI_FILES = new Set([
   "src/lib/i18n/mobile-ui-catalog.ts",
@@ -35,6 +40,10 @@ const CONTENT_FILES = new Set([
   "src/app/(public)/cookies/page.tsx",
   "src/app/(public)/privacy/page.tsx",
   "src/app/(public)/terms/page.tsx",
+  // An internal development tool, not host-facing product copy: it documents how to
+  // start the Expo preview server. Translating build instructions into every reviewed
+  // language would cost review effort on text no guest or host is meant to read.
+  "src/app/(host)/host/mobile/page.tsx",
 ]);
 const TRANSLATABLE_ATTRIBUTES = new Set(["aria-label", "placeholder", "title", "alt"]);
 

@@ -1050,6 +1050,936 @@
     "filePath": "src/app/(public)/page.tsx"
   },
   {
+    "key": "host.booking_detail.accommodation",
+    "sourceText": "Accommodation · {nights} nights",
+    "filePath": "src/app/(host)/host/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "host.booking_detail.back",
+    "sourceText": "Back to requests",
+    "filePath": "src/app/(host)/host/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "host.booking_detail.check_in",
+    "sourceText": "Check-in",
+    "filePath": "src/app/(host)/host/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "host.booking_detail.check_out",
+    "sourceText": "Check-out",
+    "filePath": "src/app/(host)/host/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "host.booking_detail.cleaning_fee",
+    "sourceText": "Cleaning fee",
+    "filePath": "src/app/(host)/host/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "host.booking_detail.guest",
+    "sourceText": "Guest",
+    "filePath": "src/app/(host)/host/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "host.booking_detail.guest_message",
+    "sourceText": "Guest message",
+    "filePath": "src/app/(host)/host/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "host.booking_detail.guests",
+    "sourceText": "Guests",
+    "filePath": "src/app/(host)/host/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "host.booking_detail.keep_communication",
+    "sourceText": "Keep communication in Linger Homes so the conversation stays protected.",
+    "filePath": "src/app/(host)/host/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "host.booking_detail.nights",
+    "sourceText": "Nights",
+    "filePath": "src/app/(host)/host/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "host.booking_detail.total",
+    "sourceText": "Booking total",
+    "filePath": "src/app/(host)/host/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "host.booking.accept",
+    "sourceText": "Accept request",
+    "filePath": "src/components/host/host-booking-actions.tsx"
+  },
+  {
+    "key": "host.booking.accept_body",
+    "sourceText": "The guest will be notified immediately and the reservation will become confirmed.",
+    "filePath": "src/components/host/host-booking-actions.tsx"
+  },
+  {
+    "key": "host.booking.accept_title",
+    "sourceText": "Confirm this booking?",
+    "filePath": "src/components/host/host-booking-actions.tsx"
+  },
+  {
+    "key": "host.booking.decline",
+    "sourceText": "Decline",
+    "filePath": "src/components/host/host-booking-actions.tsx"
+  },
+  {
+    "key": "host.booking.decline_body",
+    "sourceText": "Tell the guest why you cannot host them. Their dates will be released immediately.",
+    "filePath": "src/components/host/host-booking-actions.tsx"
+  },
+  {
+    "key": "host.booking.decline_title",
+    "sourceText": "Decline this request?",
+    "filePath": "src/components/host/host-booking-actions.tsx"
+  },
+  {
+    "key": "host.booking.go_back",
+    "sourceText": "Go back",
+    "filePath": "src/components/host/host-booking-actions.tsx"
+  },
+  {
+    "key": "host.bookings.dates_label",
+    "sourceText": "Dates:",
+    "filePath": "src/app/(host)/host/bookings/page.tsx"
+  },
+  {
+    "key": "host.bookings.empty_description",
+    "sourceText": "Bookings will appear here when guests request to stay at your listings.",
+    "filePath": "src/app/(host)/host/bookings/page.tsx"
+  },
+  {
+    "key": "host.bookings.empty_title",
+    "sourceText": "No bookings yet",
+    "filePath": "src/app/(host)/host/bookings/page.tsx"
+  },
+  {
+    "key": "host.bookings.guest_label",
+    "sourceText": "Guest:",
+    "filePath": "src/app/(host)/host/bookings/page.tsx"
+  },
+  {
+    "key": "host.bookings.guests_label",
+    "sourceText": "Guests:",
+    "filePath": "src/app/(host)/host/bookings/page.tsx"
+  },
+  {
+    "key": "host.bookings.heading",
+    "sourceText": "Booking Requests",
+    "filePath": "src/app/(host)/host/bookings/page.tsx"
+  },
+  {
+    "key": "host.bookings.message_guest",
+    "sourceText": "Message guest",
+    "filePath": "src/app/(host)/host/bookings/page.tsx"
+  },
+  {
+    "key": "host.bookings.rate_guest",
+    "sourceText": "Rate guest",
+    "filePath": "src/app/(host)/host/bookings/page.tsx"
+  },
+  {
+    "key": "host.bookings.report_problem",
+    "sourceText": "Report a problem",
+    "filePath": "src/app/(host)/host/bookings/page.tsx"
+  },
+  {
+    "key": "host.bookings.total_label",
+    "sourceText": "Total:",
+    "filePath": "src/app/(host)/host/bookings/page.tsx"
+  },
+  {
+    "key": "host.bookings.view_details",
+    "sourceText": "View details",
+    "filePath": "src/app/(host)/host/bookings/page.tsx"
+  },
+  {
+    "key": "host.calendar.additional_defaults",
+    "sourceText": "Additional default settings",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.back_to_listings",
+    "sourceText": "Back to listings",
+    "filePath": "src/app/(host)/host/listings/[id]/_calendar/lens-page.tsx"
+  },
+  {
+    "key": "host.calendar.block_dates",
+    "sourceText": "Block dates",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.block_reason",
+    "sourceText": "Block reason (optional)",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.block_reason_hint",
+    "sourceText": "Only saved when you block. Guests never see it.",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.cancel",
+    "sourceText": "Cancel",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.cleaning_fee",
+    "sourceText": "Cleaning fee",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.clear_dates",
+    "sourceText": "Clear dates",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.clear_filters",
+    "sourceText": "Clear filters",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.legend_blocked",
+    "sourceText": "Blocked",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.legend_booked",
+    "sourceText": "Booked",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.legend_custom_price",
+    "sourceText": "Custom price",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.legend_promotion",
+    "sourceText": "Promotion",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.legend_promotion_note",
+    "sourceText": "Always-active promotions apply to every date and are not shaded here.",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.make_available",
+    "sourceText": "Make available",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.minimum_nights",
+    "sourceText": "Minimum nights",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.needs_pricing",
+    "sourceText": "Add pricing on the listing edit page before managing the calendar.",
+    "filePath": "src/app/(host)/host/listings/[id]/_calendar/lens-page.tsx"
+  },
+  {
+    "key": "host.calendar.next",
+    "sourceText": "Next:",
+    "filePath": "src/app/(host)/host/listings/[id]/_calendar/lens-page.tsx"
+  },
+  {
+    "key": "host.calendar.nights",
+    "sourceText": "nights",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.per_night",
+    "sourceText": "per night",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.percent_off",
+    "sourceText": "% off",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.price_hint",
+    "sourceText": "Enter an exact amount or choose a quick adjustment below.",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.promotion_priority",
+    "sourceText": "Date-specific offers take priority. Otherwise, the highest qualifying minimum-stay threshold wins.",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.protected_reservation",
+    "sourceText": "Protected reservation",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.range_hint",
+    "sourceText": "Select one date or drag across a date range.",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.recommended_offers",
+    "sourceText": "Recommended offers",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.use_dates",
+    "sourceText": "Use selected dates",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.visibility",
+    "sourceText": "Listing visibility",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.visibility_note",
+    "sourceText": "Existing reservations remain protected. A hidden listing must be submitted for review again before guests can book it.",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.cancel_booking.keep",
+    "sourceText": "Keep booking",
+    "filePath": "src/components/host/host-cancel-booking-button.tsx"
+  },
+  {
+    "key": "host.cancel_booking.open",
+    "sourceText": "Cancel booking",
+    "filePath": "src/components/host/host-cancel-booking-button.tsx"
+  },
+  {
+    "key": "host.cancel_booking.warning",
+    "sourceText": "Cancelling a confirmed booking should only be used for emergencies. A reason is required.",
+    "filePath": "src/components/host/host-cancel-booking-button.tsx"
+  },
+  {
+    "key": "host.dashboard.attention.bookings",
+    "sourceText": "Booking requests",
+    "filePath": "src/app/(host)/host/page.tsx"
+  },
+  {
+    "key": "host.dashboard.attention.bookings_copy",
+    "sourceText": "Accept or decline new requests.",
+    "filePath": "src/app/(host)/host/page.tsx"
+  },
+  {
+    "key": "host.dashboard.attention.conversations",
+    "sourceText": "Unread conversations",
+    "filePath": "src/app/(host)/host/page.tsx"
+  },
+  {
+    "key": "host.dashboard.attention.conversations_copy",
+    "sourceText": "Reply to guests and inquiries.",
+    "filePath": "src/app/(host)/host/page.tsx"
+  },
+  {
+    "key": "host.dashboard.attention.damage",
+    "sourceText": "Damage reports",
+    "filePath": "src/app/(host)/host/page.tsx"
+  },
+  {
+    "key": "host.dashboard.attention.damage_copy",
+    "sourceText": "Review reported property damage.",
+    "filePath": "src/app/(host)/host/page.tsx"
+  },
+  {
+    "key": "host.dashboard.attention.heading",
+    "sourceText": "Needs your attention",
+    "filePath": "src/app/(host)/host/page.tsx"
+  },
+  {
+    "key": "host.dashboard.attention.subheading",
+    "sourceText": "Tasks that may need a reply or decision.",
+    "filePath": "src/app/(host)/host/page.tsx"
+  },
+  {
+    "key": "host.dashboard.confirmed",
+    "sourceText": "Confirmed",
+    "filePath": "src/app/(host)/host/page.tsx"
+  },
+  {
+    "key": "host.dashboard.create_listing",
+    "sourceText": "Create Listing",
+    "filePath": "src/app/(host)/host/listings/page.tsx"
+  },
+  {
+    "key": "host.dashboard.heading",
+    "sourceText": "Host Dashboard",
+    "filePath": "src/app/(host)/host/page.tsx"
+  },
+  {
+    "key": "host.dashboard.my_listings",
+    "sourceText": "My Listings",
+    "filePath": "src/app/(host)/host/listings/page.tsx"
+  },
+  {
+    "key": "host.dashboard.notifications.empty",
+    "sourceText": "You are all caught up.",
+    "filePath": "src/app/(host)/host/page.tsx"
+  },
+  {
+    "key": "host.dashboard.notifications.heading",
+    "sourceText": "Latest notifications",
+    "filePath": "src/app/(host)/host/page.tsx"
+  },
+  {
+    "key": "host.dashboard.notifications.subheading",
+    "sourceText": "New activity across bookings, messages, and reports.",
+    "filePath": "src/app/(host)/host/page.tsx"
+  },
+  {
+    "key": "host.dashboard.notifications.view_all",
+    "sourceText": "View all",
+    "filePath": "src/app/(host)/host/page.tsx"
+  },
+  {
+    "key": "host.dashboard.pending_requests",
+    "sourceText": "Pending Requests",
+    "filePath": "src/app/(host)/host/page.tsx"
+  },
+  {
+    "key": "host.dashboard.total_bookings",
+    "sourceText": "Total Bookings",
+    "filePath": "src/app/(host)/host/page.tsx"
+  },
+  {
+    "key": "host.delete_listing.tooltip",
+    "sourceText": "Delete",
+    "filePath": "src/components/host/delete-listing-button.tsx"
+  },
+  {
+    "key": "host.form.after_publish",
+    "sourceText": "After you publish",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.after_publish_body",
+    "sourceText": "Once this listing is live you can block dates on the calendar, set prices for specific dates or seasons, and add more promotions at any time. You'll find all of it under the listing in My listings.",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.back",
+    "sourceText": "Back",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.back_to_editor",
+    "sourceText": "Back to editor",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.checklist_hint",
+    "sourceText": "Select an item to go directly to that step.",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.checklist_title",
+    "sourceText": "Finish your listing before publishing",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.continue_editing",
+    "sourceText": "Continue editing",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.create_listing",
+    "sourceText": "Create a listing",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.custom_percentage",
+    "sourceText": "Custom percentage",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.description_label",
+    "sourceText": "Description",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.edit_listing",
+    "sourceText": "Edit Listing",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.go_to_listings",
+    "sourceText": "Go to My Listings",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.manage_link",
+    "sourceText": "Manage availability, pricing & promotions",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.moderation_feedback",
+    "sourceText": "Moderation feedback:",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.my_listings",
+    "sourceText": "My listings",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.next_availability",
+    "sourceText": "Next: Availability",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.no_changes",
+    "sourceText": "No changes have been made.",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.offer_hint",
+    "sourceText": "This is optional. Choose one ready-made offer or publish without a promotion.",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.offer_none_hint",
+    "sourceText": "Publish now and add an offer later.",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.preview_heading",
+    "sourceText": "Guest booking preview",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.preview_landing_end",
+    "sourceText": "Landing page preview ends here",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.preview_live",
+    "sourceText": "Live",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.preview_show_more",
+    "sourceText": "Visible only after \"Show more\"",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.preview_updates",
+    "sourceText": "Preview updates as you edit",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.property_type_label",
+    "sourceText": "Property type",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.publish_changes",
+    "sourceText": "Publish changes",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.published_body",
+    "sourceText": "Your listing is live. You can return to My Listings or continue editing it now. Our team will still review the content shortly, so keep it accurate. Questions? Contact",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.published_title",
+    "sourceText": "Listing published successfully",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.retry",
+    "sourceText": "Retry",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.steps_hint",
+    "sourceText": "Jump to any part of your listing. Your draft is saved automatically.",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.steps_title",
+    "sourceText": "Listing steps",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.title_label",
+    "sourceText": "Title",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.uploading",
+    "sourceText": "Uploading",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.images.cover",
+    "sourceText": "Cover",
+    "filePath": "src/components/host/listing-images-field.tsx"
+  },
+  {
+    "key": "host.images.drag",
+    "sourceText": "Drag",
+    "filePath": "src/components/host/listing-images-field.tsx"
+  },
+  {
+    "key": "host.images.remove",
+    "sourceText": "Remove",
+    "filePath": "src/components/host/listing-images-field.tsx"
+  },
+  {
+    "key": "host.images.retry",
+    "sourceText": "Retry",
+    "filePath": "src/components/host/listing-images-field.tsx"
+  },
+  {
+    "key": "host.inbox.heading",
+    "sourceText": "Inbox",
+    "filePath": "src/app/(host)/host/inbox/page.tsx"
+  },
+  {
+    "key": "host.inbox.subheading",
+    "sourceText": "Answer inquiries and manage guest conversations.",
+    "filePath": "src/app/(host)/host/inbox/page.tsx"
+  },
+  {
+    "key": "host.listing_card.calendar_tooltip",
+    "sourceText": "Calendar, pricing & promotions",
+    "filePath": "src/components/host/host-listing-card.tsx"
+  },
+  {
+    "key": "host.listing_card.edit_tooltip",
+    "sourceText": "Edit listing",
+    "filePath": "src/components/host/host-listing-card.tsx"
+  },
+  {
+    "key": "host.listing_card.preview_tooltip",
+    "sourceText": "Open the public page for this listing, exactly as guests see it.",
+    "filePath": "src/components/host/host-listing-card.tsx"
+  },
+  {
+    "key": "host.listings.continue",
+    "sourceText": "Continue",
+    "filePath": "src/app/(host)/host/listings/page.tsx"
+  },
+  {
+    "key": "host.listings.draft_badge",
+    "sourceText": "Draft",
+    "filePath": "src/app/(host)/host/listings/page.tsx"
+  },
+  {
+    "key": "host.listings.draft_last_edited",
+    "sourceText": "Last edited {date}",
+    "filePath": "src/app/(host)/host/listings/page.tsx"
+  },
+  {
+    "key": "host.listings.draft_progress",
+    "sourceText": "Stopped at Step {step} of {total}: {title}",
+    "filePath": "src/app/(host)/host/listings/page.tsx"
+  },
+  {
+    "key": "host.listings.drafts_heading",
+    "sourceText": "In-progress drafts",
+    "filePath": "src/app/(host)/host/listings/page.tsx"
+  },
+  {
+    "key": "host.listings.empty_description",
+    "sourceText": "Create your first listing to start receiving bookings.",
+    "filePath": "src/app/(host)/host/listings/page.tsx"
+  },
+  {
+    "key": "host.listings.empty_title",
+    "sourceText": "No listings yet",
+    "filePath": "src/app/(host)/host/listings/page.tsx"
+  },
+  {
+    "key": "host.listings.new",
+    "sourceText": "New Listing",
+    "filePath": "src/app/(host)/host/listings/page.tsx"
+  },
+  {
+    "key": "host.listings.untitled_draft",
+    "sourceText": "Untitled draft",
+    "filePath": "src/app/(host)/host/listings/page.tsx"
+  },
+  {
+    "key": "host.map.load_failed",
+    "sourceText": "Google Maps couldn't load. Check the API key restrictions.",
+    "filePath": "src/components/host/listing-location-picker-inner.tsx"
+  },
+  {
+    "key": "host.map.loading",
+    "sourceText": "Loading Google Maps…",
+    "filePath": "src/components/host/listing-location-picker-inner.tsx"
+  },
+  {
+    "key": "host.map.not_configured",
+    "sourceText": "Google Maps isn't configured.",
+    "filePath": "src/components/host/listing-location-picker-inner.tsx"
+  },
+  {
+    "key": "host.preview.about",
+    "sourceText": "About this space",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.preview.amenities",
+    "sourceText": "What this place offers",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.preview.amenities_empty",
+    "sourceText": "Selected amenities will appear here.",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.preview.check_in",
+    "sourceText": "Check-in",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.preview.check_out",
+    "sourceText": "Check-out",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.preview.dates",
+    "sourceText": "Dates",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.preview.gallery_empty",
+    "sourceText": "Photos and videos will appear here",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.preview.guests_label",
+    "sourceText": "Guests",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.preview.host_blurb",
+    "sourceText": "Fast replies and local support.",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.preview.hosted_by",
+    "sourceText": "Hosted by Linger Homes",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.preview.message_host",
+    "sourceText": "Message to host",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.preview.message_placeholder",
+    "sourceText": "Introduce yourself and share any useful details.",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.preview.one_guest",
+    "sourceText": "1 guest",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.preview.optional",
+    "sourceText": "(optional)",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.preview.per_night",
+    "sourceText": "/ night",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.preview.reserve",
+    "sourceText": "Reserve",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.preview.select_date",
+    "sourceText": "Select date",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.promotion.all_stays",
+    "sourceText": "All bookable stays",
+    "filePath": "src/components/host/listing-promotion-form.tsx"
+  },
+  {
+    "key": "host.promotion.choose",
+    "sourceText": "Choose an offer",
+    "filePath": "src/components/host/listing-promotion-form.tsx"
+  },
+  {
+    "key": "host.promotion.cleaning_title",
+    "sourceText": "Free cleaning",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.promotion.custom_percent",
+    "sourceText": "% custom",
+    "filePath": "src/components/host/listing-promotion-form.tsx"
+  },
+  {
+    "key": "host.promotion.discount_label",
+    "sourceText": "Discount percentage",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.promotion.eligibility_question",
+    "sourceText": "Which stays receive this offer?",
+    "filePath": "src/components/host/listing-promotion-form.tsx"
+  },
+  {
+    "key": "host.promotion.minimum_hint",
+    "sourceText": "Shorter stays remain bookable at the normal price.",
+    "filePath": "src/components/host/listing-promotion-form.tsx"
+  },
+  {
+    "key": "host.promotion.minimum_option",
+    "sourceText": "Only stays of at least this many nights",
+    "filePath": "src/components/host/listing-promotion-form.tsx"
+  },
+  {
+    "key": "host.promotion.none_title",
+    "sourceText": "No promotion",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.promotion.preview_label",
+    "sourceText": "Guests will see",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.promotion.ready_made",
+    "sourceText": "Ready-made offers",
+    "filePath": "src/components/host/listing-promotion-form.tsx"
+  },
+  {
+    "key": "host.promotion.ready_made_hint",
+    "sourceText": "Choose a proven offer with one click, then save when you are ready.",
+    "filePath": "src/components/host/listing-promotion-form.tsx"
+  },
+  {
+    "key": "host.publish.intro",
+    "sourceText": "Ready to go live? Publishing makes your listing visible to guests immediately.",
+    "filePath": "src/components/host/submit-for-review-button.tsx"
+  },
+  {
+    "key": "host.sidebar.account",
+    "sourceText": "Account",
+    "filePath": "src/components/host/host-sidebar.tsx"
+  },
+  {
+    "key": "host.sidebar.admin",
+    "sourceText": "Admin",
+    "filePath": "src/components/host/host-sidebar.tsx"
+  },
+  {
+    "key": "host.sidebar.guest",
+    "sourceText": "Guest",
+    "filePath": "src/components/host/host-sidebar.tsx"
+  },
+  {
+    "key": "host.sidebar.home",
+    "sourceText": "Home",
+    "filePath": "src/components/host/host-sidebar.tsx"
+  },
+  {
+    "key": "host.sidebar.language",
+    "sourceText": "Language",
+    "filePath": "src/components/host/host-sidebar.tsx"
+  },
+  {
+    "key": "host.sidebar.log_in",
+    "sourceText": "Log in",
+    "filePath": "src/components/host/host-sidebar.tsx"
+  },
+  {
+    "key": "host.sidebar.log_out",
+    "sourceText": "Log out",
+    "filePath": "src/components/host/host-sidebar.tsx"
+  },
+  {
+    "key": "host.sidebar.menu_title",
+    "sourceText": "Hosting menu",
+    "filePath": "src/components/host/host-sidebar.tsx"
+  },
+  {
+    "key": "host.sidebar.stays",
+    "sourceText": "Stays",
+    "filePath": "src/components/host/host-sidebar.tsx"
+  },
+  {
+    "key": "host.sidebar.trips",
+    "sourceText": "Trips",
+    "filePath": "src/components/host/host-sidebar.tsx"
+  },
+  {
+    "key": "host.street_view.intro",
+    "sourceText": "Turn the view and move along the street until guests can clearly recognize the property. Your selected view is saved automatically.",
+    "filePath": "src/components/host/street-view-picker.tsx"
+  },
+  {
+    "key": "host.street_view.load_failed",
+    "sourceText": "Street View couldn't load. Check the API and website restrictions for this key.",
+    "filePath": "src/components/host/street-view-picker.tsx"
+  },
+  {
+    "key": "host.street_view.loading",
+    "sourceText": "Loading Street View…",
+    "filePath": "src/components/host/street-view-picker.tsx"
+  },
+  {
+    "key": "host.street_view.not_configured",
+    "sourceText": "The interactive Street View picker isn't configured.",
+    "filePath": "src/components/host/street-view-picker.tsx"
+  },
+  {
+    "key": "host.street_view.unavailable",
+    "sourceText": "No Street View panorama is available near this location.",
+    "filePath": "src/components/host/street-view-picker.tsx"
+  },
+  {
+    "key": "host.suggest.cancel",
+    "sourceText": "Cancel",
+    "filePath": "src/components/host/suggest-missing-option.tsx"
+  },
+  {
+    "key": "host.suggest.send",
+    "sourceText": "Send",
+    "filePath": "src/components/host/suggest-missing-option.tsx"
+  },
+  {
+    "key": "host.workspace.availability",
+    "sourceText": "Availability",
+    "filePath": "src/app/(host)/host/listings/[id]/_calendar/lens-page.tsx"
+  },
+  {
+    "key": "host.workspace.edit",
+    "sourceText": "Edit",
+    "filePath": "src/app/(host)/host/listings/[id]/_calendar/lens-page.tsx"
+  },
+  {
+    "key": "host.workspace.preview",
+    "sourceText": "Preview",
+    "filePath": "src/app/(host)/host/listings/[id]/_calendar/lens-page.tsx"
+  },
+  {
+    "key": "host.workspace.pricing",
+    "sourceText": "Pricing",
+    "filePath": "src/app/(host)/host/listings/[id]/_calendar/lens-page.tsx"
+  },
+  {
+    "key": "host.workspace.promotions",
+    "sourceText": "Promos",
+    "filePath": "src/app/(host)/host/listings/[id]/_calendar/lens-page.tsx"
+  },
+  {
     "key": "languages.automatic_badge",
     "sourceText": "Automatic",
     "filePath": "src/components/shared/google-translate-widget.tsx"

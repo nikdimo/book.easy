@@ -73,6 +73,9 @@ export interface ListingsResponse {
 }
 
 export interface ListingDraftData {
+  /** Where the host left off. The id is authoritative; the index is a legacy
+   *  fallback whose meaning shifts whenever the wizard is reordered. */
+  currentStepId?: string;
   currentStep?: number;
   title?: string;
   description?: string;
@@ -87,7 +90,17 @@ export interface ListingDraftData {
   amenityIds?: string[];
 }
 
+export interface ListingStep {
+  id: string;
+  title: string;
+  description: string;
+}
+
 export interface ListingEditorResponse {
+  /** The canonical wizard order, owned by the server. Never hardcode a copy of
+   *  this — the app renders whatever it is sent, including steps this build has
+   *  no dedicated screen for yet. */
+  steps: ListingStep[];
   propertyTypes: {
     value: string;
     label: string;

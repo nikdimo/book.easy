@@ -13,6 +13,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Star } from "lucide-react";
+import { getT, T } from "@/lib/i18n/t";
 
 export const metadata = { title: "Booking Requests" };
 
@@ -21,19 +22,32 @@ export default async function HostBookingsPage() {
   if (!session?.user) redirect("/login");
 
   const bookings = await getHostBookings(session.user.id);
+  const t = await getT();
 
   if (bookings.length === 0) {
     return (
       <div>
-        <h1 className="text-2xl font-bold mb-6">Booking Requests</h1>
-        <EmptyState title="No bookings yet" description="Bookings will appear here when guests request to stay at your listings." />
+        <h1 className="text-2xl font-bold mb-6">
+          <T t={t} k="host.bookings.heading" source="Booking Requests" />
+        </h1>
+        <EmptyState
+          title={t.resolve("host.bookings.empty_title", "No bookings yet").text}
+          description={
+            t.resolve(
+              "host.bookings.empty_description",
+              "Bookings will appear here when guests request to stay at your listings.",
+            ).text
+          }
+        />
       </div>
     );
   }
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Booking Requests</h1>
+      <h1 className="text-2xl font-bold mb-6">
+        <T t={t} k="host.bookings.heading" source="Booking Requests" />
+      </h1>
       <div className="space-y-3">
         {bookings.map((booking) => {
           const statusConfig = BOOKING_STATUSES.find((s) => s.value === booking.status);
@@ -63,24 +77,34 @@ export default async function HostBookingsPage() {
                 </div>
                 <div className="grid grid-cols-1 gap-3 text-sm min-[420px]:grid-cols-2 md:grid-cols-4">
                   <div className="min-w-0">
-                    <span className="text-muted-foreground">Guest: </span>
+                    <span className="text-muted-foreground">
+                      <T t={t} k="host.bookings.guest_label" source="Guest:" />{" "}
+                    </span>
                     <span className="font-medium">{booking.guest.name}</span>
                   </div>
                   <div className="min-w-0 break-words">
-                    <span className="text-muted-foreground">Dates: </span>
+                    <span className="text-muted-foreground">
+                      <T t={t} k="host.bookings.dates_label" source="Dates:" />{" "}
+                    </span>
                     <span>{formatDate(booking.checkIn)} – {formatDate(booking.checkOut)}</span>
                   </div>
                   <div className="min-w-0">
-                    <span className="text-muted-foreground">Guests: </span>
+                    <span className="text-muted-foreground">
+                      <T t={t} k="host.bookings.guests_label" source="Guests:" />{" "}
+                    </span>
                     <span>{booking.guestCount}</span>
                   </div>
                   <div className="min-w-0">
-                    <span className="text-muted-foreground">Total: </span>
+                    <span className="text-muted-foreground">
+                      <T t={t} k="host.bookings.total_label" source="Total:" />{" "}
+                    </span>
                     <span className="font-medium">{formatPrice(Number(booking.totalPrice))}</span>
                   </div>
                 </div>
                 {booking.guestNote && (
-                  <p className="text-sm bg-muted p-2 rounded">&ldquo;{booking.guestNote}&rdquo;</p>
+                  <p className="text-sm bg-muted p-2 rounded">
+                    “{booking.guestNote}”
+                  </p>
                 )}
                 {booking.status === "PENDING" && (
                   <HostBookingActions bookingId={booking.id} />
@@ -90,20 +114,31 @@ export default async function HostBookingsPage() {
                 )}
                 <div className="flex flex-wrap gap-2">
                   <Button asChild>
-                    <Link href={`/host/bookings/${booking.id}`}>View details</Link>
+                    <Link href={`/host/bookings/${booking.id}`}>
+                      <T t={t} k="host.bookings.view_details" source="View details" />
+                    </Link>
                   </Button>
-                  <StartConversationButton bookingId={booking.id} label="Message guest" />
+                  <StartConversationButton
+                    bookingId={booking.id}
+                    label={
+                      t.resolve("host.bookings.message_guest", "Message guest").text
+                    }
+                  />
                   {booking.status === "COMPLETED" ? (
                     <Button asChild>
                       <Link href={`/account/bookings/${booking.id}/after-stay`}>
                         <Star className="mr-1 h-4 w-4" />
-                        Rate guest
+                        <T t={t} k="host.bookings.rate_guest" source="Rate guest" />
                       </Link>
                     </Button>
                   ) : null}
                   <Button variant="outline" asChild>
                     <Link href={`/account/support/new?type=CLAIM&targetType=BOOKING&bookingId=${booking.id}`}>
-                      Report a problem
+                      <T
+                        t={t}
+                        k="host.bookings.report_problem"
+                        source="Report a problem"
+                      />
                     </Link>
                   </Button>
                 </div>

@@ -8,6 +8,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { HostHeaderPortal } from "@/components/host/host-header-portal";
+import { interpolate, useI18n } from "@/lib/i18n/client";
 
 /**
  * On phones the calendar owns the whole screen: the bottom nav already says which
@@ -21,12 +22,13 @@ export function CalendarHeaderActions({
   heading: string;
   help: string[];
 }) {
+  const { resolve } = useI18n();
   return (
     <HostHeaderPortal>
       <div className="flex items-center gap-1 md:hidden">
         <Link
           href="/host/listings"
-          aria-label="Back to listings"
+          aria-label={resolve("host.calendar.back_to_listings", "Back to listings").text}
           className="grid size-9 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <ArrowLeft className="size-5" />
@@ -35,7 +37,12 @@ export function CalendarHeaderActions({
           <PopoverTrigger asChild>
             <button
               type="button"
-              aria-label={`How ${heading.toLowerCase()} works`}
+              aria-label={
+                interpolate(
+                  resolve("host.calendar.help_label", "How {section} works"),
+                  { section: heading.toLowerCase() },
+                ).text
+              }
               className="grid size-9 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               <CircleHelp className="size-5" />

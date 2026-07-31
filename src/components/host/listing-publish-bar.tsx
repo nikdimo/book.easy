@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { submitForReview } from "@/lib/actions/listing.actions";
 import { listingStopHref } from "@/lib/host/listing-workspace";
+import { Tx, useI18n } from "@/lib/i18n/client";
 
 /**
  * The Preview/Publish pair from the edit screen, for the screens that are not the
@@ -23,6 +24,7 @@ export function ListingPublishBar({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const { resolve } = useI18n();
 
   function publish() {
     startTransition(async () => {
@@ -31,7 +33,7 @@ export function ListingPublishBar({
         toast.error(result.error);
         return;
       }
-      toast.success("Listing published");
+      toast.success(resolve("host.publish_bar.success", "Listing published").text);
       router.refresh();
     });
   }
@@ -42,7 +44,7 @@ export function ListingPublishBar({
         <Button variant="outline" size="lg" className="flex-1" asChild>
           <Link href={listingStopHref(listingId, "preview")}>
             <Eye className="h-4 w-4" />
-            Preview
+            <Tx k="host.workspace.preview" source="Preview" />
           </Link>
         </Button>
         <Button
@@ -52,7 +54,11 @@ export function ListingPublishBar({
           disabled={pending || published}
           onClick={publish}
         >
-          {published ? "Published" : pending ? "Publishing…" : "Publish"}
+          {published
+            ? resolve("host.publish_bar.published", "Published").text
+            : pending
+              ? resolve("host.publish_bar.pending", "Publishing…").text
+              : resolve("host.publish_bar.publish", "Publish").text}
         </Button>
       </div>
     </div>

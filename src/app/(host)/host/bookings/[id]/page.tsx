@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { formatDate, formatPrice } from "@/lib/utils/format";
+import { getT, T, TWithValues } from "@/lib/i18n/t";
 
 export const metadata = { title: "Booking Request Details" };
 
@@ -26,6 +27,7 @@ export default async function HostBookingDetailPage({
   const booking = await getHostBookingWithGuest(id, session.user.id);
   if (!booking) notFound();
 
+  const t = await getT();
   const priceBreakdown = booking.priceBreakdown as {
     accommodationSubtotal?: number;
   } | null;
@@ -38,7 +40,7 @@ export default async function HostBookingDetailPage({
       <Button variant="ghost" size="sm" asChild className="mb-4">
         <Link href="/host/bookings">
           <ArrowLeft className="mr-1 h-4 w-4" />
-          Back to requests
+          <T t={t} k="host.booking_detail.back" source="Back to requests" />
         </Link>
       </Button>
 
@@ -81,11 +83,15 @@ export default async function HostBookingDetailPage({
         <CardContent className="space-y-6">
           <section>
             <p className="text-sm md:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Guest
+              <T t={t} k="host.booking_detail.guest" source="Guest" />
             </p>
             <p className="mt-1 text-lg font-semibold">{booking.guest.name}</p>
             <p className="text-sm text-muted-foreground">
-              Keep communication in Linger Homes so the conversation stays protected.
+              <T
+                t={t}
+                k="host.booking_detail.keep_communication"
+                source="Keep communication in Linger Homes so the conversation stays protected."
+              />
             </p>
           </section>
 
@@ -93,28 +99,36 @@ export default async function HostBookingDetailPage({
 
           <div className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
             <div>
-              <p className="text-muted-foreground">Check-in</p>
+              <p className="text-muted-foreground">
+                <T t={t} k="host.booking_detail.check_in" source="Check-in" />
+              </p>
               <p className="mt-1 flex items-center gap-1 font-medium">
                 <Calendar className="h-3.5 w-3.5" />
                 {formatDate(booking.checkIn)}
               </p>
             </div>
             <div>
-              <p className="text-muted-foreground">Check-out</p>
+              <p className="text-muted-foreground">
+                <T t={t} k="host.booking_detail.check_out" source="Check-out" />
+              </p>
               <p className="mt-1 flex items-center gap-1 font-medium">
                 <Calendar className="h-3.5 w-3.5" />
                 {formatDate(booking.checkOut)}
               </p>
             </div>
             <div>
-              <p className="text-muted-foreground">Guests</p>
+              <p className="text-muted-foreground">
+                <T t={t} k="host.booking_detail.guests" source="Guests" />
+              </p>
               <p className="mt-1 flex items-center gap-1 font-medium">
                 <Users className="h-3.5 w-3.5" />
                 {booking.guestCount}
               </p>
             </div>
             <div>
-              <p className="text-muted-foreground">Nights</p>
+              <p className="text-muted-foreground">
+                <T t={t} k="host.booking_detail.nights" source="Nights" />
+              </p>
               <p className="mt-1 font-medium">{booking.numberOfNights}</p>
             </div>
           </div>
@@ -124,7 +138,7 @@ export default async function HostBookingDetailPage({
               <Separator />
               <section className="rounded-xl bg-muted p-4">
                 <p className="text-sm md:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Guest message
+                  <T t={t} k="host.booking_detail.guest_message" source="Guest message" />
                 </p>
                 <p className="mt-2 text-sm leading-6">“{booking.guestNote}”</p>
               </section>
@@ -135,18 +149,29 @@ export default async function HostBookingDetailPage({
 
           <section className="space-y-2 text-sm">
             <div className="flex justify-between gap-4">
-              <span>Accommodation · {booking.numberOfNights} nights</span>
+              <span>
+                <TWithValues
+                  t={t}
+                  k="host.booking_detail.accommodation"
+                  source="Accommodation · {nights} nights"
+                  values={{ nights: booking.numberOfNights }}
+                />
+              </span>
               <span>{formatPrice(accommodationSubtotal, booking.currency)}</span>
             </div>
             {Number(booking.cleaningFee) > 0 ? (
               <div className="flex justify-between gap-4">
-                <span>Cleaning fee</span>
+                <span>
+                  <T t={t} k="host.booking_detail.cleaning_fee" source="Cleaning fee" />
+                </span>
                 <span>{formatPrice(Number(booking.cleaningFee), booking.currency)}</span>
               </div>
             ) : null}
             <Separator />
             <div className="flex justify-between gap-4 text-base font-semibold">
-              <span>Booking total</span>
+              <span>
+                <T t={t} k="host.booking_detail.total" source="Booking total" />
+              </span>
               <span>{formatPrice(Number(booking.totalPrice), booking.currency)}</span>
             </div>
           </section>
@@ -161,12 +186,15 @@ export default async function HostBookingDetailPage({
           ) : null}
 
           <div className="flex flex-wrap gap-2">
-            <StartConversationButton bookingId={booking.id} label="Message guest" />
+            <StartConversationButton
+              bookingId={booking.id}
+              label={t.resolve("host.bookings.message_guest", "Message guest").text}
+            />
             {booking.status === "COMPLETED" ? (
               <Button asChild>
                 <Link href={`/account/bookings/${booking.id}/after-stay`}>
                   <Star className="mr-1 h-4 w-4" />
-                  Rate guest
+                  <T t={t} k="host.bookings.rate_guest" source="Rate guest" />
                 </Link>
               </Button>
             ) : null}
@@ -174,7 +202,7 @@ export default async function HostBookingDetailPage({
               <Link
                 href={`/account/support/new?type=CLAIM&targetType=BOOKING&bookingId=${booking.id}`}
               >
-                Report a problem
+                <T t={t} k="host.bookings.report_problem" source="Report a problem" />
               </Link>
             </Button>
           </div>

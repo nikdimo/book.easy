@@ -36,6 +36,7 @@ import { SITE_DOMAIN } from "@/lib/branding";
 import { BrandLogo } from "@/components/shared/brand-logo";
 import { GoogleTranslateWidget } from "@/components/shared/google-translate-widget";
 import { HOST_HEADER_ACTIONS_ID } from "@/components/host/host-header-portal";
+import { Tx, useI18n } from "@/lib/i18n/client";
 import type { getEnabledLanguages } from "@/lib/services/language.service";
 import {
   CountBadge,
@@ -143,7 +144,7 @@ function SidebarContent({
 
       <div className="mt-6 pt-6 border-t border-border space-y-1">
         <p className="px-3 text-sm md:text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-          Guest
+          <Tx k="host.sidebar.guest" source="Guest" />
         </p>
         <Link
           href="/properties"
@@ -151,7 +152,7 @@ function SidebarContent({
           className="flex items-center gap-2 px-3 py-2 text-sm rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
           <Search className="h-4 w-4 shrink-0" />
-          Stays
+          <Tx k="host.sidebar.stays" source="Stays" />
         </Link>
         <Link
           href="/"
@@ -159,7 +160,7 @@ function SidebarContent({
           className="flex items-center gap-2 px-3 py-2 text-sm rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
           <House className="h-4 w-4 shrink-0" />
-          Home
+          <Tx k="host.sidebar.home" source="Home" />
         </Link>
       </div>
 
@@ -167,7 +168,7 @@ function SidebarContent({
         {languages && (
           <div className="flex items-center justify-between rounded-lg px-1 py-1">
             <span className="px-2 text-sm md:text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Language
+              <Tx k="host.sidebar.language" source="Language" />
             </span>
             <GoogleTranslateWidget languages={languages} />
           </div>
@@ -196,13 +197,13 @@ function SidebarContent({
               <DropdownMenuItem asChild>
                 <Link href="/account/bookings" onClick={onNavigate}>
                   <CalendarDays className="mr-2 h-4 w-4" />
-                  Trips
+                  <Tx k="host.sidebar.trips" source="Trips" />
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/account/profile" onClick={onNavigate}>
                   <User className="mr-2 h-4 w-4" />
-                  Account
+                  <Tx k="host.sidebar.account" source="Account" />
                 </Link>
               </DropdownMenuItem>
               {user.role === "ADMIN" && (
@@ -211,7 +212,7 @@ function SidebarContent({
                   <DropdownMenuItem asChild>
                     <Link href="/admin" onClick={onNavigate}>
                       <ShieldCheck className="mr-2 h-4 w-4" />
-                      Admin
+                      <Tx k="host.sidebar.admin" source="Admin" />
                     </Link>
                   </DropdownMenuItem>
                 </>
@@ -225,7 +226,7 @@ function SidebarContent({
                 }}
               >
                 <LogOut className="mr-2 h-4 w-4" />
-                Log out
+                <Tx k="host.sidebar.log_out" source="Log out" />
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -233,7 +234,7 @@ function SidebarContent({
           <div className="flex flex-col gap-2">
             <Button size="sm" asChild>
               <Link href="/login" onClick={onNavigate}>
-                Log in
+                <Tx k="host.sidebar.log_in" source="Log in" />
               </Link>
             </Button>
           </div>
@@ -248,6 +249,7 @@ export function HostSidebar({
 }: {
   languages?: Awaited<ReturnType<typeof getEnabledLanguages>>;
 }) {
+  const { resolve } = useI18n();
   const [open, setOpen] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(232);
   const dragRef = useRef<{ startX: number; startWidth: number } | null>(null);
@@ -347,7 +349,11 @@ export function HostSidebar({
         <div className="flex items-center gap-3 min-w-0">
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" size="icon" aria-label="Open menu">
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label={resolve("host.sidebar.open_menu", "Open menu").text}
+              >
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
@@ -356,7 +362,9 @@ export function HostSidebar({
               className="w-72 p-0 flex flex-col overflow-hidden"
             >
               <SheetHeader className="sr-only">
-                <SheetTitle>Hosting menu</SheetTitle>
+                <SheetTitle>
+                  <Tx k="host.sidebar.menu_title" source="Hosting menu" />
+                </SheetTitle>
               </SheetHeader>
               <div className="overflow-y-auto flex-1 min-h-0 p-4">
                 <SidebarContent onNavigate={() => setOpen(false)} />
@@ -383,7 +391,9 @@ export function HostSidebar({
         </aside>
         <div
           role="separator"
-          aria-label="Resize profile navigation"
+          aria-label={
+            resolve("host.sidebar.resize_label", "Resize profile navigation").text
+          }
           aria-orientation="vertical"
           aria-valuemin={208}
           aria-valuemax={320}

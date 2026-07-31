@@ -21,7 +21,6 @@ import { AmenityList } from "@/components/public/amenity-list";
 import { BookingWidget } from "@/components/public/booking-widget";
 import { ListingActions } from "@/components/public/listing-actions";
 import { ListingViewTracker } from "@/components/public/listing-view-tracker";
-import { PropertyStreetView } from "@/components/public/property-street-view";
 import { getListingBySlug } from "@/lib/services/property.service";
 import { getBlockedDateRangesForListing } from "@/lib/services/availability.service";
 import { getFutureDatePriceRowsForListing } from "@/lib/services/pricing.service";
@@ -196,19 +195,10 @@ export default async function ListingDetailPage({
               <MapPin className="h-4 w-4 shrink-0" />
               {locationLine}
             </span>
-            {listing.property.latitude != null &&
-              listing.property.longitude != null &&
-              listing.property.streetViewPanoId &&
-              listing.property.streetViewHeading != null &&
-              listing.property.streetViewPitch != null && (
-                <PropertyStreetView
-                  latitude={listing.property.latitude}
-                  longitude={listing.property.longitude}
-                  panoId={listing.property.streetViewPanoId}
-                  heading={listing.property.streetViewHeading}
-                  pitch={listing.property.streetViewPitch}
-                />
-              )}
+            {/* Street View is deliberately not shown here. It reveals the exact
+               building, so it is held back until the host has confirmed a booking and
+               arrival is close — see canSeeExactLocation and the guest's booking
+               detail page. Public visitors get the area, not the front door. */}
             {typeLabel && (
               <>
                 <span className="text-muted-foreground hidden sm:inline">

@@ -1,13 +1,27 @@
 import type { Prisma } from "@prisma/client";
 import { z } from "zod";
-import { normalizeListingStep } from "@/lib/constants/listing-steps";
+import {
+  LISTING_STEPS,
+  listingStepId,
+  resumeListingStep,
+} from "@/lib/constants/listing-steps";
 import type { ListingDraftData } from "@/lib/types/listing-draft";
 
 const draftString = z.string().max(5000);
 
+/** Any id the wizard currently defines. Unknown ids are rejected rather than
+ *  silently stored, so a typo can't strand a draft on a step that doesn't exist. */
+const stepIdSchema = z.enum(
+  LISTING_STEPS.map((step) => step.id) as [string, ...string[]]
+);
+
 const mobileListingDraftPatchSchema = z
   .object({
-    currentStep: z.number().int().min(0).max(6).optional(),
+    currentStepId: stepIdSchema.optional(),
+    /** Legacy: clients that predate currentStepId send a bare index. It is only
+     *  read when no id is present — see the note in parseMobileListingDraftPatch
+     *  about why an old index cannot be translated reliably. */
+    currentStep: z.number().int().min(0).optional(),
     title: z.string().max(100).optional(),
     description: z.string().max(5000).optional(),
     propertyType: z.string().max(100).optional(),
@@ -31,12 +45,25 @@ export function parseMobileListingDraftPatch(input: unknown) {
   if (!parsed.success) {
     return { error: "Invalid listing draft data" } as const;
   }
+  const { currentStep, currentStepId, ...fields } = parsed.data;
+
+  // The id wins. A bare index from an older client is kept only as a fallback: it
+  // was written against that app's own step list, which no longer matches this one,
+  // and nothing in the payload says which list it meant. Clamping it lands the host
+  // on a plausible screen with all their answers intact, which is the best that
+  // ambiguous input allows. Current clients always send the id.
+  const position =
+    currentStep === undefined && currentStepId === undefined
+      ? undefined
+      : resumeListingStep(currentStepId, currentStep);
+
   return {
     data: {
-      ...parsed.data,
-      ...(parsed.data.currentStep === undefined
+      ...fields,
+      // Both are written so the web wizard resumes correctly whichever it reads.
+      ...(position === undefined
         ? {}
-        : { currentStep: normalizeListingStep(parsed.data.currentStep) }),
+        : { currentStep: position, currentStepId: listingStepId(position) }),
     },
   } as const;
 }

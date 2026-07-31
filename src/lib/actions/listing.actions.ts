@@ -12,7 +12,10 @@ import { revalidatePath } from "next/cache";
 import { firstZodMessage } from "@/lib/utils/zod-error";
 import { isShortMapsLink, parseCoordsFromMapsText } from "@/lib/utils/parse-maps-link";
 import type { ListingMediaItem } from "@/lib/types/listing-media";
-import { normalizeListingStep } from "@/lib/constants/listing-steps";
+import {
+  listingStepId,
+  normalizeListingStep,
+} from "@/lib/constants/listing-steps";
 
 /**
  * Silently persists a new listing's in-progress form state before it's complete enough
@@ -29,6 +32,7 @@ function draftDataFromForm(formData: FormData): Prisma.InputJsonValue {
 
   return {
     currentStep: normalizeListingStep(str("currentStep")),
+    currentStepId: listingStepId(normalizeListingStep(str("currentStep"))),
     title: str("title"),
     description: str("description"),
     propertyType: str("propertyType"),

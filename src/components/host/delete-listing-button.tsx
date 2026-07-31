@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { deleteListing } from "@/lib/actions/listing.actions";
 import { toast } from "sonner";
+import { Tx, interpolate, useI18n } from "@/lib/i18n/client";
 
 export function DeleteListingButton({
   listingId,
@@ -15,18 +16,31 @@ export function DeleteListingButton({
   title: string;
 }) {
   const [isPending, startTransition] = useTransition();
+  const { resolve } = useI18n();
 
   function handleDelete() {
-    if (!confirm(`Delete "${title}"?\n\nThis cannot be undone.`)) return;
+    const prompt = interpolate(
+      resolve(
+        "host.delete_listing.confirm",
+        'Delete "{title}"?\n\nThis cannot be undone.',
+      ),
+      { title },
+    ).text;
+    if (!confirm(prompt)) return;
 
     startTransition(async () => {
       const result = await deleteListing(listingId);
       if ("error" in result) {
         toast.error(result.error);
       } else if (result.outcome === "archived") {
-        toast.success("Listing archived (it has past bookings, so it's kept for your records)");
+        toast.success(
+          resolve(
+            "host.delete_listing.archived",
+            "Listing archived (it has past bookings, so it's kept for your records)",
+          ).text,
+        );
       } else {
-        toast.success("Listing deleted");
+        toast.success(resolve("host.delete_listing.deleted", "Listing deleted").text);
       }
     });
   }
@@ -48,7 +62,9 @@ export function DeleteListingButton({
           )}
         </Button>
       </TooltipTrigger>
-      <TooltipContent>Delete</TooltipContent>
+      <TooltipContent>
+        <Tx k="host.delete_listing.tooltip" source="Delete" />
+      </TooltipContent>
     </Tooltip>
   );
 }

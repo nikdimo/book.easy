@@ -4,7 +4,11 @@ import type { ListingMediaItem } from "@/lib/types/listing-media";
  * blur before it's complete enough to become a real Listing/Property row. Every field
  * is optional since the host may have only filled in a few so far. */
 export interface ListingDraftData {
+  /** Legacy: a step *index*. Reordering LISTING_STEPS changes what a stored index
+   *  means, which strands in-flight drafts on the wrong screen — currentStepId is the
+   *  one that's written now, and this is only read when that's missing. */
   currentStep?: number;
+  currentStepId?: string;
   title?: string;
   description?: string;
   propertyType?: string;

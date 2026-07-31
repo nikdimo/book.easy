@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { createSuggestion } from "@/lib/actions/suggestion.actions";
 import { toast } from "sonner";
 import { Lightbulb } from "lucide-react";
+import { Tx } from "@/lib/i18n/client";
 
 interface SuggestMissingOptionProps {
   kind: "PROPERTY_TYPE" | "AMENITY";
@@ -77,10 +78,10 @@ export function SuggestMissingOption({
         disabled={isPending || value.trim().length < 2}
         onClick={submit}
       >
-        Send
+        <Tx k="host.suggest.send" source="Send" />
       </Button>
       <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
-        Cancel
+        <Tx k="host.suggest.cancel" source="Cancel" />
       </Button>
     </div>
   );

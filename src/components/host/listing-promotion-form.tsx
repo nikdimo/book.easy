@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { Tx, interpolate, useI18n } from "@/lib/i18n/client";
 
 type PromotionChoice = "NONE" | "PERCENT_DISCOUNT" | "FREE_CLEANING";
 
@@ -26,6 +27,7 @@ export function ListingPromotionForm({
   } | null;
 }) {
   const action = saveListingPromotion.bind(null, listingId);
+  const { resolve } = useI18n();
   const [state, formAction, pending] = useActionState(action, {});
   const [type, setType] = useState<PromotionChoice>(
     initialPromotion?.type ?? "NONE"
@@ -49,23 +51,38 @@ export function ListingPromotionForm({
   }[] = [
     {
       value: "NONE",
-      title: "No promotion",
-      description: "Guests pay your normal rates and cleaning fee.",
+      title: resolve("host.promotion.none_title", "No promotion").text,
+      description: resolve(
+        "host.promotion.none_description",
+        "Guests pay your normal rates and cleaning fee.",
+      ).text,
       icon: X,
     },
     {
       value: "PERCENT_DISCOUNT",
-      title: "Percentage discount",
-      description: "Discount the accommodation price by 5% to 50%.",
+      title: resolve("host.promotion.percent_title", "Percentage discount").text,
+      description: resolve(
+        "host.promotion.percent_description",
+        "Discount the accommodation price by 5% to 50%.",
+      ).text,
       icon: Percent,
     },
     {
       value: "FREE_CLEANING",
-      title: "Free cleaning",
+      title: resolve("host.promotion.cleaning_title", "Free cleaning").text,
       description:
         cleaningFee > 0
-          ? `Guests save your €${cleaningFee.toFixed(2)} cleaning fee.`
-          : "Add a cleaning fee before selecting this offer.",
+          ? interpolate(
+              resolve(
+                "host.promotion.cleaning_description",
+                "Guests save your €{amount} cleaning fee.",
+              ),
+              { amount: cleaningFee.toFixed(2) },
+            ).text
+          : resolve(
+              "host.promotion.cleaning_needs_fee",
+              "Add a cleaning fee before selecting this offer.",
+            ).text,
       icon: Sparkles,
       disabled: cleaningFee <= 0,
     },
@@ -73,32 +90,46 @@ export function ListingPromotionForm({
 
   const offerText =
     type === "PERCENT_DISCOUNT"
-      ? `${percent || "0"}% off`
+      ? interpolate(resolve("host.promotion.summary_percent", "{percent}% off"), {
+          percent: percent || "0",
+        }).text
       : type === "FREE_CLEANING"
-        ? "Free cleaning"
-        : "No promotion";
+        ? resolve("host.promotion.cleaning_title", "Free cleaning").text
+        : resolve("host.promotion.none_title", "No promotion").text;
   const eligibilityText =
     type !== "NONE" && eligibility === "MINIMUM"
-      ? ` · ${minimumNights || "0"}+ nights`
+      ? interpolate(
+          resolve("host.promotion.summary_minimum", " · {nights}+ nights"),
+          { nights: minimumNights || "0" },
+        ).text
       : "";
   const recommendedOffers = [
     {
       percent: 15,
       nights: 5,
-      title: "Recommended",
-      description: "15% off stays of 5+ nights",
+      title: resolve("host.promotion.recommended", "Recommended").text,
+      description: resolve(
+        "host.promotion.offer_15",
+        "15% off stays of 5+ nights",
+      ).text,
     },
     {
       percent: 20,
       nights: 10,
-      title: "Long stay",
-      description: "20% off stays of 10+ nights",
+      title: resolve("host.promotion.long_stay", "Long stay").text,
+      description: resolve(
+        "host.promotion.offer_20",
+        "20% off stays of 10+ nights",
+      ).text,
     },
     {
       percent: 30,
       nights: 30,
-      title: "Monthly stay",
-      description: "30% off stays of 30+ nights",
+      title: resolve("host.promotion.monthly_stay", "Monthly stay").text,
+      description: resolve(
+        "host.promotion.offer_30",
+        "30% off stays of 30+ nights",
+      ).text,
     },
   ];
 
@@ -108,9 +139,14 @@ export function ListingPromotionForm({
       <input type="hidden" name="eligibility" value={eligibility} />
 
       <fieldset className="space-y-3">
-        <legend className="text-sm font-semibold">Ready-made offers</legend>
+        <legend className="text-sm font-semibold">
+          <Tx k="host.promotion.ready_made" source="Ready-made offers" />
+        </legend>
         <p className="text-sm text-muted-foreground">
-          Choose a proven offer with one click, then save when you are ready.
+          <Tx
+            k="host.promotion.ready_made_hint"
+            source="Choose a proven offer with one click, then save when you are ready."
+          />
         </p>
         <div className="grid gap-3 md:grid-cols-3">
           {recommendedOffers.map((offer) => {
@@ -149,7 +185,9 @@ export function ListingPromotionForm({
       </fieldset>
 
       <fieldset className="space-y-3">
-        <legend className="text-sm font-semibold">Choose an offer</legend>
+        <legend className="text-sm font-semibold">
+          <Tx k="host.promotion.choose" source="Choose an offer" />
+        </legend>
         <div className="grid gap-3 md:grid-cols-3">
           {options.map((option) => {
             const Icon = option.icon;
@@ -182,7 +220,9 @@ export function ListingPromotionForm({
 
       {type === "PERCENT_DISCOUNT" && (
         <div className="space-y-3">
-          <Label htmlFor="discountPercent">Discount percentage</Label>
+          <Label htmlFor="discountPercent">
+            <Tx k="host.promotion.discount_label" source="Discount percentage" />
+          </Label>
           <div className="flex flex-wrap gap-2">
             {[10, 15, 20, 30].map((value) => (
               <Button
@@ -208,7 +248,9 @@ export function ListingPromotionForm({
               value={percent}
               onChange={(event) => setPercent(event.target.value)}
             />
-            <span className="text-sm text-muted-foreground">% custom</span>
+            <span className="text-sm text-muted-foreground">
+              <Tx k="host.promotion.custom_percent" source="% custom" />
+            </span>
           </div>
         </div>
       )}
@@ -216,7 +258,10 @@ export function ListingPromotionForm({
       {type !== "NONE" && (
         <fieldset className="space-y-3">
           <legend className="text-sm font-semibold">
-            Which stays receive this offer?
+            <Tx
+              k="host.promotion.eligibility_question"
+              source="Which stays receive this offer?"
+            />
           </legend>
           <label className="flex items-center gap-3 rounded-lg border p-3">
             <input
@@ -225,9 +270,19 @@ export function ListingPromotionForm({
               onChange={() => setEligibility("ALL")}
             />
             <span>
-              <span className="block font-medium">All bookable stays</span>
+              <span className="block font-medium">
+                <Tx k="host.promotion.all_stays" source="All bookable stays" />
+              </span>
               <span className="block text-sm text-muted-foreground">
-                Your normal {listingMinimumNights}-night listing minimum still applies.
+                {
+                  interpolate(
+                    resolve(
+                      "host.promotion.listing_minimum_note",
+                      "Your normal {nights}-night listing minimum still applies.",
+                    ),
+                    { nights: listingMinimumNights },
+                  ).text
+                }
               </span>
             </span>
           </label>
@@ -240,7 +295,10 @@ export function ListingPromotionForm({
             />
             <span className="space-y-2">
               <span className="block font-medium">
-                Only stays of at least this many nights
+                <Tx
+                  k="host.promotion.minimum_option"
+                  source="Only stays of at least this many nights"
+                />
               </span>
               <Input
                 name="minimumNights"
@@ -254,7 +312,10 @@ export function ListingPromotionForm({
                 className="w-28"
               />
               <span className="block text-sm text-muted-foreground">
-                Shorter stays remain bookable at the normal price.
+                <Tx
+                  k="host.promotion.minimum_hint"
+                  source="Shorter stays remain bookable at the normal price."
+                />
               </span>
             </span>
           </label>
@@ -264,7 +325,7 @@ export function ListingPromotionForm({
       {type !== "NONE" && (
         <div className="rounded-xl bg-muted/50 p-4">
           <p className="text-sm md:text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Guests will see
+            <Tx k="host.promotion.preview_label" source="Guests will see" />
           </p>
           <p className="mt-1 font-semibold">
             {offerText}

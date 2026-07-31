@@ -13,6 +13,7 @@ import { formatDate, formatPrice, formatGuestCount } from "@/lib/utils/format";
 import { BOOKING_STATUSES } from "@/lib/constants";
 import { StartConversationButton } from "@/components/communication/start-conversation-button";
 import { BookingStatusHero } from "@/components/booking/booking-status-hero";
+import { BookingArrivalDetails } from "@/components/booking/booking-arrival-details";
 
 interface BookingDetailProps {
   params: Promise<{ id: string }>;
@@ -194,6 +195,11 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
           )}
         </CardContent>
       </Card>
+
+      <BookingArrivalDetails
+        booking={{ status: booking.status, checkIn: booking.checkIn }}
+        property={booking.listing.property}
+      />
     </div>
   );
 }

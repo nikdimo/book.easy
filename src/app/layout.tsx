@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { ConsentBanner } from "@/components/shared/consent-banner";
 import { TranslateDomGuard } from "@/components/shared/translate-dom-guard";
+import { GoogleTranslateController } from "@/components/shared/google-translate-controller";
 import "./globals.css";
 import {
   PRODUCT_NAME,
@@ -14,6 +15,7 @@ import {
 } from "@/lib/branding";
 import { getT, localeDirection } from "@/lib/i18n/t";
 import { I18nProvider } from "@/lib/i18n/client";
+import { getEnabledLanguages } from "@/lib/services/language.service";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -63,6 +65,7 @@ export default async function RootLayout({
   modal: React.ReactNode;
 }>) {
   const translator = await getT();
+  const languages = await getEnabledLanguages();
   return (
     <html
       lang={translator.locale}
@@ -71,13 +74,17 @@ export default async function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <TranslateDomGuard />
+        <GoogleTranslateController locale={translator.locale} />
         <I18nProvider locale={translator.locale} messages={translator.messages}>
           <SessionProvider refetchOnWindowFocus={false} refetchInterval={0}>
             <TooltipProvider>
               {children}
               {modal}
               <Toaster richColors position="top-right" />
-              <ConsentBanner />
+              <ConsentBanner
+                languages={languages}
+                currentLocale={translator.locale}
+              />
             </TooltipProvider>
           </SessionProvider>
         </I18nProvider>

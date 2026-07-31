@@ -4,7 +4,7 @@ import { useActionState, useCallback, useEffect, useMemo, useRef, useState, useT
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Bath, Bed, BedDouble, Building, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, CircleAlert, CircleDollarSign, Coffee, CookingPot, Eye, Flame, GripVertical, HeartPulse, Laptop, ListChecks, Loader2, MapPin, Microwave, Minus, Mountain, Pencil, Percent, Plus, Refrigerator, Shirt, Shield, ShieldCheck, Sparkles, Sun, Thermometer, Trees, Tv, Users, Waves, Wind, Wifi, Car } from "lucide-react";
+import { Bath, Bed, BedDouble, Building, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, CircleAlert, CircleDollarSign, Coffee, CookingPot, Eye, Flame, GripVertical, HeartPulse, Laptop, ListChecks, Loader2, MapPin, Microwave, Minus, Mountain, Pencil, Percent, Plus, Refrigerator, Rocket, Shirt, Shield, ShieldCheck, Sparkles, Sun, Thermometer, Trees, Tv, Users, Waves, Wind, Wifi, Car } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   saveListingDraft,
@@ -36,14 +36,17 @@ import {
 import { formatPrice } from "@/lib/utils/format";
 import { splitDescriptionPreviewTiers } from "@/lib/utils/description-preview";
 import { toast } from "sonner";
+import { Tx, interpolate, useI18n } from "@/lib/i18n/client";
 import {
   ListingImagesField,
   type ListingMediaUploadState,
 } from "@/components/host/listing-images-field";
 import {
-  ListingLocationField,
+  ListingLocationMapField,
   type ListingLocationValue,
 } from "@/components/host/listing-location-field";
+import { ListingAddressField } from "@/components/host/listing-address-field";
+import { ListingStreetViewField } from "@/components/host/listing-street-view-field";
 import { SuggestMissingOption } from "@/components/host/suggest-missing-option";
 import type { HostListingFormData } from "@/lib/serializers/host-listing-form";
 import type { ListingMediaItem } from "@/lib/types/listing-media";
@@ -52,8 +55,11 @@ import type { ListingDraftData } from "@/lib/types/listing-draft";
 import { PropertyTypeIcon } from "@/components/shared/property-type-icon";
 import { cn } from "@/lib/utils";
 import {
+  LISTING_STEP,
   LISTING_STEPS,
+  listingStepId,
   normalizeListingStep,
+  resumeListingStep,
 } from "@/lib/constants/listing-steps";
 
 interface ListingFormProps {
@@ -108,6 +114,11 @@ const FALLBACK_DESCRIPTION =
   "Describe the space, the neighborhood, and the details guests should know before booking.";
 
 const STEPS = LISTING_STEPS;
+const LOCATION_STEPS: number[] = [
+  LISTING_STEP.location,
+  LISTING_STEP.address,
+  LISTING_STEP.streetView,
+];
 
 /** Text fields a reverse-geocode result fills in — see setField/updateLocation for how
  *  these are protected once the host edits one directly. */
@@ -318,7 +329,33 @@ const FIELD_VALIDATORS: Partial<Record<keyof ListingFormValues, (value: string) 
 type ListingStepIssue = {
   field: string;
   message: string;
+  /** "publish" issues are listed and block Publish, but let the host move on to the
+   *  next step. Photos are the case this exists for: the step sits second now, so
+   *  hard-blocking Continue until three files finish uploading turns the first real
+   *  ask into a wall for anyone still deciding whether to list at all. */
+  blocking?: "step" | "publish";
 };
+
+/** Which step a publish-blocking field lives on, so the checklist can jump straight
+ *  there. Pricing is the fallback because that's where the remaining validated fields
+ *  (rate, cleaning fee, minimum stay) are. */
+function stepForField(field: string) {
+  if (field === "propertyType") return LISTING_STEP.propertyType;
+  if (["latitude", "longitude", "locationSource"].includes(field)) {
+    return LISTING_STEP.location;
+  }
+  if (
+    ["address", "city", "country", "postalCode", "locationConfirmed"].includes(field)
+  ) {
+    return LISTING_STEP.address;
+  }
+  if (["maxGuests", "bedrooms", "beds", "bathrooms"].includes(field)) {
+    return LISTING_STEP.details;
+  }
+  if (field === "media" || field === "mediaUpload") return LISTING_STEP.photos;
+  if (field === "title" || field === "description") return LISTING_STEP.description;
+  return LISTING_STEP.pricing;
+}
 
 function listingStepIssues(
   step: number,
@@ -327,11 +364,11 @@ function listingStepIssues(
   uploadActive: boolean
 ): ListingStepIssue[] {
   const fieldsByStep: Partial<Record<number, (keyof ListingFormValues)[]>> = {
-    0: ["propertyType"],
-    1: ["address", "city", "country"],
-    2: ["maxGuests", "bedrooms", "beds", "bathrooms"],
-    5: ["title", "description"],
-    6: ["baseNightlyRate", "cleaningFee", "minNights"],
+    [LISTING_STEP.propertyType]: ["propertyType"],
+    [LISTING_STEP.address]: ["address", "city", "country"],
+    [LISTING_STEP.details]: ["maxGuests", "bedrooms", "beds", "bathrooms"],
+    [LISTING_STEP.description]: ["title", "description"],
+    [LISTING_STEP.pricing]: ["baseNightlyRate", "cleaningFee", "minNights"],
   };
 
   const issues: ListingStepIssue[] = (fieldsByStep[step] ?? []).flatMap((field) => {
@@ -339,20 +376,30 @@ function listingStepIssues(
     return message ? [{ field, message }] : [];
   });
 
-  if (step === 1) {
-    const hasPin = Boolean(values.latitude) && Boolean(values.longitude);
-    if (!hasPin || values.locationConfirmed !== "true") {
-      issues.unshift({
-        field: "locationConfirmed",
-        message: hasPin
-          ? "Confirm the selected location to continue"
-          : "Choose and confirm a location to continue",
-      });
-    }
+  const hasPin = Boolean(values.latitude) && Boolean(values.longitude);
+
+  if (step === LISTING_STEP.location && !hasPin) {
+    issues.unshift({
+      field: "locationConfirmed",
+      message: "Place the pin on the map to continue",
+    });
   }
 
-  if (step === 4) {
+  // No locationConfirmed check here — leaving this step with a valid address is what
+  // sets that flag (see confirmAddressIfValid), so requiring it to leave would be a
+  // gate that can never open. The address fields above are the real requirement.
+  // Street View is deliberately absent too: it's optional and simply unavailable at
+  // plenty of addresses.
+  if (step === LISTING_STEP.address && !hasPin) {
+    issues.unshift({
+      field: "locationConfirmed",
+      message: "Go back and place the pin on the map",
+    });
+  }
+
+  if (step === LISTING_STEP.photos) {
     if (uploadActive) {
+      // Still a hard stop: leaving mid-upload loses the files.
       issues.push({
         field: "mediaUpload",
         message: "Wait for all photo and video uploads to finish",
@@ -361,7 +408,8 @@ function listingStepIssues(
       const remaining = 3 - photoCount;
       issues.push({
         field: "media",
-        message: `Add ${remaining} more ${remaining === 1 ? "photo" : "photos"} to continue`,
+        message: `Add ${remaining} more ${remaining === 1 ? "photo" : "photos"} before publishing`,
+        blocking: "publish",
       });
     }
   }
@@ -402,6 +450,7 @@ export function ListingForm({
   initialPane,
 }: ListingFormProps) {
   const isEditing = !!listing;
+  const { resolve } = useI18n();
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
@@ -443,7 +492,9 @@ export function ListingForm({
   const saveRequestRef = useRef(0);
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved");
-  const initialStep = isEditing ? 0 : normalizeListingStep(initialDraft?.currentStep);
+  const initialStep = isEditing
+    ? 0
+    : resumeListingStep(initialDraft?.currentStepId, initialDraft?.currentStep);
   const [currentStep, setCurrentStep] = useState(initialStep);
   const currentStepRef = useRef(initialStep);
   // Tapping Preview in the bottom bar from a calendar screen has to land on the
@@ -453,6 +504,9 @@ export function ListingForm({
   );
   const [editorWidthPercent, setEditorWidthPercent] = useState(48);
   const [stepsOpen, setStepsOpen] = useState(false);
+  /** The map step's reverse geocode is in flight; the Address step renders the
+   *  "filling in…" state so its fields don't just sit empty. */
+  const [geocodingAddress, setGeocodingAddress] = useState(false);
   const [publishChecklistOpen, setPublishChecklistOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submittedListingId, setSubmittedListingId] = useState<string | null>(null);
@@ -488,7 +542,9 @@ export function ListingForm({
     listingStepIssues(step, values, photoCount, mediaUploadState.active)
   );
   const currentStepIssues = issuesByStep[currentStep] ?? [];
-  const currentStepReady = currentStepIssues.length === 0;
+  const currentStepReady = !currentStepIssues.some(
+    (issue) => issue.blocking !== "publish"
+  );
   const listingReady = issuesByStep.every((issues) => issues.length === 0);
 
   const [state, formAction, isPending] = useActionState(
@@ -517,10 +573,11 @@ export function ListingForm({
     const request = ++saveRequestRef.current;
     setSaveStatus("saving");
     const fd = new FormData(formRef.current);
-    fd.set(
-      "currentStep",
-      String(normalizeListingStep(stepOverride ?? currentStepRef.current))
-    );
+    const step = normalizeListingStep(stepOverride ?? currentStepRef.current);
+    // Both: the id is what resume reads, the index keeps older readers (the mobile
+    // API, the "stopped at step N" line on My listings) working unchanged.
+    fd.set("currentStep", String(step));
+    fd.set("currentStepId", listingStepId(step));
 
     const save = saveQueueRef.current.then(async () => {
       try {
@@ -605,10 +662,10 @@ export function ListingForm({
     }
     setValues((current) => {
       const next = { ...current, [field]: value };
-      if (
-        current.locationSource === "AUTOCOMPLETE" &&
-        ["address", "city", "country", "postalCode"].includes(field)
-      ) {
+      // Typing over any part of the address un-confirms it: the host has to look at
+      // the edited version and confirm that, not ride on a confirmation they gave for
+      // different text.
+      if ((LOCATION_TEXT_FIELDS as readonly string[]).includes(field)) {
         next.locationConfirmed = "false";
       }
       return next;
@@ -680,35 +737,16 @@ export function ListingForm({
     autosaveDraft();
   }
 
-  /** Continue out of the Location step (index 1 in LISTING_STEPS) previously advanced
-   *  unconditionally — a host could skip it with no pin at all, only finding out at
-   *  final publish. Checks the same rules validateFieldOnBlur already enforces on
-   *  blur, plus that a location was actually confirmed, and surfaces them immediately
-   *  instead of silently letting the host move on. */
-  function validateLocationStepBeforeContinue(): boolean {
-    let ok = true;
-
-    const hasPin = Boolean(values.latitude) && Boolean(values.longitude);
-    if (!hasPin || values.locationConfirmed !== "true") {
-      setFieldErrors((current) => ({
-        ...current,
-        locationConfirmed: hasPin
-          ? "Confirm this location before continuing"
-          : "Choose a location before continuing",
-      }));
-      ok = false;
-    }
-
+  /** Sets locationConfirmed, which publishing is rejected server-side without. Silent
+   *  by design: the Continue button is already disabled while the address is
+   *  incomplete, and listingStepIssues shows why, so a toast here would only fire in
+   *  cases the host can already see. */
+  function confirmAddressIfValid() {
+    if (!values.latitude || !values.longitude) return;
     for (const field of ["address", "city", "country"] as const) {
-      const message = FIELD_VALIDATORS[field]?.(values[field]) ?? null;
-      if (message) {
-        setFieldErrors((current) => ({ ...current, [field]: message }));
-        ok = false;
-      }
+      if (FIELD_VALIDATORS[field]?.(values[field])) return;
     }
-
-    if (!ok) toast.error("Finish setting the location before continuing");
-    return ok;
+    updateLocation({ locationConfirmed: "true" });
   }
 
   function handleMediaItemsChange(
@@ -912,6 +950,16 @@ export function ListingForm({
 
   function goToStep(step: number) {
     const nextStep = normalizeListingStep(step);
+    // Leaving the Address step with everything valid *is* the confirmation — the host
+    // has looked at the prefilled address and moved on. Doing it here rather than on
+    // Continue alone also covers Back and jumps from the step list, so a host can't
+    // route around it and hit an unexplained server rejection at publish.
+    if (
+      currentStepRef.current === LISTING_STEP.address &&
+      nextStep !== LISTING_STEP.address
+    ) {
+      confirmAddressIfValid();
+    }
     currentStepRef.current = nextStep;
     setCurrentStep(nextStep);
     void autosaveDraft(nextStep);
@@ -979,30 +1027,45 @@ export function ListingForm({
               onClick={() => void leaveListingStudio()}
             >
               <ChevronLeft />
-              My listings
+              <Tx k="host.form.my_listings" source="My listings" />
             </Button>
-            <h1 className="hidden text-lg font-semibold sm:block">Create a listing</h1>
+            <h1 className="hidden text-lg font-semibold sm:block">
+              <Tx k="host.form.create_listing" source="Create a listing" />
+            </h1>
             <div className="flex items-center gap-3 text-sm">
               <span className={saveStatus === "error" ? "text-destructive" : "text-muted-foreground"} aria-live="polite">
-                {saveStatus === "saving" ? "Saving…" : saveStatus === "error" ? "Save failed" : "Draft saved"}
+                {saveStatus === "saving"
+                  ? resolve("host.form.saving", "Saving…").text
+                  : saveStatus === "error"
+                    ? resolve("host.form.save_failed", "Save failed").text
+                    : resolve("host.form.draft_saved", "Draft saved").text}
               </span>
-              {saveStatus === "error" && <Button type="button" variant="link" onClick={() => void autosaveDraft()}>Retry</Button>}
+              {saveStatus === "error" && <Button type="button" variant="link" onClick={() => void autosaveDraft()}>
+                  <Tx k="host.form.retry" source="Retry" />
+                </Button>}
               <Button
                 type="button"
                 disabled={isSubmittingNew || !listingReady}
                 title={
                   listingReady
                     ? undefined
-                    : "Complete all required listing steps before publishing"
+                    : resolve(
+                        "host.form.publish_blocked",
+                        "Complete all required listing steps before publishing",
+                      ).text
                 }
                 onClick={handleSubmitForReview}
               >
                 {mediaUploadState.active ? (
                   <>
                     <Loader2 className="animate-spin" />
-                    Uploading
+                    <Tx k="host.form.uploading" source="Uploading" />
                   </>
-                ) : isSubmittingNew ? "Publishing…" : "Publish"}
+                ) : isSubmittingNew ? (
+                  resolve("host.form.publishing", "Publishing…").text
+                ) : (
+                  resolve("host.form.publish", "Publish").text
+                )}
               </Button>
             </div>
           </div>
@@ -1041,7 +1104,9 @@ export function ListingForm({
                   desktop-only. That leaves the section chips as the one thing pinned
                   above the form. */}
               <div className="hidden min-w-0 md:block">
-                <h1 className="text-2xl font-bold">Edit Listing</h1>
+                <h1 className="text-2xl font-bold">
+                  <Tx k="host.form.edit_listing" source="Edit Listing" />
+                </h1>
                 {availabilityHref && (
                   <Button
                     className="mt-3 h-auto min-h-10 max-w-full justify-start whitespace-normal py-2 text-left shadow-sm"
@@ -1053,7 +1118,10 @@ export function ListingForm({
                     >
                       <CalendarDays className="mr-2 h-4 w-4 shrink-0" />
                       <span className="min-w-0 break-words">
-                        Manage availability, pricing &amp; promotions
+                        <Tx
+                          k="host.form.manage_link"
+                          source="Manage availability, pricing & promotions"
+                        />
                       </span>
                     </Link>
                   </Button>
@@ -1064,7 +1132,7 @@ export function ListingForm({
               <nav
                 ref={editSectionNavRef}
                 className="-mx-5 flex gap-1 overflow-x-auto px-5 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] md:mx-0 md:mt-4 md:flex-wrap md:px-0 [&::-webkit-scrollbar]:hidden"
-                aria-label="Listing sections"
+                aria-label={resolve("host.form.sections_label", "Listing sections").text}
               >
                 {EDIT_SECTIONS.map((section) => (
                   <button key={section.id} type="button" data-section-chip={section.id} aria-current={activeEditSection === section.id ? "location" : undefined} onClick={() => scrollToEditSection(section.id)} className={`shrink-0 rounded-full px-3 py-1.5 text-sm md:text-xs font-medium transition-colors ${activeEditSection === section.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>
@@ -1085,10 +1153,12 @@ export function ListingForm({
                   onClick={() => void leaveListingStudio()}
                 >
                   <ChevronLeft />
-                  My listings
+                  <Tx k="host.form.my_listings" source="My listings" />
                 </Button>
                 <span className="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden="true" />
-                <h1 className="shrink-0 text-base font-semibold">Create a listing</h1>
+                <h1 className="shrink-0 text-base font-semibold">
+                  <Tx k="host.form.create_listing" source="Create a listing" />
+                </h1>
                 <span
                   className={`ml-auto shrink-0 text-sm ${
                     saveStatus === "error"
@@ -1098,10 +1168,10 @@ export function ListingForm({
                   aria-live="polite"
                 >
                   {saveStatus === "saving"
-                    ? "Saving…"
+                    ? resolve("host.form.saving", "Saving…").text
                     : saveStatus === "error"
-                      ? "Save failed"
-                      : "Draft saved"}
+                      ? resolve("host.form.save_failed", "Save failed").text
+                      : resolve("host.form.draft_saved", "Draft saved").text}
                 </span>
                 {saveStatus === "error" && (
                   <Button
@@ -1111,7 +1181,7 @@ export function ListingForm({
                     className="shrink-0 px-1"
                     onClick={() => void autosaveDraft()}
                   >
-                    Retry
+                    <Tx k="host.form.retry" source="Retry" />
                   </Button>
                 )}
                 <Button
@@ -1122,16 +1192,23 @@ export function ListingForm({
                   title={
                     listingReady
                       ? undefined
-                      : "Complete all required listing steps before publishing"
+                      : resolve(
+                        "host.form.publish_blocked",
+                        "Complete all required listing steps before publishing",
+                      ).text
                   }
                   onClick={handleSubmitForReview}
                 >
                   {mediaUploadState.active ? (
                     <>
                       <Loader2 className="animate-spin" />
-                      Uploading
+                      <Tx k="host.form.uploading" source="Uploading" />
                     </>
-                  ) : isSubmittingNew ? "Publishing…" : "Publish"}
+                  ) : isSubmittingNew ? (
+                    resolve("host.form.publishing", "Publishing…").text
+                  ) : (
+                    resolve("host.form.publish", "Publish").text
+                  )}
                 </Button>
               </div>
               <div className="mt-4 flex min-h-[30px] min-w-0 items-center gap-3">
@@ -1165,18 +1242,41 @@ export function ListingForm({
             <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{state.error}</div>
           )}
           {isEditing && moderationNote && (
-            <div className="rounded-lg bg-destructive/10 p-4 text-destructive"><p className="text-sm font-medium">Moderation feedback:</p><p className="mt-1 text-sm">{moderationNote}</p></div>
+            <div className="rounded-lg bg-destructive/10 p-4 text-destructive"><p className="text-sm font-medium">
+                <Tx k="host.form.moderation_feedback" source="Moderation feedback:" />
+              </p><p className="mt-1 text-sm">{moderationNote}</p></div>
           )}
-          <div className={isEditing || currentStep !== 1 ? undefined : "hidden"}>
+          {/* The three location steps render their own heading (the map one is
+             full-bleed and needs the copy above it), so suppress the shared one. */}
+          <div className={isEditing || !LOCATION_STEPS.includes(currentStep) ? undefined : "hidden"}>
             {!isEditing && <p className="notranslate text-sm md:text-xs font-semibold uppercase tracking-wide text-primary md:hidden" translate="no">{`Step ${currentStep + 1} of ${STEPS.length}`}</p>}
-            <h2 className="mt-1 text-2xl font-semibold">{isEditing ? "Listing details" : STEPS[currentStep].title}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{isEditing ? "Build the listing exactly as guests will understand it." : STEPS[currentStep].description}</p>
+            <h2 className="mt-1 text-2xl font-semibold">
+              {isEditing
+                ? resolve("host.form.listing_details", "Listing details").text
+                : STEPS[currentStep].title}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {isEditing
+                ? resolve(
+                    "host.form.listing_details_hint",
+                    "Build the listing exactly as guests will understand it.",
+                  ).text
+                : STEPS[currentStep].description}
+            </p>
           </div>
 
-          <div id={isEditing ? "edit-section-basics" : undefined} className={isEditing || currentStep === 0 || currentStep === 5 ? "scroll-mt-32 block" : "hidden"}>
-          <FieldSection title={!isEditing && currentStep === 0 ? "Choose a property type" : "Guest-facing basics"}>
-            <div className={isEditing || currentStep === 5 ? "space-y-2" : "hidden"}>
-              <Label htmlFor="title">Title</Label>
+          <div id={isEditing ? "edit-section-basics" : undefined} className={isEditing || currentStep === LISTING_STEP.propertyType || currentStep === LISTING_STEP.description ? "scroll-mt-32 block" : "hidden"}>
+          <FieldSection
+            title={
+              !isEditing && currentStep === LISTING_STEP.propertyType
+                ? resolve("host.form.choose_property_type", "Choose a property type").text
+                : resolve("host.form.guest_basics", "Guest-facing basics").text
+            }
+          >
+            <div className={isEditing || currentStep === LISTING_STEP.description ? "space-y-2" : "hidden"}>
+              <Label htmlFor="title">
+                <Tx k="host.form.title_label" source="Title" />
+              </Label>
               <Input
                 id="title"
                 name="title"
@@ -1184,12 +1284,19 @@ export function ListingForm({
                 onChange={(event) => setField("title", event.target.value)}
                 onBlur={() => handleBlur("title")}
                 required
-                placeholder="Modern apartment near the center"
+                placeholder={
+                  resolve(
+                    "host.form.title_placeholder",
+                    "Modern apartment near the center",
+                  ).text
+                }
               />
               <FieldError message={fieldErrors.title} />
             </div>
-            <div id={isEditing ? "edit-section-description" : undefined} className={isEditing || currentStep === 5 ? "scroll-mt-32 space-y-2" : "hidden"}>
-              <Label htmlFor="description">Description</Label>
+            <div id={isEditing ? "edit-section-description" : undefined} className={isEditing || currentStep === LISTING_STEP.description ? "scroll-mt-32 space-y-2" : "hidden"}>
+              <Label htmlFor="description">
+                <Tx k="host.form.description_label" source="Description" />
+              </Label>
               <Textarea
                 id="description"
                 name="description"
@@ -1198,7 +1305,12 @@ export function ListingForm({
                 onBlur={() => handleBlur("description")}
                 required
                 rows={7}
-                placeholder="Describe the stay, layout, neighborhood, and what makes it easy to book."
+                placeholder={
+                  resolve(
+                    "host.form.description_placeholder",
+                    "Describe the stay, layout, neighborhood, and what makes it easy to book.",
+                  ).text
+                }
               />
               <div className="flex items-center justify-between">
                 <FieldError message={fieldErrors.description} />
@@ -1209,12 +1321,19 @@ export function ListingForm({
                       : "text-sm md:text-xs text-muted-foreground"
                   }
                 >
-                  {values.description.trim().length}/20 min
+                  {
+                    interpolate(
+                      resolve("host.form.description_counter", "{count}/20 min"),
+                      { count: values.description.trim().length },
+                    ).text
+                  }
                 </span>
               </div>
             </div>
-            <div className={isEditing || currentStep === 0 ? "space-y-3" : "hidden"}>
-              <Label id="property-type-label">Property type</Label>
+            <div className={isEditing || currentStep === LISTING_STEP.propertyType ? "space-y-3" : "hidden"}>
+              <Label id="property-type-label">
+                <Tx k="host.form.property_type_label" source="Property type" />
+              </Label>
               <input
                 id="propertyType"
                 type="hidden"
@@ -1295,42 +1414,31 @@ export function ListingForm({
               <SuggestMissingOption
                 kind="PROPERTY_TYPE"
                 listingId={listing?.id}
-                label="Don't see your property type? Suggest it"
-                placeholder="e.g. Houseboat"
+                label={
+                  resolve(
+                    "host.form.suggest_property_type",
+                    "Don't see your property type? Suggest it",
+                  ).text
+                }
+                placeholder={
+                  resolve("host.form.suggest_type_placeholder", "e.g. Houseboat").text
+                }
               />
             </div>
           </FieldSection>
           </div>
 
-          <div id={isEditing ? "edit-section-location" : undefined} className={isEditing || currentStep === 1 ? "scroll-mt-32 block" : "hidden"}>
-          <FieldSection>
-            <ListingLocationField
+          {/* Location is three wizard steps — pin, then address, then Street View —
+             but a single stacked section when editing an existing listing, where
+             everything is on one page anyway. */}
+          <div id={isEditing ? "edit-section-location" : undefined} className={isEditing || currentStep === LISTING_STEP.location ? "scroll-mt-32 block" : "hidden"}>
+          <FieldSection title={isEditing ? "Location" : undefined}>
+            <ListingLocationMapField
               value={values}
               onChange={updateLocation}
-              onManualAddressChange={(field, nextValue) =>
-                setField(field, nextValue)
-              }
-              addressErrors={{
-                address: fieldErrors.address,
-                city: fieldErrors.city,
-                country: fieldErrors.country,
-              }}
-              active={isEditing || currentStep === 1}
-            />
-            <input
-              type="hidden"
-              name="streetViewHeading"
-              value={values.streetViewHeading}
-            />
-            <input
-              type="hidden"
-              name="streetViewPitch"
-              value={values.streetViewPitch}
-            />
-            <input
-              type="hidden"
-              name="streetViewPanoId"
-              value={values.streetViewPanoId}
+              onResolvingChange={setGeocodingAddress}
+              active={isEditing || currentStep === LISTING_STEP.location}
+              heading={!isEditing}
             />
             <FieldError
               message={
@@ -1339,18 +1447,39 @@ export function ListingForm({
                 fieldErrors.longitude
               }
             />
-            {/* The location editor is portaled and unmounts when closed, so these
-               hidden inputs remain the source of truth for autosave and publishing. */}
-            <input type="hidden" name="address" value={values.address} />
-            <input type="hidden" name="city" value={values.city} />
-            <input type="hidden" name="area" value={values.area} />
-            <input type="hidden" name="postalCode" value={values.postalCode} />
-            <input type="hidden" name="country" value={values.country} />
           </FieldSection>
           </div>
 
-          <div id={isEditing ? "edit-section-photos" : undefined} className={isEditing || currentStep === 4 ? "scroll-mt-32 block" : "hidden"}>
-          <FieldSection title="Photos and videos">
+          <div className={isEditing || currentStep === LISTING_STEP.address ? "scroll-mt-32 block" : "hidden"}>
+          <FieldSection title={isEditing ? "Address" : undefined}>
+            <ListingAddressField
+              value={values}
+              onChange={(field, nextValue) => setField(field, nextValue)}
+              resolving={geocodingAddress}
+              errors={{
+                address: fieldErrors.address,
+                city: fieldErrors.city,
+                country: fieldErrors.country,
+              }}
+              heading={!isEditing}
+            />
+          </FieldSection>
+          </div>
+
+          <div className={isEditing || currentStep === LISTING_STEP.streetView ? "scroll-mt-32 block" : "hidden"}>
+          <FieldSection title={isEditing ? "Street View" : undefined}>
+            <ListingStreetViewField
+              value={values}
+              onChange={updateLocation}
+              heading={!isEditing}
+            />
+          </FieldSection>
+          </div>
+
+          <div id={isEditing ? "edit-section-photos" : undefined} className={isEditing || currentStep === LISTING_STEP.photos ? "scroll-mt-32 block" : "hidden"}>
+          <FieldSection
+            title={resolve("host.form.photos_section", "Photos and videos").text}
+          >
             <ListingImagesField
               items={mediaItems}
               onItemsChange={handleMediaItemsChange}
@@ -1365,13 +1494,23 @@ export function ListingForm({
           </FieldSection>
           </div>
 
-          <div id={isEditing ? "edit-section-details" : undefined} className={isEditing || currentStep === 2 ? "scroll-mt-32 block" : "hidden"}>
-          <FieldSection title="Capacity">
+          <div id={isEditing ? "edit-section-details" : undefined} className={isEditing || currentStep === LISTING_STEP.details ? "scroll-mt-32 block" : "hidden"}>
+          <FieldSection title={resolve("host.form.capacity_section", "Capacity").text}>
             <div className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
               <CapacityCounter
                 id="maxGuests"
-                label="Guests"
-                description="Maximum overnight guests"
+                label={
+                  resolve(
+                    "host.form.capacity.guests",
+                    "Guests",
+                  ).text
+                }
+                description={
+                  resolve(
+                    "host.form.capacity.guests_hint",
+                    "Maximum overnight guests",
+                  ).text
+                }
                 icon={Users}
                 value={values.maxGuests}
                 min={1}
@@ -1380,8 +1519,18 @@ export function ListingForm({
               />
               <CapacityCounter
                 id="bedrooms"
-                label="Bedrooms"
-                description="Private sleeping rooms"
+                label={
+                  resolve(
+                    "host.form.capacity.bedrooms",
+                    "Bedrooms",
+                  ).text
+                }
+                description={
+                  resolve(
+                    "host.form.capacity.bedrooms_hint",
+                    "Private sleeping rooms",
+                  ).text
+                }
                 icon={BedDouble}
                 value={values.bedrooms}
                 min={0}
@@ -1390,8 +1539,18 @@ export function ListingForm({
               />
               <CapacityCounter
                 id="beds"
-                label="Beds"
-                description="Total sleeping spaces"
+                label={
+                  resolve(
+                    "host.form.capacity.beds",
+                    "Beds",
+                  ).text
+                }
+                description={
+                  resolve(
+                    "host.form.capacity.beds_hint",
+                    "Total sleeping spaces",
+                  ).text
+                }
                 icon={Bed}
                 value={values.beds}
                 min={0}
@@ -1400,8 +1559,18 @@ export function ListingForm({
               />
               <CapacityCounter
                 id="bathrooms"
-                label="Bathrooms"
-                description="Full and half bathrooms"
+                label={
+                  resolve(
+                    "host.form.capacity.bathrooms",
+                    "Bathrooms",
+                  ).text
+                }
+                description={
+                  resolve(
+                    "host.form.capacity.bathrooms_hint",
+                    "Full and half bathrooms",
+                  ).text
+                }
                 icon={Bath}
                 value={values.bathrooms}
                 min={0}
@@ -1412,13 +1581,23 @@ export function ListingForm({
           </FieldSection>
           </div>
 
-          <div id={isEditing ? "edit-section-pricing" : undefined} className={isEditing || currentStep === 6 ? "scroll-mt-32 block" : "hidden"}>
-          <FieldSection title="Pricing">
+          <div id={isEditing ? "edit-section-pricing" : undefined} className={isEditing || currentStep === LISTING_STEP.pricing ? "scroll-mt-32 block" : "hidden"}>
+          <FieldSection title={resolve("host.workspace.pricing", "Pricing").text}>
             <div className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
               <PricingField
                 id="baseNightlyRate"
-                label="Nightly rate"
-                description="Your base price per night, before fees"
+                label={
+                  resolve(
+                    "host.form.pricing.nightly",
+                    "Nightly rate",
+                  ).text
+                }
+                description={
+                  resolve(
+                    "host.form.pricing.nightly_hint",
+                    "Your base price per night, before fees",
+                  ).text
+                }
                 icon={CircleDollarSign}
                 value={values.baseNightlyRate}
                 min={1}
@@ -1430,8 +1609,18 @@ export function ListingForm({
                 <FieldError message={fieldErrors.baseNightlyRate} />
               <PricingField
                 id="cleaningFee"
-                label="Cleaning fee"
-                description="One-time fee added to each reservation"
+                label={
+                  resolve(
+                    "host.form.pricing.cleaning",
+                    "Cleaning fee",
+                  ).text
+                }
+                description={
+                  resolve(
+                    "host.form.pricing.cleaning_hint",
+                    "One-time fee added to each reservation",
+                  ).text
+                }
                 icon={Sparkles}
                 value={values.cleaningFee}
                 min={0}
@@ -1442,8 +1631,18 @@ export function ListingForm({
               />
               <CapacityCounter
                 id="minNights"
-                label="Minimum nights"
-                description="Shortest stay guests can book"
+                label={
+                  resolve(
+                    "host.form.pricing.min_nights",
+                    "Minimum nights",
+                  ).text
+                }
+                description={
+                  resolve(
+                    "host.form.pricing.min_nights_hint",
+                    "Shortest stay guests can book",
+                  ).text
+                }
                 icon={CalendarDays}
                 value={values.minNights}
                 min={1}
@@ -1455,13 +1654,19 @@ export function ListingForm({
           </div>
 
           {!isEditing && (
-            <div className={currentStep === 7 ? "block" : "hidden"}>
-              <FieldSection title="Launch with a special offer">
+            <div className={currentStep === LISTING_STEP.specialOffer ? "block" : "hidden"}>
+              <FieldSection
+                title={
+                  resolve("host.form.offer_section", "Launch with a special offer").text
+                }
+              >
                 <div className="space-y-6">
                   <div>
                     <p className="text-sm text-muted-foreground">
-                      This is optional. Choose one ready-made offer or publish without
-                      a promotion.
+                      <Tx
+                        k="host.form.offer_hint"
+                        source="This is optional. Choose one ready-made offer or publish without a promotion."
+                      />
                     </p>
                     <div className="mt-4 grid gap-3 md:grid-cols-3">
                       {[
@@ -1533,9 +1738,14 @@ export function ListingForm({
                       )}
                     >
                       <Shield className="mb-3 size-5" aria-hidden="true" />
-                      <span className="block font-semibold">No promotion</span>
+                      <span className="block font-semibold">
+                        <Tx k="host.promotion.none_title" source="No promotion" />
+                      </span>
                       <span className="mt-1 block text-sm text-muted-foreground">
-                        Publish now and add an offer later.
+                        <Tx
+                          k="host.form.offer_none_hint"
+                          source="Publish now and add an offer later."
+                        />
                       </span>
                     </button>
                     <button
@@ -1560,7 +1770,9 @@ export function ListingForm({
                       )}
                     >
                       <Sparkles className="mb-3 size-5" aria-hidden="true" />
-                      <span className="block font-semibold">Free cleaning</span>
+                      <span className="block font-semibold">
+                        <Tx k="host.promotion.cleaning_title" source="Free cleaning" />
+                      </span>
                       <span className="mt-1 block text-sm text-muted-foreground">
                         {Number(values.cleaningFee) > 0
                           ? "Guests save the full cleaning fee."
@@ -1572,7 +1784,10 @@ export function ListingForm({
                   {values.promotionType === "PERCENT_DISCOUNT" && (
                     <div className="rounded-xl border p-4">
                       <Label className="text-sm font-semibold">
-                        Discount percentage
+                        <Tx
+                          k="host.promotion.discount_label"
+                          source="Discount percentage"
+                        />
                       </Label>
                       <div className="mt-3 flex flex-wrap gap-2">
                         {["10", "15", "20", "30"].map((percent) => (
@@ -1595,7 +1810,12 @@ export function ListingForm({
                       </div>
                       <div className="mt-4 grid max-w-md gap-4 sm:grid-cols-2">
                         <div className="space-y-2">
-                          <Label htmlFor="promotionPercent">Custom percentage</Label>
+                          <Label htmlFor="promotionPercent">
+                            <Tx
+                              k="host.form.custom_percentage"
+                              source="Custom percentage"
+                            />
+                          </Label>
                           <div className="flex items-center gap-2">
                             <Input
                               id="promotionPercent"
@@ -1614,7 +1834,10 @@ export function ListingForm({
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="promotionMinimumNights">
-                            Minimum nights
+                            <Tx
+                              k="host.calendar.minimum_nights"
+                              source="Minimum nights"
+                            />
                           </Label>
                           <Input
                             id="promotionMinimumNights"
@@ -1655,12 +1878,28 @@ export function ListingForm({
                       />
                     </>
                   )}
+
+                  {/* Last screen before Publish — the natural place to say that the
+                     tools hosts ask for next aren't missing, they're just gated on
+                     having a live listing to attach them to. */}
+                  <div className="rounded-xl border bg-muted/35 p-4">
+                    <p className="flex items-center gap-2 text-sm font-semibold">
+                      <Rocket className="size-4 shrink-0 text-primary" />
+                      <Tx k="host.form.after_publish" source="After you publish" />
+                    </p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      <Tx
+                        k="host.form.after_publish_body"
+                        source="Once this listing is live you can block dates on the calendar, set prices for specific dates or seasons, and add more promotions at any time. You'll find all of it under the listing in My listings."
+                      />
+                    </p>
+                  </div>
                 </div>
               </FieldSection>
             </div>
           )}
 
-          <div id={isEditing ? "edit-section-amenities" : undefined} className={isEditing || currentStep === 3 ? "scroll-mt-32 block" : "hidden"}>
+          <div id={isEditing ? "edit-section-amenities" : undefined} className={isEditing || currentStep === LISTING_STEP.amenities ? "scroll-mt-32 block" : "hidden"}>
           <FieldSection>
             <div className="space-y-7">
               {Object.entries(groupedAmenities).map(([category, items]) => (
@@ -1704,8 +1943,15 @@ export function ListingForm({
               <SuggestMissingOption
                 kind="AMENITY"
                 listingId={listing?.id}
-                label="Don't see an amenity? Suggest it"
-                placeholder="e.g. Rooftop terrace"
+                label={
+                  resolve(
+                    "host.form.suggest_amenity",
+                    "Don't see an amenity? Suggest it",
+                  ).text
+                }
+                placeholder={
+                  resolve("host.form.suggest_amenity_placeholder", "e.g. Rooftop terrace").text
+                }
               />
             </div>
           </FieldSection>
@@ -1719,7 +1965,7 @@ export function ListingForm({
                   href={listingStopHref(listing.id, "availability")}
                   onClick={confirmManagementNavigation}
                 >
-                  Next: Availability
+                  <Tx k="host.form.next_availability" source="Next: Availability" />
                   <ChevronRight className="h-4 w-4" />
                 </Link>
               </Button>
@@ -1736,7 +1982,10 @@ export function ListingForm({
                     onClick={confirmManagementNavigation}
                   >
                     <CalendarDays className="mr-2 h-4 w-4" />
-                    Manage availability, pricing &amp; promotions
+                    <Tx
+                      k="host.form.manage_link"
+                      source="Manage availability, pricing & promotions"
+                    />
                   </Link>
                 </Button>
               )}
@@ -1752,7 +2001,9 @@ export function ListingForm({
                   disabled={isPending}
                   className="w-full sm:w-auto"
                 >
-                  {isPending ? "Publishing changes…" : "Publish changes"}
+                  {isPending
+                    ? resolve("host.form.publishing_changes", "Publishing changes…").text
+                    : resolve("host.form.publish_changes", "Publish changes").text}
                 </Button>
               ) : (
                 <Tooltip>
@@ -1767,12 +2018,12 @@ export function ListingForm({
                         disabled
                         className="w-full sm:w-auto"
                       >
-                        Publish changes
+                        <Tx k="host.form.publish_changes" source="Publish changes" />
                       </Button>
                     </span>
                   </TooltipTrigger>
                   <TooltipContent side="top">
-                    No changes have been made.
+                    <Tx k="host.form.no_changes" source="No changes have been made." />
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -1785,15 +2036,15 @@ export function ListingForm({
                 <Button
                   type="button"
                   variant="outline"
-                  disabled={currentStep === 0}
+                  disabled={currentStep === LISTING_STEP.propertyType}
                   onClick={() => goToStep(currentStep - 1)}
                 >
-                  <ChevronLeft /> Back
+                  <ChevronLeft /> <Tx k="host.form.back" source="Back" />
                 </Button>
                 <StepRequirementStatus
                   issues={currentStepIssues}
                   uploadState={
-                    currentStep === 4 && mediaUploadState.active
+                    currentStep === LISTING_STEP.photos && mediaUploadState.active
                       ? mediaUploadState
                       : undefined
                   }
@@ -1801,17 +2052,18 @@ export function ListingForm({
                 {currentStep < STEPS.length - 1 ? (
                   <Button
                     type="button"
-                    disabled={!currentStepReady}
+                    // Hold Continue while the geocoder is still running, so the host
+                    // can't land on the Address step before it has been filled in.
+                    disabled={
+                      !currentStepReady ||
+                      (currentStep === LISTING_STEP.location && geocodingAddress)
+                    }
                     aria-describedby={
                       currentStepReady ? undefined : "listing-step-requirements"
                     }
-                    onClick={() => {
-                      // Location is step index 1 — see LISTING_STEPS.
-                      if (currentStep === 1 && !validateLocationStepBeforeContinue()) return;
-                      goToStep(currentStep + 1);
-                    }}
+                    onClick={() => goToStep(currentStep + 1)}
                   >
-                    Continue <ChevronRight />
+                    <Tx k="host.listings.continue" source="Continue" /> <ChevronRight />
                   </Button>
                 ) : (
                   <Button
@@ -1832,7 +2084,12 @@ export function ListingForm({
 
         <div
           role="separator"
-          aria-label="Resize listing editor and preview"
+          aria-label={
+                  resolve(
+                    "host.form.resize_label",
+                    "Resize listing editor and preview",
+                  ).text
+                }
           aria-orientation="vertical"
           aria-valuemin={36}
           aria-valuemax={64}
@@ -1884,7 +2141,7 @@ export function ListingForm({
           <header className="z-20 shrink-0 border-b bg-background px-5 pb-3 pt-5 shadow-sm md:px-6">
             <div className="flex min-h-9 items-center justify-between gap-3">
               <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                Guest booking preview
+                <Tx k="host.form.preview_heading" source="Guest booking preview" />
               </h2>
               <div className="flex shrink-0 items-center gap-2">
                 {editStatusLabel && (
@@ -1895,11 +2152,16 @@ export function ListingForm({
                   </Badge>
                 )}
                 <Badge variant="secondary" className="rounded-md">
-                  Live
+                  <Tx k="host.form.preview_live" source="Live" />
                 </Badge>
               </div>
             </div>
-            <nav className="mt-4 hidden flex-wrap gap-1 md:flex" aria-label="Preview sections">
+            <nav className="mt-4 hidden flex-wrap gap-1 md:flex" aria-label={
+                  resolve(
+                    "host.form.preview_sections_label",
+                    "Preview sections",
+                  ).text
+                }>
               {EDIT_SECTIONS.map((section) => (
                 <button
                   key={section.id}
@@ -1938,7 +2200,7 @@ export function ListingForm({
           </div>
           <footer className="hidden shrink-0 items-center gap-2 border-t bg-background px-5 py-3 text-sm md:text-xs text-muted-foreground shadow-[0_-2px_8px_rgb(0_0_0/0.04)] md:flex md:px-6">
             <span className="size-2 rounded-full bg-emerald-500" aria-hidden="true" />
-            Preview updates as you edit
+            <Tx k="host.form.preview_updates" source="Preview updates as you edit" />
           </footer>
         </aside>
       </div>
@@ -1988,12 +2250,12 @@ export function ListingForm({
                 {mobilePane === "preview" ? (
                   <>
                     <Pencil className="h-4 w-4" />
-                    Back to editor
+                    <Tx k="host.form.back_to_editor" source="Back to editor" />
                   </>
                 ) : (
                   <>
                     <Eye className="h-4 w-4" />
-                    Preview
+                    <Tx k="host.workspace.preview" source="Preview" />
                   </>
                 )}
               </Button>
@@ -2014,9 +2276,14 @@ export function ListingForm({
         <Dialog open={stepsOpen} onOpenChange={setStepsOpen}>
           <DialogContent variant="sheet" className="md:max-w-md">
             <DialogHeader>
-              <DialogTitle>Listing steps</DialogTitle>
+              <DialogTitle>
+                <Tx k="host.form.steps_title" source="Listing steps" />
+              </DialogTitle>
               <DialogDescription>
-                Jump to any part of your listing. Your draft is saved automatically.
+                <Tx
+                  k="host.form.steps_hint"
+                  source="Jump to any part of your listing. Your draft is saved automatically."
+                />
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-2">
@@ -2025,7 +2292,10 @@ export function ListingForm({
                   index > currentStep
                     ? issuesByStep.findIndex(
                         (issues, stepIndex) =>
-                          stepIndex < index && issues.length > 0
+                          stepIndex < index &&
+                          // Publish-only issues (too few photos) list themselves but
+                          // must not lock every later step behind them.
+                          issues.some((issue) => issue.blocking !== "publish")
                       )
                     : -1;
                 const disabled = blockingStep >= 0;
@@ -2068,8 +2338,18 @@ export function ListingForm({
       <Dialog open={publishChecklistOpen} onOpenChange={setPublishChecklistOpen}>
         <DialogContent variant="sheet">
           <DialogHeader>
-            <DialogTitle>Finish your listing before publishing</DialogTitle>
-            <DialogDescription>Select an item to go directly to that step.</DialogDescription>
+            <DialogTitle>
+              <Tx
+                k="host.form.checklist_title"
+                source="Finish your listing before publishing"
+              />
+            </DialogTitle>
+            <DialogDescription>
+              <Tx
+                k="host.form.checklist_hint"
+                source="Select an item to go directly to that step."
+              />
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             {Object.entries(fieldErrors).map(([field, message]) => (
@@ -2078,8 +2358,7 @@ export function ListingForm({
                 type="button"
                 className="flex w-full items-center justify-between rounded-lg border p-3 text-left text-sm transition-colors hover:bg-muted"
                 onClick={() => {
-                  const step = field === "propertyType" ? 0 : ["address", "city", "country", "postalCode", "latitude", "longitude", "locationSource", "locationConfirmed"].includes(field) ? 1 : ["maxGuests", "bedrooms", "beds", "bathrooms"].includes(field) ? 2 : field === "media" ? 4 : field === "title" || field === "description" ? 5 : 6;
-                  goToStep(step);
+                  goToStep(stepForField(field));
                   setPublishChecklistOpen(false);
                 }}
               >
@@ -2100,12 +2379,22 @@ export function ListingForm({
       >
         <DialogContent variant="sheet">
           <DialogHeader>
-            <DialogTitle>Listing published successfully</DialogTitle>
+            <DialogTitle>
+              <Tx
+                k="host.form.published_title"
+                source="Listing published successfully"
+              />
+            </DialogTitle>
             <DialogDescription className="pt-2 text-foreground">
-              Your listing is live. You can return to My Listings or continue editing
-              it now. Our team will still review the content shortly, so keep it
-              accurate. Questions? Contact{" "}
-              <a href="mailto:hello@lingerhomes.com" className="underline underline-offset-2">
+              <Tx
+                k="host.form.published_body"
+                source="Your listing is live. You can return to My Listings or continue editing it now. Our team will still review the content shortly, so keep it accurate. Questions? Contact"
+              />{" "}
+              <a
+                href="mailto:hello@lingerhomes.com"
+                className="notranslate underline underline-offset-2"
+                translate="no"
+              >
                 hello@lingerhomes.com
               </a>
               .
@@ -2117,7 +2406,7 @@ export function ListingForm({
               variant="outline"
               onClick={() => router.push("/host/listings")}
             >
-              Go to My Listings
+              <Tx k="host.form.go_to_listings" source="Go to My Listings" />
             </Button>
             <Button
               type="button"
@@ -2127,7 +2416,7 @@ export function ListingForm({
                 }
               }}
             >
-              Continue editing
+              <Tx k="host.form.continue_editing" source="Continue editing" />
             </Button>
           </div>
         </DialogContent>
@@ -2203,6 +2492,7 @@ function MediaUploadStatus({
   state: ListingMediaUploadState;
   className?: string;
 }) {
+  const { resolve } = useI18n();
   return (
     <div
       className={cn("flex min-w-0 flex-1 items-center gap-3", className)}
@@ -2220,7 +2510,12 @@ function MediaUploadStatus({
         <div
           className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted"
           role="progressbar"
-          aria-label="Media upload progress"
+          aria-label={
+                  resolve(
+                    "host.form.upload_progress_label",
+                    "Media upload progress",
+                  ).text
+                }
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={state.progress}
@@ -2388,7 +2683,10 @@ function DescriptionPreviewSplit({ description }: { description: string }) {
       <div className="my-4 flex items-center gap-3">
         <span className="h-0 flex-1 border-t border-dashed border-muted-foreground/40" />
         <span className="whitespace-nowrap text-sm md:text-xs font-semibold uppercase tracking-wide text-muted-foreground/70">
-          Landing page preview ends here
+          <Tx
+            k="host.form.preview_landing_end"
+            source="Landing page preview ends here"
+          />
         </span>
         <span className="h-0 flex-1 border-t border-dashed border-muted-foreground/40" />
       </div>
@@ -2402,7 +2700,10 @@ function DescriptionPreviewSplit({ description }: { description: string }) {
           <div className="my-4 flex items-center gap-3">
             <span className="h-0 flex-1 border-t border-dashed border-muted-foreground/40" />
             <span className="whitespace-nowrap text-sm md:text-xs font-semibold uppercase tracking-wide text-muted-foreground/70">
-              Visible only after &quot;Show more&quot;
+              <Tx
+                k="host.form.preview_show_more"
+                source={'Visible only after "Show more"'}
+              />
             </span>
             <span className="h-0 flex-1 border-t border-dashed border-muted-foreground/40" />
           </div>
@@ -2440,6 +2741,7 @@ function ListingGuestPreview({
   nightlyRate: number;
   amenities: { id: string; name: string; category: string; icon?: string | null }[];
 }) {
+  const { resolve } = useI18n();
   const displayedMedia = mediaItems.slice(0, 5);
 
   return (
@@ -2479,42 +2781,72 @@ function ListingGuestPreview({
             >
               <span className="flex items-center gap-1.5">
                 <Users className="h-4 w-4" />
-                {guests} guests
+                {
+                  interpolate(resolve("host.preview.guests", "{count} guests"), {
+                    count: guests,
+                  }).text
+                }
               </span>
               <span className="flex items-center gap-1.5">
                 <BedDouble className="h-4 w-4" />
-                {bedrooms} bedrooms
+                {
+                  interpolate(resolve("host.preview.bedrooms", "{count} bedrooms"), {
+                    count: bedrooms,
+                  }).text
+                }
               </span>
               <span className="flex items-center gap-1.5">
                 <Bed className="h-4 w-4" />
-                {beds} beds
+                {
+                  interpolate(resolve("host.preview.beds", "{count} beds"), {
+                    count: beds,
+                  }).text
+                }
               </span>
               <span className="flex items-center gap-1.5">
                 <Bath className="h-4 w-4" />
-                {bathrooms} baths
+                {
+                  interpolate(resolve("host.preview.baths", "{count} baths"), {
+                    count: bathrooms,
+                  }).text
+                }
               </span>
             </div>
 
             <div className="flex items-center gap-4">
-              <div className="flex size-14 items-center justify-center rounded-full border-2 border-border bg-muted text-lg font-semibold">
+              <div
+                className="notranslate flex size-14 items-center justify-center rounded-full border-2 border-border bg-muted text-lg font-semibold"
+                translate="no"
+              >
                 BE
               </div>
               <div>
-                <p className="font-semibold">Hosted by Linger Homes</p>
-                <p className="text-sm text-muted-foreground">Fast replies and local support.</p>
+                <p className="font-semibold">
+                  <Tx k="host.preview.hosted_by" source="Hosted by Linger Homes" />
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  <Tx
+                    k="host.preview.host_blurb"
+                    source="Fast replies and local support."
+                  />
+                </p>
               </div>
             </div>
 
             <Separator />
 
             <div id="preview-section-description" className="scroll-mt-4">
-              <h4 className="mb-4 text-xl font-semibold">About this space</h4>
+              <h4 className="mb-4 text-xl font-semibold">
+                <Tx k="host.preview.about" source="About this space" />
+              </h4>
               <DescriptionPreviewSplit description={description} />
             </div>
 
             <Separator />
             <div id="preview-section-amenities" className="scroll-mt-4">
-              <h4 className="mb-4 text-xl font-semibold">What this place offers</h4>
+              <h4 className="mb-4 text-xl font-semibold">
+                <Tx k="host.preview.amenities" source="What this place offers" />
+              </h4>
               {amenities.length > 0 ? (
                   <div className="grid gap-2 sm:grid-cols-2">
                     {amenities.slice(0, 8).map((amenity) => (
@@ -2526,7 +2858,10 @@ function ListingGuestPreview({
                   </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  Selected amenities will appear here.
+                  <Tx
+                    k="host.preview.amenities_empty"
+                    source="Selected amenities will appear here."
+                  />
                 </p>
               )}
             </div>
@@ -2541,40 +2876,63 @@ function ListingGuestPreview({
                 <span className="text-2xl font-semibold">
                   {nightlyRate > 0 ? formatPrice(nightlyRate) : "EUR"}
                 </span>
-                <span className="text-base text-muted-foreground">/ night</span>
+                <span className="text-base text-muted-foreground">
+                  <Tx k="host.preview.per_night" source="/ night" />
+                </span>
               </div>
             </div>
 
             <div className="space-y-4 px-6 pb-6">
               <div className="space-y-2">
-                <p className="text-sm font-medium">Dates</p>
+                <p className="text-sm font-medium">
+                  <Tx k="host.preview.dates" source="Dates" />
+                </p>
                 <div className="grid grid-cols-2 overflow-hidden rounded-xl border bg-background text-sm md:text-xs">
                   <div className="border-r p-3">
-                    <p className="font-semibold uppercase">Check-in</p>
-                    <p className="mt-1 text-muted-foreground">Select date</p>
+                    <p className="font-semibold uppercase">
+                      <Tx k="host.preview.check_in" source="Check-in" />
+                    </p>
+                    <p className="mt-1 text-muted-foreground">
+                      <Tx k="host.preview.select_date" source="Select date" />
+                    </p>
                   </div>
                   <div className="p-3">
-                    <p className="font-semibold uppercase">Check-out</p>
-                    <p className="mt-1 text-muted-foreground">Select date</p>
+                    <p className="font-semibold uppercase">
+                      <Tx k="host.preview.check_out" source="Check-out" />
+                    </p>
+                    <p className="mt-1 text-muted-foreground">
+                      <Tx k="host.preview.select_date" source="Select date" />
+                    </p>
                   </div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Guests</p>
-                <div className="flex items-center justify-between rounded-xl border bg-background px-3.5 py-3 text-sm">
-                  <span>1 guest</span>
-                  <span className="text-muted-foreground">Edit</span>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <p className="text-sm font-medium">
-                  Message to host{" "}
-                  <span className="font-normal text-muted-foreground">(optional)</span>
+                  <Tx k="host.preview.guests_label" source="Guests" />
+                </p>
+                <div className="flex items-center justify-between rounded-xl border bg-background px-3.5 py-3 text-sm">
+                  <span>
+                    <Tx k="host.preview.one_guest" source="1 guest" />
+                  </span>
+                  <span className="text-muted-foreground">
+                    <Tx k="host.workspace.edit" source="Edit" />
+                  </span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium">
+                  <Tx k="host.preview.message_host" source="Message to host" />{" "}
+                  <span className="font-normal text-muted-foreground">
+                    <Tx k="host.preview.optional" source="(optional)" />
+                  </span>
                 </p>
                 <div className="min-h-20 rounded-md border bg-muted/20 px-3 py-2 text-sm text-muted-foreground">
-                  Introduce yourself and share any useful details.
+                  <Tx
+                    k="host.preview.message_placeholder"
+                    source="Introduce yourself and share any useful details."
+                  />
                 </div>
               </div>
 
@@ -2583,7 +2941,7 @@ function ListingGuestPreview({
                 className="w-full rounded-lg py-6 text-base font-semibold"
                 disabled
               >
-                Reserve
+                <Tx k="host.preview.reserve" source="Reserve" />
               </Button>
             </div>
           </div>
@@ -2597,7 +2955,10 @@ function PreviewGallery({ mediaItems }: { mediaItems: ListingMediaItem[] }) {
   if (mediaItems.length === 0) {
     return (
       <div className="flex aspect-[16/9] items-center justify-center rounded-2xl bg-muted text-sm text-muted-foreground ring-1 ring-black/5">
-        Photos and videos will appear here
+        <Tx
+          k="host.preview.gallery_empty"
+          source="Photos and videos will appear here"
+        />
       </div>
     );
   }

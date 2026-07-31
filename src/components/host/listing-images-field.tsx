@@ -34,6 +34,7 @@ import {
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Tx, interpolate, useI18n } from "@/lib/i18n/client";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -565,7 +566,7 @@ function PendingUploadTile({
                 className="inline-flex min-h-7 items-center gap-1 rounded-md bg-white px-2 text-[11px] font-medium text-black transition-colors hover:bg-white/90"
               >
                 <RotateCcw className="h-3 w-3" />
-                Retry
+                <Tx k="host.images.retry" source="Retry" />
               </button>
               <button
                 type="button"
@@ -573,7 +574,7 @@ function PendingUploadTile({
                 className="inline-flex min-h-7 items-center gap-1 rounded-md border border-white/40 px-2 text-[11px] font-medium transition-colors hover:bg-white/10"
               >
                 <Trash2 className="h-3 w-3" />
-                Remove
+                <Tx k="host.images.remove" source="Remove" />
               </button>
             </div>
           </>
@@ -620,6 +621,7 @@ function SortableImageTile({
   isCover: boolean;
   onRemove: () => void;
 }) {
+  const { resolve } = useI18n();
   const {
     attributes,
     listeners,
@@ -649,11 +651,16 @@ function SortableImageTile({
         ref={setActivatorNodeRef}
         {...attributes}
         {...listeners}
-        aria-label={`Reorder media item ${index + 1}`}
+        aria-label={
+          interpolate(
+            resolve("host.images.reorder_label", "Reorder media item {position}"),
+            { position: index + 1 },
+          ).text
+        }
         className="absolute left-1 top-1 inline-flex min-h-9 touch-none cursor-grab select-none items-center gap-1 rounded-md bg-background/90 px-2 py-1.5 text-xs md:text-[10px] font-medium shadow-sm transition-transform hover:scale-[1.02] active:cursor-grabbing md:min-h-0 md:px-1.5 md:py-1"
       >
         <GripVertical className="h-3 w-3" />
-        Drag
+        <Tx k="host.images.drag" source="Drag" />
       </button>
       {/* Hover cannot reveal anything on a touch screen, so the delete control is
           always visible below md and only hides behind hover on pointer devices. */}
@@ -671,7 +678,7 @@ function SortableImageTile({
       </div>
       {isCover && (
         <span className="absolute bottom-1 left-1 rounded bg-background/90 px-1.5 py-0.5 text-xs md:text-[10px] font-medium shadow-sm">
-          Cover
+          <Tx k="host.images.cover" source="Cover" />
         </span>
       )}
     </li>

@@ -16,6 +16,7 @@ import {
   ListingVisibilityToggle,
   isHostVisibilityToggleable,
 } from "@/components/host/listing-visibility-toggle";
+import { Tx, interpolate, useI18n } from "@/lib/i18n/client";
 import { formatPrice } from "@/lib/utils/format";
 import { LISTING_STATUSES } from "@/lib/constants";
 
@@ -33,6 +34,7 @@ interface HostListingCardProps {
 
 export function HostListingCard({ listing }: HostListingCardProps) {
   const router = useRouter();
+  const { resolve } = useI18n();
   const statusConfig = LISTING_STATUSES.find((s) => s.value === listing.status);
   const editHref = `/host/listings/${listing.id}/edit`;
   const statusLabel = statusConfig?.label || listing.status;
@@ -79,13 +81,13 @@ export function HostListingCard({ listing }: HostListingCardProps) {
             <TooltipTrigger asChild>
               <Button variant="outline" size="sm" asChild>
                 <Link href={editHref}>
-                  <span className="notranslate" translate="no">
-                    Edit
-                  </span>
+                  <Tx k="host.workspace.edit" source="Edit" />
                 </Link>
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Edit listing</TooltipContent>
+            <TooltipContent>
+              <Tx k="host.listing_card.edit_tooltip" source="Edit listing" />
+            </TooltipContent>
           </Tooltip>
 
           <Tooltip>
@@ -93,13 +95,26 @@ export function HostListingCard({ listing }: HostListingCardProps) {
               <Button variant="outline" size="sm" asChild>
                 <Link
                   href={`/host/listings/${listing.id}/availability`}
-                  aria-label={`Manage availability, pricing, and promotions for ${listing.title}`}
+                  aria-label={
+                    interpolate(
+                      resolve(
+                        "host.listing_card.calendar_label",
+                        "Manage availability, pricing, and promotions for {title}",
+                      ),
+                      { title: listing.title },
+                    ).text
+                  }
                 >
                   <Calendar className="h-3 w-3" />
                 </Link>
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Calendar, pricing &amp; promotions</TooltipContent>
+            <TooltipContent>
+              <Tx
+                k="host.listing_card.calendar_tooltip"
+                source="Calendar, pricing & promotions"
+              />
+            </TooltipContent>
           </Tooltip>
 
           {listing.status === "APPROVED" && (
@@ -108,17 +123,23 @@ export function HostListingCard({ listing }: HostListingCardProps) {
                 <Button variant="outline" size="sm" asChild>
                   <Link
                     href={`/properties/${listing.slug}`}
-                    aria-label={`Preview ${listing.title}`}
+                    aria-label={
+                      interpolate(
+                        resolve("host.listing_card.preview_label", "Preview {title}"),
+                        { title: listing.title },
+                      ).text
+                    }
                   >
                     <Eye className="h-3 w-3" />
-                    <span className="notranslate" translate="no">
-                      Preview
-                    </span>
+                    <Tx k="host.workspace.preview" source="Preview" />
                   </Link>
                 </Button>
               </TooltipTrigger>
               <TooltipContent className="max-w-64">
-                Open the public page for this listing, exactly as guests see it.
+                <Tx
+                  k="host.listing_card.preview_tooltip"
+                  source="Open the public page for this listing, exactly as guests see it."
+                />
               </TooltipContent>
             </Tooltip>
           )}

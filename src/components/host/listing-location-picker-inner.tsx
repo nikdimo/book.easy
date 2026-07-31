@@ -4,6 +4,7 @@ import * as React from "react";
 import { Loader2, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { loadGoogleMaps } from "@/lib/google-maps-browser";
+import { Tx } from "@/lib/i18n/client";
 
 type MapsListener = { remove(): void };
 type GoogleLatLng = { lat(): number; lng(): number };
@@ -209,7 +210,7 @@ export default function ListingLocationPickerInner({
     return (
       <div className={cn("flex items-center justify-center bg-muted", className)}>
         <p className="text-sm text-muted-foreground">
-          Google Maps isn&apos;t configured.
+          <Tx k="host.map.not_configured" source="Google Maps isn't configured." />
         </p>
       </div>
     );
@@ -221,13 +222,16 @@ export default function ListingLocationPickerInner({
       {!ready && !loadFailed && (
         <div className="absolute inset-0 flex items-center justify-center gap-2 bg-muted text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Loading Google Maps…
+          <Tx k="host.map.loading" source="Loading Google Maps…" />
         </div>
       )}
       {loadFailed && (
         <div className="absolute inset-0 flex items-center justify-center gap-2 bg-muted px-6 text-center text-sm text-destructive">
           <MapPin className="h-4 w-4" />
-          Google Maps couldn&apos;t load. Check the API key restrictions.
+          <Tx
+            k="host.map.load_failed"
+            source="Google Maps couldn't load. Check the API key restrictions."
+          />
         </div>
       )}
     </div>

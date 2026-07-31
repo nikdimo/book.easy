@@ -10,6 +10,7 @@ import {
   type ListingWorkspaceStop,
 } from "@/lib/host/listing-workspace";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/client";
 
 const STOP_ICONS: Record<ListingWorkspaceStop, LucideIcon> = {
   preview: Eye,
@@ -53,13 +54,24 @@ export function ListingBottomNav({
   onNavigate?: (event: ReactMouseEvent<HTMLAnchorElement>) => void;
   onKeyDown?: (event: React.KeyboardEvent<HTMLDivElement>) => void;
 }) {
+  const { resolve } = useI18n();
   const paneStops = LISTING_WORKSPACE_STOPS.slice(0, 2).filter(
     ({ stop }) => !(omitPreview && stop === "preview"),
   );
 
+  // Resolved here with literal key/source pairs because the shared stop constant is
+  // consumed by server components too, and the extractor cannot read a variable label.
+  const stopLabels: Record<ListingWorkspaceStop, string> = {
+    preview: resolve("host.workspace.preview", "Preview").text,
+    edit: resolve("host.workspace.edit", "Edit").text,
+    availability: resolve("host.workspace.availability", "Availability").text,
+    pricing: resolve("host.workspace.pricing", "Pricing").text,
+    promotions: resolve("host.workspace.promotions", "Promos").text,
+  };
+
   return (
     <nav
-      aria-label="Listing workspace"
+      aria-label={resolve("host.workspace.nav_label", "Listing workspace").text}
       className={cn(
         "z-30 flex shrink-0 items-stretch border-t bg-background pb-[env(safe-area-inset-bottom)] md:hidden",
         className,
@@ -67,11 +79,16 @@ export function ListingBottomNav({
     >
       <div
         role={onSelectPane && !omitPreview ? "tablist" : undefined}
-        aria-label={onSelectPane && !omitPreview ? "Editor and preview" : undefined}
+        aria-label={
+          onSelectPane && !omitPreview
+            ? resolve("host.workspace.tablist_label", "Editor and preview").text
+            : undefined
+        }
         onKeyDown={omitPreview ? undefined : onKeyDown}
         className={cn("flex", omitPreview ? "flex-1" : "flex-[2]")}
       >
-        {paneStops.map(({ stop, label }) => {
+        {paneStops.map(({ stop }) => {
+          const label = stopLabels[stop];
           const Icon = STOP_ICONS[stop];
           const pane = stop === "preview" ? "preview" : "edit";
           const current = active === stop;
@@ -117,7 +134,8 @@ export function ListingBottomNav({
         })}
       </div>
       {(paneOnly ? [] : LISTING_WORKSPACE_STOPS.slice(2)).map(
-        ({ stop, label }) => {
+        ({ stop }) => {
+          const label = stopLabels[stop];
           const Icon = STOP_ICONS[stop];
           const current = active === stop;
           return (

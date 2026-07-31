@@ -16,19 +16,36 @@ import {
   ListingDraftData,
   ListingDraftResponse,
   ListingEditorResponse,
+  ListingStep,
   openControlPanel,
 } from "@/lib/api";
 import { colors, radii, shadows, spacing } from "@/theme";
 
-const steps = [
-  ["Property type", "What kind of place will guests book?"],
-  ["Location", "Help guests understand where they will stay."],
-  ["Property details", "Set the capacity and sleeping arrangements."],
-  ["Amenities", "Choose what your property offers."],
-  ["Photos", "Add at least 3 photos and choose the best one first."],
-  ["Description", "Give guests a clear, inviting overview."],
-  ["Pricing", "Set the price and minimum stay, then publish."],
-] as const;
+/** Steps this build edits natively. Everything else the server sends — including a
+ *  step added after this app shipped — falls through to the web editor rather than
+ *  disappearing from the wizard. Keeping the check on the id, not an index, is what
+ *  lets the web flow be reordered without a mobile release. */
+const NATIVE_STEPS = new Set([
+  "propertyType",
+  "description",
+  "details",
+  "amenities",
+  "pricing",
+]);
+
+/** Why a step still opens the web editor, so the host isn't just told "not here". */
+const WEB_ONLY_REASON: Record<string, string> = {
+  photos:
+    "Photos stay in the web editor for now so its existing upload, ordering, and cover-photo behavior remains unchanged.",
+  location:
+    "Map placement stays in the web editor while the native map is being built. Any location already saved in this draft remains untouched.",
+  address:
+    "Address confirmation stays in the web editor so it keeps matching the pin you placed there.",
+  streetView:
+    "Street View selection stays in the web editor for now. It is optional, so you can skip it.",
+  specialOffer:
+    "The launch offer stays in the web editor, where the listing is reviewed and published.",
+};
 
 type SaveStatus = "saving" | "saved" | "error";
 
@@ -76,9 +93,22 @@ function valuesFromDraft(data?: ListingDraftData): EditorValues {
   };
 }
 
-function normalizedStep(value: unknown) {
-  const parsed = typeof value === "number" ? value : Number(value);
-  return Number.isInteger(parsed) ? Math.min(6, Math.max(0, parsed)) : 0;
+/** Where to resume a draft, mirroring the server's rule: the stored id wins, and a
+ *  bare index is only consulted for drafts saved before ids existed. Such an index
+ *  was written against an older step order, so it is clamped rather than trusted —
+ *  it lands the host on a reasonable screen with every answer still in place. */
+function resumeIndex(
+  steps: ListingStep[],
+  stepId: unknown,
+  legacyIndex: unknown
+) {
+  if (typeof stepId === "string") {
+    const found = steps.findIndex((step) => step.id === stepId);
+    if (found >= 0) return found;
+  }
+  const parsed = typeof legacyIndex === "number" ? legacyIndex : Number(legacyIndex);
+  if (!Number.isInteger(parsed)) return 0;
+  return Math.min(steps.length - 1, Math.max(0, parsed));
 }
 
 export default function NewListingScreen() {
@@ -88,12 +118,12 @@ export default function NewListingScreen() {
   const { t } = useLanguage();
   const [catalog, setCatalog] = useState<ListingEditorResponse | null>(null);
   const [values, setValues] = useState<EditorValues>(defaultValues);
-  const [currentStep, setCurrentStep] = useState(0);
+  const [currentStepId, setCurrentStepId] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved");
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const valuesRef = useRef(values);
-  const stepRef = useRef(currentStep);
+  const stepIdRef = useRef(currentStepId);
   const draftIdRef = useRef<string | null>(initialDraftId ?? null);
   const saveQueueRef = useRef<Promise<void>>(Promise.resolve());
   const saveTokenRef = useRef(0);
@@ -103,8 +133,8 @@ export default function NewListingScreen() {
   }, [values]);
 
   useEffect(() => {
-    stepRef.current = currentStep;
-  }, [currentStep]);
+    stepIdRef.current = currentStepId;
+  }, [currentStepId]);
 
   const load = useCallback(async () => {
     try {
@@ -118,14 +148,23 @@ export default function NewListingScreen() {
             )
           : Promise.resolve(null),
       ]);
+      if (!editor.steps?.length) {
+        throw new Error(t("The listing wizard is unavailable right now."));
+      }
       setCatalog(editor);
+
+      const startId = draft
+        ? editor.steps[
+            resumeIndex(editor.steps, draft.data.currentStepId, draft.data.currentStep)
+          ].id
+        : editor.steps[0].id;
+      setCurrentStepId(startId);
+      stepIdRef.current = startId;
+
       if (draft) {
         const nextValues = valuesFromDraft(draft.data);
-        const nextStep = normalizedStep(draft.data.currentStep);
         setValues(nextValues);
         valuesRef.current = nextValues;
-        setCurrentStep(nextStep);
-        stepRef.current = nextStep;
         draftIdRef.current = draft.draftId;
       }
       setSaveStatus("saved");
@@ -142,11 +181,15 @@ export default function NewListingScreen() {
     return () => clearTimeout(timer);
   }, [load]);
 
-  const persist = useCallback((stepOverride?: number) => {
+  const persist = useCallback((stepOverride?: string) => {
     const token = ++saveTokenRef.current;
+    const stepId = stepOverride ?? stepIdRef.current;
     const payload = {
       ...valuesRef.current,
-      currentStep: normalizedStep(stepOverride ?? stepRef.current),
+      // Send the id, never an index. An index means whatever the *server's* current
+      // order says it means, which is how mobile progress used to resume on the
+      // wrong screen in the web wizard.
+      ...(stepId ? { currentStepId: stepId } : {}),
     };
     setSaveStatus("saving");
 
@@ -184,7 +227,7 @@ export default function NewListingScreen() {
       void persist().catch(() => undefined);
     }, 900);
     return () => clearTimeout(timer);
-  }, [currentStep, persist, ready, values]);
+  }, [currentStepId, persist, ready, values]);
 
   function updateField<K extends keyof EditorValues>(
     field: K,
@@ -194,12 +237,11 @@ export default function NewListingScreen() {
     setValues((current) => ({ ...current, [field]: value }));
   }
 
-  function goToStep(next: number) {
-    const step = normalizedStep(next);
+  function goToStep(stepId: string) {
     setSaveStatus("saving");
-    setCurrentStep(step);
-    stepRef.current = step;
-    void persist(step).catch(() => undefined);
+    setCurrentStepId(stepId);
+    stepIdRef.current = stepId;
+    void persist(stepId).catch(() => undefined);
   }
 
   async function openWebStep() {
@@ -248,7 +290,13 @@ export default function NewListingScreen() {
     );
   }
 
-  const [stepTitle, stepDescription] = steps[currentStep];
+  const steps = catalog?.steps ?? [];
+  const stepIndex = Math.max(
+    0,
+    steps.findIndex((step) => step.id === currentStepId)
+  );
+  const step = steps[stepIndex];
+  const isLastStep = stepIndex === steps.length - 1;
 
   return (
     <View style={styles.screen}>
@@ -283,7 +331,10 @@ export default function NewListingScreen() {
 
       <View style={styles.progressTrack}>
         <View
-          style={[styles.progressValue, { width: `${((currentStep + 1) / 7) * 100}%` }]}
+          style={[
+            styles.progressValue,
+            { width: `${((stepIndex + 1) / steps.length) * 100}%` },
+          ]}
         />
       </View>
 
@@ -292,14 +343,14 @@ export default function NewListingScreen() {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.stepNavigation}
       >
-        {steps.map(([title], index) => {
-          const selected = index === currentStep;
+        {steps.map((navStep, index) => {
+          const selected = index === stepIndex;
           return (
             <Pressable
-              key={title}
+              key={navStep.id}
               accessibilityRole="button"
               accessibilityState={{ selected }}
-              onPress={() => goToStep(index)}
+              onPress={() => goToStep(navStep.id)}
               style={[styles.stepChip, selected && styles.stepChipSelected]}
             >
               <Text style={[styles.stepNumber, selected && styles.stepNumberSelected]}>
@@ -309,7 +360,7 @@ export default function NewListingScreen() {
                 numberOfLines={1}
                 style={[styles.stepChipText, selected && styles.stepChipTextSelected]}
               >
-                {t(title)}
+                {t(navStep.title)}
               </Text>
             </Pressable>
           );
@@ -322,14 +373,14 @@ export default function NewListingScreen() {
       >
         <View style={styles.heading}>
           <Text style={styles.stepLabel}>
-            {t("Step")} {currentStep + 1} {t("of")} 7
+            {t("Step")} {stepIndex + 1} {t("of")} {steps.length}
           </Text>
-          <Text style={styles.title}>{t(stepTitle)}</Text>
-          <Text style={styles.subtitle}>{t(stepDescription)}</Text>
+          <Text style={styles.title}>{t(step.title)}</Text>
+          <Text style={styles.subtitle}>{t(step.description)}</Text>
         </View>
 
         <View style={styles.card}>
-          {currentStep === 0 ? (
+          {step.id === "propertyType" ? (
             <PropertyTypeStep
               options={catalog?.propertyTypes ?? []}
               selected={values.propertyType}
@@ -337,20 +388,10 @@ export default function NewListingScreen() {
               t={t}
             />
           ) : null}
-          {currentStep === 1 ? (
-            <BridgeStep
-              title={t("Finish Location on the web")}
-              description={t(
-                "Location stays in the web editor while that step is being updated. Any location already saved in this draft remains untouched."
-              )}
-              action={t("Open Location in web editor")}
-              onPress={() => void openWebStep()}
-            />
-          ) : null}
-          {currentStep === 2 ? (
+          {step.id === "details" ? (
             <DetailsStep values={values} updateField={updateField} t={t} />
           ) : null}
-          {currentStep === 3 ? (
+          {step.id === "amenities" ? (
             <AmenitiesStep
               groups={groupedAmenities}
               selected={values.amenityIds}
@@ -365,38 +406,39 @@ export default function NewListingScreen() {
               t={t}
             />
           ) : null}
-          {currentStep === 4 ? (
-            <BridgeStep
-              title={t("Manage Photos on the web")}
-              description={t(
-                "Photos stay in the web editor for now so its existing upload, ordering, and cover-photo behavior remains unchanged."
-              )}
-              action={t("Open Photos in web editor")}
-              onPress={() => void openWebStep()}
-            />
-          ) : null}
-          {currentStep === 5 ? (
+          {step.id === "description" ? (
             <DescriptionStep values={values} updateField={updateField} t={t} />
           ) : null}
-          {currentStep === 6 ? (
+          {step.id === "pricing" ? (
             <PricingStep values={values} updateField={updateField} t={t} />
           ) : null}
+          {NATIVE_STEPS.has(step.id) ? null : (
+            <BridgeStep
+              title={t("Finish {step} on the web", { step: t(step.title) })}
+              description={t(
+                WEB_ONLY_REASON[step.id] ??
+                  "This step is not available in the app yet. Your draft is saved, so you can finish it in the web editor and come back."
+              )}
+              action={t("Open in web editor")}
+              onPress={() => void openWebStep()}
+            />
+          )}
         </View>
       </ScrollView>
 
       <View style={styles.footer}>
         <Pressable
           accessibilityRole="button"
-          disabled={currentStep === 0}
-          onPress={() => goToStep(currentStep - 1)}
-          style={[styles.secondaryButton, currentStep === 0 && styles.disabled]}
+          disabled={stepIndex === 0}
+          onPress={() => goToStep(steps[stepIndex - 1].id)}
+          style={[styles.secondaryButton, stepIndex === 0 && styles.disabled]}
         >
           <Text style={styles.secondaryButtonText}>‹ {t("Back")}</Text>
         </Pressable>
-        {currentStep < 6 ? (
+        {!isLastStep ? (
           <Pressable
             accessibilityRole="button"
-            onPress={() => goToStep(currentStep + 1)}
+            onPress={() => goToStep(steps[stepIndex + 1].id)}
             style={styles.primaryButton}
           >
             <Text style={styles.primaryButtonText}>{t("Continue")} ›</Text>

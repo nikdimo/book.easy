@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/popover";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { getLocale } from "@/lib/i18n/t";
+import { getLocale, getT, T } from "@/lib/i18n/t";
 import { ymdToDbDate } from "@/lib/utils/date-only";
 
 /** Availability, pricing and promotions are one calendar seen three ways, so they
@@ -79,7 +79,15 @@ export async function CalendarLensPage({
   searchParams,
   lens,
 }: CalendarLensPageProps) {
-  const [session, locale] = await Promise.all([auth(), getLocale()]);
+  const [session, locale, t] = await Promise.all([auth(), getLocale(), getT()]);
+  // Literal key/source pairs: the shared stop constant carries only English labels.
+  const stopLabels: Record<string, string> = {
+    preview: t.resolve("host.workspace.preview", "Preview").text,
+    edit: t.resolve("host.workspace.edit", "Edit").text,
+    availability: t.resolve("host.workspace.availability", "Availability").text,
+    pricing: t.resolve("host.workspace.pricing", "Pricing").text,
+    promotions: t.resolve("host.workspace.promotions", "Promos").text,
+  };
   if (!session?.user?.id) redirect("/login");
 
   const [{ id }, query] = await Promise.all([params, searchParams]);
@@ -134,7 +142,9 @@ export async function CalendarLensPage({
         <div className="flex min-w-0 items-start gap-2.5">
           <Link
             href="/host/listings"
-            aria-label="Back to listings"
+            aria-label={
+              t.resolve("host.calendar.back_to_listings", "Back to listings").text
+            }
             className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <ArrowLeft className="size-4.5" />
@@ -212,7 +222,11 @@ export async function CalendarLensPage({
         />
       ) : (
         <p className="text-sm text-muted-foreground">
-          Add pricing on the listing edit page before managing the calendar.
+          <T
+            t={t}
+            k="host.calendar.needs_pricing"
+            source="Add pricing on the listing edit page before managing the calendar."
+          />
         </p>
       )}
 
@@ -229,7 +243,7 @@ export async function CalendarLensPage({
               )}
             >
               <ChevronLeft className="size-4" />
-              {previousStop.label}
+              {stopLabels[previousStop.stop]}
             </Link>
           </Button>
         ) : (
@@ -243,7 +257,8 @@ export async function CalendarLensPage({
                 selectionQuery,
               )}
             >
-              Next: {nextStop.label}
+              <T t={t} k="host.calendar.next" source="Next:" />{" "}
+              {stopLabels[nextStop.stop]}
               <ChevronRight className="size-4" />
             </Link>
           </Button>

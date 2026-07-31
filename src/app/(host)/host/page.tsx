@@ -14,6 +14,7 @@ import { getHostDashboardStats } from "@/lib/services/listing.service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getHostAttentionSummary } from "@/lib/services/attention.service";
+import { getT, T } from "@/lib/i18n/t";
 
 export const metadata = { title: "Host Dashboard" };
 
@@ -25,30 +26,103 @@ export default async function HostDashboardPage() {
     getHostDashboardStats(session.user.id),
     getHostAttentionSummary(session.user.id),
   ]);
+  const t = await getT();
 
+  // Card copy is resolved at the point of definition rather than rendered through <T>:
+  // these arrays are mapped over below, and the extractor only reads literal key and
+  // source arguments.
   const statCards = [
-    { label: "My Listings", value: stats.listings, icon: Home, href: "/host/listings" },
-    { label: "Pending Requests", value: stats.pendingBookings, icon: Clock, href: "/host/bookings" },
-    { label: "Confirmed", value: stats.confirmedBookings, icon: CheckCircle, href: "/host/bookings" },
-    { label: "Total Bookings", value: stats.totalBookings, icon: CalendarDays, href: "/host/bookings" },
+    {
+      id: "listings",
+      label: t.resolve("host.dashboard.my_listings", "My Listings"),
+      value: stats.listings,
+      icon: Home,
+      href: "/host/listings",
+    },
+    {
+      id: "pending",
+      label: t.resolve("host.dashboard.pending_requests", "Pending Requests"),
+      value: stats.pendingBookings,
+      icon: Clock,
+      href: "/host/bookings",
+    },
+    {
+      id: "confirmed",
+      label: t.resolve("host.dashboard.confirmed", "Confirmed"),
+      value: stats.confirmedBookings,
+      icon: CheckCircle,
+      href: "/host/bookings",
+    },
+    {
+      id: "total",
+      label: t.resolve("host.dashboard.total_bookings", "Total Bookings"),
+      value: stats.totalBookings,
+      icon: CalendarDays,
+      href: "/host/bookings",
+    },
+  ];
+
+  const attentionCards = [
+    {
+      id: "bookings",
+      label: t.resolve("host.dashboard.attention.bookings", "Booking requests"),
+      value: attention.pendingBookings,
+      href: "/host/bookings",
+      icon: Clock,
+      copy: t.resolve(
+        "host.dashboard.attention.bookings_copy",
+        "Accept or decline new requests.",
+      ),
+    },
+    {
+      id: "conversations",
+      label: t.resolve(
+        "host.dashboard.attention.conversations",
+        "Unread conversations",
+      ),
+      value: attention.unreadThreads,
+      href: "/host/inbox",
+      icon: MessageCircle,
+      copy: t.resolve(
+        "host.dashboard.attention.conversations_copy",
+        "Reply to guests and inquiries.",
+      ),
+    },
+    {
+      id: "damage",
+      label: t.resolve("host.dashboard.attention.damage", "Damage reports"),
+      value: attention.damageReports,
+      href: "/host/inbox",
+      icon: ShieldAlert,
+      copy: t.resolve(
+        "host.dashboard.attention.damage_copy",
+        "Review reported property damage.",
+      ),
+    },
   ];
 
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-        <h1 className="text-2xl font-bold">Host Dashboard</h1>
+        <h1 className="text-2xl font-bold">
+          <T t={t} k="host.dashboard.heading" source="Host Dashboard" />
+        </h1>
         <Button asChild>
-          <Link href="/host/listings/new">Create Listing</Link>
+          <Link href="/host/listings/new">
+            <T t={t} k="host.dashboard.create_listing" source="Create Listing" />
+          </Link>
         </Button>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((stat) => (
-          <Link key={stat.label} href={stat.href}>
+          <Link key={stat.id} href={stat.href}>
             <Card className="hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  {stat.label}
+                  <span className={stat.label.translated ? "notranslate" : undefined}>
+                    {stat.label.text}
+                  </span>
                 </CardTitle>
                 <stat.icon className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
@@ -63,9 +137,19 @@ export default async function HostDashboardPage() {
       <section className="mt-8">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
           <div>
-            <h2 className="text-xl font-semibold">Needs your attention</h2>
+            <h2 className="text-xl font-semibold">
+              <T
+                t={t}
+                k="host.dashboard.attention.heading"
+                source="Needs your attention"
+              />
+            </h2>
             <p className="text-sm text-muted-foreground">
-              Tasks that may need a reply or decision.
+              <T
+                t={t}
+                k="host.dashboard.attention.subheading"
+                source="Tasks that may need a reply or decision."
+              />
             </p>
           </div>
           <span className="rounded-full bg-destructive px-3 py-1 text-sm font-bold text-destructive-foreground">
@@ -73,38 +157,24 @@ export default async function HostDashboardPage() {
           </span>
         </div>
         <div className="grid gap-4 md:grid-cols-3">
-          {[
-            {
-              label: "Booking requests",
-              value: attention.pendingBookings,
-              href: "/host/bookings",
-              icon: Clock,
-              copy: "Accept or decline new requests.",
-            },
-            {
-              label: "Unread conversations",
-              value: attention.unreadThreads,
-              href: "/host/inbox",
-              icon: MessageCircle,
-              copy: "Reply to guests and inquiries.",
-            },
-            {
-              label: "Damage reports",
-              value: attention.damageReports,
-              href: "/host/inbox",
-              icon: ShieldAlert,
-              copy: "Review reported property damage.",
-            },
-          ].map((item) => (
-            <Link key={item.label} href={item.href}>
+          {attentionCards.map((item) => (
+            <Link key={item.id} href={item.href}>
               <Card className="h-full transition-shadow hover:shadow-md">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm">{item.label}</CardTitle>
+                  <CardTitle className="text-sm">
+                    <span className={item.label.translated ? "notranslate" : undefined}>
+                      {item.label.text}
+                    </span>
+                  </CardTitle>
                   <item.icon className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <p className="text-3xl font-bold">{item.value}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">{item.copy}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    <span className={item.copy.translated ? "notranslate" : undefined}>
+                      {item.copy.text}
+                    </span>
+                  </p>
                 </CardContent>
               </Card>
             </Link>
@@ -115,15 +185,25 @@ export default async function HostDashboardPage() {
       <section className="mt-8">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-xl font-semibold">Latest notifications</h2>
+            <h2 className="text-xl font-semibold">
+              <T
+                t={t}
+                k="host.dashboard.notifications.heading"
+                source="Latest notifications"
+              />
+            </h2>
             <p className="text-sm text-muted-foreground">
-              New activity across bookings, messages, and reports.
+              <T
+                t={t}
+                k="host.dashboard.notifications.subheading"
+                source="New activity across bookings, messages, and reports."
+              />
             </p>
           </div>
           <Button variant="outline" asChild>
             <Link href="/account/notifications">
               <Bell className="mr-2 h-4 w-4" />
-              View all
+              <T t={t} k="host.dashboard.notifications.view_all" source="View all" />
             </Link>
           </Button>
         </div>
@@ -147,7 +227,11 @@ export default async function HostDashboardPage() {
               ))
             ) : (
               <p className="px-4 py-10 text-center text-sm text-muted-foreground">
-                You are all caught up.
+                <T
+                  t={t}
+                  k="host.dashboard.notifications.empty"
+                  source="You are all caught up."
+                />
               </p>
             )}
           </CardContent>

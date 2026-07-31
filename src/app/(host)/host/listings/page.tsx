@@ -13,8 +13,9 @@ import { formatDate } from "@/lib/utils/format";
 import type { ListingDraftData } from "@/lib/types/listing-draft";
 import {
   LISTING_STEPS,
-  normalizeListingStep,
+  resumeListingStep,
 } from "@/lib/constants/listing-steps";
+import { getT, T, TWithValues } from "@/lib/i18n/t";
 
 export const metadata = { title: "My Listings" };
 
@@ -26,27 +27,38 @@ export default async function HostListingsPage() {
     getHostListings(session.user.id),
     getHostListingDrafts(session.user.id),
   ]);
+  const t = await getT();
+  const untitledDraft = t.resolve("host.listings.untitled_draft", "Untitled draft");
 
   return (
     <div>
       <div className="flex flex-wrap items-center gap-3 mb-6">
-        <h1 className="text-2xl font-bold">My Listings</h1>
+        <h1 className="text-2xl font-bold">
+          <T t={t} k="host.dashboard.my_listings" source="My Listings" />
+        </h1>
         <Button asChild>
-          <Link href="/host/listings/new"><Plus className="h-4 w-4 mr-2" />New Listing</Link>
+          <Link href="/host/listings/new">
+            <Plus className="h-4 w-4 mr-2" />
+            <T t={t} k="host.listings.new" source="New Listing" />
+          </Link>
         </Button>
       </div>
 
       {drafts.length > 0 && (
         <div className="mb-8">
           <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-            In-progress drafts
+            <T t={t} k="host.listings.drafts_heading" source="In-progress drafts" />
             <Badge variant="secondary">{drafts.length}</Badge>
           </h2>
           <div className="space-y-3">
             {drafts.map((draft) => {
               const data = draft.data as ListingDraftData;
-              const title = data.title?.trim() || "Untitled draft";
-              const currentStep = normalizeListingStep(data.currentStep);
+              const title = data.title?.trim() || untitledDraft.text;
+              // Matches where the wizard will actually reopen the draft.
+              const currentStep = resumeListingStep(
+                data.currentStepId,
+                data.currentStep
+              );
               const step = LISTING_STEPS[currentStep];
               return (
                 <Card key={draft.id}>
@@ -54,21 +66,37 @@ export default async function HostListingsPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-semibold truncate">{title}</h3>
-                        <Badge variant="secondary">Draft</Badge>
+                        <Badge variant="secondary">
+                          <T t={t} k="host.listings.draft_badge" source="Draft" />
+                        </Badge>
                       </div>
                       <p className="text-sm font-medium text-foreground">
-                        Stopped at Step {currentStep + 1} of {LISTING_STEPS.length}:{" "}
-                        {step.title}
+                        <TWithValues
+                          t={t}
+                          k="host.listings.draft_progress"
+                          source="Stopped at Step {step} of {total}: {title}"
+                          values={{
+                            step: currentStep + 1,
+                            total: LISTING_STEPS.length,
+                            title: step.title,
+                          }}
+                        />
                       </p>
                       <p className="mt-0.5 text-sm text-muted-foreground">
-                        Last edited {formatDate(draft.updatedAt)}
+                        <TWithValues
+                          t={t}
+                          k="host.listings.draft_last_edited"
+                          source="Last edited {date}"
+                          values={{ date: formatDate(draft.updatedAt) }}
+                          protectedValues={["date"]}
+                        />
                       </p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 shrink-0">
                       <Button variant="outline" size="sm" asChild>
                         <Link href={`/host/listings/new?draft=${draft.id}`}>
                           <Pencil className="h-3 w-3 mr-1" />
-                          Continue
+                          <T t={t} k="host.listings.continue" source="Continue" />
                         </Link>
                       </Button>
                       <DeleteDraftButton draftId={draft.id} title={title} />
@@ -83,11 +111,18 @@ export default async function HostListingsPage() {
 
       {listings.length === 0 && drafts.length === 0 ? (
         <EmptyState
-          title="No listings yet"
-          description="Create your first listing to start receiving bookings."
+          title={t.resolve("host.listings.empty_title", "No listings yet").text}
+          description={
+            t.resolve(
+              "host.listings.empty_description",
+              "Create your first listing to start receiving bookings.",
+            ).text
+          }
         >
           <Button asChild>
-            <Link href="/host/listings/new">Create Listing</Link>
+            <Link href="/host/listings/new">
+              <T t={t} k="host.dashboard.create_listing" source="Create Listing" />
+            </Link>
           </Button>
         </EmptyState>
       ) : (

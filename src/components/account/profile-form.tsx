@@ -48,7 +48,10 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
             <Input id="phone" name="phone" type="tel" defaultValue={profile.phone} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="bio">Bio</Label>
+            {/* "Bio" alone is ambiguous to machine translation — Google Translate
+                reads it as the verb and renders Macedonian "Беше" ("was"). The
+                fuller phrase translates correctly. */}
+            <Label htmlFor="bio">About you</Label>
             <Textarea id="bio" name="bio" defaultValue={profile.bio} rows={3} />
           </div>
           <Button type="submit" disabled={isPending}>

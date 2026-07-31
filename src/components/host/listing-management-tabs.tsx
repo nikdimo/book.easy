@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Banknote, CalendarDays, Percent } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/lib/i18n/client";
 
 export function ListingManagementTabs({
   listingId,
@@ -14,20 +15,21 @@ export function ListingManagementTabs({
   preserveQuery?: string;
 }) {
   const pathname = usePathname();
+  const { resolve } = useI18n();
   const base = `/host/listings/${listingId}`;
   const tabs = [
     {
-      label: "Availability",
+      label: resolve("host.workspace.availability", "Availability"),
       path: `${base}/availability`,
       icon: CalendarDays,
     },
     {
-      label: "Pricing",
+      label: resolve("host.workspace.pricing", "Pricing"),
       path: `${base}/pricing`,
       icon: Banknote,
     },
     {
-      label: "Promotions",
+      label: resolve("host.tabs.promotions", "Promotions"),
       path: `${base}/promotion`,
       icon: Percent,
     },
@@ -35,7 +37,12 @@ export function ListingManagementTabs({
 
   return (
     <nav
-      aria-label="Availability, pricing and promotion sections"
+      aria-label={
+        resolve(
+          "host.tabs.nav_label",
+          "Availability, pricing and promotion sections",
+        ).text
+      }
       // Tapping a tab must not count as clicking away from the calendar, or the
       // selection would be cleared on the way out and arrive here empty.
       data-keeps-calendar-selection
@@ -58,7 +65,9 @@ export function ListingManagementTabs({
               )}
             >
               <Icon className="size-4" aria-hidden="true" />
-              {tab.label}
+              <span className={tab.label.translated ? "notranslate" : undefined}>
+                {tab.label.text}
+              </span>
             </Link>
           );
         })}

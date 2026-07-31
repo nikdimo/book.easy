@@ -37,7 +37,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { translatedClass, useI18n } from "@/lib/i18n/client";
+import { Tx, interpolate, translatedClass, useI18n } from "@/lib/i18n/client";
 import {
   Popover,
   PopoverContent,
@@ -345,7 +345,10 @@ function RangePickerDialog({
           <div className="border-b px-6 py-5 pr-12 text-left">
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription className="mt-1">
-              Select one date or drag across a date range.
+              <Tx
+                k="host.calendar.range_hint"
+                source="Select one date or drag across a date range."
+              />
             </DialogDescription>
           </div>
         </DialogHeader>
@@ -370,7 +373,7 @@ function RangePickerDialog({
               onOpenChange(false);
             }}
           >
-            Clear dates
+            <Tx k="host.calendar.clear_dates" source="Clear dates" />
           </Button>
           <div className="flex gap-2">
             <Button
@@ -378,7 +381,7 @@ function RangePickerDialog({
               variant="outline"
               onClick={() => onOpenChange(false)}
             >
-              Cancel
+              <Tx k="host.calendar.cancel" source="Cancel" />
             </Button>
             <Button
               type="button"
@@ -388,7 +391,7 @@ function RangePickerDialog({
                 onOpenChange(false);
               }}
             >
-              Use selected dates
+              <Tx k="host.calendar.use_dates" source="Use selected dates" />
             </Button>
           </div>
         </div>
@@ -406,6 +409,7 @@ function DateFilter({
   value?: Date;
   onChange: (date?: Date) => void;
 }) {
+  const { resolve } = useI18n();
   const [open, setOpen] = useState(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -446,7 +450,11 @@ function DateFilter({
                 setOpen(false);
               }}
             >
-              Clear {label.toLowerCase()}
+              {
+                interpolate(resolve("host.calendar.clear_field", "Clear {field}"), {
+                  field: label.toLowerCase(),
+                }).text
+              }
             </Button>
           </div>
         ) : null}
@@ -530,6 +538,7 @@ function EditorDialog({
 }) {
   const router = useRouter();
   const i18n = useI18n();
+  const { resolve } = i18n;
   const resolveReviewed = i18n.resolve;
   const [pending, startTransition] = useTransition();
   const [range, setRange] = useState<DateRange | undefined>(
@@ -831,7 +840,7 @@ function EditorDialog({
                 <>
                   <fieldset>
                     <legend className="text-sm font-semibold">
-                      Listing visibility
+                      <Tx k="host.calendar.visibility" source="Listing visibility" />
                     </legend>
                     <div className="mt-3 grid grid-cols-2 gap-3">
                       {(
@@ -886,9 +895,10 @@ function EditorDialog({
                   <div className="flex gap-3 rounded-xl border bg-muted/25 p-3">
                     <ShieldCheck className="mt-0.5 size-4 shrink-0" />
                     <p className="text-sm md:text-xs text-muted-foreground">
-                      Existing reservations remain protected. A hidden listing
-                      must be submitted for review again before guests can book
-                      it.
+                      <Tx
+                        k="host.calendar.visibility_note"
+                        source="Existing reservations remain protected. A hidden listing must be submitted for review again before guests can book it."
+                      />
                     </p>
                   </div>
                 </>
@@ -901,16 +911,29 @@ function EditorDialog({
                     {selectionSummary(selectionCounts)}
                   </p>
                   <div>
-                    <Label htmlFor="block-reason">Block reason (optional)</Label>
+                    <Label htmlFor="block-reason">
+                      <Tx
+                        k="host.calendar.block_reason"
+                        source="Block reason (optional)"
+                      />
+                    </Label>
                     <Input
                       id="block-reason"
                       className="mt-1.5"
                       value={reason}
                       onChange={(event) => setReason(event.target.value)}
-                      placeholder="e.g. Maintenance or private stay"
+                      placeholder={
+                        resolve(
+                          "host.calendar.block_reason_placeholder",
+                          "e.g. Maintenance or private stay",
+                        ).text
+                      }
                     />
                     <p className="mt-1.5 text-sm md:text-xs text-muted-foreground">
-                      Only saved when you block. Guests never see it.
+                      <Tx
+                        k="host.calendar.block_reason_hint"
+                        source="Only saved when you block. Guests never see it."
+                      />
                     </p>
                   </div>
                 </>
@@ -944,7 +967,7 @@ function EditorDialog({
               ) : (
                 <div className={cn(STICKY_FOOTER, "flex justify-end gap-2")}>
                   <Button type="button" variant="outline" onClick={onClose}>
-                    Cancel
+                    <Tx k="host.calendar.cancel" source="Cancel" />
                   </Button>
                   <Button
                     type="button"
@@ -992,11 +1015,14 @@ function EditorDialog({
                     onChange={(event) => setPrice(event.target.value)}
                   />
                   <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm md:text-xs text-muted-foreground">
-                    per night
+                    <Tx k="host.calendar.per_night" source="per night" />
                   </span>
                 </div>
                 <p className="mt-2 text-sm md:text-xs text-muted-foreground">
-                  Enter an exact amount or choose a quick adjustment below.
+                  <Tx
+                    k="host.calendar.price_hint"
+                    source="Enter an exact amount or choose a quick adjustment below."
+                  />
                 </p>
               </div>
               <div className="grid grid-cols-4 gap-2">
@@ -1062,11 +1088,16 @@ function EditorDialog({
               {!isDateScoped ? (
                 <div className="rounded-xl border bg-muted/20 p-4">
                   <p className="text-sm md:text-xs font-semibold text-muted-foreground">
-                    Additional default settings
+                    <Tx
+                      k="host.calendar.additional_defaults"
+                      source="Additional default settings"
+                    />
                   </p>
                   <div className="mt-3 grid grid-cols-2 gap-3">
                     <div>
-                      <Label htmlFor="cleaning-fee">Cleaning fee</Label>
+                      <Label htmlFor="cleaning-fee">
+                        <Tx k="host.calendar.cleaning_fee" source="Cleaning fee" />
+                      </Label>
                       <Input
                         id="cleaning-fee"
                         className="mt-1.5 bg-background"
@@ -1077,7 +1108,9 @@ function EditorDialog({
                       />
                     </div>
                     <div>
-                      <Label htmlFor="minimum-stay">Minimum nights</Label>
+                      <Label htmlFor="minimum-stay">
+                        <Tx k="host.calendar.minimum_nights" source="Minimum nights" />
+                      </Label>
                       <Input
                         id="minimum-stay"
                         className="mt-1.5 bg-background"
@@ -1124,7 +1157,7 @@ function EditorDialog({
                     className="h-auto min-h-8 whitespace-normal"
                     onClick={onClose}
                   >
-                    Cancel
+                    <Tx k="host.calendar.cancel" source="Cancel" />
                   </Button>
                   <Button
                     type="button"
@@ -1145,7 +1178,7 @@ function EditorDialog({
             <div className="space-y-4 p-6">
               <fieldset>
                 <legend className="text-sm font-semibold">
-                  Recommended offers
+                  <Tx k="host.calendar.recommended_offers" source="Recommended offers" />
                 </legend>
                 <div className="mt-3 grid grid-cols-3 gap-2">
                   {[
@@ -1170,7 +1203,15 @@ function EditorDialog({
                         {offer.title}
                       </span>
                       <span className="text-xs md:text-[0.65rem] text-muted-foreground">
-                        {offer.percent}% · {offer.nights}+ nights
+                        {
+                          interpolate(
+                            resolve(
+                              "host.calendar.offer_summary",
+                              "{percent}% · {nights}+ nights",
+                            ),
+                            { percent: offer.percent, nights: offer.nights },
+                          ).text
+                        }
                       </span>
                     </button>
                   ))}
@@ -1178,23 +1219,34 @@ function EditorDialog({
               </fieldset>
               <div className="grid grid-cols-[1fr_auto_1fr_auto] items-center gap-2 rounded-xl border bg-primary/5 p-3">
                 <Input
-                  aria-label="Discount percentage"
+                  aria-label={
+                    resolve("host.calendar.discount_label", "Discount percentage").text
+                  }
                   type="number"
                   min={0}
                   max={50}
                   value={discount}
                   onChange={(event) => setDiscount(event.target.value)}
                 />
-                <span className="text-sm md:text-xs text-muted-foreground">% off</span>
+                <span className="text-sm md:text-xs text-muted-foreground">
+                  <Tx k="host.calendar.percent_off" source="% off" />
+                </span>
                 <Input
-                  aria-label="Promotion minimum stay"
+                  aria-label={
+                    resolve(
+                      "host.calendar.promotion_minimum_label",
+                      "Promotion minimum stay",
+                    ).text
+                  }
                   type="number"
                   min={1}
                   max={365}
                   value={promotionMinimum}
                   onChange={(event) => setPromotionMinimum(event.target.value)}
                 />
-                <span className="text-sm md:text-xs text-muted-foreground">nights</span>
+                <span className="text-sm md:text-xs text-muted-foreground">
+                  <Tx k="host.calendar.nights" source="nights" />
+                </span>
               </div>
               <Toggle
                 checked={freeCleaning}
@@ -1214,31 +1266,59 @@ function EditorDialog({
                 <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
                 <div>
                   <p className="text-xs md:text-[0.65rem] font-medium tracking-wide text-muted-foreground uppercase">
-                    Guests will see
+                    <Tx k="host.promotion.preview_label" source="Guests will see" />
                   </p>
                   <p className="mt-0.5 text-sm font-semibold">
-                    {numericDiscount > 0 ? `${numericDiscount}% off` : ""}
+                    {numericDiscount > 0
+                      ? interpolate(
+                          resolve("host.calendar.summary_discount", "{percent}% off"),
+                          { percent: numericDiscount },
+                        ).text
+                      : ""}
                     {numericDiscount > 0 && freeCleaning ? " + " : ""}
-                    {freeCleaning ? "free cleaning" : ""}
-                    {` · ${promotionMinimum || "0"}+ nights`}
+                    {freeCleaning
+                      ? resolve("host.calendar.summary_cleaning", "free cleaning").text
+                      : ""}
+                    {
+                      interpolate(
+                        resolve("host.calendar.summary_minimum", " · {nights}+ nights"),
+                        { nights: promotionMinimum || "0" },
+                      ).text
+                    }
                   </p>
                   {numericDiscount > 0 ? (
                     <p className="mt-0.5 text-sm md:text-xs text-muted-foreground">
-                      Estimated default-night price: €{guestRate}
+                      {
+                        interpolate(
+                          resolve(
+                            "host.calendar.estimated_price",
+                            "Estimated default-night price: €{rate}",
+                          ),
+                          { rate: guestRate },
+                        ).text
+                      }
                       {roundPromotion
-                        ? ` · rounded up from €${Number(rawGuestRate.toFixed(2))}`
+                        ? interpolate(
+                            resolve(
+                              "host.calendar.rounded_from",
+                              " · rounded up from €{original}",
+                            ),
+                            { original: Number(rawGuestRate.toFixed(2)) },
+                          ).text
                         : ""}
                     </p>
                   ) : null}
                   <p className="mt-1 text-sm md:text-xs text-muted-foreground">
-                    Date-specific offers take priority. Otherwise, the highest
-                    qualifying minimum-stay threshold wins.
+                    <Tx
+                      k="host.calendar.promotion_priority"
+                      source="Date-specific offers take priority. Otherwise, the highest qualifying minimum-stay threshold wins."
+                    />
                   </p>
                 </div>
               </div>
               <div className={cn(STICKY_FOOTER, "flex justify-end gap-2")}>
                 <Button type="button" variant="outline" onClick={onClose}>
-                  Cancel
+                  <Tx k="host.calendar.cancel" source="Cancel" />
                 </Button>
                 <Button
                   type="button"
@@ -1288,6 +1368,7 @@ export function CalendarWorkspace({
 }: CalendarWorkspaceProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { resolve } = useI18n();
   const meta = LENS_META[lens];
   const [range, setRange] = useState<DateRange | undefined>(() =>
     initialFrom
@@ -1655,28 +1736,36 @@ export function CalendarWorkspace({
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t px-5 py-2 text-xs md:text-[0.68rem] text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             <span className="size-2.5 rounded-[2px] bg-destructive/25" />
-            Booked
+            <Tx k="host.calendar.legend_booked" source="Booked" />
           </span>
           {lens === "availability" ? (
             <span className="inline-flex items-center gap-1.5">
               <span className="size-2.5 rounded-[2px] bg-[repeating-linear-gradient(-45deg,rgba(15,23,42,0.18)_0,rgba(15,23,42,0.18)_2px,transparent_2px,transparent_4px)]" />
-              Blocked
+              <Tx k="host.calendar.legend_blocked" source="Blocked" />
             </span>
           ) : null}
           {lens === "pricing" ? (
             <>
               <span className="inline-flex items-center gap-1.5">
                 <span className="size-2.5 rounded-[2px] border-2 border-primary/50" />
-                Custom price
+                <Tx k="host.calendar.legend_custom_price" source="Custom price" />
               </span>
               <span>
-                Dates without a custom price use the base rate of{" "}
-                {new Intl.NumberFormat("en", {
-                  style: "currency",
-                  currency,
-                  maximumFractionDigits: 0,
-                }).format(baseNightlyRate)}
-                .
+                {
+                  interpolate(
+                    resolve(
+                      "host.calendar.legend_base_rate",
+                      "Dates without a custom price use the base rate of {rate}.",
+                    ),
+                    {
+                      rate: new Intl.NumberFormat(locale, {
+                        style: "currency",
+                        currency,
+                        maximumFractionDigits: 0,
+                      }).format(baseNightlyRate),
+                    },
+                  ).text
+                }
               </span>
             </>
           ) : null}
@@ -1684,11 +1773,13 @@ export function CalendarWorkspace({
             <>
               <span className="inline-flex items-center gap-1.5">
                 <span className="size-2.5 rounded-[2px] bg-amber-500/30" />
-                Promotion
+                <Tx k="host.calendar.legend_promotion" source="Promotion" />
               </span>
               <span>
-                Always-active promotions apply to every date and are not shaded
-                here.
+                <Tx
+                  k="host.calendar.legend_promotion_note"
+                  source="Always-active promotions apply to every date and are not shaded here."
+                />
               </span>
             </>
           ) : null}
@@ -1716,7 +1807,7 @@ export function CalendarWorkspace({
                   onClick={openSelectedRange}
                 >
                   <BedDouble className="size-4" />
-                  Make available
+                  <Tx k="host.calendar.make_available" source="Make available" />
                 </Button>
                 <Button
                   type="button"
@@ -1731,7 +1822,7 @@ export function CalendarWorkspace({
                   }
                 >
                   <LockKeyhole className="size-4" />
-                  Block dates
+                  <Tx k="host.calendar.block_dates" source="Block dates" />
                 </Button>
               </div>
             ) : (
@@ -1794,7 +1885,11 @@ export function CalendarWorkspace({
               </p>
             </div>
             <span className="text-sm md:text-xs text-muted-foreground">
-              {filteredChanges.length} shown
+              {
+                interpolate(resolve("host.calendar.shown_count", "{count} shown"), {
+                  count: filteredChanges.length,
+                }).text
+              }
             </span>
           </div>
           <div className="mt-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
@@ -1842,7 +1937,7 @@ export function CalendarWorkspace({
                   }}
                 >
                   <RotateCcw className="size-3.5" />
-                  Clear filters
+                  <Tx k="host.calendar.clear_filters" source="Clear filters" />
                 </Button>
               ) : null}
             </div>
@@ -1904,7 +1999,10 @@ export function CalendarWorkspace({
                   </span>
                   {change.kind === "booking" ? (
                     <span className="text-right text-sm md:text-xs text-muted-foreground">
-                      Protected reservation
+                      <Tx
+                        k="host.calendar.protected_reservation"
+                        source="Protected reservation"
+                      />
                     </span>
                   ) : (
                     <span className="flex justify-end gap-1">
@@ -1914,7 +2012,8 @@ export function CalendarWorkspace({
                         size="sm"
                         onClick={() => editChange(change)}
                       >
-                        <Pencil className="size-3.5" /> Edit
+                        <Pencil className="size-3.5" />{" "}
+                        <Tx k="host.workspace.edit" source="Edit" />
                       </Button>
                       <Button
                         type="button"

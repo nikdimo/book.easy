@@ -18,12 +18,14 @@ import {
   confirmBookingAction,
   rejectBookingAction,
 } from "@/lib/actions/booking.actions";
+import { Tx, useI18n } from "@/lib/i18n/client";
 
 export function HostBookingActions({ bookingId }: { bookingId: string }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [decision, setDecision] = useState<"accept" | "decline" | null>(null);
   const [reason, setReason] = useState("");
+  const { resolve } = useI18n();
 
   function submit() {
     if (!decision) return;
@@ -36,7 +38,11 @@ export function HostBookingActions({ bookingId }: { bookingId: string }) {
         toast.error(result.error);
         return;
       }
-      toast.success(decision === "accept" ? "Booking confirmed" : "Request declined");
+      toast.success(
+        decision === "accept"
+          ? resolve("host.booking.confirmed_toast", "Booking confirmed").text
+          : resolve("host.booking.declined_toast", "Request declined").text,
+      );
       setDecision(null);
       setReason("");
       router.refresh();
@@ -48,11 +54,11 @@ export function HostBookingActions({ bookingId }: { bookingId: string }) {
       <div className="flex flex-wrap gap-2">
         <Button onClick={() => setDecision("accept")}>
           <Check className="mr-1 h-4 w-4" />
-          Accept request
+          <Tx k="host.booking.accept" source="Accept request" />
         </Button>
         <Button variant="outline" onClick={() => setDecision("decline")}>
           <X className="mr-1 h-4 w-4" />
-          Decline
+          <Tx k="host.booking.decline" source="Decline" />
         </Button>
       </div>
 
@@ -60,12 +66,24 @@ export function HostBookingActions({ bookingId }: { bookingId: string }) {
         <DialogContent variant="sheet">
           <DialogHeader>
             <DialogTitle>
-              {decision === "accept" ? "Confirm this booking?" : "Decline this request?"}
+              {decision === "accept" ? (
+                <Tx k="host.booking.accept_title" source="Confirm this booking?" />
+              ) : (
+                <Tx k="host.booking.decline_title" source="Decline this request?" />
+              )}
             </DialogTitle>
             <p className="text-sm text-muted-foreground">
-              {decision === "accept"
-                ? "The guest will be notified immediately and the reservation will become confirmed."
-                : "Tell the guest why you cannot host them. Their dates will be released immediately."}
+              {decision === "accept" ? (
+                <Tx
+                  k="host.booking.accept_body"
+                  source="The guest will be notified immediately and the reservation will become confirmed."
+                />
+              ) : (
+                <Tx
+                  k="host.booking.decline_body"
+                  source="Tell the guest why you cannot host them. Their dates will be released immediately."
+                />
+              )}
             </p>
           </DialogHeader>
           {decision === "decline" ? (
@@ -73,13 +91,20 @@ export function HostBookingActions({ bookingId }: { bookingId: string }) {
               autoFocus
               value={reason}
               onChange={(event) => setReason(event.target.value)}
-              placeholder="Brief reason for declining (required)"
+              placeholder={
+                resolve(
+                  "host.booking.decline_placeholder",
+                  "Brief reason for declining (required)",
+                ).text
+              }
               maxLength={500}
             />
           ) : null}
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">Go back</Button>
+              <Button variant="outline">
+                <Tx k="host.booking.go_back" source="Go back" />
+              </Button>
             </DialogClose>
             <Button
               variant={decision === "decline" ? "destructive" : "default"}
@@ -87,10 +112,10 @@ export function HostBookingActions({ bookingId }: { bookingId: string }) {
               onClick={submit}
             >
               {isPending
-                ? "Saving…"
+                ? resolve("host.booking.saving", "Saving…").text
                 : decision === "accept"
-                  ? "Confirm booking"
-                  : "Decline request"}
+                  ? resolve("host.booking.confirm_action", "Confirm booking").text
+                  : resolve("host.booking.decline_action", "Decline request").text}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -4,12 +4,15 @@ import * as React from "react";
 import { ImageOff, Loader2 } from "lucide-react";
 import { loadGoogleMaps } from "@/lib/google-maps-browser";
 import { streetViewPanoId } from "@/lib/utils/street-view-response";
+import { Tx } from "@/lib/i18n/client";
 
 type StreetViewPov = { heading: number; pitch: number };
 type MapsListener = { remove(): void };
 type StreetViewPanorama = {
   getPano(): string;
   getPov(): StreetViewPov;
+  setPano(pano: string): void;
+  setPov(pov: StreetViewPov): void;
   addListener(
     event: "pano_changed" | "pov_changed",
     handler: () => void
@@ -78,6 +81,31 @@ export function StreetViewPicker({
   React.useEffect(() => {
     onUseViewRef.current = onUseView;
   }, [onUseView]);
+
+  // The panorama is only built once per coordinate, so a read-only preview that is
+  // already mounted (the confirmed-location summary sitting behind the editor dialog)
+  // would keep showing the view the host started with after they turn the camera and
+  // confirm. Push later selections into the live panorama instead of remounting it —
+  // remounting on every pov_changed tick would reload Street View continuously while
+  // the host drags.
+  React.useEffect(() => {
+    initialSelectionRef.current = initialSelection;
+    const panorama = panoramaRef.current;
+    if (!panorama || !readOnly || !initialSelection) return;
+    if (initialSelection.panoId && panorama.getPano() !== initialSelection.panoId) {
+      panorama.setPano(initialSelection.panoId);
+    }
+    const pov = panorama.getPov();
+    if (
+      pov.heading !== initialSelection.heading ||
+      pov.pitch !== initialSelection.pitch
+    ) {
+      panorama.setPov({
+        heading: initialSelection.heading,
+        pitch: initialSelection.pitch,
+      });
+    }
+  }, [initialSelection, readOnly]);
 
   React.useEffect(() => {
     if (!key) return;
@@ -166,7 +194,10 @@ export function StreetViewPicker({
   if (!key) {
     return (
       <p className="text-sm text-muted-foreground">
-        The interactive Street View picker isn&apos;t configured.
+        <Tx
+          k="host.street_view.not_configured"
+          source="The interactive Street View picker isn't configured."
+        />
       </p>
     );
   }
@@ -179,8 +210,10 @@ export function StreetViewPicker({
     >
       {!compact && (
         <p className="text-sm text-muted-foreground">
-          Turn the view and move along the street until guests can clearly recognize
-          the property. Your selected view is saved automatically.
+          <Tx
+            k="host.street_view.intro"
+            source="Turn the view and move along the street until guests can clearly recognize the property. Your selected view is saved automatically."
+          />
         </p>
       )}
       <div
@@ -203,19 +236,24 @@ export function StreetViewPicker({
         {status === "loading" && (
           <div className="absolute inset-0 flex items-center justify-center gap-2 bg-muted text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" />
-            Loading Street View…
+            <Tx k="host.street_view.loading" source="Loading Street View…" />
           </div>
         )}
         {status === "unavailable" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-6 text-center text-sm text-muted-foreground">
             <ImageOff className="h-5 w-5" />
-            No Street View panorama is available near this location.
+            <Tx
+              k="host.street_view.unavailable"
+              source="No Street View panorama is available near this location."
+            />
           </div>
         )}
         {status === "error" && (
           <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-sm text-destructive">
-            Street View couldn&apos;t load. Check the API and website restrictions
-            for this key.
+            <Tx
+              k="host.street_view.load_failed"
+              source="Street View couldn't load. Check the API and website restrictions for this key."
+            />
           </div>
         )}
       </div>
