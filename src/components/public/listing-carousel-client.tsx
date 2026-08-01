@@ -24,11 +24,12 @@ export function ListingCarouselClient({
   useEffect(() => {
     const el = document.getElementById(containerId);
     if (!el) return;
-    checkScroll();
+    const initialCheck = requestAnimationFrame(checkScroll);
     el.addEventListener("scroll", checkScroll, { passive: true });
     const ro = new ResizeObserver(checkScroll);
     ro.observe(el);
     return () => {
+      cancelAnimationFrame(initialCheck);
       el.removeEventListener("scroll", checkScroll);
       ro.disconnect();
     };

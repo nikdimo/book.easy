@@ -142,8 +142,7 @@ if not "%WEB_SERVER_STATE%"=="1" (
 )
 
 echo [1/3] Preparing the database...
-call npm run db:generate
-call npm run db:push
+call powershell -NoProfile -ExecutionPolicy Bypass -File "%REPO%\scripts\prepare-local-database.ps1" -RepoRoot "%REPO%"
 if errorlevel 1 (
     echo.
     echo   ERROR - Database preparation failed. Check DATABASE_URL and PostgreSQL.
@@ -218,8 +217,7 @@ if not "%WEB_SERVER_STATE%"=="1" (
 )
 
 echo [1/2] Applying database schema...
-call npm run db:generate
-call npm run db:push
+call powershell -NoProfile -ExecutionPolicy Bypass -File "%REPO%\scripts\prepare-local-database.ps1" -RepoRoot "%REPO%"
 if errorlevel 1 (
     echo.
     echo   ERROR - Prisma db push failed. Check your .env DATABASE_URL and that PostgreSQL is running.

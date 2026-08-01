@@ -10,6 +10,9 @@ import { authConfig } from "@/lib/auth.config";
 import { rateLimit } from "@/lib/rate-limit";
 import { PRODUCT_NAME } from "@/lib/branding";
 import { communicationReplyToAddress } from "@/lib/communication-brand.server";
+import { getEmailT } from "@/lib/email/i18n";
+import { getRequestLocale } from "@/lib/email/i18n/request-locale";
+import { resolveEmailLocale } from "@/lib/email/i18n/locales";
 
 // Magic-link sign-ins only carry an email, but `name` is required on User.
 // Fall back to the local part of the email so the account still gets a display name.
@@ -57,14 +60,31 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           );
         }
 
+        // The only email sent while the recipient is still on the site, so its
+        // language comes from the request rather than a stored account locale —
+        // the account may not even exist yet on a first sign-in.
+        const t = getEmailT(await getRequestLocale());
+        const signIn = t.ti("email.signin.subject", "Sign in to {product}", {
+          product: PRODUCT_NAME,
+        });
+        const ignore = t.t(
+          "email.signin.ignore",
+          "If you didn't request this, you can ignore this email."
+        );
+
         const transport = createTransport(provider.server);
         await transport.sendMail({
           to: email,
           from: provider.from,
           replyTo: communicationReplyToAddress(),
-          subject: `Sign in to ${PRODUCT_NAME}`,
-          text: `Sign in to ${PRODUCT_NAME}\n${url}\n\nIf you didn't request this, you can ignore this email.`,
-          html: `<p>Sign in to <strong>${PRODUCT_NAME}</strong></p><p><a href="${url}">Click here to sign in</a></p><p>If you didn't request this, you can ignore this email.</p>`,
+          subject: signIn,
+          text: `${signIn}\n${url}\n\n${ignore}`,
+          html:
+            `<p>${t.ti("email.signin.heading", "Sign in to {product}", {
+              product: `<strong>${PRODUCT_NAME}</strong>`,
+            })}</p>` +
+            `<p><a href="${url}">${t.t("email.signin.cta", "Click here to sign in")}</a></p>` +
+            `<p>${ignore}</p>`,
         });
       },
     }),

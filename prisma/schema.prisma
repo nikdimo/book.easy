@@ -280,6 +280,11 @@ model User {
   isHost        Boolean   @default(false)
   isActive      Boolean   @default(true)
   emailVerified DateTime?
+  /// Language for system email. Set when the visitor picks a language in the
+  /// switcher; null means English. Emails are sent by background jobs hours after
+  /// the fact, where the request-scoped locale cookie no longer exists — so the
+  /// choice has to live on the account, not in `getLocale()`.
+  locale        String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
