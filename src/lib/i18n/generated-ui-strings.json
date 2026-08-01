@@ -1192,17 +1192,17 @@
   {
     "key": "host.bookings.message_guest",
     "sourceText": "Message guest",
-    "filePath": "src/app/(host)/host/bookings/page.tsx"
+    "filePath": "src/app/(host)/host/bookings/[id]/page.tsx"
   },
   {
     "key": "host.bookings.rate_guest",
     "sourceText": "Rate guest",
-    "filePath": "src/app/(host)/host/bookings/page.tsx"
+    "filePath": "src/app/(host)/host/bookings/[id]/page.tsx"
   },
   {
     "key": "host.bookings.report_problem",
     "sourceText": "Report a problem",
-    "filePath": "src/app/(host)/host/bookings/page.tsx"
+    "filePath": "src/app/(host)/host/bookings/[id]/page.tsx"
   },
   {
     "key": "host.bookings.total_label",

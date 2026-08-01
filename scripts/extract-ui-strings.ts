@@ -127,7 +127,13 @@ function extract(): ExtractedUiString[] {
           `  ${next.filePath}: ${JSON.stringify(sourceText)}`
       );
     }
-    if (!existing) byKey.set(key, next);
+    if (!existing || next.filePath.localeCompare(existing.filePath) < 0) {
+      // Directory enumeration order differs between Windows and Linux. When the
+      // same translated source is used in more than one file, always retain the
+      // lexicographically first path so the generated catalog is reproducible in
+      // local development and CI.
+      byKey.set(key, next);
+    }
   };
 
   for (const filePath of walkFiles(sourceRoot)) {
