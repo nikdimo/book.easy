@@ -1,8 +1,9 @@
 "use server";
 
 import { requireAdmin } from "@/lib/auth-helpers";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { db } from "@/lib/db";
+import { UI_TRANSLATIONS_TAG } from "@/lib/i18n/translation-cache";
 import {
   getTranslationEntriesForLocale,
   scanUiStrings,
@@ -19,6 +20,7 @@ export async function runTranslationSync() {
     const { found } = await scanUiStrings();
     const results = await syncTranslations();
 
+    revalidateTag(UI_TRANSLATIONS_TAG, "max");
     revalidatePath("/admin/settings");
     revalidatePath("/", "layout");
 
@@ -87,6 +89,7 @@ export async function saveTranslationOverride(locale: string, key: string, value
     create: { locale, key, value: trimmed, sourceTextSnapshot: uiString.sourceText, isManuallyEdited: true },
     update: { value: trimmed, sourceTextSnapshot: uiString.sourceText, isManuallyEdited: true },
   });
+  revalidateTag(UI_TRANSLATIONS_TAG, "max");
   revalidatePath("/admin/settings");
   revalidatePath("/", "layout");
   return { success: true as const };

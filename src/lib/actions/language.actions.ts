@@ -1,8 +1,10 @@
 "use server";
 
 import { requireAdmin } from "@/lib/auth-helpers";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { headers } from "next/headers";
+import { LANGUAGES_TAG } from "@/lib/services/language.service";
+import { UI_TRANSLATIONS_TAG } from "@/lib/i18n/translation-cache";
 import { clientIpFromHeaders, rateLimit } from "@/lib/rate-limit";
 import { revalidatePublicListingCaches } from "@/lib/utils/revalidate-public-listing-caches";
 import {
@@ -16,6 +18,14 @@ import {
   updateLanguageEnabled,
 } from "@/lib/data/language.repository";
 
+/** Both caches key off the language table: the enabled-language list directly, and the
+ * per-locale translation catalog through `isEnabled`/`useAiTranslation`. Any edit to a
+ * language can change either, so they're always invalidated together. */
+function revalidateLanguageCaches(): void {
+  revalidateTag(LANGUAGES_TAG, "max");
+  revalidateTag(UI_TRANSLATIONS_TAG, "max");
+}
+
 export async function addLanguage(code: string, name: string) {
   await requireAdmin();
 
@@ -27,6 +37,7 @@ export async function addLanguage(code: string, name: string) {
   const count = await countLanguages();
   await addLanguageRecord(code, name, count);
 
+  revalidateLanguageCaches();
   revalidatePath("/admin/settings");
   revalidatePublicListingCaches();
   return { success: true };
@@ -45,6 +56,7 @@ export async function toggleLanguageEnabled(code: string) {
 
   await updateLanguageEnabled(code, !language.isEnabled);
 
+  revalidateLanguageCaches();
   revalidatePath("/admin/settings");
   revalidatePublicListingCaches();
   return { success: true };
@@ -63,6 +75,7 @@ export async function removeLanguage(code: string) {
 
   await deleteLanguageByCode(code);
 
+  revalidateLanguageCaches();
   revalidatePath("/admin/settings");
   revalidatePublicListingCaches();
   return { success: true };
@@ -81,6 +94,7 @@ export async function toggleLanguageAiTranslation(code: string) {
 
   await updateLanguageAiTranslation(code, !language.useAiTranslation);
 
+  revalidateLanguageCaches();
   revalidatePath("/admin/settings");
   revalidatePath("/", "layout");
   return { success: true };
@@ -108,6 +122,7 @@ export async function reorderLanguageList(codesInOrder: string[]) {
 
   await reorderLanguages(codesInOrder);
 
+  revalidateLanguageCaches();
   revalidatePath("/admin/settings");
   revalidatePublicListingCaches();
   return { success: true };

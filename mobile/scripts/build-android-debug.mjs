@@ -111,11 +111,12 @@ async function cleanAndGenerate(attempt) {
   );
   if (prebuild !== 0) return prebuild;
   await configureGradleMemory();
+  const wrapperJar = path.join(androidRoot, "gradle", "wrapper", "gradle-wrapper.jar");
   return run(
     "java",
     [
       "-classpath",
-      path.join(androidRoot, "gradle", "wrapper", "gradle-wrapper.jar"),
+      wrapperJar,
       "org.gradle.wrapper.GradleWrapperMain",
       "assembleDebug",
       "--no-daemon",

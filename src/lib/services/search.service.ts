@@ -5,6 +5,7 @@ import { ListingStatus, Prisma } from "@prisma/client";
 import { ITEMS_PER_PAGE } from "@/lib/constants";
 import { sortPropertyTypesInDisplayOrder } from "@/lib/property-type-filter";
 import { getActivePropertyTypes } from "@/lib/services/property-type.service";
+import { getActiveAmenities } from "@/lib/services/amenity.service";
 import {
   serializeListingCard,
   listingCardSelect,
@@ -28,6 +29,14 @@ export const PUBLIC_HEADER_DATA_TAG = "public-header-data";
  * of a listing's images per card (previously up to 8) is wasted payload for a list
  * view; the full gallery loads on the listing detail page instead. */
 const CARD_IMAGE_LIMIT = 4;
+
+/** The home page's listing rows are public and identical for every visitor, but were
+ * re-queried on every hit because the root layout forces dynamic rendering. A short
+ * window keeps the page feeling live (a newly approved listing shows up within a
+ * minute at worst) while taking the repeat queries off the database entirely.
+ * `revalidatePublicListingCaches()` invalidates these immediately on approval or
+ * suspension, so the window is a fallback rather than the primary mechanism. */
+const HOME_LISTINGS_REVALIDATE_SECONDS = 60;
 
 function buildListingWhere(filters: SearchFilters): Prisma.ListingWhereInput {
   const where: Prisma.ListingWhereInput = {
@@ -202,19 +211,23 @@ const cardSelectWithImages = {
 
 /** Newest public listings. This is the honest default ordering for the home page —
  *  see getPopularListings for the demand-ranked one. */
-export async function getFeaturedListings(limit = 6, excludeIds: string[] = []) {
-  const rows = await db.listing.findMany({
-    where: {
-      status: ListingStatus.APPROVED,
-      ...(excludeIds.length > 0 ? { id: { notIn: excludeIds } } : {}),
-    },
-    select: cardSelectWithImages,
-    orderBy: { createdAt: "desc" },
-    take: limit,
-  });
-  const videoUrls = await getFirstVideoUrlsByListingIds(rows.map((r) => r.id));
-  return rows.map((r) => serializeListingCard(r, videoUrls.get(r.id)));
-}
+export const getFeaturedListings = unstable_cache(
+  async (limit = 6, excludeIds: string[] = []) => {
+    const rows = await db.listing.findMany({
+      where: {
+        status: ListingStatus.APPROVED,
+        ...(excludeIds.length > 0 ? { id: { notIn: excludeIds } } : {}),
+      },
+      select: cardSelectWithImages,
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    });
+    const videoUrls = await getFirstVideoUrlsByListingIds(rows.map((r) => r.id));
+    return rows.map((r) => serializeListingCard(r, videoUrls.get(r.id)));
+  },
+  ["featured-listings"],
+  { revalidate: HOME_LISTINGS_REVALIDATE_SECONDS, tags: [PUBLIC_HEADER_DATA_TAG] },
+);
 
 /**
  * Listings ranked by the demand signal computed in lib/services/popularity.service.ts.
@@ -222,28 +235,35 @@ export async function getFeaturedListings(limit = 6, excludeIds: string[] = []) 
  * with an arbitrary ordering — if this returns fewer rows than asked for, the caller
  * genuinely doesn't have enough data to label anything "popular".
  */
-export async function getPopularListings(limit = 8) {
-  const rows = await db.listing.findMany({
-    where: { status: ListingStatus.APPROVED, popularityScore: { gt: 0 } },
-    select: cardSelectWithImages,
-    orderBy: [{ popularityScore: "desc" }, { createdAt: "desc" }],
-    take: limit,
-  });
-  const videoUrls = await getFirstVideoUrlsByListingIds(rows.map((r) => r.id));
-  return rows.map((r) => serializeListingCard(r, videoUrls.get(r.id)));
-}
+export const getPopularListings = unstable_cache(
+  async (limit = 8) => {
+    const rows = await db.listing.findMany({
+      where: { status: ListingStatus.APPROVED, popularityScore: { gt: 0 } },
+      select: cardSelectWithImages,
+      orderBy: [{ popularityScore: "desc" }, { createdAt: "desc" }],
+      take: limit,
+    });
+    const videoUrls = await getFirstVideoUrlsByListingIds(rows.map((r) => r.id));
+    return rows.map((r) => serializeListingCard(r, videoUrls.get(r.id)));
+  },
+  ["popular-listings"],
+  { revalidate: HOME_LISTINGS_REVALIDATE_SECONDS, tags: [PUBLIC_HEADER_DATA_TAG] },
+);
 
 /** Total publicly visible listings — drives how much of the home page is worth
  *  splitting into sections at all. */
-export async function countApprovedListings() {
-  return db.listing.count({ where: { status: ListingStatus.APPROVED } });
-}
+export const countApprovedListings = unstable_cache(
+  async () => db.listing.count({ where: { status: ListingStatus.APPROVED } }),
+  ["approved-listing-count"],
+  { revalidate: HOME_LISTINGS_REVALIDATE_SECONDS, tags: [PUBLIC_HEADER_DATA_TAG] },
+);
 
+/** Read on every /properties render. Identical to `getActiveAmenities` in
+ * amenity.service.ts, which was already cached — this one wasn't, so the same catalog
+ * was being fetched fresh per search. Delegating keeps a single cached copy rather
+ * than adding a second cache entry for the same rows. */
 export async function getAvailableAmenities() {
-  return db.amenity.findMany({
-    where: { isActive: true },
-    orderBy: [{ category: "asc" }, { name: "asc" }],
-  });
+  return getActiveAmenities();
 }
 
 export async function getAvailableAmenityNames(filters: SearchFilters) {

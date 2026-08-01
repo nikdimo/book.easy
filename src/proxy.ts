@@ -75,7 +75,11 @@ const authenticatedProxy = auth((req: NextAuthRequest, event: NextFetchEvent) =>
   // The second parameter selects NextAuth's Proxy overload rather than its Route
   // Handler overload. Authentication itself does not need the event object.
   void event;
-  const { pathname } = req.nextUrl;
+  const { pathname, search } = req.nextUrl;
+  // Round-trip the query string too, not just the path. Deep links that carry state —
+  // the account-deletion confirmation link is one — are dead on arrival otherwise,
+  // since signing in would drop the very parameter the page needs.
+  const returnTo = `${pathname}${search}`;
   const isLoggedIn = !!req.auth;
   const userRole = req.auth?.user?.role;
   const isHost = req.auth?.user?.isHost;
@@ -89,7 +93,7 @@ const authenticatedProxy = auth((req: NextAuthRequest, event: NextFetchEvent) =>
   if (pathname.startsWith("/account") || pathname.startsWith("/bookings/confirm")) {
     if (!isLoggedIn) {
       const loginUrl = new URL("/login", req.nextUrl);
-      loginUrl.searchParams.set("callbackUrl", pathname);
+      loginUrl.searchParams.set("callbackUrl", returnTo);
       return redirectWithLocale(req, loginUrl);
     }
   }
@@ -97,7 +101,7 @@ const authenticatedProxy = auth((req: NextAuthRequest, event: NextFetchEvent) =>
   if (pathname.startsWith("/host")) {
     if (!isLoggedIn) {
       const loginUrl = new URL("/login", req.nextUrl);
-      loginUrl.searchParams.set("callbackUrl", pathname);
+      loginUrl.searchParams.set("callbackUrl", returnTo);
       return redirectWithLocale(req, loginUrl);
     }
     if (!isHost && userRole !== "ADMIN") {

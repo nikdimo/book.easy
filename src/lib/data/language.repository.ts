@@ -113,9 +113,13 @@ async function ensureDefaults() {
   await normalizeSourceLanguageWithSql();
 }
 
-export async function getLanguages(enabledOnly = false): Promise<LanguageRecord[]> {
-  await ensureDefaults();
+/** `ensureDefaults` used to run before every read, costing a `count` and a `findUnique`
+ * on the hot path (the root and public layouts both read languages on every render)
+ * to guard against a case that can only occur on an unseeded database. It now runs at
+ * most once per process, and only if a read actually comes back empty. */
+let defaultsEnsuredThisProcess = false;
 
+async function readLanguages(enabledOnly: boolean): Promise<LanguageRecord[]> {
   const language = getLanguageDelegate();
   if (language) {
     return language.findMany({
@@ -134,6 +138,18 @@ export async function getLanguages(enabledOnly = false): Promise<LanguageRecord[
     ${where}
     ORDER BY "sortOrder" ASC
   `;
+}
+
+export async function getLanguages(enabledOnly = false): Promise<LanguageRecord[]> {
+  const languages = await readLanguages(enabledOnly);
+  if (languages.length > 0 || defaultsEnsuredThisProcess) return languages;
+
+  // Empty result on a process that hasn't seeded yet: this is either a fresh database
+  // or a genuinely empty list. Seeding is idempotent, so paying for it once here is
+  // safe, and the flag stops an empty-by-design list from retrying on every read.
+  defaultsEnsuredThisProcess = true;
+  await ensureDefaults();
+  return readLanguages(enabledOnly);
 }
 
 export async function getLanguageByCode(code: string): Promise<LanguageRecord | null> {

@@ -68,14 +68,17 @@ if not defined LAN_IP (
     goto MENU
 )
 
-powershell -NoProfile -Command "if (Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }"
-if errorlevel 1 (
+call :CHECK_WEB_SERVER
+if "%WEB_SERVER_STATE%"=="1" (
     echo [1/2] Starting the local web API...
     if exist ".next\dev" rmdir /s /q ".next\dev"
     start "BookEasy Web" cmd /k "cd /d ""%REPO%"" && npm run dev -- --webpack"
     timeout /t 3 /nobreak >nul
-) else (
+) else if "%WEB_SERVER_STATE%"=="0" (
     echo [1/2] Local web API is already running at http://localhost:3000
+) else (
+    pause
+    goto MENU
 )
 
 echo [2/2] Starting Expo for iPhone...
@@ -131,8 +134,12 @@ echo.
 
 rem Reuse an existing backend. Starting two Next.js processes against the same
 rem .next directory can corrupt the development cache on Windows.
-powershell -NoProfile -Command "if (Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }"
-if not errorlevel 1 goto MOBILE_WEB_READY
+call :CHECK_WEB_SERVER
+if "%WEB_SERVER_STATE%"=="0" goto MOBILE_WEB_READY
+if not "%WEB_SERVER_STATE%"=="1" (
+    pause
+    goto MENU
+)
 
 echo [1/3] Preparing the database...
 call npm run db:generate
@@ -198,11 +205,14 @@ goto PREVIEW_BODY
 :PREVIEW_BODY
 rem Never start a second Next.js process against the same .next cache. Concurrent
 rem dev processes can corrupt Turbopack's persistent task state on Windows.
-powershell -NoProfile -Command "if (Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }"
-if not errorlevel 1 (
+call :CHECK_WEB_SERVER
+if "%WEB_SERVER_STATE%"=="0" (
     echo   The web app is already running at http://localhost:3000
     start "" http://localhost:3000
-    echo   Stop the existing server before starting a fresh preview.
+    pause
+    goto MENU
+)
+if not "%WEB_SERVER_STATE%"=="1" (
     pause
     goto MENU
 )
@@ -388,3 +398,9 @@ powershell -Command "& { $commits = git log --pretty=format:'%%h|%%ad|%%s' --dat
 echo.
 pause
 goto MENU
+
+
+:CHECK_WEB_SERVER
+powershell -NoProfile -ExecutionPolicy Bypass -File "%REPO%\scripts\check-dev-server.ps1" -RepoRoot "%REPO%" -Port 3000
+set "WEB_SERVER_STATE=%ERRORLEVEL%"
+exit /b 0

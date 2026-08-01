@@ -96,14 +96,24 @@ export default async function ListingDetailPage({
     ? Number(search.guests)
     : initialGuestDetails.adults + initialGuestDetails.children || undefined;
 
-  const disabledDateRanges = await getBlockedDateRangesForListing(listing.id);
-  const priceOverrides = listing.pricingRule
-    ? (await getFutureDatePriceRowsForListing(listing.id)).map((r) => ({
-        date: dateKey(new Date(r.date)),
-        rate: Number(r.nightlyRate),
-      }))
-    : [];
-  const reviewSummary = await getPublishedListingReviews(listing.id);
+  // None of these depend on each other, so they run concurrently rather than as four
+  // sequential round-trips (they were previously awaited one at a time, and each one's
+  // latency added directly to this page's TTFB).
+  const [disabledDateRanges, priceRows, reviewSummary, typeLabel, t] =
+    await Promise.all([
+      getBlockedDateRangesForListing(listing.id),
+      listing.pricingRule
+        ? getFutureDatePriceRowsForListing(listing.id)
+        : Promise.resolve([]),
+      getPublishedListingReviews(listing.id),
+      getPropertyTypeLabel(listing.property.propertyType),
+      getT(),
+    ]);
+
+  const priceOverrides = priceRows.map((r) => ({
+    date: dateKey(new Date(r.date)),
+    rate: Number(r.nightlyRate),
+  }));
 
   const hostInitials =
     listing.host.profile?.hostDisplayName?.[0] ||
@@ -114,8 +124,6 @@ export default async function ListingDetailPage({
       .slice(0, 2);
   const hostName =
     listing.host.profile?.hostDisplayName || listing.host.name.split(" ")[0];
-  const typeLabel = await getPropertyTypeLabel(listing.property.propertyType);
-  const t = await getT();
   const reserveTooltip = t.resolve(
     "booking_widget.reserve_tooltip",
     "Send a booking request to the host — you won't be charged yet.",

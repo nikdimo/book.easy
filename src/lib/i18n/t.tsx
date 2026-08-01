@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
-import { db } from "@/lib/db";
+import { getLocaleCatalog } from "@/lib/i18n/translation-cache";
 import {
   DEFAULT_LOCALE,
   GOOGLE_TRANSLATE_COOKIE,
@@ -42,10 +42,11 @@ export interface Translator {
   resolve(key: string, source: string): Resolved;
 }
 
-export type TranslationMessages = Record<
-  string,
-  { value: string; sourceTextSnapshot: string }
->;
+/** Client-facing payload: `key -> translated value`. Snapshots are deliberately not
+ *  included — staleness is settled server-side when the locale catalog is built (see
+ *  lib/i18n/translation-cache.ts), so every entry here is already known to match the
+ *  source literal it will be resolved against. */
+export type TranslationMessages = Record<string, string>;
 
 /** Builds a translator scoped to the current request's locale. Call once per request
  *  (e.g. at the top of a server component) and reuse the returned functions. */
@@ -60,15 +61,16 @@ export const getT = cache(async (): Promise<Translator> => {
     };
   }
 
-  const language = await db.language.findUnique({ where: { code: locale } });
-  if (!language?.isEnabled) {
+  const catalog = await getLocaleCatalog(locale);
+
+  if (!catalog.enabled) {
     return {
       locale: SOURCE_LANGUAGE,
       messages: {},
       resolve: (_key, source) => ({ text: source, translated: false }),
     };
   }
-  if (!language.useAiTranslation) {
+  if (!catalog.active) {
     return {
       locale,
       messages: {},
@@ -76,22 +78,15 @@ export const getT = cache(async (): Promise<Translator> => {
     };
   }
 
-  const rows = await db.uiTranslation.findMany({ where: { locale } });
-  const map = new Map(rows.map((row) => [row.key, row]));
-  const messages = Object.fromEntries(
-    rows.map((row) => [
-      row.key,
-      { value: row.value, sourceTextSnapshot: row.sourceTextSnapshot },
-    ])
-  );
-
   return {
     locale,
-    messages,
+    messages: catalog.clientMessages,
     resolve: (key, source) => {
-      const row = map.get(key);
-      if (row && row.sourceTextSnapshot === source) {
-        return { text: row.value, translated: true };
+      // Server-side resolution still compares against the stored snapshot, so this
+      // path's staleness behavior is byte-for-byte what it was before caching.
+      const entry = catalog.entries[key];
+      if (entry && entry.sourceTextSnapshot === source) {
+        return { text: entry.value, translated: true };
       }
       return { text: source, translated: false };
     },

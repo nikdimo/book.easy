@@ -90,16 +90,18 @@ export function PropertyCardGallery({
     () => goToImage((p) => (p - 1 + Math.max(images.length, 1)) % Math.max(images.length, 1))
   );
 
-  // First 3 photos load eagerly up front. With a search page full of cards,
-  // warming a whole gallery per card would waste bandwidth on photos most
-  // users never see — so the rest only start streaming in once this card's
-  // photos have actually been browsed at least once.
-  const loadedUpTo = useProgressivePreload(images.length, 3, hasBrowsedPhotos);
+  // Only the cover photo loads up front. A listings grid renders dozens of these at
+  // once, and warming even two extra photos per card meant ~50 image requests on the
+  // home page for photos most visitors never look at — each one costing a server-side
+  // resize. Preloading now waits until the visitor shows interest in *this* card by
+  // hovering or swiping it, which still makes the second photo feel instant.
+  const hasEngaged = hasBrowsedPhotos || isHovering;
+  const loadedUpTo = useProgressivePreload(images.length, 1, hasEngaged);
 
   // Immediate neighbors (highest priority) plus everything preloaded so far,
   // preloaded off-screen so a swipe shows them instantly.
   const preloadIndices = (() => {
-    if (images.length <= 1) return [];
+    if (images.length <= 1 || !hasEngaged) return [];
     const indices = new Set([
       (safeIndex - 1 + images.length) % images.length,
       (safeIndex + 1) % images.length,
@@ -157,14 +159,19 @@ export function PropertyCardGallery({
         )}
       </a>
 
-      {videoUrl && (
+      {/* Mounted only while hovered, and never fetched until then. Rendering this
+          up front made every card issue a video request on page load — and because
+          the upload route can't serve byte ranges, even `preload="metadata"` pulled
+          whole files through the server. Touch devices never hover, so they now skip
+          video previews entirely rather than downloading one per card. */}
+      {videoUrl && isHovering && (
         <video
           ref={videoRef}
           src={videoUrl}
           muted
           loop
           playsInline
-          preload="metadata"
+          preload="none"
           onLoadStart={() => setIsVideoPlaying(false)}
           onPlaying={() => setIsVideoPlaying(true)}
           onError={() => setIsVideoPlaying(false)}

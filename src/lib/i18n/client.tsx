@@ -37,11 +37,15 @@ export function I18nProvider({
   children: ReactNode;
 }) {
   const value = useMemo<ClientTranslator>(() => {
+    // Presence is sufficient: the server only includes a key once it has confirmed
+    // the stored snapshot still matches the extracted source literal for that key,
+    // so anything that arrives here is known to be current. `source` remains the
+    // fallback for keys that were filtered out or never translated.
     const resolve = (key: string, source: string): Resolved => {
-      const message = messages[key];
-      return message?.sourceTextSnapshot === source
-        ? { text: message.value, translated: true }
-        : { text: source, translated: false };
+      const value = messages[key];
+      return value === undefined
+        ? { text: source, translated: false }
+        : { text: value, translated: true };
     };
     return {
       locale,

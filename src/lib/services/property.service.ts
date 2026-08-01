@@ -1,8 +1,15 @@
 import "server-only";
+import { cache } from "react";
 import { db } from "@/lib/db";
 import { ListingStatus } from "@prisma/client";
 
-export async function getListingBySlug(slug: string) {
+/**
+ * Request-scoped memoization, not a cross-request cache: the listing detail route
+ * calls this twice per request — once in `generateMetadata` and once in the page
+ * itself — and this is the heaviest query on that page. `cache()` collapses those to
+ * one fetch without any staleness risk, since the memo lives only for the request.
+ */
+export const getListingBySlug = cache(async (slug: string) => {
   return db.listing.findFirst({
     where: { slug, status: ListingStatus.APPROVED },
     include: {
@@ -22,7 +29,7 @@ export async function getListingBySlug(slug: string) {
       },
     },
   });
-}
+});
 
 export async function getListingAvailabilityBlocks(listingId: string) {
   return db.availabilityBlock.findMany({

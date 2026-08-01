@@ -30,7 +30,7 @@ const patches = [
     after: "target_link_libraries(\n  reanimated\n  c++_shared\n  log",
   },
   {
-    name: "react-native-screens",
+    name: "react-native-screens library",
     file: path.join(
       mobileRoot,
       "node_modules",
@@ -40,6 +40,21 @@ const patches = [
     ),
     before: "target_link_libraries(rnscreens\n    ReactAndroid::reactnative",
     after: "target_link_libraries(rnscreens\n    c++_shared\n    ReactAndroid::reactnative",
+  },
+  {
+    name: "react-native-screens codegen",
+    file: path.join(
+      mobileRoot,
+      "node_modules",
+      "react-native-screens",
+      "android",
+      "src",
+      "main",
+      "jni",
+      "CMakeLists.txt",
+    ),
+    before: "target_link_libraries(\n  ${LIB_TARGET_NAME}\n  ReactAndroid::reactnative",
+    after: "target_link_libraries(\n  ${LIB_TARGET_NAME}\n  c++_shared\n  ReactAndroid::reactnative",
   },
   {
     name: "react-native-gesture-handler",
