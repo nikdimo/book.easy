@@ -34,6 +34,9 @@ export interface SessionUser {
   email?: string | null;
   role: string;
   isHost: boolean;
+  /** False for a signed-in guest: the session is real, but this app has nothing for
+   *  them. Distinguishing it from "no session" is what stops the sign-in loop. */
+  canManageProperties: boolean;
 }
 
 export interface DashboardResponse {
@@ -87,6 +90,26 @@ export interface ListingDraftData {
   title?: string;
   description?: string;
   propertyType?: string;
+  address?: string;
+  city?: string;
+  area?: string;
+  postalCode?: string;
+  country?: string;
+  latitude?: string;
+  longitude?: string;
+  locationSource?: string;
+  locationConfirmed?: string;
+  geocodingProvider?: string;
+  geocodingPlaceId?: string;
+  geocodingConfidence?: string;
+  streetViewHeading?: string;
+  streetViewPitch?: string;
+  streetViewPanoId?: string;
+  mediaItems?: ListingMediaItem[];
+  imageUrls?: string[];
+  promotionType?: string;
+  promotionPercent?: string;
+  promotionMinimumNights?: string;
   maxGuests?: string;
   bedrooms?: string;
   beds?: string;
@@ -300,6 +323,33 @@ export interface LanguagesResponse {
   messages: Record<string, string>;
 }
 
+/** A failed request, carrying the parts a screen needs to react rather than just a
+ *  message to print. The server already distinguishes "not signed in" from "signed in
+ *  but not allowed" via `code` (see requireMobileUser / requireMobileAdmin); throwing a
+ *  bare Error threw that away and left every screen rendering the raw string
+ *  "Authentication required" instead of sending the host to sign in. */
+export class ApiError extends Error {
+  readonly status: number;
+  readonly code?: string;
+
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+  }
+
+  /** No usable session — the caller should route to /login. */
+  get isUnauthenticated(): boolean {
+    return this.status === 401 || this.code === "UNAUTHENTICATED";
+  }
+
+  /** Signed in, but this account may not do it. Re-authenticating will not help. */
+  get isForbidden(): boolean {
+    return this.status === 403;
+  }
+}
+
 export async function apiFetch<T = unknown>(
   path: string,
   init: RequestInit = {}
@@ -316,7 +366,11 @@ export async function apiFetch<T = unknown>(
 
   const body = await response.json().catch(() => null);
   if (!response.ok) {
-    throw new Error(body?.error ?? `Request failed (${response.status})`);
+    throw new ApiError(
+      body?.error ?? `Request failed (${response.status})`,
+      response.status,
+      body?.code
+    );
   }
   return body as T;
 }
@@ -333,6 +387,108 @@ export async function openControlPanel(path: string): Promise<void> {
     return;
   }
   await Linking.openURL(url);
+}
+
+export interface ListingMediaItem {
+  id?: string;
+  url: string;
+  mediaType: "IMAGE" | "VIDEO";
+  alt?: string | null;
+}
+
+export interface PlaceSuggestion {
+  placeId: string;
+  description: string;
+  primaryText?: string;
+  secondaryText?: string;
+}
+
+export interface ResolvedPlace {
+  latitude: number;
+  longitude: number;
+  address?: string;
+  city?: string;
+  area?: string;
+  postalCode?: string;
+  country?: string;
+  provider?: string;
+  placeId?: string;
+  confidence?: string;
+}
+
+/** Multipart upload. Deliberately does not go through apiFetch: that sets a JSON
+ *  Content-Type, and a multipart body must be left alone so the runtime can add its
+ *  own boundary. */
+export async function uploadFile(file: Blob | FormDataValue, name: string): Promise<{
+  url: string;
+  mediaType: "IMAGE" | "VIDEO";
+}> {
+  const form = new FormData();
+  form.append("file", file as Blob, name);
+
+  const response = await fetch(`${API_BASE_URL}/api/mobile/v1/upload`, {
+    method: "POST",
+    credentials: "include",
+    body: form,
+  });
+  const body = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new ApiError(
+      body?.error ?? `Upload failed (${response.status})`,
+      response.status,
+      body?.code
+    );
+  }
+  return body;
+}
+
+/** React Native's FormData accepts a {uri,name,type} descriptor where the web
+ *  expects a Blob. Typed loosely because the two platforms genuinely differ. */
+export type FormDataValue = { uri: string; name: string; type: string };
+
+export async function searchPlaces(
+  query: string,
+  sessionToken: string,
+  bias?: { latitude: number; longitude: number }
+): Promise<PlaceSuggestion[]> {
+  const body = await apiFetch<{ results: PlaceSuggestion[] }>(
+    "/api/mobile/v1/location/autocomplete",
+    { method: "POST", body: JSON.stringify({ query, sessionToken, bias }) }
+  );
+  return body.results ?? [];
+}
+
+export async function resolvePlace(
+  placeId: string,
+  sessionToken: string
+): Promise<ResolvedPlace> {
+  const body = await apiFetch<{ result: ResolvedPlace }>(
+    "/api/mobile/v1/location/place-details",
+    { method: "POST", body: JSON.stringify({ placeId, sessionToken }) }
+  );
+  return body.result;
+}
+
+export async function reverseGeocodePoint(
+  latitude: number,
+  longitude: number
+): Promise<ResolvedPlace> {
+  const body = await apiFetch<{ result: ResolvedPlace }>(
+    "/api/mobile/v1/location/reverse",
+    { method: "POST", body: JSON.stringify({ latitude, longitude }) }
+  );
+  return body.result;
+}
+
+export async function hasStreetView(
+  latitude: number,
+  longitude: number
+): Promise<boolean> {
+  const body = await apiFetch<{ available: boolean }>(
+    "/api/mobile/v1/location/streetview",
+    { method: "POST", body: JSON.stringify({ latitude, longitude }) }
+  );
+  return Boolean(body.available);
 }
 
 export async function startAuth(

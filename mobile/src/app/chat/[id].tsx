@@ -17,6 +17,7 @@ import {
 import { useAuth } from "@/context/auth-context";
 import { useNotifications } from "@/context/notification-context";
 import { useLanguage } from "@/context/language-context";
+import { useApiError } from "@/lib/use-api-error";
 import {
   absoluteMediaUrl,
   apiFetch,
@@ -24,7 +25,7 @@ import {
   formatDate,
   formatRelativeTime,
 } from "@/lib/api";
-import { colors, radii, spacing } from "@/theme";
+import { colors, radii, spacing, fonts } from "@/theme";
 
 const bookingEventCopy: Record<string, string> = {
   REQUESTED: "Booking requested",
@@ -70,6 +71,7 @@ function buildTimeline(chat: ChatResponse | null) {
 }
 
 export default function ChatScreen() {
+  const describeError = useApiError();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { user } = useAuth();
   const { refreshNotifications } = useNotifications();
@@ -97,9 +99,9 @@ export default function ChatScreen() {
       }
       void refreshNotifications();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Conversation unavailable");
+      setError(describeError(caught, "Conversation unavailable"));
     }
-  }, [id, refreshNotifications]);
+  }, [describeError, id, refreshNotifications]);
 
   useEffect(() => {
     const initial = setTimeout(() => void load(), 0);
@@ -128,7 +130,7 @@ export default function ChatScreen() {
       requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
     } catch (caught) {
       setDraft(body);
-      setError(caught instanceof Error ? caught.message : "Message could not be sent");
+      setError(describeError(caught, "Message could not be sent"));
     } finally {
       setSending(false);
     }
@@ -297,7 +299,7 @@ const styles = StyleSheet.create({
   bookingImage: { width: 68, height: 58, borderRadius: radii.md },
   bookingCopy: { flex: 1 },
   bookingMeta: { color: colors.muted, fontSize: 10, marginTop: 3 },
-  person: { color: colors.ink, fontSize: 15, fontWeight: "900" },
+  person: { color: colors.ink, fontSize: 15, fontFamily: fonts.bold },
   listing: { color: colors.primary, fontSize: 11, marginTop: 3 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   error: {
@@ -314,7 +316,7 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   start: { alignItems: "center", padding: spacing.xl },
-  startTitle: { color: colors.ink, fontSize: 16, fontWeight: "900" },
+  startTitle: { color: colors.ink, fontSize: 16, fontFamily: fonts.bold },
   startBody: {
     color: colors.muted,
     fontSize: 12,
@@ -333,7 +335,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     backgroundColor: colors.surface,
   },
-  systemTitle: { color: colors.ink, fontSize: 13, fontWeight: "900" },
+  systemTitle: { color: colors.ink, fontSize: 13, fontFamily: fonts.bold },
   damageCard: {
     alignSelf: "flex-start",
     maxWidth: "88%",
@@ -393,5 +395,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   disabled: { opacity: 0.45 },
-  sendText: { color: "#fff", fontSize: 12, fontWeight: "900" },
+  sendText: { color: "#fff", fontSize: 12, fontFamily: fonts.bold },
 });

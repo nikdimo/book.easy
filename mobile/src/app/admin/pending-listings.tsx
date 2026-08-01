@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Icon } from "@/components/icon";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
 import { AppScreen, EmptyNotice, LoadingState, Pill, SectionHeader } from "@/components/ui";
@@ -8,7 +9,7 @@ import {
   fetchAdminListings,
   reviewAdminListing,
 } from "@/lib/api";
-import { colors, radii, spacing } from "@/theme";
+import { colors, radii, spacing, fonts } from "@/theme";
 
 type FilterTab = "needs_review" | "all" | "approved" | "suspended";
 
@@ -85,7 +86,8 @@ export default function PendingListingsScreen() {
         onPress={() => router.back()}
         style={styles.backButton}
       >
-        <Text style={styles.backButtonText}>← {t("Back to Admin Hub")}</Text>
+        <Icon color={colors.ink} name="back" size={14} />
+                <Text style={styles.backButtonText}>{t("Back to Admin Hub")}</Text>
       </Pressable>
 
       {/* Filter Tabs */}
@@ -146,7 +148,7 @@ export default function PendingListingsScreen() {
                     )}
                   </View>
                   <Text style={styles.cardSubtitle}>
-                    📍 {item.city} • {t("Host")}: {item.hostName} ({item.hostEmail})
+                    {item.city} • {t("Host")}: {item.hostName} ({item.hostEmail})
                   </Text>
                 </View>
               </View>
@@ -183,8 +185,9 @@ export default function PendingListingsScreen() {
                       processingId === item.id && { opacity: 0.5 },
                     ]}
                   >
+                    {processingId === item.id ? null : <Icon color="#fff" name="check" size={14} />}
                     <Text style={styles.approveButtonText}>
-                      {processingId === item.id ? t("Approving…") : `✓ ${t("Approve")}`}
+                      {processingId === item.id ? t("Approving…") : t("Approve")}
                     </Text>
                   </Pressable>
                 ) : null}
@@ -227,7 +230,7 @@ const styles = StyleSheet.create({
   backButtonText: {
     color: colors.primary,
     fontSize: 13,
-    fontWeight: "800",
+    fontFamily: fonts.bold,
   },
   tabContainer: {
     flexDirection: "row",
@@ -247,7 +250,7 @@ const styles = StyleSheet.create({
   chipText: {
     color: colors.ink,
     fontSize: 12,
-    fontWeight: "700",
+    fontFamily: fonts.semiBold,
   },
   chipTextActive: {
     color: "#fff",
@@ -270,7 +273,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     color: colors.ink,
     fontSize: 16,
-    fontWeight: "800",
+    fontFamily: fonts.bold,
   },
   cardSubtitle: {
     color: colors.muted,
@@ -289,7 +292,7 @@ const styles = StyleSheet.create({
   metaPrice: {
     color: colors.ink,
     fontSize: 14,
-    fontWeight: "800",
+    fontFamily: fonts.bold,
   },
   metaBookings: {
     color: colors.muted,
@@ -313,7 +316,7 @@ const styles = StyleSheet.create({
   inspectButtonText: {
     color: colors.ink,
     fontSize: 13,
-    fontWeight: "800",
+    fontFamily: fonts.bold,
   },
   approveButton: {
     flex: 1,
@@ -322,10 +325,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.success,
     alignItems: "center",
     justifyContent: "center",
+    flexDirection: "row",
+    gap: spacing.sm
   },
   approveButtonText: {
     color: "#fff",
     fontSize: 13,
-    fontWeight: "900",
+    fontFamily: fonts.bold,
   },
 });

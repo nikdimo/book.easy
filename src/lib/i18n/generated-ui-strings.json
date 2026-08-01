@@ -1050,6 +1050,26 @@
     "filePath": "src/app/(public)/page.tsx"
   },
   {
+    "key": "home.view_compact",
+    "sourceText": "Compact",
+    "filePath": "src/components/public/home-listings-view.tsx"
+  },
+  {
+    "key": "home.view_detailed",
+    "sourceText": "Detailed",
+    "filePath": "src/components/public/home-listings-view.tsx"
+  },
+  {
+    "key": "home.view_map",
+    "sourceText": "Map",
+    "filePath": "src/components/public/home-listings-view.tsx"
+  },
+  {
+    "key": "home.view_switcher",
+    "sourceText": "Choose a layout",
+    "filePath": "src/components/public/home-listings-view.tsx"
+  },
+  {
     "key": "host.booking_detail.accommodation",
     "sourceText": "Accommodation · {nights} nights",
     "filePath": "src/app/(host)/host/bookings/[id]/page.tsx"

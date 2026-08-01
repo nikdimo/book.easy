@@ -525,24 +525,26 @@ export function ListingLocationMapField({
     <div className="notranslate space-y-3">
       {heading && (
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">
+          <h2 className="text-lg font-semibold tracking-tight md:text-2xl">
             Where is your property?
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-xs text-muted-foreground md:text-sm">
             Search for it, or click the map to drop the pin exactly where guests
             will stay. Only you see this precise spot for now.
           </p>
         </div>
       )}
 
-      <div className="relative min-h-[22rem] overflow-hidden rounded-xl border bg-muted">
+      {/* Full-bleed on phones: the map is the step, so the 16px gutters were
+          costing it width it actually uses. */}
+      <div className="relative -mx-4 min-h-[16rem] overflow-hidden border-y bg-muted md:mx-0 md:min-h-[22rem] md:rounded-xl md:border">
         <ListingLocationPickerInner
           lat={latitude}
           lng={longitude}
           hasPin={hasPin}
           zoom={hasPin ? 16 : mapZoom}
           className={cn(
-            "h-[min(60vh,34rem)] min-h-[22rem] w-full",
+            "h-[38dvh] min-h-[16rem] w-full md:h-[min(60vh,34rem)] md:min-h-[22rem]",
             resolving && "pointer-events-none"
           )}
           onChange={(nextLat, nextLng) => {

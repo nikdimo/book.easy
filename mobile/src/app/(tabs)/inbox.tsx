@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
-import { AppScreen, EmptyNotice, LoadingState } from "@/components/ui";
+import { AppScreen, EmptyNotice, LoadingState, Pill } from "@/components/ui";
+import { Icon } from "@/components/icon";
 import {
   absoluteMediaUrl,
   apiFetch,
@@ -9,10 +10,12 @@ import {
   ConversationsResponse,
   formatRelativeTime,
 } from "@/lib/api";
-import { colors, radii, spacing } from "@/theme";
+import { colors, radii, spacing, type } from "@/theme";
 import { useLanguage } from "@/context/language-context";
+import { useApiError } from "@/lib/use-api-error";
 
 export default function InboxScreen() {
+  const describeError = useApiError();
   const router = useRouter();
   const { locale, t } = useLanguage();
   const [conversations, setConversations] = useState<ConversationSummary[] | null>(null);
@@ -24,9 +27,9 @@ export default function InboxScreen() {
       const result = await apiFetch<ConversationsResponse>("/api/mobile/v1/conversations");
       setConversations(result.conversations);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not load messages");
+      setError(describeError(caught, "Could not load messages"));
     }
-  }, []);
+  }, [describeError]);
 
   useEffect(() => {
     const initial = setTimeout(() => void load(), 0);
@@ -37,114 +40,134 @@ export default function InboxScreen() {
     };
   }, [load]);
 
+  const unread = conversations?.filter((c) => c.unreadCount > 0).length ?? 0;
+
   return (
     <AppScreen
-      eyebrow="MESSAGES"
       title="Inbox"
-      subtitle="Every booking has a private conversation with the guest."
+      subtitle={unread > 0 ? undefined : "Every booking has a private conversation."}
       onRefresh={load}
+      action={unread > 0 ? <Pill label={`${unread} unread`} tone="danger" /> : undefined}
     >
       {!conversations && !error ? <LoadingState /> : null}
-      {error ? <EmptyNotice title="Inbox unavailable" description={error} onRetry={load} /> : null}
+      {error ? (
+        <EmptyNotice
+          icon="alert"
+          title="Inbox unavailable"
+          description={error}
+          onRetry={load}
+        />
+      ) : null}
       {conversations?.length === 0 ? (
         <EmptyNotice
+          icon="chat"
           title="No conversations yet"
           description="A thread is created automatically when a booking is made."
         />
       ) : null}
+
       <View style={styles.list}>
-        {conversations?.map((conversation) => (
-          <Pressable
-            accessibilityLabel={`${conversation.otherUser.name}, ${conversation.listing.title}`}
-            accessibilityRole="button"
-            key={conversation.id}
-            onPress={() =>
-              router.push({
-                pathname: "/chat/[id]",
-                params: { id: conversation.id },
-              })
-            }
-            style={({ pressed }) => [styles.row, pressed && { opacity: 0.65 }]}
-          >
-            {conversation.listing.imageUrl ? (
-              <Image
-                alt=""
-                source={{ uri: absoluteMediaUrl(conversation.listing.imageUrl) }}
-                style={styles.image}
-              />
-            ) : (
-              <View style={[styles.image, styles.placeholder]}>
-                <Text style={styles.placeholderText}>P</Text>
-              </View>
-            )}
-            <View style={{ flex: 1 }}>
-              <View style={styles.top}>
-                <Text numberOfLines={1} style={styles.name}>
-                  {conversation.otherUser.name}
-                </Text>
-                {conversation.lastMessageAt ? (
-                  <Text style={styles.time}>
-                    {formatRelativeTime(conversation.lastMessageAt, locale, t)}
+        {conversations?.map((conversation) => {
+          const unreadRow = conversation.unreadCount > 0;
+          return (
+            <Pressable
+              accessibilityLabel={`${conversation.otherUser.name}, ${conversation.listing.title}${
+                unreadRow ? `, ${conversation.unreadCount} ${t("unread")}` : ""
+              }`}
+              accessibilityRole="button"
+              key={conversation.id}
+              onPress={() =>
+                router.push({ pathname: "/chat/[id]", params: { id: conversation.id } })
+              }
+              style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+            >
+              {conversation.listing.imageUrl ? (
+                <Image
+                  alt=""
+                  source={{ uri: absoluteMediaUrl(conversation.listing.imageUrl) }}
+                  style={styles.image}
+                />
+              ) : (
+                <View style={[styles.image, styles.placeholder]}>
+                  <Icon color={colors.muted} name="listings" size={18} />
+                </View>
+              )}
+
+              <View style={{ flex: 1 }}>
+                <View style={styles.top}>
+                  <Text numberOfLines={1} style={styles.name}>
+                    {conversation.otherUser.name}
                   </Text>
-                ) : null}
-              </View>
-              <View style={styles.contextRow}>
-                <Text numberOfLines={1} style={styles.listing}>
+                  {conversation.lastMessageAt ? (
+                    <Text style={styles.time}>
+                      {formatRelativeTime(conversation.lastMessageAt, locale, t)}
+                    </Text>
+                  ) : null}
+                </View>
+
+                {/* Listing, thread kind and support flag on one quiet line. Three
+                    separately styled labels stacked here made the row read as
+                    metadata first and the message second. */}
+                <Text numberOfLines={1} style={styles.context}>
                   {conversation.listing.title}
-                </Text>
-                <Text style={styles.kind}>
+                  {" · "}
                   {conversation.kind === "INQUIRY" ? t("Inquiry") : t("Booking")}
+                  {conversation.hasSupport ? ` · ${t("Support")}` : ""}
                 </Text>
-                {conversation.hasSupport ? <Text style={styles.support}>{t("Support")}</Text> : null}
+
+                <View style={styles.previewRow}>
+                  <Text
+                    numberOfLines={1}
+                    style={[styles.preview, unreadRow && styles.previewUnread]}
+                  >
+                    {conversation.lastMessagePreview ?? t("Start the conversation")}
+                  </Text>
+                  {unreadRow ? (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>{conversation.unreadCount}</Text>
+                    </View>
+                  ) : null}
+                </View>
               </View>
-              <View style={styles.previewRow}>
-                <Text
-                  numberOfLines={1}
-                  style={[
-                    styles.preview,
-                    conversation.unreadCount > 0 && styles.previewUnread,
-                  ]}
-                >
-                  {conversation.lastMessagePreview ?? t("Start the conversation")}
-                </Text>
-                {conversation.unreadCount > 0 ? (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{conversation.unreadCount}</Text>
-                  </View>
-                ) : null}
-              </View>
-            </View>
-          </Pressable>
-        ))}
+            </Pressable>
+          );
+        })}
       </View>
     </AppScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  list: { borderTopWidth: 1, borderTopColor: colors.border },
+  list: { gap: spacing.sm },
   row: {
-    minHeight: 94,
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingVertical: spacing.md,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    backgroundColor: colors.surface,
   },
-  image: { width: 62, height: 62, borderRadius: radii.md, backgroundColor: colors.surfaceAlt },
+  image: {
+    width: 52,
+    height: 52,
+    borderRadius: radii.md,
+    backgroundColor: colors.surfaceAlt,
+  },
   placeholder: { alignItems: "center", justifyContent: "center" },
-  placeholderText: { color: colors.primary, fontSize: 18, fontWeight: "900" },
   top: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  name: { flex: 1, color: colors.ink, fontSize: 14, fontWeight: "900" },
-  time: { color: colors.muted, fontSize: 10 },
-  listing: { color: colors.primary, fontSize: 11, fontWeight: "700", marginTop: 3 },
-  contextRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 3 },
-  kind: { color: colors.muted, fontSize: 9, fontWeight: "800", textTransform: "uppercase" },
-  support: { color: colors.primary, fontSize: 9, fontWeight: "900", textTransform: "uppercase" },
-  previewRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm, marginTop: 6 },
-  preview: { flex: 1, color: colors.muted, fontSize: 12 },
-  previewUnread: { color: colors.ink, fontWeight: "800" },
+  name: { ...type.bodyStrong, flex: 1, color: colors.ink },
+  time: { ...type.caption, color: colors.muted },
+  context: { ...type.caption, color: colors.muted, marginTop: 3 },
+  previewRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    marginTop: 5,
+  },
+  preview: { ...type.meta, flex: 1, color: colors.muted },
+  previewUnread: { color: colors.ink, fontFamily: type.label.fontFamily },
   badge: {
     minWidth: 20,
     height: 20,
@@ -154,5 +177,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  badgeText: { color: "#fff", fontSize: 9, fontWeight: "900" },
+  badgeText: { ...type.caption, fontSize: 10, color: "#fff" },
+  pressed: { opacity: 0.6 },
 });

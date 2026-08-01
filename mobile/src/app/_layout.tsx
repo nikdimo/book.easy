@@ -2,6 +2,13 @@ import "../global.css";
 
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import {
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+  useFonts,
+} from "@expo-google-fonts/inter";
 import { AuthProvider } from "@/context/auth-context";
 import { NotificationProvider } from "@/context/notification-context";
 import { LanguageProvider } from "@/context/language-context";
@@ -9,6 +16,18 @@ import { useLanguage } from "@/context/language-context";
 import { colors } from "@/theme";
 
 export default function RootLayout() {
+  const [fontsLoaded, fontError] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+  });
+
+  // Hold the first paint so text does not land in the system font and reflow. A
+  // font failure still renders — falling back to the system face is far better
+  // than a permanently blank app.
+  if (!fontsLoaded && !fontError) return null;
+
   return (
     <LanguageProvider>
       <AuthProvider>
@@ -35,6 +54,9 @@ function AppNavigator() {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      {/* The admin group owns its own header via app/admin/_layout.tsx, which is
+          also where the role guard lives — leaving this header on stacks two. */}
+      <Stack.Screen name="admin" options={{ headerShown: false }} />
       <Stack.Screen
         name="availability/[id]"
         options={{ title: t("Availability & pricing") }}

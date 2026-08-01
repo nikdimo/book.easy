@@ -28,12 +28,42 @@ describe("mobile listing draft patches", () => {
     });
   });
 
-  it("rejects location and media fields from the native patch contract", () => {
+  it("accepts the location and media fields the native steps now own", () => {
+    // These were refused while those steps only existed on the web. The mobile
+    // wizard edits them natively now, so refusing them would drop the host's work.
     expect(
       parseMobileListingDraftPatch({
-        title: "Allowed",
-        address: "Must not be accepted",
-        mediaItems: [],
+        address: "Bulevar Partizanski Odredi 1",
+        city: "Skopje",
+        latitude: "41.9981",
+        longitude: "21.4254",
+        locationConfirmed: "true",
+        streetViewHeading: "180",
+        mediaItems: [{ url: "/uploads/a.jpg", mediaType: "IMAGE" }],
+      })
+    ).toEqual({
+      data: {
+        address: "Bulevar Partizanski Odredi 1",
+        city: "Skopje",
+        latitude: "41.9981",
+        longitude: "21.4254",
+        locationConfirmed: "true",
+        streetViewHeading: "180",
+        mediaItems: [{ url: "/uploads/a.jpg", mediaType: "IMAGE" }],
+      },
+    });
+  });
+
+  it("still rejects fields that are not part of the draft shape", () => {
+    expect(
+      parseMobileListingDraftPatch({ title: "Allowed", sneaky: "nope" })
+    ).toEqual({ error: "Invalid listing draft data" });
+  });
+
+  it("rejects a media item with an unknown media type", () => {
+    expect(
+      parseMobileListingDraftPatch({
+        mediaItems: [{ url: "/uploads/a.jpg", mediaType: "AUDIO" }],
       })
     ).toEqual({ error: "Invalid listing draft data" });
   });

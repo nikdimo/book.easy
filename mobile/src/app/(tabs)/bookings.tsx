@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { AppScreen, EmptyNotice, LoadingState, Pill } from "@/components/ui";
+import {
+  AppScreen,
+  EmptyNotice,
+  LoadingState,
+  Pill,
+  Segmented,
+} from "@/components/ui";
 import { useLanguage } from "@/context/language-context";
 import {
   apiFetch,
@@ -9,7 +15,8 @@ import {
   formatDate,
   resolveIntlLocale,
 } from "@/lib/api";
-import { colors, radii, spacing } from "@/theme";
+import { colors, radii, spacing, fonts, type } from "@/theme";
+import { useApiError } from "@/lib/use-api-error";
 
 const statusLabels: Record<string, string> = {
   PENDING: "Pending",
@@ -23,6 +30,7 @@ const statusLabels: Record<string, string> = {
 };
 
 export default function BookingsScreen() {
+  const describeError = useApiError();
   const { locale, t } = useLanguage();
   const [data, setData] = useState<BookingsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -30,15 +38,16 @@ export default function BookingsScreen() {
   const [cancelId, setCancelId] = useState<string | null>(null);
   const [rejectId, setRejectId] = useState<string | null>(null);
   const [reason, setReason] = useState("");
+  const [filter, setFilter] = useState<"pending" | "confirmed" | "all">("pending");
 
   const load = useCallback(async () => {
     try {
       setError(null);
       setData(await apiFetch<BookingsResponse>("/api/mobile/v1/bookings"));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not load bookings");
+      setError(describeError(caught, "Could not load bookings"));
     }
-  }, []);
+  }, [describeError]);
 
   useEffect(() => {
     const timer = setTimeout(() => void load(), 0);
@@ -73,63 +82,110 @@ export default function BookingsScreen() {
     }
   }
 
+  const bookings = data?.bookings ?? [];
+  const pending = bookings.filter((booking) => booking.status === "PENDING");
+  const confirmed = bookings.filter((booking) => booking.status === "CONFIRMED");
+  const visible =
+    filter === "pending" ? pending : filter === "confirmed" ? confirmed : bookings;
+
   return (
-    <AppScreen eyebrow="" title="Booking Requests" onRefresh={load}>
+    <AppScreen
+      title="Bookings"
+      onRefresh={load}
+      sticky={
+        data ? (
+          <Segmented
+            value={filter}
+            onChange={setFilter}
+            options={[
+              { value: "pending", label: "Pending", count: pending.length },
+              { value: "confirmed", label: "Confirmed", count: confirmed.length },
+              { value: "all", label: "All", count: bookings.length },
+            ]}
+          />
+        ) : null
+      }
+    >
       {!data && !error ? <LoadingState /> : null}
-      {error ? <EmptyNotice title="Bookings unavailable" description={error} onRetry={load} /> : null}
-      {data?.bookings.length === 0 ? (
+      {error ? (
         <EmptyNotice
-          title="No bookings yet"
-          description="Bookings will appear here when guests request to stay at your listings."
+          icon="alert"
+          title="Bookings unavailable"
+          description={error}
+          onRetry={load}
+        />
+      ) : null}
+      {data && visible.length === 0 ? (
+        <EmptyNotice
+          icon="bookings"
+          title={filter === "all" ? "No bookings yet" : "Nothing to review"}
+          description={
+            filter === "all"
+              ? "Bookings will appear here when guests request to stay at your listings."
+              : "Requests needing a decision will show up here."
+          }
         />
       ) : null}
       <View style={styles.list}>
-        {data?.bookings.map((booking) => (
+        {visible.map((booking) => (
           <View key={booking.id} style={styles.card}>
-            {booking.imageUrl ? (
-              <Image
-                accessibilityLabel={booking.listingTitle}
-                alt={booking.listingTitle}
-                source={{ uri: booking.imageUrl }}
-                style={styles.image}
-              />
-            ) : null}
+            {/* Guest and dates lead, because that is what a host scans for. The
+                listing, reference and party size follow on one quiet line — the
+                old six-row label/value table ran a full screen per booking. */}
             <View style={styles.header}>
+              {booking.imageUrl ? (
+                <Image
+                  alt=""
+                  source={{ uri: booking.imageUrl }}
+                  style={styles.thumb}
+                />
+              ) : null}
               <View style={{ flex: 1 }}>
-                <Text style={styles.title}>{booking.listingTitle}</Text>
-                <Text style={styles.city}>{booking.city}</Text>
+                <Text numberOfLines={1} style={styles.title}>
+                  {booking.guestName}
+                </Text>
+                <Text style={styles.dates}>
+                  {formatDate(booking.checkIn, locale)} –{" "}
+                  {formatDate(booking.checkOut, locale)}
+                </Text>
               </View>
               <Pill
                 label={statusLabels[booking.status] ?? booking.status}
-                tone={booking.status === "CONFIRMED" ? "success" : "neutral"}
+                tone={
+                  booking.status === "CONFIRMED"
+                    ? "success"
+                    : booking.status === "PENDING"
+                      ? "warning"
+                      : "neutral"
+                }
               />
             </View>
 
-            <View style={styles.details}>
-              <Detail label="Guest" value={booking.guestName} />
-              <Detail label="Reference" value={booking.reference} />
-              <Detail
-                label="Dates"
-                value={`${formatDate(booking.checkIn, locale)} – ${formatDate(booking.checkOut, locale)}`}
-              />
-              <Detail label="Guests" value={String(booking.guestCount)} />
-              {booking.status === "PENDING" ? (
-                <Detail
-                  label="Respond by"
-                  value={new Intl.DateTimeFormat(resolveIntlLocale(locale), {
-                    dateStyle: "medium",
-                    timeStyle: "short",
-                  }).format(new Date(booking.responseDueAt))}
-                />
-              ) : null}
-              <Detail
-                label="Total"
-                value={new Intl.NumberFormat(resolveIntlLocale(locale), {
+            <Text numberOfLines={1} style={styles.meta}>
+              {booking.listingTitle}
+              {" · "}
+              {booking.guestCount}{" "}
+              {t(booking.guestCount === 1 ? "guest" : "guests")}
+              {" · "}
+              {booking.reference}
+            </Text>
+
+            <View style={styles.priceRow}>
+              <Text style={styles.price}>
+                {new Intl.NumberFormat(resolveIntlLocale(locale), {
                   style: "currency",
                   currency: "EUR",
                 }).format(booking.totalPrice)}
-                strong
-              />
+              </Text>
+              {booking.status === "PENDING" ? (
+                <Text style={styles.respondBy}>
+                  {t("Respond by")}{" "}
+                  {new Intl.DateTimeFormat(resolveIntlLocale(locale), {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  }).format(new Date(booking.responseDueAt))}
+                </Text>
+              ) : null}
             </View>
 
             {booking.guestNote ? (
@@ -252,15 +308,6 @@ export default function BookingsScreen() {
   );
 }
 
-function Detail({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
-  const { t } = useLanguage();
-  return (
-    <View style={styles.detail}>
-      <Text style={styles.detailLabel}>{t(label)}: </Text>
-      <Text style={[styles.detailValue, strong && { fontWeight: "800" }]}>{value}</Text>
-    </View>
-  );
-}
 
 function ActionButton({
   label,
@@ -294,31 +341,46 @@ function ActionButton({
 }
 
 const styles = StyleSheet.create({
-  list: { gap: spacing.sm },
+  list: { gap: spacing.md },
   card: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radii.md,
+    borderRadius: radii.lg,
     backgroundColor: colors.surface,
-    padding: spacing.md,
-    overflow: "hidden",
+    padding: spacing.lg,
   },
-  image: {
-    width: "100%",
-    height: 150,
+  // A 52pt thumbnail instead of a 150pt hero. The photo identifies the listing;
+  // it does not need to be the biggest thing on the card.
+  thumb: {
+    width: 52,
+    height: 52,
     borderRadius: radii.md,
-    marginBottom: spacing.md,
     backgroundColor: colors.surfaceAlt,
   },
-  header: { flexDirection: "row", alignItems: "flex-start", gap: spacing.sm },
-  title: { color: colors.ink, fontSize: 14, fontWeight: "800" },
-  city: { color: colors.muted, fontSize: 12, marginTop: 3 },
+  header: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  title: { ...type.bodyStrong, color: colors.ink },
+  dates: { ...type.meta, color: colors.muted, marginTop: 2 },
+  meta: { ...type.caption, color: colors.muted, marginTop: spacing.md },
+  priceRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  price: { ...type.section, color: colors.ink },
+  respondBy: { ...type.caption, color: colors.warm, flexShrink: 1, textAlign: "right" },
   details: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md, marginTop: spacing.lg },
   detail: { minWidth: "45%", flexGrow: 1, flexDirection: "row", flexWrap: "wrap" },
-  detailLabel: { color: colors.muted, fontSize: 12 },
-  detailValue: { color: colors.ink, fontSize: 12 },
-  note: { backgroundColor: colors.surfaceAlt, borderRadius: 7, padding: spacing.sm, marginTop: spacing.md },
-  noteText: { color: colors.inkSoft, fontSize: 12, lineHeight: 18 },
+  detailLabel: { ...type.meta, color: colors.muted },
+  detailValue: { ...type.meta, color: colors.ink },
+  note: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    marginTop: spacing.md,
+  },
+  noteText: { ...type.meta, color: colors.inkSoft },
   actions: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.md },
   button: {
     minHeight: 38,
@@ -332,10 +394,10 @@ const styles = StyleSheet.create({
   },
   buttonSecondary: { backgroundColor: colors.surface, borderColor: colors.borderStrong },
   buttonDestructive: { backgroundColor: colors.danger, borderColor: colors.danger },
-  buttonText: { color: "#fff", fontSize: 11, fontWeight: "800" },
+  buttonText: { color: "#fff", fontSize: 11, fontFamily: fonts.bold },
   buttonSecondaryText: { color: colors.ink },
   cancelTrigger: { alignSelf: "flex-start", marginTop: spacing.sm, paddingVertical: spacing.sm },
-  cancelTriggerText: { color: colors.danger, fontSize: 11, fontWeight: "700" },
+  cancelTriggerText: { color: colors.danger, fontSize: 11, fontFamily: fonts.semiBold },
   cancelForm: { marginTop: spacing.sm, gap: spacing.sm },
   warning: { color: colors.danger, fontSize: 11, lineHeight: 17 },
   input: {

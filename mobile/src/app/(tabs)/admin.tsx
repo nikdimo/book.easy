@@ -1,10 +1,18 @@
 import { useCallback, useEffect, useState } from "react";
+import { Icon } from "@/components/icon";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useRouter, type Href } from "expo-router";
-import { AppScreen, EmptyNotice, LoadingState, SectionHeader } from "@/components/ui";
+import {
+  AppScreen,
+  EmptyNotice,
+  ListRow,
+  LoadingState,
+  SectionHeader,
+  StatTile,
+} from "@/components/ui";
 import { useLanguage } from "@/context/language-context";
-import { AdminStats, fetchAdminStats } from "@/lib/api";
-import { colors, radii, spacing } from "@/theme";
+import { AdminStats, fetchAdminStats, openControlPanel } from "@/lib/api";
+import { colors, radii, spacing, fonts } from "@/theme";
 
 export default function AdminScreen() {
   const router = useRouter();
@@ -36,7 +44,7 @@ export default function AdminScreen() {
 
   if (loading) {
     return (
-      <AppScreen eyebrow="PLATFORM" title="Admin Hub">
+      <AppScreen title="Admin Hub">
         <LoadingState />
       </AppScreen>
     );
@@ -44,7 +52,7 @@ export default function AdminScreen() {
 
   if (error || !stats) {
     return (
-      <AppScreen eyebrow="PLATFORM" title="Admin Hub">
+      <AppScreen title="Admin Hub">
         <EmptyNotice
           title="Could not load admin stats"
           description={error || "An error occurred while fetching platform stats."}
@@ -56,9 +64,8 @@ export default function AdminScreen() {
 
   return (
     <AppScreen
-      eyebrow="PLATFORM CONTROL"
-      title="Admin Hub"
-      subtitle="Overview of properties, pending reviews, users, and bookings."
+      title="Admin"
+      subtitle="Platform overview and moderation queues."
       onRefresh={() => loadData(true)}
       refreshing={refreshing}
     >
@@ -78,169 +85,82 @@ export default function AdminScreen() {
               {t("Listings are waiting for admin inspection & approval")}
             </Text>
           </View>
-          <Text style={styles.chevron}>›</Text>
+          <Icon color={colors.muted} name="forward" size={16} />
         </Pressable>
       ) : null}
 
-      <SectionHeader title="Platform Stats" />
       <View style={styles.grid}>
-        <StatCard
-          label="Pending Review"
+        <StatTile
+          icon="pending"
+          label="To review"
           value={stats.pendingListings}
-          accent={stats.pendingListings > 0 ? colors.warm : colors.muted}
-          highlight={stats.pendingListings > 0}
+          accent={stats.pendingListings > 0 ? colors.warm : undefined}
           onPress={() => router.push("/admin/pending-listings" as Href)}
         />
-        <StatCard
-          label="Approved Listings"
+        <StatTile
+          icon="confirmed"
+          label="Approved"
           value={stats.approvedListings}
           accent={colors.success}
           onPress={() => router.push("/admin/pending-listings" as Href)}
         />
-        <StatCard
-          label="Total Users"
+        <StatTile
+          icon="users"
+          label="Users"
           value={stats.totalUsers}
-          subtext={`${stats.totalHosts} hosts`}
           onPress={() => router.push("/admin/users" as Href)}
         />
-        <StatCard
-          label="Total Bookings"
-          value={stats.totalBookings}
-          subtext={`${stats.pendingBookings} pending`}
-        />
+        <StatTile icon="bookings" label="Bookings" value={stats.totalBookings} />
       </View>
 
-      <SectionHeader title="Admin Workflows" />
-      <View style={styles.workflowList}>
-        <WorkflowCard
-          title="Listing Approvals Queue"
-          subtitle="Review submitted host properties and decide on approval or suspension."
-          icon="📋"
-          badge={stats.pendingListings > 0 ? `${stats.pendingListings} pending` : undefined}
-          onPress={() => router.push("/admin/pending-listings" as Href)}
-        />
-        <WorkflowCard
-          title="User & Host Management"
-          subtitle="Inspect registered platform users, view activity, and manage account statuses."
-          icon="👥"
-          badge={`${stats.totalUsers} accounts`}
-          onPress={() => router.push("/admin/users" as Href)}
-        />
-      </View>
+      <SectionHeader title="Moderation" />
+      <ListRow
+        icon="listings"
+        label="Listing approvals"
+        detail={stats.pendingListings > 0 ? String(stats.pendingListings) : undefined}
+        onPress={() => router.push("/admin/pending-listings" as Href)}
+      />
+      <ListRow
+        icon="users"
+        label="Users and hosts"
+        detail={String(stats.totalUsers)}
+        onPress={() => router.push("/admin/users" as Href)}
+      />
 
+      <SectionHeader title="Platform" />
+      {/* These live on the web control panel only. Linking out is honest — a
+          native shell over endpoints that do not exist would be worse. */}
+      <ListRow
+        icon="report"
+        label="Reports and cases"
+        onPress={() => void openControlPanel("/admin/cases")}
+      />
+      <ListRow
+        icon="chat"
+        label="Communications"
+        onPress={() => void openControlPanel("/admin/communications")}
+      />
+      <ListRow
+        icon="confirmed"
+        label="Ratings and reviews"
+        onPress={() => void openControlPanel("/admin/ratings")}
+      />
+      <ListRow
+        icon="info"
+        label="Audit log"
+        onPress={() => void openControlPanel("/admin/audit-log")}
+      />
+      <ListRow
+        icon="more"
+        label="Platform settings"
+        onPress={() => void openControlPanel("/admin/settings")}
+      />
     </AppScreen>
   );
 }
 
-function StatCard({
-  label,
-  value,
-  subtext,
-  accent,
-  highlight,
-  onPress,
-}: {
-  label: string;
-  value: number;
-  subtext?: string;
-  accent?: string;
-  highlight?: boolean;
-  onPress?: () => void;
-}) {
-  const { t } = useLanguage();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      disabled={!onPress}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.statCard,
-        highlight && styles.statCardHighlight,
-        pressed && onPress ? { opacity: 0.75 } : null,
-      ]}
-    >
-      <Text style={[styles.statValue, accent ? { color: accent } : null]}>{value}</Text>
-      <Text style={styles.statLabel}>{t(label)}</Text>
-      {subtext ? <Text style={styles.statSubtext}>{subtext}</Text> : null}
-    </Pressable>
-  );
-}
-
-function WorkflowCard({
-  title,
-  subtitle,
-  icon,
-  badge,
-  onPress,
-}: {
-  title: string;
-  subtitle: string;
-  icon: string;
-  badge?: string;
-  onPress: () => void;
-}) {
-  const { t } = useLanguage();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [styles.workflowCard, pressed && { opacity: 0.7 }]}
-    >
-      <View style={styles.workflowIconBox}>
-        <Text style={{ fontSize: 22 }}>{icon}</Text>
-      </View>
-      <View style={{ flex: 1 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.xs }}>
-          <Text style={styles.workflowTitle}>{t(title)}</Text>
-          {badge ? (
-            <View style={styles.workflowBadge}>
-              <Text style={styles.workflowBadgeText}>{badge}</Text>
-            </View>
-          ) : null}
-        </View>
-        <Text style={styles.workflowSubtitle}>{t(subtitle)}</Text>
-      </View>
-      <Text style={styles.chevron}>›</Text>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.md,
-  },
-  statCard: {
-    flex: 1,
-    minWidth: 150,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.lg,
-    padding: spacing.lg,
-  },
-  statCardHighlight: {
-    borderColor: colors.warm,
-    backgroundColor: colors.warmSoft,
-  },
-  statValue: {
-    color: colors.ink,
-    fontSize: 28,
-    fontWeight: "900",
-    letterSpacing: -0.5,
-  },
-  statLabel: {
-    color: colors.ink,
-    fontSize: 13,
-    fontWeight: "800",
-    marginTop: spacing.xs,
-  },
-  statSubtext: {
-    color: colors.muted,
-    fontSize: 11,
-    marginTop: 2,
-  },
+  grid: { flexDirection: "row", gap: spacing.sm },
   alertCard: {
     flexDirection: "row",
     alignItems: "center",
@@ -261,63 +181,16 @@ const styles = StyleSheet.create({
   alertBadgeText: {
     color: colors.ink,
     fontSize: 16,
-    fontWeight: "900",
+    fontFamily: fonts.bold,
   },
   alertTitle: {
     color: "#fff",
     fontSize: 15,
-    fontWeight: "800",
+    fontFamily: fonts.bold,
   },
   alertSubtitle: {
     color: "#B7C2C5",
     fontSize: 12,
     marginTop: 2,
-  },
-  chevron: {
-    color: colors.muted,
-    fontSize: 24,
-  },
-  workflowList: {
-    gap: spacing.md,
-  },
-  workflowCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.xl,
-    padding: spacing.lg,
-  },
-  workflowIconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: radii.lg,
-    backgroundColor: colors.surfaceAlt,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  workflowTitle: {
-    color: colors.ink,
-    fontSize: 15,
-    fontWeight: "800",
-  },
-  workflowSubtitle: {
-    color: colors.muted,
-    fontSize: 12,
-    lineHeight: 17,
-    marginTop: 3,
-  },
-  workflowBadge: {
-    backgroundColor: colors.primarySoft,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: radii.pill,
-  },
-  workflowBadgeText: {
-    color: colors.primary,
-    fontSize: 10,
-    fontWeight: "800",
   },
 });

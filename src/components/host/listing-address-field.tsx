@@ -54,13 +54,13 @@ export function ListingAddressField({
   );
 
   return (
-    <div className="notranslate space-y-4">
+    <div className="notranslate space-y-3 md:space-y-4">
       {heading && (
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">
+          <h2 className="text-lg font-semibold tracking-tight md:text-2xl">
             Confirm your address
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-xs text-muted-foreground md:text-sm">
             We filled this in from the pin you placed. Correct anything that
             isn&apos;t right — especially the street number.
           </p>

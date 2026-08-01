@@ -14,24 +14,77 @@ import { Redirect } from "expo-router";
 import { useAuth } from "@/context/auth-context";
 import { useLanguage } from "@/context/language-context";
 import { LanguageSelector } from "@/components/language-selector";
+import { Icon } from "@/components/icon";
 import { startAuth } from "@/lib/api";
-import { colors, radii, shadows, spacing } from "@/theme";
+import { colors, radii, shadows, spacing, fonts } from "@/theme";
+
+/** Sign-in completes in a separate window, which cannot tell this screen it finished,
+ *  so the session has to be polled. Bounds, because the previous version polled every
+ *  1.8s for as long as the screen was open — thousands of requests an hour against a
+ *  server nobody was signing in to. */
+const POLL_START_MS = 1500;
+const POLL_MAX_MS = 8000;
+const POLL_GIVE_UP_MS = 3 * 60 * 1000;
 
 export default function LoginScreen() {
   const { user, refresh } = useAuth();
   const { t } = useLanguage();
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  /** Non-null only while a sign-in is actually in flight. */
+  const [awaitingSignIn, setAwaitingSignIn] = useState(false);
 
   useEffect(() => {
-    const timer = setInterval(() => void refresh(), 1800);
-    return () => clearInterval(timer);
+    if (!awaitingSignIn) return;
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    let delay = POLL_START_MS;
+    const deadline = Date.now() + POLL_GIVE_UP_MS;
+
+    const tick = () => {
+      if (cancelled) return;
+      if (Date.now() > deadline) {
+        setAwaitingSignIn(false);
+        setMessage(t("Sign-in timed out. Please try again."));
+        return;
+      }
+      void refresh().finally(() => {
+        if (cancelled) return;
+        // Back off so a window left open overnight costs a request every 8s, not 1.8.
+        delay = Math.min(POLL_MAX_MS, Math.round(delay * 1.5));
+        timer = setTimeout(tick, delay);
+      });
+    };
+
+    timer = setTimeout(tick, delay);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [awaitingSignIn, refresh, t]);
+
+  // Signing in elsewhere — another tab, or the control panel itself — never sets
+  // awaitingSignIn, so nothing above would notice. Re-checking whenever this window
+  // regains focus covers that without polling at all.
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof document === "undefined") return;
+    const recheck = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    window.addEventListener("focus", recheck);
+    document.addEventListener("visibilitychange", recheck);
+    return () => {
+      window.removeEventListener("focus", recheck);
+      document.removeEventListener("visibilitychange", recheck);
+    };
   }, [refresh]);
 
   if (user) return <Redirect href="/(tabs)" />;
 
   function continueWithGoogle() {
     setMessage(t("Complete Google sign-in in the secure window."));
+    setAwaitingSignIn(true);
     void startAuth("google");
   }
 
@@ -42,6 +95,7 @@ export default function LoginScreen() {
       return;
     }
     setMessage(`We will send a secure sign-in link to ${cleanEmail}.`);
+    setAwaitingSignIn(true);
     void startAuth("email", cleanEmail);
   }
 
@@ -103,7 +157,13 @@ export default function LoginScreen() {
 
           {message ? (
             <View style={styles.message}>
-              <ActivityIndicator color={colors.primary} size="small" />
+              {/* Spin only while genuinely waiting — a timeout or validation
+                  message beside a spinner reads as "still working". */}
+              {awaitingSignIn ? (
+                <ActivityIndicator color={colors.primary} size="small" />
+              ) : (
+                <Icon color={colors.primaryDark} name="info" size={16} />
+              )}
               <Text style={styles.messageText}>{message}</Text>
             </View>
           ) : null}
@@ -138,7 +198,7 @@ const styles = StyleSheet.create({
   brandText: {
     color: colors.ink,
     fontSize: 13,
-    fontWeight: "800",
+    fontFamily: fonts.bold,
     letterSpacing: 1.8,
   },
   card: {
@@ -149,12 +209,12 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     ...shadows.card,
   },
-  eyebrow: { color: colors.primary, fontSize: 11, fontWeight: "800", letterSpacing: 1.5 },
+  eyebrow: { color: colors.primary, fontSize: 11, fontFamily: fonts.bold, letterSpacing: 1.5 },
   title: {
     color: colors.ink,
     fontSize: 32,
     lineHeight: 38,
-    fontWeight: "800",
+    fontFamily: fonts.bold,
     marginTop: spacing.sm,
   },
   subtitle: {
@@ -175,8 +235,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: spacing.md,
   },
-  googleGlyph: { color: "#4285F4", fontSize: 17, fontWeight: "900" },
-  googleButtonText: { color: colors.ink, fontSize: 15, fontWeight: "700" },
+  googleGlyph: { color: "#4285F4", fontSize: 17, fontFamily: fonts.bold },
+  googleButtonText: { color: colors.ink, fontSize: 15, fontFamily: fonts.semiBold },
   divider: {
     flexDirection: "row",
     alignItems: "center",
@@ -184,8 +244,8 @@ const styles = StyleSheet.create({
     marginVertical: spacing.lg,
   },
   line: { height: 1, backgroundColor: colors.border, flex: 1 },
-  or: { color: colors.muted, fontSize: 10, fontWeight: "800", letterSpacing: 1.2 },
-  label: { color: colors.ink, fontSize: 13, fontWeight: "700", marginBottom: spacing.sm },
+  or: { color: colors.muted, fontSize: 10, fontFamily: fonts.bold, letterSpacing: 1.2 },
+  label: { color: colors.ink, fontSize: 13, fontFamily: fonts.semiBold, marginBottom: spacing.sm },
   input: {
     minHeight: 52,
     borderRadius: radii.md,
@@ -204,7 +264,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: spacing.md,
   },
-  primaryButtonText: { color: "#fff", fontSize: 15, fontWeight: "800" },
+  primaryButtonText: { color: "#fff", fontSize: 15, fontFamily: fonts.bold },
   pressed: { opacity: 0.78, transform: [{ scale: 0.995 }] },
   message: {
     flexDirection: "row",

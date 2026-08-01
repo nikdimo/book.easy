@@ -13,6 +13,7 @@ import {
 } from "@/lib/actions/listing.actions";
 import { listingFormSchema } from "@/lib/validations/listing.schema";
 import { ListingBottomNav } from "@/components/host/listing-bottom-nav";
+import { ListingWizardHeaderActions } from "@/components/host/listing-wizard-header-actions";
 import { listingStopHref } from "@/lib/host/listing-workspace";
 import { zodFieldErrors } from "@/lib/utils/zod-error";
 import { Badge } from "@/components/ui/badge";
@@ -417,6 +418,14 @@ function listingStepIssues(
   return issues;
 }
 
+// The five launch-offer choices stack on a phone, so they read as a compact
+// list there (icon beside the text) and only become the desktop card at md.
+const OFFER_CARD =
+  "flex min-h-11 items-center gap-2.5 rounded-lg border p-2.5 text-left transition-colors md:block md:min-h-0 md:rounded-xl md:p-4";
+const OFFER_ICON = "size-4 shrink-0 md:mb-3 md:size-5";
+const OFFER_TITLE = "block text-sm font-semibold md:text-base";
+const OFFER_DESC = "block text-[0.7rem] text-muted-foreground md:mt-1 md:text-sm";
+
 function FieldSection({
   title,
   children,
@@ -425,9 +434,9 @@ function FieldSection({
   children: ReactNode;
 }) {
   return (
-    <section className="space-y-4 border-b border-border/70 pb-6 last:border-b-0 last:pb-0">
+    <section className="space-y-3 border-b border-border/70 pb-4 last:border-b-0 last:pb-0 md:space-y-4 md:pb-6">
       {title && (
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground md:text-sm">
           {title}
         </h2>
       )}
@@ -1018,71 +1027,29 @@ export function ListingForm({
         </div>
       )}
 
+      {/* The wizard's own phone title bar is gone: leave / jump-to-step / save
+          state live in the shell header (which already collapses on scroll), and
+          all that is left in the page is a 2px progress hairline. */}
       {!isEditing && (
-        <div className="z-20 shrink-0 border-b bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:hidden">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => void leaveListingStudio()}
-            >
-              <ChevronLeft />
-              <Tx k="host.form.my_listings" source="My listings" />
-            </Button>
-            <h1 className="hidden text-lg font-semibold sm:block">
-              <Tx k="host.form.create_listing" source="Create a listing" />
-            </h1>
-            <div className="flex items-center gap-3 text-sm">
-              <span className={saveStatus === "error" ? "text-destructive" : "text-muted-foreground"} aria-live="polite">
-                {saveStatus === "saving"
-                  ? resolve("host.form.saving", "Saving…").text
-                  : saveStatus === "error"
-                    ? resolve("host.form.save_failed", "Save failed").text
-                    : resolve("host.form.draft_saved", "Draft saved").text}
-              </span>
-              {saveStatus === "error" && <Button type="button" variant="link" onClick={() => void autosaveDraft()}>
-                  <Tx k="host.form.retry" source="Retry" />
-                </Button>}
-              <Button
-                type="button"
-                disabled={isSubmittingNew || !listingReady}
-                title={
-                  listingReady
-                    ? undefined
-                    : resolve(
-                        "host.form.publish_blocked",
-                        "Complete all required listing steps before publishing",
-                      ).text
-                }
-                onClick={handleSubmitForReview}
-              >
-                {mediaUploadState.active ? (
-                  <>
-                    <Loader2 className="animate-spin" />
-                    <Tx k="host.form.uploading" source="Uploading" />
-                  </>
-                ) : isSubmittingNew ? (
-                  resolve("host.form.publishing", "Publishing…").text
-                ) : (
-                  resolve("host.form.publish", "Publish").text
-                )}
-              </Button>
-            </div>
+        <>
+          <ListingWizardHeaderActions
+            step={currentStep}
+            totalSteps={STEPS.length}
+            stepTitle={STEPS[currentStep].title}
+            saveStatus={saveStatus}
+            onOpenSteps={() => setStepsOpen(true)}
+            onLeave={() => void leaveListingStudio()}
+            onRetrySave={() => void autosaveDraft()}
+          />
+          <div className="h-0.5 shrink-0 bg-muted md:hidden" aria-hidden="true">
+            <div
+              className="h-full bg-primary transition-all"
+              style={{
+                width: `${((currentStep + 1) / STEPS.length) * 100}%`,
+              }}
+            />
           </div>
-          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
-            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${((currentStep + 1) / STEPS.length) * 100}%` }} />
-          </div>
-          <button
-            type="button"
-            onClick={() => setStepsOpen(true)}
-            className="mt-2 inline-flex min-h-8 items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
-          >
-            <ListChecks className="h-4 w-4" />
-            <span className="notranslate" translate="no">
-              {`Step ${currentStep + 1} of ${STEPS.length}: ${STEPS[currentStep].title}`}
-            </span>
-          </button>
-        </div>
+        </>
       )}
 
       <div
@@ -1236,7 +1203,7 @@ export function ListingForm({
             <div
               ref={editorScrollRef}
               onScroll={isEditing ? updateActiveEditSection : undefined}
-            className="min-h-0 flex-1 touch-pan-y space-y-4 overflow-y-auto overscroll-contain px-5 py-4 [-webkit-overflow-scrolling:touch] [scrollbar-gutter:stable] md:px-8"
+            className="min-h-0 flex-1 touch-pan-y space-y-3 overflow-y-auto overscroll-contain px-4 py-3 [-webkit-overflow-scrolling:touch] [scrollbar-gutter:stable] md:space-y-4 md:px-8 md:py-4"
           >
           {isEditing && state?.error && (
             <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{state.error}</div>
@@ -1249,13 +1216,14 @@ export function ListingForm({
           {/* The three location steps render their own heading (the map one is
              full-bleed and needs the copy above it), so suppress the shared one. */}
           <div className={isEditing || !LOCATION_STEPS.includes(currentStep) ? undefined : "hidden"}>
-            {!isEditing && <p className="notranslate text-sm md:text-xs font-semibold uppercase tracking-wide text-primary md:hidden" translate="no">{`Step ${currentStep + 1} of ${STEPS.length}`}</p>}
-            <h2 className="mt-1 text-2xl font-semibold">
+            {/* The step counter moved to the shell header chip, so repeating it
+                here only cost a line of scroll. */}
+            <h2 className="text-lg font-semibold md:text-2xl">
               {isEditing
                 ? resolve("host.form.listing_details", "Listing details").text
                 : STEPS[currentStep].title}
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground md:line-clamp-none md:text-sm">
               {isEditing
                 ? resolve(
                     "host.form.listing_details_hint",
@@ -1267,9 +1235,11 @@ export function ListingForm({
 
           <div id={isEditing ? "edit-section-basics" : undefined} className={isEditing || currentStep === LISTING_STEP.propertyType || currentStep === LISTING_STEP.description ? "scroll-mt-32 block" : "hidden"}>
           <FieldSection
+            // On the wizard's property-type step the step heading already says
+            // "Property type", so a section title here is a third repetition.
             title={
               !isEditing && currentStep === LISTING_STEP.propertyType
-                ? resolve("host.form.choose_property_type", "Choose a property type").text
+                ? undefined
                 : resolve("host.form.guest_basics", "Guest-facing basics").text
             }
           >
@@ -1305,6 +1275,7 @@ export function ListingForm({
                 onBlur={() => handleBlur("description")}
                 required
                 rows={7}
+                className="min-h-32 md:min-h-44"
                 placeholder={
                   resolve(
                     "host.form.description_placeholder",
@@ -1331,7 +1302,10 @@ export function ListingForm({
               </div>
             </div>
             <div className={isEditing || currentStep === LISTING_STEP.propertyType ? "space-y-3" : "hidden"}>
-              <Label id="property-type-label">
+              <Label
+                id="property-type-label"
+                className={isEditing ? undefined : "sr-only md:not-sr-only"}
+              >
                 <Tx k="host.form.property_type_label" source="Property type" />
               </Label>
               <input
@@ -1345,7 +1319,7 @@ export function ListingForm({
                 aria-labelledby="property-type-label"
                 aria-required="true"
                 aria-invalid={Boolean(fieldErrors.propertyType)}
-                className="grid grid-cols-2 gap-3 sm:grid-cols-3"
+                className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:gap-3"
                 onBlur={(event) => {
                   if (!event.currentTarget.contains(event.relatedTarget)) {
                     handleBlur("propertyType");
@@ -1362,7 +1336,7 @@ export function ListingForm({
                           role="radio"
                           aria-checked={selected}
                           className={cn(
-                            "group relative flex min-h-28 flex-col items-center justify-center gap-3 rounded-2xl border bg-background px-3 py-4 text-center shadow-sm outline-none transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40",
+                            "group relative flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-xl border bg-background px-2 py-2.5 text-center shadow-sm outline-none transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40 md:min-h-28 md:gap-3 md:rounded-2xl md:px-3 md:py-4",
                             selected &&
                               "border-primary bg-primary/6 text-primary shadow-[0_10px_30px_-18px_var(--primary)] ring-1 ring-primary"
                           )}
@@ -1377,16 +1351,16 @@ export function ListingForm({
                         >
                           <span
                             className={cn(
-                              "flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary",
+                              "flex size-9 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary md:size-12 md:rounded-xl",
                               selected && "bg-primary/12 text-primary"
                             )}
                           >
                             <PropertyTypeIcon
                               name={type.icon}
-                              className="size-7"
+                              className="size-5 md:size-7"
                             />
                           </span>
-                          <span className="text-sm font-semibold leading-tight text-foreground">
+                          <span className="text-xs font-semibold leading-tight text-foreground md:text-sm">
                             {type.label}
                           </span>
                           {selected && (
@@ -1487,7 +1461,7 @@ export function ListingForm({
             />
             {/* Translate rewrites these text nodes in place, so React's updates land on
                 nodes that are no longer displayed and the count freezes at its first value. */}
-            <p className="notranslate text-sm text-muted-foreground" translate="no">
+            <p className="notranslate text-xs text-muted-foreground md:text-sm" translate="no">
               {`${photoCount} of 3 required photos added`}
             </p>
             <FieldError message={fieldErrors.media} />
@@ -1660,15 +1634,15 @@ export function ListingForm({
                   resolve("host.form.offer_section", "Launch with a special offer").text
                 }
               >
-                <div className="space-y-6">
+                <div className="space-y-3 md:space-y-6">
                   <div>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs text-muted-foreground md:text-sm">
                       <Tx
                         k="host.form.offer_hint"
                         source="This is optional. Choose one ready-made offer or publish without a promotion."
                       />
                     </p>
-                    <div className="mt-4 grid gap-3 md:grid-cols-3">
+                    <div className="mt-2 grid gap-2 md:mt-4 md:grid-cols-3 md:gap-3">
                       {[
                         {
                           title: "Recommended",
@@ -1705,16 +1679,18 @@ export function ListingForm({
                               setTimeout(() => void autosaveDraft(), 0);
                             }}
                             className={cn(
-                              "rounded-xl border p-4 text-left transition-colors",
+                              OFFER_CARD,
                               selected
                                 ? "border-primary bg-primary/5 ring-1 ring-primary"
                                 : "hover:border-primary/40"
                             )}
                           >
-                            <CalendarRange className="mb-3 size-5" aria-hidden="true" />
-                            <span className="block font-semibold">{offer.title}</span>
-                            <span className="mt-1 block text-sm text-muted-foreground">
-                              {offer.description}
+                            <CalendarRange className={OFFER_ICON} aria-hidden="true" />
+                            <span className="min-w-0 md:block">
+                              <span className={OFFER_TITLE}>{offer.title}</span>
+                              <span className={OFFER_DESC}>
+                                {offer.description}
+                              </span>
                             </span>
                           </button>
                         );
@@ -1722,7 +1698,7 @@ export function ListingForm({
                     </div>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-2 sm:grid-cols-2 md:gap-3">
                     <button
                       type="button"
                       aria-pressed={values.promotionType === "NONE"}
@@ -1731,21 +1707,23 @@ export function ListingForm({
                         setTimeout(() => void autosaveDraft(), 0);
                       }}
                       className={cn(
-                        "rounded-xl border p-4 text-left transition-colors",
+                        OFFER_CARD,
                         values.promotionType === "NONE"
                           ? "border-primary bg-primary/5 ring-1 ring-primary"
                           : "hover:border-primary/40"
                       )}
                     >
-                      <Shield className="mb-3 size-5" aria-hidden="true" />
-                      <span className="block font-semibold">
-                        <Tx k="host.promotion.none_title" source="No promotion" />
-                      </span>
-                      <span className="mt-1 block text-sm text-muted-foreground">
-                        <Tx
-                          k="host.form.offer_none_hint"
-                          source="Publish now and add an offer later."
-                        />
+                      <Shield className={OFFER_ICON} aria-hidden="true" />
+                      <span className="min-w-0 md:block">
+                        <span className={OFFER_TITLE}>
+                          <Tx k="host.promotion.none_title" source="No promotion" />
+                        </span>
+                        <span className={OFFER_DESC}>
+                          <Tx
+                            k="host.form.offer_none_hint"
+                            source="Publish now and add an offer later."
+                          />
+                        </span>
                       </span>
                     </button>
                     <button
@@ -1761,7 +1739,7 @@ export function ListingForm({
                         setTimeout(() => void autosaveDraft(), 0);
                       }}
                       className={cn(
-                        "rounded-xl border p-4 text-left transition-colors",
+                        OFFER_CARD,
                         values.promotionType === "FREE_CLEANING"
                           ? "border-primary bg-primary/5 ring-1 ring-primary"
                           : "hover:border-primary/40",
@@ -1769,14 +1747,16 @@ export function ListingForm({
                           "cursor-not-allowed opacity-50"
                       )}
                     >
-                      <Sparkles className="mb-3 size-5" aria-hidden="true" />
-                      <span className="block font-semibold">
-                        <Tx k="host.promotion.cleaning_title" source="Free cleaning" />
-                      </span>
-                      <span className="mt-1 block text-sm text-muted-foreground">
-                        {Number(values.cleaningFee) > 0
-                          ? "Guests save the full cleaning fee."
-                          : "Add a cleaning fee in the previous step first."}
+                      <Sparkles className={OFFER_ICON} aria-hidden="true" />
+                      <span className="min-w-0 md:block">
+                        <span className={OFFER_TITLE}>
+                          <Tx k="host.promotion.cleaning_title" source="Free cleaning" />
+                        </span>
+                        <span className={OFFER_DESC}>
+                          {Number(values.cleaningFee) > 0
+                            ? "Guests save the full cleaning fee."
+                            : "Add a cleaning fee in the previous step first."}
+                        </span>
                       </span>
                     </button>
                   </div>
@@ -1901,14 +1881,14 @@ export function ListingForm({
 
           <div id={isEditing ? "edit-section-amenities" : undefined} className={isEditing || currentStep === LISTING_STEP.amenities ? "scroll-mt-32 block" : "hidden"}>
           <FieldSection>
-            <div className="space-y-7">
+            <div className="space-y-4 md:space-y-7">
               {Object.entries(groupedAmenities).map(([category, items]) => (
                 <div key={category}>
-                  <p className="mb-3 text-sm font-semibold text-foreground">{category}</p>
+                  <p className="mb-2 text-xs font-semibold text-foreground md:mb-3 md:text-sm">{category}</p>
                   {/* Sized off the container, not the viewport: the editor is a
                       resizable pane, so viewport breakpoints put one card per row
                       even when there is room for three. */}
-                  <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-2.5">
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(7.5rem,1fr))] gap-2 md:grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] md:gap-2.5">
                     {items.map((amenity) => {
                       const checked = selectedAmenityIds.includes(amenity.id);
                       const Icon = AMENITY_ICON_MAP[amenity.icon ?? ""] ?? Sparkles;
@@ -1919,20 +1899,20 @@ export function ListingForm({
                           aria-pressed={checked}
                           onClick={() => toggleAmenity(amenity.id, !checked)}
                           className={cn(
-                            "group flex min-h-[64px] cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-all",
+                            "group flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-2 py-1.5 text-left transition-all md:min-h-[64px] md:gap-2.5 md:rounded-xl md:px-3 md:py-2.5",
                             checked
                               ? "border-primary bg-primary/[0.08] text-foreground shadow-sm ring-1 ring-primary/20"
                               : "border-border/70 bg-card hover:-translate-y-0.5 hover:border-primary/40 hover:bg-muted/30 hover:shadow-sm"
                           )}
                         >
                           <span className={cn(
-                            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors",
+                            "flex size-7 shrink-0 items-center justify-center rounded-md transition-colors md:size-9 md:rounded-lg",
                             checked ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary"
                           )}>
-                            <Icon className="h-[1.125rem] w-[1.125rem]" aria-hidden="true" />
+                            <Icon className="size-4 md:h-[1.125rem] md:w-[1.125rem]" aria-hidden="true" />
                           </span>
-                          <span className="flex-1 text-[0.8125rem] font-medium leading-snug">{amenity.name}</span>
-                          <span className={cn("h-2 w-2 shrink-0 rounded-full", checked ? "bg-primary" : "bg-border")} aria-hidden="true" />
+                          <span className="flex-1 text-xs font-medium leading-snug md:text-[0.8125rem]">{amenity.name}</span>
+                          <span className={cn("size-1.5 shrink-0 rounded-full md:size-2", checked ? "bg-primary" : "bg-border")} aria-hidden="true" />
                           {checked && <input type="hidden" name="amenityIds" value={amenity.id} />}
                         </button>
                       );
@@ -2031,15 +2011,23 @@ export function ListingForm({
             </footer>
           )}
           {!isEditing && (
-            <footer className="z-20 shrink-0 border-t bg-background px-5 py-4 shadow-[0_-2px_8px_rgb(0_0_0/0.04)] md:px-8">
-              <div className="flex items-center justify-between gap-3">
+            <footer className="z-20 shrink-0 border-t bg-background px-3 py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] shadow-[0_-2px_8px_rgb(0_0_0/0.04)] md:px-8 md:py-4 md:pb-4">
+              <div className="flex items-center justify-between gap-2 md:gap-3">
+                {/* Icon-only Back on phones: the label is the widest thing in a
+                    row that also has to fit the blocker text and Continue. */}
                 <Button
                   type="button"
                   variant="outline"
+                  size="sm"
+                  className="size-9 shrink-0 p-0 md:size-auto md:px-2.5"
+                  aria-label={resolve("host.form.back", "Back").text}
                   disabled={currentStep === LISTING_STEP.propertyType}
                   onClick={() => goToStep(currentStep - 1)}
                 >
-                  <ChevronLeft /> <Tx k="host.form.back" source="Back" />
+                  <ChevronLeft />{" "}
+                  <span className="hidden md:inline">
+                    <Tx k="host.form.back" source="Back" />
+                  </span>
                 </Button>
                 <StepRequirementStatus
                   issues={currentStepIssues}
@@ -2052,6 +2040,8 @@ export function ListingForm({
                 {currentStep < STEPS.length - 1 ? (
                   <Button
                     type="button"
+                    size="sm"
+                    className="shrink-0"
                     // Hold Continue while the geocoder is still running, so the host
                     // can't land on the Address step before it has been filled in.
                     disabled={
@@ -2068,13 +2058,17 @@ export function ListingForm({
                 ) : (
                   <Button
                     type="button"
+                    size="sm"
+                    className="shrink-0"
                     disabled={isSubmittingNew || !listingReady}
                     aria-describedby={
                       listingReady ? undefined : "listing-step-requirements"
                     }
                     onClick={handleSubmitForReview}
                   >
-                    {isSubmittingNew ? "Publishing…" : "Publish"}
+                    {isSubmittingNew
+                      ? resolve("host.form.publishing", "Publishing…").text
+                      : resolve("host.form.publish", "Publish").text}
                   </Button>
                 )}
               </div>
@@ -2310,18 +2304,18 @@ export function ListingForm({
                       goToStep(index);
                       setStepsOpen(false);
                     }}
-                    className={`flex min-h-12 w-full items-center gap-3 rounded-xl border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                    className={`flex min-h-11 w-full items-center gap-2.5 rounded-lg border-l-2 py-1.5 pl-2.5 pr-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
                       currentStep === index
-                        ? "border-primary bg-primary/5"
-                        : "hover:bg-muted disabled:hover:bg-transparent"
+                        ? "border-l-primary bg-primary/5"
+                        : "border-l-transparent hover:bg-muted disabled:hover:bg-transparent"
                     }`}
                   >
-                    <span className={`flex size-7 shrink-0 items-center justify-center rounded-full text-sm md:text-xs font-semibold ${currentStep === index ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                    <span className={`flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${currentStep === index ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
                       {index + 1}
                     </span>
                     <span className="min-w-0">
                       <span className="block text-sm font-medium">{step.title}</span>
-                      <span className="block truncate text-sm md:text-xs text-muted-foreground">
+                      <span className="block truncate text-xs text-muted-foreground">
                         {disabled
                           ? `Complete ${STEPS[blockingStep].title} first`
                           : step.description}
@@ -2471,9 +2465,13 @@ function StepRequirementStatus({
         />
       )}
       {issues.length > 0 && (
-        <p className="flex items-start gap-1.5 text-right text-sm md:text-xs leading-relaxed text-destructive">
-          <CircleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-          <span>{issues.map((issue) => issue.message).join(" · ")}</span>
+        // One line on phones so the footer stays a single row; the publish
+        // checklist sheet is where the full list is readable.
+        <p className="flex min-w-0 items-start gap-1.5 text-right text-[0.7rem] leading-tight text-destructive md:text-xs md:leading-relaxed">
+          <CircleAlert className="mt-px size-3.5 shrink-0 md:mt-0.5" aria-hidden="true" />
+          <span className="line-clamp-1 md:line-clamp-none">
+            {issues.map((issue) => issue.message).join(" · ")}
+          </span>
         </p>
       )}
     </div>
@@ -2554,15 +2552,15 @@ function PricingField({
   onBlur?: () => void;
 }) {
   return (
-    <div className="flex min-h-[88px] items-center gap-4 border-b border-border/60 px-4 py-4 last:border-b-0 sm:px-6">
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-        <Icon className="h-5 w-5" aria-hidden="true" />
+    <div className="flex min-h-14 items-center gap-2.5 border-b border-border/60 px-3 py-2 last:border-b-0 md:min-h-[88px] md:gap-4 md:px-4 md:py-4 md:sm:px-6">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary md:size-10 md:rounded-xl">
+        <Icon className="size-4 md:size-5" aria-hidden="true" />
       </span>
       <div className="min-w-0 flex-1">
-        <Label htmlFor={id} className="text-base font-semibold">{label}</Label>
-        <p className="text-sm text-muted-foreground">{description}</p>
+        <Label htmlFor={id} className="text-sm font-semibold md:text-base">{label}</Label>
+        <p className="line-clamp-1 text-[0.7rem] text-muted-foreground md:line-clamp-none md:text-sm">{description}</p>
       </div>
-      <div className="flex w-44 shrink-0 items-center gap-2">
+      <div className="flex w-36 shrink-0 items-center gap-1.5 md:w-44 md:gap-2">
         <Input
           id={id}
           name={id}
@@ -2575,7 +2573,7 @@ function PricingField({
           required={id !== "cleaningFee"}
           className="text-right font-semibold tabular-nums"
         />
-        <span className="w-20 shrink-0 text-sm md:text-xs text-muted-foreground">{suffix}</span>
+        <span className="w-14 shrink-0 text-[0.7rem] leading-tight text-muted-foreground md:w-20 md:text-xs">{suffix}</span>
       </div>
     </div>
   );
@@ -2609,14 +2607,14 @@ function CapacityCounter({
   };
 
   return (
-    <div className="flex min-h-[88px] items-center gap-4 border-b border-border/60 px-4 py-4 last:border-b-0 sm:px-6">
-      <div className="flex min-w-0 flex-1 items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <Icon className="h-5 w-5" aria-hidden="true" />
+    <div className="flex min-h-14 items-center gap-2.5 border-b border-border/60 px-3 py-2 last:border-b-0 md:min-h-[88px] md:gap-4 md:px-4 md:py-4 md:sm:px-6">
+      <div className="flex min-w-0 flex-1 items-center gap-2.5 md:gap-3">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary md:size-10 md:rounded-xl">
+          <Icon className="size-4 md:size-5" aria-hidden="true" />
         </span>
         <div className="min-w-0">
-          <Label htmlFor={id} className="text-base font-semibold">{label}</Label>
-          <p className="text-sm text-muted-foreground">{description}</p>
+          <Label htmlFor={id} className="text-sm font-semibold md:text-base">{label}</Label>
+          <p className="line-clamp-1 text-[0.7rem] text-muted-foreground md:line-clamp-none md:text-sm">{description}</p>
         </div>
       </div>
       <div className="flex shrink-0 items-center gap-2 rounded-full border border-border/80 bg-background p-1 shadow-sm">

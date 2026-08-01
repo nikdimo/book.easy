@@ -373,15 +373,20 @@ export function ListingImagesField({
         }}
         onDrop={onDropFiles}
       >
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3">
-            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-background ring-1 ring-border">
-              <ImagePlus className="h-5 w-5 text-muted-foreground" />
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between md:gap-4">
+          <div className="flex items-start gap-2.5 md:gap-3">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-background ring-1 ring-border md:size-10">
+              <ImagePlus className="size-4 text-muted-foreground md:size-5" />
             </div>
             <div>
               <Label className="text-sm font-medium">Photos and videos</Label>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Drop JPEG, PNG, WebP, HEIC, MP4, MOV, or WebM files here. At least one photo is required for the cover.
+              {/* The full format list is desktop-only detail; on a phone the
+                  file picker filters to the same set anyway. */}
+              <p className="mt-1 text-xs text-muted-foreground md:text-sm">
+                <span className="hidden md:inline">
+                  Drop JPEG, PNG, WebP, HEIC, MP4, MOV, or WebM files here.{" "}
+                </span>
+                At least one photo is required for the cover.
               </p>
             </div>
           </div>
@@ -459,7 +464,7 @@ export function ListingImagesField({
           onDragCancel={() => setActiveId(null)}
         >
           <SortableContext items={sortableItems.map((item) => item.id)} strategy={rectSortingStrategy}>
-            <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:gap-3">
               {sortableItems.map(({ id, index, ...item }) => (
                 <SortableImageTile
                   key={id}

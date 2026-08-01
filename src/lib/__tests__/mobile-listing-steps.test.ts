@@ -87,9 +87,18 @@ describe("mobile screens keep no listing-step list of their own", () => {
     });
   }
 
+  /** Comments are prose, not rendered UI — a sentence like "five screens of 403s"
+   *  is not a hardcoded step count. Stripping them keeps the guard pointed at code.
+   *  The `:` lookbehind spares URLs. */
+  function stripComments(text: string): string {
+    return text
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/(^|[^:])\/\/.*$/gm, "$1");
+  }
+
   const sources = sourceFiles(mobileSrc).map((path) => ({
     path,
-    text: readFileSync(path, "utf8"),
+    text: stripComments(readFileSync(path, "utf8")),
   }));
 
   it("finds mobile sources to check", () => {

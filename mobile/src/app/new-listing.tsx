@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Icon } from "@/components/icon";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   ActivityIndicator,
@@ -11,45 +12,42 @@ import {
   View,
 } from "react-native";
 import { useLanguage } from "@/context/language-context";
+import { PhotosField, MIN_PHOTOS, photoCount } from "@/components/listing/photos-field";
+import { LocationField, hasValidPin, type LocationValues } from "@/components/listing/location-field";
+import { AddressField } from "@/components/listing/address-field";
+import { StreetViewField, type StreetViewValues } from "@/components/listing/street-view-field";
+import { SpecialOfferField, offerProblems, type OfferValues } from "@/components/listing/special-offer-field";
 import {
   apiFetch,
   ListingDraftData,
   ListingDraftResponse,
   ListingEditorResponse,
+  ListingMediaItem,
   ListingStep,
   openControlPanel,
 } from "@/lib/api";
-import { colors, radii, shadows, spacing } from "@/theme";
+import { colors, radii, shadows, spacing, fonts, type } from "@/theme";
 
-/** Steps this build edits natively. Everything else the server sends — including a
- *  step added after this app shipped — falls through to the web editor rather than
- *  disappearing from the wizard. Keeping the check on the id, not an index, is what
- *  lets the web flow be reordered without a mobile release. */
+/** Every canonical step is edited natively. A step id this build does not recognise
+ *  — one added to the web flow after the app shipped — still appears in the wizard
+ *  and falls through to the web editor, so reordering or extending the web flow
+ *  never strands a host on a screen that is silently missing. */
 const NATIVE_STEPS = new Set([
   "propertyType",
+  "photos",
   "description",
+  "location",
+  "address",
+  "streetView",
   "details",
   "amenities",
   "pricing",
+  "specialOffer",
 ]);
-
-/** Why a step still opens the web editor, so the host isn't just told "not here". */
-const WEB_ONLY_REASON: Record<string, string> = {
-  photos:
-    "Photos stay in the web editor for now so its existing upload, ordering, and cover-photo behavior remains unchanged.",
-  location:
-    "Map placement stays in the web editor while the native map is being built. Any location already saved in this draft remains untouched.",
-  address:
-    "Address confirmation stays in the web editor so it keeps matching the pin you placed there.",
-  streetView:
-    "Street View selection stays in the web editor for now. It is optional, so you can skip it.",
-  specialOffer:
-    "The launch offer stays in the web editor, where the listing is reviewed and published.",
-};
 
 type SaveStatus = "saving" | "saved" | "error";
 
-interface EditorValues {
+interface EditorValues extends LocationValues, StreetViewValues, OfferValues {
   title: string;
   description: string;
   propertyType: string;
@@ -61,6 +59,7 @@ interface EditorValues {
   cleaningFee: string;
   minNights: string;
   amenityIds: string[];
+  mediaItems: ListingMediaItem[];
 }
 
 const defaultValues: EditorValues = {
@@ -75,6 +74,25 @@ const defaultValues: EditorValues = {
   cleaningFee: "0",
   minNights: "1",
   amenityIds: [],
+  mediaItems: [],
+  address: "",
+  city: "",
+  area: "",
+  postalCode: "",
+  country: "",
+  latitude: "",
+  longitude: "",
+  locationSource: "",
+  locationConfirmed: "",
+  geocodingProvider: "",
+  geocodingPlaceId: "",
+  geocodingConfidence: "",
+  streetViewHeading: "",
+  streetViewPitch: "",
+  streetViewPanoId: "",
+  promotionType: "NONE",
+  promotionPercent: "",
+  promotionMinimumNights: "",
 };
 
 function valuesFromDraft(data?: ListingDraftData): EditorValues {
@@ -90,6 +108,26 @@ function valuesFromDraft(data?: ListingDraftData): EditorValues {
     cleaningFee: data?.cleaningFee || "0",
     minNights: data?.minNights || "1",
     amenityIds: Array.isArray(data?.amenityIds) ? data.amenityIds : [],
+    // A draft started on the web may already carry media and a located pin.
+    mediaItems: Array.isArray(data?.mediaItems) ? data.mediaItems : [],
+    address: data?.address ?? "",
+    city: data?.city ?? "",
+    area: data?.area ?? "",
+    postalCode: data?.postalCode ?? "",
+    country: data?.country ?? "",
+    latitude: data?.latitude ?? "",
+    longitude: data?.longitude ?? "",
+    locationSource: data?.locationSource ?? "",
+    locationConfirmed: data?.locationConfirmed ?? "",
+    geocodingProvider: data?.geocodingProvider ?? "",
+    geocodingPlaceId: data?.geocodingPlaceId ?? "",
+    geocodingConfidence: data?.geocodingConfidence ?? "",
+    streetViewHeading: data?.streetViewHeading ?? "",
+    streetViewPitch: data?.streetViewPitch ?? "",
+    streetViewPanoId: data?.streetViewPanoId ?? "",
+    promotionType: data?.promotionType || "NONE",
+    promotionPercent: data?.promotionPercent ?? "",
+    promotionMinimumNights: data?.promotionMinimumNights ?? "",
   };
 }
 
@@ -122,6 +160,9 @@ export default function NewListingScreen() {
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved");
   const [ready, setReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [publishedId, setPublishedId] = useState<string | null>(null);
   const valuesRef = useRef(values);
   const stepIdRef = useRef(currentStepId);
   const draftIdRef = useRef<string | null>(initialDraftId ?? null);
@@ -237,11 +278,79 @@ export default function NewListingScreen() {
     setValues((current) => ({ ...current, [field]: value }));
   }
 
+  /** The location and offer fields move together — choosing a search result writes
+   *  coordinates, address parts and provider metadata in one go — so they patch as a
+   *  group rather than field by field. */
+  function patchValues(patch: Partial<EditorValues>) {
+    setSaveStatus("saving");
+    setValues((current) => ({ ...current, ...patch }));
+  }
+
   function goToStep(stepId: string) {
     setSaveStatus("saving");
     setCurrentStepId(stepId);
     stepIdRef.current = stepId;
     void persist(stepId).catch(() => undefined);
+  }
+
+  /** Everything that must be true before the server will accept a publish. Shown as
+   *  a checklist rather than discovered one error at a time, and each entry names the
+   *  step so the host can jump straight to it. The server re-validates all of it. */
+  const publishBlockers = useMemo(() => {
+    const blockers: { stepId: string; message: string }[] = [];
+    if (!values.propertyType)
+      blockers.push({ stepId: "propertyType", message: "Choose a property type" });
+    if (photoCount(values.mediaItems) < MIN_PHOTOS)
+      blockers.push({
+        stepId: "photos",
+        message: `Add at least ${MIN_PHOTOS} photos`,
+      });
+    if (values.title.trim().length < 5)
+      blockers.push({ stepId: "description", message: "Title needs at least 5 characters" });
+    if (values.description.trim().length < 20)
+      blockers.push({
+        stepId: "description",
+        message: "Description needs at least 20 characters",
+      });
+    if (!hasValidPin(values))
+      blockers.push({ stepId: "location", message: "Place the pin on the map" });
+    if (!values.address.trim() || !values.city.trim() || !values.country.trim())
+      blockers.push({ stepId: "address", message: "Complete the address" });
+    if (values.locationConfirmed !== "true")
+      blockers.push({ stepId: "address", message: "Confirm the address is correct" });
+    if (!(Number(values.baseNightlyRate) >= 1))
+      blockers.push({ stepId: "pricing", message: "Set a nightly rate" });
+    for (const problem of offerProblems(values, values.cleaningFee)) {
+      blockers.push({ stepId: "specialOffer", message: problem });
+    }
+    return blockers;
+  }, [values]);
+
+  const blockedByUpload = uploading;
+
+  async function publish() {
+    if (publishBlockers.length > 0 || publishing) return;
+    try {
+      setPublishing(true);
+      // Flush any pending edit first: the server reads the payload sent here, but a
+      // failed publish must leave the draft holding the host's latest work.
+      await persist().catch(() => undefined);
+      const result = await apiFetch<{ listingId: string }>(
+        "/api/mobile/v1/listings/publish",
+        {
+          method: "POST",
+          body: JSON.stringify({ ...valuesRef.current, draftId: draftIdRef.current }),
+        }
+      );
+      setPublishedId(result.listingId);
+    } catch (caught) {
+      Alert.alert(
+        t("Could not publish"),
+        caught instanceof Error ? caught.message : t("Try again.")
+      );
+    } finally {
+      setPublishing(false);
+    }
   }
 
   async function openWebStep() {
@@ -286,6 +395,29 @@ export default function NewListingScreen() {
             <Text style={styles.loadingText}>{t("Loading")}…</Text>
           </>
         )}
+      </View>
+    );
+  }
+
+  if (publishedId) {
+    return (
+      <View style={styles.centered}>
+        <View style={styles.successIcon}>
+          <Icon color={colors.success} name="confirmed" size={30} />
+        </View>
+        <Text style={styles.successTitle}>{t("Listing published")}</Text>
+        <Text style={styles.successBody}>
+          {t(
+            "Your listing is live and queued for a quick admin review. You can manage availability and pricing from My Listings."
+          )}
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.replace("/(tabs)/listings")}
+          style={styles.primaryButton}
+        >
+          <Text style={styles.primaryButtonText}>{t("Go to My Listings")}</Text>
+        </Pressable>
       </View>
     );
   }
@@ -388,6 +520,33 @@ export default function NewListingScreen() {
               t={t}
             />
           ) : null}
+          {step.id === "photos" ? (
+            <PhotosField
+              items={values.mediaItems}
+              onChange={(next) => updateField("mediaItems", next)}
+              onUploadingChange={setUploading}
+            />
+          ) : null}
+          {step.id === "location" ? (
+            <LocationField values={values} onChange={patchValues} />
+          ) : null}
+          {step.id === "address" ? (
+            <AddressField values={values} onChange={patchValues} />
+          ) : null}
+          {step.id === "streetView" ? (
+            <StreetViewField
+              location={values}
+              values={values}
+              onChange={patchValues}
+            />
+          ) : null}
+          {step.id === "specialOffer" ? (
+            <SpecialOfferField
+              values={values}
+              cleaningFee={values.cleaningFee}
+              onChange={patchValues}
+            />
+          ) : null}
           {step.id === "details" ? (
             <DetailsStep values={values} updateField={updateField} t={t} />
           ) : null}
@@ -412,12 +571,36 @@ export default function NewListingScreen() {
           {step.id === "pricing" ? (
             <PricingStep values={values} updateField={updateField} t={t} />
           ) : null}
+          {/* On the final step, show everything still standing between the host and
+              publication, each linking to the step that fixes it. */}
+          {isLastStep && publishBlockers.length > 0 ? (
+            <View style={styles.checklist}>
+              <Text style={styles.checklistTitle}>
+                {t("Before you can publish")}
+              </Text>
+              {publishBlockers.map((blocker) => (
+                <Pressable
+                  accessibilityRole="button"
+                  key={`${blocker.stepId}-${blocker.message}`}
+                  onPress={() => goToStep(blocker.stepId)}
+                  style={({ pressed }) => [
+                    styles.checklistRow,
+                    pressed && { opacity: 0.6 },
+                  ]}
+                >
+                  <Icon color={colors.warm} name="alert" size={14} />
+                  <Text style={styles.checklistText}>{t(blocker.message)}</Text>
+                  <Icon color={colors.muted} name="forward" size={14} />
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+
           {NATIVE_STEPS.has(step.id) ? null : (
             <BridgeStep
               title={t("Finish {step} on the web", { step: t(step.title) })}
               description={t(
-                WEB_ONLY_REASON[step.id] ??
-                  "This step is not available in the app yet. Your draft is saved, so you can finish it in the web editor and come back."
+                "This step was added to the listing flow after this version of the app. Your draft is saved, so you can finish it in the web editor and come back."
               )}
               action={t("Open in web editor")}
               onPress={() => void openWebStep()}
@@ -429,27 +612,44 @@ export default function NewListingScreen() {
       <View style={styles.footer}>
         <Pressable
           accessibilityRole="button"
-          disabled={stepIndex === 0}
+          disabled={stepIndex === 0 || blockedByUpload}
           onPress={() => goToStep(steps[stepIndex - 1].id)}
-          style={[styles.secondaryButton, stepIndex === 0 && styles.disabled]}
+          style={[
+            styles.secondaryButton,
+            (stepIndex === 0 || blockedByUpload) && styles.disabled,
+          ]}
         >
-          <Text style={styles.secondaryButtonText}>‹ {t("Back")}</Text>
+          <Icon color={colors.ink} name="back" size={15} />
+          <Text style={styles.secondaryButtonText}>{t("Back")}</Text>
         </Pressable>
         {!isLastStep ? (
           <Pressable
             accessibilityRole="button"
+            // An upload in flight is the one thing that blocks leaving a step:
+            // navigating away drops the file with no way to recover it.
+            disabled={blockedByUpload}
             onPress={() => goToStep(steps[stepIndex + 1].id)}
-            style={styles.primaryButton}
+            style={[styles.primaryButton, blockedByUpload && styles.disabled]}
           >
-            <Text style={styles.primaryButtonText}>{t("Continue")} ›</Text>
+            <Text style={styles.primaryButtonText}>
+              {blockedByUpload ? t("Uploading…") : t("Continue")}
+            </Text>
+            {blockedByUpload ? null : <Icon color="#fff" name="forward" size={15} />}
           </Pressable>
         ) : (
           <Pressable
             accessibilityRole="button"
-            onPress={() => void openWebStep()}
-            style={styles.primaryButton}
+            disabled={publishBlockers.length > 0 || publishing}
+            onPress={() => void publish()}
+            style={[
+              styles.primaryButton,
+              (publishBlockers.length > 0 || publishing) && styles.disabled,
+            ]}
           >
-            <Text style={styles.primaryButtonText}>{t("Finish in web editor")} ↗</Text>
+            <Text style={styles.primaryButtonText}>
+              {publishing ? t("Publishing…") : t("Publish listing")}
+            </Text>
+            {publishing ? null : <Icon color="#fff" name="check" size={15} />}
           </Pressable>
         )}
       </View>
@@ -597,7 +797,7 @@ function Stepper({
           onPress={() => onChange(String(Math.max(min, number - 1)))}
           style={[styles.stepperButton, number <= min && styles.disabled]}
         >
-          <Text style={styles.stepperButtonText}>−</Text>
+          <Icon color={colors.ink} name="remove" size={16} />
         </Pressable>
         <Text style={styles.stepperValue}>{number}</Text>
         <Pressable
@@ -607,7 +807,7 @@ function Stepper({
           onPress={() => onChange(String(Math.min(max, number + 1)))}
           style={[styles.stepperButton, number >= max && styles.disabled]}
         >
-          <Text style={styles.stepperButtonText}>+</Text>
+          <Icon color={colors.ink} name="add" size={16} />
         </Pressable>
       </View>
     </View>
@@ -648,7 +848,7 @@ function AmenitiesStep({
                     style={[styles.amenity, checked && styles.amenitySelected]}
                   >
                     <View style={[styles.checkbox, checked && styles.checkboxSelected]}>
-                      {checked ? <Text style={styles.checkmark}>✓</Text> : null}
+                      {checked ? <Icon color="#fff" name="check" size={12} /> : null}
                     </View>
                     <Text style={styles.amenityText}>{t(amenity.name)}</Text>
                   </Pressable>
@@ -805,7 +1005,7 @@ function BridgeStep({
   return (
     <View style={styles.bridge}>
       <View style={styles.bridgeIcon}>
-        <Text style={styles.bridgeIconText}>↗</Text>
+        <Icon color={colors.primary} name="external" size={24} />
       </View>
       <Text style={styles.bridgeTitle}>{title}</Text>
       <Text style={styles.bridgeText}>{description}</Text>
@@ -814,13 +1014,43 @@ function BridgeStep({
         onPress={onPress}
         style={styles.primaryButton}
       >
-        <Text style={styles.primaryButtonText}>{action} ↗</Text>
+        <Text style={styles.primaryButtonText}>{action}</Text>
+        <Icon color="#fff" name="external" size={15} />
       </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  successIcon: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.successSoft,
+  },
+  successTitle: { ...type.title, color: colors.ink, textAlign: "center" },
+  successBody: {
+    ...type.body,
+    maxWidth: 420,
+    color: colors.muted,
+    textAlign: "center",
+  },
+  checklist: {
+    gap: spacing.sm,
+    padding: spacing.lg,
+    borderRadius: radii.lg,
+    backgroundColor: colors.warmSoft,
+  },
+  checklistTitle: { ...type.label, color: colors.warm },
+  checklistRow: {
+    minHeight: 40,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  checklistText: { ...type.meta, flex: 1, color: colors.warm },
   screen: { flex: 1, backgroundColor: colors.background },
   centered: {
     flex: 1,
@@ -831,7 +1061,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   loadingText: { color: colors.muted, fontSize: 13 },
-  loadErrorTitle: { color: colors.ink, fontSize: 18, fontWeight: "900" },
+  loadErrorTitle: { color: colors.ink, fontSize: 18, fontFamily: fonts.bold },
   loadErrorText: { color: colors.muted, textAlign: "center", lineHeight: 20 },
   topBar: {
     minHeight: 58,
@@ -847,12 +1077,12 @@ const styles = StyleSheet.create({
   topEyebrow: {
     color: colors.primary,
     fontSize: 9,
-    fontWeight: "900",
+    fontFamily: fonts.bold,
     letterSpacing: 1.5,
   },
   saveStatus: { color: colors.muted, fontSize: 11, marginTop: 4 },
   saveStatusError: { color: colors.danger },
-  retryText: { color: colors.primary, fontSize: 12, fontWeight: "900" },
+  retryText: { color: colors.primary, fontSize: 12, fontFamily: fonts.bold },
   progressTrack: { height: 3, backgroundColor: colors.surfaceAlt },
   progressValue: { height: 3, backgroundColor: colors.primary },
   stepNavigation: {
@@ -879,10 +1109,10 @@ const styles = StyleSheet.create({
   stepNumber: {
     color: colors.muted,
     fontSize: 10,
-    fontWeight: "900",
+    fontFamily: fonts.bold,
   },
   stepNumberSelected: { color: colors.primary },
-  stepChipText: { color: colors.inkSoft, fontSize: 11, fontWeight: "800" },
+  stepChipText: { color: colors.inkSoft, fontSize: 11, fontFamily: fonts.bold },
   stepChipTextSelected: { color: colors.primaryDark },
   content: {
     width: "100%",
@@ -895,7 +1125,7 @@ const styles = StyleSheet.create({
   stepLabel: {
     color: colors.primary,
     fontSize: 10,
-    fontWeight: "900",
+    fontFamily: fonts.bold,
     letterSpacing: 1.2,
     textTransform: "uppercase",
   },
@@ -903,7 +1133,7 @@ const styles = StyleSheet.create({
     color: colors.ink,
     fontSize: 27,
     lineHeight: 34,
-    fontWeight: "900",
+    fontFamily: fonts.bold,
     letterSpacing: -0.5,
     marginTop: spacing.sm,
   },
@@ -925,7 +1155,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: colors.inkSoft,
     fontSize: 11,
-    fontWeight: "900",
+    fontFamily: fonts.bold,
     letterSpacing: 1.1,
     textTransform: "uppercase",
   },
@@ -960,12 +1190,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceAlt,
   },
   typeIconSelected: { backgroundColor: colors.primarySoft },
-  typeIconText: { color: colors.muted, fontSize: 18, fontWeight: "900" },
+  typeIconText: { color: colors.muted, fontSize: 18, fontFamily: fonts.bold },
   typeIconTextSelected: { color: colors.primary },
   propertyTitle: {
     color: colors.ink,
     fontSize: 14,
-    fontWeight: "900",
+    fontFamily: fonts.bold,
     textAlign: "center",
     marginTop: spacing.sm,
   },
@@ -995,7 +1225,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  fieldLabel: { color: colors.ink, fontSize: 13, fontWeight: "800" },
+  fieldLabel: { color: colors.ink, fontSize: 13, fontFamily: fonts.bold },
   stepperControls: { flexDirection: "row", alignItems: "center", gap: spacing.md },
   stepperButton: {
     width: 38,
@@ -1012,7 +1242,7 @@ const styles = StyleSheet.create({
     minWidth: 26,
     color: colors.ink,
     fontSize: 15,
-    fontWeight: "900",
+    fontFamily: fonts.bold,
     textAlign: "center",
   },
   disabled: { opacity: 0.35 },
@@ -1021,7 +1251,7 @@ const styles = StyleSheet.create({
   categoryTitle: {
     color: colors.muted,
     fontSize: 12,
-    fontWeight: "800",
+    fontFamily: fonts.bold,
     marginBottom: spacing.sm,
   },
   amenityGrid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
@@ -1054,8 +1284,8 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
     backgroundColor: colors.primary,
   },
-  checkmark: { color: "#fff", fontSize: 12, fontWeight: "900" },
-  amenityText: { flex: 1, color: colors.ink, fontSize: 12, fontWeight: "700" },
+  checkmark: { color: "#fff", fontSize: 12, fontFamily: fonts.bold },
+  amenityText: { flex: 1, color: colors.ink, fontSize: 12, fontFamily: fonts.semiBold },
   inputGroup: { gap: spacing.sm },
   input: {
     minHeight: 48,
@@ -1092,11 +1322,11 @@ const styles = StyleSheet.create({
     borderRadius: 29,
     backgroundColor: colors.primarySoft,
   },
-  bridgeIconText: { color: colors.primary, fontSize: 24, fontWeight: "900" },
+  bridgeIconText: { color: colors.primary, fontSize: 24, fontFamily: fonts.bold },
   bridgeTitle: {
     color: colors.ink,
     fontSize: 18,
-    fontWeight: "900",
+    fontFamily: fonts.bold,
     textAlign: "center",
     marginTop: spacing.lg,
   },
@@ -1114,7 +1344,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     backgroundColor: colors.primarySoft,
   },
-  finishNoticeTitle: { color: colors.primaryDark, fontSize: 13, fontWeight: "900" },
+  finishNoticeTitle: { color: colors.primaryDark, fontSize: 13, fontFamily: fonts.bold },
   finishNoticeText: {
     color: colors.primaryDark,
     fontSize: 12,
@@ -1140,8 +1370,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderRadius: radii.md,
     backgroundColor: colors.primary,
+    flexDirection: "row",
+    gap: spacing.sm
   },
-  primaryButtonText: { color: "#fff", fontSize: 12, fontWeight: "900" },
+  primaryButtonText: { color: "#fff", fontSize: 12, fontFamily: fonts.bold },
   secondaryButton: {
     minHeight: 46,
     paddingHorizontal: spacing.lg,
@@ -1151,6 +1383,8 @@ const styles = StyleSheet.create({
     borderColor: colors.borderStrong,
     borderRadius: radii.md,
     backgroundColor: colors.surface,
+    flexDirection: "row",
+    gap: spacing.sm
   },
-  secondaryButtonText: { color: colors.ink, fontSize: 12, fontWeight: "900" },
+  secondaryButtonText: { color: colors.ink, fontSize: 12, fontFamily: fonts.bold },
 });

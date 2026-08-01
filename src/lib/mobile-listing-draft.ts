@@ -33,6 +33,47 @@ const mobileListingDraftPatchSchema = z
     cleaningFee: draftString.optional(),
     minNights: draftString.optional(),
     amenityIds: z.array(z.string().min(1).max(100)).max(250).optional(),
+
+    // Location, address and Street View. These were previously refused because the
+    // mobile client had no screens for them and sent them only by accident; it now
+    // owns those steps natively, so refusing them would silently drop the host's
+    // work. Every field still has to survive a round trip through the web wizard,
+    // which reads the same ListingDraftData shape.
+    address: draftString.optional(),
+    city: draftString.optional(),
+    area: draftString.optional(),
+    postalCode: draftString.optional(),
+    country: draftString.optional(),
+    latitude: draftString.optional(),
+    longitude: draftString.optional(),
+    locationSource: draftString.optional(),
+    locationConfirmed: draftString.optional(),
+    geocodingProvider: draftString.optional(),
+    geocodingPlaceId: draftString.optional(),
+    geocodingConfidence: draftString.optional(),
+    streetViewHeading: draftString.optional(),
+    streetViewPitch: draftString.optional(),
+    streetViewPanoId: draftString.optional(),
+
+    // Photos and video. Order is meaningful — the first image is the cover.
+    mediaItems: z
+      .array(
+        z.object({
+          id: z.string().max(100).optional(),
+          url: z.string().min(1).max(2000),
+          mediaType: z.enum(["IMAGE", "VIDEO"]),
+          alt: z.string().max(500).nullish(),
+        })
+      )
+      .max(50)
+      .optional(),
+    imageUrls: z.array(z.string().min(1).max(2000)).max(50).optional(),
+
+    // Launch offer. The values are validated properly on publish by
+    // listing.actions.ts; here they are just carried as draft text.
+    promotionType: draftString.optional(),
+    promotionPercent: draftString.optional(),
+    promotionMinimumNights: draftString.optional(),
   })
   .strict();
 
@@ -77,8 +118,10 @@ export function mergeMobileListingDraft(
       ? existing
       : {};
 
-  // Only the stable native fields are present in `patch`. Spreading them over the
-  // existing JSON deliberately retains web-owned location and media fields.
+  // A patch carries only the fields the client actually touched, so spreading it
+  // over the stored JSON leaves everything else — including whatever the web wizard
+  // wrote — intact. Sending `mediaItems` replaces the array wholesale, which is what
+  // reordering and removal need; there is no per-item merge to get wrong.
   return { ...current, ...patch } as Prisma.InputJsonValue;
 }
 

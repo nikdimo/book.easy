@@ -9,6 +9,11 @@ import {
   getPopularListings,
 } from "@/lib/services/search.service";
 import { ListingCarousel } from "@/components/public/listing-carousel";
+import { HomeListingsView } from "@/components/public/home-listings-view";
+import type { MapPin } from "@/components/marketplace/properties-map";
+import { getMapCoordinatesForListing } from "@/lib/utils/listing-map-coords";
+import { formatPrice } from "@/lib/utils/format";
+import type { ListingCardSerialized } from "@/lib/serializers/listing-card";
 import { getT, T } from "@/lib/i18n/t";
 
 const HOME_LISTING_LIMIT = 24;
@@ -64,6 +69,63 @@ async function loadHomeData() {
   }
 }
 
+/** Map markers for the home page's map view. No search dates here, so the marker label
+ * is the nightly rate rather than a stay total (see /properties, which has both).
+ * Listings without coordinates simply don't get a pin. */
+function toMapPins(listings: ListingCardSerialized[], locale: string): MapPin[] {
+  return listings.flatMap((listing) => {
+    const coordinates = getMapCoordinatesForListing(listing);
+    if (!coordinates) return [];
+    const cover = listing.images.find((image) => image.url?.trim());
+    return [
+      {
+        id: listing.id,
+        slug: listing.slug,
+        lat: coordinates.lat,
+        lng: coordinates.lng,
+        label: listing.pricingRule
+          ? formatPrice(
+              listing.pricingRule.baseNightlyRate,
+              listing.pricingRule.currency,
+              locale
+            )
+          : "—",
+        title: listing.title,
+        location: [listing.property.area, listing.property.city]
+          .filter(Boolean)
+          .join(", "),
+        imageUrl: cover?.url,
+        imageAlt: cover?.alt ?? undefined,
+      },
+    ];
+  });
+}
+
+function CompactGrid({ listings }: { listings: ListingCardSerialized[] }) {
+  return (
+    <div className="flex flex-wrap justify-center gap-x-4 gap-y-6">
+      {listings.map((listing) => (
+        <div
+          key={listing.id}
+          className="w-full min-[420px]:w-[calc(50%-0.5rem)] sm:w-[calc(33.333%-0.667rem)] md:w-[calc(25%-0.75rem)] lg:w-[calc(20%-0.8rem)]"
+        >
+          <PropertyCard listing={listing} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SpotlightGrid({ listings }: { listings: ListingCardSerialized[] }) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {listings.map((listing) => (
+        <PropertyCardSpotlight key={listing.id} listing={listing} />
+      ))}
+    </div>
+  );
+}
+
 export default async function HomePage() {
   const t = await getT();
   const { totalListings, popularListings, listings, dbError } = await loadHomeData();
@@ -82,14 +144,13 @@ export default async function HomePage() {
 
       {isLowInventory && (
         <section className="max-w-[1760px] mx-auto px-4 md:px-8 pt-6 pb-8">
-          <h2 className="text-base md:text-lg font-semibold tracking-tight mb-4">
-            <T t={t} k="home.featured_stays" source="Featured stays" />
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {listings.map((listing) => (
-              <PropertyCardSpotlight key={listing.id} listing={listing} />
-            ))}
-          </div>
+          <HomeListingsView
+            heading={<T t={t} k="home.featured_stays" source="Featured stays" />}
+            defaultView="detailed"
+            pins={toMapPins(listings, t.locale)}
+            detailed={<SpotlightGrid listings={listings} />}
+            compact={<CompactGrid listings={listings} />}
+          />
         </section>
       )}
 
@@ -122,30 +183,31 @@ export default async function HomePage() {
 
       {!isLowInventory && listings.length > 0 && (
         <section className="max-w-[1760px] mx-auto px-4 md:px-8 pt-6 pb-8">
-          <h2 className="text-base md:text-lg font-semibold tracking-tight mb-4">
-            {showPopular ? (
-              <T t={t} k="home.more_places" source="More places to stay" />
-            ) : (
-              <T t={t} k="home.places_to_stay" source="Places to stay" />
-            )}
-          </h2>
-          <div className="flex flex-wrap justify-center gap-x-4 gap-y-6">
-            {listings.map((listing) => (
-              <div
-                key={listing.id}
-                className="w-full min-[420px]:w-[calc(50%-0.5rem)] sm:w-[calc(33.333%-0.667rem)] md:w-[calc(25%-0.75rem)] lg:w-[calc(20%-0.8rem)]"
-              >
-                <PropertyCard listing={listing} />
-              </div>
-            ))}
-          </div>
-          {totalListings > listings.length + popularListings.length && (
-            <div className="mt-6 flex justify-center">
-              <Button variant="outline" className="rounded-full" asChild>
-                <Link href="/properties"><T t={t} k="home.show_all_homes" source="Show all homes" /></Link>
-              </Button>
-            </div>
-          )}
+          <HomeListingsView
+            heading={
+              showPopular ? (
+                <T t={t} k="home.more_places" source="More places to stay" />
+              ) : (
+                <T t={t} k="home.places_to_stay" source="Places to stay" />
+              )
+            }
+            defaultView="compact"
+            // Everything on screen, so the map matches the page rather than one section.
+            pins={toMapPins([...popularListings, ...listings], t.locale)}
+            compact={<CompactGrid listings={listings} />}
+            detailed={<SpotlightGrid listings={listings} />}
+            footer={
+              totalListings > listings.length + popularListings.length ? (
+                <div className="mt-6 flex justify-center">
+                  <Button variant="outline" className="rounded-full" asChild>
+                    <Link href="/properties">
+                      <T t={t} k="home.show_all_homes" source="Show all homes" />
+                    </Link>
+                  </Button>
+                </div>
+              ) : null
+            }
+          />
         </section>
       )}
 

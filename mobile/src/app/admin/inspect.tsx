@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Icon } from "@/components/icon";
 import {
   Image,
   Modal,
@@ -18,7 +19,7 @@ import {
   fetchAdminListingDetail,
   reviewAdminListing,
 } from "@/lib/api";
-import { colors, radii, spacing } from "@/theme";
+import { colors, radii, spacing, fonts } from "@/theme";
 
 export default function ListingInspectScreen() {
   const router = useRouter();
@@ -114,7 +115,8 @@ export default function ListingInspectScreen() {
         onPress={() => router.back()}
         style={styles.backButton}
       >
-        <Text style={styles.backButtonText}>← {t("Back to Queue")}</Text>
+        <Icon color={colors.ink} name="back" size={14} />
+            <Text style={styles.backButtonText}>{t("Back to Queue")}</Text>
       </Pressable>
 
       {/* Status & NeedsReview Badges */}
@@ -150,7 +152,7 @@ export default function ListingInspectScreen() {
         </ScrollView>
       ) : (
         <View style={styles.noImagesBox}>
-          <Text style={styles.noImagesText}>📷 No photos uploaded</Text>
+          <Text style={styles.noImagesText}>No photos uploaded</Text>
         </View>
       )}
 
@@ -158,20 +160,20 @@ export default function ListingInspectScreen() {
       <SectionHeader title="Host Profile" />
       <View style={styles.infoCard}>
         <Text style={styles.infoTitle}>{detail.host.name || "Unnamed Host"}</Text>
-        <Text style={styles.infoDetail}>📧 {detail.host.email}</Text>
+        <Text style={styles.infoDetail}>{detail.host.email}</Text>
       </View>
 
       {/* Specs & Pricing Card */}
       <SectionHeader title="Property Details & Rates" />
       <View style={styles.infoCard}>
         <Text style={styles.infoDetail}>
-          📍 {detail.address}, {detail.city}, {detail.country}
+          {detail.address}, {detail.city}, {detail.country}
         </Text>
         <Text style={styles.infoDetail}>
-          👥 Max Guests: {detail.maxGuests} • 🛏️ Bedrooms: {detail.bedrooms} • Beds: {detail.beds} • 🚿 Bathrooms: {detail.bathrooms}
+          Max Guests: {detail.maxGuests} • Bedrooms: {detail.bedrooms} • Beds: {detail.beds} • Bathrooms: {detail.bathrooms}
         </Text>
         <Text style={[styles.infoTitle, { marginTop: spacing.sm }]}>
-          💰 Base Nightly Rate: {detail.nightlyRate ? `${detail.nightlyRate} ${detail.currency}` : "Not set"}
+          Base Nightly Rate: {detail.nightlyRate ? `${detail.nightlyRate} ${detail.currency}` : "Not set"}
         </Text>
       </View>
 
@@ -188,7 +190,8 @@ export default function ListingInspectScreen() {
           <View style={styles.amenitiesGrid}>
             {detail.amenities.map((a, i) => (
               <View key={i} style={styles.amenityTag}>
-                <Text style={styles.amenityTagText}>✓ {a}</Text>
+                <Icon color={colors.success} name="check" size={12} />
+                <Text style={styles.amenityTagText}>{a}</Text>
               </View>
             ))}
           </View>
@@ -198,7 +201,10 @@ export default function ListingInspectScreen() {
       {/* Moderation Note if present */}
       {detail.moderationNote ? (
         <View style={styles.moderationCard}>
-          <Text style={styles.moderationTitle}>⚠️ Moderation Note:</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <Icon color={colors.warm} name="alert" size={14} />
+              <Text style={styles.moderationTitle}>Moderation Note:</Text>
+            </View>
           <Text style={styles.moderationText}>{detail.moderationNote}</Text>
         </View>
       ) : null}
@@ -217,8 +223,9 @@ export default function ListingInspectScreen() {
               actionLoading && { opacity: 0.5 },
             ]}
           >
+            {actionLoading ? null : <Icon color="#fff" name="check" size={15} />}
             <Text style={styles.approveBtnText}>
-              {actionLoading ? "Processing…" : "✓ Approve Listing"}
+              {actionLoading ? "Processing…" : "Approve Listing"}
             </Text>
           </Pressable>
         ) : null}
@@ -234,7 +241,8 @@ export default function ListingInspectScreen() {
               actionLoading && { opacity: 0.5 },
             ]}
           >
-            <Text style={styles.suspendBtnText}>🚫 Suspend Listing</Text>
+            <Icon color="#fff" name="hide" size={15} />
+            <Text style={styles.suspendBtnText}>Suspend Listing</Text>
           </Pressable>
         ) : null}
       </View>
@@ -290,7 +298,7 @@ const styles = StyleSheet.create({
   backButtonText: {
     color: colors.primary,
     fontSize: 13,
-    fontWeight: "800",
+    fontFamily: fonts.bold,
   },
   badgeRow: {
     flexDirection: "row",
@@ -301,7 +309,7 @@ const styles = StyleSheet.create({
   propertyType: {
     color: colors.muted,
     fontSize: 12,
-    fontWeight: "700",
+    fontFamily: fonts.semiBold,
     marginLeft: spacing.xs,
   },
   gallery: {
@@ -338,7 +346,7 @@ const styles = StyleSheet.create({
   infoTitle: {
     color: colors.ink,
     fontSize: 15,
-    fontWeight: "800",
+    fontFamily: fonts.bold,
   },
   infoDetail: {
     color: colors.muted,
@@ -361,11 +369,13 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
     paddingHorizontal: 12,
     paddingVertical: 6,
+    flexDirection: "row",
+    gap: spacing.sm
   },
   amenityTagText: {
     color: colors.ink,
     fontSize: 12,
-    fontWeight: "700",
+    fontFamily: fonts.semiBold,
   },
   moderationCard: {
     backgroundColor: "#FFF6F6",
@@ -378,7 +388,7 @@ const styles = StyleSheet.create({
   moderationTitle: {
     color: colors.danger,
     fontSize: 13,
-    fontWeight: "900",
+    fontFamily: fonts.bold,
   },
   moderationText: {
     color: colors.ink,
@@ -395,11 +405,13 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     alignItems: "center",
     justifyContent: "center",
+    flexDirection: "row",
+    gap: spacing.sm
   },
   approveBtnText: {
     color: "#fff",
     fontSize: 15,
-    fontWeight: "900",
+    fontFamily: fonts.bold,
   },
   suspendBtn: {
     height: 50,
@@ -413,7 +425,7 @@ const styles = StyleSheet.create({
   suspendBtnText: {
     color: colors.danger,
     fontSize: 15,
-    fontWeight: "800",
+    fontFamily: fonts.bold,
   },
   modalOverlay: {
     flex: 1,
@@ -432,7 +444,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     color: colors.ink,
     fontSize: 18,
-    fontWeight: "900",
+    fontFamily: fonts.bold,
   },
   modalSubtitle: {
     color: colors.muted,
@@ -467,7 +479,7 @@ const styles = StyleSheet.create({
   modalCancelText: {
     color: colors.ink,
     fontSize: 13,
-    fontWeight: "700",
+    fontFamily: fonts.semiBold,
   },
   modalConfirmBtn: {
     flex: 1,
@@ -480,6 +492,6 @@ const styles = StyleSheet.create({
   modalConfirmText: {
     color: "#fff",
     fontSize: 13,
-    fontWeight: "900",
+    fontFamily: fonts.bold,
   },
 });

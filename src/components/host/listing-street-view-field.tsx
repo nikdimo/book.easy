@@ -52,11 +52,11 @@ export function ListingStreetViewField({
   );
 
   return (
-    <div className="notranslate space-y-4">
+    <div className="notranslate space-y-3 md:space-y-4">
       {heading && (
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">Street View</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h2 className="text-lg font-semibold tracking-tight md:text-2xl">Street View</h2>
+          <p className="mt-1 text-xs text-muted-foreground md:text-sm">
             Turn the camera to what guests see when they arrive. Optional.
           </p>
         </div>

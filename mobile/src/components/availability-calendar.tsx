@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Icon } from "@/components/icon";
 import {
   Alert,
   Modal,
@@ -18,7 +19,7 @@ import {
 } from "@/lib/api";
 import { useLanguage } from "@/context/language-context";
 import { Pill } from "@/components/ui";
-import { colors, radii, spacing } from "@/theme";
+import { colors, radii, spacing, fonts } from "@/theme";
 import { confirmAction } from "@/lib/confirm";
 import { formatLocalizedDate } from "@/lib/date-locale";
 
@@ -308,7 +309,7 @@ export function AvailabilityCalendar({
               onPress={() => setMonth(previousMonth)}
               style={[styles.monthButton, previousMonth < currentMonth && styles.disabled]}
             >
-              <Text style={styles.monthButtonText}>‹</Text>
+              <Icon color={colors.ink} name="back" size={18} />
             </Pressable>
             <Text style={styles.monthTitle}>
               {formatLocalizedDate(month, "LLLL yyyy", locale)}
@@ -319,7 +320,7 @@ export function AvailabilityCalendar({
               onPress={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
               style={styles.monthButton}
             >
-              <Text style={styles.monthButtonText}>›</Text>
+              <Icon color={colors.ink} name="forward" size={18} />
             </Pressable>
           </View>
           <View style={styles.week}>
@@ -543,7 +544,7 @@ export function AvailabilityCalendar({
                       }
                       style={styles.removeButton}
                     >
-                      <Text style={styles.removeText}>×</Text>
+                      <Icon color={colors.danger} name="close" size={14} />
                     </Pressable>
                   ) : null}
                 </View>
@@ -700,7 +701,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     padding: spacing.lg,
   },
-  cardTitle: { color: colors.ink, fontSize: 18, fontWeight: "800" },
+  cardTitle: { color: colors.ink, fontSize: 18, fontFamily: fonts.bold },
   cardDescription: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 4 },
   legend: { flexDirection: "row", flexWrap: "wrap", gap: spacing.lg, marginTop: spacing.lg },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
@@ -730,14 +731,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   monthButtonText: { color: colors.ink, fontSize: 24 },
-  monthTitle: { color: colors.ink, fontSize: 15, fontWeight: "800" },
+  monthTitle: { color: colors.ink, fontSize: 15, fontFamily: fonts.bold },
   week: { flexDirection: "row", marginTop: spacing.sm },
   weekday: {
     width: "14.2857%",
     color: colors.muted,
     textAlign: "center",
     fontSize: 9,
-    fontWeight: "800",
+    fontFamily: fonts.bold,
   },
   grid: { flexDirection: "row", flexWrap: "wrap", marginTop: spacing.xs },
   dayCell: { width: "14.2857%", aspectRatio: 0.82, padding: 2 },
@@ -755,7 +756,7 @@ const styles = StyleSheet.create({
   dayCustom: { borderWidth: 2, borderColor: colors.primary },
   daySelected: { borderWidth: 2, borderColor: colors.primaryDark, backgroundColor: colors.primarySoft },
   dayDisabled: { opacity: 0.32 },
-  dayNumber: { color: colors.ink, fontSize: 12, fontWeight: "800" },
+  dayNumber: { color: colors.ink, fontSize: 12, fontFamily: fonts.bold },
   dayNumberDisabled: { color: colors.muted },
   dayPrice: { color: colors.muted, fontSize: 8, marginTop: 2 },
   hatch: { position: "absolute", color: "#9EA8A3", fontSize: 22, opacity: 0.35 },
@@ -765,7 +766,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     paddingTop: spacing.lg,
   },
-  selectionTitle: { color: colors.ink, fontSize: 14, fontWeight: "800" },
+  selectionTitle: { color: colors.ink, fontSize: 14, fontFamily: fonts.bold },
   stats: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: spacing.sm },
   smallBadge: {
     borderWidth: 1,
@@ -775,8 +776,8 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     backgroundColor: colors.surfaceAlt,
   },
-  smallBadgeText: { color: colors.inkSoft, fontSize: 9, fontWeight: "700" },
-  fieldLabel: { color: colors.muted, fontSize: 11, fontWeight: "700", marginTop: spacing.lg, marginBottom: 6 },
+  smallBadgeText: { color: colors.inkSoft, fontSize: 9, fontFamily: fonts.semiBold },
+  fieldLabel: { color: colors.muted, fontSize: 11, fontFamily: fonts.semiBold, marginTop: spacing.lg, marginBottom: 6 },
   input: {
     minHeight: 48,
     borderWidth: 1,
@@ -799,7 +800,7 @@ const styles = StyleSheet.create({
     borderColor: colors.ink,
   },
   actionSecondary: { backgroundColor: colors.surface, borderColor: colors.borderStrong },
-  actionText: { color: "#fff", fontSize: 11, fontWeight: "800" },
+  actionText: { color: "#fff", fontSize: 11, fontFamily: fonts.bold },
   actionSecondaryText: { color: colors.ink },
   disabled: { opacity: 0.38 },
   bulkActions: { gap: spacing.sm, marginTop: spacing.lg },
@@ -813,7 +814,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   filterActive: { backgroundColor: colors.ink, borderColor: colors.ink },
-  filterText: { color: colors.ink, fontSize: 10, fontWeight: "800" },
+  filterText: { color: colors.ink, fontSize: 10, fontFamily: fonts.bold },
   filterTextActive: { color: "#fff" },
   noExceptions: { color: colors.muted, fontSize: 12, marginTop: spacing.lg },
   exceptions: { gap: spacing.sm, marginTop: spacing.lg },
@@ -827,7 +828,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   exceptionTop: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: spacing.sm },
-  exceptionTitle: { color: colors.ink, fontSize: 13, fontWeight: "800" },
+  exceptionTitle: { color: colors.ink, fontSize: 13, fontFamily: fonts.bold },
   exceptionDate: { color: colors.muted, fontSize: 12, marginTop: 5 },
   exceptionDetail: { color: colors.muted, fontSize: 10, marginTop: 4 },
   removeButton: {
@@ -840,7 +841,7 @@ const styles = StyleSheet.create({
   removeText: { color: colors.danger, fontSize: 23 },
   priceModal: { flex: 1, backgroundColor: colors.background },
   priceContent: { padding: spacing.xl, maxWidth: 520, width: "100%", alignSelf: "center" },
-  priceTitle: { color: colors.ink, fontSize: 24, fontWeight: "900" },
+  priceTitle: { color: colors.ink, fontSize: 24, fontFamily: fonts.bold },
   baseRate: { color: colors.muted, fontSize: 11, marginTop: spacing.sm },
   priceActions: { flexDirection: "row", justifyContent: "flex-end", gap: spacing.sm, marginTop: spacing.xl },
 });

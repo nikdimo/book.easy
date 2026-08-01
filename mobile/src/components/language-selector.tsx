@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Icon } from "@/components/icon";
 import {
   Modal,
   Pressable,
@@ -10,7 +11,7 @@ import {
   View,
 } from "react-native";
 import { useLanguage } from "@/context/language-context";
-import { colors, radii, spacing } from "@/theme";
+import { colors, radii, spacing, fonts } from "@/theme";
 
 export function LanguageSelector({ compact = false }: { compact?: boolean }) {
   const { languages, locale, setLocale, t } = useLanguage();
@@ -37,7 +38,7 @@ export function LanguageSelector({ compact = false }: { compact?: boolean }) {
           pressed && { opacity: 0.65 },
         ]}
       >
-        <Text style={styles.globe}>◎</Text>
+        <Icon color={colors.ink} name="language" size={16} />
         {!compact ? (
           <Text numberOfLines={1} style={styles.triggerText}>
             {current?.name ?? locale.toUpperCase()}
@@ -62,7 +63,7 @@ export function LanguageSelector({ compact = false }: { compact?: boolean }) {
               </Text>
             </View>
             <Pressable onPress={() => setOpen(false)} style={styles.close}>
-              <Text style={styles.closeText}>×</Text>
+              <Icon color={colors.ink} name="close" size={18} />
             </Pressable>
           </View>
           <TextInput
@@ -96,7 +97,7 @@ export function LanguageSelector({ compact = false }: { compact?: boolean }) {
                   <Text style={styles.optionName}>{language.name}</Text>
                   <Text style={styles.optionCode}>{language.code.toUpperCase()}</Text>
                 </View>
-                {language.code === locale ? <Text style={styles.check}>✓</Text> : null}
+                {language.code === locale ? <Icon color={colors.primary} name="check" size={16} /> : null}
               </Pressable>
             ))}
           </ScrollView>
@@ -120,9 +121,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   triggerCompact: { width: 48, paddingHorizontal: 0, justifyContent: "center", gap: 1 },
-  globe: { color: colors.ink, fontSize: 17, fontWeight: "900" },
-  triggerText: { color: colors.ink, fontSize: 12, fontWeight: "800" },
-  code: { color: colors.muted, fontSize: 8, fontWeight: "900" },
+  triggerText: { color: colors.ink, fontSize: 12, fontFamily: fonts.bold },
+  code: { color: colors.muted, fontSize: 8, fontFamily: fonts.bold },
   modal: { flex: 1, backgroundColor: colors.background },
   modalHeader: {
     flexDirection: "row",
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.xl,
   },
-  modalTitle: { color: colors.ink, fontSize: 24, fontWeight: "900" },
+  modalTitle: { color: colors.ink, fontSize: 24, fontFamily: fonts.bold },
   modalSubtitle: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 4 },
   close: {
     width: 42,
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
   groupLabel: {
     color: colors.muted,
     fontSize: 10,
-    fontWeight: "900",
+    fontFamily: fonts.bold,
     letterSpacing: 1.2,
     marginHorizontal: spacing.xl,
     marginTop: spacing.xl,
@@ -175,7 +175,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   optionSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
-  optionName: { color: colors.ink, fontSize: 14, fontWeight: "800" },
+  optionName: { color: colors.ink, fontSize: 14, fontFamily: fonts.bold },
   optionCode: { color: colors.muted, fontSize: 9, marginTop: 3, letterSpacing: 1 },
-  check: { color: colors.primary, fontSize: 18, fontWeight: "900" },
+  check: { color: colors.primary, fontSize: 18, fontFamily: fonts.bold },
 });

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Icon } from "@/components/icon";
 import {
   Pressable,
   StyleSheet,
@@ -10,7 +11,7 @@ import { useRouter } from "expo-router";
 import { AppScreen, EmptyNotice, LoadingState, Pill, SectionHeader } from "@/components/ui";
 import { useLanguage } from "@/context/language-context";
 import { AdminUserItem, fetchAdminUsers, toggleUserStatus } from "@/lib/api";
-import { colors, radii, spacing } from "@/theme";
+import { colors, radii, spacing, fonts } from "@/theme";
 
 type UserFilter = "all" | "hosts" | "admins" | "deactivated";
 
@@ -94,12 +95,13 @@ export default function AdminUsersScreen() {
         onPress={() => router.back()}
         style={styles.backButton}
       >
-        <Text style={styles.backButtonText}>← {t("Back to Admin Hub")}</Text>
+        <Icon color={colors.ink} name="back" size={14} />
+                <Text style={styles.backButtonText}>{t("Back to Admin Hub")}</Text>
       </Pressable>
 
       {/* Search Input */}
       <View style={styles.searchBox}>
-        <Text style={{ fontSize: 16 }}>🔍</Text>
+        <Icon color={colors.muted} name="search" size={16} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search by name or email…"
@@ -109,7 +111,7 @@ export default function AdminUsersScreen() {
         />
         {searchQuery ? (
           <Pressable onPress={() => setSearchQuery("")}>
-            <Text style={{ color: colors.muted, fontSize: 14 }}>✕</Text>
+            <Icon color={colors.muted} name="close" size={14} />
           </Pressable>
         ) : null}
       </View>
@@ -180,7 +182,7 @@ export default function AdminUsersScreen() {
                 </View>
                 <Text style={styles.userEmail}>{item.email}</Text>
                 <Text style={styles.userMeta}>
-                  🏠 {item.listingsCount} listings • 📖 {item.bookingsCount} bookings
+                  {item.listingsCount} listings • {item.bookingsCount} bookings
                 </Text>
               </View>
 
@@ -241,7 +243,7 @@ const styles = StyleSheet.create({
   backButtonText: {
     color: colors.primary,
     fontSize: 13,
-    fontWeight: "800",
+    fontFamily: fonts.bold,
   },
   searchBox: {
     flexDirection: "row",
@@ -278,7 +280,7 @@ const styles = StyleSheet.create({
   chipText: {
     color: colors.ink,
     fontSize: 12,
-    fontWeight: "700",
+    fontFamily: fonts.semiBold,
   },
   chipTextActive: {
     color: "#fff",
@@ -307,12 +309,12 @@ const styles = StyleSheet.create({
   avatarText: {
     color: colors.primary,
     fontSize: 15,
-    fontWeight: "900",
+    fontFamily: fonts.bold,
   },
   userName: {
     color: colors.ink,
     fontSize: 15,
-    fontWeight: "800",
+    fontFamily: fonts.bold,
   },
   userEmail: {
     color: colors.muted,
@@ -335,7 +337,7 @@ const styles = StyleSheet.create({
   deactivateBtnText: {
     color: colors.danger,
     fontSize: 11,
-    fontWeight: "800",
+    fontFamily: fonts.bold,
   },
   reactivateBtn: {
     paddingHorizontal: spacing.md,
@@ -346,6 +348,6 @@ const styles = StyleSheet.create({
   reactivateBtnText: {
     color: colors.success,
     fontSize: 11,
-    fontWeight: "800",
+    fontFamily: fonts.bold,
   },
 });

@@ -2,19 +2,20 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { AppScreen, EmptyNotice } from "@/components/ui";
 import { useNotifications } from "@/context/notification-context";
 import { useLanguage } from "@/context/language-context";
+import { Icon, type IconName } from "@/components/icon";
 import { formatRelativeTime } from "@/lib/api";
-import { colors, radii, spacing } from "@/theme";
+import { colors, radii, spacing, type } from "@/theme";
 
-const icons: Record<string, string> = {
-  BOOKING_REQUEST: "B",
-  BOOKING_CONFIRMED: "✓",
-  BOOKING_REJECTED: "×",
-  BOOKING_CANCELLED: "!",
-  CHAT_MESSAGE: "C",
-  SUPPORT_MESSAGE: "S",
-  CASE_SUBMITTED: "R",
-  CASE_UPDATED: "U",
-  SYSTEM: "i",
+const icons: Record<string, IconName> = {
+  BOOKING_REQUEST: "bookingRequest",
+  BOOKING_CONFIRMED: "confirmed",
+  BOOKING_REJECTED: "rejected",
+  BOOKING_CANCELLED: "cancelled",
+  CHAT_MESSAGE: "chat",
+  SUPPORT_MESSAGE: "support",
+  CASE_SUBMITTED: "report",
+  CASE_UPDATED: "updated",
+  SYSTEM: "info",
 };
 
 export default function NotificationsScreen() {
@@ -29,7 +30,6 @@ export default function NotificationsScreen() {
 
   return (
     <AppScreen
-      eyebrow="ACTIVITY"
       title="Notifications"
       subtitle="Booking updates and new messages in one place."
       action={
@@ -65,9 +65,11 @@ export default function NotificationsScreen() {
               ]}
             >
               <View style={[styles.icon, !notification.readAt && styles.iconUnread]}>
-                <Text style={[styles.iconText, !notification.readAt && styles.iconTextUnread]}>
-                  {icons[notification.type] ?? "i"}
-                </Text>
+                <Icon
+                  color={notification.readAt ? colors.muted : colors.primary}
+                  name={icons[notification.type] ?? "info"}
+                  size={17}
+                />
               </View>
               <View style={{ flex: 1 }}>
                 <View style={styles.itemTop}>
@@ -94,7 +96,7 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
     backgroundColor: colors.primarySoft,
   },
-  readAllText: { color: colors.primaryDark, fontSize: 11, fontWeight: "800" },
+  readAllText: { ...type.label, color: colors.primaryDark },
   list: { gap: spacing.sm },
   item: {
     flexDirection: "row",
@@ -105,7 +107,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     backgroundColor: colors.surface,
   },
-  unread: { borderColor: "#B8D5DA", backgroundColor: "#F4FAFB" },
+  unread: { borderColor: colors.primarySoft, backgroundColor: colors.primarySoft },
   icon: {
     width: 38,
     height: 38,
@@ -114,12 +116,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  iconUnread: { backgroundColor: colors.primary },
-  iconText: { color: colors.ink, fontSize: 14, fontWeight: "900" },
-  iconTextUnread: { color: "#fff" },
+  iconUnread: { backgroundColor: colors.primarySoft },
   itemTop: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  title: { flex: 1, color: colors.ink, fontSize: 14, fontWeight: "900" },
+  title: { ...type.bodyStrong, flex: 1, color: colors.ink },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.danger },
-  body: { color: colors.inkSoft, fontSize: 13, lineHeight: 19, marginTop: 4 },
-  time: { color: colors.muted, fontSize: 10, marginTop: spacing.sm },
+  body: { ...type.meta, color: colors.inkSoft, marginTop: 4 },
+  time: { ...type.caption, color: colors.muted, marginTop: spacing.sm },
 });

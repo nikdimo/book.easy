@@ -1,97 +1,91 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { AppScreen, SectionHeader } from "@/components/ui";
+import { StyleSheet, Text, View } from "react-native";
+import { AppScreen, ListRow, Pill, SectionHeader, SoftButton } from "@/components/ui";
 import { useAuth } from "@/context/auth-context";
 import { useLanguage } from "@/context/language-context";
+import { LanguageSelector } from "@/components/language-selector";
 import { openControlPanel, startAuth } from "@/lib/api";
-import { colors, radii, spacing } from "@/theme";
+import { colors, radii, spacing, type } from "@/theme";
 
 export default function MoreScreen() {
-  const { user } = useAuth();
+  const { user, clearSession } = useAuth();
   const { t } = useLanguage();
+  const isAdmin = user?.role === "ADMIN" || user?.role === "SUPERADMIN";
+
+  const initials =
+    user?.name
+      ?.split(" ")
+      .map((part) => part[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "H";
 
   return (
-    <AppScreen
-      eyebrow=""
-      title="Account"
-    >
+    <AppScreen title="Account">
+      {/* A light identity card rather than the previous solid-ink block. At full
+          width that block was the heaviest element in the app and sat on the one
+          screen with nothing urgent on it. */}
       <View style={styles.profile}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {user?.name
-              ?.split(" ")
-              .map((part) => part[0])
-              .join("")
-              .slice(0, 2)
-              .toUpperCase() || "H"}
-          </Text>
+          <Text style={styles.avatarText}>{initials}</Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.name}>{user?.name || "Host"}</Text>
-          <Text style={styles.email}>{user?.email}</Text>
+          <Text numberOfLines={1} style={styles.name}>
+            {user?.name || t("Host")}
+          </Text>
+          <Text numberOfLines={1} style={styles.email}>
+            {user?.email}
+          </Text>
         </View>
-        <View style={styles.hostBadge}>
-          <Text style={styles.hostBadgeText}>{t("HOST")}</Text>
-        </View>
+        <Pill label={isAdmin ? "Admin" : "Host"} tone={isAdmin ? "success" : "neutral"} />
       </View>
 
-      <SectionHeader title="Account" />
-      <View style={styles.menu}>
-        <MenuItem
-          label={t("Hosting dashboard")}
-          detail={t("All existing host tools")}
-          onPress={() => void openControlPanel("/host")}
-        />
-        <MenuItem
-          label={t("Account")}
-          detail={t("Name, photo, and personal details")}
-          onPress={() => void openControlPanel("/account/profile")}
-        />
-        <MenuItem
-          label={t("Stays")}
-          detail={t("Browse public properties")}
-          onPress={() => void openControlPanel("/properties")}
-        />
-        <MenuItem
-          label={t("Support cases")}
-          detail={t("Reports, booking claims, and support replies")}
-          onPress={() => void openControlPanel("/account/support")}
-        />
+      <SectionHeader title="Manage" />
+      <ListRow
+        icon="dashboard"
+        label="Hosting dashboard"
+        onPress={() => void openControlPanel("/host")}
+      />
+      <ListRow
+        icon="users"
+        label="Personal details"
+        onPress={() => void openControlPanel("/account/profile")}
+      />
+      <ListRow
+        icon="listings"
+        label="Browse stays"
+        onPress={() => void openControlPanel("/properties")}
+      />
+
+      <SectionHeader title="Help and support" />
+      <ListRow
+        icon="support"
+        label="Support cases"
+        onPress={() => void openControlPanel("/account/support")}
+      />
+      <ListRow
+        icon="report"
+        label="Reports and claims"
+        onPress={() => void openControlPanel("/account/support")}
+      />
+
+      <SectionHeader title="Preferences" />
+      <View style={styles.languageRow}>
+        <Text style={styles.languageLabel}>{t("Language")}</Text>
+        <LanguageSelector />
       </View>
 
-      <SectionHeader title="Session" />
-      <Pressable
-        accessibilityRole="button"
-        style={styles.signOut}
-        onPress={() => void startAuth("signout")}
-      >
-        <Text style={styles.signOutText}>{t("Log out")}</Text>
-      </Pressable>
+      <View style={styles.signOut}>
+        <SoftButton
+          icon="external"
+          label="Log out"
+          tone="danger"
+          onPress={() => {
+            void startAuth("signout");
+            clearSession();
+          }}
+        />
+      </View>
     </AppScreen>
-  );
-}
-
-function MenuItem({
-  label,
-  detail,
-  onPress,
-}: {
-  label: string;
-  detail: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityLabel={`${label}. ${detail}`}
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [styles.menuItem, pressed && { opacity: 0.65 }]}
-    >
-      <View style={{ flex: 1 }}>
-        <Text style={styles.menuLabel}>{label}</Text>
-        <Text style={styles.menuDetail}>{detail}</Text>
-      </View>
-      <Text style={styles.chevron}>›</Text>
-    </Pressable>
   );
 }
 
@@ -100,47 +94,30 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.md,
-    backgroundColor: colors.ink,
     padding: spacing.lg,
-    borderRadius: radii.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    backgroundColor: colors.surface,
   },
   avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.accent,
+    backgroundColor: colors.primarySoft,
   },
-  avatarText: { color: colors.ink, fontSize: 17, fontWeight: "900" },
-  name: { color: "#fff", fontSize: 16, fontWeight: "800" },
-  email: { color: "#B7C2C5", fontSize: 12, marginTop: 3 },
-  hostBadge: {
-    borderRadius: radii.pill,
-    backgroundColor: "rgba(255,255,255,.12)",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  hostBadgeText: { color: "#fff", fontSize: 9, fontWeight: "900", letterSpacing: 1 },
-  menu: { borderTopWidth: 1, borderTopColor: colors.border },
-  menuItem: {
+  avatarText: { ...type.bodyStrong, color: colors.primary },
+  name: { ...type.bodyStrong, color: colors.ink },
+  email: { ...type.meta, color: colors.muted, marginTop: 2 },
+  languageRow: {
+    minHeight: 56,
     flexDirection: "row",
     alignItems: "center",
-    minHeight: 68,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    justifyContent: "space-between",
+    gap: spacing.md,
   },
-  menuLabel: { color: colors.ink, fontSize: 14, fontWeight: "800" },
-  menuDetail: { color: colors.muted, fontSize: 12, marginTop: 3 },
-  chevron: { color: colors.muted, fontSize: 28 },
-  signOut: {
-    borderWidth: 1,
-    borderColor: "#F2C9C9",
-    backgroundColor: "#FFF6F6",
-    borderRadius: radii.md,
-    minHeight: 50,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  signOutText: { color: colors.danger, fontSize: 14, fontWeight: "800" },
+  languageLabel: { ...type.bodyStrong, color: colors.ink },
+  signOut: { marginTop: spacing.xxl },
 });

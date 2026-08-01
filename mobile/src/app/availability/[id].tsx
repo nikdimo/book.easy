@@ -3,8 +3,10 @@ import { useLocalSearchParams } from "expo-router";
 import { AppScreen, EmptyNotice, LoadingState } from "@/components/ui";
 import { AvailabilityCalendar } from "@/components/availability-calendar";
 import { AvailabilityResponse, apiFetch } from "@/lib/api";
+import { useApiError } from "@/lib/use-api-error";
 
 export default function AvailabilityScreen() {
+  const describeError = useApiError();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [data, setData] = useState<AvailabilityResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -19,9 +21,9 @@ export default function AvailabilityScreen() {
         )
       );
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not load calendar");
+      setError(describeError(caught, "Could not load calendar"));
     }
-  }, [id]);
+  }, [describeError, id]);
 
   useEffect(() => {
     const timer = setTimeout(() => void load(), 0);

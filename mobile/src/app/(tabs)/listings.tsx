@@ -1,8 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { router } from "expo-router";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
-import { AppScreen, EmptyNotice, LoadingState, Pill, SectionHeader } from "@/components/ui";
+import {
+  AppScreen,
+  EmptyNotice,
+  LoadingState,
+  Pill,
+  PrimaryButton,
+  SectionHeader,
+  Segmented,
+} from "@/components/ui";
 import { useLanguage } from "@/context/language-context";
+import { Icon, type IconName } from "@/components/icon";
 import {
   apiFetch,
   formatDate,
@@ -11,8 +20,9 @@ import {
   openControlPanel,
   resolveIntlLocale,
 } from "@/lib/api";
-import { colors, radii, spacing } from "@/theme";
+import { colors, radii, spacing, fonts, type } from "@/theme";
 import { confirmAction } from "@/lib/confirm";
+import { useApiError } from "@/lib/use-api-error";
 
 const statusLabels: Record<string, string> = {
   DRAFT: "Draft",
@@ -25,19 +35,21 @@ const statusLabels: Record<string, string> = {
 };
 
 export default function ListingsScreen() {
+  const describeError = useApiError();
   const { locale, t } = useLanguage();
   const [data, setData] = useState<ListingsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"all" | "live" | "drafts">("all");
 
   const load = useCallback(async () => {
     try {
       setError(null);
       setData(await apiFetch<ListingsResponse>("/api/mobile/v1/listings"));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not load properties");
+      setError(describeError(caught, "Could not load properties"));
     }
-  }, []);
+  }, [describeError]);
 
   useEffect(() => {
     const timer = setTimeout(() => void load(), 0);
@@ -86,29 +98,54 @@ export default function ListingsScreen() {
     }
   }
 
+  const drafts = data?.drafts ?? [];
+  const listings = data?.listings ?? [];
+  const live = listings.filter((listing) => listing.status === "APPROVED");
+  const visibleListings = filter === "live" ? live : listings;
+  const showDrafts = filter === "all" || filter === "drafts";
+  const showListings = filter !== "drafts";
+
   return (
     <AppScreen
-      eyebrow=""
-      title="My Listings"
+      title="Listings"
       onRefresh={load}
       action={
-        <Pressable
-          accessibilityRole="button"
-          style={styles.primaryButton}
+        <PrimaryButton
+          compact
+          icon="add"
+          label="New"
           onPress={() => router.push("/new-listing")}
-        >
-          <Text style={styles.primaryText}>{t("New Listing")}</Text>
-        </Pressable>
+        />
+      }
+      sticky={
+        data ? (
+          <Segmented
+            value={filter}
+            onChange={setFilter}
+            options={[
+              { value: "all", label: "All", count: listings.length + drafts.length },
+              { value: "live", label: "Live", count: live.length },
+              { value: "drafts", label: "Drafts", count: drafts.length },
+            ]}
+          />
+        ) : null
       }
     >
       {!data && !error ? <LoadingState /> : null}
-      {error ? <EmptyNotice title="Listings unavailable" description={error} onRetry={load} /> : null}
+      {error ? (
+        <EmptyNotice
+          icon="alert"
+          title="Listings unavailable"
+          description={error}
+          onRetry={load}
+        />
+      ) : null}
 
-      {data?.drafts.length ? (
+      {showDrafts && drafts.length ? (
         <>
-          <SectionHeader title="In-progress drafts" count={data.drafts.length} />
+          <SectionHeader title="In-progress drafts" count={drafts.length} />
           <View style={styles.list}>
-            {data.drafts.map((draft) => (
+            {drafts.map((draft) => (
               <View key={draft.id} style={styles.rowCard}>
                 <View style={{ flex: 1 }}>
                   <View style={styles.titleLine}>
@@ -142,7 +179,7 @@ export default function ListingsScreen() {
                     accessibilityLabel={t("Delete draft")}
                     destructive
                     disabled={busyId === draft.id}
-                    label="×"
+                    icon="trash"
                     onPress={() => deleteDraft(draft.id, draft.title)}
                   />
                 </View>
@@ -152,17 +189,27 @@ export default function ListingsScreen() {
         </>
       ) : null}
 
-      {data ? <SectionHeader title="My Listings" count={data.listings.length} /> : null}
-      {data && data.listings.length === 0 && data.drafts.length === 0 ? (
+      {showListings && visibleListings.length ? (
+        <SectionHeader title="Published" count={visibleListings.length} />
+      ) : null}
+      {data && visibleListings.length === 0 && (!showDrafts || drafts.length === 0) ? (
         <EmptyNotice
-          title="No listings yet"
-          description="Create your first listing to start receiving bookings."
-          actionLabel="Create Listing"
-          onRetry={() => router.push("/new-listing")}
+          title={filter === "all" ? "No listings yet" : "Nothing here"}
+          description={
+            filter === "all"
+              ? "Create your first listing to start receiving bookings."
+              : "Try a different filter."
+          }
+          actionLabel={filter === "all" ? "Create Listing" : "Show all"}
+          onRetry={
+            filter === "all"
+              ? () => router.push("/new-listing")
+              : () => setFilter("all")
+          }
         />
       ) : null}
       <View style={styles.list}>
-        {data?.listings.map((listing) => (
+        {(showListings ? visibleListings : []).map((listing) => (
           <View key={listing.id} style={styles.rowCard}>
             <Pressable
               accessibilityLabel={`${t("Edit")}: ${listing.title}`}
@@ -196,7 +243,7 @@ export default function ListingsScreen() {
               />
               <IconButton
                 accessibilityLabel={t("Calendar")}
-                label="◇"
+                icon="bookings"
                 onPress={() =>
                   router.push({
                     pathname: "/availability/[id]",
@@ -208,13 +255,13 @@ export default function ListingsScreen() {
                 <>
                   <IconButton
                     accessibilityLabel={t("Preview")}
-                    label="↗"
+                    icon="preview"
                     onPress={() => void openControlPanel(`/properties/${listing.slug}`)}
                   />
                   <IconButton
                     accessibilityLabel={t("Hide from site")}
                     disabled={busyId === listing.id}
-                    label="◉"
+                    icon="hide"
                     onPress={() =>
                       confirmAction(
                         t("Hide from site"),
@@ -230,7 +277,7 @@ export default function ListingsScreen() {
                 accessibilityLabel={t("Delete")}
                 destructive
                 disabled={busyId === listing.id}
-                label="×"
+                icon="trash"
                 onPress={() =>
                   confirmAction(
                     t("Delete"),
@@ -259,13 +306,13 @@ function SmallButton({ label, onPress }: { label: string; onPress: () => void })
 
 function IconButton({
   accessibilityLabel,
-  label,
+  icon,
   onPress,
   destructive = false,
   disabled = false,
 }: {
   accessibilityLabel: string;
-  label: string;
+  icon: IconName;
   onPress: () => void;
   destructive?: boolean;
   disabled?: boolean;
@@ -278,7 +325,7 @@ function IconButton({
       onPress={onPress}
       style={[styles.iconButton, destructive && styles.destructiveButton, disabled && { opacity: 0.4 }]}
     >
-      <Text style={[styles.iconText, destructive && styles.destructiveText]}>{label}</Text>
+      <Icon color={destructive ? colors.danger : colors.ink} name={icon} size={16} />
     </Pressable>
   );
 }
@@ -292,20 +339,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  primaryText: { color: "#fff", fontSize: 12, fontWeight: "800" },
-  list: { gap: spacing.sm },
+  primaryText: { color: "#fff", fontSize: 12, fontFamily: fonts.bold },
+  list: { gap: spacing.md },
   rowCard: {
+    gap: spacing.md,
+    padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radii.md,
+    borderRadius: radii.lg,
     backgroundColor: colors.surface,
-    padding: spacing.md,
-    gap: spacing.md,
   },
   titleLine: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
-  title: { flexShrink: 1, color: colors.ink, fontSize: 14, fontWeight: "800" },
-  strongMeta: { color: colors.ink, fontSize: 12, fontWeight: "700", marginTop: 5 },
-  meta: { color: colors.muted, fontSize: 12, lineHeight: 18, marginTop: 4 },
+  title: { ...type.bodyStrong, flexShrink: 1, color: colors.ink },
+  strongMeta: { ...type.meta, color: colors.ink, marginTop: 6 },
+  meta: { ...type.meta, color: colors.muted, marginTop: 4 },
   rowActions: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: spacing.sm },
   smallButton: {
     minHeight: 38,
@@ -317,7 +364,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  smallButtonText: { color: colors.ink, fontSize: 11, fontWeight: "800" },
+  smallButtonText: { color: colors.ink, fontSize: 11, fontFamily: fonts.bold },
   iconButton: {
     width: 38,
     height: 38,
@@ -327,7 +374,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  iconText: { color: colors.ink, fontSize: 15, fontWeight: "800" },
+  iconText: { color: colors.ink, fontSize: 15, fontFamily: fonts.bold },
   destructiveButton: { borderColor: "#EAC1C1", backgroundColor: "#FFF8F8" },
   destructiveText: { color: colors.danger, fontSize: 20 },
 });
