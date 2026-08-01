@@ -121,12 +121,28 @@ describe("mobile screens keep no listing-step list of their own", () => {
     }
   });
 
+  /** The existing-listing editor is exempt, and deliberately so. It is not the
+   *  wizard: it groups the same fields differently — map, address and Street View
+   *  are one "Location and arrival" section rather than three steps — which is what
+   *  the web edit view does too. Its section labels legitimately overlap the step
+   *  titles without being a copy of the step *list*. Every other screen must still
+   *  take its ordering from the server. */
+  const EDITOR = join("app", "listing", "[id].tsx");
+
   it("has no literal list of step titles", () => {
     // Two or more canonical titles as adjacent string literals is a copied list.
     const titles = LISTING_STEPS.map((step) => step.title);
     for (const { path, text } of sources) {
+      if (path.endsWith(EDITOR)) continue;
       const quoted = titles.filter((title) => text.includes(`"${title}",`));
       expect({ path, quoted }).toEqual({ path, quoted: [] });
     }
+  });
+
+  it("still guards the wizard itself", () => {
+    // The exemption above must not accidentally cover new-listing.tsx.
+    const wizard = sources.find(({ path }) => path.endsWith("new-listing.tsx"));
+    expect(wizard).toBeDefined();
+    expect(wizard!.path.endsWith(EDITOR)).toBe(false);
   });
 });

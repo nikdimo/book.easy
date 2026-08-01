@@ -4,7 +4,7 @@ import { useAuth } from "@/context/auth-context";
 import { useLanguage } from "@/context/language-context";
 import { Icon } from "@/components/icon";
 import { FloatingTabBar } from "@/components/tab-bar";
-import { startAuth } from "@/lib/api";
+import { clearMobileSessionToken, startAuth } from "@/lib/api";
 import { colors, radii, spacing, type } from "@/theme";
 
 export default function TabLayout() {
@@ -66,6 +66,7 @@ function NoHostAccess() {
         accessibilityRole="button"
         onPress={() => {
           void startAuth("signout");
+          void clearMobileSessionToken();
           clearSession();
         }}
         style={styles.gateButton}

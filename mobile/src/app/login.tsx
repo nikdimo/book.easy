@@ -16,7 +16,7 @@ import { useLanguage } from "@/context/language-context";
 import { LanguageSelector } from "@/components/language-selector";
 import { Icon } from "@/components/icon";
 import { startAuth } from "@/lib/api";
-import { colors, radii, shadows, spacing, fonts } from "@/theme";
+import { colors, radii, shadows, spacing, type } from "@/theme";
 
 /** Sign-in completes in a separate window, which cannot tell this screen it finished,
  *  so the session has to be polled. Bounds, because the previous version polled every
@@ -85,7 +85,10 @@ export default function LoginScreen() {
   function continueWithGoogle() {
     setMessage(t("Complete Google sign-in in the secure window."));
     setAwaitingSignIn(true);
-    void startAuth("google");
+    void startAuth("google").catch((error) => {
+      setAwaitingSignIn(false);
+      setMessage(error instanceof Error ? error.message : t("Could not start sign-in."));
+    });
   }
 
   function continueWithEmail() {
@@ -96,7 +99,10 @@ export default function LoginScreen() {
     }
     setMessage(`We will send a secure sign-in link to ${cleanEmail}.`);
     setAwaitingSignIn(true);
-    void startAuth("email", cleanEmail);
+    void startAuth("email", cleanEmail).catch((error) => {
+      setAwaitingSignIn(false);
+      setMessage(error instanceof Error ? error.message : t("Could not start sign-in."));
+    });
   }
 
   return (
@@ -197,8 +203,7 @@ const styles = StyleSheet.create({
   brandDot: { width: 13, height: 13, borderRadius: 7, backgroundColor: colors.accent },
   brandText: {
     color: colors.ink,
-    fontSize: 13,
-    fontFamily: fonts.bold,
+    ...type.meta,
     letterSpacing: 1.8,
   },
   card: {
@@ -209,17 +214,15 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     ...shadows.card,
   },
-  eyebrow: { color: colors.primary, fontSize: 11, fontFamily: fonts.bold, letterSpacing: 1.5 },
+  eyebrow: { color: colors.primary, ...type.caption, letterSpacing: 1.5 },
   title: {
     color: colors.ink,
-    fontSize: 32,
-    lineHeight: 38,
-    fontFamily: fonts.bold,
+    ...type.display,
     marginTop: spacing.sm,
   },
   subtitle: {
     color: colors.muted,
-    fontSize: 15,
+    ...type.body,
     lineHeight: 22,
     marginTop: spacing.sm,
     marginBottom: spacing.xl,
@@ -235,8 +238,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: spacing.md,
   },
-  googleGlyph: { color: "#4285F4", fontSize: 17, fontFamily: fonts.bold },
-  googleButtonText: { color: colors.ink, fontSize: 15, fontFamily: fonts.semiBold },
+  googleGlyph: { color: "#4285F4", ...type.bodyStrong },
+  googleButtonText: { color: colors.ink, ...type.body },
   divider: {
     flexDirection: "row",
     alignItems: "center",
@@ -244,8 +247,8 @@ const styles = StyleSheet.create({
     marginVertical: spacing.lg,
   },
   line: { height: 1, backgroundColor: colors.border, flex: 1 },
-  or: { color: colors.muted, fontSize: 10, fontFamily: fonts.bold, letterSpacing: 1.2 },
-  label: { color: colors.ink, fontSize: 13, fontFamily: fonts.semiBold, marginBottom: spacing.sm },
+  or: { color: colors.muted, ...type.caption, letterSpacing: 1.2 },
+  label: { color: colors.ink, ...type.meta, marginBottom: spacing.sm },
   input: {
     minHeight: 52,
     borderRadius: radii.md,
@@ -254,7 +257,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceAlt,
     color: colors.ink,
     paddingHorizontal: spacing.md,
-    fontSize: 16,
+    ...type.bodyStrong,
   },
   primaryButton: {
     minHeight: 52,
@@ -264,7 +267,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: spacing.md,
   },
-  primaryButtonText: { color: "#fff", fontSize: 15, fontFamily: fonts.bold },
+  primaryButtonText: { color: "#fff", ...type.body },
   pressed: { opacity: 0.78, transform: [{ scale: 0.995 }] },
   message: {
     flexDirection: "row",
@@ -275,11 +278,11 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     padding: spacing.md,
   },
-  messageText: { color: colors.primaryDark, fontSize: 13, flex: 1, lineHeight: 18 },
+  messageText: { color: colors.primaryDark, ...type.meta, flex: 1, lineHeight: 18 },
   footnote: {
     color: colors.muted,
     textAlign: "center",
-    fontSize: 12,
+    ...type.caption,
     lineHeight: 18,
     marginTop: spacing.lg,
     paddingHorizontal: spacing.lg,

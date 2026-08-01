@@ -19,7 +19,7 @@ import {
   fetchAdminListingDetail,
   reviewAdminListing,
 } from "@/lib/api";
-import { colors, radii, spacing, fonts } from "@/theme";
+import { colors, radii, spacing, type } from "@/theme";
 
 export default function ListingInspectScreen() {
   const router = useRouter();
@@ -297,8 +297,7 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     color: colors.primary,
-    fontSize: 13,
-    fontFamily: fonts.bold,
+    ...type.meta,
   },
   badgeRow: {
     flexDirection: "row",
@@ -308,8 +307,7 @@ const styles = StyleSheet.create({
   },
   propertyType: {
     color: colors.muted,
-    fontSize: 12,
-    fontFamily: fonts.semiBold,
+    ...type.caption,
     marginLeft: spacing.xs,
   },
   gallery: {
@@ -334,7 +332,7 @@ const styles = StyleSheet.create({
   },
   noImagesText: {
     color: colors.muted,
-    fontSize: 14,
+    ...type.meta,
   },
   infoCard: {
     backgroundColor: colors.surface,
@@ -345,18 +343,17 @@ const styles = StyleSheet.create({
   },
   infoTitle: {
     color: colors.ink,
-    fontSize: 15,
-    fontFamily: fonts.bold,
+    ...type.body,
   },
   infoDetail: {
     color: colors.muted,
-    fontSize: 13,
+    ...type.meta,
     marginTop: 4,
     lineHeight: 18,
   },
   descriptionText: {
     color: colors.ink,
-    fontSize: 14,
+    ...type.meta,
     lineHeight: 21,
   },
   amenitiesGrid: {
@@ -374,8 +371,7 @@ const styles = StyleSheet.create({
   },
   amenityTagText: {
     color: colors.ink,
-    fontSize: 12,
-    fontFamily: fonts.semiBold,
+    ...type.caption,
   },
   moderationCard: {
     backgroundColor: "#FFF6F6",
@@ -387,12 +383,11 @@ const styles = StyleSheet.create({
   },
   moderationTitle: {
     color: colors.danger,
-    fontSize: 13,
-    fontFamily: fonts.bold,
+    ...type.meta,
   },
   moderationText: {
     color: colors.ink,
-    fontSize: 13,
+    ...type.meta,
     marginTop: 4,
   },
   actionRow: {
@@ -410,8 +405,7 @@ const styles = StyleSheet.create({
   },
   approveBtnText: {
     color: "#fff",
-    fontSize: 15,
-    fontFamily: fonts.bold,
+    ...type.body,
   },
   suspendBtn: {
     height: 50,
@@ -424,8 +418,7 @@ const styles = StyleSheet.create({
   },
   suspendBtnText: {
     color: colors.danger,
-    fontSize: 15,
-    fontFamily: fonts.bold,
+    ...type.body,
   },
   modalOverlay: {
     flex: 1,
@@ -443,12 +436,11 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     color: colors.ink,
-    fontSize: 18,
-    fontFamily: fonts.bold,
+    ...type.section,
   },
   modalSubtitle: {
     color: colors.muted,
-    fontSize: 13,
+    ...type.meta,
     marginTop: 4,
     marginBottom: spacing.md,
   },
@@ -460,7 +452,7 @@ const styles = StyleSheet.create({
     minHeight: 80,
     textAlignVertical: "top",
     color: colors.ink,
-    fontSize: 14,
+    ...type.meta,
     marginBottom: spacing.lg,
   },
   modalActions: {
@@ -478,8 +470,7 @@ const styles = StyleSheet.create({
   },
   modalCancelText: {
     color: colors.ink,
-    fontSize: 13,
-    fontFamily: fonts.semiBold,
+    ...type.meta,
   },
   modalConfirmBtn: {
     flex: 1,
@@ -491,7 +482,6 @@ const styles = StyleSheet.create({
   },
   modalConfirmText: {
     color: "#fff",
-    fontSize: 13,
-    fontFamily: fonts.bold,
+    ...type.meta,
   },
 });

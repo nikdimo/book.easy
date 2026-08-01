@@ -11,7 +11,7 @@ import { useRouter } from "expo-router";
 import { AppScreen, EmptyNotice, LoadingState, Pill, SectionHeader } from "@/components/ui";
 import { useLanguage } from "@/context/language-context";
 import { AdminUserItem, fetchAdminUsers, toggleUserStatus } from "@/lib/api";
-import { colors, radii, spacing, fonts } from "@/theme";
+import { colors, radii, spacing, type } from "@/theme";
 
 type UserFilter = "all" | "hosts" | "admins" | "deactivated";
 
@@ -242,8 +242,7 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     color: colors.primary,
-    fontSize: 13,
-    fontFamily: fonts.bold,
+    ...type.meta,
   },
   searchBox: {
     flexDirection: "row",
@@ -260,7 +259,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     color: colors.ink,
-    fontSize: 14,
+    ...type.meta,
   },
   tabContainer: {
     flexDirection: "row",
@@ -279,8 +278,7 @@ const styles = StyleSheet.create({
   },
   chipText: {
     color: colors.ink,
-    fontSize: 12,
-    fontFamily: fonts.semiBold,
+    ...type.caption,
   },
   chipTextActive: {
     color: "#fff",
@@ -308,22 +306,20 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     color: colors.primary,
-    fontSize: 15,
-    fontFamily: fonts.bold,
+    ...type.body,
   },
   userName: {
     color: colors.ink,
-    fontSize: 15,
-    fontFamily: fonts.bold,
+    ...type.body,
   },
   userEmail: {
     color: colors.muted,
-    fontSize: 12,
+    ...type.caption,
     marginTop: 2,
   },
   userMeta: {
     color: colors.muted,
-    fontSize: 11,
+    ...type.caption,
     marginTop: 4,
   },
   deactivateBtn: {
@@ -336,8 +332,7 @@ const styles = StyleSheet.create({
   },
   deactivateBtnText: {
     color: colors.danger,
-    fontSize: 11,
-    fontFamily: fonts.bold,
+    ...type.caption,
   },
   reactivateBtn: {
     paddingHorizontal: spacing.md,
@@ -347,7 +342,6 @@ const styles = StyleSheet.create({
   },
   reactivateBtnText: {
     color: colors.success,
-    fontSize: 11,
-    fontFamily: fonts.bold,
+    ...type.caption,
   },
 });

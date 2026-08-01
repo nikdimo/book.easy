@@ -1,6 +1,8 @@
 import "server-only";
 
 import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { bearerToken, readMobileSessionToken } from "@/lib/mobile-session-token";
 
 const LOCAL_PREVIEW_HOSTS = new Set(["localhost", "127.0.0.1"]);
 
@@ -39,7 +41,9 @@ function corsHeaders(request: Request): Headers {
   if (origin && isAllowedMobileOrigin(request)) {
     headers.set("Access-Control-Allow-Origin", origin);
     headers.set("Access-Control-Allow-Credentials", "true");
-    headers.set("Access-Control-Allow-Headers", "Content-Type");
+    // Authorization is listed so a browser-based client can send a bearer token
+    // too; without it the preflight rejects the header before the request is made.
+    headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization");
     headers.set("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
   }
   return headers;
@@ -84,18 +88,34 @@ export async function requireMobileUser(request: Request) {
     return { response: mobileJson(request, { error: "Origin not allowed" }, { status: 403 }) };
   }
 
+  // Cookie first: that is the Expo web preview, and it is the cheaper check.
   const session = await auth();
-  if (!session?.user?.id) {
-    return {
-      response: mobileJson(
-        request,
-        { error: "Authentication required", code: "UNAUTHENTICATED" },
-        { status: 401 }
-      ),
-    };
+  if (session?.user?.id) return { user: session.user };
+
+  // Then the bearer token an installed app carries. It exists because the native
+  // sign-in happens in the system browser, whose cookies the app cannot read.
+  const token = bearerToken(request);
+  if (token) {
+    const userId = await readMobileSessionToken(token);
+    if (userId) {
+      // The token proves who signed in, not what they are allowed to do now. Role
+      // and host status are read fresh so a deactivated account or a revoked host
+      // flag takes effect immediately rather than at token expiry.
+      const user = await db.user.findFirst({
+        where: { id: userId, isActive: true },
+        select: { id: true, name: true, email: true, role: true, isHost: true },
+      });
+      if (user) return { user };
+    }
   }
 
-  return { user: session.user };
+  return {
+    response: mobileJson(
+      request,
+      { error: "Authentication required", code: "UNAUTHENTICATED" },
+      { status: 401 }
+    ),
+  };
 }
 
 export async function requireMobileAdmin(request: Request) {

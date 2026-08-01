@@ -7,9 +7,14 @@ import {
   unblockDates,
   upsertListingDatePriceRange,
 } from "@/lib/actions/availability.actions";
+import {
+  removeCalendarPromotion,
+  saveCalendarDefaultPricing,
+  saveCalendarPromotion,
+} from "@/lib/actions/calendar.actions";
 import { db } from "@/lib/db";
 import { mobileJson, mobileOptions, requireMobileHost } from "@/lib/mobile-api";
-import { ymdToDbDate } from "@/lib/utils/date-only";
+import { dbDateToYmd, ymdToDbDate } from "@/lib/utils/date-only";
 import { format } from "date-fns";
 
 export async function OPTIONS(request: Request) {
@@ -22,8 +27,28 @@ async function managedListing(id: string, userId: string, isAdmin: boolean) {
     select: {
       id: true,
       title: true,
+      status: true,
       pricingRule: {
-        select: { baseNightlyRate: true, currency: true },
+        select: {
+          baseNightlyRate: true,
+          cleaningFee: true,
+          minNights: true,
+          maxNights: true,
+          currency: true,
+        },
+      },
+      promotions: {
+        where: { disabledAt: null },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          discountPercent: true,
+          minimumNights: true,
+          freeCleaning: true,
+          roundUpToNearestFive: true,
+          startDate: true,
+          endDate: true,
+        },
       },
     },
   });
@@ -67,11 +92,29 @@ export async function GET(
     listing: {
       id: listing.id,
       title: listing.title,
+      status: listing.status,
       baseNightlyRate: listing.pricingRule
         ? Number(listing.pricingRule.baseNightlyRate)
         : null,
+      cleaningFee: listing.pricingRule ? Number(listing.pricingRule.cleaningFee) : 0,
+      minNights: listing.pricingRule?.minNights ?? 1,
+      // The promotion form needs this: an offer minimum above the listing maximum
+      // is rejected server-side, so the client can say so first.
+      maxNights: listing.pricingRule?.maxNights ?? 365,
       currency: listing.pricingRule?.currency ?? "EUR",
     },
+    // Dates are sent as plain yyyy-MM-dd. A promotion window is a calendar range,
+    // not an instant, so serialising it as an ISO timestamp invites a timezone
+    // shift that moves the offer by a day.
+    promotions: listing.promotions.map((promotion) => ({
+      id: promotion.id,
+      discountPercent: promotion.discountPercent,
+      minimumNights: promotion.minimumNights ?? 1,
+      freeCleaning: promotion.freeCleaning,
+      roundUpToNearestFive: promotion.roundUpToNearestFive,
+      startDate: promotion.startDate ? dbDateToYmd(promotion.startDate) : null,
+      endDate: promotion.endDate ? dbDateToYmd(promotion.endDate) : null,
+    })),
     blocks: blocks.map((block) => ({
       ...block,
       startDate: block.startDate.toISOString(),
@@ -100,16 +143,63 @@ export async function POST(
       | "setPrice"
       | "resetPrice"
       | "blockAllFuture"
-      | "makeAllFutureAvailable";
+      | "makeAllFutureAvailable"
+      | "saveDefaultPricing"
+      | "savePromotion"
+      | "removePromotion";
     startDate?: string;
     endDate?: string;
     reason?: string;
     nightlyRate?: number;
+    baseNightlyRate?: number;
+    cleaningFee?: number;
+    minNights?: number;
+    promotionId?: string;
+    discountPercent?: number;
+    minimumNights?: number;
+    freeCleaning?: boolean;
+    roundUpToNearestFive?: boolean;
   };
   try {
     input = await request.json();
   } catch {
     return mobileJson(request, { error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  // Pricing and promotions go through calendar.actions, the same entry point the
+  // web workspace uses — so the 50% cap, the free-cleaning fee requirement, the
+  // overlap check and the round-up rule are enforced in exactly one place.
+  if (input.action === "saveDefaultPricing") {
+    const result = await saveCalendarDefaultPricing(id, {
+      baseNightlyRate: Number(input.baseNightlyRate),
+      cleaningFee: Number(input.cleaningFee ?? 0),
+      minNights: Number(input.minNights ?? 1),
+    });
+    if (result?.error) return mobileJson(request, result, { status: 400 });
+    return mobileJson(request, result ?? { success: true });
+  }
+
+  if (input.action === "savePromotion") {
+    const result = await saveCalendarPromotion(id, {
+      promotionId: input.promotionId,
+      discountPercent: Number(input.discountPercent ?? 0),
+      minimumNights: Number(input.minimumNights ?? 1),
+      freeCleaning: Boolean(input.freeCleaning),
+      roundUpToNearestFive: Boolean(input.roundUpToNearestFive),
+      startDate: input.startDate || undefined,
+      endDate: input.endDate || undefined,
+    });
+    if (result?.error) return mobileJson(request, result, { status: 400 });
+    return mobileJson(request, result ?? { success: true });
+  }
+
+  if (input.action === "removePromotion") {
+    if (!input.promotionId) {
+      return mobileJson(request, { error: "Promotion id is required" }, { status: 400 });
+    }
+    const result = await removeCalendarPromotion(id, input.promotionId);
+    if (result?.error) return mobileJson(request, result, { status: 400 });
+    return mobileJson(request, result ?? { success: true });
   }
 
   // blockDates returns a message instead of `true` when the range was already

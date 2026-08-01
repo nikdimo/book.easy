@@ -31,6 +31,7 @@
     "mobile:web": "npm --prefix mobile run web -- --port 8081",
     "mobile:preview": "npm --prefix mobile run build:web && npm --prefix mobile run preview",
     "mobile:start": "npm --prefix mobile run start",
+    "mobile:android:debug": "npm --prefix mobile run android:debug",
     "mobile:typecheck": "npm --prefix mobile run typecheck",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",

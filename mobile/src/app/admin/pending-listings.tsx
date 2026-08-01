@@ -9,7 +9,7 @@ import {
   fetchAdminListings,
   reviewAdminListing,
 } from "@/lib/api";
-import { colors, radii, spacing, fonts } from "@/theme";
+import { colors, radii, spacing, type } from "@/theme";
 
 type FilterTab = "needs_review" | "all" | "approved" | "suspended";
 
@@ -229,8 +229,7 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     color: colors.primary,
-    fontSize: 13,
-    fontFamily: fonts.bold,
+    ...type.meta,
   },
   tabContainer: {
     flexDirection: "row",
@@ -249,8 +248,7 @@ const styles = StyleSheet.create({
   },
   chipText: {
     color: colors.ink,
-    fontSize: 12,
-    fontFamily: fonts.semiBold,
+    ...type.caption,
   },
   chipTextActive: {
     color: "#fff",
@@ -272,12 +270,11 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     color: colors.ink,
-    fontSize: 16,
-    fontFamily: fonts.bold,
+    ...type.bodyStrong,
   },
   cardSubtitle: {
     color: colors.muted,
-    fontSize: 12,
+    ...type.caption,
     marginTop: 4,
   },
   cardMeta: {
@@ -291,12 +288,11 @@ const styles = StyleSheet.create({
   },
   metaPrice: {
     color: colors.ink,
-    fontSize: 14,
-    fontFamily: fonts.bold,
+    ...type.meta,
   },
   metaBookings: {
     color: colors.muted,
-    fontSize: 12,
+    ...type.caption,
   },
   cardActions: {
     flexDirection: "row",
@@ -315,8 +311,7 @@ const styles = StyleSheet.create({
   },
   inspectButtonText: {
     color: colors.ink,
-    fontSize: 13,
-    fontFamily: fonts.bold,
+    ...type.meta,
   },
   approveButton: {
     flex: 1,
@@ -330,7 +325,6 @@ const styles = StyleSheet.create({
   },
   approveButtonText: {
     color: "#fff",
-    fontSize: 13,
-    fontFamily: fonts.bold,
+    ...type.meta,
   },
 });

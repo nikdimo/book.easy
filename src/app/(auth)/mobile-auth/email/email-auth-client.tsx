@@ -14,7 +14,11 @@ export function EmailAuthClient({ email }: { email: string }) {
     void signIn("nodemailer", {
       email,
       redirect: false,
-      callbackUrl: "/mobile-auth/complete",
+      callbackUrl:
+        typeof window !== "undefined" &&
+        new URLSearchParams(window.location.search).get("native") === "1"
+          ? "/mobile-auth/complete?native=1"
+          : "/mobile-auth/complete",
     }).then((result) => setState(result?.error ? "error" : "sent"));
   }, [email]);
 

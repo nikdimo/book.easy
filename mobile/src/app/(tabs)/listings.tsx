@@ -214,7 +214,9 @@ export default function ListingsScreen() {
             <Pressable
               accessibilityLabel={`${t("Edit")}: ${listing.title}`}
               accessibilityRole="button"
-              onPress={() => void openControlPanel(`/host/listings/${listing.id}/edit`)}
+              onPress={() =>
+                router.push({ pathname: "/listing/[id]", params: { id: listing.id } })
+              }
               style={({ pressed }) => [{ flex: 1 }, pressed && { opacity: 0.6 }]}
             >
               <View style={styles.titleLine}>
@@ -239,7 +241,9 @@ export default function ListingsScreen() {
             <View style={styles.rowActions}>
               <SmallButton
                 label={t("Edit")}
-                onPress={() => void openControlPanel(`/host/listings/${listing.id}/edit`)}
+                onPress={() =>
+                router.push({ pathname: "/listing/[id]", params: { id: listing.id } })
+              }
               />
               <IconButton
                 accessibilityLabel={t("Calendar")}

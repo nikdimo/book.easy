@@ -38,6 +38,11 @@ export default function AdminLayout() {
       <Stack.Screen name="pending-listings" options={{ title: t("Pending listings") }} />
       <Stack.Screen name="users" options={{ title: t("Users") }} />
       <Stack.Screen name="inspect" options={{ title: t("Listing review") }} />
+      <Stack.Screen name="cases" options={{ title: t("Reports and cases") }} />
+      <Stack.Screen name="communications" options={{ title: t("Communications") }} />
+      <Stack.Screen name="ratings" options={{ title: t("Ratings") }} />
+      <Stack.Screen name="audit-log" options={{ title: t("Audit log") }} />
+      <Stack.Screen name="settings" options={{ title: t("Platform settings") }} />
     </Stack>
   );
 }

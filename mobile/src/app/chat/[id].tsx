@@ -25,7 +25,7 @@ import {
   formatDate,
   formatRelativeTime,
 } from "@/lib/api";
-import { colors, radii, spacing, fonts } from "@/theme";
+import { colors, radii, spacing, type } from "@/theme";
 
 const bookingEventCopy: Record<string, string> = {
   REQUESTED: "Booking requested",
@@ -298,16 +298,16 @@ const styles = StyleSheet.create({
   bookingRow: { flexDirection: "row", gap: spacing.md, alignItems: "center" },
   bookingImage: { width: 68, height: 58, borderRadius: radii.md },
   bookingCopy: { flex: 1 },
-  bookingMeta: { color: colors.muted, fontSize: 10, marginTop: 3 },
-  person: { color: colors.ink, fontSize: 15, fontFamily: fonts.bold },
-  listing: { color: colors.primary, fontSize: 11, marginTop: 3 },
+  bookingMeta: { color: colors.muted, ...type.caption, marginTop: 3 },
+  person: { color: colors.ink, ...type.body },
+  listing: { color: colors.primary, ...type.caption, marginTop: 3 },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   error: {
     color: colors.danger,
     backgroundColor: "#FFF2F2",
     padding: spacing.md,
     textAlign: "center",
-    fontSize: 12,
+    ...type.caption,
   },
   messages: {
     flexGrow: 1,
@@ -316,10 +316,10 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   start: { alignItems: "center", padding: spacing.xl },
-  startTitle: { color: colors.ink, fontSize: 16, fontFamily: fonts.bold },
+  startTitle: { color: colors.ink, ...type.bodyStrong },
   startBody: {
     color: colors.muted,
-    fontSize: 12,
+    ...type.caption,
     lineHeight: 18,
     textAlign: "center",
     marginTop: 6,
@@ -335,7 +335,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     backgroundColor: colors.surface,
   },
-  systemTitle: { color: colors.ink, fontSize: 13, fontFamily: fonts.bold },
+  systemTitle: { color: colors.ink, ...type.meta },
   damageCard: {
     alignSelf: "flex-start",
     maxWidth: "88%",
@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
   messageWrap: { maxWidth: "82%" },
   mineWrap: { alignSelf: "flex-end", alignItems: "flex-end" },
   theirsWrap: { alignSelf: "flex-start", alignItems: "flex-start" },
-  sender: { color: colors.muted, fontSize: 10, marginBottom: 4, marginLeft: 4 },
+  sender: { color: colors.muted, ...type.caption, marginBottom: 4, marginLeft: 4 },
   bubble: { borderRadius: radii.lg, paddingHorizontal: spacing.md, paddingVertical: 10 },
   mine: { backgroundColor: colors.primary, borderBottomRightRadius: 5 },
   theirs: { backgroundColor: colors.surface, borderBottomLeftRadius: 5 },
@@ -360,9 +360,9 @@ const styles = StyleSheet.create({
     borderColor: "#B8D5DA",
     borderBottomLeftRadius: 5,
   },
-  body: { color: colors.ink, fontSize: 14, lineHeight: 20 },
+  body: { color: colors.ink, ...type.meta, lineHeight: 20 },
   mineBody: { color: "#fff" },
-  time: { color: colors.muted, fontSize: 9, marginTop: 4, marginHorizontal: 4 },
+  time: { color: colors.muted, ...type.caption, marginTop: 4, marginHorizontal: 4 },
   composer: {
     flexDirection: "row",
     alignItems: "flex-end",
@@ -384,7 +384,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingTop: 11,
     color: colors.ink,
-    fontSize: 14,
+    ...type.meta,
   },
   send: {
     minWidth: 62,
@@ -395,5 +395,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   disabled: { opacity: 0.45 },
-  sendText: { color: "#fff", fontSize: 12, fontFamily: fonts.bold },
+  sendText: { color: "#fff", ...type.caption },
 });

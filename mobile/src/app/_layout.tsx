@@ -61,6 +61,14 @@ function AppNavigator() {
         name="availability/[id]"
         options={{ title: t("Availability & pricing") }}
       />
+      <Stack.Screen
+        name="listing/[id]"
+        options={{ title: t("Edit listing"), presentation: "modal" }}
+      />
+      <Stack.Screen name="support/index" options={{ title: t("Support") }} />
+      <Stack.Screen name="support/[id]" options={{ title: t("Support case") }} />
+      <Stack.Screen name="booking/[id]" options={{ title: t("Booking") }} />
+      <Stack.Screen name="profile" options={{ title: t("Personal details") }} />
       <Stack.Screen name="notifications" options={{ title: t("Notifications") }} />
       <Stack.Screen name="chat/[id]" options={{ title: t("Booking conversation") }} />
       <Stack.Screen

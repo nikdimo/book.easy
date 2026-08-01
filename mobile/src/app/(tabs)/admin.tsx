@@ -11,7 +11,7 @@ import {
   StatTile,
 } from "@/components/ui";
 import { useLanguage } from "@/context/language-context";
-import { AdminStats, fetchAdminStats, openControlPanel } from "@/lib/api";
+import { AdminStats, fetchAdminStats } from "@/lib/api";
 import { colors, radii, spacing, fonts } from "@/theme";
 
 export default function AdminScreen() {
@@ -128,32 +128,30 @@ export default function AdminScreen() {
       />
 
       <SectionHeader title="Platform" />
-      {/* These live on the web control panel only. Linking out is honest — a
-          native shell over endpoints that do not exist would be worse. */}
       <ListRow
         icon="report"
         label="Reports and cases"
-        onPress={() => void openControlPanel("/admin/cases")}
+        onPress={() => router.push("/admin/cases" as Href)}
       />
       <ListRow
         icon="chat"
         label="Communications"
-        onPress={() => void openControlPanel("/admin/communications")}
+        onPress={() => router.push("/admin/communications" as Href)}
       />
       <ListRow
         icon="confirmed"
         label="Ratings and reviews"
-        onPress={() => void openControlPanel("/admin/ratings")}
+        onPress={() => router.push("/admin/ratings" as Href)}
       />
       <ListRow
         icon="info"
         label="Audit log"
-        onPress={() => void openControlPanel("/admin/audit-log")}
+        onPress={() => router.push("/admin/audit-log" as Href)}
       />
       <ListRow
         icon="more"
         label="Platform settings"
-        onPress={() => void openControlPanel("/admin/settings")}
+        onPress={() => router.push("/admin/settings" as Href)}
       />
     </AppScreen>
   );

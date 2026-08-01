@@ -2,15 +2,20 @@
 
 import { useEffect, useRef } from "react";
 import { signIn } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 
 export default function MobileGoogleAuthPage() {
   const started = useRef(false);
+  const params = useSearchParams();
 
   useEffect(() => {
     if (started.current) return;
     started.current = true;
-    void signIn("google", { callbackUrl: "/mobile-auth/complete" });
-  }, []);
+    const native = params.get("native") === "1";
+    void signIn("google", {
+      callbackUrl: native ? "/mobile-auth/complete?native=1" : "/mobile-auth/complete",
+    });
+  }, [params]);
 
   return (
     <div className="rounded-3xl border bg-card p-8 text-center shadow-xl">

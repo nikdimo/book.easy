@@ -19,7 +19,7 @@ import {
 } from "@/lib/api";
 import { useLanguage } from "@/context/language-context";
 import { Pill } from "@/components/ui";
-import { colors, radii, spacing, fonts } from "@/theme";
+import { colors, radii, spacing, type } from "@/theme";
 import { confirmAction } from "@/lib/confirm";
 import { formatLocalizedDate } from "@/lib/date-locale";
 
@@ -76,14 +76,22 @@ interface PriceRange {
   days: number;
 }
 
+export type CalendarLens = "availability" | "pricing" | "promotions";
+
 export function AvailabilityCalendar({
   data,
   listingId,
   reload,
+  lens = "availability",
+  promotionsPanel,
 }: {
   data: AvailabilityResponse;
   listingId: string;
   reload: () => Promise<void>;
+  lens?: CalendarLens;
+  /** Rendered in place of the availability/pricing actions on the promotions lens.
+   *  Injected rather than built here so this file stays about dates. */
+  promotionsPanel?: (selection: { start: string; end: string }) => React.ReactNode;
 }) {
   const { locale, t } = useLanguage();
   const today = toYmd(new Date());
@@ -382,62 +390,74 @@ export function AvailabilityCalendar({
             </View>
           ) : null}
 
-          <Text style={styles.fieldLabel}>{t("Block reason (optional)")}</Text>
-          <TextInput
-            onChangeText={setReason}
-            placeholder={t("e.g. Maintenance, private stay")}
-            placeholderTextColor={colors.muted}
-            style={styles.input}
-            value={reason}
-          />
+          {/* The selected range is shared. Only the actions offered against it
+              change with the lens, so switching never loses the selection. */}
+          {lens === "availability" ? (
+            <>
+              <Text style={styles.fieldLabel}>{t("Block reason (optional)")}</Text>
+              <TextInput
+                onChangeText={setReason}
+                placeholder={t("e.g. Maintenance, private stay")}
+                placeholderTextColor={colors.muted}
+                style={styles.input}
+                value={reason}
+              />
+              <View style={styles.actions}>
+                <ActionButton
+                  disabled={!start || !end || busy}
+                  label={t("Make available")}
+                  onPress={() =>
+                    confirm(
+                      "Make selected range available",
+                      "This removes manual blocks in the selected range. Booking holds stay untouched.",
+                      () => void runAction("makeAvailable")
+                    )
+                  }
+                  secondary
+                />
+                <ActionButton
+                  disabled={!start || !end || busy}
+                  label={t("Block")}
+                  onPress={() =>
+                    confirm(
+                      "Block selected range",
+                      "This will block the selected range for booking requests.",
+                      () => void runAction("block")
+                    )
+                  }
+                />
+              </View>
+            </>
+          ) : null}
 
-          <View style={styles.actions}>
-            <ActionButton
-              disabled={!start || !end || busy}
-              label={t("Edit price")}
-              onPress={() => {
-                setPrice(
-                  String(selectedStats.uniformRate ?? data.listing.baseNightlyRate ?? "")
-                );
-                setPriceOpen(true);
-              }}
-              secondary
-            />
-            {selectedStats.customPriceDays > 0 ? (
+          {lens === "pricing" ? (
+            <View style={styles.actions}>
               <ActionButton
                 disabled={!start || !end || busy}
-                label={t("Reset price")}
-                onPress={() => void runAction("resetPrice")}
-                secondary
+                label={t("Set price for range")}
+                onPress={() => {
+                  setPrice(
+                    String(selectedStats.uniformRate ?? data.listing.baseNightlyRate ?? "")
+                  );
+                  setPriceOpen(true);
+                }}
               />
-            ) : null}
-            <ActionButton
-              disabled={!start || !end || busy}
-              label={t("Make available")}
-              onPress={() =>
-                confirm(
-                  "Make selected range available",
-                  "This removes manual blocks in the selected range. Booking holds stay untouched.",
-                  () => void runAction("makeAvailable")
-                )
-              }
-              secondary
-            />
-            <ActionButton
-              disabled={!start || !end || busy}
-              label={t("Block")}
-              onPress={() =>
-                confirm(
-                  "Block selected range",
-                  "This will block the selected range for booking requests.",
-                  () => void runAction("block")
-                )
-              }
-            />
-          </View>
+              {selectedStats.customPriceDays > 0 ? (
+                <ActionButton
+                  disabled={!start || !end || busy}
+                  label={t("Reset to default")}
+                  onPress={() => void runAction("resetPrice")}
+                  secondary
+                />
+              ) : null}
+            </View>
+          ) : null}
+
+          {lens === "promotions" ? promotionsPanel?.({ start, end }) ?? null : null}
         </View>
       </View>
 
+      {lens === "availability" ? (
       <View style={styles.card}>
         <Text style={styles.cardTitle}>{t("Bulk Future Actions")}</Text>
         <Text style={styles.cardDescription}>
@@ -469,6 +489,7 @@ export function AvailabilityCalendar({
           />
         </View>
       </View>
+      ) : null}
 
       <View style={styles.card}>
         <Text style={styles.cardTitle}>{t("Upcoming Exceptions")}</Text>
@@ -701,15 +722,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     padding: spacing.lg,
   },
-  cardTitle: { color: colors.ink, fontSize: 18, fontFamily: fonts.bold },
-  cardDescription: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 4 },
+  cardTitle: { color: colors.ink, ...type.section },
+  cardDescription: { color: colors.muted, ...type.meta, lineHeight: 19, marginTop: 4 },
   legend: { flexDirection: "row", flexWrap: "wrap", gap: spacing.lg, marginTop: spacing.lg },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
   swatch: { width: 13, height: 13, borderRadius: 3, borderWidth: 1, borderColor: colors.border },
   manualSwatch: { backgroundColor: colors.surfaceAlt },
   bookingSwatch: { backgroundColor: "#F6D9D9", borderColor: "#E6B6B6" },
   priceSwatch: { backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.primary },
-  legendText: { color: colors.muted, fontSize: 11 },
+  legendText: { color: colors.muted, ...type.caption },
   calendar: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -730,15 +751,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  monthButtonText: { color: colors.ink, fontSize: 24 },
-  monthTitle: { color: colors.ink, fontSize: 15, fontFamily: fonts.bold },
+  monthButtonText: { color: colors.ink, ...type.title },
+  monthTitle: { color: colors.ink, ...type.body },
   week: { flexDirection: "row", marginTop: spacing.sm },
   weekday: {
     width: "14.2857%",
     color: colors.muted,
     textAlign: "center",
-    fontSize: 9,
-    fontFamily: fonts.bold,
+    ...type.caption,
   },
   grid: { flexDirection: "row", flexWrap: "wrap", marginTop: spacing.xs },
   dayCell: { width: "14.2857%", aspectRatio: 0.82, padding: 2 },
@@ -756,17 +776,19 @@ const styles = StyleSheet.create({
   dayCustom: { borderWidth: 2, borderColor: colors.primary },
   daySelected: { borderWidth: 2, borderColor: colors.primaryDark, backgroundColor: colors.primarySoft },
   dayDisabled: { opacity: 0.32 },
-  dayNumber: { color: colors.ink, fontSize: 12, fontFamily: fonts.bold },
+  dayNumber: { color: colors.ink, ...type.caption },
   dayNumberDisabled: { color: colors.muted },
+  // Deliberately below the type scale: a price hint inside a 40pt calendar cell,
+  // where even the 12pt caption does not fit.
   dayPrice: { color: colors.muted, fontSize: 8, marginTop: 2 },
-  hatch: { position: "absolute", color: "#9EA8A3", fontSize: 22, opacity: 0.35 },
+  hatch: { position: "absolute", color: "#9EA8A3", ...type.title, opacity: 0.35 },
   selection: {
     borderTopWidth: 1,
     borderTopColor: colors.border,
     marginTop: spacing.lg,
     paddingTop: spacing.lg,
   },
-  selectionTitle: { color: colors.ink, fontSize: 14, fontFamily: fonts.bold },
+  selectionTitle: { color: colors.ink, ...type.meta },
   stats: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: spacing.sm },
   smallBadge: {
     borderWidth: 1,
@@ -776,8 +798,8 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     backgroundColor: colors.surfaceAlt,
   },
-  smallBadgeText: { color: colors.inkSoft, fontSize: 9, fontFamily: fonts.semiBold },
-  fieldLabel: { color: colors.muted, fontSize: 11, fontFamily: fonts.semiBold, marginTop: spacing.lg, marginBottom: 6 },
+  smallBadgeText: { color: colors.inkSoft, ...type.caption },
+  fieldLabel: { color: colors.muted, ...type.caption, marginTop: spacing.lg, marginBottom: 6 },
   input: {
     minHeight: 48,
     borderWidth: 1,
@@ -786,7 +808,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     paddingHorizontal: spacing.md,
     color: colors.ink,
-    fontSize: 14,
+    ...type.meta,
   },
   actions: { flexDirection: "row", flexWrap: "wrap", justifyContent: "flex-end", gap: spacing.sm, marginTop: spacing.lg },
   actionButton: {
@@ -800,7 +822,7 @@ const styles = StyleSheet.create({
     borderColor: colors.ink,
   },
   actionSecondary: { backgroundColor: colors.surface, borderColor: colors.borderStrong },
-  actionText: { color: "#fff", fontSize: 11, fontFamily: fonts.bold },
+  actionText: { color: "#fff", ...type.caption },
   actionSecondaryText: { color: colors.ink },
   disabled: { opacity: 0.38 },
   bulkActions: { gap: spacing.sm, marginTop: spacing.lg },
@@ -814,9 +836,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   filterActive: { backgroundColor: colors.ink, borderColor: colors.ink },
-  filterText: { color: colors.ink, fontSize: 10, fontFamily: fonts.bold },
+  filterText: { color: colors.ink, ...type.caption },
   filterTextActive: { color: "#fff" },
-  noExceptions: { color: colors.muted, fontSize: 12, marginTop: spacing.lg },
+  noExceptions: { color: colors.muted, ...type.caption, marginTop: spacing.lg },
   exceptions: { gap: spacing.sm, marginTop: spacing.lg },
   exception: {
     flexDirection: "row",
@@ -828,9 +850,9 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   exceptionTop: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: spacing.sm },
-  exceptionTitle: { color: colors.ink, fontSize: 13, fontFamily: fonts.bold },
-  exceptionDate: { color: colors.muted, fontSize: 12, marginTop: 5 },
-  exceptionDetail: { color: colors.muted, fontSize: 10, marginTop: 4 },
+  exceptionTitle: { color: colors.ink, ...type.meta },
+  exceptionDate: { color: colors.muted, ...type.caption, marginTop: 5 },
+  exceptionDetail: { color: colors.muted, ...type.caption, marginTop: 4 },
   removeButton: {
     width: 36,
     height: 36,
@@ -838,10 +860,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  removeText: { color: colors.danger, fontSize: 23 },
   priceModal: { flex: 1, backgroundColor: colors.background },
   priceContent: { padding: spacing.xl, maxWidth: 520, width: "100%", alignSelf: "center" },
-  priceTitle: { color: colors.ink, fontSize: 24, fontFamily: fonts.bold },
-  baseRate: { color: colors.muted, fontSize: 11, marginTop: spacing.sm },
+  priceTitle: { color: colors.ink, ...type.title },
+  baseRate: { color: colors.muted, ...type.caption, marginTop: spacing.sm },
   priceActions: { flexDirection: "row", justifyContent: "flex-end", gap: spacing.sm, marginTop: spacing.xl },
 });

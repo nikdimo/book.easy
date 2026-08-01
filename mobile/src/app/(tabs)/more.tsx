@@ -1,9 +1,10 @@
 import { StyleSheet, Text, View } from "react-native";
+import { router } from "expo-router";
 import { AppScreen, ListRow, Pill, SectionHeader, SoftButton } from "@/components/ui";
 import { useAuth } from "@/context/auth-context";
 import { useLanguage } from "@/context/language-context";
 import { LanguageSelector } from "@/components/language-selector";
-import { openControlPanel, startAuth } from "@/lib/api";
+import { clearMobileSessionToken, openControlPanel, startAuth } from "@/lib/api";
 import { colors, radii, spacing, type } from "@/theme";
 
 export default function MoreScreen() {
@@ -41,14 +42,9 @@ export default function MoreScreen() {
 
       <SectionHeader title="Manage" />
       <ListRow
-        icon="dashboard"
-        label="Hosting dashboard"
-        onPress={() => void openControlPanel("/host")}
-      />
-      <ListRow
         icon="users"
         label="Personal details"
-        onPress={() => void openControlPanel("/account/profile")}
+        onPress={() => router.push("/profile")}
       />
       <ListRow
         icon="listings"
@@ -60,12 +56,12 @@ export default function MoreScreen() {
       <ListRow
         icon="support"
         label="Support cases"
-        onPress={() => void openControlPanel("/account/support")}
+        onPress={() => router.push("/support")}
       />
       <ListRow
         icon="report"
         label="Reports and claims"
-        onPress={() => void openControlPanel("/account/support")}
+        onPress={() => router.push("/support")}
       />
 
       <SectionHeader title="Preferences" />
@@ -81,6 +77,7 @@ export default function MoreScreen() {
           tone="danger"
           onPress={() => {
             void startAuth("signout");
+            void clearMobileSessionToken();
             clearSession();
           }}
         />

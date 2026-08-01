@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { router } from "expo-router";
 import {
   AppScreen,
   EmptyNotice,
@@ -129,6 +130,13 @@ export default function BookingsScreen() {
       <View style={styles.list}>
         {visible.map((booking) => (
           <View key={booking.id} style={styles.card}>
+            <Pressable
+              accessibilityLabel={`${t("Open booking")}: ${booking.guestName}`}
+              accessibilityRole="button"
+              onPress={() =>
+                router.push({ pathname: "/booking/[id]", params: { id: booking.id } })
+              }
+            >
             {/* Guest and dates lead, because that is what a host scans for. The
                 listing, reference and party size follow on one quiet line — the
                 old six-row label/value table ran a full screen per booking. */}
@@ -160,6 +168,7 @@ export default function BookingsScreen() {
                 }
               />
             </View>
+            </Pressable>
 
             <Text numberOfLines={1} style={styles.meta}>
               {booking.listingTitle}

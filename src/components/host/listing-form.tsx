@@ -555,6 +555,11 @@ export function ListingForm({
     (issue) => issue.blocking !== "publish"
   );
   const listingReady = issuesByStep.every((issues) => issues.length === 0);
+  // Hold Continue while the geocoder is still running, so the host can't land on
+  // the Address step before it has been filled in.
+  const continueReady =
+    currentStepReady &&
+    !(currentStep === LISTING_STEP.location && geocodingAddress);
 
   const [state, formAction, isPending] = useActionState(
     async (_prev: { error?: string; success?: boolean } | undefined, formData: FormData) => {
@@ -1059,8 +1064,10 @@ export function ListingForm({
       >
         <div
           id="listing-editor-pane"
-          role="tabpanel"
-          aria-labelledby="listing-edit-tab"
+          // Not a tabpanel any more: neither screen renders a tablist, so the
+          // pane is a labelled region the action row's Preview button controls.
+          role="group"
+          aria-label={resolve("host.workspace.edit", "Edit").text}
           data-pane="editor"
           className={`${mobilePane === "edit" ? "flex" : "hidden"} h-full min-h-0 flex-col overflow-hidden`}
         >
@@ -1859,21 +1866,18 @@ export function ListingForm({
                     </>
                   )}
 
-                  {/* Last screen before Publish — the natural place to say that the
-                     tools hosts ask for next aren't missing, they're just gated on
-                     having a live listing to attach them to. */}
-                  <div className="rounded-xl border bg-muted/35 p-4">
-                    <p className="flex items-center gap-2 text-sm font-semibold">
-                      <Rocket className="size-4 shrink-0 text-primary" />
-                      <Tx k="host.form.after_publish" source="After you publish" />
-                    </p>
-                    <p className="mt-2 text-sm text-muted-foreground">
+                  {/* Says the tools hosts ask for next aren't missing, just gated
+                     on having a live listing. One line, because the publish
+                     dialog now offers the calendar as an actual button. */}
+                  <p className="flex items-start gap-2 rounded-lg border bg-muted/35 p-2.5 text-[0.7rem] leading-snug text-muted-foreground md:p-4 md:text-sm">
+                    <Rocket className="mt-px size-3.5 shrink-0 text-primary md:size-4" />
+                    <span>
                       <Tx
-                        k="host.form.after_publish_body"
-                        source="Once this listing is live you can block dates on the calendar, set prices for specific dates or seasons, and add more promotions at any time. You'll find all of it under the listing in My listings."
+                        k="host.form.after_publish_short"
+                        source="Once it's live you can block dates, price specific dates or seasons, and add more promotions — all from the listing's calendar."
                       />
-                    </p>
-                  </div>
+                    </span>
+                  </p>
                 </div>
               </FieldSection>
             </div>
@@ -2010,24 +2014,18 @@ export function ListingForm({
               </div>
             </footer>
           )}
+          {/* Desktop only: on phones the wizard's single action row lives at the
+              form root, so that Preview can stay reachable from both panes. */}
           {!isEditing && (
-            <footer className="z-20 shrink-0 border-t bg-background px-3 py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))] shadow-[0_-2px_8px_rgb(0_0_0/0.04)] md:px-8 md:py-4 md:pb-4">
-              <div className="flex items-center justify-between gap-2 md:gap-3">
-                {/* Icon-only Back on phones: the label is the widest thing in a
-                    row that also has to fit the blocker text and Continue. */}
+            <footer className="z-20 hidden shrink-0 border-t bg-background px-5 py-4 shadow-[0_-2px_8px_rgb(0_0_0/0.04)] md:block md:px-8">
+              <div className="flex items-center justify-between gap-3">
                 <Button
                   type="button"
                   variant="outline"
-                  size="sm"
-                  className="size-9 shrink-0 p-0 md:size-auto md:px-2.5"
-                  aria-label={resolve("host.form.back", "Back").text}
                   disabled={currentStep === LISTING_STEP.propertyType}
                   onClick={() => goToStep(currentStep - 1)}
                 >
-                  <ChevronLeft />{" "}
-                  <span className="hidden md:inline">
-                    <Tx k="host.form.back" source="Back" />
-                  </span>
+                  <ChevronLeft /> <Tx k="host.form.back" source="Back" />
                 </Button>
                 <StepRequirementStatus
                   issues={currentStepIssues}
@@ -2040,14 +2038,9 @@ export function ListingForm({
                 {currentStep < STEPS.length - 1 ? (
                   <Button
                     type="button"
-                    size="sm"
-                    className="shrink-0"
                     // Hold Continue while the geocoder is still running, so the host
                     // can't land on the Address step before it has been filled in.
-                    disabled={
-                      !currentStepReady ||
-                      (currentStep === LISTING_STEP.location && geocodingAddress)
-                    }
+                    disabled={!continueReady}
                     aria-describedby={
                       currentStepReady ? undefined : "listing-step-requirements"
                     }
@@ -2058,8 +2051,6 @@ export function ListingForm({
                 ) : (
                   <Button
                     type="button"
-                    size="sm"
-                    className="shrink-0"
                     disabled={isSubmittingNew || !listingReady}
                     aria-describedby={
                       listingReady ? undefined : "listing-step-requirements"
@@ -2127,8 +2118,8 @@ export function ListingForm({
 
         <aside
           id="listing-preview-pane"
-          role="tabpanel"
-          aria-labelledby="listing-preview-tab"
+          role="group"
+          aria-label={resolve("host.workspace.preview", "Preview").text}
           data-pane="preview"
           className={`${mobilePane === "preview" ? "flex" : "hidden"} h-full min-h-0 flex-col overflow-hidden`}
         >
@@ -2199,23 +2190,114 @@ export function ListingForm({
         </aside>
       </div>
 
-      <ListingBottomNav
-        listingId={listing?.id ?? ""}
-        paneOnly={!isEditing || !listing?.id}
-        omitPreview={isEditing}
-        /* The action row below owns the safe-area inset now. */
-        className={isEditing ? "pb-0" : undefined}
-        active={mobilePane === "preview" ? "preview" : "edit"}
-        onSelectPane={selectMobilePane}
-        onNavigate={confirmManagementNavigation}
-        onKeyDown={(event) => {
-          if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-          event.preventDefault();
-          const pane = mobilePane === "edit" ? "preview" : "edit";
-          selectMobilePane(pane);
-          document.getElementById(`listing-${pane}-tab`)?.focus();
-        }}
-      />
+      {/* The wizard's whole phone chrome: one row of Back · Preview · Continue.
+          It sits outside the workspace so Preview can switch the pane and still
+          offer the way back, and it carries the step's blocking requirement as a
+          line above itself — which most of the time isn't there at all. */}
+      {!isEditing && (
+        <div className="z-30 shrink-0 border-t bg-background px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden">
+          {(currentStepIssues.length > 0 || mediaUploadState.active) && (
+            <div className="mb-1.5 flex justify-end">
+              <StepRequirementStatus
+                id="listing-step-requirements-mobile"
+                issues={currentStepIssues}
+                uploadState={
+                  currentStep === LISTING_STEP.photos && mediaUploadState.active
+                    ? mediaUploadState
+                    : undefined
+                }
+              />
+            </div>
+          )}
+          <div className="flex items-stretch gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className="w-11 shrink-0 px-0"
+              aria-label={resolve("host.form.back", "Back").text}
+              disabled={currentStep === LISTING_STEP.propertyType}
+              onClick={() => goToStep(currentStep - 1)}
+            >
+              <ChevronLeft />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className="flex-1"
+              aria-controls={
+                mobilePane === "preview"
+                  ? "listing-editor-pane"
+                  : "listing-preview-pane"
+              }
+              onClick={() =>
+                selectMobilePane(mobilePane === "preview" ? "edit" : "preview")
+              }
+            >
+              {mobilePane === "preview" ? (
+                <>
+                  <Pencil className="h-4 w-4" />
+                  <Tx k="host.form.back_to_editor" source="Back to editor" />
+                </>
+              ) : (
+                <>
+                  <Eye className="h-4 w-4" />
+                  <Tx k="host.workspace.preview" source="Preview" />
+                </>
+              )}
+            </Button>
+            {currentStep < STEPS.length - 1 ? (
+              <Button
+                type="button"
+                size="lg"
+                className="flex-1"
+                disabled={!continueReady}
+                aria-describedby={
+                  currentStepReady
+                    ? undefined
+                    : "listing-step-requirements-mobile"
+                }
+                onClick={() => goToStep(currentStep + 1)}
+              >
+                <Tx k="host.listings.continue" source="Continue" />
+                <ChevronRight />
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                size="lg"
+                className="flex-1"
+                disabled={isSubmittingNew || !listingReady}
+                aria-describedby={
+                  listingReady ? undefined : "listing-step-requirements-mobile"
+                }
+                onClick={handleSubmitForReview}
+              >
+                {isSubmittingNew
+                  ? resolve("host.form.publishing", "Publishing…").text
+                  : resolve("host.form.publish", "Publish").text}
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Only the edit screen needs a nav bar: a draft has no calendar routes to
+          go to, so its bar was two pane tabs stacked above two more buttons.
+          The wizard folds Preview into its single action row instead. */}
+      {isEditing && (
+        <ListingBottomNav
+          listingId={listing?.id ?? ""}
+          paneOnly={!listing?.id}
+          omitPreview
+          /* The action row below owns the safe-area inset now. */
+          className="pb-0"
+          active={mobilePane === "preview" ? "preview" : "edit"}
+          onSelectPane={selectMobilePane}
+          onNavigate={confirmManagementNavigation}
+        />
+      )}
 
       {/* The two commits sit last, under the navigation: Preview swaps the pane and
           Publish saves, and both are actions on the listing rather than places to
@@ -2394,16 +2476,36 @@ export function ListingForm({
               .
             </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          {/* A brand new listing has no blocked dates and one flat nightly rate,
+              so the calendar is the most valuable next step — worth a real button
+              rather than a sentence, which is also the only shape that survives
+              the page being machine-translated. */}
+          <div className="flex flex-col gap-2">
+            <p className="text-xs text-muted-foreground md:text-sm">
+              <Tx
+                k="host.form.published_calendar_hint"
+                source="Want different prices for specific dates, or to block days off? Set them up in your listing's calendar."
+              />
+            </p>
             <Button
               type="button"
-              variant="outline"
-              onClick={() => router.push("/host/listings")}
+              size="lg"
+              onClick={() => {
+                if (submittedListingId) {
+                  router.push(listingStopHref(submittedListingId, "availability"));
+                }
+              }}
             >
-              <Tx k="host.form.go_to_listings" source="Go to My Listings" />
+              <CalendarDays className="h-4 w-4" />
+              <Tx
+                k="host.form.published_calendar_cta"
+                source="Set dates, prices & promotions"
+              />
             </Button>
             <Button
               type="button"
+              variant="outline"
+              size="lg"
               onClick={() => {
                 if (submittedListingId) {
                   router.push(`/host/listings/${submittedListingId}/edit`);
@@ -2411,6 +2513,14 @@ export function ListingForm({
               }}
             >
               <Tx k="host.form.continue_editing" source="Continue editing" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="lg"
+              onClick={() => router.push("/host/listings")}
+            >
+              <Tx k="host.form.go_to_listings" source="Go to My Listings" />
             </Button>
           </div>
         </DialogContent>
@@ -2445,15 +2555,19 @@ const AMENITY_ICON_MAP: Record<string, LucideIcon> = {
 function StepRequirementStatus({
   issues,
   uploadState,
+  // The mobile action row and the desktop footer are both mounted, so they can't
+  // share one id — each points its own aria-describedby at its own copy.
+  id = "listing-step-requirements",
 }: {
   issues: ListingStepIssue[];
   uploadState?: ListingMediaUploadState;
+  id?: string;
 }) {
   if (issues.length === 0 && !uploadState) return <span className="ml-auto" />;
 
   return (
     <div
-      id="listing-step-requirements"
+      id={id}
       className="ml-auto flex min-w-0 max-w-xl flex-1 flex-col items-end gap-1.5"
       role="status"
       aria-live="polite"

@@ -1,8 +1,12 @@
 import { Linking, Platform } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as WebBrowser from "expo-web-browser";
+import * as ExpoLinking from "expo-linking";
 import { formatLocalizedDate } from "@/lib/date-locale";
 
 export const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
+const MOBILE_SESSION_TOKEN_KEY = "lingerhomes.mobile.session-token";
 
 const INTL_LOCALES: Readonly<Record<string, string>> = {
   en: "en-US",
@@ -174,13 +178,29 @@ export interface BookingsResponse {
   bookings: BookingSummary[];
 }
 
+export interface PromotionSummary {
+  id: string;
+  discountPercent: number;
+  minimumNights: number;
+  freeCleaning: boolean;
+  roundUpToNearestFive: boolean;
+  /** yyyy-MM-dd, or null for an always-active offer. */
+  startDate: string | null;
+  endDate: string | null;
+}
+
 export interface AvailabilityResponse {
   listing: {
     id: string;
     title: string;
+    status: string;
     baseNightlyRate: number | null;
+    cleaningFee: number;
+    minNights: number;
+    maxNights: number;
     currency: string;
   };
+  promotions: PromotionSummary[];
   blocks: {
     id: string;
     startDate: string;
@@ -354,12 +374,14 @@ export async function apiFetch<T = unknown>(
   path: string,
   init: RequestInit = {}
 ): Promise<T> {
+  const token = Platform.OS === "web" ? null : await AsyncStorage.getItem(MOBILE_SESSION_TOKEN_KEY);
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     credentials: "include",
     headers: {
       Accept: "application/json",
       ...(init.body ? { "Content-Type": "application/json" } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init.headers,
     },
   });
@@ -495,19 +517,39 @@ export async function startAuth(
   provider: "google" | "email" | "signout",
   email?: string
 ): Promise<void> {
+  const native = Platform.OS !== "web";
+  const suffix = native ? "?native=1" : "";
   const path =
     provider === "google"
-      ? "/mobile-auth/google"
+      ? `/mobile-auth/google${suffix}`
       : provider === "signout"
-        ? "/mobile-auth/signout"
-        : `/mobile-auth/email?email=${encodeURIComponent(email ?? "")}`;
+        ? `/mobile-auth/signout${suffix}`
+        : `/mobile-auth/email?email=${encodeURIComponent(email ?? "")}${native ? "&native=1" : ""}`;
   const url = `${API_BASE_URL}${path}`;
 
   if (Platform.OS === "web" && typeof window !== "undefined") {
     window.open(url, "host-mobile-auth", "popup,width=520,height=720");
     return;
   }
-  await Linking.openURL(url);
+  const result = await WebBrowser.openAuthSessionAsync(url, ExpoLinking.createURL("auth"));
+  if (result.type !== "success" || !result.url) return;
+  const parsed = new URL(result.url);
+  const handoff = parsed.searchParams.get("handoff");
+  if (!handoff) return;
+  const exchanged = await fetch(`${API_BASE_URL}/api/mobile/v1/auth/exchange`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ handoff }),
+  });
+  const body = await exchanged.json().catch(() => null);
+  if (!exchanged.ok || typeof body?.token !== "string") {
+    throw new Error(body?.error ?? "Could not complete mobile sign-in");
+  }
+  await AsyncStorage.setItem(MOBILE_SESSION_TOKEN_KEY, body.token);
+}
+
+export async function clearMobileSessionToken(): Promise<void> {
+  await AsyncStorage.removeItem(MOBILE_SESSION_TOKEN_KEY);
 }
 
 export function formatDate(value: string, locale?: string): string {

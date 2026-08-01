@@ -1470,13 +1470,8 @@
     "filePath": "src/components/host/delete-listing-button.tsx"
   },
   {
-    "key": "host.form.after_publish",
-    "sourceText": "After you publish",
-    "filePath": "src/components/host/listing-form.tsx"
-  },
-  {
-    "key": "host.form.after_publish_body",
-    "sourceText": "Once this listing is live you can block dates on the calendar, set prices for specific dates or seasons, and add more promotions at any time. You'll find all of it under the listing in My listings.",
+    "key": "host.form.after_publish_short",
+    "sourceText": "Once it's live you can block dates, price specific dates or seasons, and add more promotions — all from the listing's calendar.",
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
@@ -1602,6 +1597,16 @@
   {
     "key": "host.form.published_body",
     "sourceText": "Your listing is live. You can return to My Listings or continue editing it now. Our team will still review the content shortly, so keep it accurate. Questions? Contact",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.published_calendar_cta",
+    "sourceText": "Set dates, prices & promotions",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.published_calendar_hint",
+    "sourceText": "Want different prices for specific dates, or to block days off? Set them up in your listing's calendar.",
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
