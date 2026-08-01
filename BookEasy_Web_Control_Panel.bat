@@ -102,6 +102,20 @@ echo.
 echo   This creates a local test APK. The Android folder is generated and ignored by Git.
 echo   The APK will connect to the production API at https://lingerhomes.com.
 echo.
+if not exist "%ANDROID_HOME%\ndk\26.1.10909125" (
+    echo   ERROR - Android NDK 26.1.10909125 is required for this project.
+    echo   Install it in Android Studio: SDK Manager ^> SDK Tools ^> Show Package Details ^> NDK 26.1.10909125.
+    pause
+    goto MENU
+)
+if exist "%REPO%\mobile\android\gradlew.bat" (
+    echo   Stopping any previous Gradle daemons to release Windows file locks...
+    pushd "%REPO%\mobile\android"
+    call gradlew.bat --stop
+    popd
+)
+attrib -R /S /D "%REPO%\mobile\node_modules\*"
+set "NODE_ENV=development"
 set "EXPO_PUBLIC_API_URL=https://lingerhomes.com"
 call npm run mobile:android:debug
 if errorlevel 1 (

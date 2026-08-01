@@ -41,7 +41,7 @@
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
-    "android:debug": "expo prebuild --platform android && cd android && gradlew.bat assembleDebug",
+    "android:debug": "set NODE_ENV=development&& expo prebuild --platform android && cd android && gradlew.bat --stop && gradlew.bat assembleDebug --no-daemon",
     "ios": "expo run:ios",
     "web": "expo start --web",
     "build:web": "expo export --platform web --output-dir dist",

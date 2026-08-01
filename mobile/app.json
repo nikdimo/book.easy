@@ -12,6 +12,7 @@
     },
     "android": {
       "package": "com.lingerhomes.host",
+      "ndkVersion": "26.1.10909125",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
