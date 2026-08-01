@@ -8,8 +8,8 @@ import {
 } from "@/components/host/calendar-workspace";
 import { ListingBottomNav } from "@/components/host/listing-bottom-nav";
 import { CalendarHeaderActions } from "@/components/host/calendar-header-actions";
-import { ListingPublishBar } from "@/components/host/listing-publish-bar";
 import {
+  LISTING_ACTION_BAR_ID,
   LISTING_WORKSPACE_STOPS,
   listingStopHref,
   withSelectionQuery,
@@ -267,21 +267,23 @@ export async function CalendarLensPage({
         )}
       </div>
 
-      {/* Same nav and action row as the edit screen. They are fixed here because this
-          page scrolls inside the host shell's main area rather than owning its own
-          flex column. */}
+      {/* Fixed because this page scrolls inside the host shell's main area rather
+          than owning its own flex column.
+
+          The old Preview/Publish pair is gone: by the time a host is setting dates
+          the listing is already live, so Publish sat disabled, and Preview left the
+          calendar entirely. The workspace fills the slot below with actions for the
+          dates currently selected instead. */}
       <div className="fixed inset-x-0 bottom-0 z-30 md:hidden">
         <ListingBottomNav
           listingId={listing.id}
           active={lens}
           omitPreview
+          preserveQuery={selectionQuery}
           /* The action row below owns the safe-area inset now. */
           className="pb-0"
         />
-        <ListingPublishBar
-          listingId={listing.id}
-          published={listing.status === "APPROVED"}
-        />
+        <div id={LISTING_ACTION_BAR_ID} />
       </div>
     </div>
   );

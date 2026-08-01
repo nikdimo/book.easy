@@ -102,19 +102,8 @@ echo.
 echo   This creates a local test APK. The Android folder is generated and ignored by Git.
 echo   The APK will connect to the production API at https://lingerhomes.com.
 echo.
-if not exist "%ANDROID_HOME%\ndk\26.1.10909125" (
-    echo   ERROR - Android NDK 26.1.10909125 is required for this project.
-    echo   Install it in Android Studio: SDK Manager ^> SDK Tools ^> Show Package Details ^> NDK 26.1.10909125.
-    pause
-    goto MENU
-)
-if exist "%REPO%\mobile\android\gradlew.bat" (
-    echo   Stopping any previous Gradle daemons to release Windows file locks...
-    pushd "%REPO%\mobile\android"
-    call gradlew.bat --stop
-    popd
-)
-attrib -R /S /D "%REPO%\mobile\node_modules\*"
+echo   The build script will remove and regenerate the complete Android folder.
+echo   If the first build fails, it will perform one full clean retry automatically.
 set "NODE_ENV=development"
 set "EXPO_PUBLIC_API_URL=https://lingerhomes.com"
 call npm run mobile:android:debug
@@ -188,7 +177,7 @@ echo.
 echo   Waiting for both applications, then opening:
 echo   http://localhost:8081/dashboard
 echo.
-start "" /b powershell -NoProfile -WindowStyle Hidden -Command "$api='http://localhost:3000/api/mobile/v1/languages?locale=en'; $mobile='http://localhost:8081/dashboard'; for ($i=0; $i -lt 120; $i++) { try { $a=Invoke-WebRequest -UseBasicParsing -Uri $api -Headers @{ Origin='http://localhost:8081' } -TimeoutSec 2; $m=Invoke-WebRequest -UseBasicParsing -Uri $mobile -TimeoutSec 2; if ($a.StatusCode -ge 200 -and $m.StatusCode -ge 200) { Start-Process $mobile; exit 0 } } catch {}; Start-Sleep -Seconds 1 }; Start-Process $mobile"
+start "" /b powershell -NoProfile -WindowStyle Hidden -Command "$mobile='http://localhost:8081/dashboard'; for ($i=0; $i -lt 120; $i++) { if (Get-NetTCPConnection -LocalPort 8081 -State Listen -ErrorAction SilentlyContinue) { Start-Process $mobile; exit 0 }; Start-Sleep -Seconds 1 }; Start-Process $mobile"
 echo   The mobile preview opens automatically when it is ready.
 echo   Use the same Google or email-link login as the web control panel.
 echo.
@@ -242,7 +231,7 @@ if exist ".next\dev" (
 echo   Opening http://localhost:3000
 echo   Press Ctrl+C in this window to stop.
 echo.
-start "" /b powershell -NoProfile -WindowStyle Hidden -Command "$url='http://localhost:3000'; for ($i=0; $i -lt 90; $i++) { try { $response=Invoke-WebRequest -UseBasicParsing -Uri $url -TimeoutSec 2; if ($response.StatusCode -ge 200) { Start-Process $url; exit 0 } } catch {}; Start-Sleep -Seconds 1 }; Start-Process $url"
+start "" /b powershell -NoProfile -WindowStyle Hidden -Command "$url='http://localhost:3000'; for ($i=0; $i -lt 90; $i++) { if (Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue) { Start-Process $url; exit 0 }; Start-Sleep -Seconds 1 }; Start-Process $url"
 rem Webpack is used for control-panel previews because Next 16.2.2 Turbopack can
 rem panic while restoring its Windows persistent cache. Production builds still use
 rem the default Turbopack build path.

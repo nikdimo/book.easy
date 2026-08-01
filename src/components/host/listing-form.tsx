@@ -2257,17 +2257,26 @@ export function ListingForm({
                 selectMobilePane(mobilePane === "preview" ? "edit" : "preview")
               }
             >
-              {mobilePane === "preview" ? (
-                <>
-                  <Pencil className="h-4 w-4" />
-                  <Tx k="host.form.back_to_editor" source="Back to editor" />
-                </>
-              ) : (
-                <>
-                  <Eye className="h-4 w-4" />
-                  <Tx k="host.workspace.preview" source="Preview" />
-                </>
-              )}
+              {/* Keyed so React remounts the label instead of mutating its text
+                  node. Google Translate swaps text nodes for its own <font>
+                  wrappers, and an in-place update then lands on a detached node —
+                  which is why the icon changed but the word stayed "Preview". */}
+              <span
+                key={mobilePane}
+                className="inline-flex items-center gap-1.5"
+              >
+                {mobilePane === "preview" ? (
+                  <>
+                    <Pencil className="h-4 w-4" />
+                    <Tx k="host.form.back_to_editor" source="Back to editor" />
+                  </>
+                ) : (
+                  <>
+                    <Eye className="h-4 w-4" />
+                    <Tx k="host.workspace.preview" source="Preview" />
+                  </>
+                )}
+              </span>
             </Button>
             {currentStep < STEPS.length - 1 ? (
               <Button
@@ -2345,17 +2354,23 @@ export function ListingForm({
                   selectMobilePane(mobilePane === "preview" ? "edit" : "preview")
                 }
               >
-                {mobilePane === "preview" ? (
-                  <>
-                    <Pencil className="h-4 w-4" />
-                    <Tx k="host.form.back_to_editor" source="Back to editor" />
-                  </>
-                ) : (
-                  <>
-                    <Eye className="h-4 w-4" />
-                    <Tx k="host.workspace.preview" source="Preview" />
-                  </>
-                )}
+                {/* Keyed for the same Google Translate reason as the wizard row. */}
+                <span
+                  key={mobilePane}
+                  className="inline-flex items-center gap-1.5"
+                >
+                  {mobilePane === "preview" ? (
+                    <>
+                      <Pencil className="h-4 w-4" />
+                      <Tx k="host.form.back_to_editor" source="Back to editor" />
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="h-4 w-4" />
+                      <Tx k="host.workspace.preview" source="Preview" />
+                    </>
+                  )}
+                </span>
               </Button>
               <Button
                 type="submit"

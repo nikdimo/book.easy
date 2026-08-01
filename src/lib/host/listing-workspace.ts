@@ -7,6 +7,14 @@
  * client-reference proxy rather than the real value — so a server page importing the
  * array from there gets something it cannot call `findIndex` on.
  */
+/**
+ * Where the phone action row is mounted. Lives here rather than beside the portal
+ * component for the same reason the stops do: the calendar page is a server
+ * component, and an id imported from a "use client" module would reach it as a
+ * client-reference proxy instead of the string.
+ */
+export const LISTING_ACTION_BAR_ID = "listing-action-bar";
+
 export type ListingWorkspaceStop =
   | "preview"
   | "edit"

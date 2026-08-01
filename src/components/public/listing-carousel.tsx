@@ -29,9 +29,16 @@ export async function ListingCarousel({
     );
   }
 
+  const containerId = `listing-carousel-${listings[0].id}`;
+
   return (
-    <ListingCarouselClient>
-      {listings.map((listing) => (
+    <div className="relative group/carousel">
+      <ListingCarouselClient containerId={containerId} />
+      <div
+        id={containerId}
+        className="flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory scrollbar-none"
+      >
+        {listings.map((listing) => (
         <div
           key={listing.id}
           data-carousel-card
@@ -39,7 +46,8 @@ export async function ListingCarousel({
         >
           <PropertyCard listing={listing} />
         </div>
-      ))}
-    </ListingCarouselClient>
+        ))}
+      </div>
+    </div>
   );
 }

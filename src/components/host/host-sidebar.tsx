@@ -250,6 +250,10 @@ export function HostSidebar({
   languages?: Awaited<ReturnType<typeof getEnabledLanguages>>;
 }) {
   const { resolve } = useI18n();
+  const pathname = usePathname();
+  // The listing wizard hands this bar its step indicator, which needs the width
+  // more than the wordmark does — the symbol alone still says whose site this is.
+  const compactBrand = pathname === "/host/listings/new";
   const [open, setOpen] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(232);
   const dragRef = useRef<{ startX: number; startWidth: number } | null>(null);
@@ -346,7 +350,7 @@ export function HostSidebar({
             : "max-h-20 py-3 opacity-100",
         )}
       >
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex shrink-0 items-center gap-3 min-w-0">
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
               <Button
@@ -372,12 +376,20 @@ export function HostSidebar({
             </SheetContent>
           </Sheet>
           <Link href="/" className="flex items-center gap-1 min-w-0">
-            <BrandLogo className="h-10 max-w-36" />
+            <BrandLogo
+              compact={compactBrand}
+              className={compactBrand ? "h-9 w-auto" : "h-10 max-w-36"}
+            />
           </Link>
         </div>
-        <div className="flex items-center gap-1">
-          {/* Pages hand their own top-bar controls (back, help) to this slot. */}
-          <div id={HOST_HEADER_ACTIONS_ID} className="flex items-center gap-1" />
+        <div className="flex min-w-0 flex-1 items-center gap-1">
+          {/* Pages hand their own top-bar controls (back, help) to this slot. It
+              grows so a page can centre something in it; icon-only consumers stay
+              right-aligned by keeping their own wrapper narrow. */}
+          <div
+            id={HOST_HEADER_ACTIONS_ID}
+            className="flex min-w-0 flex-1 items-center justify-end gap-1"
+          />
           <GoogleTranslateWidget languages={languages} />
         </div>
       </div>

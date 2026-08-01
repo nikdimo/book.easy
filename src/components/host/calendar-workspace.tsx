@@ -26,6 +26,7 @@ import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { DateRange } from "react-day-picker";
 import { toast } from "sonner";
 import { DateRangeCalendarStep } from "@/components/marketplace/marketplace-stay-date-picker";
+import { ListingActionBarPortal } from "@/components/host/listing-action-bar-portal";
 import { Button } from "@/components/ui/button";
 import { Calendar as MiniCalendar } from "@/components/ui/calendar";
 import {
@@ -165,6 +166,9 @@ const LENS_META: Record<
     changesTitle: string;
     changesDescription: string;
     emptyLabel: string;
+    /** Shown in the action bar before any dates are picked — on a phone this is
+     *  the only instruction the screen gives. */
+    emptyHint: string;
   }
 > = {
   availability: {
@@ -175,6 +179,7 @@ const LENS_META: Record<
     changesTitle: "Blocked dates and reservations",
     changesDescription: "Dates guests cannot book, and why.",
     emptyLabel: "Every upcoming date is open for booking.",
+    emptyHint: "Tap or drag across dates to block them.",
   },
   pricing: {
     heading: "Pricing",
@@ -184,6 +189,7 @@ const LENS_META: Record<
     changesTitle: "Custom prices",
     changesDescription: "Dates priced differently from the base rate.",
     emptyLabel: "Every date uses the base nightly rate.",
+    emptyHint: "Tap or drag across dates to price them.",
   },
   promotions: {
     heading: "Promotions",
@@ -193,6 +199,7 @@ const LENS_META: Record<
     changesTitle: "Active promotions",
     changesDescription: "Always-active and date-specific discounts.",
     emptyLabel: "No promotions are running.",
+    emptyHint: "Tap or drag across dates to discount them.",
   },
 };
 
@@ -1670,8 +1677,141 @@ export function CalendarWorkspace({
     );
   }
 
+  // Availability → Pricing → Promotions is the order a host works in, so the
+  // empty action bar offers the next one instead of sitting idle.
+  const nextLens: CalendarLens | null =
+    lens === "availability"
+      ? "pricing"
+      : lens === "pricing"
+        ? "promotions"
+        : null;
+
+  /**
+   * Rendered twice: inside the card on desktop, and portaled into the fixed phone
+   * bar. On a phone the card's copy would sit below the fold, under the nav — which
+   * is how a host could reach this screen and see no action at all.
+   */
+  const actionPanel = (
+    <>
+      {selection ? (
+        <p className="mb-2 text-center text-sm font-medium text-muted-foreground md:text-xs">
+          {rangeLabel(selection.startDate, selection.lastDate, true)} ·{" "}
+          {selection.nights} {selection.nights === 1 ? "night" : "nights"}
+        </p>
+      ) : (
+        <p className="mb-2 text-center text-xs font-medium text-muted-foreground md:text-[0.68rem]">
+          {meta.emptyHint}
+        </p>
+      )}
+      <div className="mx-auto w-full max-w-3xl space-y-2">
+        {lens === "availability" && selection ? (
+          // Blocking and opening are opposite commits, not one "manage" step,
+          // so each gets its own button and goes dim when it would be a no-op.
+          // Opening needs no options, so it acts straight away; blocking opens
+          // the sheet because it can carry a reason.
+          <div className="flex items-stretch gap-2">
+            <Button
+              type="button"
+              size="lg"
+              variant="outline"
+              className="flex-1"
+              disabled={pending || selectionCounts.blocked === 0}
+              onClick={openSelectedRange}
+            >
+              <BedDouble className="size-4" />
+              <Tx k="host.calendar.make_available" source="Make available" />
+            </Button>
+            <Button
+              type="button"
+              size="lg"
+              className="flex-1"
+              disabled={pending || selectionCounts.open === 0}
+              onClick={() =>
+                setEditor({
+                  kind: "availability",
+                  range: { from: range!.from!, to: range!.to ?? range!.from! },
+                })
+              }
+            >
+              <LockKeyhole className="size-4" />
+              <Tx k="host.calendar.block_dates" source="Block dates" />
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-stretch gap-2">
+            <Button
+              type="button"
+              size="lg"
+              className="flex-1"
+              onClick={() =>
+                setEditor({
+                  kind: meta.editorKind,
+                  range: range?.from
+                    ? { from: range.from, to: range.to ?? range.from }
+                    : undefined,
+                })
+              }
+            >
+              <PrimaryActionIcon className="size-4" />
+              {primaryAction.label}
+            </Button>
+            {!selection && nextLens ? (
+              <Button
+                type="button"
+                size="lg"
+                variant="outline"
+                className="shrink-0"
+                asChild
+              >
+                <Link href={lensHref(nextLens)}>
+                  <Tx k="host.calendar.next" source="Next:" />{" "}
+                  {LENS_META[nextLens].heading}
+                  <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+            ) : null}
+          </div>
+        )}
+        <p className="line-clamp-2 text-center text-xs text-muted-foreground md:line-clamp-none md:text-[0.65rem]">
+          {primaryAction.detail}
+        </p>
+        {selection ? (
+          // Peak dates are rarely a one-lens job. Once a range is chosen, offer
+          // the other two lenses directly instead of making the host reselect.
+          <div
+            data-keeps-calendar-selection
+            className="flex flex-wrap justify-center gap-x-4 gap-y-1 pt-0.5"
+          >
+            {(["availability", "pricing", "promotions"] as const)
+              .filter((target) => target !== lens)
+              .map((target) => (
+                <Link
+                  key={target}
+                  href={lensHref(target)}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-primary transition-colors hover:text-primary/75 md:text-[0.68rem]"
+                >
+                  {target === "availability"
+                    ? "Also block these dates"
+                    : target === "pricing"
+                      ? "Also price these dates"
+                      : "Also discount these dates"}
+                  <ArrowRight className="size-3" />
+                </Link>
+              ))}
+          </div>
+        ) : null}
+      </div>
+    </>
+  );
+
   return (
     <div className="space-y-5">
+      <ListingActionBarPortal>
+        <div className="border-t bg-background px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-2px_8px_rgb(0_0_0/0.04)]">
+          {actionPanel}
+        </div>
+      </ListingActionBarPortal>
+
       <section
         ref={calendarInteractionRef}
         aria-label={`${listingTitle} calendar`}
@@ -1784,94 +1924,10 @@ export function CalendarWorkspace({
             </>
           ) : null}
         </div>
-        <div className="border-t bg-stone-50 px-5 py-3">
-          {selection ? (
-            <p className="mb-2 text-center text-sm md:text-xs font-medium text-muted-foreground">
-              {rangeLabel(selection.startDate, selection.lastDate, true)} ·{" "}
-              {selection.nights} {selection.nights === 1 ? "night" : "nights"}
-            </p>
-          ) : null}
-          <div className="mx-auto w-full max-w-3xl space-y-2">
-            {lens === "availability" && selection ? (
-              // Blocking and opening are opposite commits, not one "manage" step,
-              // so each gets its own button and goes dim when it would be a no-op.
-              // Opening needs no options, so it acts straight away; blocking opens
-              // the sheet because it can carry a reason.
-              <div className="flex items-stretch gap-2">
-                <Button
-                  type="button"
-                  size="lg"
-                  variant="outline"
-                  className="flex-1"
-                  disabled={pending || selectionCounts.blocked === 0}
-                  onClick={openSelectedRange}
-                >
-                  <BedDouble className="size-4" />
-                  <Tx k="host.calendar.make_available" source="Make available" />
-                </Button>
-                <Button
-                  type="button"
-                  size="lg"
-                  className="flex-1"
-                  disabled={pending || selectionCounts.open === 0}
-                  onClick={() =>
-                    setEditor({
-                      kind: "availability",
-                      range: { from: range!.from!, to: range!.to ?? range!.from! },
-                    })
-                  }
-                >
-                  <LockKeyhole className="size-4" />
-                  <Tx k="host.calendar.block_dates" source="Block dates" />
-                </Button>
-              </div>
-            ) : (
-              <Button
-                type="button"
-                size="lg"
-                className="w-full"
-                onClick={() =>
-                  setEditor({
-                    kind: meta.editorKind,
-                    range: range?.from
-                      ? { from: range.from, to: range.to ?? range.from }
-                      : undefined,
-                  })
-                }
-              >
-                <PrimaryActionIcon className="size-4" />
-                {primaryAction.label}
-              </Button>
-            )}
-            <p className="text-center text-xs md:text-[0.65rem] text-muted-foreground">
-              {primaryAction.detail}
-            </p>
-            {selection ? (
-              // Peak dates are rarely a one-lens job. Once a range is chosen, offer
-              // the other two lenses directly instead of making the host reselect.
-              <div
-                data-keeps-calendar-selection
-                className="flex flex-wrap justify-center gap-x-4 gap-y-1 pt-0.5"
-              >
-                {(["availability", "pricing", "promotions"] as const)
-                  .filter((target) => target !== lens)
-                  .map((target) => (
-                    <Link
-                      key={target}
-                      href={lensHref(target)}
-                      className="inline-flex items-center gap-1 text-xs md:text-[0.68rem] font-semibold text-primary transition-colors hover:text-primary/75"
-                    >
-                      {target === "availability"
-                        ? "Also block these dates"
-                        : target === "pricing"
-                          ? "Also price these dates"
-                          : "Also discount these dates"}
-                      <ArrowRight className="size-3" />
-                    </Link>
-                  ))}
-              </div>
-            ) : null}
-          </div>
+        {/* Phones get this panel in the fixed bar instead, so it cannot end up
+            below the fold under the nav. */}
+        <div className="hidden border-t bg-stone-50 px-5 py-3 md:block">
+          {actionPanel}
         </div>
       </section>
 

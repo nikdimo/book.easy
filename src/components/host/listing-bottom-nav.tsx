@@ -7,6 +7,7 @@ import type { MouseEvent as ReactMouseEvent } from "react";
 import {
   LISTING_WORKSPACE_STOPS,
   listingStopHref,
+  withSelectionQuery,
   type ListingWorkspaceStop,
 } from "@/lib/host/listing-workspace";
 import { cn } from "@/lib/utils";
@@ -38,6 +39,7 @@ export function ListingBottomNav({
   className,
   paneOnly = false,
   omitPreview = false,
+  preserveQuery = "",
   onSelectPane,
   onNavigate,
   onKeyDown,
@@ -45,6 +47,12 @@ export function ListingBottomNav({
   listingId: string;
   active: ListingWorkspaceStop;
   className?: string;
+  /**
+   * Carries the calendar's selected dates across a lens switch, the way the
+   * desktop tabs already do. Without it, picking a range on Availability and
+   * tapping Pricing silently threw the range away.
+   */
+  preserveQuery?: string;
   /** A draft has no id-based calendar routes yet, so it shows the panes only. */
   paneOnly?: boolean;
   /** Set where Preview lives in an action row instead, so it isn't offered twice. */
@@ -97,7 +105,10 @@ export function ListingBottomNav({
             return (
               <Link
                 key={stop}
-                href={listingStopHref(listingId, stop)}
+                href={withSelectionQuery(
+                  listingStopHref(listingId, stop),
+                  preserveQuery,
+                )}
                 onClick={onNavigate}
                 aria-current={current ? "page" : undefined}
                 className={cn(
@@ -141,7 +152,10 @@ export function ListingBottomNav({
           return (
             <Link
               key={stop}
-              href={listingStopHref(listingId, stop)}
+              href={withSelectionQuery(
+                listingStopHref(listingId, stop),
+                preserveQuery,
+              )}
               onClick={onNavigate}
               aria-current={current ? "page" : undefined}
               className={cn(

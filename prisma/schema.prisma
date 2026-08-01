@@ -317,9 +317,28 @@ model User {
   reviewAdminReads        ReviewAdminRead[]
   communicationPreference CommunicationPreference?
   marketingContact        MarketingContact?
+  deletionTokens          AccountDeletionToken[]
 
   @@index([email])
   @@index([role])
+}
+
+/// Confirmation link for self-service account deletion. Deliberately separate from
+/// `VerificationToken` (Auth.js): that table is consumed by the sign-in callback, so a
+/// token stored there could be redeemed as a login. These are single-purpose and
+/// short-lived — the only thing a leaked one can do is delete the account it belongs to.
+model AccountDeletionToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expires   DateTime
+  createdAt DateTime  @default(now())
+  usedAt    DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expires])
 }
 
 // ─── Auth.js (Google + magic link) ─────────────────────────────────────────────

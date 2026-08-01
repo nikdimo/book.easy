@@ -14,7 +14,12 @@ export async function getHostListings(hostId: string) {
     where: { hostId },
     include: {
       property: true,
-      images: { where: { isPrimary: true }, take: 1 },
+      // Primary photo first, then the first ordered photo as a fallback.
+      images: {
+        where: { mediaType: "IMAGE" },
+        orderBy: [{ isPrimary: "desc" }, { displayOrder: "asc" }],
+        take: 1,
+      },
       pricingRule: true,
       promotions: {
         where: { disabledAt: null },

@@ -40,25 +40,29 @@ export function ListingWizardHeaderActions({
 
   return (
     <HostHeaderPortal>
-      <div className="flex min-w-0 items-center gap-1 md:hidden">
+      {/* Fills the slot and centres, so the step indicator sits in the middle of
+          the bar rather than crowding the language widget. */}
+      <div className="flex w-full min-w-0 items-center justify-center gap-1 md:hidden">
         <button
           type="button"
           onClick={onLeave}
           aria-label={resolve("host.form.my_listings", "My listings").text}
-          className="grid size-9 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="grid size-10 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <ArrowLeft className="size-5" />
         </button>
         <button
           type="button"
           onClick={onOpenSteps}
-          className="inline-flex min-w-0 min-h-9 shrink items-center gap-1.5 rounded-full bg-muted px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+          className="inline-flex min-h-10 min-w-0 shrink items-center gap-2 rounded-full bg-muted px-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted/70"
         >
-          <ListChecks className="size-3.5 shrink-0" />
-          <span className="notranslate shrink-0" translate="no">
+          <ListChecks className="size-4 shrink-0 text-primary" />
+          <span className="notranslate shrink-0 tabular-nums" translate="no">
             {`${step + 1}/${totalSteps}`}
           </span>
-          <span className="truncate">{stepTitle}</span>
+          <span className="truncate font-medium text-muted-foreground">
+            {stepTitle}
+          </span>
         </button>
         {/* A dot rather than a word: the wording still reaches screen readers,
             but on a 375px bar "Draft saved" crowded out the step title. */}

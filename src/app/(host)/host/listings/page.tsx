@@ -132,6 +132,7 @@ export default async function HostListingsPage() {
               key={listing.id}
               listing={{
                 ...listing,
+                imageUrl: listing.images[0]?.url ?? null,
                 pricingRule: listing.pricingRule
                   ? {
                       baseNightlyRate: Number(listing.pricingRule.baseNightlyRate),

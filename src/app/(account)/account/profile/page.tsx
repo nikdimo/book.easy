@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
@@ -26,6 +27,19 @@ export default async function ProfilePage() {
           bio: user.profile?.bio || "",
         }}
       />
+
+      {/* Deliberately understated: cookie choices, data export and account deletion all
+          live one click away rather than as buttons beside "Save Changes". */}
+      <p className="text-sm text-muted-foreground">
+        Manage your cookie preferences, download your data, or delete your account in{" "}
+        <Link
+          href="/account/privacy"
+          className="underline underline-offset-4 hover:text-foreground"
+        >
+          Data &amp; Privacy
+        </Link>
+        .
+      </p>
     </div>
   );
 }
