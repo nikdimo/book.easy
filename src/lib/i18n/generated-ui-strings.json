@@ -1,5 +1,160 @@
 [
   {
+    "key": "amenities.categories.bathroom",
+    "sourceText": "Bathroom",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.categories.entertainment",
+    "sourceText": "Entertainment",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.categories.essentials",
+    "sourceText": "Essentials",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.categories.features",
+    "sourceText": "Features",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.categories.kitchen",
+    "sourceText": "Kitchen",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.categories.outdoor",
+    "sourceText": "Outdoor",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.categories.safety",
+    "sourceText": "Safety",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.air_conditioning",
+    "sourceText": "Air conditioning",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.balcony",
+    "sourceText": "Balcony",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.bbq_grill",
+    "sourceText": "BBQ grill",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.city_view",
+    "sourceText": "City view",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.clothes_dryer",
+    "sourceText": "Dryer",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.clothes_iron",
+    "sourceText": "Iron",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.coffee_maker",
+    "sourceText": "Coffee maker",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.fire_extinguisher",
+    "sourceText": "Fire extinguisher",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.first_aid_kit",
+    "sourceText": "First aid kit",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.free_parking",
+    "sourceText": "Free parking",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.garden",
+    "sourceText": "Garden",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.hair_dryer",
+    "sourceText": "Hair dryer",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.heating",
+    "sourceText": "Heating",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.hot_tub",
+    "sourceText": "Hot tub",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.kitchen",
+    "sourceText": "Kitchen",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.lake_view",
+    "sourceText": "Lake view",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.microwave",
+    "sourceText": "Microwave",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.refrigerator",
+    "sourceText": "Refrigerator",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.smoke_detector",
+    "sourceText": "Smoke detector",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.swimming_pool",
+    "sourceText": "Pool",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.television",
+    "sourceText": "TV",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.washing_machine",
+    "sourceText": "Washer",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.wifi",
+    "sourceText": "Wi-Fi",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.workspace",
+    "sourceText": "Workspace",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
     "key": "booking_widget.reserve_tooltip",
     "sourceText": "Send a booking request to the host — you won't be charged yet.",
     "filePath": "src/app/(public)/properties/[slug]/page.tsx"

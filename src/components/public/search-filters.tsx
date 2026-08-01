@@ -40,6 +40,10 @@ import type { PropertyTypeOption } from "@/lib/types/property-type";
 import { cn } from "@/lib/utils";
 import { Tx, useI18n } from "@/lib/i18n/client";
 import type { Resolved } from "@/lib/i18n/t";
+import {
+  resolveAmenityCategory,
+  resolveAmenityLabel,
+} from "@/lib/i18n/amenity-labels";
 
 const PROPERTY_TYPE_ICONS = {
   APARTMENT: Building2,
@@ -654,46 +658,56 @@ function SearchFiltersInner({
               description={i18n.resolve("filters.amenities_description", "Pick the essentials you want included.")}
             />
             <div className="space-y-6">
-              {groupedAmenities.map(([category, items]) => (
-                <div key={category}>
-                  <h4 className="mb-3 text-base font-semibold text-foreground">
-                    {category}
-                  </h4>
-                  <div className="flex flex-wrap gap-2.5">
-                    {items.map((amenity) => {
-                      const selected = selectedAmenities.includes(amenity.name);
-                      const unavailable =
-                        !selected && !availableAmenitySet.has(amenity.name);
-                      const button = (
-                        <button
-                          key={amenity.id}
-                          type="button"
-                          onClick={() => {
-                            if (!unavailable) {
-                              toggleAmenity(amenity.name);
-                            }
-                          }}
-                          aria-disabled={unavailable}
-                          className={cn(
-                            "inline-flex items-center rounded-full border px-4 py-2.5 text-sm font-medium transition-all",
-                            selected
-                              ? "border-foreground bg-muted/35 text-foreground shadow-sm"
-                              : unavailable
-                                ? "cursor-not-allowed border-border/70 bg-muted/15 text-muted-foreground opacity-55"
-                                : "border-border bg-background text-foreground hover:bg-muted/25"
-                          )}
-                        >
-                          {amenity.name}
-                        </button>
-                      );
+              {groupedAmenities.map(([category, items]) => {
+                const categoryLabel = resolveAmenityCategory(i18n, category);
+                return (
+                  <div key={category}>
+                    <h4
+                      className={cn(
+                        "mb-3 text-base font-semibold text-foreground",
+                        categoryLabel.translated && "notranslate",
+                      )}
+                    >
+                      {categoryLabel.text}
+                    </h4>
+                    <div className="flex flex-wrap gap-2.5">
+                      {items.map((amenity) => {
+                        const selected = selectedAmenities.includes(amenity.name);
+                        const unavailable =
+                          !selected && !availableAmenitySet.has(amenity.name);
+                        const amenityLabel = resolveAmenityLabel(i18n, amenity.name);
+                        const button = (
+                          <button
+                            key={amenity.id}
+                            type="button"
+                            onClick={() => {
+                              if (!unavailable) {
+                                toggleAmenity(amenity.name);
+                              }
+                            }}
+                            aria-disabled={unavailable}
+                            className={cn(
+                              "inline-flex items-center rounded-full border px-4 py-2.5 text-sm font-medium transition-all",
+                              selected
+                                ? "border-foreground bg-muted/35 text-foreground shadow-sm"
+                                : unavailable
+                                  ? "cursor-not-allowed border-border/70 bg-muted/15 text-muted-foreground opacity-55"
+                                  : "border-border bg-background text-foreground hover:bg-muted/25",
+                              amenityLabel.translated && "notranslate",
+                            )}
+                          >
+                            {amenityLabel.text}
+                          </button>
+                        );
 
-                      return unavailable
-                        ? renderUnavailableWrapper(button)
-                        : button;
-                    })}
+                        return unavailable
+                          ? renderUnavailableWrapper(button)
+                          : button;
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </section>
         </div>

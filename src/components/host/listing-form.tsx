@@ -39,6 +39,10 @@ import { splitDescriptionPreviewTiers } from "@/lib/utils/description-preview";
 import { toast } from "sonner";
 import { Tx, interpolate, useI18n } from "@/lib/i18n/client";
 import {
+  resolveAmenityCategory,
+  resolveAmenityLabel,
+} from "@/lib/i18n/amenity-labels";
+import {
   ListingImagesField,
   type ListingMediaUploadState,
 } from "@/components/host/listing-images-field";
@@ -1886,16 +1890,26 @@ export function ListingForm({
           <div id={isEditing ? "edit-section-amenities" : undefined} className={isEditing || currentStep === LISTING_STEP.amenities ? "scroll-mt-32 block" : "hidden"}>
           <FieldSection>
             <div className="space-y-4 md:space-y-7">
-              {Object.entries(groupedAmenities).map(([category, items]) => (
-                <div key={category}>
-                  <p className="mb-2 text-xs font-semibold text-foreground md:mb-3 md:text-sm">{category}</p>
-                  {/* Sized off the container, not the viewport: the editor is a
+              {Object.entries(groupedAmenities).map(([category, items]) => {
+                const categoryLabel = resolveAmenityCategory({ resolve }, category);
+                return (
+                  <div key={category}>
+                    <p
+                      className={cn(
+                        "mb-2 text-xs font-semibold text-foreground md:mb-3 md:text-sm",
+                        categoryLabel.translated && "notranslate",
+                      )}
+                    >
+                      {categoryLabel.text}
+                    </p>
+                    {/* Sized off the container, not the viewport: the editor is a
                       resizable pane, so viewport breakpoints put one card per row
                       even when there is room for three. */}
-                  <div className="grid grid-cols-[repeat(auto-fill,minmax(7.5rem,1fr))] gap-2 md:grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] md:gap-2.5">
-                    {items.map((amenity) => {
+                    <div className="grid grid-cols-[repeat(auto-fill,minmax(7.5rem,1fr))] gap-2 md:grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] md:gap-2.5">
+                      {items.map((amenity) => {
                       const checked = selectedAmenityIds.includes(amenity.id);
                       const Icon = AMENITY_ICON_MAP[amenity.icon ?? ""] ?? Sparkles;
+                      const amenityLabel = resolveAmenityLabel({ resolve }, amenity.name);
                       return (
                         <button
                           type="button"
@@ -1915,15 +1929,23 @@ export function ListingForm({
                           )}>
                             <Icon className="size-4 md:h-[1.125rem] md:w-[1.125rem]" aria-hidden="true" />
                           </span>
-                          <span className="flex-1 text-xs font-medium leading-snug md:text-[0.8125rem]">{amenity.name}</span>
+                          <span
+                            className={cn(
+                              "flex-1 text-xs font-medium leading-snug md:text-[0.8125rem]",
+                              amenityLabel.translated && "notranslate",
+                            )}
+                          >
+                            {amenityLabel.text}
+                          </span>
                           <span className={cn("size-1.5 shrink-0 rounded-full md:size-2", checked ? "bg-primary" : "bg-border")} aria-hidden="true" />
                           {checked && <input type="hidden" name="amenityIds" value={amenity.id} />}
                         </button>
                       );
-                    })}
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               <SuggestMissingOption
                 kind="AMENITY"
                 listingId={listing?.id}
@@ -2961,12 +2983,21 @@ function ListingGuestPreview({
               </h4>
               {amenities.length > 0 ? (
                   <div className="grid gap-2 sm:grid-cols-2">
-                    {amenities.slice(0, 8).map((amenity) => (
-                      <div key={amenity.id} className="flex items-center gap-2 text-sm">
-                        <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-                        {amenity.name}
-                      </div>
-                    ))}
+                    {amenities.slice(0, 8).map((amenity) => {
+                      const amenityLabel = resolveAmenityLabel({ resolve }, amenity.name);
+                      return (
+                        <div
+                          key={amenity.id}
+                          className={cn(
+                            "flex items-center gap-2 text-sm",
+                            amenityLabel.translated && "notranslate",
+                          )}
+                        >
+                          <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+                          {amenityLabel.text}
+                        </div>
+                      );
+                    })}
                   </div>
               ) : (
                 <p className="text-sm text-muted-foreground">

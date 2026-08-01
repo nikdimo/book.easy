@@ -4,6 +4,7 @@ import {
   Mountain, Building, Laptop, LucideIcon,
 } from "lucide-react";
 import { getT, T } from "@/lib/i18n/t";
+import { resolveAmenityLabel } from "@/lib/i18n/amenity-labels";
 
 const iconMap: Record<string, LucideIcon> = {
   wifi: Wifi,
@@ -44,6 +45,7 @@ export async function AmenityList({ amenities }: AmenityListProps) {
       <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-x-6 gap-y-3">
         {amenities.map(({ amenity }) => {
           const Icon = amenity.icon ? iconMap[amenity.icon] : undefined;
+          const label = resolveAmenityLabel(t, amenity.name);
           return (
             <div key={amenity.name} className="flex items-center gap-3 py-1">
               {Icon ? (
@@ -51,7 +53,9 @@ export async function AmenityList({ amenities }: AmenityListProps) {
               ) : (
                 <div className="h-5 w-5 rounded-full bg-muted shrink-0" />
               )}
-              <span className="text-sm">{amenity.name}</span>
+              <span className={label.translated ? "notranslate text-sm" : "text-sm"}>
+                {label.text}
+              </span>
             </div>
           );
         })}

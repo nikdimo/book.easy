@@ -1,6 +1,9 @@
 /** Code-reviewed terminology for high-visibility copy where literal translation is
  * especially likely to sound unnatural. Admin manual edits still take precedence. */
 export const CURATED_TRANSLATION_OVERRIDES: Record<string, Record<string, string>> = {
+  "amenities.items.clothes_iron": {
+    mk: "Пегла",
+  },
   "footer.product_description": {
     mk: "Резервирајте сместување на {site} — дел од пакетот алатки на {family}.",
     sq: "Rezervoni qëndrime në {site} — pjesë e paketës së mjeteve {family}.",
