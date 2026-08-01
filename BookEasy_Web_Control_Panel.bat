@@ -16,6 +16,7 @@ echo   [A] PREVIEW
 echo   1. Start Dev Server (migrations + Next.js)
 echo   M. Start Mobile App Preview (web + React Native)
 echo   K. Build Android Debug APK
+echo   I. Start iPhone Expo Go Preview
 echo.
 echo   [B] DEPLOY
 echo   2. Deploy to lingerhomes.com
@@ -33,11 +34,61 @@ set /p CHOICE="Choose: "
 if "%CHOICE%"=="1" goto PREVIEW
 if /I "%CHOICE%"=="M" goto MOBILE_PREVIEW
 if /I "%CHOICE%"=="K" goto MOBILE_ANDROID
+if /I "%CHOICE%"=="I" goto MOBILE_IPHONE
 if "%CHOICE%"=="2" goto DEPLOY
 if "%CHOICE%"=="3" goto SAVE
 if "%CHOICE%"=="4" goto LIST_VERSIONS
 if "%CHOICE%"=="5" goto RELEASE
 if "%CHOICE%"=="0" exit /b 0
+goto MENU
+
+
+:MOBILE_IPHONE
+cls
+echo.
+echo ============================================
+echo   Start iPhone Expo Go Preview
+echo ============================================
+echo.
+echo   The iPhone and this computer must be on the same Wi-Fi network.
+echo   Install Expo Go on the iPhone, then scan the QR code in the Expo window.
+echo   This preview uses the local API on this computer, not the VPS.
+echo.
+powershell -NoProfile -Command "if (Get-NetTCPConnection -LocalPort 8081 -State Listen -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }"
+if not errorlevel 1 (
+    echo   ERROR - Port 8081 is already in use.
+    echo   Close the web mobile preview window started by option M, then try I again.
+    pause
+    goto MENU
+)
+for /f "delims=" %%I in ('powershell -NoProfile -Command "(Get-NetIPAddress -AddressFamily IPv4 ^| Where-Object { $_.IPAddress -notlike '127.*' -and $_.IPAddress -notlike '169.254.*' -and $_.PrefixOrigin -ne 'WellKnown' } ^| Select-Object -First 1 -ExpandProperty IPAddress)"') do set "LAN_IP=%%I"
+if not defined LAN_IP (
+    echo   ERROR - Could not determine this computer's LAN IP address.
+    pause
+    goto MENU
+)
+
+powershell -NoProfile -Command "if (Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }"
+if errorlevel 1 (
+    echo [1/2] Starting the local web API...
+    if exist ".next\dev" rmdir /s /q ".next\dev"
+    start "BookEasy Web" cmd /k "cd /d ""%REPO%"" && npm run dev -- --webpack"
+    timeout /t 3 /nobreak >nul
+) else (
+    echo [1/2] Local web API is already running at http://localhost:3000
+)
+
+echo [2/2] Starting Expo for iPhone...
+echo   API address: http://%LAN_IP%:3000
+start "Linger Homes iPhone Expo" cmd /k "cd /d ""%REPO%\mobile"" && set EXPO_PUBLIC_API_URL=http://%LAN_IP%:3000 && npx expo start --lan"
+echo.
+echo   On the iPhone:
+echo   1. Install Expo Go from the App Store.
+echo   2. Keep the iPhone and PC on the same Wi-Fi.
+echo   3. Scan the QR code shown in the Expo window.
+echo   4. If the QR code cannot connect, run option I again and use Expo tunnel mode manually.
+echo.
+pause
 goto MENU
 
 
