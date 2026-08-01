@@ -86,7 +86,7 @@ echo   On the iPhone:
 echo   1. Install Expo Go from the App Store.
 echo   2. Keep the iPhone and PC on the same Wi-Fi.
 echo   3. Scan the QR code shown in the Expo window.
-echo   4. If the QR code cannot connect, run option I again and use Expo tunnel mode manually.
+echo   4. If Expo Go reports an SDK mismatch, use an iOS development build.
 echo.
 pause
 goto MENU
@@ -100,16 +100,9 @@ echo   Build Android Debug APK
 echo ============================================
 echo.
 echo   This creates a local test APK. The Android folder is generated and ignored by Git.
-echo   The phone must be able to reach this computer on the same network.
+echo   The APK will connect to the production API at https://lingerhomes.com.
 echo.
-for /f "delims=" %%I in ('powershell -NoProfile -Command "(Get-NetIPAddress -AddressFamily IPv4 ^| Where-Object { $_.IPAddress -notlike '127.*' -and $_.IPAddress -notlike '169.254.*' -and $_.PrefixOrigin -ne 'WellKnown' } ^| Select-Object -First 1 -ExpandProperty IPAddress)"') do set "LAN_IP=%%I"
-if not defined LAN_IP (
-    echo   ERROR - Could not determine this computer's LAN IP address.
-    pause
-    goto MENU
-)
-echo   API address for the APK: http://%LAN_IP%:3000
-set "EXPO_PUBLIC_API_URL=http://%LAN_IP%:3000"
+set "EXPO_PUBLIC_API_URL=https://lingerhomes.com"
 call npm run mobile:android:debug
 if errorlevel 1 (
     echo.
