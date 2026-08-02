@@ -1,8 +1,11 @@
 "use server";
 
 import { requireAdmin } from "@/lib/auth-helpers";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
 import { revalidatePath, revalidateTag } from "next/cache";
 import { headers } from "next/headers";
+import { normalizeLocaleCode } from "@/lib/i18n/locale-preference";
 import { LANGUAGES_TAG } from "@/lib/services/language.service";
 import { UI_TRANSLATIONS_TAG } from "@/lib/i18n/translation-cache";
 import { clientIpFromHeaders, rateLimit } from "@/lib/rate-limit";
@@ -100,9 +103,39 @@ export async function toggleLanguageAiTranslation(code: string) {
   return { success: true };
 }
 
+/** Stores the switcher's choice on the signed-in account so system email can be sent
+ *  in it later. The switcher's cookie lives in one browser and is long gone by the
+ *  time the background jobs in scripts/ send most mail, so the account is the only
+ *  place the preference survives.
+ *
+ *  The full site locale is stored, not just the languages email is reviewed in:
+ *  recording what the person actually chose means reviewing a new language later
+ *  turns it on for everyone who already picked it, with no backfill. Narrowing to
+ *  English happens at send time, in `resolveEmailLocale`. */
+async function storeAccountLocale(code: string): Promise<void> {
+  try {
+    const locale = normalizeLocaleCode(code);
+    if (!locale) return;
+    const session = await auth();
+    const userId = session?.user?.id;
+    // Anonymous visitors keep the cookie and nothing else — there's no account to
+    // store this on, and picking a language must not create one.
+    if (!userId) return;
+    await db.user.update({ where: { id: userId }, data: { locale } });
+  } catch (error) {
+    // Never let a preference write break switching the language.
+    console.warn("[language] could not store account locale", error);
+  }
+}
+
 /** Fire-and-forget from the public language switcher — not gated by requireAdmin
  *  since any visitor picking a language should count toward it. */
 export async function recordLanguageSelection(code: string) {
+  // Runs before the rate limit and the default-language check below: switching
+  // *back* to English is a real preference that must be stored, and a visitor who
+  // trips the selection-count rate limit still gets their email language saved.
+  await storeAccountLocale(code);
+
   const ip = clientIpFromHeaders(await headers());
   const limit = rateLimit(`language-selection:${ip}`, 30, 60 * 60 * 1000);
   if (!limit.success) return { success: true };

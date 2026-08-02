@@ -29,6 +29,27 @@ const adapter = {
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
   adapter,
+  events: {
+    // Backfill the account's email language from the browser's locale cookie the
+    // first time someone signs in. Without this, anyone who picked a language
+    // before creating an account would keep getting English mail until they
+    // touched the switcher again. Only fills a null — never overwrites a choice
+    // already stored, which would let a shared or borrowed browser silently
+    // change the language of someone's booking confirmations.
+    async signIn({ user }) {
+      if (!user.id) return;
+      try {
+        const locale = resolveEmailLocale(await getRequestLocale());
+        await db.user.updateMany({
+          where: { id: user.id, locale: null },
+          data: { locale },
+        });
+      } catch (error) {
+        // Never block a sign-in over an email-language preference.
+        console.warn("[auth] could not backfill user locale", error);
+      }
+    },
+  },
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,

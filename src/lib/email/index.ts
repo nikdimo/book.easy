@@ -15,6 +15,7 @@ import {
   communicationSupportEmail,
 } from "@/lib/communication-brand.server";
 import { renderBookingEmail } from "@/lib/email/booking-template";
+import { getEmailT, type EmailTranslator } from "@/lib/email/i18n";
 
 export interface SendEmailParams {
   to: string;
@@ -83,6 +84,7 @@ export async function notifyConversationMessage(input: {
       select: {
         name: true,
         email: true,
+        locale: true,
         communicationPreference: { select: { messageEmail: true } },
       },
     }),
@@ -96,25 +98,87 @@ export async function notifyConversationMessage(input: {
   await Promise.all(
     recipients
       .filter((recipient) => recipient.communicationPreference?.messageEmail !== false)
-      .map((recipient) =>
-      sendTransactionalEmail({
-        to: recipient.email,
-        sender: input.supportSender ? "support" : "customer",
-        subject: `[${COMMUNICATION_BRAND.name}] New message about ${conversation.listing.title}`,
-        text: [
-          `Hi ${recipient.name},`,
-          "",
-          `${senderName} sent you a message about "${conversation.listing.title}".`,
-          "",
-          input.preview,
-          "",
-          `Reply securely in ${COMMUNICATION_BRAND.name}: ${link}`,
-          "",
-          `For your privacy, keep the conversation inside ${COMMUNICATION_BRAND.name}.`,
-        ].join("\n"),
+      .map((recipient) => {
+        // Recipients of one conversation can have different languages, so the body
+        // is rendered per person rather than once for the whole list.
+        const t = getEmailT(recipient.locale);
+        return sendTransactionalEmail({
+          to: recipient.email,
+          sender: input.supportSender ? "support" : "customer",
+          subject: `[${COMMUNICATION_BRAND.name}] ${t.ti(
+            "email.message.subject",
+            "New message about {listing}",
+            { listing: conversation.listing.title }
+          )}`,
+          text: [
+            greeting(recipient.name, t),
+            "",
+            t.ti(
+              "email.message.body",
+              '{sender} sent you a message about "{listing}".',
+              { sender: senderName, listing: conversation.listing.title }
+            ),
+            "",
+            input.preview,
+            "",
+            `${t.ti("email.message.reply_securely", "Reply securely in {brand}", {
+              brand: COMMUNICATION_BRAND.name,
+            })}: ${link}`,
+            "",
+            t.ti(
+              "email.message.privacy",
+              "For your privacy, keep the conversation inside {brand}.",
+              { brand: COMMUNICATION_BRAND.name }
+            ),
+          ].join("\n"),
+        });
       })
-    )
   );
+}
+
+/** Enum → sentence. The previous `replaceAll("_", " ")` leaked a raw database value
+ * into user-facing copy ("AWAITING_INFORMATION" → "AWAITING INFORMATION"), which has
+ * no translation to key off. Each status gets its own key instead; an unrecognised
+ * value still degrades to the old formatting rather than showing nothing. */
+function caseStatusLabel(status: string, t: EmailTranslator): string {
+  const labels: Record<string, string> = {
+    SUBMITTED: "Submitted",
+    UNDER_REVIEW: "Under review",
+    AWAITING_INFORMATION: "Awaiting information",
+    RESOLVED: "Resolved",
+    REJECTED: "Rejected",
+  };
+  const source = labels[status];
+  if (!source) return status.replaceAll("_", " ");
+  return t.t(`email.case.status.${status.toLowerCase()}`, source);
+}
+
+/** The claim kind appears mid-sentence ("a booking-related damage request"), so it
+ * needs a translated noun rather than a lower-cased enum. */
+function claimKindLabel(kind: string | null | undefined, t: EmailTranslator): string {
+  const labels: Record<string, string> = {
+    EXPENSE: "expense",
+    DAMAGE: "damage",
+    REFUND: "refund",
+  };
+  const source = (kind && labels[kind]) || "payment";
+  return t.t(`email.claim.kind.${(kind ?? "PAYMENT").toLowerCase()}`, source);
+}
+
+/** Same treatment for the claim-response enum. */
+function claimResponseLabel(status: string | null | undefined, t: EmailTranslator): string {
+  const labels: Record<string, string> = {
+    AWAITING_ADMIN: "Awaiting admin",
+    AWAITING_RECIPIENT: "Awaiting recipient",
+    ACCEPTED: "Accepted",
+    COUNTERED: "Countered",
+    REJECTED: "Rejected",
+    ESCALATED: "Escalated",
+  };
+  if (!status) return t.t("email.claim.response.updated", "Updated");
+  const source = labels[status];
+  if (!source) return status.replaceAll("_", " ");
+  return t.t(`email.claim.response.${status.toLowerCase()}`, source);
 }
 
 export async function notifySafetyCaseSubmitted(input: {
@@ -124,24 +188,38 @@ export async function notifySafetyCaseSubmitted(input: {
   const safetyCase = await db.safetyCase.findUnique({
     where: { id: input.caseId },
     include: {
-      reporter: { select: { name: true, email: true } },
+      reporter: { select: { name: true, email: true, locale: true } },
     },
   });
   if (!safetyCase) return;
 
+  const t = getEmailT(safetyCase.reporter.locale);
+  const isClaim = safetyCase.type === "CLAIM";
   const link = communicationAppUrl(`/account/support/${safetyCase.id}`);
   await sendTransactionalEmail({
     to: safetyCase.reporter.email,
     sender: "support",
-    subject: `[${COMMUNICATION_BRAND.name}] ${safetyCase.type === "CLAIM" ? "Claim" : "Report"} received: ${safetyCase.reference}`,
+    subject: `[${COMMUNICATION_BRAND.name}] ${
+      isClaim
+        ? t.t("email.case.claim_received", "Claim received")
+        : t.t("email.case.report_received", "Report received")
+    }: ${safetyCase.reference}`,
     text: [
-      `Hi ${safetyCase.reporter.name},`,
+      greeting(safetyCase.reporter.name, t),
       "",
-      `We received your ${safetyCase.type.toLowerCase()} "${safetyCase.subject}".`,
-      `Reference: ${safetyCase.reference}`,
-      `Status: ${safetyCase.status.replaceAll("_", " ")}`,
+      // The case type is interpolated as a separate translated noun rather than
+      // lower-casing the enum into an English sentence — Macedonian inflects it.
+      isClaim
+        ? t.ti("email.case.received_claim", 'We received your claim "{subject}".', {
+            subject: safetyCase.subject,
+          })
+        : t.ti("email.case.received_report", 'We received your report "{subject}".', {
+            subject: safetyCase.subject,
+          }),
+      `${t.t("email.booking.reference", "Reference")}: ${safetyCase.reference}`,
+      `${t.t("email.case.status", "Status")}: ${caseStatusLabel(safetyCase.status, t)}`,
       "",
-      `Follow the case: ${link}`,
+      `${t.t("email.case.follow", "Follow the case")}: ${link}`,
       "",
       COMMUNICATION_BRAND.supportName,
     ].join("\n"),
@@ -169,22 +247,24 @@ export async function notifySafetyCaseUpdated(input: {
   const safetyCase = await db.safetyCase.findUnique({
     where: { id: input.caseId },
     include: {
-      reporter: { select: { name: true, email: true } },
+      reporter: { select: { name: true, email: true, locale: true } },
     },
   });
   if (!safetyCase) return;
 
+  const t = getEmailT(safetyCase.reporter.locale);
   await sendTransactionalEmail({
     to: safetyCase.reporter.email,
     sender: "support",
-    subject: `[${COMMUNICATION_BRAND.name}] Update for ${safetyCase.reference}`,
+    subject: `[${COMMUNICATION_BRAND.name}] ${t.ti("email.case.update_subject", "Update for {reference}", { reference: safetyCase.reference })}`,
     text: [
-      `Hi ${safetyCase.reporter.name},`,
+      greeting(safetyCase.reporter.name, t),
       "",
+      // Admin-authored, so it stays in whatever language the admin wrote it in.
       input.message,
-      `Current status: ${safetyCase.status.replaceAll("_", " ")}`,
+      `${t.t("email.case.current_status", "Current status")}: ${caseStatusLabel(safetyCase.status, t)}`,
       "",
-      `View and respond: ${communicationAppUrl(`/account/support/${safetyCase.id}`)}`,
+      `${t.t("email.case.view_and_respond", "View and respond")}: ${communicationAppUrl(`/account/support/${safetyCase.id}`)}`,
       "",
       COMMUNICATION_BRAND.supportName,
     ].join("\n"),
@@ -196,7 +276,7 @@ async function loadBookingEmailContext(bookingId: string) {
   return db.booking.findUnique({
     where: { id: bookingId },
     include: {
-      guest: { select: { name: true, email: true } },
+      guest: { select: { name: true, email: true, locale: true } },
       listing: {
         select: {
           title: true,
@@ -208,7 +288,7 @@ async function loadBookingEmailContext(bookingId: string) {
             select: { url: true },
           },
           property: { select: { city: true, country: true } },
-          host: { select: { email: true, name: true } },
+          host: { select: { email: true, name: true, locale: true } },
         },
       },
     },
@@ -219,6 +299,17 @@ type BookingEmailContext = NonNullable<
   Awaited<ReturnType<typeof loadBookingEmailContext>>
 >;
 
+/** The English copy greets guests with "Hi" and hosts with "Hello". Two keys keep
+ * that distinction available to translators, even where a language renders both the
+ * same way. */
+function greeting(name: string, t: EmailTranslator): string {
+  return t.ti("email.greeting.hi", "Hi {name},", { name });
+}
+
+function greetingFormal(name: string, t: EmailTranslator): string {
+  return t.ti("email.greeting.hello", "Hello {name},", { name });
+}
+
 function bookingEmailLinks(booking: BookingEmailContext) {
   return {
     guest: communicationAppUrl(`/account/bookings/${booking.id}`),
@@ -227,19 +318,37 @@ function bookingEmailLinks(booking: BookingEmailContext) {
   };
 }
 
-function bookingEmailDetails(booking: BookingEmailContext) {
+function bookingEmailDetails(booking: BookingEmailContext, t: EmailTranslator) {
   return [
-    { label: "Check-in", value: formatDate(booking.checkIn) },
-    { label: "Check-out", value: formatDate(booking.checkOut) },
     {
-      label: "Guests",
-      value: `${booking.guestCount} guest${booking.guestCount === 1 ? "" : "s"}`,
+      label: t.t("email.booking.check_in", "Check-in"),
+      value: formatDate(booking.checkIn, t.locale),
     },
     {
-      label: "Total",
-      value: formatPrice(Number(booking.totalPrice), booking.currency),
+      label: t.t("email.booking.check_out", "Check-out"),
+      value: formatDate(booking.checkOut, t.locale),
+    },
+    {
+      label: t.t("email.booking.guests", "Guests"),
+      value: guestCountLabel(booking.guestCount, t),
+    },
+    {
+      label: t.t("email.booking.total", "Total"),
+      value: formatPrice(Number(booking.totalPrice), booking.currency, t.locale),
     },
   ];
+}
+
+/** Macedonian's plural rule splits on the final digit (1 гостин, 2 гости), not on
+ * "exactly one" like English, so the category has to be chosen by Intl rather than
+ * by a `=== 1` check. */
+function guestCountLabel(count: number, t: EmailTranslator): string {
+  const category = new Intl.PluralRules(t.locale).select(count);
+  return t.ti(
+    `email.booking.guest_count.${category}`,
+    category === "one" ? "{n} guest" : "{n} guests",
+    { n: count },
+  );
 }
 
 function bookingLocation(booking: BookingEmailContext) {
@@ -248,8 +357,8 @@ function bookingLocation(booking: BookingEmailContext) {
     .join(", ");
 }
 
-function bookingDeadline(booking: BookingEmailContext) {
-  return new Intl.DateTimeFormat("en", {
+function bookingDeadline(booking: BookingEmailContext, locale: string) {
+  return new Intl.DateTimeFormat(locale, {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -264,44 +373,77 @@ export async function notifyGuestBookingRequestReceived(bookingId: string): Prom
   const booking = await loadBookingEmailContext(bookingId);
   if (!booking) return;
   const links = bookingEmailLinks(booking);
-  const deadline = bookingDeadline(booking);
+  const t = getEmailT(booking.guest.locale);
+  const deadline = bookingDeadline(booking, t.locale);
+  const viewRequest = t.t("email.booking.view_request", "View request");
+  const viewListing = t.t("email.booking.view_listing", "View listing");
+  const noPayment = t.t(
+    "email.booking.no_payment_collected",
+    "No payment has been collected for this request."
+  );
 
   await sendTransactionalEmail({
     to: booking.guest.email,
-    subject: `Request received · ${booking.reference} · ${booking.listing.title}`,
+    subject: `${t.t("email.booking.request_received.subject", "Request received")} · ${booking.reference} · ${booking.listing.title}`,
     text: [
-      `Hi ${booking.guest.name},`,
+      greeting(booking.guest.name, t),
       "",
-      `Your request for "${booking.listing.title}" has been sent to ${booking.listing.host.name}.`,
-      `This booking is not confirmed yet. The host has until ${deadline} to respond.`,
-      `No payment has been collected for this request.`,
+      t.ti(
+        "email.booking.request_received.sent",
+        'Your request for "{listing}" has been sent to {host}.',
+        { listing: booking.listing.title, host: booking.listing.host.name }
+      ),
+      t.ti(
+        "email.booking.request_received.not_confirmed",
+        "This booking is not confirmed yet. The host has until {deadline} to respond.",
+        { deadline }
+      ),
+      noPayment,
       "",
-      `Reference: ${booking.reference}`,
-      `Check-in: ${formatDate(booking.checkIn)}`,
-      `Check-out: ${formatDate(booking.checkOut)}`,
-      `Guests: ${booking.guestCount}`,
-      `Total: ${formatPrice(Number(booking.totalPrice), booking.currency)}`,
+      `${t.t("email.booking.reference", "Reference")}: ${booking.reference}`,
+      `${t.t("email.booking.check_in", "Check-in")}: ${formatDate(booking.checkIn, t.locale)}`,
+      `${t.t("email.booking.check_out", "Check-out")}: ${formatDate(booking.checkOut, t.locale)}`,
+      `${t.t("email.booking.guests", "Guests")}: ${booking.guestCount}`,
+      `${t.t("email.booking.total", "Total")}: ${formatPrice(Number(booking.totalPrice), booking.currency, t.locale)}`,
       "",
-      `View request: ${links.guest}`,
-      `View listing: ${links.listing}`,
+      `${viewRequest}: ${links.guest}`,
+      `${viewListing}: ${links.listing}`,
       "",
       `— ${COMMUNICATION_BRAND.name}`,
     ].join("\n"),
     html: renderBookingEmail({
-      preheader: `Your request is awaiting host approval until ${deadline}.`,
-      eyebrow: "Request sent · Awaiting host approval",
-      headline: `Your request has been sent to ${booking.listing.host.name}`,
-      intro: "This is a booking request, not a confirmed reservation yet.",
+      preheader: t.ti(
+        "email.booking.request_received.preheader",
+        "Your request is awaiting host approval until {deadline}.",
+        { deadline }
+      ),
+      eyebrow: t.t(
+        "email.booking.request_received.eyebrow",
+        "Request sent · Awaiting host approval"
+      ),
+      headline: t.ti(
+        "email.booking.request_received.headline",
+        "Your request has been sent to {host}",
+        { host: booking.listing.host.name }
+      ),
+      intro: t.t(
+        "email.booking.request_received.intro",
+        "This is a booking request, not a confirmed reservation yet."
+      ),
       reference: booking.reference,
       listingTitle: booking.listing.title,
       listingHref: links.listing,
       imageUrl: booking.listing.images[0]?.url,
       location: bookingLocation(booking),
-      details: bookingEmailDetails(booking),
-      callout: `The host has until ${deadline} to accept or decline. No payment has been collected for this request.`,
+      details: bookingEmailDetails(booking, t),
+      callout: t.ti(
+        "email.booking.request_received.callout",
+        "The host has until {deadline} to accept or decline. No payment has been collected for this request.",
+        { deadline }
+      ),
       buttons: [
-        { label: "View request", href: links.guest },
-        { label: "View listing", href: links.listing, secondary: true },
+        { label: viewRequest, href: links.guest },
+        { label: viewListing, href: links.listing, secondary: true },
       ],
     }),
   });
@@ -313,38 +455,71 @@ export async function notifyHostNewBookingRequest(bookingId: string): Promise<vo
   if (!booking) return;
 
   const links = bookingEmailLinks(booking);
-  const deadline = bookingDeadline(booking);
+  const t = getEmailT(booking.listing.host.locale);
+  const deadline = bookingDeadline(booking, t.locale);
   const hostEmail = booking.listing.host.email;
+  const dates = `${formatDate(booking.checkIn, t.locale)}–${formatDate(booking.checkOut, t.locale)}`;
   const lines = [
-    `Hello ${booking.listing.host.name},`,
+    greetingFormal(booking.listing.host.name, t),
     ``,
-    `${booking.guest.name} requested a booking for "${booking.listing.title}".`,
-    `Check your host dashboard to confirm or reject.`,
+    t.ti(
+      "email.booking.host_request.requested",
+      '{guest} requested a booking for "{listing}".',
+      { guest: booking.guest.name, listing: booking.listing.title }
+    ),
+    t.t(
+      "email.booking.host_request.check_dashboard",
+      "Check your host dashboard to confirm or reject."
+    ),
     ``,
     `— ${COMMUNICATION_BRAND.name}`,
   ];
 
   await sendTransactionalEmail({
     to: hostEmail,
-    subject: `Action required · ${booking.reference} · ${formatDate(booking.checkIn)}–${formatDate(booking.checkOut)}`,
+    subject: `${t.t("email.booking.host_request.subject", "Action required")} · ${booking.reference} · ${dates}`,
     text: lines.join("\n"),
     html: renderBookingEmail({
-      preheader: `${booking.guest.name} requested ${formatDate(booking.checkIn)}–${formatDate(booking.checkOut)}. Respond by ${deadline}.`,
-      eyebrow: "New booking request · Action required",
-      headline: `${booking.guest.name} wants to stay at your place`,
+      preheader: t.ti(
+        "email.booking.host_request.preheader",
+        "{guest} requested {dates}. Respond by {deadline}.",
+        { guest: booking.guest.name, dates, deadline }
+      ),
+      eyebrow: t.t(
+        "email.booking.host_request.eyebrow",
+        "New booking request · Action required"
+      ),
+      headline: t.ti(
+        "email.booking.host_request.headline",
+        "{guest} wants to stay at your place",
+        { guest: booking.guest.name }
+      ),
       intro: booking.guestNote
-        ? `Guest message: “${booking.guestNote}”`
-        : "Review the stay details and respond before the request expires.",
+        ? t.ti("email.booking.host_request.guest_note", "Guest message: “{note}”", {
+            note: booking.guestNote,
+          })
+        : t.t(
+            "email.booking.host_request.intro",
+            "Review the stay details and respond before the request expires."
+          ),
       reference: booking.reference,
       listingTitle: booking.listing.title,
       listingHref: links.listing,
       imageUrl: booking.listing.images[0]?.url,
       location: bookingLocation(booking),
-      details: bookingEmailDetails(booking),
-      callout: `Accept or decline by ${deadline}. Opening the request does not change its status.`,
+      details: bookingEmailDetails(booking, t),
+      callout: t.ti(
+        "email.booking.host_request.callout",
+        "Accept or decline by {deadline}. Opening the request does not change its status.",
+        { deadline }
+      ),
       buttons: [
-        { label: "Review request", href: links.host },
-        { label: "View listing", href: links.listing, secondary: true },
+        { label: t.t("email.booking.review_request", "Review request"), href: links.host },
+        {
+          label: t.t("email.booking.view_listing", "View listing"),
+          href: links.listing,
+          secondary: true,
+        },
       ],
     }),
   });
@@ -354,34 +529,54 @@ export async function notifyHostBookingRequestReminder(bookingId: string): Promi
   const booking = await loadBookingEmailContext(bookingId);
   if (!booking || booking.status !== "PENDING") return;
   const links = bookingEmailLinks(booking);
-  const deadline = bookingDeadline(booking);
+  const t = getEmailT(booking.listing.host.locale);
+  const deadline = bookingDeadline(booking, t.locale);
+  const reviewRequest = t.t("email.booking.review_request", "Review request");
 
   await sendTransactionalEmail({
     to: booking.listing.host.email,
-    subject: `Reminder · ${booking.reference} · Booking request awaiting response`,
+    subject: `${t.t("email.booking.host_reminder.subject", "Reminder")} · ${booking.reference} · ${t.t("email.booking.host_reminder.subject_detail", "Booking request awaiting response")}`,
     text: [
-      `Hello ${booking.listing.host.name},`,
+      greetingFormal(booking.listing.host.name, t),
       "",
-      `${booking.guest.name}'s booking request is still waiting for your response.`,
-      `Respond by ${deadline}.`,
-      `Reference: ${booking.reference}`,
-      `Review request: ${links.host}`,
+      t.ti(
+        "email.booking.host_reminder.waiting",
+        "{guest}'s booking request is still waiting for your response.",
+        { guest: booking.guest.name }
+      ),
+      t.ti("email.booking.host_reminder.respond_by", "Respond by {deadline}.", {
+        deadline,
+      }),
+      `${t.t("email.booking.reference", "Reference")}: ${booking.reference}`,
+      `${reviewRequest}: ${links.host}`,
       "",
       `— ${COMMUNICATION_BRAND.name}`,
     ].join("\n"),
     html: renderBookingEmail({
-      preheader: `${booking.reference} is still waiting for your response.`,
-      eyebrow: "Reminder · Response required",
-      headline: "A booking request is waiting",
-      intro: `${booking.guest.name} is still waiting for your decision.`,
+      preheader: t.ti(
+        "email.booking.host_reminder.preheader",
+        "{reference} is still waiting for your response.",
+        { reference: booking.reference }
+      ),
+      eyebrow: t.t("email.booking.host_reminder.eyebrow", "Reminder · Response required"),
+      headline: t.t("email.booking.host_reminder.headline", "A booking request is waiting"),
+      intro: t.ti(
+        "email.booking.host_reminder.intro",
+        "{guest} is still waiting for your decision.",
+        { guest: booking.guest.name }
+      ),
       reference: booking.reference,
       listingTitle: booking.listing.title,
       listingHref: links.listing,
       imageUrl: booking.listing.images[0]?.url,
       location: bookingLocation(booking),
-      details: bookingEmailDetails(booking),
-      callout: `Respond by ${deadline} or the request will expire automatically.`,
-      buttons: [{ label: "Review request", href: links.host }],
+      details: bookingEmailDetails(booking, t),
+      callout: t.ti(
+        "email.booking.host_reminder.callout",
+        "Respond by {deadline} or the request will expire automatically.",
+        { deadline }
+      ),
+      buttons: [{ label: reviewRequest, href: links.host }],
     }),
   });
 }
@@ -391,36 +586,57 @@ export async function notifyGuestBookingConfirmed(bookingId: string): Promise<vo
   if (!booking) return;
   const links = bookingEmailLinks(booking);
 
+  const t = getEmailT(booking.guest.locale);
   const lines = [
-    `Hi ${booking.guest.name},`,
+    greeting(booking.guest.name, t),
     ``,
-    `Good news — your booking for "${booking.listing.title}" has been confirmed.`,
-    `Check-in: ${formatDate(booking.checkIn)}`,
-    `Check-out: ${formatDate(booking.checkOut)}`,
-    `Total: ${formatPrice(Number(booking.totalPrice))}`,
+    t.ti(
+      "email.booking.confirmed.good_news",
+      'Good news — your booking for "{listing}" has been confirmed.',
+      { listing: booking.listing.title }
+    ),
+    `${t.t("email.booking.check_in", "Check-in")}: ${formatDate(booking.checkIn, t.locale)}`,
+    `${t.t("email.booking.check_out", "Check-out")}: ${formatDate(booking.checkOut, t.locale)}`,
+    `${t.t("email.booking.total", "Total")}: ${formatPrice(Number(booking.totalPrice), booking.currency, t.locale)}`,
     ``,
     `— ${COMMUNICATION_BRAND.name}`,
   ];
 
   await sendTransactionalEmail({
     to: booking.guest.email,
-    subject: `Confirmed · ${booking.reference} · ${booking.listing.title}`,
+    subject: `${t.t("email.booking.confirmed.subject", "Confirmed")} · ${booking.reference} · ${booking.listing.title}`,
     text: lines.join("\n"),
     html: renderBookingEmail({
-      preheader: `Your stay at ${booking.listing.title} is confirmed.`,
-      eyebrow: "Booking confirmed",
-      headline: "You’re all set",
-      intro: `${booking.listing.host.name} accepted your booking request.`,
+      preheader: t.ti(
+        "email.booking.confirmed.preheader",
+        "Your stay at {listing} is confirmed.",
+        { listing: booking.listing.title }
+      ),
+      eyebrow: t.t("email.booking.confirmed.eyebrow", "Booking confirmed"),
+      headline: t.t("email.booking.confirmed.headline", "You’re all set"),
+      intro: t.ti(
+        "email.booking.confirmed.intro",
+        "{host} accepted your booking request.",
+        { host: booking.listing.host.name }
+      ),
       reference: booking.reference,
       listingTitle: booking.listing.title,
       listingHref: links.listing,
       imageUrl: booking.listing.images[0]?.url,
       location: bookingLocation(booking),
-      details: bookingEmailDetails(booking),
-      callout: "Keep your messages and any payment arrangements inside Linger Homes for support and security.",
+      details: bookingEmailDetails(booking, t),
+      callout: t.ti(
+        "email.booking.confirmed.callout",
+        "Keep your messages and any payment arrangements inside {brand} for support and security.",
+        { brand: COMMUNICATION_BRAND.name }
+      ),
       buttons: [
-        { label: "View booking", href: links.guest },
-        { label: "View listing", href: links.listing, secondary: true },
+        { label: t.t("email.booking.view_booking", "View booking"), href: links.guest },
+        {
+          label: t.t("email.booking.view_listing", "View listing"),
+          href: links.listing,
+          secondary: true,
+        },
       ],
     }),
   });
@@ -431,36 +647,65 @@ export async function notifyGuestBookingRejected(bookingId: string): Promise<voi
   if (!booking) return;
   const links = bookingEmailLinks(booking);
 
+  const t = getEmailT(booking.guest.locale);
+  const noPaymentCallout = t.t(
+    "email.booking.no_payment_dates_free",
+    "No payment was collected. Your dates are free to use for another booking."
+  );
   const lines = [
-    `Hi ${booking.guest.name},`,
+    greeting(booking.guest.name, t),
     ``,
-    `Unfortunately your booking request for "${booking.listing.title}" (${formatDate(booking.checkIn)} – ${formatDate(booking.checkOut)}) was declined by the host.`,
-    ...(booking.cancellationReason ? [``, `Reason: ${booking.cancellationReason}`] : []),
+    t.ti(
+      "email.booking.declined.body",
+      'Unfortunately your booking request for "{listing}" ({checkIn} – {checkOut}) was declined by the host.',
+      {
+        listing: booking.listing.title,
+        checkIn: formatDate(booking.checkIn, t.locale),
+        checkOut: formatDate(booking.checkOut, t.locale),
+      }
+    ),
+    ...(booking.cancellationReason
+      ? [
+          ``,
+          t.ti("email.booking.reason", "Reason: {reason}", {
+            reason: booking.cancellationReason,
+          }),
+        ]
+      : []),
     ``,
-    `No payment was collected for this request.`,
+    t.t("email.booking.no_payment_was_collected", "No payment was collected for this request."),
     ``,
     `— ${COMMUNICATION_BRAND.name}`,
   ];
 
   await sendTransactionalEmail({
     to: booking.guest.email,
-    subject: `Request update · ${booking.reference} · ${booking.listing.title}`,
+    subject: `${t.t("email.booking.declined.subject", "Request update")} · ${booking.reference} · ${booking.listing.title}`,
     text: lines.join("\n"),
     html: renderBookingEmail({
-      preheader: `Your request for ${booking.listing.title} was not accepted.`,
-      eyebrow: "Booking request declined",
-      headline: "This stay wasn’t confirmed",
+      preheader: t.ti(
+        "email.booking.declined.preheader",
+        "Your request for {listing} was not accepted.",
+        { listing: booking.listing.title }
+      ),
+      eyebrow: t.t("email.booking.declined.eyebrow", "Booking request declined"),
+      headline: t.t("email.booking.declined.headline", "This stay wasn’t confirmed"),
       intro: booking.cancellationReason
-        ? `Host’s reason: ${booking.cancellationReason}`
-        : "The host was unable to accept this request.",
+        ? t.ti("email.booking.declined.host_reason", "Host’s reason: {reason}", {
+            reason: booking.cancellationReason,
+          })
+        : t.t(
+            "email.booking.declined.intro",
+            "The host was unable to accept this request."
+          ),
       reference: booking.reference,
       listingTitle: booking.listing.title,
       listingHref: links.listing,
       imageUrl: booking.listing.images[0]?.url,
       location: bookingLocation(booking),
-      details: bookingEmailDetails(booking),
-      callout: "No payment was collected. Your dates are free to use for another booking.",
-      buttons: [{ label: "View request", href: links.guest }],
+      details: bookingEmailDetails(booking, t),
+      callout: noPaymentCallout,
+      buttons: [{ label: t.t("email.booking.view_request", "View request"), href: links.guest }],
     }),
   });
 }
@@ -471,33 +716,50 @@ export async function notifyGuestBookingExpired(bookingId: string): Promise<void
   if (!booking) return;
   const links = bookingEmailLinks(booking);
 
+  const t = getEmailT(booking.guest.locale);
+  const viewRequest = t.t("email.booking.view_request", "View request");
+
   await sendTransactionalEmail({
     to: booking.guest.email,
-    subject: `Request expired · ${booking.reference} · ${booking.listing.title}`,
+    subject: `${t.t("email.booking.expired.subject", "Request expired")} · ${booking.reference} · ${booking.listing.title}`,
     text: [
-      `Hi ${booking.guest.name},`,
+      greeting(booking.guest.name, t),
       "",
-      `The host did not respond in time to your request for "${booking.listing.title}".`,
-      `Reference: ${booking.reference}`,
-      `No payment was collected for this request.`,
+      t.ti(
+        "email.booking.expired.body",
+        'The host did not respond in time to your request for "{listing}".',
+        { listing: booking.listing.title }
+      ),
+      `${t.t("email.booking.reference", "Reference")}: ${booking.reference}`,
+      t.t("email.booking.no_payment_was_collected", "No payment was collected for this request."),
       "",
-      `View request: ${links.guest}`,
+      `${viewRequest}: ${links.guest}`,
       "",
       `— ${COMMUNICATION_BRAND.name}`,
     ].join("\n"),
     html: renderBookingEmail({
-      preheader: `The host did not respond to ${booking.reference} in time.`,
-      eyebrow: "Booking request expired",
-      headline: "The host didn’t respond in time",
-      intro: "This request expired and did not become a confirmed reservation.",
+      preheader: t.ti(
+        "email.booking.expired.preheader",
+        "The host did not respond to {reference} in time.",
+        { reference: booking.reference }
+      ),
+      eyebrow: t.t("email.booking.expired.eyebrow", "Booking request expired"),
+      headline: t.t("email.booking.expired.headline", "The host didn’t respond in time"),
+      intro: t.t(
+        "email.booking.expired.intro",
+        "This request expired and did not become a confirmed reservation."
+      ),
       reference: booking.reference,
       listingTitle: booking.listing.title,
       listingHref: links.listing,
       imageUrl: booking.listing.images[0]?.url,
       location: bookingLocation(booking),
-      details: bookingEmailDetails(booking),
-      callout: "No payment was collected. Your dates are free to use for another booking.",
-      buttons: [{ label: "View request", href: links.guest }],
+      details: bookingEmailDetails(booking, t),
+      callout: t.t(
+        "email.booking.no_payment_dates_free",
+        "No payment was collected. Your dates are free to use for another booking."
+      ),
+      buttons: [{ label: viewRequest, href: links.guest }],
     }),
   });
 }
@@ -507,34 +769,59 @@ export async function notifyGuestBookingCancelled(bookingId: string): Promise<vo
   if (!booking) return;
   const links = bookingEmailLinks(booking);
 
+  const t = getEmailT(booking.guest.locale);
   const lines = [
-    `Hi ${booking.guest.name},`,
+    greeting(booking.guest.name, t),
     ``,
-    `Your booking for "${booking.listing.title}" (${formatDate(booking.checkIn)} – ${formatDate(booking.checkOut)}) has been cancelled.`,
-    ...(booking.cancellationReason ? [``, `Reason: ${booking.cancellationReason}`] : []),
+    t.ti(
+      "email.booking.cancelled.body",
+      'Your booking for "{listing}" ({checkIn} – {checkOut}) has been cancelled.',
+      {
+        listing: booking.listing.title,
+        checkIn: formatDate(booking.checkIn, t.locale),
+        checkOut: formatDate(booking.checkOut, t.locale),
+      }
+    ),
+    ...(booking.cancellationReason
+      ? [
+          ``,
+          t.ti("email.booking.reason", "Reason: {reason}", {
+            reason: booking.cancellationReason,
+          }),
+        ]
+      : []),
     ``,
     `— ${COMMUNICATION_BRAND.name}`,
   ];
 
   await sendTransactionalEmail({
     to: booking.guest.email,
-    subject: `Cancelled · ${booking.reference} · ${booking.listing.title}`,
+    subject: `${t.t("email.booking.cancelled.subject", "Cancelled")} · ${booking.reference} · ${booking.listing.title}`,
     text: lines.join("\n"),
     html: renderBookingEmail({
-      preheader: `Booking ${booking.reference} has been cancelled.`,
-      eyebrow: "Booking cancelled",
-      headline: "This booking is no longer active",
+      preheader: t.ti(
+        "email.booking.cancelled.preheader",
+        "Booking {reference} has been cancelled.",
+        { reference: booking.reference }
+      ),
+      eyebrow: t.t("email.booking.cancelled.eyebrow", "Booking cancelled"),
+      headline: t.t("email.booking.cancelled.headline", "This booking is no longer active"),
       intro: booking.cancellationReason
-        ? `Reason: ${booking.cancellationReason}`
-        : "The booking has been cancelled.",
+        ? t.ti("email.booking.reason", "Reason: {reason}", {
+            reason: booking.cancellationReason,
+          })
+        : t.t("email.booking.cancelled.intro", "The booking has been cancelled."),
       reference: booking.reference,
       listingTitle: booking.listing.title,
       listingHref: links.listing,
       imageUrl: booking.listing.images[0]?.url,
       location: bookingLocation(booking),
-      details: bookingEmailDetails(booking),
-      callout: "View the booking page for the current status and contact support if you need help.",
-      buttons: [{ label: "View booking", href: links.guest }],
+      details: bookingEmailDetails(booking, t),
+      callout: t.t(
+        "email.booking.cancelled.callout",
+        "View the booking page for the current status and contact support if you need help."
+      ),
+      buttons: [{ label: t.t("email.booking.view_booking", "View booking"), href: links.guest }],
     }),
   });
 }
@@ -545,31 +832,55 @@ export async function notifyHostBookingCancelledByGuest(bookingId: string): Prom
   if (!booking) return;
   const links = bookingEmailLinks(booking);
 
+  const t = getEmailT(booking.listing.host.locale);
   const lines = [
-    `Hello ${booking.listing.host.name},`,
+    greetingFormal(booking.listing.host.name, t),
     ``,
-    `${booking.guest.name} cancelled their booking for "${booking.listing.title}" (${formatDate(booking.checkIn)} – ${formatDate(booking.checkOut)}). Those dates are available again.`,
+    t.ti(
+      "email.booking.guest_cancelled.body",
+      '{guest} cancelled their booking for "{listing}" ({checkIn} – {checkOut}). Those dates are available again.',
+      {
+        guest: booking.guest.name,
+        listing: booking.listing.title,
+        checkIn: formatDate(booking.checkIn, t.locale),
+        checkOut: formatDate(booking.checkOut, t.locale),
+      }
+    ),
     ``,
     `— ${COMMUNICATION_BRAND.name}`,
   ];
 
   await sendTransactionalEmail({
     to: booking.listing.host.email,
-    subject: `Guest cancelled · ${booking.reference} · ${booking.listing.title}`,
+    subject: `${t.t("email.booking.guest_cancelled.subject", "Guest cancelled")} · ${booking.reference} · ${booking.listing.title}`,
     text: lines.join("\n"),
     html: renderBookingEmail({
-      preheader: `${booking.guest.name} cancelled booking ${booking.reference}.`,
-      eyebrow: "Booking cancelled by guest",
-      headline: `${booking.guest.name} cancelled their booking`,
-      intro: "The reserved dates have been released in your calendar.",
+      preheader: t.ti(
+        "email.booking.guest_cancelled.preheader",
+        "{guest} cancelled booking {reference}.",
+        { guest: booking.guest.name, reference: booking.reference }
+      ),
+      eyebrow: t.t("email.booking.guest_cancelled.eyebrow", "Booking cancelled by guest"),
+      headline: t.ti(
+        "email.booking.guest_cancelled.headline",
+        "{guest} cancelled their booking",
+        { guest: booking.guest.name }
+      ),
+      intro: t.t(
+        "email.booking.guest_cancelled.intro",
+        "The reserved dates have been released in your calendar."
+      ),
       reference: booking.reference,
       listingTitle: booking.listing.title,
       listingHref: links.listing,
       imageUrl: booking.listing.images[0]?.url,
       location: bookingLocation(booking),
-      details: bookingEmailDetails(booking),
-      callout: "No action is required from you.",
-      buttons: [{ label: "View booking", href: links.host }],
+      details: bookingEmailDetails(booking, t),
+      callout: t.t(
+        "email.booking.guest_cancelled.callout",
+        "No action is required from you."
+      ),
+      buttons: [{ label: t.t("email.booking.view_booking", "View booking"), href: links.host }],
     }),
   });
 }
@@ -586,6 +897,7 @@ export async function notifyReviewReminder(input: {
         select: {
           name: true,
           email: true,
+          locale: true,
           communicationPreference: { select: { reviewEmail: true } },
         },
       },
@@ -595,26 +907,47 @@ export async function notifyReviewReminder(input: {
   if (!invitation) return;
   if (invitation.recipient.communicationPreference?.reviewEmail === false) return;
 
+  const t = getEmailT(invitation.recipient.locale);
+  const listing = invitation.booking.listing.title;
   const link = communicationAppUrl(
     `/account/bookings/${invitation.booking.id}/after-stay`
   );
   await sendTransactionalEmail({
     to: invitation.recipient.email,
-    subject: input.waitingForYourReview
-      ? `[${COMMUNICATION_BRAND.name}] A private rating is waiting for you`
-      : `[${COMMUNICATION_BRAND.name}] How was ${invitation.booking.listing.title}?`,
+    subject: `[${COMMUNICATION_BRAND.name}] ${
+      input.waitingForYourReview
+        ? t.t(
+            "email.review.reminder.waiting_subject",
+            "A private rating is waiting for you"
+          )
+        : t.ti("email.review.reminder.subject", "How was {listing}?", { listing })
+    }`,
     text: [
-      `Hi ${invitation.recipient.name},`,
+      greeting(invitation.recipient.name, t),
       "",
       input.waitingForYourReview
-        ? `The other party has submitted a private rating for "${invitation.booking.listing.title}".`
-        : `Your stay connected to "${invitation.booking.listing.title}" has ended.`,
+        ? t.ti(
+            "email.review.reminder.waiting_body",
+            'The other party has submitted a private rating for "{listing}".',
+            { listing }
+          )
+        : t.ti(
+            "email.review.reminder.body",
+            'Your stay connected to "{listing}" has ended.',
+            { listing }
+          ),
       input.waitingForYourReview
-        ? "Submit your own rating to unlock both after admin approval. We will not reveal their stars or comments beforehand."
-        : "Share an honest rating before the 14-day review window closes.",
+        ? t.t(
+            "email.review.reminder.waiting_instructions",
+            "Submit your own rating to unlock both after admin approval. We will not reveal their stars or comments beforehand."
+          )
+        : t.t(
+            "email.review.reminder.instructions",
+            "Share an honest rating before the 14-day review window closes."
+          ),
       "",
-      `Leave your rating: ${link}`,
-      `Deadline: ${formatDate(invitation.deadline)}`,
+      `${t.t("email.review.leave_rating", "Leave your rating")}: ${link}`,
+      `${t.t("email.review.deadline", "Deadline")}: ${formatDate(invitation.deadline, t.locale)}`,
       "",
       COMMUNICATION_BRAND.name,
     ].join("\n"),
@@ -628,23 +961,31 @@ export async function notifyReviewSubmitted(input: {
   const review = await db.review.findUnique({
     where: { id: input.reviewId },
     include: {
-      author: { select: { name: true, email: true } },
+      author: { select: { name: true, email: true, locale: true } },
       listing: { select: { title: true } },
     },
   });
   if (!review?.author) return;
 
+  const t = getEmailT(review.author.locale);
   await Promise.allSettled([
     sendTransactionalEmail({
       to: review.author.email,
-      subject: `[${COMMUNICATION_BRAND.name}] Rating received`,
+      subject: `[${COMMUNICATION_BRAND.name}] ${t.t("email.review.submitted.subject", "Rating received")}`,
       text: [
-        `Hi ${review.author.name},`,
+        greeting(review.author.name, t),
         "",
-        `We received your private rating for "${review.listing.title}".`,
-        "It will remain sealed until the other party submits or the review period closes, and an administrator approves the public content.",
+        t.ti(
+          "email.review.submitted.body",
+          'We received your private rating for "{listing}".',
+          { listing: review.listing.title }
+        ),
+        t.t(
+          "email.review.submitted.sealed",
+          "It will remain sealed until the other party submits or the review period closes, and an administrator approves the public content."
+        ),
         "",
-        `Review status: ${communicationAppUrl(`/account/bookings/${review.bookingId}/after-stay`)}`,
+        `${t.t("email.review.status", "Review status")}: ${communicationAppUrl(`/account/bookings/${review.bookingId}/after-stay`)}`,
         "",
         COMMUNICATION_BRAND.name,
       ].join("\n"),
@@ -671,11 +1012,11 @@ export async function notifyReviewsPublished(input: {
     where: { id: input.bookingId },
     select: {
       id: true,
-      guest: { select: { name: true, email: true } },
+      guest: { select: { name: true, email: true, locale: true } },
       listing: {
         select: {
           title: true,
-          host: { select: { name: true, email: true } },
+          host: { select: { name: true, email: true, locale: true } },
         },
       },
     },
@@ -684,21 +1025,27 @@ export async function notifyReviewsPublished(input: {
 
   const link = communicationAppUrl(`/account/bookings/${booking.id}/after-stay`);
   await Promise.allSettled(
-    [booking.guest, booking.listing.host].map((recipient) =>
-      sendTransactionalEmail({
+    // Guest and host can have different languages — render once per recipient.
+    [booking.guest, booking.listing.host].map((recipient) => {
+      const t = getEmailT(recipient.locale);
+      return sendTransactionalEmail({
         to: recipient.email,
-        subject: `[${COMMUNICATION_BRAND.name}] Ratings are now available`,
+        subject: `[${COMMUNICATION_BRAND.name}] ${t.t("email.review.published.subject", "Ratings are now available")}`,
         text: [
-          `Hi ${recipient.name},`,
+          greeting(recipient.name, t),
           "",
-          `The approved ratings for "${booking.listing.title}" are now available.`,
+          t.ti(
+            "email.review.published.body",
+            'The approved ratings for "{listing}" are now available.',
+            { listing: booking.listing.title }
+          ),
           "",
-          `View ratings: ${link}`,
+          `${t.t("email.review.view_ratings", "View ratings")}: ${link}`,
           "",
           COMMUNICATION_BRAND.name,
         ].join("\n"),
-      })
-    )
+      });
+    })
   );
 }
 
@@ -710,23 +1057,28 @@ export async function notifyReviewRejected(input: {
   const review = await db.review.findUnique({
     where: { id: input.reviewId },
     include: {
-      author: { select: { name: true, email: true } },
+      author: { select: { name: true, email: true, locale: true } },
       listing: { select: { title: true } },
     },
   });
   if (!review?.author) return;
 
+  const t = getEmailT(review.author.locale);
   await sendTransactionalEmail({
     to: review.author.email,
     sender: "support",
-    subject: `[${COMMUNICATION_BRAND.name}] Review moderation update`,
+    subject: `[${COMMUNICATION_BRAND.name}] ${t.t("email.review.rejected.subject", "Review moderation update")}`,
     text: [
-      `Hi ${review.author.name},`,
+      greeting(review.author.name, t),
       "",
-      `Your review for "${review.listing.title}" was not approved for publication.`,
-      `Reason: ${input.reason}`,
+      t.ti(
+        "email.review.rejected.body",
+        'Your review for "{listing}" was not approved for publication.',
+        { listing: review.listing.title }
+      ),
+      t.ti("email.booking.reason", "Reason: {reason}", { reason: input.reason }),
       "",
-      `View status: ${communicationAppUrl(`/account/bookings/${review.bookingId}/after-stay`)}`,
+      `${t.t("email.view_status", "View status")}: ${communicationAppUrl(`/account/bookings/${review.bookingId}/after-stay`)}`,
       "",
       COMMUNICATION_BRAND.supportName,
     ].join("\n"),
@@ -740,26 +1092,37 @@ export async function notifyClaimReleased(input: {
   const claim = await db.safetyCase.findUnique({
     where: { id: input.caseId },
     include: {
-      reportedUser: { select: { name: true, email: true } },
+      reportedUser: { select: { name: true, email: true, locale: true } },
       reporter: { select: { name: true } },
     },
   });
   if (!claim?.reportedUser || !claim.requestedAmount) return;
 
+  const t = getEmailT(claim.reportedUser.locale);
   await sendTransactionalEmail({
     to: claim.reportedUser.email,
     sender: "support",
-    subject: `[${COMMUNICATION_BRAND.name}] Response required for ${claim.reference}`,
+    subject: `[${COMMUNICATION_BRAND.name}] ${t.ti("email.claim.released.subject", "Response required for {reference}", { reference: claim.reference })}`,
     text: [
-      `Hi ${claim.reportedUser.name},`,
+      greeting(claim.reportedUser.name, t),
       "",
-      `${claim.reporter.name} submitted a booking-related ${claim.claimKind?.toLowerCase() || "payment"} request.`,
-      `Amount: ${Number(claim.requestedAmount).toFixed(2)} ${claim.currency || "EUR"}`,
-      `Reason: ${claim.subject}`,
+      t.ti(
+        "email.claim.released.body",
+        "{reporter} submitted a booking-related {kind} request.",
+        {
+          reporter: claim.reporter.name,
+          kind: claimKindLabel(claim.claimKind, t),
+        }
+      ),
+      `${t.t("email.claim.amount", "Amount")}: ${Number(claim.requestedAmount).toFixed(2)} ${claim.currency || "EUR"}`,
+      t.ti("email.booking.reason", "Reason: {reason}", { reason: claim.subject }),
       "",
-      "You can accept, counter, or reject after reviewing the evidence. You will not be silently charged for failing to respond.",
+      t.t(
+        "email.claim.released.rights",
+        "You can accept, counter, or reject after reviewing the evidence. You will not be silently charged for failing to respond."
+      ),
       "",
-      `Respond securely: ${communicationAppUrl(`/account/support/${claim.id}`)}`,
+      `${t.t("email.claim.respond_securely", "Respond securely")}: ${communicationAppUrl(`/account/support/${claim.id}`)}`,
       "",
       COMMUNICATION_BRAND.supportName,
     ].join("\n"),
@@ -773,26 +1136,34 @@ export async function notifyClaimResponse(input: {
   const claim = await db.safetyCase.findUnique({
     where: { id: input.caseId },
     include: {
-      reporter: { select: { name: true, email: true } },
+      reporter: { select: { name: true, email: true, locale: true } },
     },
   });
   if (!claim) return;
 
+  const t = getEmailT(claim.reporter.locale);
   await Promise.allSettled([
     sendTransactionalEmail({
       to: claim.reporter.email,
-      subject: `[${COMMUNICATION_BRAND.name}] Response to ${claim.reference}`,
+      subject: `[${COMMUNICATION_BRAND.name}] ${t.ti("email.claim.response.subject", "Response to {reference}", { reference: claim.reference })}`,
       text: [
-        `Hi ${claim.reporter.name},`,
+        greeting(claim.reporter.name, t),
         "",
-        `The other party responded to your request.`,
-        `Response: ${claim.responseStatus?.replaceAll("_", " ") || "UPDATED"}`,
+        t.t(
+          "email.claim.response.body",
+          "The other party responded to your request."
+        ),
+        `${t.t("email.claim.response.label", "Response")}: ${claimResponseLabel(claim.responseStatus, t)}`,
         ...(claim.counterAmount
-          ? [`Counteroffer: ${Number(claim.counterAmount).toFixed(2)} ${claim.currency || "EUR"}`]
+          ? [
+              `${t.t("email.claim.counteroffer", "Counteroffer")}: ${Number(claim.counterAmount).toFixed(2)} ${claim.currency || "EUR"}`,
+            ]
           : []),
-        ...(claim.responseNote ? [`Note: ${claim.responseNote}`] : []),
+        ...(claim.responseNote
+          ? [`${t.t("email.claim.note", "Note")}: ${claim.responseNote}`]
+          : []),
         "",
-        `View the case: ${communicationAppUrl(`/account/support/${claim.id}`)}`,
+        `${t.t("email.claim.view_case", "View the case")}: ${communicationAppUrl(`/account/support/${claim.id}`)}`,
         "",
         COMMUNICATION_BRAND.name,
       ].join("\n"),

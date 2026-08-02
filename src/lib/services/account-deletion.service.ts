@@ -14,6 +14,7 @@ import 'server-only';
 import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import { db } from '@/lib/db';
 import { sendTransactionalEmail } from '@/lib/email';
+import { getEmailT } from '@/lib/email/i18n';
 import { communicationAppUrl, communicationSupportEmail } from '@/lib/communication-brand.server';
 import { PRODUCT_NAME } from '@/lib/branding';
 import { rateLimit } from '@/lib/rate-limit';
@@ -33,7 +34,7 @@ export type DeletionRequestResult =
 export async function requestAccountDeletion(userId: string): Promise<DeletionRequestResult> {
   const user = await db.user.findUnique({
     where: { id: userId },
-    select: { id: true, email: true, name: true },
+    select: { id: true, email: true, name: true, locale: true },
   });
   if (!user) return { ok: false, error: 'Account not found.' };
 
@@ -61,25 +62,45 @@ export async function requestAccountDeletion(userId: string): Promise<DeletionRe
   });
 
   const url = communicationAppUrl(`/account/privacy/confirm?token=${token}`);
+  const t = getEmailT(user.locale);
+  const greeting = t.ti('email.greeting.hi', 'Hi {name},', { name: user.name });
+  const warning = t.t(
+    'email.deletion.warning',
+    "This cannot be undone. If you didn't request this, ignore this email — your account stays exactly as it is, and you may want to sign out of any devices you don't recognise."
+  );
+  const questions = t.t('email.deletion.questions', 'Questions?');
+
   await sendTransactionalEmail({
     to: user.email,
     sender: 'support',
-    subject: `Confirm deletion of your ${PRODUCT_NAME} account`,
+    subject: t.ti(
+      'email.deletion.subject',
+      'Confirm deletion of your {product} account',
+      { product: PRODUCT_NAME }
+    ),
     text:
-      `Hi ${user.name},\n\n` +
-      `We received a request to permanently delete your ${PRODUCT_NAME} account.\n\n` +
-      `Confirm here (link expires in 1 hour):\n${url}\n\n` +
-      `This cannot be undone. If you didn't request this, ignore this email — ` +
-      `your account stays exactly as it is, and you may want to sign out of any ` +
-      `devices you don't recognise.\n\n` +
-      `Questions? ${communicationSupportEmail()}`,
+      `${greeting}\n\n` +
+      `${t.ti(
+        'email.deletion.body',
+        'We received a request to permanently delete your {product} account.',
+        { product: PRODUCT_NAME }
+      )}\n\n` +
+      `${t.t('email.deletion.confirm_here', 'Confirm here (link expires in 1 hour):')}\n${url}\n\n` +
+      `${warning}\n\n` +
+      `${questions} ${communicationSupportEmail()}`,
     html:
-      `<p>Hi ${user.name},</p>` +
-      `<p>We received a request to permanently delete your <strong>${PRODUCT_NAME}</strong> account.</p>` +
-      `<p><a href="${url}">Confirm account deletion</a> (link expires in 1 hour)</p>` +
-      `<p>This cannot be undone. If you didn't request this, ignore this email — your account ` +
-      `stays exactly as it is, and you may want to sign out of any devices you don't recognise.</p>` +
-      `<p>Questions? <a href="mailto:${communicationSupportEmail()}">${communicationSupportEmail()}</a></p>`,
+      `<p>${greeting}</p>` +
+      `<p>${t.ti(
+        'email.deletion.body',
+        'We received a request to permanently delete your {product} account.',
+        { product: `<strong>${PRODUCT_NAME}</strong>` }
+      )}</p>` +
+      `<p><a href="${url}">${t.t(
+        'email.deletion.confirm_link',
+        'Confirm account deletion'
+      )}</a> ${t.t('email.deletion.expires', '(link expires in 1 hour)')}</p>` +
+      `<p>${warning}</p>` +
+      `<p>${questions} <a href="mailto:${communicationSupportEmail()}">${communicationSupportEmail()}</a></p>`,
   });
 
   return { ok: true, sentTo: user.email };
