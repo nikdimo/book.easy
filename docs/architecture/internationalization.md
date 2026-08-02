@@ -20,6 +20,17 @@ An explicit choice is persisted for one year and always overrides country detect
 
 `getLocale()` reads the explicit application cookie with the legacy Google cookie as a migration fallback. `getT()` then validates whether the locale has an enabled reviewed database catalog. A missing, disabled, or unknown reviewed catalog falls back to English source copy, which Google may translate after load for an automatically selected Google-only language.
 
+These two are **different locales and must not be conflated**. `getLocale()` returns the *requested* locale — what the visitor chose. `getT().locale` returns the *catalog* locale — what the fixed copy actually resolved to, which is English whenever the request has no enabled reviewed catalog. They diverge for exactly the automatic (Google-only) languages, and each consumer has to pick deliberately:
+
+| Consumer | Locale | Why |
+| --- | --- | --- |
+| `GoogleTranslateController`, cookie writes | requested | Google's target and the persisted preference must follow the choice. Passing the catalog locale made `syncBrowserLanguageCookies` overwrite an automatic selection with English on the next page load, so those languages could never be selected at all. |
+| `<html dir>` | requested | Direction must suit the text the visitor ends up reading. Every RTL language is Google-only, so keying this to the catalog locale meant `localeDirection` could never return `rtl` — and Google ships no stylesheet rule for the `translated-rtl` class it adds, so nothing else set it either. |
+| `<html lang>` | catalog | Describes the text actually served, which really is English before Google runs. Google rewrites the attribute itself once it translates. |
+| `I18nProvider`, `Intl` formatting | catalog | Formats the resolved copy, which is English source in this case. |
+
+The language selector does not take this from a prop. `google-translate-runtime.ts` publishes the active locale through `subscribeActiveLocale`/`getActiveLocale`, and every selector reads that store, falling back to its `currentLocale` prop only for the server render. Selectors mount in the header, both responsive host sidebars, the admin sidebar, and the consent dialog; the ones outside the public layout had no prop to pass and displayed "English" while the visitor read Portuguese. One store removes the whole class of "this call site forgot the prop" bug.
+
 Both request translation functions are wrapped in React `cache()`, so repeated calls within one request reuse their work.
 
 Google Translate remains the fallback for dynamic host-authored content such as listing titles and descriptions. Fixed application copy must use the translation helpers below; it must not rely on Google Translate.
@@ -31,7 +42,16 @@ The public language selector has two searchable groups:
 
 Reviewed languages also keep Google's translation cookie active because Google is responsible for user-authored content. Resolved fixed UI copy is marked `notranslate`, so Google does not translate that reviewed copy a second time.
 
-`src/lib/i18n/google-translate-runtime.ts` owns that layer for the whole application. Google translates by restoring the document to its source language and translating the result, so a pass with nothing to do is still visible as the page blinking to English and back. Passes are therefore gated: the runtime dispatches one only when the DOM holds text with letters that is outside every `notranslate`, `translate="no"`, `skiptranslate` and `<font>` subtree and has not already been offered to Google. Source text still present once a pass settles is recorded in a `WeakMap` keyed by text node and value, so content Google translated — or deliberately left alone — cannot trigger a pass on the next interaction. Under a reviewed locale, opening a popover or committing a route whose copy is fully covered dispatches nothing.
+`src/lib/i18n/google-translate-runtime.ts` owns that layer for the whole application. Google translates by restoring the document to its source language and translating the result, so a pass with nothing to do is still visible as the page blinking to English and back. Passes are therefore gated: the runtime dispatches one only when the DOM holds text with letters that is outside every `notranslate`, `translate="no"`, `skiptranslate` and `<font>` subtree — checked on the node's ancestors as well as its descendants — and whose **value** has not already been offered to Google. Under a reviewed locale, opening a popover or committing a route whose copy is fully covered dispatches nothing.
+
+The offered-text ledger is a `Set` of whitespace-collapsed strings, populated immediately before each dispatch and swept again once the pass settles. Both details are load-bearing and neither is safe to "simplify":
+
+- Keying by text node instead of by value cannot work in a React tree. Radix discards a closed popover's nodes and builds new ones on the next open, so identical copy returns as brand-new nodes and every interaction dispatches a full pass.
+- Recording only after the pass settles never captures the strings Google actually translated, because those sit inside a `<font>` the walker rejects. They stay unrecorded and re-dispatch as soon as their component remounts.
+
+A dispatched pass also silences the content observer for `PASS_SETTLE_MS`. Google's restore does not merely swap text: it lifts each `<font>`'s children back into the surrounding element, and those re-inserted elements carry source text, so an observing pass feeds itself the reason to run again. `MIN_PASS_INTERVAL_MS` is a backstop on top of that, deferring rather than dropping a request so genuinely new content is never left untranslated.
+
+Skipping a pass is safe. Google's script observes `document.body` with `{childList, characterData, subtree}` for as long as a translation session is live and translates later-added nodes incrementally, without a restore. The dispatch here covers what that observer misses; it is not the only route by which new content reaches Google.
 
 Two consequences for new code: mark `Intl`-formatted output and other already-localized strings `notranslate`, since bare localized text reads as untranslated source and costs a pass; and never rely on the mutation observer seeing a bare text node, because Google's own restore adds those and only added *elements* are inspected.
 

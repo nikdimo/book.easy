@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import dynamic from "next/dynamic";
-import { Loader2, MapPin } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -67,25 +67,20 @@ export function ListingAddressField({
         </div>
       )}
 
+      {/* Full width, no coordinate readout beside it: raw lat/lng told the host
+          nothing they could check, and it was taking up half the strip the map
+          could use to actually show them where the pin ended up. */}
       {hasPin && (
-        <div className="flex items-stretch gap-3 overflow-hidden rounded-xl border">
-          <div className="relative h-28 w-36 shrink-0 bg-muted">
-            <ListingLocationPickerInner
-              lat={latitude}
-              lng={longitude}
-              hasPin
-              zoom={16}
-              interactive={false}
-              className="h-full w-full"
-              onChange={() => undefined}
-            />
-          </div>
-          <p className="flex items-center gap-2 py-3 pr-3 text-sm md:text-xs text-muted-foreground">
-            <MapPin className="h-4 w-4 shrink-0 text-primary" />
-            <span>
-              {latitude.toFixed(6)}, {longitude.toFixed(6)}
-            </span>
-          </p>
+        <div className="relative h-36 w-full overflow-hidden rounded-xl border bg-muted md:h-44">
+          <ListingLocationPickerInner
+            lat={latitude}
+            lng={longitude}
+            hasPin
+            zoom={16}
+            interactive={false}
+            className="h-full w-full"
+            onChange={() => undefined}
+          />
         </div>
       )}
 

@@ -4,7 +4,7 @@ import { useActionState, useCallback, useEffect, useMemo, useRef, useState, useT
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Bath, Bed, BedDouble, Building, CalendarDays, CalendarRange, ChevronLeft, ChevronRight, CircleAlert, CircleDollarSign, Coffee, CookingPot, Eye, Flame, GripVertical, HeartPulse, Laptop, ListChecks, Loader2, MapPin, Microwave, Minus, Mountain, Pencil, Percent, Plus, Refrigerator, Rocket, Shirt, Shield, ShieldCheck, Sparkles, Sun, Thermometer, Trees, Tv, Users, Waves, Wind, Wifi, Car } from "lucide-react";
+import { Bath, Bed, BedDouble, Building, CalendarDays, CalendarRange, Check, ChevronLeft, ChevronRight, CircleAlert, CircleDollarSign, Coffee, CookingPot, Eye, Flame, GripVertical, HeartPulse, Laptop, ListChecks, Loader2, MapPin, Microwave, Minus, Mountain, Pencil, Percent, Plus, Refrigerator, Rocket, Shirt, Shield, ShieldCheck, Sparkles, Sun, Thermometer, Trees, Tv, Users, Waves, Wind, Wifi, Car } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   saveListingDraft,
@@ -648,6 +648,12 @@ export function ListingForm({
   const locationContinueReady =
     locationStepIssues.length === 0 &&
     !(locationStep === LISTING_STEP.location && geocodingAddress);
+  /** The lookup is what Continue is waiting for, so Continue is where it reports —
+   *  a disabled button with an unchanged label just read as broken. */
+  const wizardSearchingAddress =
+    currentStep === LISTING_STEP.location && geocodingAddress;
+  const locationEditorSearchingAddress =
+    locationStep === LISTING_STEP.location && geocodingAddress;
 
   const [state, formAction, isPending] = useActionState(
     async (_prev: { error?: string; success?: boolean } | undefined, formData: FormData) => {
@@ -1067,6 +1073,20 @@ export function ListingForm({
     void autosaveDraft(nextStep);
     selectMobilePane("edit");
     window.requestAnimationFrame(() => editorScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" }));
+    // The nightly rate is the only thing the Pricing step is really asking for, so
+    // land the caret in it — two frames because the step's fields are still hidden
+    // on the first one, and focusing a hidden input does nothing.
+    if (nextStep === LISTING_STEP.pricing && !isEditing) {
+      window.requestAnimationFrame(() =>
+        window.requestAnimationFrame(() => {
+          const input = document.getElementById("baseNightlyRate");
+          if (input instanceof HTMLInputElement) {
+            input.focus();
+            input.select();
+          }
+        })
+      );
+    }
   }
 
   function openLocationEditor() {
@@ -2080,7 +2100,7 @@ export function ListingForm({
                     {/* Sized off the container, not the viewport: the editor is a
                       resizable pane, so viewport breakpoints put one card per row
                       even when there is room for three. */}
-                    <div className="grid grid-cols-[repeat(auto-fill,minmax(7.5rem,1fr))] gap-2 md:grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] md:gap-2.5">
+                    <div className="grid auto-rows-fr grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-2 md:grid-cols-[repeat(auto-fill,minmax(10.5rem,1fr))] md:gap-2.5">
                       {items.map((amenity) => {
                       const checked = selectedAmenityIds.includes(amenity.id);
                       const Icon = AMENITY_ICON_MAP[amenity.icon ?? ""] ?? Sparkles;
@@ -2092,7 +2112,11 @@ export function ListingForm({
                           aria-pressed={checked}
                           onClick={() => toggleAmenity(amenity.id, !checked)}
                           className={cn(
-                            "group flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-2 py-1.5 text-left transition-all md:min-h-[64px] md:gap-2.5 md:rounded-xl md:px-3 md:py-2.5",
+                            // pr-6 keeps the label clear of the corner check, and the
+                            // label itself wraps rather than running off the card:
+                            // translated amenity names are routinely twice the length
+                            // of the English ones this grid was sized against.
+                            "group relative flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border py-1.5 pl-2 pr-6 text-left transition-all md:min-h-[64px] md:gap-2.5 md:rounded-xl md:py-2.5 md:pl-3 md:pr-7",
                             checked
                               ? "border-primary bg-primary/[0.08] text-foreground shadow-sm ring-1 ring-primary/20"
                               : "border-border/70 bg-card hover:-translate-y-0.5 hover:border-primary/40 hover:bg-muted/30 hover:shadow-sm"
@@ -2106,13 +2130,23 @@ export function ListingForm({
                           </span>
                           <span
                             className={cn(
-                              "flex-1 text-xs font-medium leading-snug md:text-[0.8125rem]",
+                              "min-w-0 flex-1 hyphens-auto break-words text-xs font-medium leading-snug md:text-[0.8125rem]",
                               amenityLabel.translated && "notranslate",
                             )}
                           >
                             {amenityLabel.text}
                           </span>
-                          <span className={cn("size-1.5 shrink-0 rounded-full md:size-2", checked ? "bg-primary" : "bg-border")} aria-hidden="true" />
+                          {/* A tick in the corner instead of a dot on the baseline:
+                              the dot sat in the text's row, so a wrapped label pushed
+                              it off the card. */}
+                          {checked && (
+                            <span
+                              className="absolute right-1 top-1 flex size-4 items-center justify-center rounded-full bg-primary text-primary-foreground"
+                              aria-hidden="true"
+                            >
+                              <Check className="size-3" strokeWidth={3} />
+                            </span>
+                          )}
                           {checked && <input type="hidden" name="amenityIds" value={amenity.id} />}
                         </button>
                       );
@@ -2185,8 +2219,7 @@ export function ListingForm({
                     }
                     onClick={() => goToLocationStep(locationStep! + 1)}
                   >
-                    <Tx k="host.listings.continue" source="Continue" />
-                    <ChevronRight />
+                    <ContinueLabel searching={locationEditorSearchingAddress} />
                   </Button>
                 )}
               </div>
@@ -2282,7 +2315,7 @@ export function ListingForm({
                     }
                     onClick={() => goToStep(currentStep + 1)}
                   >
-                    <Tx k="host.listings.continue" source="Continue" /> <ChevronRight />
+                    <ContinueLabel searching={wizardSearchingAddress} />
                   </Button>
                 ) : (
                   <Button
@@ -2505,8 +2538,7 @@ export function ListingForm({
                 }
                 onClick={() => goToStep(currentStep + 1)}
               >
-                <Tx k="host.listings.continue" source="Continue" />
-                <ChevronRight />
+                <ContinueLabel searching={wizardSearchingAddress} />
               </Button>
             ) : (
               <Button
@@ -2604,8 +2636,7 @@ export function ListingForm({
                 }
                 onClick={() => goToLocationStep(locationStep! + 1)}
               >
-                <Tx k="host.listings.continue" source="Continue" />
-                <ChevronRight />
+                <ContinueLabel searching={locationEditorSearchingAddress} />
               </Button>
             )}
           </div>
@@ -2970,6 +3001,33 @@ function MediaUploadStatus({
         </div>
       </div>
     </div>
+  );
+}
+
+/** Continue's two faces on the map step: while the pin's address is being looked up
+ *  it says so, instead of sitting there greyed out with an unchanged label.
+ *
+ *  Keyed so React remounts the label rather than mutating its text node — Google
+ *  Translate swaps those for its own <font> wrappers, and an in-place update then
+ *  lands on a detached node. */
+function ContinueLabel({ searching }: { searching: boolean }) {
+  return (
+    <span
+      key={searching ? "searching" : "continue"}
+      className="inline-flex items-center gap-1.5"
+    >
+      {searching ? (
+        <>
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <Tx k="host.form.searching_address" source="Searching address…" />
+        </>
+      ) : (
+        <>
+          <Tx k="host.listings.continue" source="Continue" />
+          <ChevronRight className="h-4 w-4" />
+        </>
+      )}
+    </span>
   );
 }
 

@@ -21,8 +21,11 @@ import { Tx, useI18n } from "@/lib/i18n/client";
 import { recordLanguageSelection } from "@/lib/actions/language.actions";
 import { DEFAULT_LOCALE, normalizeLocaleCode } from "@/lib/i18n/locale-preference";
 import {
+  getActiveLocale,
   getAutomaticLanguages,
+  getServerActiveLocale,
   getServerAutomaticLanguages,
+  subscribeActiveLocale,
   subscribeAutomaticLanguages,
   syncBrowserLanguageCookies,
 } from "@/lib/i18n/google-translate-runtime";
@@ -71,10 +74,19 @@ export function GoogleTranslateWidget({
     getAutomaticLanguages,
     getServerAutomaticLanguages,
   );
-  // The root provider is scoped to the request cookies and is the fallback for every
-  // layout. This is important outside the public layout, where callers previously
-  // omitted currentLocale and silently reset a visitor's choice to English.
+  const activeLocale = useSyncExternalStore(
+    subscribeActiveLocale,
+    getActiveLocale,
+    getServerActiveLocale,
+  );
+  // The runtime is authoritative once it has started, because it owns the cookies and
+  // Google's target. The prop covers the server render and the moment before hydration;
+  // the root provider is the last resort. That order matters for automatic (Google-only)
+  // languages, where `i18n.locale` is the catalog fallback "en" rather than the visitor's
+  // choice, so leaning on it displayed English while the page was being read in another
+  // language.
   const current =
+    normalizeLocaleCode(activeLocale) ??
     normalizeLocaleCode(currentLocale) ??
     normalizeLocaleCode(i18n.locale) ??
     DEFAULT_LOCALE;

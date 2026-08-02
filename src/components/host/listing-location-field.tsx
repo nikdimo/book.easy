@@ -510,11 +510,6 @@ export function ListingLocationMapField({
 
   const latitude = initialLat ?? mapCenter[0];
   const longitude = initialLng ?? mapCenter[1];
-  const locationSummary = hasPin
-    ? [value.address, value.city, value.country].filter(Boolean).join(", ") ||
-      `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`
-    : "";
-
   return (
     // notranslate: this form swaps between different icon/text subtrees in several
     // places (loading spinners, the coordinate readout) as state changes. Google
@@ -529,23 +524,27 @@ export function ListingLocationMapField({
             Where is your property?
           </h2>
           <p className="mt-1 text-xs text-muted-foreground md:text-sm">
-            Search for it, or move the map so the pin sits exactly where guests
-            will stay. Only you see this precise spot for now.
+            Search for it, then drag the map so the pin lands exactly where
+            guests will stay. Only you see this precise spot for now.
           </p>
         </div>
       )}
 
       {/* Full-bleed on phones: the map is the step, so the 16px gutters were
-          costing it width it actually uses. */}
-      <div className="relative -mx-4 min-h-[16rem] overflow-hidden border-y bg-muted md:mx-0 md:min-h-[22rem] md:rounded-xl md:border">
+          costing it width it actually uses. It also takes the height the summary
+          card below it used to occupy — aiming a pin is easier the more of the
+          surroundings you can see at once. */}
+      <div className="relative -mx-4 min-h-[24rem] overflow-hidden border-y bg-muted md:mx-0 md:min-h-[30rem] md:rounded-xl md:border">
         <ListingLocationPickerInner
           lat={latitude}
           lng={longitude}
           hasPin={hasPin}
           zoom={hasPin ? 16 : mapZoom}
           className={cn(
-            "h-[38dvh] min-h-[16rem] w-full md:h-[min(60vh,34rem)] md:min-h-[22rem]",
-            resolving && "pointer-events-none"
+            // The geocode lookup no longer freezes the map: it is superseded by the
+            // next pin position anyway, so blocking the gesture only made aiming
+            // feel sticky.
+            "h-[62dvh] min-h-[24rem] w-full md:h-[min(74vh,46rem)] md:min-h-[30rem]"
           )}
           onChange={(nextLat, nextLng) => {
             void setCoordinates(nextLat, nextLng, "MANUAL_PIN");
@@ -570,7 +569,6 @@ export function ListingLocationMapField({
               className="h-12 border-0 bg-transparent pl-12 pr-11 text-base shadow-none focus-visible:ring-0"
               placeholder="Search Google for an address or place"
               value={query}
-              disabled={resolving}
               onChange={(event) => {
                 const nextQuery = event.target.value;
                 selectedQueryRef.current = "";
@@ -705,27 +703,13 @@ export function ListingLocationMapField({
         </div>
       </div>
 
-      <div className="min-h-[3.5rem] rounded-xl border bg-muted/35 p-3">
-        {hasPin ? (
-          <>
-            <p className="flex items-start gap-2 text-sm font-medium">
-              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              <span>{locationSummary}</span>
-            </p>
-            <p className="mt-2 pl-6 text-sm md:text-xs text-muted-foreground">
-              {resolving
-                ? "Finding the address…"
-                : locationMessage ||
-                  `${latitude.toFixed(6)}, ${longitude.toFixed(6)} · move the map under the pin, or drag the pin itself, to fine-tune the entrance`}
-            </p>
-          </>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            {locationMessage ||
-              "No pin yet — search above or click the map to place one."}
-          </p>
-        )}
-      </div>
+      {/* No summary card: the coordinates and the "move the map" hint restated what
+          the pin already shows, and the address lookup now reports itself on the
+          Continue button instead of in a paragraph the host has to notice. Only a
+          real problem (a refused geolocation prompt) still gets a line here. */}
+      {locationMessage && (
+        <p className="text-sm text-muted-foreground">{locationMessage}</p>
+      )}
 
       <Dialog open={locationDialogOpen} onOpenChange={setLocationDialogOpen}>
         <DialogContent variant="sheet" className="min-w-0 overflow-x-hidden overflow-y-auto md:max-h-[calc(100dvh-2rem)] md:w-[calc(100vw-2rem)] md:max-w-lg">

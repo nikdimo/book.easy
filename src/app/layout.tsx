@@ -13,7 +13,7 @@ import {
   SITE_TITLE_SUFFIX,
   SITE_URL,
 } from "@/lib/branding";
-import { getT, localeDirection } from "@/lib/i18n/t";
+import { getLocale, getT, localeDirection } from "@/lib/i18n/t";
 import { I18nProvider } from "@/lib/i18n/client";
 import { getEnabledLanguages } from "@/lib/services/language.service";
 
@@ -64,17 +64,35 @@ export default async function RootLayout({
   children: React.ReactNode;
   modal: React.ReactNode;
 }>) {
-  const translator = await getT();
-  const languages = await getEnabledLanguages();
+  // Two different locales, and conflating them is a bug rather than a simplification.
+  // `translator.locale` is the *catalog* locale: what the fixed copy below actually
+  // resolved to, which falls back to English whenever the requested language has no
+  // enabled reviewed catalog. `requestedLocale` is what the visitor chose. Google's
+  // translation target and the persisted cookies must follow the choice — handing the
+  // catalog locale to the controller made `syncBrowserLanguageCookies` overwrite an
+  // automatic (Google-only) selection with English on the very next page load.
+  const [translator, requestedLocale, languages] = await Promise.all([
+    getT(),
+    getLocale(),
+    getEnabledLanguages(),
+  ]);
   return (
     <html
+      // `lang` describes the text actually served, which is the catalog locale — English
+      // whenever the requested language has no reviewed catalog. Google rewrites this
+      // attribute itself once it translates the document.
       lang={translator.locale}
-      dir={localeDirection(translator.locale)}
+      // Direction follows the choice instead, because it has to be right for the text the
+      // visitor ends up reading rather than the source it is translated from. Every RTL
+      // language is Google-only (none are reviewed), so keying this to the catalog locale
+      // meant `localeDirection` could never once return "rtl" — and Google ships no rule
+      // for the `translated-rtl` class it adds, so nothing else would have set it either.
+      dir={localeDirection(requestedLocale)}
       className={`${manrope.variable} ${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <TranslateDomGuard />
-        <GoogleTranslateController locale={translator.locale} />
+        <GoogleTranslateController locale={requestedLocale} />
         <I18nProvider locale={translator.locale} messages={translator.messages}>
           <SessionProvider refetchOnWindowFocus={false} refetchInterval={0}>
             <TooltipProvider>
@@ -83,7 +101,7 @@ export default async function RootLayout({
               <Toaster richColors position="top-right" />
               <ConsentBanner
                 languages={languages}
-                currentLocale={translator.locale}
+                currentLocale={requestedLocale}
               />
             </TooltipProvider>
           </SessionProvider>

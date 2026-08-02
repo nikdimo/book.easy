@@ -1785,6 +1785,11 @@
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
+    "key": "host.form.searching_address",
+    "sourceText": "Searching address…",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
     "key": "host.form.steps_hint",
     "sourceText": "Jump to any part of your listing. Your draft is saved automatically.",
     "filePath": "src/components/host/listing-form.tsx"

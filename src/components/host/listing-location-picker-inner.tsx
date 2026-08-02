@@ -10,7 +10,7 @@ type MapsListener = { remove(): void };
 type GoogleLatLng = { lat(): number; lng(): number };
 type GoogleMap = {
   addListener(
-    event: "click" | "drag" | "idle",
+    event: "click" | "dragstart" | "drag" | "dragend" | "idle" | "zoom_changed",
     handler: (event: { latLng?: GoogleLatLng }) => void
   ): MapsListener;
   getCenter(): GoogleLatLng | undefined;
@@ -18,14 +18,6 @@ type GoogleMap = {
   panTo(position: { lat: number; lng: number }): void;
   setCenter(position: { lat: number; lng: number }): void;
   setZoom(zoom: number): void;
-};
-type GoogleMarker = {
-  addListener(
-    event: "dragstart" | "dragend",
-    handler: (event: { latLng?: GoogleLatLng }) => void
-  ): MapsListener;
-  map: GoogleMap | null;
-  position: { lat: number; lng: number } | GoogleLatLng | null;
 };
 type MapConstructor = new (
   container: HTMLElement,
@@ -43,12 +35,6 @@ type MapConstructor = new (
     keyboardShortcuts: boolean;
   }
 ) => GoogleMap;
-type MarkerConstructor = new (options: {
-  map: GoogleMap;
-  position: { lat: number; lng: number };
-  gmpDraggable: boolean;
-  title: string;
-}) => GoogleMarker;
 
 /** Coordinates round-trip through React state as strings, so "the same spot" has to be
  *  a tolerance rather than an equality check. ~1cm — far below anything a host can aim. */
@@ -64,6 +50,15 @@ function sameSpot(
   );
 }
 
+/**
+ * A centre-pin picker, the pattern every phone map app converged on: the pin is a
+ * fixed piece of UI at the middle of the viewport and the *map* moves underneath it.
+ *
+ * There is deliberately no draggable map marker any more. Having both a draggable pin
+ * and a moving map meant two ways to aim the same thing, each with its own feel — and
+ * the draggable one put the target under the host's own finger at the exact moment
+ * they needed to see it.
+ */
 export default function ListingLocationPickerInner({
   lat,
   lng,
@@ -85,20 +80,24 @@ export default function ListingLocationPickerInner({
     process.env.NEXT_PUBLIC_GOOGLE_MAPS_JAVASCRIPT_API_KEY?.trim();
   const containerRef = React.useRef<HTMLDivElement>(null);
   const mapRef = React.useRef<GoogleMap | null>(null);
-  const markerRef = React.useRef<GoogleMarker | null>(null);
-  const markerConstructorRef = React.useRef<MarkerConstructor | null>(null);
   const resizeObserverRef = React.useRef<ResizeObserver | null>(null);
   const listenersRef = React.useRef<MapsListener[]>([]);
   const onChangeRef = React.useRef(onChange);
   const initialOptionsRef = React.useRef({ lat, lng, hasPin, zoom });
-  const markerDraggingRef = React.useRef(false);
   const lastEmittedRef = React.useRef<{ lat: number; lng: number } | null>(null);
+  /** The map settles (`idle`) after our own programmatic pans and after the very first
+   *  render too. Without this flag the first idle would drop a pin in the middle of
+   *  whatever coarse view the map opened on — a location the host never chose. */
+  const userGesturedRef = React.useRef(false);
   /** Where the map's centre already is (or is animating to) because of a gesture we
    *  just handled — the one case where the coordinates coming back down as props must
    *  not move the camera again. Null means the camera still has to travel. */
   const settledCenterRef = React.useRef<{ lat: number; lng: number } | null>(null);
   const [ready, setReady] = React.useState(false);
   const [loadFailed, setLoadFailed] = React.useState(false);
+  /** Lifts the pin off the map while the map slides underneath it, so the gesture
+   *  reads as "aiming" rather than "the pin is stuck". */
+  const [panning, setPanning] = React.useState(false);
 
   React.useEffect(() => {
     onChangeRef.current = onChange;
@@ -124,27 +123,6 @@ export default function ListingLocationPickerInner({
     []
   );
 
-  /** Dragging the pin itself is the one way it leaves the centre — so once it's dropped,
-   *  glide the map under it until it's centred again rather than snapping. */
-  const attachMarkerListeners = React.useCallback(
-    (map: GoogleMap, marker: GoogleMarker) => {
-      listenersRef.current.push(
-        marker.addListener("dragstart", () => {
-          markerDraggingRef.current = true;
-        }),
-        marker.addListener("dragend", (event) => {
-          markerDraggingRef.current = false;
-          if (!event.latLng) return;
-          const nextLat = event.latLng.lat();
-          const nextLng = event.latLng.lng();
-          map.panTo({ lat: nextLat, lng: nextLng });
-          emitPosition(nextLat, nextLng, true);
-        })
-      );
-    },
-    [emitPosition]
-  );
-
   React.useEffect(() => {
     if (!key) return;
     let cancelled = false;
@@ -153,18 +131,15 @@ export default function ListingLocationPickerInner({
       .then((maps) => {
         if (cancelled || !containerRef.current) return;
         const MapClass = maps.Map as MapConstructor;
-        const MarkerClass = (
-          maps.marker as { AdvancedMarkerElement: MarkerConstructor }
-        ).AdvancedMarkerElement;
         const initial = initialOptionsRef.current;
         const map = new MapClass(containerRef.current, {
           center: { lat: initial.lat, lng: initial.lng },
           zoom: initial.hasPin ? 17 : initial.zoom,
           mapId: "DEMO_MAP_ID",
-          cameraControl: interactive,
+          cameraControl: false,
           clickableIcons: false,
-          fullscreenControl: interactive,
-          mapTypeControl: interactive,
+          fullscreenControl: false,
+          mapTypeControl: false,
           streetViewControl: false,
           zoomControl: interactive,
           gestureHandling: interactive ? "greedy" : "none",
@@ -172,7 +147,6 @@ export default function ListingLocationPickerInner({
         });
 
         mapRef.current = map;
-        markerConstructorRef.current = MarkerClass;
         resizeObserverRef.current = new ResizeObserver(() => {
           const current = initialOptionsRef.current;
           window.requestAnimationFrame(() => {
@@ -184,43 +158,31 @@ export default function ListingLocationPickerInner({
           listenersRef.current.push(
             map.addListener("click", (event) => {
               if (event.latLng) {
+                userGesturedRef.current = true;
                 // Not centred yet — the prop round-trip below is what glides the
-                // clicked spot into the middle of the map.
+                // tapped spot into the middle of the map, under the pin.
                 emitPosition(event.latLng.lat(), event.latLng.lng(), false);
               }
             }),
-            // The pin rides the centre of the map: aiming it means moving the map
-            // under it, the way every phone map app does it, so the pin never ends up
-            // hidden under the host's own finger.
-            map.addListener("drag", () => {
-              const marker = markerRef.current;
-              if (!marker || markerDraggingRef.current) return;
-              const center = map.getCenter();
-              if (center) marker.position = { lat: center.lat(), lng: center.lng() };
+            map.addListener("dragstart", () => {
+              userGesturedRef.current = true;
+              setPanning(true);
+            }),
+            map.addListener("dragend", () => setPanning(false)),
+            map.addListener("zoom_changed", () => {
+              userGesturedRef.current = true;
             }),
             map.addListener("idle", () => {
-              const marker = markerRef.current;
-              if (!marker || markerDraggingRef.current) return;
+              setPanning(false);
+              const current = initialOptionsRef.current;
+              // Before the host has aimed at anything, the centre is just wherever
+              // the coarse opening view landed — not a choice worth committing.
+              if (!current.hasPin && !userGesturedRef.current) return;
               const center = map.getCenter();
               if (!center) return;
-              const nextLat = center.lat();
-              const nextLng = center.lng();
-              marker.position = { lat: nextLat, lng: nextLng };
-              emitPosition(nextLat, nextLng, true);
+              emitPosition(center.lat(), center.lng(), true);
             })
           );
-        }
-
-        const current = initialOptionsRef.current;
-        if (current.hasPin) {
-          const marker = new MarkerClass({
-            map,
-            position: { lat: current.lat, lng: current.lng },
-            gmpDraggable: interactive,
-            title: "Property location",
-          });
-          markerRef.current = marker;
-          if (interactive) attachMarkerListeners(map, marker);
         }
         setReady(true);
       })
@@ -232,52 +194,29 @@ export default function ListingLocationPickerInner({
       cancelled = true;
       for (const listener of listenersRef.current) listener.remove();
       listenersRef.current = [];
-      if (markerRef.current) markerRef.current.map = null;
       resizeObserverRef.current?.disconnect();
       resizeObserverRef.current = null;
-      markerRef.current = null;
-      markerConstructorRef.current = null;
       mapRef.current = null;
     };
-  }, [attachMarkerListeners, emitPosition, interactive, key]);
+  }, [emitPosition, interactive, key]);
 
   React.useEffect(() => {
     const map = mapRef.current;
-    const MarkerClass = markerConstructorRef.current;
     if (!map) return;
 
     const position = { lat, lng };
-    // A pan or a pin drop already left the map exactly where these coordinates came
-    // from — re-centring and re-zooming it here is what made the map jump under the
-    // host mid-gesture (and snapped their zoom-out back to street level every time).
+    // A pan or a tap already left the map exactly where these coordinates came from —
+    // re-centring and re-zooming it here is what made the map jump under the host
+    // mid-gesture (and snapped their zoom-out back to street level every time).
     const alreadyCentered =
       settledCenterRef.current !== null && sameSpot(settledCenterRef.current, position);
-    if (!alreadyCentered) {
-      // panTo, not setCenter: nearby moves glide, so the pin visibly slides back to
-      // the centre instead of teleporting there.
-      map.panTo(position);
-      map.setZoom(hasPin ? Math.max(map.getZoom() ?? 17, 17) : zoom);
-    }
+    if (alreadyCentered) return;
 
-    if (!hasPin) {
-      if (markerRef.current) markerRef.current.map = null;
-      markerRef.current = null;
-      return;
-    }
-
-    if (!markerRef.current && MarkerClass) {
-      const marker = new MarkerClass({
-        map,
-        position,
-        gmpDraggable: interactive,
-        title: "Property location",
-      });
-      markerRef.current = marker;
-      if (interactive) attachMarkerListeners(map, marker);
-    } else if (markerRef.current) {
-      markerRef.current.position = position;
-    }
-  }, [attachMarkerListeners, hasPin, interactive, lat, lng, zoom]);
+    // panTo, not setCenter: nearby moves glide, so the map visibly slides under the
+    // pin instead of teleporting.
+    map.panTo(position);
+    map.setZoom(hasPin ? Math.max(map.getZoom() ?? 17, 17) : zoom);
+  }, [hasPin, lat, lng, zoom]);
 
   if (!key) {
     return (
@@ -291,7 +230,38 @@ export default function ListingLocationPickerInner({
 
   return (
     <div className={cn("relative isolate overflow-hidden bg-muted", className)}>
-      <div ref={containerRef} className="h-full min-h-96 w-full" />
+      {/* Exactly the wrapper's box — a min-height here would push the map's own
+          centre away from the wrapper's centre, and the pin is positioned against
+          the wrapper. */}
+      <div ref={containerRef} className="h-full w-full" />
+
+      {/* The pin lives in the DOM at the exact centre of the map, not on the map. It
+          is never draggable and never lags the gesture. */}
+      {ready && !loadFailed && (
+        <div
+          className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center"
+          aria-hidden="true"
+        >
+          <div className="relative">
+            <MapPin
+              className={cn(
+                "h-10 w-10 -translate-y-[50%] fill-primary text-primary drop-shadow-[0_3px_6px_rgba(0,0,0,0.35)] transition-transform duration-150",
+                panning && "-translate-y-[65%] scale-105"
+              )}
+              strokeWidth={1.5}
+            />
+            {/* The exact spot the tip points at, so there is no doubt about which
+                pixel the coordinates refer to while the pin is lifted. */}
+            <span
+              className={cn(
+                "absolute left-1/2 top-0 h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-foreground/60 transition-opacity duration-150",
+                panning ? "opacity-100" : "opacity-0"
+              )}
+            />
+          </div>
+        </div>
+      )}
+
       {!ready && !loadFailed && (
         <div className="absolute inset-0 flex items-center justify-center gap-2 bg-muted text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
