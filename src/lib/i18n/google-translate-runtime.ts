@@ -15,9 +15,16 @@ import {
  * responsive sidebar selectors plus a header one, and the consent dialog adds another,
  * so a single opened popover dispatched one full-document translation pass per mounted
  * instance — the main cause of the visible flicker. The runtime below is module-scoped:
- * the script, the hidden Google element, the route-change pass and the overlay observer
+ * the script, the hidden Google element, the route-change pass and the content observer
  * exist exactly once regardless of how many selectors are on screen, and selectors are
  * presentation-only consumers of `subscribeAutomaticLanguages`.
+ *
+ * The second cause was frequency. Google translates a page by restoring it to its source
+ * language and translating the result, so a pass that has nothing to do is still visible
+ * as the whole document blinking to English and back. Every popover, dialog and route
+ * change used to dispatch one. A pass is now gated on the DOM actually holding source
+ * text Google has not already been offered — see `retranslate` — which for a reviewed
+ * locale means ordinary interactions dispatch nothing at all.
  */
 
 declare global {
@@ -50,6 +57,30 @@ const OVERLAY_DELAY_MS = 150;
 /** A committed route change should be picked up promptly, but still late enough to
  *  absorb the popovers and tooltips that mount with the new screen. */
 const ROUTE_DELAY_MS = 50;
+/** How long Google is given to finish a dispatched pass before whatever source text is
+ *  still on screen is recorded as already offered to it. Overshooting is harmless — the
+ *  record only decides whether a *future* interaction is allowed to dispatch again. */
+const PASS_SETTLE_MS = 1000;
+
+/** Tags that never hold translatable interface copy. `FONT` is Google's own output:
+ *  it wraps every string it translates in nested `<font>` elements, so skipping the tag
+ *  is what tells "already handled" apart from "still in the source language". */
+const NON_TRANSLATABLE_TAGS = new Set([
+  "SCRIPT",
+  "STYLE",
+  "NOSCRIPT",
+  "TEXTAREA",
+  "FONT",
+  "IFRAME",
+]);
+
+const LETTER = /\p{L}/u;
+
+/** Source text already offered to Google, keyed by the exact value that was offered.
+ *  A `WeakMap` keeps this tied to node lifetime — nodes discarded by a route change are
+ *  collected with it — and storing the value alongside means React mutating a text node
+ *  in place (`nodeValue = …`, no new node) still counts as new content. */
+const offeredText = new WeakMap<Text, string>();
 
 export interface AutomaticLanguage {
   code: string;
@@ -128,6 +159,57 @@ function collectLanguages(displayLocale: string) {
   );
 }
 
+/** Subtrees a pass would never change: Google's own markup and output, and the copy the
+ *  server already resolved from the reviewed catalog (which is marked `notranslate`
+ *  precisely so Google leaves it alone). */
+function isOpaqueSubtree(element: Element): boolean {
+  return (
+    NON_TRANSLATABLE_TAGS.has(element.tagName) ||
+    element.id === ELEMENT_ID ||
+    element.classList.contains("notranslate") ||
+    element.classList.contains("skiptranslate") ||
+    element.getAttribute("translate") === "no"
+  );
+}
+
+/** Walks the text nodes a pass could act on: everything outside an opaque subtree that
+ *  contains at least one letter. Prices, counts and separators are excluded — Google
+ *  leaves them in place, so counting them would make every check report work to do. */
+function sourceTextWalker(root: Element): TreeWalker {
+  return document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        return isOpaqueSubtree(node as Element)
+          ? NodeFilter.FILTER_REJECT
+          : NodeFilter.FILTER_SKIP;
+      }
+      return LETTER.test(node.nodeValue ?? "")
+        ? NodeFilter.FILTER_ACCEPT
+        : NodeFilter.FILTER_REJECT;
+    },
+  });
+}
+
+function hasUnofferedText(root: Element): boolean {
+  if (isOpaqueSubtree(root)) return false;
+  const walker = sourceTextWalker(root);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const text = node as Text;
+    if (offeredText.get(text) !== text.nodeValue) return true;
+  }
+  return false;
+}
+
+function recordOfferedText(): void {
+  const walker = sourceTextWalker(document.body);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    const text = node as Text;
+    offeredText.set(text, text.nodeValue ?? "");
+  }
+}
+
+let pendingRecord: number | undefined;
+
 function retranslate(locale: string): boolean {
   const select = translateSelect();
   if (!select) return false;
@@ -137,11 +219,25 @@ function retranslate(locale: string): boolean {
     [...select.options].find((option) => option.value === locale.split("-")[0])?.value;
   if (!target) return false;
 
+  // A dispatched pass restores the whole document to its source language before
+  // translating it again, so an unnecessary one is visible as the page blinking to
+  // English and back. Reviewed copy arrives from the server already translated and
+  // marked `notranslate`, which means most interactions — opening a popover, closing a
+  // dialog, committing a route whose content is fully covered — introduce no source
+  // text at all and must not dispatch.
+  if (!hasUnofferedText(document.body)) return true;
+
   // The Google element lives outside the router's subtree, so client navigation swaps
   // page content without Google noticing. Dispatch even when the select already shows
   // the target: its change handler is what walks the newly committed DOM.
   select.value = target;
   select.dispatchEvent(new Event("change", { bubbles: true }));
+
+  // Whatever is still in the source language once the pass settles was offered to
+  // Google and either translated or deliberately left alone; either way, re-dispatching
+  // for it on the next click would restore the document for nothing.
+  window.clearTimeout(pendingRecord);
+  pendingRecord = window.setTimeout(recordOfferedText, PASS_SETTLE_MS);
   return true;
 }
 
@@ -163,7 +259,9 @@ function schedulePass(locale: string, delay: number) {
 
 function cancelPass() {
   window.clearTimeout(pendingPass);
+  window.clearTimeout(pendingRecord);
   pendingPass = undefined;
+  pendingRecord = undefined;
   pendingDelay = Number.POSITIVE_INFINITY;
 }
 
@@ -256,21 +354,23 @@ function install(locale: string): () => void {
   };
 
   // Radix renders dialogs and popovers into body-level portals, which Google's own
-  // observer does not reliably pick up. Watch for them, but translate once per burst.
-  const overlayObserver = new MutationObserver((mutations) => {
-    const addedOverlay = mutations.some((mutation) =>
-      [...mutation.addedNodes].some(
-        (node) =>
-          node instanceof Element &&
-          (node.matches('[role="dialog"], [data-radix-popper-content-wrapper]') ||
-            Boolean(
-              node.querySelector('[role="dialog"], [data-radix-popper-content-wrapper]'),
-            )),
-      ),
-    );
-    if (addedOverlay) schedulePass(locale, OVERLAY_DELAY_MS);
+  // observer does not reliably pick up. The trigger is content rather than the overlay
+  // role: a popover built entirely from reviewed `notranslate` copy needs no pass, and
+  // scheduling one for it was the flicker on every click. Google's own mutations are
+  // ignored here — translating adds `<font>` elements (an opaque tag) and restoring
+  // adds bare text nodes (not elements), so neither can schedule a pass of its own.
+  const contentObserver = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      for (const node of mutation.addedNodes) {
+        if (node.nodeType !== Node.ELEMENT_NODE) continue;
+        if (hasUnofferedText(node as Element)) {
+          schedulePass(locale, OVERLAY_DELAY_MS);
+          return;
+        }
+      }
+    }
   });
-  overlayObserver.observe(document.body, { childList: true, subtree: true });
+  contentObserver.observe(document.body, { childList: true, subtree: true });
 
   window.googleTranslateElementInit = initialize;
   if (document.getElementById(SCRIPT_ID)) {
@@ -286,7 +386,7 @@ function install(locale: string): () => void {
 
   return () => {
     languageObserver.disconnect();
-    overlayObserver.disconnect();
+    contentObserver.disconnect();
     cancelPass();
   };
 }

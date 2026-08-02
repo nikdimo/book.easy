@@ -79,6 +79,7 @@ async function stopGradle() {
 
 async function configureGradleMemory() {
   const propertiesPath = path.join(androidRoot, "gradle.properties");
+  const appBuildGradlePath = path.join(androidRoot, "app", "build.gradle");
   const source = await readFile(propertiesPath, "utf8");
   const memory = "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m";
   let updated = /^org\.gradle\.jvmargs=.*$/m.test(source)
@@ -88,8 +89,27 @@ async function configureGradleMemory() {
     ? updated.replace(/^reactNativeArchitectures=.*$/m, "reactNativeArchitectures=arm64-v8a")
     : `${updated.trimEnd()}${os.EOL}reactNativeArchitectures=arm64-v8a${os.EOL}`;
   await writeFile(propertiesPath, updated, "utf8");
+  const appBuildGradle = await readFile(appBuildGradlePath, "utf8");
+  const bundleMarker = '    // debuggableVariants = ["liteDebug", "prodDebug"]';
+  if (!appBuildGradle.includes("debuggableVariants = []")) {
+    if (!appBuildGradle.includes(bundleMarker)) {
+      throw new Error(
+        "Generated app/build.gradle no longer contains the expected debuggableVariants setting.",
+      );
+    }
+    await writeFile(
+      appBuildGradlePath,
+      appBuildGradle.replace(
+        bundleMarker,
+        "    // Bundle JavaScript into the debug APK so it runs without Metro on a physical phone.\n" +
+          "    debuggableVariants = []",
+      ),
+      "utf8",
+    );
+  }
   write("Configured Gradle with 4 GiB heap and 1 GiB metaspace.");
   write("Configured the local debug APK for arm64-v8a Android phones.");
+  write("Configured the debug APK to include the JavaScript bundle for standalone phone testing.");
 }
 
 async function cleanAndGenerate(attempt) {

@@ -47,6 +47,7 @@ import {
   type ListingMediaUploadState,
 } from "@/components/host/listing-images-field";
 import {
+  finiteCoordinate,
   ListingLocationMapField,
   type ListingLocationValue,
 } from "@/components/host/listing-location-field";
@@ -334,11 +335,6 @@ const FIELD_VALIDATORS: Partial<Record<keyof ListingFormValues, (value: string) 
 type ListingStepIssue = {
   field: string;
   message: string;
-  /** "publish" issues are listed and block Publish, but let the host move on to the
-   *  next step. Photos are the case this exists for: the step sits second now, so
-   *  hard-blocking Continue until three files finish uploading turns the first real
-   *  ask into a wall for anyone still deciding whether to list at all. */
-  blocking?: "step" | "publish";
 };
 
 /** Which step a publish-blocking field lives on, so the checklist can jump straight
@@ -413,8 +409,7 @@ function listingStepIssues(
       const remaining = 3 - photoCount;
       issues.push({
         field: "media",
-        message: `Add ${remaining} more ${remaining === 1 ? "photo" : "photos"} before publishing`,
-        blocking: "publish",
+        message: `Add ${remaining} more ${remaining === 1 ? "photo" : "photos"} to continue`,
       });
     }
   }
@@ -446,6 +441,76 @@ function FieldSection({
       )}
       {children}
     </section>
+  );
+}
+
+/** The Location section on the edit page: what is saved, and one CTA into the three
+ *  location screens. Editing the pin, the address and Street View in place beside
+ *  every other field never gave the map the room it needs, and — unlike the create
+ *  wizard — there was no point at which the host confirms the edited address, which
+ *  is exactly what publishing is rejected without (see confirmAddressIfValid). */
+function LocationSummary({
+  values,
+  error,
+  onEdit,
+}: {
+  values: ListingFormValues;
+  error?: string;
+  onEdit: () => void;
+}) {
+  const latitude = finiteCoordinate(values.latitude, -90, 90);
+  const longitude = finiteCoordinate(values.longitude, -180, 180);
+  const hasPin = latitude !== null && longitude !== null;
+  const addressLine = [
+    values.address,
+    values.area,
+    [values.postalCode, values.city].filter(Boolean).join(" "),
+    values.country,
+  ]
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .join(", ");
+  const hasStreetView = Boolean(
+    values.streetViewPanoId || values.streetViewHeading
+  );
+
+  return (
+    // notranslate for the same reason as the location screens themselves: these rows
+    // swap between subtrees as the host edits, and React's next update then lands on
+    // nodes Google Translate has already replaced.
+    <div className="notranslate space-y-3 rounded-xl border p-3 md:p-4">
+      <div className="flex items-start gap-2">
+        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+        <div className="min-w-0 space-y-0.5">
+          <p className="text-sm font-medium">
+            {addressLine || "No address saved yet"}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {hasPin
+              ? `Pin at ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
+              : "No pin placed on the map yet"}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {hasStreetView ? "Street View saved" : "No Street View chosen"}
+          </p>
+        </div>
+      </div>
+      <FieldError message={error} />
+      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full sm:w-auto"
+          onClick={onEdit}
+        >
+          <MapPin className="h-4 w-4" />
+          Edit location
+        </Button>
+        <p className="text-xs text-muted-foreground">
+          Opens the map, address and Street View screens, one at a time.
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -510,6 +575,20 @@ export function ListingForm({
     : resumeListingStep(initialDraft?.currentStepId, initialDraft?.currentStep);
   const [currentStep, setCurrentStep] = useState(initialStep);
   const currentStepRef = useRef(initialStep);
+  /** Editing an existing listing: which of the three location screens the host opened
+   *  from the Location section, or null while the section shows its summary and the
+   *  rest of the form. The create wizard drives the same screens off currentStep. */
+  const [locationStep, setLocationStep] = useState<number | null>(null);
+  const locationEditorOpen = isEditing && locationStep !== null;
+  /** The edit page's one-long-page sections: the location editor takes over the whole
+   *  pane while it is open, so they stand down. */
+  const showEditSections = isEditing && !locationEditorOpen;
+  /** The location screen on show, whichever flow is driving it. */
+  const activeLocationStep = isEditing ? locationStep : currentStep;
+  /** A create-wizard step check. Always false while editing, where sections are shown
+   *  by showEditSections rather than by step. */
+  const onCreateStep = (...steps: number[]) =>
+    !isEditing && steps.includes(currentStep);
   // Tapping Preview in the bottom bar from a calendar screen has to land on the
   // preview pane, not the editor, so the bar behaves the same on all five screens.
   const [mobilePane, setMobilePane] = useState<"edit" | "preview">(
@@ -555,15 +634,20 @@ export function ListingForm({
     listingStepIssues(step, values, photoCount, mediaUploadState.active)
   );
   const currentStepIssues = issuesByStep[currentStep] ?? [];
-  const currentStepReady = !currentStepIssues.some(
-    (issue) => issue.blocking !== "publish"
-  );
+  const currentStepReady = currentStepIssues.length === 0;
   const listingReady = issuesByStep.every((issues) => issues.length === 0);
   // Hold Continue while the geocoder is still running, so the host can't land on
   // the Address step before it has been filled in.
   const continueReady =
     currentStepReady &&
     !(currentStep === LISTING_STEP.location && geocodingAddress);
+  // The location editor gates its Continue on exactly the same requirements as the
+  // matching wizard step.
+  const locationStepIssues =
+    locationStep !== null ? (issuesByStep[locationStep] ?? []) : [];
+  const locationContinueReady =
+    locationStepIssues.length === 0 &&
+    !(locationStep === LISTING_STEP.location && geocodingAddress);
 
   const [state, formAction, isPending] = useActionState(
     async (_prev: { error?: string; success?: boolean } | undefined, formData: FormData) => {
@@ -985,6 +1069,42 @@ export function ListingForm({
     window.requestAnimationFrame(() => editorScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" }));
   }
 
+  function openLocationEditor() {
+    setLocationStep(LISTING_STEP.location);
+    selectMobilePane("edit");
+    window.requestAnimationFrame(() =>
+      editorScrollRef.current?.scrollTo({ top: 0 })
+    );
+  }
+
+  function closeLocationEditor() {
+    // The host has been through the location screens and come back, so treat a valid
+    // address as confirmed — the same rule the wizard applies on leaving that step,
+    // and without it "Publish changes" is rejected as soon as the pin has moved.
+    confirmAddressIfValid();
+    setLocationStep(null);
+    // Two frames: the sections are still unmounted on the first one, and
+    // scrollToEditSection quietly does nothing when it can't find the section.
+    window.requestAnimationFrame(() =>
+      window.requestAnimationFrame(() => scrollToEditSection("location"))
+    );
+  }
+
+  /** Moving between the three location screens. Stepping off either end closes the
+   *  editor: the first screen's Back goes back to the listing, and the last one's
+   *  Done is the same trip forwards. */
+  function goToLocationStep(step: number) {
+    if (step < LISTING_STEP.location || step > LISTING_STEP.streetView) {
+      closeLocationEditor();
+      return;
+    }
+    if (locationStep === LISTING_STEP.address) confirmAddressIfValid();
+    setLocationStep(step);
+    window.requestAnimationFrame(() =>
+      editorScrollRef.current?.scrollTo({ top: 0 })
+    );
+  }
+
   function setEditorPaneWidth(nextWidth: number) {
     const workspace = workspaceRef.current;
     if (!workspace) return;
@@ -1075,7 +1195,46 @@ export function ListingForm({
           data-pane="editor"
           className={`${mobilePane === "edit" ? "flex" : "hidden"} h-full min-h-0 flex-col overflow-hidden`}
         >
-          {isEditing && (
+          {locationEditorOpen && (
+            <header className="z-20 shrink-0 border-b bg-background px-5 pb-2.5 pt-2.5 shadow-sm md:px-8 md:pb-3 md:pt-5">
+              <div className="flex min-w-0 items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="-ml-2 shrink-0"
+                  onClick={closeLocationEditor}
+                >
+                  <ChevronLeft />
+                  <Tx k="host.form.back_to_listing" source="Back to listing" />
+                </Button>
+                <span
+                  className="mx-1 h-5 w-px shrink-0 bg-border"
+                  aria-hidden="true"
+                />
+                <h1 className="min-w-0 truncate text-base font-semibold">
+                  {STEPS[locationStep!].title}
+                </h1>
+              </div>
+              <div className="mt-3 flex min-w-0 items-center gap-3">
+                <span
+                  className="notranslate shrink-0 rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground"
+                  translate="no"
+                >
+                  {`Step ${locationStep! - LISTING_STEP.location + 1} of ${LOCATION_STEPS.length}`}
+                </span>
+                <div className="h-1.5 min-w-16 flex-1 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all"
+                    style={{
+                      width: `${((locationStep! - LISTING_STEP.location + 1) / LOCATION_STEPS.length) * 100}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            </header>
+          )}
+          {showEditSections && (
             <header className="z-20 shrink-0 border-b bg-background px-5 pb-2.5 pt-2.5 shadow-sm md:pb-3 md:pt-5 md:px-8">
               {/* On mobile the heading only repeats the Edit tab in the bottom bar,
                   and the management link is a bottom-bar destination, so both are
@@ -1216,17 +1375,17 @@ export function ListingForm({
               onScroll={isEditing ? updateActiveEditSection : undefined}
             className="min-h-0 flex-1 touch-pan-y space-y-3 overflow-y-auto overscroll-contain px-4 py-3 [-webkit-overflow-scrolling:touch] [scrollbar-gutter:stable] md:space-y-4 md:px-8 md:py-4"
           >
-          {isEditing && state?.error && (
+          {showEditSections && state?.error && (
             <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{state.error}</div>
           )}
-          {isEditing && moderationNote && (
+          {showEditSections && moderationNote && (
             <div className="rounded-lg bg-destructive/10 p-4 text-destructive"><p className="text-sm font-medium">
                 <Tx k="host.form.moderation_feedback" source="Moderation feedback:" />
               </p><p className="mt-1 text-sm">{moderationNote}</p></div>
           )}
           {/* The three location steps render their own heading (the map one is
              full-bleed and needs the copy above it), so suppress the shared one. */}
-          <div className={isEditing || !LOCATION_STEPS.includes(currentStep) ? undefined : "hidden"}>
+          <div className={showEditSections || (!isEditing && !LOCATION_STEPS.includes(currentStep)) ? undefined : "hidden"}>
             {/* The step counter moved to the shell header chip, so repeating it
                 here only cost a line of scroll. */}
             <h2 className="text-lg font-semibold md:text-2xl">
@@ -1244,7 +1403,7 @@ export function ListingForm({
             </p>
           </div>
 
-          <div id={isEditing ? "edit-section-basics" : undefined} className={isEditing || currentStep === LISTING_STEP.propertyType || currentStep === LISTING_STEP.description ? "scroll-mt-32 block" : "hidden"}>
+          <div id={isEditing ? "edit-section-basics" : undefined} className={showEditSections || onCreateStep(LISTING_STEP.propertyType, LISTING_STEP.description) ? "scroll-mt-32 block" : "hidden"}>
           <FieldSection
             // On the wizard's property-type step the step heading already says
             // "Property type", so a section title here is a third repetition.
@@ -1254,7 +1413,7 @@ export function ListingForm({
                 : resolve("host.form.guest_basics", "Guest-facing basics").text
             }
           >
-            <div className={isEditing || currentStep === LISTING_STEP.description ? "space-y-2" : "hidden"}>
+            <div className={showEditSections || onCreateStep(LISTING_STEP.description) ? "space-y-2" : "hidden"}>
               <Label htmlFor="title">
                 <Tx k="host.form.title_label" source="Title" />
               </Label>
@@ -1274,7 +1433,7 @@ export function ListingForm({
               />
               <FieldError message={fieldErrors.title} />
             </div>
-            <div id={isEditing ? "edit-section-description" : undefined} className={isEditing || currentStep === LISTING_STEP.description ? "scroll-mt-32 space-y-2" : "hidden"}>
+            <div id={isEditing ? "edit-section-description" : undefined} className={showEditSections || onCreateStep(LISTING_STEP.description) ? "scroll-mt-32 space-y-2" : "hidden"}>
               <Label htmlFor="description">
                 <Tx k="host.form.description_label" source="Description" />
               </Label>
@@ -1312,7 +1471,7 @@ export function ListingForm({
                 </span>
               </div>
             </div>
-            <div className={isEditing || currentStep === LISTING_STEP.propertyType ? "space-y-3" : "hidden"}>
+            <div className={showEditSections || onCreateStep(LISTING_STEP.propertyType) ? "space-y-3" : "hidden"}>
               <Label
                 id="property-type-label"
                 className={isEditing ? undefined : "sr-only md:not-sr-only"}
@@ -1413,17 +1572,38 @@ export function ListingForm({
           </FieldSection>
           </div>
 
-          {/* Location is three wizard steps — pin, then address, then Street View —
-             but a single stacked section when editing an existing listing, where
-             everything is on one page anyway. */}
-          <div id={isEditing ? "edit-section-location" : undefined} className={isEditing || currentStep === LISTING_STEP.location ? "scroll-mt-32 block" : "hidden"}>
-          <FieldSection title={isEditing ? "Location" : undefined}>
+          {/* Location is always three screens — pin, then address, then Street View.
+             The create wizard reaches them as steps 4-6; the edit page reaches the
+             same three from the summary below, one at a time. Nothing is unmounted
+             either way: these fields carry the hidden inputs the form submits. */}
+          {showEditSections && (
+            <div id="edit-section-location" className="scroll-mt-32 block">
+              <FieldSection
+                title={resolve("host.form.location_section", "Location").text}
+              >
+                <LocationSummary
+                  values={values}
+                  error={
+                    fieldErrors.locationConfirmed ||
+                    fieldErrors.latitude ||
+                    fieldErrors.longitude ||
+                    fieldErrors.address ||
+                    fieldErrors.city ||
+                    fieldErrors.country
+                  }
+                  onEdit={openLocationEditor}
+                />
+              </FieldSection>
+            </div>
+          )}
+
+          <div className={activeLocationStep === LISTING_STEP.location ? "scroll-mt-32 block" : "hidden"}>
+          <FieldSection>
             <ListingLocationMapField
               value={values}
               onChange={updateLocation}
               onResolvingChange={setGeocodingAddress}
-              active={isEditing || currentStep === LISTING_STEP.location}
-              heading={!isEditing}
+              active={activeLocationStep === LISTING_STEP.location}
             />
             <FieldError
               message={
@@ -1435,8 +1615,8 @@ export function ListingForm({
           </FieldSection>
           </div>
 
-          <div className={isEditing || currentStep === LISTING_STEP.address ? "scroll-mt-32 block" : "hidden"}>
-          <FieldSection title={isEditing ? "Address" : undefined}>
+          <div className={activeLocationStep === LISTING_STEP.address ? "scroll-mt-32 block" : "hidden"}>
+          <FieldSection>
             <ListingAddressField
               value={values}
               onChange={(field, nextValue) => setField(field, nextValue)}
@@ -1446,22 +1626,17 @@ export function ListingForm({
                 city: fieldErrors.city,
                 country: fieldErrors.country,
               }}
-              heading={!isEditing}
             />
           </FieldSection>
           </div>
 
-          <div className={isEditing || currentStep === LISTING_STEP.streetView ? "scroll-mt-32 block" : "hidden"}>
-          <FieldSection title={isEditing ? "Street View" : undefined}>
-            <ListingStreetViewField
-              value={values}
-              onChange={updateLocation}
-              heading={!isEditing}
-            />
+          <div className={activeLocationStep === LISTING_STEP.streetView ? "scroll-mt-32 block" : "hidden"}>
+          <FieldSection>
+            <ListingStreetViewField value={values} onChange={updateLocation} />
           </FieldSection>
           </div>
 
-          <div id={isEditing ? "edit-section-photos" : undefined} className={isEditing || currentStep === LISTING_STEP.photos ? "scroll-mt-32 block" : "hidden"}>
+          <div id={isEditing ? "edit-section-photos" : undefined} className={showEditSections || onCreateStep(LISTING_STEP.photos) ? "scroll-mt-32 block" : "hidden"}>
           <FieldSection
             title={resolve("host.form.photos_section", "Photos and videos").text}
           >
@@ -1479,7 +1654,7 @@ export function ListingForm({
           </FieldSection>
           </div>
 
-          <div id={isEditing ? "edit-section-details" : undefined} className={isEditing || currentStep === LISTING_STEP.details ? "scroll-mt-32 block" : "hidden"}>
+          <div id={isEditing ? "edit-section-details" : undefined} className={showEditSections || onCreateStep(LISTING_STEP.details) ? "scroll-mt-32 block" : "hidden"}>
           <FieldSection title={resolve("host.form.capacity_section", "Capacity").text}>
             <div className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
               <CapacityCounter
@@ -1566,7 +1741,7 @@ export function ListingForm({
           </FieldSection>
           </div>
 
-          <div id={isEditing ? "edit-section-pricing" : undefined} className={isEditing || currentStep === LISTING_STEP.pricing ? "scroll-mt-32 block" : "hidden"}>
+          <div id={isEditing ? "edit-section-pricing" : undefined} className={showEditSections || onCreateStep(LISTING_STEP.pricing) ? "scroll-mt-32 block" : "hidden"}>
           <FieldSection title={resolve("host.workspace.pricing", "Pricing").text}>
             <div className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
               <PricingField
@@ -1887,7 +2062,7 @@ export function ListingForm({
             </div>
           )}
 
-          <div id={isEditing ? "edit-section-amenities" : undefined} className={isEditing || currentStep === LISTING_STEP.amenities ? "scroll-mt-32 block" : "hidden"}>
+          <div id={isEditing ? "edit-section-amenities" : undefined} className={showEditSections || onCreateStep(LISTING_STEP.amenities) ? "scroll-mt-32 block" : "hidden"}>
           <FieldSection>
             <div className="space-y-4 md:space-y-7">
               {Object.entries(groupedAmenities).map(([category, items]) => {
@@ -1964,7 +2139,7 @@ export function ListingForm({
           </div>
           {/* Reaching the end of the form is the natural moment to move on to the
               calendar, so say so instead of leaving the host to find the bar. */}
-          {isEditing && listing?.id && (
+          {showEditSections && listing?.id && (
             <div className="flex justify-end pt-6">
               <Button variant="outline" asChild>
                 <Link
@@ -1978,7 +2153,46 @@ export function ListingForm({
             </div>
           )}
           </div>
-          {isEditing && (
+          {/* The location editor's own desktop footer: the same Back / Continue pair
+              the wizard uses, ending in Done rather than Publish — publishing stays
+              on the listing page behind it. */}
+          {locationEditorOpen && (
+            <footer className="z-20 hidden shrink-0 border-t bg-background px-5 py-4 shadow-[0_-2px_8px_rgb(0_0_0/0.04)] md:block md:px-8">
+              <div className="flex items-center justify-between gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => goToLocationStep(locationStep! - 1)}
+                >
+                  <ChevronLeft /> <Tx k="host.form.back" source="Back" />
+                </Button>
+                <StepRequirementStatus
+                  id="listing-location-requirements"
+                  issues={locationStepIssues}
+                />
+                {locationStep === LISTING_STEP.streetView ? (
+                  <Button type="button" onClick={closeLocationEditor}>
+                    <Tx k="host.form.location_done" source="Done" />
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    disabled={!locationContinueReady}
+                    aria-describedby={
+                      locationContinueReady
+                        ? undefined
+                        : "listing-location-requirements"
+                    }
+                    onClick={() => goToLocationStep(locationStep! + 1)}
+                  >
+                    <Tx k="host.listings.continue" source="Continue" />
+                    <ChevronRight />
+                  </Button>
+                )}
+              </div>
+            </footer>
+          )}
+          {showEditSections && (
             <footer className="z-20 hidden shrink-0 border-t bg-background px-5 py-4 shadow-[0_-2px_8px_rgb(0_0_0/0.04)] md:block md:px-8">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               {availabilityHref && (
@@ -2314,10 +2528,94 @@ export function ListingForm({
         </div>
       )}
 
+      {/* The location editor's phone chrome, and the same shape as the wizard's:
+          it has to live at the form root so Preview can switch the pane and still
+          offer the way back. It replaces the nav and Publish rows below — while a
+          location screen is open there is nowhere else to be. */}
+      {locationEditorOpen && (
+        <div className="z-30 shrink-0 border-t bg-background px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden">
+          {locationStepIssues.length > 0 && (
+            <div className="mb-1.5 flex justify-end">
+              <StepRequirementStatus
+                id="listing-location-requirements-mobile"
+                issues={locationStepIssues}
+              />
+            </div>
+          )}
+          <div className="flex items-stretch gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className="w-11 shrink-0 px-0"
+              aria-label={resolve("host.form.back", "Back").text}
+              onClick={() => goToLocationStep(locationStep! - 1)}
+            >
+              <ChevronLeft />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              className="flex-1"
+              aria-controls={
+                mobilePane === "preview"
+                  ? "listing-editor-pane"
+                  : "listing-preview-pane"
+              }
+              onClick={() =>
+                selectMobilePane(mobilePane === "preview" ? "edit" : "preview")
+              }
+            >
+              {/* Keyed for the same Google Translate reason as the wizard row. */}
+              <span key={mobilePane} className="inline-flex items-center gap-1.5">
+                {mobilePane === "preview" ? (
+                  <>
+                    <Pencil className="h-4 w-4" />
+                    <Tx k="host.form.back_to_editor" source="Back to editor" />
+                  </>
+                ) : (
+                  <>
+                    <Eye className="h-4 w-4" />
+                    <Tx k="host.workspace.preview" source="Preview" />
+                  </>
+                )}
+              </span>
+            </Button>
+            {locationStep === LISTING_STEP.streetView ? (
+              <Button
+                type="button"
+                size="lg"
+                className="flex-1"
+                onClick={closeLocationEditor}
+              >
+                <Tx k="host.form.location_done" source="Done" />
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                size="lg"
+                className="flex-1"
+                disabled={!locationContinueReady}
+                aria-describedby={
+                  locationContinueReady
+                    ? undefined
+                    : "listing-location-requirements-mobile"
+                }
+                onClick={() => goToLocationStep(locationStep! + 1)}
+              >
+                <Tx k="host.listings.continue" source="Continue" />
+                <ChevronRight />
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Only the edit screen needs a nav bar: a draft has no calendar routes to
           go to, so its bar was two pane tabs stacked above two more buttons.
           The wizard folds Preview into its single action row instead. */}
-      {isEditing && (
+      {showEditSections && (
         <ListingBottomNav
           listingId={listing?.id ?? ""}
           paneOnly={!listing?.id}
@@ -2334,7 +2632,7 @@ export function ListingForm({
           Publish saves, and both are actions on the listing rather than places to
           go. Publish stays visible but disabled with nothing to save, so the pair
           keeps a stable shape instead of the row appearing and shifting the nav. */}
-      {isEditing && (
+      {showEditSections && (
         <div className="z-30 shrink-0 border-t bg-background px-4 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] md:hidden">
           {mediaUploadState.active ? (
             <MediaUploadStatus state={mediaUploadState} />
@@ -2404,11 +2702,7 @@ export function ListingForm({
                 const blockingStep =
                   index > currentStep
                     ? issuesByStep.findIndex(
-                        (issues, stepIndex) =>
-                          stepIndex < index &&
-                          // Publish-only issues (too few photos) list themselves but
-                          // must not lock every later step behind them.
-                          issues.some((issue) => issue.blocking !== "publish")
+                        (issues, stepIndex) => stepIndex < index && issues.length > 0
                       )
                     : -1;
                 const disabled = blockingStep >= 0;

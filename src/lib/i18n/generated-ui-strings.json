@@ -1640,6 +1640,11 @@
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
+    "key": "host.form.back_to_listing",
+    "sourceText": "Back to listing",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
     "key": "host.form.checklist_hint",
     "sourceText": "Select an item to go directly to that step.",
     "filePath": "src/components/host/listing-form.tsx"
@@ -1677,6 +1682,11 @@
   {
     "key": "host.form.go_to_listings",
     "sourceText": "Go to My Listings",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.location_done",
+    "sourceText": "Done",
     "filePath": "src/components/host/listing-form.tsx"
   },
   {

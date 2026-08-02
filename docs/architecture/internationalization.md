@@ -31,6 +31,10 @@ The public language selector has two searchable groups:
 
 Reviewed languages also keep Google's translation cookie active because Google is responsible for user-authored content. Resolved fixed UI copy is marked `notranslate`, so Google does not translate that reviewed copy a second time.
 
+`src/lib/i18n/google-translate-runtime.ts` owns that layer for the whole application. Google translates by restoring the document to its source language and translating the result, so a pass with nothing to do is still visible as the page blinking to English and back. Passes are therefore gated: the runtime dispatches one only when the DOM holds text with letters that is outside every `notranslate`, `translate="no"`, `skiptranslate` and `<font>` subtree and has not already been offered to Google. Source text still present once a pass settles is recorded in a `WeakMap` keyed by text node and value, so content Google translated — or deliberately left alone — cannot trigger a pass on the next interaction. Under a reviewed locale, opening a popover or committing a route whose copy is fully covered dispatches nothing.
+
+Two consequences for new code: mark `Intl`-formatted output and other already-localized strings `notranslate`, since bare localized text reads as untranslated source and costs a pass; and never rely on the mutation observer seeing a bare text node, because Google's own restore adds those and only added *elements* are inspected.
+
 The selector indexes reviewed languages by native name, English name, common Latin spellings, and code. Google-only languages are indexed by Google's label plus localized, English, and native names from `Intl.DisplayNames`.
 
 Long-form Terms, Privacy, and Cookie Policy documents are treated as page

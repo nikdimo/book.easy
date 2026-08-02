@@ -529,7 +529,7 @@ export function ListingLocationMapField({
             Where is your property?
           </h2>
           <p className="mt-1 text-xs text-muted-foreground md:text-sm">
-            Search for it, or click the map to drop the pin exactly where guests
+            Search for it, or move the map so the pin sits exactly where guests
             will stay. Only you see this precise spot for now.
           </p>
         </div>
@@ -716,7 +716,7 @@ export function ListingLocationMapField({
               {resolving
                 ? "Finding the address…"
                 : locationMessage ||
-                  `${latitude.toFixed(6)}, ${longitude.toFixed(6)} · drag the pin to fine-tune the entrance`}
+                  `${latitude.toFixed(6)}, ${longitude.toFixed(6)} · move the map under the pin, or drag the pin itself, to fine-tune the entrance`}
             </p>
           </>
         ) : (
