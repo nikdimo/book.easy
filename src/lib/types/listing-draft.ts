@@ -36,6 +36,10 @@ export interface ListingDraftData {
   promotionType?: string;
   promotionPercent?: string;
   promotionMinimumNights?: string;
+  /** "true" when the launch offer also waives the cleaning fee. Independent of
+   *  promotionType, which stays a single value for the mobile app's benefit —
+   *  the two benefits compose, matching ListingPromotion.freeCleaning. */
+  promotionFreeCleaning?: string;
   latitude?: string;
   longitude?: string;
   mediaItems?: ListingMediaItem[];

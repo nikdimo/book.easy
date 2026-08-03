@@ -1343,6 +1343,11 @@ export function MarketplaceStayDatePicker({
   showDateFlexibility = true,
   showGuestStep = true,
   finalActionLabel,
+  finalActionDisabled = false,
+  showFinalActionIcon = true,
+  nextActionLabel,
+  guestStepTitle,
+  maxOccupancy,
   onRangeStringsChange,
   onGuestCountsChange = () => undefined,
   onDateFlexibilityChange = () => undefined,
@@ -1367,7 +1372,6 @@ export function MarketplaceStayDatePicker({
   desktopContentStyle,
   useSharedDesktopShell = false,
   showPillGuestAction = false,
-  closeOnRangeComplete = false,
   dialogContentId,
   className,
 }: {
@@ -1385,6 +1389,15 @@ export function MarketplaceStayDatePicker({
   showDateFlexibility?: boolean;
   showGuestStep?: boolean;
   finalActionLabel?: Resolved;
+  /** Guards the final action against a selection the caller considers incomplete. */
+  finalActionDisabled?: boolean;
+  /** The search icon belongs to "Search"; a booking flow ends in "Reserve" instead. */
+  showFinalActionIcon?: boolean;
+  /** Names the guest step on the dates footer ("Who's coming" beats a bare "Next"). */
+  nextActionLabel?: Resolved;
+  guestStepTitle?: Resolved;
+  /** Adults and children consume listing capacity; infants and pets do not. */
+  maxOccupancy?: number;
   onRangeStringsChange: (next: { checkIn: string; checkOut: string }) => void;
   onGuestCountsChange?: (next: GuestCounts) => void;
   onDateFlexibilityChange?: (next: number) => void;
@@ -1416,7 +1429,6 @@ export function MarketplaceStayDatePicker({
   desktopContentStyle?: React.CSSProperties;
   useSharedDesktopShell?: boolean;
   showPillGuestAction?: boolean;
-  closeOnRangeComplete?: boolean;
   dialogContentId?: string;
   className?: string;
 }) {
@@ -1426,6 +1438,8 @@ export function MarketplaceStayDatePicker({
     dateDialogDescription ?? labels.chooseDatesDescription;
   const resolvedFinalActionLabel =
     finalActionLabel ?? (showGuestStep ? labels.search : labels.done);
+  const resolvedNextActionLabel = nextActionLabel ?? labels.next;
+  const resolvedGuestStepTitle = guestStepTitle ?? labels.who;
   const isPillLayout = layout === "pill";
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
   const [step, setStep] = React.useState<Step>(initialStep);
@@ -1495,13 +1509,15 @@ export function MarketplaceStayDatePicker({
         onRangeStringsChange({ checkIn: toYmd(range.from), checkOut: "" });
         return;
       }
+      // Completing the range never closes the sheet: the footer button is what
+      // moves the flow on, and the flexibility chips below are only reachable
+      // while the picker stays open.
       onRangeStringsChange({
         checkIn: toYmd(range.from),
         checkOut: toYmd(range.to),
       });
-      if (closeOnRangeComplete) closePicker();
     },
-    [closeOnRangeComplete, closePicker, onRangeStringsChange],
+    [onRangeStringsChange],
   );
 
   const checkInLabel: Resolved =
@@ -1864,12 +1880,17 @@ export function MarketplaceStayDatePicker({
           <div className="sr-only">
             <DialogPrimitive.Title
               className={
-                (step === "dates" ? resolvedDialogTitle : labels.who).translated
+                (step === "dates"
+                  ? resolvedDialogTitle
+                  : resolvedGuestStepTitle
+                ).translated
                   ? "notranslate"
                   : undefined
               }
             >
-              {step === "dates" ? resolvedDialogTitle.text : labels.who.text}
+              {step === "dates"
+                ? resolvedDialogTitle.text
+                : resolvedGuestStepTitle.text}
             </DialogPrimitive.Title>
             <DialogPrimitive.Description
               className={
@@ -1893,13 +1914,15 @@ export function MarketplaceStayDatePicker({
                 <p
                   className={cn(
                     "text-lg font-semibold text-foreground md:text-2xl",
-                    (step === "dates" ? resolvedDialogTitle : labels.who)
-                      .translated && "notranslate",
+                    (step === "dates"
+                      ? resolvedDialogTitle
+                      : resolvedGuestStepTitle
+                    ).translated && "notranslate",
                   )}
                 >
                   {step === "dates"
                     ? resolvedDialogTitle.text
-                    : labels.who.text}
+                    : resolvedGuestStepTitle.text}
                 </p>
                 <button
                   type="button"
@@ -2138,7 +2161,7 @@ export function MarketplaceStayDatePicker({
                             className={cn(
                               "min-w-[7rem] rounded-full",
                               (showGuestStep
-                                ? labels.next
+                                ? resolvedNextActionLabel
                                 : resolvedFinalActionLabel
                               ).translated && "notranslate",
                             )}
@@ -2158,7 +2181,7 @@ export function MarketplaceStayDatePicker({
                             }}
                           >
                             {showGuestStep
-                              ? labels.next.text
+                              ? resolvedNextActionLabel.text
                               : resolvedFinalActionLabel.text}
                           </Button>
                         </div>
@@ -2184,6 +2207,7 @@ export function MarketplaceStayDatePicker({
                 <GuestCountsStep
                   guestCounts={guestCounts}
                   onGuestCountsChange={onGuestCountsChange}
+                  maxOccupancy={maxOccupancy}
                 />
               </div>
 
@@ -2192,13 +2216,16 @@ export function MarketplaceStayDatePicker({
                   <Button
                     type="button"
                     className="w-full rounded-full"
+                    disabled={finalActionDisabled}
                     onClick={() => {
                       if (onFinalAction) onFinalAction();
                       else onSearchRequest();
                       closePicker();
                     }}
                   >
-                    <Search className="mr-2 h-4 w-4" />
+                    {showFinalActionIcon ? (
+                      <Search className="mr-2 h-4 w-4" />
+                    ) : null}
                     {resolvedFinalActionLabel.text}
                   </Button>
                 </div>
@@ -2236,6 +2263,7 @@ export function MarketplaceStayDatePicker({
                           "min-w-[7rem] rounded-full",
                           resolvedFinalActionLabel.translated && "notranslate",
                         )}
+                        disabled={finalActionDisabled}
                         onClick={() => {
                           if (onFinalAction) {
                             onFinalAction();
@@ -2245,7 +2273,9 @@ export function MarketplaceStayDatePicker({
                           closePicker();
                         }}
                       >
-                        <Search className="mr-2 h-4 w-4" />
+                        {showFinalActionIcon ? (
+                          <Search className="mr-2 h-4 w-4" />
+                        ) : null}
                         {resolvedFinalActionLabel.text}
                       </Button>
                     </div>

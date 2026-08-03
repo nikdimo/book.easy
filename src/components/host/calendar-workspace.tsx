@@ -15,7 +15,6 @@ import {
   Pencil,
   RotateCcw,
   ShieldCheck,
-  Sparkles,
   Trash2,
   UnlockKeyhole,
 } from "lucide-react";
@@ -27,6 +26,12 @@ import type { DateRange } from "react-day-picker";
 import { toast } from "sonner";
 import { DateRangeCalendarStep } from "@/components/marketplace/marketplace-stay-date-picker";
 import { ListingActionBarPortal } from "@/components/host/listing-action-bar-portal";
+import {
+  OFFER_PREVIEW_NOTE,
+  OfferPreview,
+  OptionToggle,
+  STICKY_FOOTER,
+} from "@/components/host/calendar-editor-ui";
 import { Button } from "@/components/ui/button";
 import { Calendar as MiniCalendar } from "@/components/ui/calendar";
 import {
@@ -250,14 +255,6 @@ function rangeLabel(from: string, to: string, includeYear = false) {
   )}`;
 }
 
-/**
- * The commit row stays on screen instead of waiting at the end of a long scroll.
- * Pricing already did this; availability and promotions were the odd ones out.
- * The negative margins cancel the section's own p-6 so it spans the sheet.
- */
-const STICKY_FOOTER =
-  "sticky bottom-0 z-10 -mx-6 -mb-6 border-t bg-background/95 px-6 py-4 shadow-[0_-8px_20px_rgba(0,0,0,0.04)] backdrop-blur";
-
 function calendarRangeToInput(range: DateRange) {
   const from = range.from!;
   const to = range.to ?? range.from!;
@@ -467,54 +464,6 @@ function DateFilter({
         ) : null}
       </PopoverContent>
     </Popover>
-  );
-}
-
-function Toggle({
-  checked,
-  label,
-  description,
-  onChange,
-}: {
-  checked: boolean;
-  label: string;
-  description: string;
-  onChange: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={onChange}
-      className={cn(
-        "flex w-full items-center justify-between gap-4 rounded-xl border p-3 text-left transition-colors",
-        checked
-          ? "border-primary bg-primary/5"
-          : "bg-muted/20 hover:border-primary/30",
-      )}
-    >
-      <span>
-        <span className="block text-sm md:text-xs font-semibold">{label}</span>
-        <span className="mt-0.5 block text-xs md:text-[0.65rem] text-muted-foreground">
-          {description}
-        </span>
-      </span>
-      <span
-        aria-hidden
-        className={cn(
-          "relative h-6 w-11 shrink-0 rounded-full transition-colors",
-          checked ? "bg-primary" : "bg-muted-foreground/25",
-        )}
-      >
-        <span
-          className={cn(
-            "absolute top-1 size-4 rounded-full bg-white shadow-sm transition-transform",
-            checked ? "translate-x-6" : "translate-x-1",
-          )}
-        />
-      </span>
-    </button>
   );
 }
 
@@ -1075,7 +1024,7 @@ function EditorDialog({
                   );
                 })}
               </div>
-              <Toggle
+              <OptionToggle
                 checked={roundPrice}
                 label="Round up to the nearest €5"
                 description="Keeps guest-facing prices clean and easy to scan."
@@ -1255,27 +1204,23 @@ function EditorDialog({
                   <Tx k="host.calendar.nights" source="nights" />
                 </span>
               </div>
-              <Toggle
+              <OptionToggle
                 checked={freeCleaning}
                 label="Add free cleaning"
                 description={`Guests save the €${cleaningFee} cleaning fee on qualifying stays.`}
                 onChange={() => setFreeCleaning((current) => !current)}
               />
               {numericDiscount > 0 ? (
-                <Toggle
+                <OptionToggle
                   checked={roundPromotion}
                   label="Round up to the nearest €5"
                   description="Keeps discounted nightly prices clean."
                   onChange={() => setRoundPromotion((current) => !current)}
                 />
               ) : null}
-              <div className="flex items-start gap-3 rounded-xl bg-primary/7 p-3">
-                <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
-                <div>
-                  <p className="text-xs md:text-[0.65rem] font-medium tracking-wide text-muted-foreground uppercase">
-                    <Tx k="host.promotion.preview_label" source="Guests will see" />
-                  </p>
-                  <p className="mt-0.5 text-sm font-semibold">
+              <OfferPreview
+                headline={
+                  <>
                     {numericDiscount > 0
                       ? interpolate(
                           resolve("host.calendar.summary_discount", "{percent}% off"),
@@ -1292,37 +1237,38 @@ function EditorDialog({
                         { nights: promotionMinimum || "0" },
                       ).text
                     }
-                  </p>
-                  {numericDiscount > 0 ? (
-                    <p className="mt-0.5 text-sm md:text-xs text-muted-foreground">
-                      {
-                        interpolate(
+                  </>
+                }
+              >
+                {numericDiscount > 0 ? (
+                  <p className={OFFER_PREVIEW_NOTE}>
+                    {
+                      interpolate(
+                        resolve(
+                          "host.calendar.estimated_price",
+                          "Estimated default-night price: €{rate}",
+                        ),
+                        { rate: guestRate },
+                      ).text
+                    }
+                    {roundPromotion
+                      ? interpolate(
                           resolve(
-                            "host.calendar.estimated_price",
-                            "Estimated default-night price: €{rate}",
+                            "host.calendar.rounded_from",
+                            " · rounded up from €{original}",
                           ),
-                          { rate: guestRate },
+                          { original: Number(rawGuestRate.toFixed(2)) },
                         ).text
-                      }
-                      {roundPromotion
-                        ? interpolate(
-                            resolve(
-                              "host.calendar.rounded_from",
-                              " · rounded up from €{original}",
-                            ),
-                            { original: Number(rawGuestRate.toFixed(2)) },
-                          ).text
-                        : ""}
-                    </p>
-                  ) : null}
-                  <p className="mt-1 text-sm md:text-xs text-muted-foreground">
-                    <Tx
-                      k="host.calendar.promotion_priority"
-                      source="Date-specific offers take priority. Otherwise, the highest qualifying minimum-stay threshold wins."
-                    />
+                      : ""}
                   </p>
-                </div>
-              </div>
+                ) : null}
+                <p className={cn(OFFER_PREVIEW_NOTE, "mt-1")}>
+                  <Tx
+                    k="host.calendar.promotion_priority"
+                    source="Date-specific offers take priority. Otherwise, the highest qualifying minimum-stay threshold wins."
+                  />
+                </p>
+              </OfferPreview>
               <div className={cn(STICKY_FOOTER, "flex justify-end gap-2")}>
                 <Button type="button" variant="outline" onClick={onClose}>
                   <Tx k="host.calendar.cancel" source="Cancel" />

@@ -4,8 +4,9 @@ import * as WebBrowser from "expo-web-browser";
 import * as ExpoLinking from "expo-linking";
 import { formatLocalizedDate } from "@/lib/date-locale";
 
-export const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:3000";
+const configuredApiUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
+const defaultApiUrl = Platform.OS === "web" ? "http://localhost:3000" : "https://lingerhomes.com";
+export const API_BASE_URL = (configuredApiUrl || defaultApiUrl).replace(/\/$/, "");
 const MOBILE_SESSION_TOKEN_KEY = "lingerhomes.mobile.session-token";
 
 const INTL_LOCALES: Readonly<Record<string, string>> = {

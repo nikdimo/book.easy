@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { OfferPreview } from "@/components/host/calendar-editor-ui";
 import { Tx, interpolate, useI18n } from "@/lib/i18n/client";
 
 type PromotionChoice = "NONE" | "PERCENT_DISCOUNT" | "FREE_CLEANING";
@@ -323,15 +324,14 @@ export function ListingPromotionForm({
       )}
 
       {type !== "NONE" && (
-        <div className="rounded-xl bg-muted/50 p-4">
-          <p className="text-sm md:text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            <Tx k="host.promotion.preview_label" source="Guests will see" />
-          </p>
-          <p className="mt-1 font-semibold">
-            {offerText}
-            {eligibilityText}
-          </p>
-        </div>
+        <OfferPreview
+          headline={
+            <>
+              {offerText}
+              {eligibilityText}
+            </>
+          }
+        />
       )}
 
       {state.error && (

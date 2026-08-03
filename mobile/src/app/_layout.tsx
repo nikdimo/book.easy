@@ -1,7 +1,9 @@
 import "../global.css";
 
+import { useEffect } from "react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import * as SplashScreen from "expo-splash-screen";
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -15,6 +17,8 @@ import { LanguageProvider } from "@/context/language-context";
 import { useLanguage } from "@/context/language-context";
 import { colors } from "@/theme";
 
+void SplashScreen.preventAutoHideAsync().catch(() => undefined);
+
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Inter_400Regular,
@@ -22,6 +26,12 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
+
+  useEffect(() => {
+    if (fontsLoaded || fontError) {
+      void SplashScreen.hideAsync();
+    }
+  }, [fontError, fontsLoaded]);
 
   // Hold the first paint so text does not land in the system font and reflow. A
   // font failure still renders — falling back to the system face is far better

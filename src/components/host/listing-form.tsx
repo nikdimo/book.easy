@@ -38,6 +38,7 @@ import { formatPrice } from "@/lib/utils/format";
 import { splitDescriptionPreviewTiers } from "@/lib/utils/description-preview";
 import { toast } from "sonner";
 import { Tx, interpolate, useI18n } from "@/lib/i18n/client";
+import { OfferPreview, OptionToggle } from "@/components/host/calendar-editor-ui";
 import {
   resolveAmenityCategory,
   resolveAmenityLabel,
@@ -123,6 +124,7 @@ type ListingFormValues = {
   promotionType: string;
   promotionPercent: string;
   promotionMinimumNights: string;
+  promotionFreeCleaning: string;
 };
 
 const FALLBACK_TITLE = "Your listing title";
@@ -258,6 +260,7 @@ function listingInitialValues(
       promotionType: "NONE",
       promotionPercent: "15",
       promotionMinimumNights: "5",
+      promotionFreeCleaning: "false",
     };
   }
 
@@ -290,6 +293,10 @@ function listingInitialValues(
     promotionType: draft?.promotionType || "NONE",
     promotionPercent: draft?.promotionPercent || "15",
     promotionMinimumNights: draft?.promotionMinimumNights || "5",
+    // Drafts saved before the toggle existed carry the benefit in the type.
+    promotionFreeCleaning:
+      draft?.promotionFreeCleaning ||
+      (draft?.promotionType === "FREE_CLEANING" ? "true" : "false"),
   };
 }
 
@@ -2015,68 +2022,50 @@ export function ListingForm({
                     </div>
                   </div>
 
-                  <div className="grid gap-2 sm:grid-cols-2 md:gap-3">
-                    <button
-                      type="button"
-                      aria-pressed={values.promotionType === "NONE"}
-                      onClick={() => {
-                        setField("promotionType", "NONE");
+                  {/* A toggle, not a rival card: free cleaning stacks on top of a
+                     discount the way it does in the calendar's dated offers. */}
+                  {Number(values.cleaningFee) > 0 ? (
+                    <OptionToggle
+                      checked={values.promotionFreeCleaning === "true"}
+                      label={
+                        resolve("host.promotion.cleaning_title", "Free cleaning").text
+                      }
+                      description={
+                        interpolate(
+                          resolve(
+                            "host.form.offer_cleaning_toggle_hint",
+                            "Guests save the €{amount} cleaning fee on qualifying stays.",
+                          ),
+                          { amount: values.cleaningFee },
+                        ).text
+                      }
+                      onChange={() => {
+                        const next =
+                          values.promotionFreeCleaning === "true" ? "false" : "true";
+                        setField("promotionFreeCleaning", next);
+                        // Cleaning on its own is still an offer; cleaning off with no
+                        // discount is not.
+                        if (next === "true" && values.promotionType === "NONE") {
+                          setField("promotionType", "FREE_CLEANING");
+                          setField(
+                            "promotionMinimumNights",
+                            String(Math.max(1, Number(values.minNights) || 1))
+                          );
+                        }
+                        if (next === "false" && values.promotionType === "FREE_CLEANING") {
+                          setField("promotionType", "NONE");
+                        }
                         setTimeout(() => void autosaveDraft(), 0);
                       }}
-                      className={cn(
-                        OFFER_CARD,
-                        values.promotionType === "NONE"
-                          ? "border-primary bg-primary/5 ring-1 ring-primary"
-                          : "hover:border-primary/40"
-                      )}
-                    >
-                      <Shield className={OFFER_ICON} aria-hidden="true" />
-                      <span className="min-w-0 md:block">
-                        <span className={OFFER_TITLE}>
-                          <Tx k="host.promotion.none_title" source="No promotion" />
-                        </span>
-                        <span className={OFFER_DESC}>
-                          <Tx
-                            k="host.form.offer_none_hint"
-                            source="Publish now and add an offer later."
-                          />
-                        </span>
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      disabled={Number(values.cleaningFee) <= 0}
-                      aria-pressed={values.promotionType === "FREE_CLEANING"}
-                      onClick={() => {
-                        setField("promotionType", "FREE_CLEANING");
-                        setField(
-                          "promotionMinimumNights",
-                          String(Math.max(1, Number(values.minNights) || 1))
-                        );
-                        setTimeout(() => void autosaveDraft(), 0);
-                      }}
-                      className={cn(
-                        OFFER_CARD,
-                        values.promotionType === "FREE_CLEANING"
-                          ? "border-primary bg-primary/5 ring-1 ring-primary"
-                          : "hover:border-primary/40",
-                        Number(values.cleaningFee) <= 0 &&
-                          "cursor-not-allowed opacity-50"
-                      )}
-                    >
-                      <Sparkles className={OFFER_ICON} aria-hidden="true" />
-                      <span className="min-w-0 md:block">
-                        <span className={OFFER_TITLE}>
-                          <Tx k="host.promotion.cleaning_title" source="Free cleaning" />
-                        </span>
-                        <span className={OFFER_DESC}>
-                          {Number(values.cleaningFee) > 0
-                            ? "Guests save the full cleaning fee."
-                            : "Add a cleaning fee in the previous step first."}
-                        </span>
-                      </span>
-                    </button>
-                  </div>
+                    />
+                  ) : (
+                    <p className="text-sm text-muted-foreground md:text-xs">
+                      <Tx
+                        k="host.form.offer_cleaning_needs_fee"
+                        source="Want to offer free cleaning too? Add a cleaning fee on the Pricing step first."
+                      />
+                    </p>
+                  )}
 
                   {values.promotionType === "PERCENT_DISCOUNT" && (
                     <div className="rounded-xl border p-4">
@@ -2161,6 +2150,11 @@ export function ListingForm({
                     name="promotionType"
                     value={values.promotionType}
                   />
+                  <input
+                    type="hidden"
+                    name="promotionFreeCleaning"
+                    value={values.promotionFreeCleaning}
+                  />
                   {values.promotionType !== "PERCENT_DISCOUNT" && (
                     <>
                       <input
@@ -2175,6 +2169,67 @@ export function ListingForm({
                       />
                     </>
                   )}
+
+                  {/* The payoff of composable benefits: the host reads the combined
+                     offer as one sentence, the same one the guest will see. */}
+                  {values.promotionType !== "NONE" && (
+                    <OfferPreview
+                      headline={
+                        <>
+                          {[
+                            values.promotionType === "PERCENT_DISCOUNT"
+                              ? interpolate(
+                                  resolve(
+                                    "host.promotion.summary_percent",
+                                    "{percent}% off",
+                                  ),
+                                  { percent: values.promotionPercent || "0" },
+                                ).text
+                              : null,
+                            values.promotionFreeCleaning === "true"
+                              ? resolve(
+                                  "host.calendar.summary_cleaning",
+                                  "free cleaning",
+                                ).text
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" + ")}
+                          {
+                            interpolate(
+                              resolve(
+                                "host.promotion.summary_minimum",
+                                " · {nights}+ nights",
+                              ),
+                              { nights: values.promotionMinimumNights || "1" },
+                            ).text
+                          }
+                        </>
+                      }
+                    />
+                  )}
+
+                  {/* No "No promotion" card — declining is a quiet exit, not an
+                     option competing for the same attention as the offers. It
+                     clears *and* continues, because that is what it says. */}
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="h-auto self-start px-0 text-muted-foreground"
+                    onClick={() => {
+                      setField("promotionType", "NONE");
+                      setField("promotionFreeCleaning", "false");
+                      setTimeout(() => {
+                        void autosaveDraft();
+                        openPrePublishMenu();
+                      }, 0);
+                    }}
+                  >
+                    <Tx
+                      k="host.form.offer_clear"
+                      source="Continue without promotion"
+                    />
+                  </Button>
 
                   {/* Says the tools hosts ask for next aren't missing, just gated
                      on having a live listing. One line, because the publish

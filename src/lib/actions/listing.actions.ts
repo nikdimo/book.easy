@@ -66,6 +66,7 @@ function draftDataFromForm(formData: FormData): Prisma.InputJsonValue {
     promotionType: str("promotionType"),
     promotionPercent: str("promotionPercent"),
     promotionMinimumNights: str("promotionMinimumNights"),
+    promotionFreeCleaning: str("promotionFreeCleaning"),
     mediaItems: parseMediaItemsFromForm(formData) as unknown as Prisma.InputJsonValue,
     amenityIds: formData.getAll("amenityIds").filter((v): v is string => typeof v === "string"),
     // Normalised on the way in as well as at publish: a draft resumed on another
@@ -231,6 +232,7 @@ export async function submitNewListing(
     promotionType: formData.get("promotionType") || "NONE",
     promotionPercent: formData.get("promotionPercent") || "15",
     promotionMinimumNights: formData.get("promotionMinimumNights") || "5",
+    promotionFreeCleaning: formData.get("promotionFreeCleaning"),
     amenityIds: formData.getAll("amenityIds"),
   };
 
@@ -247,6 +249,11 @@ export async function submitNewListing(
       : "NONE";
   const promotionPercent = Number(raw.promotionPercent);
   const promotionMinimumNights = Number(raw.promotionMinimumNights);
+  /** The two benefits compose, so free cleaning is its own flag rather than a
+   *  third promotionType. Clients that predate the flag (the mobile app) send
+   *  only the type, and "FREE_CLEANING" keeps meaning what it always did. */
+  const promotionFreeCleaning =
+    raw.promotionFreeCleaning === "true" || promotionType === "FREE_CLEANING";
   if (
     promotionType === "PERCENT_DISCOUNT" &&
     (!Number.isInteger(promotionPercent) ||
@@ -263,7 +270,7 @@ export async function submitNewListing(
   ) {
     return { error: "Promotion minimum stay must be between 1 and 365 nights." };
   }
-  if (promotionType === "FREE_CLEANING" && data.cleaningFee <= 0) {
+  if (promotionFreeCleaning && data.cleaningFee <= 0) {
     return { error: "Add a cleaning fee before offering free cleaning." };
   }
   const mediaItems = parseMediaItemsFromForm(formData);
@@ -294,7 +301,7 @@ export async function submitNewListing(
       discountPercent:
         promotionType === "PERCENT_DISCOUNT" ? promotionPercent : 0,
       minimumNights: promotionMinimumNights,
-      freeCleaning: promotionType === "FREE_CLEANING",
+      freeCleaning: promotionFreeCleaning,
       roundUpToNearestFive: promotionType === "PERCENT_DISCOUNT",
     });
   }

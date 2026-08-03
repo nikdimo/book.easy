@@ -14,8 +14,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { MarketplaceStayDatePicker } from "@/components/marketplace/marketplace-stay-date-picker";
-import { GuestCountsStep } from "@/components/marketplace/marketplace-stay-date-picker";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
   Sheet,
   SheetContent,
@@ -67,108 +65,43 @@ type GuestDetails = {
 const BOOKINGS_UNAVAILABLE_KEY = "mobile.bookings.unavailable";
 const BOOKINGS_UNAVAILABLE_SOURCE = "Bookings unavailable";
 
-function BookingGuestEditor({
-  value,
+/**
+ * The guests row is only a trigger: the counts themselves live in the stay
+ * picker's own guests step, so dates → guests → reserve is one uninterrupted
+ * sheet instead of two dialogs animating past each other.
+ */
+function BookingGuestRow({
   summary,
-  maxGuests,
-  open,
-  onOpenChange,
-  onChange,
+  onOpen,
 }: {
-  value: GuestDetails;
   summary: Resolved;
-  maxGuests: number;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onChange: (next: GuestDetails) => void;
+  onOpen: () => void;
 }) {
-  const [draft, setDraft] = useState(value);
-  const wasOpenRef = useRef(open);
-
-  // Seed the draft on every open, whether it came from the trigger below or
-  // from the sticky "Select guests" action.
-  useEffect(() => {
-    if (open && !wasOpenRef.current) setDraft(value);
-    wasOpenRef.current = open;
-  }, [open, value]);
-
-  function openEditor() {
-    setDraft(value);
-    onOpenChange(true);
-  }
-
-  function commitAndClose() {
-    onChange(draft);
-    onOpenChange(false);
-  }
-
-  function handleOpenChange(nextOpen: boolean) {
-    if (nextOpen) {
-      openEditor();
-      return;
-    }
-    commitAndClose();
-  }
-
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <button
-        type="button"
-        className="flex w-full items-center justify-between gap-3 bg-background px-4 py-3 text-left transition-colors hover:bg-muted/30 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-        onClick={openEditor}
-      >
-        <span className="min-w-0">
-          <span className="block text-[0.68rem] font-semibold uppercase tracking-wide text-foreground">
-            <Tx k="booking.guests_label" source="Guests" />
-          </span>
-          <span
-            className={`mt-0.5 block truncate text-sm ${
-              summary.text ? "text-foreground" : "text-muted-foreground"
-            }`}
-          >
-            <span className={summary.translated ? "notranslate" : undefined}>
-              {summary.text}
-            </span>
+    <button
+      type="button"
+      className="flex w-full items-center justify-between gap-3 bg-background px-4 py-3 text-left transition-colors hover:bg-muted/30 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+      onClick={onOpen}
+    >
+      <span className="min-w-0">
+        <span className="block text-[0.68rem] font-semibold uppercase tracking-wide text-foreground">
+          <Tx k="booking.guests_label" source="Guests" />
+        </span>
+        <span
+          className={`mt-0.5 block truncate text-sm ${
+            summary.text ? "text-foreground" : "text-muted-foreground"
+          }`}
+        >
+          <span className={summary.translated ? "notranslate" : undefined}>
+            {summary.text}
           </span>
         </span>
-        <ChevronDown
-          className="size-4 shrink-0 text-foreground"
-          aria-hidden="true"
-        />
-      </button>
-
-      <DialogContent
-        className="notranslate max-w-[calc(100%-2rem)] gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-md"
-        translate="no"
-      >
-        <div className="border-b px-5 py-4 pr-12">
-          <DialogTitle className="text-lg">
-            <Tx k="booking.guests_label" source="Guests" />
-          </DialogTitle>
-          <p className="mt-1 text-sm text-muted-foreground">
-            <Tx
-              k="booking.choose_guests"
-              source="Choose who is coming with you."
-            />
-          </p>
-        </div>
-        <GuestCountsStep
-          guestCounts={draft}
-          onGuestCountsChange={setDraft}
-          maxOccupancy={maxGuests}
-          className="rounded-none border-0 px-5"
-        />
-        <div className="border-t p-4">
-          <Button
-            type="button"
-            className="w-full rounded-xl"
-            onClick={commitAndClose}
-          >
-            <Tx k="common.done" source="Done" />
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      </span>
+      <ChevronDown
+        className="size-4 shrink-0 text-foreground"
+        aria-hidden="true"
+      />
+    </button>
   );
 }
 
@@ -193,7 +126,9 @@ export function BookingWidget({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [datePickerOpen, setDatePickerOpen] = useState(false);
-  const [guestEditorOpen, setGuestEditorOpen] = useState(false);
+  // Which step the picker opens on — the dates row and the guests row lead into
+  // the same sheet, they just start it in different places.
+  const [pickerStep, setPickerStep] = useState<"dates" | "guests">("dates");
   const [dateFlexibility, setDateFlexibility] = useState(0);
   const [checkInStr, setCheckInStr] = useState(initialCheckIn);
   const [checkOutStr, setCheckOutStr] = useState(initialCheckOut);
@@ -346,12 +281,15 @@ export function BookingWidget({
       : guestsConfirmed
         ? "reserve"
         : "guests";
+  const reserveLabel = i18n.resolve("booking.reserve", "Reserve");
+  // Reuses the search catalog's existing key so the copy stays translated.
+  const whosComingLabel = i18n.resolve("search.whos_coming", "Who's coming");
   const primaryActionLabel =
     reserveStep === "dates"
       ? i18n.resolve("booking.select_dates_cta", "Select dates")
       : reserveStep === "guests"
         ? i18n.resolve("booking.select_guests_cta", "Select guests")
-        : i18n.resolve("booking.reserve", "Reserve");
+        : reserveLabel;
   const pickerMessage =
     selectionValidation.status === "unavailable"
       ? unavailableDatesMessage
@@ -388,6 +326,14 @@ export function BookingWidget({
         : i18n.resolve("promotion.free_cleaning", "Free cleaning")
     : null;
 
+  function openPicker(step: "dates" | "guests") {
+    setPickerStep(step);
+    // Opening straight at guests counts as the confirmation the sticky button
+    // was waiting for; the picker's own onStepChange covers the dates → guests path.
+    if (step === "guests") setGuestsConfirmed(true);
+    setDatePickerOpen(true);
+  }
+
   /**
    * The primary button never dead-ends: until the selection is complete it
    * opens whichever step is missing, and only then does it reserve.
@@ -396,12 +342,12 @@ export function BookingWidget({
     setError(null);
 
     if (reserveStep === "dates") {
-      setDatePickerOpen(true);
+      openPicker("dates");
       return;
     }
 
     if (reserveStep === "guests") {
-      setGuestEditorOpen(true);
+      openPicker("guests");
       return;
     }
 
@@ -687,15 +633,39 @@ export function BookingWidget({
                 checkIn={checkInStr}
                 checkOut={checkOutStr}
                 open={datePickerOpen}
-                onOpenChange={setDatePickerOpen}
+                onOpenChange={(next) => {
+                  setDatePickerOpen(next);
+                  // Otherwise the next open from a date field would land on the
+                  // guests step this one was left on.
+                  if (!next) setPickerStep("dates");
+                }}
                 initialSegment={
                   checkInStr && !checkOutStr ? "checkout" : "checkin"
                 }
                 dateFlexibility={dateFlexibility}
                 showDateFlexibility
                 onDateFlexibilityChange={setDateFlexibility}
-                showGuestStep={false}
-                closeOnRangeComplete
+                initialStep={pickerStep}
+                onStepChange={(step) => {
+                  // Reaching the guests step is the confirmation — the counts are
+                  // always valid, so the step is about intent, not validity.
+                  if (step === "guests") setGuestsConfirmed(true);
+                }}
+                guestCounts={guestDetails}
+                onGuestCountsChange={(next) => {
+                  setGuestDetails(next);
+                  setGuestsConfirmed(true);
+                  setError(null);
+                }}
+                maxOccupancy={maxGuests}
+                nextActionLabel={whosComingLabel}
+                guestStepTitle={whosComingLabel}
+                finalActionLabel={reserveLabel}
+                finalActionDisabled={
+                  isPending || selectionValidation.status !== "valid" || guests < 1
+                }
+                showFinalActionIcon={false}
+                onFinalAction={handleSubmit}
                 pagedCalendarOnDesktop
                 disabledDateRanges={disabledDateRanges}
                 minimumStayNights={minNights}
@@ -708,17 +678,9 @@ export function BookingWidget({
                 className="w-full [&_button]:!rounded-none [&_button]:!border-0"
               />
               <div className="border-t border-foreground/30">
-                <BookingGuestEditor
-                  value={guestDetails}
+                <BookingGuestRow
                   summary={guestSummary}
-                  maxGuests={maxGuests}
-                  open={guestEditorOpen}
-                  onOpenChange={setGuestEditorOpen}
-                  onChange={(next) => {
-                    setGuestDetails(next);
-                    setGuestsConfirmed(true);
-                    setError(null);
-                  }}
+                  onOpen={() => openPicker("guests")}
                 />
               </div>
             </div>
