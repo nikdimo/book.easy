@@ -1915,6 +1915,171 @@
     "filePath": "src/components/host/listing-location-picker-inner.tsx"
   },
   {
+    "key": "host.prepublish.add_offer",
+    "sourceText": "Add this offer",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_done",
+    "sourceText": "{count} blocked",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_empty",
+    "sourceText": "No blocked dates yet. Your listing will be bookable on every date.",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_example",
+    "sourceText": "For example: block the weeks you'll be using the property yourself, so nobody can book them.",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_hint",
+    "sourceText": "Pick the dates you want to keep for yourself. Guests won't be able to book them.",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_title",
+    "sourceText": "Set availability",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.prepublish.block_dates",
+    "sourceText": "Block these dates",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.discount_hint",
+    "sourceText": "Between {min}% and {max}%.",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.discount_label",
+    "sourceText": "Discount",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.done",
+    "sourceText": "Done",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.prepublish.heading",
+    "sourceText": "Anything to set up before you publish?",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.menu_title",
+    "sourceText": "Before you publish",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.prepublish.nights_count",
+    "sourceText": "{count} nights",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.offer_cleaning",
+    "sourceText": "Free cleaning",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.offer_cleaning_hint",
+    "sourceText": "Free cleaning needs a cleaning fee to waive — add one on the Pricing step.",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.offer_percent",
+    "sourceText": "Discount",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.offer_percent_summary",
+    "sourceText": "{percent}% off",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.offers_done",
+    "sourceText": "{count} added",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.offers_empty",
+    "sourceText": "No dated offers yet.",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.offers_example",
+    "sourceText": "For example: a discount or free cleaning on specific dates you want to fill.",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.offers_hint",
+    "sourceText": "Pick the dates you want to fill, then choose what guests get. This is separate from the launch offer on the previous step, which applies to longer stays on any date.",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.offers_title",
+    "sourceText": "Customize promotions",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.prepublish.pricing_done",
+    "sourceText": "{count} set",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.pricing_empty",
+    "sourceText": "No custom prices yet. Every date uses your normal nightly price.",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.pricing_example",
+    "sourceText": "For example: charge more over a holiday weekend, or less in the quiet months.",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.pricing_hint",
+    "sourceText": "Pick the dates, then set what a night costs then. Every other date keeps your normal price.",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.pricing_title",
+    "sourceText": "Customize pricing",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.prepublish.publish_now",
+    "sourceText": "Publish now",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.prepublish.rate_base_hint",
+    "sourceText": "Your normal price is {rate}.",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.rate_label",
+    "sourceText": "Price per night for these dates",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.remove",
+    "sourceText": "Remove",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.set_price",
+    "sourceText": "Set this price",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.subheading",
+    "sourceText": "All optional — you can publish now and change any of this later from your listing calendar.",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
     "key": "host.preview.about",
     "sourceText": "About this space",
     "filePath": "src/components/host/listing-form.tsx"

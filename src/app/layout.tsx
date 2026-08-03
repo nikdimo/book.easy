@@ -93,7 +93,11 @@ export default async function RootLayout({
       <body className="min-h-full flex flex-col">
         <TranslateDomGuard />
         <GoogleTranslateController locale={requestedLocale} />
-        <I18nProvider locale={translator.locale} messages={translator.messages}>
+        <I18nProvider
+          locale={translator.locale}
+          requestedLocale={requestedLocale}
+          messages={translator.messages}
+        >
           <SessionProvider refetchOnWindowFocus={false} refetchInterval={0}>
             <TooltipProvider>
               {children}

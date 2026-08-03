@@ -27,9 +27,19 @@ These two are **different locales and must not be conflated**. `getLocale()` ret
 | `GoogleTranslateController`, cookie writes | requested | Google's target and the persisted preference must follow the choice. Passing the catalog locale made `syncBrowserLanguageCookies` overwrite an automatic selection with English on the next page load, so those languages could never be selected at all. |
 | `<html dir>` | requested | Direction must suit the text the visitor ends up reading. Every RTL language is Google-only, so keying this to the catalog locale meant `localeDirection` could never return `rtl` — and Google ships no stylesheet rule for the `translated-rtl` class it adds, so nothing else set it either. |
 | `<html lang>` | catalog | Describes the text actually served, which really is English before Google runs. Google rewrites the attribute itself once it translates. |
-| `I18nProvider`, `Intl` formatting | catalog | Formats the resolved copy, which is English source in this case. |
+| `I18nProvider.locale`, `Intl` formatting | catalog | Formats the resolved copy, which is English source in this case. |
 
-The language selector does not take this from a prop. `google-translate-runtime.ts` publishes the active locale through `subscribeActiveLocale`/`getActiveLocale`, and every selector reads that store, falling back to its `currentLocale` prop only for the server render. Selectors mount in the header, both responsive host sidebars, the admin sidebar, and the consent dialog; the ones outside the public layout had no prop to pass and displayed "English" while the visitor read Portuguese. One store removes the whole class of "this call site forgot the prop" bug.
+`I18nProvider` carries **both**: `useI18n().locale` is the catalog locale and stays the input to every `Intl` call, while `useI18n().requestedLocale` names the visitor's choice. Client code that reports or acts on the *selection* must read the latter.
+
+The language selector resolves its current value in three steps, and all three are needed:
+
+1. `subscribeActiveLocale`/`getActiveLocale` from `google-translate-runtime.ts`, which is authoritative once the runtime has started because it owns the cookies and Google's target.
+2. The `currentLocale` prop, for the server render.
+3. `useI18n().requestedLocale`, for the call sites that pass no prop.
+
+Step 3 is not a formality: host renders two responsive sidebar selectors, admin renders two more, and none of them has a prop to pass. Falling back to `useI18n().locale` there displayed "English" while the visitor was reading Portuguese.
+
+The displayed *name* has the same split. Reviewed languages come from the database list and Google-only ones from `automaticLanguages`, which is populated from Google's `<select>` and therefore empty during a server render — so an automatic selection falls back to `Intl.DisplayNames`, which runs on both sides and produces the same native name `collectLanguages` derives. Without that the first paint said "English" and visibly flipped once Google's list loaded.
 
 Both request translation functions are wrapped in React `cache()`, so repeated calls within one request reuse their work.
 

@@ -16,6 +16,7 @@ export function ListingWizardHeaderActions({
   step,
   totalSteps,
   stepTitle,
+  showCounter = true,
   saveStatus,
   onOpenSteps,
   onLeave,
@@ -24,6 +25,10 @@ export function ListingWizardHeaderActions({
   step: number;
   totalSteps: number;
   stepTitle: string;
+  /** The optional screens after the last step are deliberately unnumbered — showing
+   *  "11/10" there, or renumbering the wizard, would make it longer for every host
+   *  including the ones who skip them. */
+  showCounter?: boolean;
   saveStatus: ListingSaveStatus;
   onOpenSteps: () => void;
   onLeave: () => void;
@@ -57,9 +62,11 @@ export function ListingWizardHeaderActions({
           className="inline-flex min-h-10 min-w-0 shrink items-center gap-2 rounded-full bg-muted px-3 text-sm font-semibold text-foreground transition-colors hover:bg-muted/70"
         >
           <ListChecks className="size-4 shrink-0 text-primary" />
-          <span className="notranslate shrink-0 tabular-nums" translate="no">
-            {`${step + 1}/${totalSteps}`}
-          </span>
+          {showCounter && (
+            <span className="notranslate shrink-0 tabular-nums" translate="no">
+              {`${step + 1}/${totalSteps}`}
+            </span>
+          )}
           <span className="truncate font-medium text-muted-foreground">
             {stepTitle}
           </span>

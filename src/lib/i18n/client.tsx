@@ -11,13 +11,21 @@ import type {
 const PLURAL_CATEGORIES = ["zero", "one", "two", "few", "many", "other"] as const;
 
 interface ClientTranslator {
+  /** The catalog locale: the language the fixed copy in `messages` resolved to. Use this
+   *  for `Intl` — it is what the surrounding text is actually written in. */
   locale: string;
+  /** The language the visitor selected, which is only the same as `locale` when that
+   *  choice has an enabled reviewed catalog. An automatic (Google-only) selection leaves
+   *  `locale` at the English fallback while this still names the real choice, so anything
+   *  that reports or acts on the *selection* must read this one. */
+  requestedLocale: string;
   resolve(key: string, source: string): Resolved;
   plural(keyBase: string, count: number, singular: string, plural: string): Resolved;
 }
 
 const FALLBACK: ClientTranslator = {
   locale: "en",
+  requestedLocale: "en",
   resolve: (_key, source) => ({ text: source, translated: false }),
   plural: (_keyBase, count, singular, plural) => ({
     text: (count === 1 ? singular : plural).replace("{n}", String(count)),
@@ -29,10 +37,14 @@ const I18nContext = createContext<ClientTranslator>(FALLBACK);
 
 export function I18nProvider({
   locale,
+  requestedLocale,
   messages,
   children,
 }: {
   locale: string;
+  /** Defaults to `locale`, which is correct for every reviewed language — the two only
+   *  diverge for automatic Google-only selections. */
+  requestedLocale?: string;
   messages: TranslationMessages;
   children: ReactNode;
 }) {
@@ -49,6 +61,7 @@ export function I18nProvider({
     };
     return {
       locale,
+      requestedLocale: requestedLocale ?? locale,
       resolve,
       plural: (keyBase, count, singular, plural) => {
         const category = new Intl.PluralRules(locale).select(count) as PluralCategory;
@@ -59,7 +72,7 @@ export function I18nProvider({
         return { ...resolved, text: resolved.text.replace("{n}", String(count)) };
       },
     };
-  }, [locale, messages]);
+  }, [locale, requestedLocale, messages]);
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }

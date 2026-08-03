@@ -16,6 +16,11 @@ import {
   listingStepId,
   normalizeListingStep,
 } from "@/lib/constants/listing-steps";
+import {
+  flattenPlanDatePrices,
+  parsePlanDate,
+  parsePrePublishPlan,
+} from "@/lib/types/listing-prepublish-plan";
 
 /**
  * Silently persists a new listing's in-progress form state before it's complete enough
@@ -63,6 +68,11 @@ function draftDataFromForm(formData: FormData): Prisma.InputJsonValue {
     promotionMinimumNights: str("promotionMinimumNights"),
     mediaItems: parseMediaItemsFromForm(formData) as unknown as Prisma.InputJsonValue,
     amenityIds: formData.getAll("amenityIds").filter((v): v is string => typeof v === "string"),
+    // Normalised on the way in as well as at publish: a draft resumed on another
+    // device should not be able to reintroduce entries publish would reject.
+    prePublishPlan: parsePrePublishPlan(
+      str("prePublishPlan")
+    ) as unknown as Prisma.InputJsonValue,
   } as Prisma.InputJsonValue;
 }
 
@@ -262,6 +272,66 @@ export async function submitNewListing(
     return { error: "Add at least 3 photos before publishing" };
   }
 
+  // Everything the host optionally set up on the last screen. Re-parsed rather than
+  // trusted: this arrives as a form field like any other. Invalid entries are dropped,
+  // never fatal — losing a finished listing over an optional date range would be a
+  // worse outcome than publishing without that range.
+  const plan = parsePrePublishPlan(formData.get("prePublishPlan"));
+  // The same rule the launch offer follows: a free-cleaning discount on a listing with
+  // no cleaning fee is not an offer, it's a no-op the guest would see as a lie.
+  const datedOffers = plan.offers.filter(
+    (offer) => offer.type !== "FREE_CLEANING" || data.cleaningFee > 0
+  );
+  const datePriceRows = flattenPlanDatePrices(plan.datePrices);
+
+  // One list: the launch offer (by length of stay, no dates) and the host's dated
+  // offers are the same kind of row and the quote engine already picks between them —
+  // date-specific first, then the highest qualifying minimum-night threshold.
+  const promotionCreates: Prisma.ListingPromotionCreateWithoutListingInput[] = [];
+  if (promotionType !== "NONE") {
+    promotionCreates.push({
+      type: promotionType,
+      discountPercent:
+        promotionType === "PERCENT_DISCOUNT" ? promotionPercent : 0,
+      minimumNights: promotionMinimumNights,
+      freeCleaning: promotionType === "FREE_CLEANING",
+      roundUpToNearestFive: promotionType === "PERCENT_DISCOUNT",
+    });
+  }
+  for (const offer of datedOffers) {
+    const startDate = parsePlanDate(offer.startDate);
+    const endDate = parsePlanDate(offer.endDate);
+    if (!startDate || !endDate) continue;
+    promotionCreates.push({
+      type: offer.type,
+      discountPercent:
+        offer.type === "PERCENT_DISCOUNT" ? offer.discountPercent : 0,
+      freeCleaning: offer.type === "FREE_CLEANING",
+      roundUpToNearestFive: offer.type === "PERCENT_DISCOUNT",
+      startDate,
+      endDate,
+    });
+  }
+
+  const availabilityBlockCreates = plan.blocks.flatMap((block) => {
+    const startDate = parsePlanDate(block.startDate);
+    const endDate = parsePlanDate(block.endDate);
+    if (!startDate || !endDate) return [];
+    return [
+      {
+        startDate,
+        endDate,
+        blockType: "MANUAL_BLOCK" as const,
+        reason: "Blocked by the host before publishing",
+      },
+    ];
+  });
+
+  const datePriceCreates = datePriceRows.flatMap((row) => {
+    const date = parsePlanDate(row.date);
+    return date ? [{ date, nightlyRate: row.nightlyRate }] : [];
+  });
+
   const slug = await generateUniqueSlug(data.title);
 
   const property = await db.property.create({
@@ -308,22 +378,17 @@ export async function submitNewListing(
           minNights: data.minNights,
         },
       },
-      ...(promotionType !== "NONE"
-        ? {
-            promotions: {
-              create: {
-                type: promotionType,
-                discountPercent:
-                  promotionType === "PERCENT_DISCOUNT"
-                    ? promotionPercent
-                    : 0,
-                minimumNights: promotionMinimumNights,
-                freeCleaning: promotionType === "FREE_CLEANING",
-                roundUpToNearestFive:
-                  promotionType === "PERCENT_DISCOUNT",
-              },
-            },
-          }
+      ...(promotionCreates.length > 0
+        ? { promotions: { create: promotionCreates } }
+        : {}),
+      // Nested in the same create as the listing, so a host who blocked their own
+      // holiday dates never has a window where the listing is live and bookable on
+      // days they just said they were using it.
+      ...(availabilityBlockCreates.length > 0
+        ? { availabilityBlocks: { create: availabilityBlockCreates } }
+        : {}),
+      ...(datePriceCreates.length > 0
+        ? { datePrices: { create: datePriceCreates } }
         : {}),
       ...(data.amenityIds && data.amenityIds.length > 0
         ? {

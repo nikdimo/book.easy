@@ -41,6 +41,18 @@ interface LanguageOption {
   useAiTranslation: boolean;
 }
 
+/** A language's own name for itself, matching how `collectLanguages` labels Google's
+ *  list. Returns null when the runtime has no data for the code, which keeps an
+ *  unrecognized value from rendering as itself. */
+function nativeLanguageName(code: string): string | null {
+  try {
+    const name = new Intl.DisplayNames([code], { type: "language" }).of(code);
+    return name && name !== code ? name : null;
+  } catch {
+    return null;
+  }
+}
+
 async function setLanguage(code: string) {
   const locale = normalizeLocaleCode(code);
   if (!locale) return;
@@ -80,15 +92,16 @@ export function GoogleTranslateWidget({
     getServerActiveLocale,
   );
   // The runtime is authoritative once it has started, because it owns the cookies and
-  // Google's target. The prop covers the server render and the moment before hydration;
-  // the root provider is the last resort. That order matters for automatic (Google-only)
-  // languages, where `i18n.locale` is the catalog fallback "en" rather than the visitor's
-  // choice, so leaning on it displayed English while the page was being read in another
-  // language.
+  // Google's target. Before hydration it has nothing to report, so the server render
+  // falls back to the prop and then to the root provider's `requestedLocale` — never to
+  // `i18n.locale`, which is the *catalog* locale and reads "en" for an automatic
+  // (Google-only) selection. Host and admin mount four selectors between them with no
+  // prop to pass, so that last fallback is what they actually render from: getting it
+  // wrong showed "English" in both panels while the visitor was reading Portuguese.
   const current =
     normalizeLocaleCode(activeLocale) ??
     normalizeLocaleCode(currentLocale) ??
-    normalizeLocaleCode(i18n.locale) ??
+    normalizeLocaleCode(i18n.requestedLocale) ??
     DEFAULT_LOCALE;
 
   const reviewed = languages.filter(
@@ -101,6 +114,14 @@ export function GoogleTranslateWidget({
   const currentLabel =
     reviewed.find((language) => language.code === current)?.name ??
     automatic.find((language) => language.code === current)?.name ??
+    // Neither list can name a Google-only language during a server render: it is absent
+    // from the reviewed catalog by definition, and `automaticLanguages` is populated from
+    // Google's `<select>`, which exists only in the browser. Without this the server
+    // rendered "English" for an automatic selection and the label visibly flipped once
+    // Google's list arrived — most obviously in host and admin, whose selectors have no
+    // `currentLocale` prop. `Intl` runs on both sides and produces the same native name
+    // `collectLanguages` derives, so the first paint is already correct.
+    nativeLanguageName(current) ??
     languages.find((language) => language.code === DEFAULT_LOCALE)?.name ??
     "English";
   const searchPlaceholder = i18n.resolve(

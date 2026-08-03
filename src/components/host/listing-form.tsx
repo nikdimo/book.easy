@@ -52,6 +52,16 @@ import {
   type ListingLocationValue,
 } from "@/components/host/listing-location-field";
 import { ListingAddressField } from "@/components/host/listing-address-field";
+import {
+  PrePublishMenu,
+  PrePublishTaskScreen,
+  type PrePublishScreen,
+  type PrePublishTask,
+} from "@/components/host/listing-prepublish-plan";
+import {
+  parsePrePublishPlan,
+  type PrePublishPlan,
+} from "@/lib/types/listing-prepublish-plan";
 import { ListingStreetViewField } from "@/components/host/listing-street-view-field";
 import { SuggestMissingOption } from "@/components/host/suggest-missing-option";
 import type { HostListingFormData } from "@/lib/serializers/host-listing-form";
@@ -528,7 +538,8 @@ export function ListingForm({
   initialPane,
 }: ListingFormProps) {
   const isEditing = !!listing;
-  const { resolve } = useI18n();
+  const i18n = useI18n();
+  const { resolve } = i18n;
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
@@ -585,10 +596,22 @@ export function ListingForm({
   const showEditSections = isEditing && !locationEditorOpen;
   /** The location screen on show, whichever flow is driving it. */
   const activeLocationStep = isEditing ? locationStep : currentStep;
+  /**
+   * The optional date setup that follows the last numbered step: `null` while the host
+   * is still in the wizard proper, `"menu"` for the checklist, or the task they opened
+   * from it. Finishing a task returns to the checklist rather than publishing — the
+   * checklist offers three things, so publishing after the first would make it a lie.
+   */
+  const [prePublishScreen, setPrePublishScreen] =
+    useState<PrePublishScreen | null>(null);
+  const [prePublishPlan, setPrePublishPlan] = useState<PrePublishPlan>(() =>
+    parsePrePublishPlan(initialDraft?.prePublishPlan)
+  );
   /** A create-wizard step check. Always false while editing, where sections are shown
-   *  by showEditSections rather than by step. */
+   *  by showEditSections rather than by step, and false throughout the pre-publish
+   *  screens, which replace the step body rather than sitting under it. */
   const onCreateStep = (...steps: number[]) =>
-    !isEditing && steps.includes(currentStep);
+    !isEditing && prePublishScreen === null && steps.includes(currentStep);
   // Tapping Preview in the bottom bar from a calendar screen has to land on the
   // preview pane, not the editor, so the bar behaves the same on all five screens.
   const [mobilePane, setMobilePane] = useState<"edit" | "preview">(
@@ -654,6 +677,16 @@ export function ListingForm({
     currentStep === LISTING_STEP.location && geocodingAddress;
   const locationEditorSearchingAddress =
     locationStep === LISTING_STEP.location && geocodingAddress;
+  /** What the header calls the current pre-publish screen. Unnumbered on purpose. */
+  const prePublishHeading =
+    prePublishScreen === "availability"
+      ? i18n.resolve("host.prepublish.availability_title", "Set availability").text
+      : prePublishScreen === "pricing"
+        ? i18n.resolve("host.prepublish.pricing_title", "Customize pricing").text
+        : prePublishScreen === "offers"
+          ? i18n.resolve("host.prepublish.offers_title", "Customize promotions")
+              .text
+          : i18n.resolve("host.prepublish.menu_title", "Before you publish").text;
 
   const [state, formAction, isPending] = useActionState(
     async (_prev: { error?: string; success?: boolean } | undefined, formData: FormData) => {
@@ -1058,6 +1091,8 @@ export function ListingForm({
 
   function goToStep(step: number) {
     const nextStep = normalizeListingStep(step);
+    // Jumping to a numbered step from the step list leaves the optional screens.
+    setPrePublishScreen(null);
     // Leaving the Address step with everything valid *is* the confirmation — the host
     // has looked at the prefilled address and moved on. Doing it here rather than on
     // Continue alone also covers Back and jumps from the step list, so a host can't
@@ -1087,6 +1122,43 @@ export function ListingForm({
         })
       );
     }
+  }
+
+  function scrollEditorToTop() {
+    window.requestAnimationFrame(() =>
+      editorScrollRef.current?.scrollTo({ top: 0 })
+    );
+  }
+
+  /** Leaving the last numbered step lands on the checklist, not on publishing. */
+  function openPrePublishMenu() {
+    setPrePublishScreen("menu");
+    selectMobilePane("edit");
+    scrollEditorToTop();
+  }
+
+  function openPrePublishTask(task: PrePublishTask) {
+    setPrePublishScreen(task);
+    scrollEditorToTop();
+  }
+
+  /** Back out one screen at a time: a task returns to the checklist, the checklist
+   *  returns to the last step of the wizard. */
+  function backFromPrePublish() {
+    if (prePublishScreen && prePublishScreen !== "menu") {
+      setPrePublishScreen("menu");
+      scrollEditorToTop();
+      return;
+    }
+    setPrePublishScreen(null);
+    scrollEditorToTop();
+  }
+
+  function updatePrePublishPlan(next: PrePublishPlan) {
+    setPrePublishPlan(next);
+    // The hidden field the draft save reads is rendered from state, so the save has
+    // to wait for React to commit it — otherwise the draft keeps the previous plan.
+    window.requestAnimationFrame(() => void autosaveDraft());
   }
 
   function openLocationEditor() {
@@ -1168,7 +1240,16 @@ export function ListingForm({
       className="flex h-full min-h-0 flex-col overflow-hidden"
     >
       {!isEditing && (
-        <input type="hidden" name="currentStep" value={currentStep} />
+        <>
+          <input type="hidden" name="currentStep" value={currentStep} />
+          {/* Both the draft autosave and the publish submit read this form, so the
+              optional date setup travels with them without a separate save path. */}
+          <input
+            type="hidden"
+            name="prePublishPlan"
+            value={JSON.stringify(prePublishPlan)}
+          />
+        </>
       )}
       {state?.error && !isEditing && (
         <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
@@ -1184,7 +1265,12 @@ export function ListingForm({
           <ListingWizardHeaderActions
             step={currentStep}
             totalSteps={STEPS.length}
-            stepTitle={STEPS[currentStep].title}
+            showCounter={prePublishScreen === null}
+            stepTitle={
+              prePublishScreen === null
+                ? STEPS[currentStep].title
+                : prePublishHeading
+            }
             saveStatus={saveStatus}
             onOpenSteps={() => setStepsOpen(true)}
             onLeave={() => void leaveListingStudio()}
@@ -1376,7 +1462,9 @@ export function ListingForm({
                 >
                   <ListChecks className="h-4 w-4 shrink-0" />
                   <span className="notranslate truncate" translate="no">
-                    {`Step ${currentStep + 1} of ${STEPS.length}: ${STEPS[currentStep].title}`}
+                    {prePublishScreen === null
+                      ? `Step ${currentStep + 1} of ${STEPS.length}: ${STEPS[currentStep].title}`
+                      : prePublishHeading}
                   </span>
                 </button>
                 <div className="h-1.5 min-w-16 flex-1 overflow-hidden rounded-full bg-muted">
@@ -1403,9 +1491,32 @@ export function ListingForm({
                 <Tx k="host.form.moderation_feedback" source="Moderation feedback:" />
               </p><p className="mt-1 text-sm">{moderationNote}</p></div>
           )}
+          {/* The optional date setup after the last step. It replaces the step body
+             rather than adding to it, and brings its own headings. */}
+          {prePublishScreen !== null && (
+            <div className="scroll-mt-32">
+              {prePublishScreen === "menu" ? (
+                <PrePublishMenu
+                  plan={prePublishPlan}
+                  onOpenTask={openPrePublishTask}
+                />
+              ) : (
+                <PrePublishTaskScreen
+                  key={prePublishScreen}
+                  task={prePublishScreen}
+                  plan={prePublishPlan}
+                  onChange={updatePrePublishPlan}
+                  currency="EUR"
+                  baseNightlyRate={values.baseNightlyRate}
+                  hasCleaningFee={toPositiveNumber(values.cleaningFee, 0) > 0}
+                />
+              )}
+            </div>
+          )}
+
           {/* The three location steps render their own heading (the map one is
              full-bleed and needs the copy above it), so suppress the shared one. */}
-          <div className={showEditSections || (!isEditing && !LOCATION_STEPS.includes(currentStep)) ? undefined : "hidden"}>
+          <div className={showEditSections || (!isEditing && prePublishScreen === null && !LOCATION_STEPS.includes(currentStep)) ? undefined : "hidden"}>
             {/* The step counter moved to the shell header chip, so repeating it
                 here only cost a line of scroll. */}
             <h2 className="text-lg font-semibold md:text-2xl">
@@ -2291,20 +2402,49 @@ export function ListingForm({
                 <Button
                   type="button"
                   variant="outline"
-                  disabled={currentStep === LISTING_STEP.propertyType}
-                  onClick={() => goToStep(currentStep - 1)}
+                  disabled={
+                    prePublishScreen === null &&
+                    currentStep === LISTING_STEP.propertyType
+                  }
+                  onClick={
+                    prePublishScreen !== null
+                      ? backFromPrePublish
+                      : () => goToStep(currentStep - 1)
+                  }
                 >
                   <ChevronLeft /> <Tx k="host.form.back" source="Back" />
                 </Button>
-                <StepRequirementStatus
-                  issues={currentStepIssues}
-                  uploadState={
-                    currentStep === LISTING_STEP.photos && mediaUploadState.active
-                      ? mediaUploadState
-                      : undefined
-                  }
-                />
-                {currentStep < STEPS.length - 1 ? (
+                {prePublishScreen === null && (
+                  <StepRequirementStatus
+                    issues={currentStepIssues}
+                    uploadState={
+                      currentStep === LISTING_STEP.photos && mediaUploadState.active
+                        ? mediaUploadState
+                        : undefined
+                    }
+                  />
+                )}
+                {/* A task screen's primary action returns to the checklist; the
+                    checklist itself is where publishing happens. */}
+                {prePublishScreen !== null && prePublishScreen !== "menu" ? (
+                  <Button type="button" onClick={backFromPrePublish}>
+                    <Tx k="host.prepublish.done" source="Done" />
+                  </Button>
+                ) : prePublishScreen === "menu" ? (
+                  <Button
+                    type="button"
+                    disabled={isSubmittingNew || !listingReady}
+                    aria-describedby={
+                      listingReady ? undefined : "listing-step-requirements"
+                    }
+                    onClick={handleSubmitForReview}
+                  >
+                    {isSubmittingNew
+                      ? resolve("host.form.publishing", "Publishing…").text
+                      : i18n.resolve("host.prepublish.publish_now", "Publish now")
+                          .text}
+                  </Button>
+                ) : currentStep < STEPS.length - 1 ? (
                   <Button
                     type="button"
                     // Hold Continue while the geocoder is still running, so the host
@@ -2318,17 +2458,17 @@ export function ListingForm({
                     <ContinueLabel searching={wizardSearchingAddress} />
                   </Button>
                 ) : (
+                  // The last numbered step no longer publishes: it hands over to the
+                  // optional date setup, which carries Publish now itself.
                   <Button
                     type="button"
-                    disabled={isSubmittingNew || !listingReady}
+                    disabled={!continueReady}
                     aria-describedby={
-                      listingReady ? undefined : "listing-step-requirements"
+                      currentStepReady ? undefined : "listing-step-requirements"
                     }
-                    onClick={handleSubmitForReview}
+                    onClick={openPrePublishMenu}
                   >
-                    {isSubmittingNew
-                      ? resolve("host.form.publishing", "Publishing…").text
-                      : resolve("host.form.publish", "Publish").text}
+                    <ContinueLabel searching={false} />
                   </Button>
                 )}
               </div>
@@ -2465,7 +2605,8 @@ export function ListingForm({
           line above itself — which most of the time isn't there at all. */}
       {!isEditing && (
         <div className="z-30 shrink-0 border-t bg-background px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden">
-          {(currentStepIssues.length > 0 || mediaUploadState.active) && (
+          {prePublishScreen === null &&
+            (currentStepIssues.length > 0 || mediaUploadState.active) && (
             <div className="mb-1.5 flex justify-end">
               <StepRequirementStatus
                 id="listing-step-requirements-mobile"
@@ -2485,8 +2626,15 @@ export function ListingForm({
               size="lg"
               className="w-11 shrink-0 px-0"
               aria-label={resolve("host.form.back", "Back").text}
-              disabled={currentStep === LISTING_STEP.propertyType}
-              onClick={() => goToStep(currentStep - 1)}
+              disabled={
+                prePublishScreen === null &&
+                currentStep === LISTING_STEP.propertyType
+              }
+              onClick={
+                prePublishScreen !== null
+                  ? backFromPrePublish
+                  : () => goToStep(currentStep - 1)
+              }
             >
               <ChevronLeft />
             </Button>
@@ -2525,7 +2673,31 @@ export function ListingForm({
                 )}
               </span>
             </Button>
-            {currentStep < STEPS.length - 1 ? (
+            {prePublishScreen !== null && prePublishScreen !== "menu" ? (
+              <Button
+                type="button"
+                size="lg"
+                className="flex-1"
+                onClick={backFromPrePublish}
+              >
+                <Tx k="host.prepublish.done" source="Done" />
+              </Button>
+            ) : prePublishScreen === "menu" ? (
+              <Button
+                type="button"
+                size="lg"
+                className="flex-1"
+                disabled={isSubmittingNew || !listingReady}
+                aria-describedby={
+                  listingReady ? undefined : "listing-step-requirements-mobile"
+                }
+                onClick={handleSubmitForReview}
+              >
+                {isSubmittingNew
+                  ? resolve("host.form.publishing", "Publishing…").text
+                  : i18n.resolve("host.prepublish.publish_now", "Publish now").text}
+              </Button>
+            ) : currentStep < STEPS.length - 1 ? (
               <Button
                 type="button"
                 size="lg"
@@ -2545,15 +2717,15 @@ export function ListingForm({
                 type="button"
                 size="lg"
                 className="flex-1"
-                disabled={isSubmittingNew || !listingReady}
+                disabled={!continueReady}
                 aria-describedby={
-                  listingReady ? undefined : "listing-step-requirements-mobile"
+                  currentStepReady
+                    ? undefined
+                    : "listing-step-requirements-mobile"
                 }
-                onClick={handleSubmitForReview}
+                onClick={openPrePublishMenu}
               >
-                {isSubmittingNew
-                  ? resolve("host.form.publishing", "Publishing…").text
-                  : resolve("host.form.publish", "Publish").text}
+                <ContinueLabel searching={false} />
               </Button>
             )}
           </div>

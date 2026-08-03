@@ -1,4 +1,5 @@
 import type { ListingMediaItem } from "@/lib/types/listing-media";
+import type { PrePublishPlan } from "@/lib/types/listing-prepublish-plan";
 
 /** Shape of ListingDraft.data — a new listing's in-progress form state, autosaved on
  * blur before it's complete enough to become a real Listing/Property row. Every field
@@ -40,4 +41,8 @@ export interface ListingDraftData {
   mediaItems?: ListingMediaItem[];
   imageUrls?: string[];
   amenityIds?: string[];
+  /** Optional date-specific setup from the last screen — blocked dates, per-date
+   *  prices and dated offers, all applied at publish since there's no listing to hang
+   *  them off before then. */
+  prePublishPlan?: PrePublishPlan;
 }
