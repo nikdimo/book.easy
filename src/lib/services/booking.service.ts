@@ -323,7 +323,7 @@ export async function createBooking(input: CreateBookingInput) {
           discountPercent: promotion.discountPercent,
           minimumNights: promotion.minimumNights,
           freeCleaning: promotion.freeCleaning,
-          roundUpToNearestFive: promotion.roundUpToNearestFive,
+          roundToWholeUnit: promotion.roundToWholeUnit,
           startDate: promotion.startDate,
           endDate: promotion.endDate,
           createdAt: promotion.createdAt,
@@ -357,8 +357,8 @@ export async function createBooking(input: CreateBookingInput) {
               discountPercent: appliedPromotion.discountPercent ?? null,
               minimumNights: appliedPromotion.minimumNights ?? null,
               freeCleaning: appliedPromotion.freeCleaning ?? false,
-              roundUpToNearestFive:
-                appliedPromotion.roundUpToNearestFive ?? false,
+              roundToWholeUnit:
+                appliedPromotion.roundToWholeUnit ?? false,
               startDate: appliedPromotion.startDate
                 ? new Date(appliedPromotion.startDate).toISOString()
                 : null,

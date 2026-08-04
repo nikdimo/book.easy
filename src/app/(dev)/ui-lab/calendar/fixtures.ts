@@ -58,7 +58,7 @@ export const labProps: CalendarWorkspaceProps = {
       discountPercent: 15,
       minimumNights: 5,
       freeCleaning: true,
-      roundUpToNearestFive: true,
+      roundToWholeUnit: true,
       startDate: null,
       endDate: null,
       createdAt: ymd(0),

@@ -24,6 +24,14 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  blockedRangeStarts,
+  disabledRangesForSelection,
+  isBlockedDay,
+  isCheckoutBoundaryDay,
+  isDeadEndCheckIn,
+  selectionCheckoutBoundary,
+} from "@/lib/utils/booking-calendar";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -71,6 +79,13 @@ function suppressNextClick() {
   };
 }
 
+/** Inline rather than a Tailwind arbitrary value: the theme exposes colours as whole
+ *  `color` values, not raw channels, so alpha has to go through `color-mix`. */
+const MINIMUM_STAY_HATCH: React.CSSProperties = {
+  backgroundImage:
+    "repeating-linear-gradient(135deg, transparent 0, transparent 3px, color-mix(in srgb, var(--muted-foreground) 28%, transparent) 3px, color-mix(in srgb, var(--muted-foreground) 28%, transparent) 4px)",
+};
+
 type Layout = "pill" | "hero" | "compact" | "field";
 type Step = "dates" | "guests";
 
@@ -97,10 +112,30 @@ type DragCtx = {
   ) => void;
   dayMeta?: (date: Date) => MarketplaceDayMeta | undefined;
   dayVariant?: "default" | "availability";
-  minimumStayHint?: (date: Date) => Resolved | undefined;
-  /** Fired when a day blocked purely by the minimum stay is pressed. Touch users get
-   *  no tooltip, so the picker answers the tap by re-announcing its persistent hint. */
-  onMinimumStayBlocked?: () => void;
+  dayBlock?: (date: Date) => DayBlock | undefined;
+  /** The first day that satisfies the minimum stay, once a check-in is picked. Marked
+   *  on the grid so the greyed band reads as a span between two known points. */
+  isEarliestCheckout?: (date: Date) => boolean;
+  earliestCheckoutLabel?: Resolved;
+  /** The start day of the next booked range, which the pending stay may still check
+   *  out on. Enabled only while a check-in is pending, so it never reads as a
+   *  bookable arrival day. */
+  isCheckoutBoundary?: (date: Date) => boolean;
+  checkoutBoundaryLabel?: Resolved;
+  /** Fired when a day blocked by the minimum stay is pressed. Touch users get no
+   *  tooltip, so the picker answers the tap by flashing the same reason as a banner. */
+  onMinimumStayBlocked?: (block: DayBlock) => void;
+};
+
+/**
+ * A day that is *available* but that the minimum stay still rules out. Two shapes:
+ * `minimum-stay` is a too-early check-out inside the pending stay window;
+ * `too-short-gap` is a check-in whose run of free nights ends before the minimum is
+ * reached, which would otherwise let the guest start a stay they can never finish.
+ */
+export type DayBlock = {
+  kind: "minimum-stay" | "too-short-gap";
+  message: Resolved;
 };
 
 export const FLEXIBILITY_VALUES = [0, 1, 2, 3, 7, 14] as const;
@@ -410,7 +445,12 @@ function MarketplaceRangeDayButton({
   const defaultClassNames = getDefaultClassNames();
   const ref = React.useRef<HTMLButtonElement>(null);
   const meta = ctx?.dayMeta?.(day.date);
-  const minimumStayHint = ctx?.minimumStayHint?.(day.date);
+  const block = ctx?.dayBlock?.(day.date);
+  const isEarliestCheckout = ctx?.isEarliestCheckout?.(day.date) ?? false;
+  const isCheckoutBoundary = ctx?.isCheckoutBoundary?.(day.date) ?? false;
+  // Both mark "this day is a valid check-out, not a night you get to sleep", so they
+  // share the accent ring rather than inventing a third mark for the same message.
+  const marksCheckout = isEarliestCheckout || isCheckoutBoundary;
 
   void onPointerDown;
 
@@ -437,48 +477,61 @@ function MarketplaceRangeDayButton({
       return;
     }
 
-    if (ctx?.onDayPointerDown && !minimumStayHint && !modifiers.disabled) {
+    if (ctx?.onDayPointerDown && !block && !modifiers.disabled) {
       ctx.onDayPointerDown(day.date, e);
     }
   };
 
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
-    if (minimumStayHint) {
+    if (block) {
       e.preventDefault();
       e.stopPropagation();
-      // A silent no-op reads as "this date is taken". Bounce the hint instead.
-      ctx?.onMinimumStayBlocked?.();
+      // A silent no-op reads as "this date is taken". Bounce the reason instead.
+      ctx?.onMinimumStayBlocked?.(block);
       return;
     }
     upstreamClick?.(e);
   };
 
+  const hintText =
+    block?.message ??
+    (isEarliestCheckout
+      ? ctx?.earliestCheckoutLabel
+      : isCheckoutBoundary
+        ? ctx?.checkoutBoundaryLabel
+        : undefined);
+
   const withMinimumStayHint = (
     button: React.ReactElement,
   ): React.ReactElement => {
-    if (!minimumStayHint) return button;
+    if (!hintText) return button;
 
     return (
       <Tooltip>
         <TooltipTrigger asChild>
           <span
-            tabIndex={0}
-            aria-label={`${day.date.toLocaleDateString(
-              locale?.code ?? "en-US",
-              {
-                dateStyle: "long",
-              },
-            )}. ${minimumStayHint.text}`}
-            className="block size-full cursor-not-allowed rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+            // A blocked day owns the focus stop, because its button is inert. The
+            // earliest-checkout day is still selectable, so its button keeps it.
+            tabIndex={block ? 0 : -1}
+            aria-label={
+              block
+                ? `${day.date.toLocaleDateString(locale?.code ?? "en-US", {
+                    dateStyle: "long",
+                  })}. ${hintText.text}`
+                : undefined
+            }
+            className={cn(
+              "block size-full rounded-full outline-none",
+              block &&
+                "cursor-not-allowed focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
+            )}
           >
             {button}
           </span>
         </TooltipTrigger>
         <TooltipContent>
-          <span
-            className={minimumStayHint.translated ? "notranslate" : undefined}
-          >
-            {minimumStayHint.text}
+          <span className={hintText.translated ? "notranslate" : undefined}>
+            {hintText.text}
           </span>
         </TooltipContent>
       </Tooltip>
@@ -496,15 +549,14 @@ function MarketplaceRangeDayButton({
         data-ymd={toYmd(day.date)}
         onPointerDown={handlePointerDown}
         onClick={handleClick}
-        aria-disabled={minimumStayHint ? true : rest["aria-disabled"]}
-        tabIndex={minimumStayHint ? -1 : rest.tabIndex}
+        aria-disabled={block ? true : rest["aria-disabled"]}
+        tabIndex={block ? -1 : rest.tabIndex}
         className={cn(
           "group/date relative z-10 flex h-full size-auto w-full min-w-(--cell-size) flex-col items-center justify-start border-0 bg-transparent px-1 py-1 font-normal leading-none shadow-none outline-none",
           "text-foreground hover:bg-transparent hover:text-foreground",
           modifiers.outside &&
             "text-muted-foreground/40 hover:text-muted-foreground/50",
-          (modifiers.disabled || minimumStayHint) &&
-            "cursor-not-allowed opacity-40",
+          (modifiers.disabled || block) && "cursor-not-allowed opacity-40",
           modifiers.range_middle &&
             "rounded-none bg-transparent text-foreground hover:bg-transparent",
           ctx?.hasRange &&
@@ -521,7 +573,7 @@ function MarketplaceRangeDayButton({
               ? "bg-[hsl(0_0%_13%)] text-white shadow-[0_2px_8px_rgba(0,0,0,0.18)] group-hover/date:scale-[1.04]"
               : "text-foreground",
             !modifiers.disabled &&
-              !minimumStayHint &&
+              !block &&
               !isEndpoint &&
               "group-hover/date:shadow-[inset_0_0_0_1.5px_hsl(0_0%_12%)] group-focus-visible/date:shadow-[inset_0_0_0_2px_hsl(0_0%_12%)]",
           )}
@@ -555,17 +607,18 @@ function MarketplaceRangeDayButton({
       data-ymd={toYmd(day.date)}
       onPointerDown={handlePointerDown}
       onClick={handleClick}
-      aria-disabled={minimumStayHint ? true : rest["aria-disabled"]}
-      tabIndex={minimumStayHint ? -1 : rest.tabIndex}
+      aria-disabled={block ? true : rest["aria-disabled"]}
+      tabIndex={block ? -1 : rest.tabIndex}
       className={cn(
         "group/date relative z-10 flex aspect-square size-auto w-full min-w-(--cell-size) items-center justify-center border-0 bg-transparent font-normal leading-none shadow-none outline-none",
         "text-foreground hover:bg-transparent hover:text-foreground",
         modifiers.outside &&
           "text-muted-foreground/40 hover:text-muted-foreground/50",
         modifiers.disabled && "cursor-not-allowed opacity-40",
-        // Deliberately lighter than `disabled`: a minimum-stay day is still bookable
-        // as a check-in, so it must not read as "taken" the way a booked day does.
-        !modifiers.disabled && minimumStayHint && "cursor-not-allowed opacity-60",
+        // A minimum-stay day is not "taken", so it deliberately avoids the dimming
+        // that marks booked and past days — it gets a hatch instead (see below).
+        // Dimming the two by different amounts was a distinction nobody could see.
+        !modifiers.disabled && block && "cursor-not-allowed text-muted-foreground",
         modifiers.range_middle &&
           "rounded-none bg-transparent text-foreground hover:bg-transparent",
         ctx?.hasRange &&
@@ -576,17 +629,23 @@ function MarketplaceRangeDayButton({
       )}
     >
       <span
+        // Three blocked states, three different marks, so the guest can tell at a
+        // glance which rule they hit: booked/past days are dimmed and struck through,
+        // minimum-stay days carry a diagonal hatch at full text contrast, and the
+        // earliest valid check-out gets a ring in the accent colour.
+        style={block ? MINIMUM_STAY_HATCH : undefined}
         className={cn(
           "flex size-full items-center justify-center rounded-full transition-[box-shadow,background-color,color,transform] duration-150 ease-out",
-          // Only genuinely unbookable days are struck through, which is what keeps
-          // them distinguishable from the minimum-stay window (dimmed, no line) and
-          // from past days (dimmed by `disabled`, but never crossed out).
           modifiers.unavailable && "line-through decoration-[1.5px]",
+          marksCheckout &&
+            !isEndpoint &&
+            "font-semibold text-primary shadow-[inset_0_0_0_1.5px_var(--primary)]",
           isEndpoint &&
             "bg-[hsl(0_0%_13%)] text-white shadow-[0_2px_8px_rgba(0,0,0,0.18)] group-hover/date:scale-[1.04] group-hover/date:bg-[hsl(0_0%_18%)]",
           !modifiers.disabled &&
-            !minimumStayHint &&
+            !block &&
             !isEndpoint &&
+            !marksCheckout &&
             "group-hover/date:shadow-[inset_0_0_0_1.5px_hsl(0_0%_12%)] group-focus-visible/date:shadow-[inset_0_0_0_2px_hsl(0_0%_12%)]",
         )}
       >
@@ -633,7 +692,7 @@ export function DateRangeCalendarStep({
   >["modifiersClassNames"];
   minimumStayNights?: number;
   minimumStayMessage?: Resolved;
-  onMinimumStayBlocked?: () => void;
+  onMinimumStayBlocked?: (block: DayBlock) => void;
   fitViewport?: boolean;
   pagedOnDesktop?: boolean;
   pagedDesktopMonthCount?: 1 | 2;
@@ -795,6 +854,89 @@ export function DateRangeCalendarStep({
     [minimumStayAnchor, minimumStayNights],
   );
 
+  const earliestCheckout = React.useMemo(
+    () =>
+      minimumStayAnchor && minimumStayNights
+        ? addDays(minimumStayAnchor, minimumStayNights)
+        : undefined,
+    [minimumStayAnchor, minimumStayNights],
+  );
+  const isEarliestCheckout = React.useCallback(
+    (date: Date) =>
+      Boolean(earliestCheckout && isSameDay(startOfDay(date), earliestCheckout)),
+    [earliestCheckout],
+  );
+
+  // Sorted once so the gap lookup below can stop at the first block that starts on or
+  // after the candidate day instead of scanning every block for every rendered cell.
+  const sortedBlockStarts = React.useMemo(
+    () => blockedRangeStarts(disabledDateRanges),
+    [disabledDateRanges],
+  );
+
+  const isTooShortGap = React.useCallback(
+    (date: Date) => isDeadEndCheckIn(date, minimumStayNights, sortedBlockStarts),
+    [minimumStayNights, sortedBlockStarts],
+  );
+
+  // Independent of `minimumStayAnchor`, which only exists for multi-night minimums: a
+  // one-night listing still needs its blocked start openable as a check-out.
+  //
+  // Follows the selection through completion, not just while a check-in is pending —
+  // otherwise clicking the boundary completed the range, dropped the exception, and
+  // struck through the very day the guest had just validly chosen.
+  const checkoutBoundaryDate = React.useMemo(
+    () =>
+      selectionCheckoutBoundary(
+        selected?.from
+          ? { from: startOfDay(selected.from), to: selected.to }
+          : undefined,
+        sortedBlockStarts,
+      ),
+    [selected, sortedBlockStarts],
+  );
+  const isCheckoutBoundary = React.useCallback(
+    (date: Date) => isCheckoutBoundaryDay(date, checkoutBoundaryDate),
+    [checkoutBoundaryDate],
+  );
+  // Everything the matcher and the "unavailable" strike-through work from. Cleared or
+  // moved off the exact fit, the boundary drops back into its own block — and
+  // `commitRange` below stops it becoming a check-in while the exception is live.
+  const effectiveDisabledRanges = React.useMemo(
+    () => disabledRangesForSelection(disabledDateRanges, checkoutBoundaryDate),
+    [checkoutBoundaryDate, disabledDateRanges],
+  );
+
+  const tooShortGapMessage = React.useMemo<Resolved | undefined>(() => {
+    if (!minimumStayNights || minimumStayNights < 2) return undefined;
+    return interpolate(labels.minimumStayGapTooShort, { n: minimumStayNights });
+  }, [labels, minimumStayNights]);
+
+  /**
+   * Mid-selection the guest is choosing a check-out, so only the minimum-stay window is
+   * blocked; the dead-end rule would wrongly grey out days that are perfectly good
+   * check-outs for the stay in progress. Between selections the reverse holds.
+   */
+  const dayBlock = React.useCallback(
+    (date: Date): DayBlock | undefined => {
+      if (minimumStayAnchor) {
+        return minimumStayMessage && isMinimumStayRestricted(date)
+          ? { kind: "minimum-stay", message: minimumStayMessage }
+          : undefined;
+      }
+      return tooShortGapMessage && isTooShortGap(date)
+        ? { kind: "too-short-gap", message: tooShortGapMessage }
+        : undefined;
+    },
+    [
+      isMinimumStayRestricted,
+      isTooShortGap,
+      minimumStayAnchor,
+      minimumStayMessage,
+      tooShortGapMessage,
+    ],
+  );
+
   const calendarStartMonth = React.useMemo(() => {
     if (dayVariant === "availability") {
       return startOfMonth(startOfToday());
@@ -804,6 +946,21 @@ export function DateRangeCalendarStep({
 
   const commitRange = React.useCallback(
     (range: DateRange | undefined) => {
+      // A completed exact fit leaves its check-out day enabled so it stops rendering as
+      // unavailable. That day is still a blocked night, so the one thing it must never
+      // turn into is the *start* of a new stay. Any fresh check-in landing on a
+      // genuinely blocked day drops the selection instead, which puts the day straight
+      // back inside its block. Only the exception can produce this, since every other
+      // blocked day is refused by the disabled matcher before it reaches here.
+      if (
+        range?.from &&
+        !range.to &&
+        isBlockedDay(range.from, disabledDateRanges)
+      ) {
+        onRangeChange(undefined);
+        return;
+      }
+
       // A day picked *before* the anchor is a new check-in, not a one-night stay:
       // react-day-picker would otherwise extend the range backwards and land under
       // the minimum. Only the backward side reaches here — forward days inside the
@@ -828,6 +985,7 @@ export function DateRangeCalendarStep({
       if (range?.from && !range?.to) onFromOnlySelected?.();
     },
     [
+      disabledDateRanges,
       minimumStayAnchor,
       minimumStayNights,
       onRangeChange,
@@ -1108,29 +1266,36 @@ export function DateRangeCalendarStep({
       onDayPointerDown: dragToSelect ? handleDayPointerDown : undefined,
       dayMeta,
       dayVariant,
-      minimumStayHint: (date) =>
-        minimumStayMessage && isMinimumStayRestricted(date)
-          ? minimumStayMessage
-          : undefined,
+      dayBlock,
+      isEarliestCheckout,
+      earliestCheckoutLabel: earliestCheckout
+        ? labels.earliestCheckout
+        : undefined,
+      isCheckoutBoundary,
+      checkoutBoundaryLabel: checkoutBoundaryDate ? labels.checkOut : undefined,
       onMinimumStayBlocked,
     }),
     [
+      checkoutBoundaryDate,
+      dayBlock,
       dayMeta,
       dayVariant,
       dragToSelect,
+      earliestCheckout,
       handleDayPointerDown,
       handleEndpointPointerDown,
       hasRange,
-      isMinimumStayRestricted,
-      minimumStayMessage,
+      isCheckoutBoundary,
+      isEarliestCheckout,
+      labels,
       onMinimumStayBlocked,
     ],
   );
 
   const calendarSelected = dragDisplayRange ?? selected;
   const disabledMatcher = React.useMemo(
-    () => [{ before: startOfToday() }, ...disabledDateRanges],
-    [disabledDateRanges],
+    () => [{ before: startOfToday() }, ...effectiveDisabledRanges],
+    [effectiveDisabledRanges],
   );
 
   // `disabled` also covers past days, so booked days need their own modifier before
@@ -1138,10 +1303,10 @@ export function DateRangeCalendarStep({
   // its own blocked backgrounds and opts out.
   const calendarModifiers = React.useMemo(
     () =>
-      dayVariant === "availability" || disabledDateRanges.length === 0
+      dayVariant === "availability" || effectiveDisabledRanges.length === 0
         ? dateModifiers
-        : { ...dateModifiers, unavailable: disabledDateRanges },
-    [dateModifiers, dayVariant, disabledDateRanges],
+        : { ...dateModifiers, unavailable: effectiveDisabledRanges },
+    [dateModifiers, dayVariant, effectiveDisabledRanges],
   );
 
   const scrollCalendar = React.useCallback(
@@ -1575,8 +1740,12 @@ export function MarketplaceStayDatePicker({
 
   const [minimumStayNudgeKey, setMinimumStayNudgeKey] = React.useState(0);
   const [minimumStayNudging, setMinimumStayNudging] = React.useState(false);
+  // A dead-end check-in has no pending selection to hang a persistent banner off, so
+  // its reason is flashed in the same slot and then withdrawn.
+  const [flashedBlock, setFlashedBlock] = React.useState<Resolved | null>(null);
   const minimumStayNudgeTimerRef = React.useRef<number | null>(null);
-  const nudgeMinimumStayHint = React.useCallback(() => {
+  const flashedBlockTimerRef = React.useRef<number | null>(null);
+  const nudgeMinimumStayHint = React.useCallback((block: DayBlock) => {
     setMinimumStayNudgeKey((key) => key + 1);
     setMinimumStayNudging(true);
     navigator.vibrate?.(10);
@@ -1587,15 +1756,34 @@ export function MarketplaceStayDatePicker({
       () => setMinimumStayNudging(false),
       1000,
     );
+
+    if (flashedBlockTimerRef.current !== null) {
+      window.clearTimeout(flashedBlockTimerRef.current);
+      flashedBlockTimerRef.current = null;
+    }
+    if (block.kind !== "too-short-gap") {
+      setFlashedBlock(null);
+      return;
+    }
+    setFlashedBlock(block.message);
+    flashedBlockTimerRef.current = window.setTimeout(
+      () => setFlashedBlock(null),
+      5000,
+    );
   }, []);
   React.useEffect(
     () => () => {
       if (minimumStayNudgeTimerRef.current !== null) {
         window.clearTimeout(minimumStayNudgeTimerRef.current);
       }
+      if (flashedBlockTimerRef.current !== null) {
+        window.clearTimeout(flashedBlockTimerRef.current);
+      }
     },
     [],
   );
+
+  const datesBanner = minimumStayHint ?? flashedBlock;
 
   const nightCount = getNightCount(selectedRange);
   const canGoNext =
@@ -2064,6 +2252,31 @@ export function MarketplaceStayDatePicker({
                   : "contents",
               )}
             >
+              {/* Above the grid, not below it: the rule has to be readable in the
+                  same glance as the greyed days it explains, without a hover the
+                  guest has to discover or a tap they have to get wrong first. */}
+              {datesBanner ? (
+                <div
+                  key={minimumStayNudgeKey}
+                  aria-live="polite"
+                  className={cn(
+                    "flex shrink-0 items-start gap-2 border-b border-border px-4 py-2.5 text-[0.8rem] leading-snug transition-colors duration-200 animate-in fade-in-0 zoom-in-[0.99] md:px-6",
+                    minimumStayNudging
+                      ? "bg-muted font-medium text-foreground"
+                      : "bg-muted/40 text-muted-foreground",
+                  )}
+                >
+                  <Info className="mt-px h-4 w-4 shrink-0" aria-hidden="true" />
+                  <span
+                    className={
+                      datesBanner.translated ? "notranslate" : undefined
+                    }
+                  >
+                    {datesBanner.text}
+                  </span>
+                </div>
+              ) : null}
+
               <DateRangeCalendarStep
                 active={open && step === "dates"}
                 selected={selectedRange}
@@ -2082,30 +2295,6 @@ export function MarketplaceStayDatePicker({
               />
 
               <div className="shrink-0 border-t border-border bg-background">
-                {minimumStayHint ? (
-                  <div
-                    key={minimumStayNudgeKey}
-                    aria-live="polite"
-                    className={cn(
-                      "flex items-start gap-2 px-4 py-2.5 text-[0.8rem] leading-snug transition-colors duration-200 animate-in fade-in-0 zoom-in-[0.99] md:px-6",
-                      (showDateFlexibility || !isPillLayout) &&
-                        "border-b border-border",
-                      minimumStayNudging
-                        ? "bg-muted/60 font-medium text-foreground"
-                        : "text-muted-foreground",
-                    )}
-                  >
-                    <Info className="mt-px h-4 w-4 shrink-0" aria-hidden="true" />
-                    <span
-                      className={
-                        minimumStayHint.translated ? "notranslate" : undefined
-                      }
-                    >
-                      {minimumStayHint.text}
-                    </span>
-                  </div>
-                ) : null}
-
                 {showDateFlexibility ? (
                   <div className="overflow-x-auto overflow-y-hidden px-4 py-3 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x md:px-6">
                     <DateFlexibilityRow

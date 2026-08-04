@@ -93,7 +93,7 @@ export interface WorkspacePromotion {
   discountPercent: number;
   minimumNights: number | null;
   freeCleaning: boolean;
-  roundUpToNearestFive: boolean;
+  roundToWholeUnit: boolean;
   startDate: Date | string | null;
   endDate: Date | string | null;
   createdAt: Date | string;
@@ -524,7 +524,7 @@ function EditorDialog({
     state.promotion?.freeCleaning ?? false,
   );
   const [roundPromotion, setRoundPromotion] = useState(
-    state.promotion?.roundUpToNearestFive ?? true,
+    state.promotion?.roundToWholeUnit ?? true,
   );
 
   const isDateScoped = Boolean(range?.from);
@@ -679,7 +679,7 @@ function EditorDialog({
           discountPercent,
           minimumNights: promotionNights,
           freeCleaning,
-          roundUpToNearestFive: discountPercent > 0 && roundPromotion,
+          roundToWholeUnit: discountPercent > 0 && roundPromotion,
           startDate: selectedInput?.startDate,
           endDate: selectedInput?.endDate,
         }),
@@ -727,8 +727,9 @@ function EditorDialog({
 
   const numericDiscount = Math.min(50, Math.max(0, Number(discount) || 0));
   const rawGuestRate = baseNightlyRate * (1 - numericDiscount / 100);
+  // Mirrors computeStayQuote: nearest whole currency unit, never above the rate.
   const guestRate = roundPromotion
-    ? Math.ceil(rawGuestRate / 5) * 5
+    ? Math.min(baseNightlyRate, Math.round(rawGuestRate))
     : Number(rawGuestRate.toFixed(2));
   // The short verb key, not `block_selected`: its reviewed translations read
   // "Block selected range", which does not fit a half-width button.
@@ -1213,8 +1214,18 @@ function EditorDialog({
               {numericDiscount > 0 ? (
                 <OptionToggle
                   checked={roundPromotion}
-                  label="Round up to the nearest €5"
-                  description="Keeps discounted nightly prices clean."
+                  label={
+                    resolve(
+                      "host.calendar.promotion_round_label",
+                      "Round to the nearest whole number",
+                    ).text
+                  }
+                  description={
+                    resolve(
+                      "host.calendar.promotion_round_hint",
+                      "Keeps discounted nightly prices clean.",
+                    ).text
+                  }
                   onChange={() => setRoundPromotion((current) => !current)}
                 />
               ) : null}
@@ -1255,7 +1266,7 @@ function EditorDialog({
                       ? interpolate(
                           resolve(
                             "host.calendar.rounded_from",
-                            " · rounded up from €{original}",
+                            " · rounded from €{original}",
                           ),
                           { original: Number(rawGuestRate.toFixed(2)) },
                         ).text

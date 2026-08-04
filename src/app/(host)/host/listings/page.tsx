@@ -19,16 +19,28 @@ import { getT, T, TWithValues } from "@/lib/i18n/t";
 
 export const metadata = { title: "My Listings" };
 
-export default async function HostListingsPage() {
+export default async function HostListingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ filter?: string }>;
+}) {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const [listings, drafts] = await Promise.all([
+  const [{ filter }, allListings, allDrafts] = await Promise.all([
+    searchParams,
     getHostListings(session.user.id),
     getHostListingDrafts(session.user.id),
   ]);
   const t = await getT();
   const untitledDraft = t.resolve("host.listings.untitled_draft", "Untitled draft");
+
+  const showArchived = filter === "archived";
+  const archivedListings = allListings.filter((l) => l.status === "ARCHIVED");
+  const activeListings = allListings.filter((l) => l.status !== "ARCHIVED");
+  const listings = showArchived ? archivedListings : activeListings;
+  // Drafts are work in progress, never archived — they only belong on the active tab.
+  const drafts = showArchived ? [] : allDrafts;
 
   return (
     <div>
@@ -43,6 +55,35 @@ export default async function HostListingsPage() {
           </Link>
         </Button>
       </div>
+
+      {archivedListings.length > 0 && (
+        <div className="mb-6 flex flex-wrap items-center gap-2">
+          <Button
+            asChild
+            variant={showArchived ? "outline" : "secondary"}
+            size="sm"
+          >
+            <Link href="/host/listings">
+              <T t={t} k="host.listings.filter_active" source="Active" />
+              <span className="ml-1.5 text-muted-foreground notranslate" translate="no">
+                {activeListings.length}
+              </span>
+            </Link>
+          </Button>
+          <Button
+            asChild
+            variant={showArchived ? "secondary" : "outline"}
+            size="sm"
+          >
+            <Link href="/host/listings?filter=archived">
+              <T t={t} k="host.listings.filter_archived" source="Archived" />
+              <span className="ml-1.5 text-muted-foreground notranslate" translate="no">
+                {archivedListings.length}
+              </span>
+            </Link>
+          </Button>
+        </div>
+      )}
 
       {drafts.length > 0 && (
         <div className="mb-8">
@@ -109,7 +150,25 @@ export default async function HostListingsPage() {
         </div>
       )}
 
-      {listings.length === 0 && drafts.length === 0 ? (
+      {showArchived && listings.length === 0 ? (
+        <EmptyState
+          title={
+            t.resolve("host.listings.archived_empty_title", "Nothing archived").text
+          }
+          description={
+            t.resolve(
+              "host.listings.archived_empty_description",
+              "Listings you archive are kept here with their booking history.",
+            ).text
+          }
+        >
+          <Button asChild variant="outline">
+            <Link href="/host/listings">
+              <T t={t} k="host.listings.back_to_active" source="Back to active listings" />
+            </Link>
+          </Button>
+        </EmptyState>
+      ) : listings.length === 0 && drafts.length === 0 ? (
         <EmptyState
           title={t.resolve("host.listings.empty_title", "No listings yet").text}
           description={

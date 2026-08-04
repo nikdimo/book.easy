@@ -17,10 +17,19 @@ import {
   normalizeListingStep,
 } from "@/lib/constants/listing-steps";
 import {
+  DEFAULT_BLOCK_REASON,
   flattenPlanDatePrices,
+  mergeInclusiveBlockRanges,
   parsePlanDate,
   parsePrePublishPlan,
+  planOfferToPromotion,
+  planRangeToAvailabilityBlock,
+  type InclusiveBlockRange,
 } from "@/lib/types/listing-prepublish-plan";
+import {
+  availabilityStartBlock,
+  validateAvailabilityStartForPublish,
+} from "@/lib/types/listing-availability-start";
 
 /**
  * Silently persists a new listing's in-progress form state before it's complete enough
@@ -284,6 +293,26 @@ export async function submitNewListing(
   // never fatal — losing a finished listing over an optional date range would be a
   // worse outcome than publishing without that range.
   const plan = parsePrePublishPlan(formData.get("prePublishPlan"));
+
+  // Availability is the one part of the plan that is required, so unlike the optional
+  // ranges above it fails the publish instead of being dropped. Checked here and not
+  // only behind a disabled button: this action is reachable directly, and a listing
+  // that goes live bookable-from-today because nobody answered is the failure the
+  // screen exists to prevent. An unparseable answer is never read as "available now".
+  const availability = validateAvailabilityStartForPublish(plan.availabilityStart);
+  if (!availability.ok) {
+    if (availability.reason === "past-date") {
+      return {
+        error:
+          "That availability start date has already passed. Choose today or a later date.",
+      };
+    }
+    if (availability.reason === "invalid-date") {
+      return { error: "Choose a valid date for when guests can start booking." };
+    }
+    return { error: "Confirm when guests can start booking before publishing." };
+  }
+
   // The same rule the launch offer follows: a free-cleaning discount on a listing with
   // no cleaning fee is not an offer, it's a no-op the guest would see as a lie.
   const datedOffers = plan.offers.filter(
@@ -302,36 +331,37 @@ export async function submitNewListing(
         promotionType === "PERCENT_DISCOUNT" ? promotionPercent : 0,
       minimumNights: promotionMinimumNights,
       freeCleaning: promotionFreeCleaning,
-      roundUpToNearestFive: promotionType === "PERCENT_DISCOUNT",
+      roundToWholeUnit: promotionType === "PERCENT_DISCOUNT",
     });
   }
   for (const offer of datedOffers) {
-    const startDate = parsePlanDate(offer.startDate);
-    const endDate = parsePlanDate(offer.endDate);
-    if (!startDate || !endDate) continue;
-    promotionCreates.push({
-      type: offer.type,
-      discountPercent:
-        offer.type === "PERCENT_DISCOUNT" ? offer.discountPercent : 0,
-      freeCleaning: offer.type === "FREE_CLEANING",
-      roundUpToNearestFive: offer.type === "PERCENT_DISCOUNT",
-      startDate,
-      endDate,
-    });
+    const promotion = planOfferToPromotion(offer);
+    if (promotion) promotionCreates.push(promotion);
   }
 
-  const availabilityBlockCreates = plan.blocks.flatMap((block) => {
-    const startDate = parsePlanDate(block.startDate);
-    const endDate = parsePlanDate(block.endDate);
-    if (!startDate || !endDate) return [];
-    return [
-      {
-        startDate,
-        endDate,
-        blockType: "MANUAL_BLOCK" as const,
-        reason: "Blocked by the host before publishing",
-      },
-    ];
+  // Two independent sources of blocked nights: "available from" (everything before the
+  // start date) and the ranges the host painted. They can cover the same nights, and
+  // AvailabilityBlock's exclusion constraint rejects overlapping rows — so they are
+  // merged as inclusive ranges first and converted to the database's exclusive end
+  // exactly once each. "Available now" contributes nothing, leaving this the plain list
+  // of the host's own blocks.
+  //
+  // The start block is listed first on purpose: it always begins today, so the reason
+  // rule in mergeInclusiveBlockRanges (earliest start wins) keeps its wording for any
+  // span it gets merged into.
+  const startBlock = availabilityStartBlock(availability.value);
+  const inclusiveBlockRanges: InclusiveBlockRange[] = [
+    ...(startBlock
+      ? [{ ...startBlock, reason: "Before the listing's availability start date" }]
+      : []),
+    ...plan.blocks.map((block) => ({ ...block, reason: DEFAULT_BLOCK_REASON })),
+  ];
+
+  const availabilityBlockCreates = mergeInclusiveBlockRanges(
+    inclusiveBlockRanges
+  ).flatMap((range) => {
+    const availabilityBlock = planRangeToAvailabilityBlock(range, range.reason);
+    return availabilityBlock ? [availabilityBlock] : [];
   });
 
   const datePriceCreates = datePriceRows.flatMap((row) => {
@@ -619,6 +649,65 @@ export async function unpublishListing(listingId: string) {
   });
 
   if (!listing) return { error: "Listing not found or cannot be unpublished" };
+
+  await db.listing.update({
+    where: { id: listingId },
+    data: { status: "UNPUBLISHED" },
+  });
+
+  revalidatePath("/host/listings");
+  revalidatePublicListingCaches();
+  return { success: true };
+}
+
+/**
+ * Archiving is the host's "put this away" action: the listing comes off the site and
+ * moves out of the active list into the Archived filter, keeping its bookings history.
+ * Blocked while money/dates are still in play (pending or confirmed bookings).
+ */
+export async function archiveListing(listingId: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Not authorized" };
+
+  const listing = await db.listing.findFirst({
+    where: { id: listingId, hostId: session.user.id },
+    include: { bookings: { select: { status: true } } },
+  });
+
+  if (!listing) return { error: "Listing not found" };
+  if (listing.status === "ARCHIVED") return { success: true };
+
+  const hasActiveBooking = listing.bookings.some(
+    (b) => b.status === "PENDING" || b.status === "CONFIRMED",
+  );
+  if (hasActiveBooking) {
+    return {
+      error:
+        "Cannot archive a listing with active bookings. Cancel or complete pending bookings first.",
+    };
+  }
+
+  await db.listing.update({
+    where: { id: listingId },
+    data: { status: "ARCHIVED" },
+  });
+
+  revalidatePath("/host/listings");
+  revalidatePublicListingCaches();
+  return { success: true };
+}
+
+/** Brings an archived listing back as hidden — never straight back onto the site, so
+ * the host reviews it and hits Unhide deliberately. */
+export async function unarchiveListing(listingId: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Not authorized" };
+
+  const listing = await db.listing.findFirst({
+    where: { id: listingId, hostId: session.user.id, status: "ARCHIVED" },
+  });
+
+  if (!listing) return { error: "Listing not found or is not archived" };
 
   await db.listing.update({
     where: { id: listingId },

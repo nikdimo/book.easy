@@ -61,17 +61,24 @@ echo "[deploy] Lint + typecheck (fail fast before touching the DB or building)"
 npm run lint
 npm run typecheck
 
+echo "[deploy] Building"
+npm run build
+
+echo "[deploy] Backing up the production database before migrations"
+# Deployment runs as the app user, so keep release backups in a sibling directory it
+# owns rather than assuming it can create /var/backups/book-easy. The scheduled backup
+# service may continue using BACKUP_DIR=/var/backups/book-easy independently.
+DEPLOY_BACKUP_DIR="${DEPLOY_BACKUP_DIR:-$(dirname "$APP_DIR")/book-easy-backups}"
+BACKUP_DIR="$DEPLOY_BACKUP_DIR" bash "$APP_DIR/scripts/backup-db.sh"
+
 echo "[deploy] Prisma migrate deploy"
 npm run db:migrate:deploy
 
 echo "[deploy] Adding amenities that are missing from production"
-# The release snapshot is exported from the local database by Control Panel option 6.
+# The release snapshot is exported from the local database by Control Panel option 5.
 # Import is additive by amenity name: production-only rows and all existing production
 # settings remain untouched.
 npm run amenities:import
-
-echo "[deploy] Building"
-npm run build
 
 echo "[deploy] Importing reviewed AI translations"
 # This imports only the version-controlled fixed-UI translation snapshot. It preserves
@@ -99,4 +106,23 @@ else
   sudo -n /usr/bin/systemctl enable book-easy-web
 fi
 
-echo "[deploy] Done. Live at https://lingerhomes.com"
+echo "[deploy] Waiting for the public health check"
+HEALTH_URL="${DEPLOY_HEALTH_URL:-https://lingerhomes.com/api/mobile/v1/languages?locale=en}"
+HEALTHY=0
+for attempt in $(seq 1 12); do
+  if curl --fail --silent --show-error --max-time 3 "$HEALTH_URL" >/dev/null; then
+    HEALTHY=1
+    echo "[deploy] Health check passed on attempt $attempt"
+    break
+  fi
+  echo "[deploy] Health check attempt $attempt of 12 failed; retrying..."
+  sleep 2
+done
+
+if [ "$HEALTHY" -ne 1 ]; then
+  echo "[deploy] ERROR: service restart completed but $HEALTH_URL is unhealthy" >&2
+  sudo -n /usr/bin/systemctl --no-pager --full status book-easy-web || true
+  exit 1
+fi
+
+echo "[deploy] Done. Live and healthy at https://lingerhomes.com"

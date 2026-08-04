@@ -40,7 +40,7 @@ export async function GET(request: Request) {
         discountPercent: promotion.discountPercent,
         minimumNights: promotion.minimumNights,
         freeCleaning: promotion.freeCleaning,
-        roundUpToNearestFive: promotion.roundUpToNearestFive,
+        roundToWholeUnit: promotion.roundToWholeUnit,
         startDate: promotion.startDate?.toISOString() ?? null,
         endDate: promotion.endDate?.toISOString() ?? null,
       })),
@@ -53,7 +53,7 @@ export async function GET(request: Request) {
             discountPercent: listing.promotions[0].discountPercent,
             minimumNights: listing.promotions[0].minimumNights,
             freeCleaning: listing.promotions[0].freeCleaning,
-            roundUpToNearestFive: listing.promotions[0].roundUpToNearestFive,
+            roundToWholeUnit: listing.promotions[0].roundToWholeUnit,
             startDate: listing.promotions[0].startDate?.toISOString() ?? null,
             endDate: listing.promotions[0].endDate?.toISOString() ?? null,
           }

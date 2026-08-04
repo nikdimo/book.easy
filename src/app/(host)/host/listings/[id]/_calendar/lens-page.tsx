@@ -214,7 +214,7 @@ export async function CalendarLensPage({
             discountPercent: promotion.discountPercent,
             minimumNights: promotion.minimumNights,
             freeCleaning: promotion.freeCleaning,
-            roundUpToNearestFive: promotion.roundUpToNearestFive,
+            roundToWholeUnit: promotion.roundToWholeUnit,
             startDate: promotion.startDate,
             endDate: promotion.endDate,
             createdAt: promotion.createdAt,

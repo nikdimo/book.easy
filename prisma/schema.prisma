@@ -708,18 +708,18 @@ model PricingRule {
  * minimum-night threshold wins.
  */
 model ListingPromotion {
-  id                   String        @id @default(cuid())
-  listingId            String
-  type                 PromotionType
-  discountPercent      Int           @default(0)
-  minimumNights        Int?
-  freeCleaning         Boolean       @default(false)
-  roundUpToNearestFive Boolean       @default(true)
-  startDate            DateTime?     @db.Date
-  endDate              DateTime?     @db.Date
-  disabledAt           DateTime?
-  createdAt            DateTime      @default(now())
-  updatedAt            DateTime      @updatedAt
+  id               String        @id @default(cuid())
+  listingId        String
+  type             PromotionType
+  discountPercent  Int           @default(0)
+  minimumNights    Int?
+  freeCleaning     Boolean       @default(false)
+  roundToWholeUnit Boolean       @default(true)
+  startDate        DateTime?     @db.Date
+  endDate          DateTime?     @db.Date
+  disabledAt       DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
   listing  Listing   @relation(fields: [listingId], references: [id], onDelete: Cascade)
   bookings Booking[]

@@ -13,6 +13,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { DeleteListingButton } from "@/components/host/delete-listing-button";
+import { ListingArchiveButton } from "@/components/host/listing-archive-button";
 import {
   ListingVisibilityToggle,
   isHostVisibilityToggleable,
@@ -40,7 +41,9 @@ export function HostListingCard({ listing }: HostListingCardProps) {
   const statusConfig = LISTING_STATUSES.find((s) => s.value === listing.status);
   const editHref = `/host/listings/${listing.id}/edit`;
   const statusLabel = statusConfig?.label || listing.status;
-  const canToggleVisibility = isHostVisibilityToggleable(listing.status);
+  const isArchived = listing.status === "ARCHIVED";
+  const canToggleVisibility =
+    !isArchived && isHostVisibilityToggleable(listing.status);
 
   function stop(e: React.MouseEvent) {
     e.stopPropagation();
@@ -168,6 +171,12 @@ export function HostListingCard({ listing }: HostListingCardProps) {
               status={listing.status}
             />
           )}
+
+          <ListingArchiveButton
+            listingId={listing.id}
+            title={listing.title}
+            archived={isArchived}
+          />
 
           <DeleteListingButton listingId={listing.id} title={listing.title} />
         </div>

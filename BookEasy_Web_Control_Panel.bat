@@ -283,6 +283,10 @@ echo ============================================
 echo   SUCCESS - Live at https://lingerhomes.com
 echo ============================================
 echo.
+echo   Automated deployment and health checks passed.
+echo   Browser verification is still manual. Check the critical listing and booking flows.
+start "" https://lingerhomes.com
+echo.
 pause
 goto MENU
 
@@ -313,6 +317,28 @@ echo.
 echo ============================================
 echo   Save Version + Deploy (full release)
 echo ============================================
+echo.
+set "RELEASE_BRANCH="
+for /f "delims=" %%B in ('git branch --show-current') do set "RELEASE_BRANCH=%%B"
+if /I not "%RELEASE_BRANCH%"=="main" (
+    echo   ERROR - Full releases must run from the main branch.
+    echo   Current branch: %RELEASE_BRANCH%
+    echo   Nothing was saved or deployed.
+    pause
+    goto MENU
+)
+echo [preflight] Branch is main.
+echo.
+echo [preflight] Stopping this repository's local dev server if it is running...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%REPO%\scripts\stop-repo-dev-server.ps1" -RepoRoot "%REPO%"
+if errorlevel 1 (
+    echo.
+    echo   ERROR - The local dev server could not be stopped safely.
+    echo   Nothing was saved or deployed.
+    pause
+    goto MENU
+)
+echo   Prisma's local query-engine file is ready for release checks.
 echo.
 echo [preflight] Refreshing the UI catalog...
 call npm run i18n:extract
@@ -369,6 +395,87 @@ if errorlevel 1 (
     goto MENU
 )
 echo   Local amenity catalog is ready for production sync.
+echo.
+echo [preflight] Generating Prisma Client...
+call npm run db:generate
+if errorlevel 1 (
+    echo.
+    echo   ERROR - Prisma Client generation failed. Nothing was saved or deployed.
+    pause
+    goto MENU
+)
+
+echo.
+echo [preflight] Validating the Prisma schema...
+call npx prisma validate
+if errorlevel 1 (
+    echo.
+    echo   ERROR - Prisma schema validation failed. Nothing was saved or deployed.
+    pause
+    goto MENU
+)
+
+echo.
+echo [preflight] Running lint...
+call npm run lint
+if errorlevel 1 (
+    echo.
+    echo   ERROR - Lint failed. Nothing was saved or deployed.
+    pause
+    goto MENU
+)
+
+echo.
+echo [preflight] Running web typecheck...
+call npm run typecheck
+if errorlevel 1 (
+    echo.
+    echo   ERROR - Web typecheck failed. Nothing was saved or deployed.
+    pause
+    goto MENU
+)
+
+echo.
+echo [preflight] Running mobile typecheck...
+call npm run mobile:typecheck
+if errorlevel 1 (
+    echo.
+    echo   ERROR - Mobile typecheck failed. Nothing was saved or deployed.
+    pause
+    goto MENU
+)
+
+echo.
+echo [preflight] Running the full automated test suite locally...
+call npm test
+if errorlevel 1 (
+    echo.
+    echo   ERROR - Tests failed. Tests are never run against production.
+    echo   Nothing was saved or deployed.
+    pause
+    goto MENU
+)
+
+echo.
+echo [preflight] Building the production app locally...
+call npm run build
+if errorlevel 1 (
+    echo.
+    echo   ERROR - Production build failed. Nothing was saved or deployed.
+    pause
+    goto MENU
+)
+
+echo.
+echo [preflight] Checking the final diff for whitespace errors...
+git diff --check
+if errorlevel 1 (
+    echo.
+    echo   ERROR - Git found whitespace errors. Nothing was saved or deployed.
+    pause
+    goto MENU
+)
+echo   All local release checks passed.
 echo.
 call :SAVE_BODY
 if errorlevel 1 (

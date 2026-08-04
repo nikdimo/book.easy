@@ -6,10 +6,13 @@ import {
   ArrowRight,
   BadgePercent,
   BedDouble,
-  CalendarDays,
+  CalendarCheck,
+  CalendarClock,
+  CalendarOff,
   CalendarRange,
   Check,
   ChevronRight,
+  CircleAlert,
   CircleDollarSign,
   LockKeyhole,
   Pencil,
@@ -41,6 +44,11 @@ import { DateRangeCalendarStep } from "@/components/marketplace/marketplace-stay
 import { Tx, interpolate, useI18n } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
 import {
+  blockedNightsCount,
+  type AvailabilityStartChoice,
+} from "@/lib/types/listing-availability-start";
+import { compareYmd, todayYmd } from "@/lib/utils/date-only";
+import {
   MAX_OFFER_PERCENT,
   MIN_OFFER_PERCENT,
   eachPlanDate,
@@ -58,9 +66,17 @@ import {
 
 export type PrePublishTask = "availability" | "pricing" | "offers";
 
-/** Which screen of the pre-publish flow is showing. `menu` is the checklist the three
- *  tasks return to — see the note on returning rather than publishing directly. */
-export type PrePublishScreen = "menu" | PrePublishTask;
+/** Which screen of the pre-publish flow is showing. `menu` is the checklist the optional
+ *  tasks return to — see the note on returning rather than publishing directly.
+ *  `availability-start` is the required question the host passes through on the way to
+ *  the checklist, and is not one of the optional tasks. */
+export type PrePublishScreen = "menu" | "availability-start" | PrePublishTask;
+
+/** Stable so the wizard's footer buttons — which live in another component — can point
+ *  their `aria-describedby` at the "you haven't answered yet" message. Only one
+ *  availability screen is ever mounted, so a fixed id is safe here where the radio and
+ *  date-field ids still come from `useId`. */
+export const AVAILABILITY_START_ERROR_ID = "availability-start-error";
 
 export function prePublishTaskCount(
   plan: PrePublishPlan,
@@ -189,11 +205,17 @@ function offerLabelByDate(offers: PrePublishOffer[]) {
 export function PrePublishMenu({
   plan,
   onOpenTask,
+  onEditAvailability,
 }: {
   plan: PrePublishPlan;
   onOpenTask: (task: PrePublishTask) => void;
+  /** Back to the availability question. The checklist reports that answer but never
+   *  edits it — there is one screen that owns it, and this returns the host to it. */
+  onEditAvailability: () => void;
 }) {
   const i18n = useI18n();
+  const summary = useAvailabilitySummary();
+  const availabilitySummary = summary(plan);
 
   const tasks: {
     task: PrePublishTask;
@@ -202,23 +224,6 @@ export function PrePublishMenu({
     example: string;
     done: (count: number) => string;
   }[] = [
-    {
-      task: "availability",
-      icon: CalendarDays,
-      title: i18n.resolve(
-        "host.prepublish.availability_title",
-        "Set availability",
-      ).text,
-      example: i18n.resolve(
-        "host.prepublish.availability_example",
-        "For example: block the weeks you'll be using the property yourself, so nobody can book them.",
-      ).text,
-      done: (count: number) =>
-        interpolate(
-          i18n.resolve("host.prepublish.availability_done", "{count} blocked"),
-          { count },
-        ).text,
-    },
     {
       task: "pricing",
       icon: Tags,
@@ -268,6 +273,72 @@ export function PrePublishMenu({
             source="All optional — you can publish now and change any of this later from your listing calendar."
           />
         </p>
+      </div>
+
+      {/* Availability is answered by now, so it reports rather than asks. It sits above
+          the optional tasks and outside their list: presenting a settled decision as one
+          more unticked card is what made hosts skip it in the first place. */}
+      <div
+        className={cn(
+          "rounded-xl border p-3 md:p-4",
+          availabilitySummary
+            ? "border-primary/40 bg-primary/[0.04]"
+            : "border-destructive/50 bg-destructive/[0.04]",
+        )}
+      >
+        <div className="flex items-start gap-3 md:gap-4">
+          <span
+            className={cn(
+              "flex size-9 shrink-0 items-center justify-center rounded-lg md:size-10",
+              availabilitySummary
+                ? "bg-primary text-primary-foreground"
+                : "bg-destructive/10 text-destructive",
+            )}
+          >
+            {availabilitySummary ? (
+              <Check className="size-5" strokeWidth={3} aria-hidden="true" />
+            ) : (
+              <CircleAlert className="size-5" aria-hidden="true" />
+            )}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold md:text-base">
+              <Tx
+                k="host.prepublish.availability_confirmed_title"
+                source="When guests can book"
+              />
+            </p>
+            <p
+              className={cn(
+                "mt-1 text-xs leading-snug md:text-sm",
+                availabilitySummary
+                  ? "text-muted-foreground"
+                  : "font-medium text-destructive",
+              )}
+            >
+              {availabilitySummary ? (
+                <span className="notranslate">{availabilitySummary}</span>
+              ) : (
+                <Tx
+                  k="host.prepublish.availability_required"
+                  source="Choose when guests can start booking."
+                />
+              )}
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="shrink-0"
+            onClick={onEditAvailability}
+          >
+            <Pencil className="size-3.5" />
+            {availabilitySummary
+              ? i18n.resolve("host.prepublish.availability_edit", "Edit").text
+              : i18n.resolve("host.prepublish.availability_confirm", "Confirm").text}
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-2.5">
@@ -323,6 +394,501 @@ export function PrePublishMenu({
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/**
+ * The date-pricing entrance on the wizard's Pricing step, directly under the base
+ * nightly rate.
+ *
+ * The checklist after the last step is easy to skim past, and a host who has just typed
+ * a nightly rate is the one host who is actually thinking about price. So the same task
+ * screen is offered here too — this only opens it; the calendar, the plan and the draft
+ * save are all the existing ones.
+ */
+export function DatePricingCta({
+  plan,
+  onOpen,
+}: {
+  plan: PrePublishPlan;
+  onOpen: () => void;
+}) {
+  // `i18n.resolve` rather than a destructured `resolve`: only the property-access form
+  // is picked up by the UI-string extractor, so this copy lands in the catalog.
+  const i18n = useI18n();
+  const count = plan.datePrices.length;
+  const hasPrices = count > 0;
+
+  return (
+    // Sits inside the pricing card as one more row, so it reads as part of the price
+    // the host is setting rather than as an advert bolted under it.
+    <div className="flex min-h-14 flex-col gap-2.5 border-b border-border/60 px-3 py-3 last:border-b-0 sm:flex-row sm:items-center sm:gap-2.5 md:min-h-[88px] md:gap-4 md:px-4 md:py-4 md:sm:px-6">
+      <div className="flex min-w-0 flex-1 items-center gap-2.5 md:gap-4">
+        <span
+          className={cn(
+            "flex size-8 shrink-0 items-center justify-center rounded-lg md:size-10 md:rounded-xl",
+            hasPrices
+              ? "bg-primary text-primary-foreground"
+              : "bg-primary/10 text-primary",
+          )}
+        >
+          {hasPrices ? (
+            <Check className="size-4 md:size-5" strokeWidth={3} aria-hidden="true" />
+          ) : (
+            <CalendarRange className="size-4 md:size-5" aria-hidden="true" />
+          )}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold md:text-base">
+            {hasPrices
+              ? // Spelled out as date *ranges* on purpose: "3 prices set" reads as three
+                // nights, and a host who set a two-week holiday rate would think we had
+                // lost most of it.
+                i18n.plural(
+                  "host.form.pricing.date_prices_summary",
+                  count,
+                  "Custom prices set for {n} date range",
+                  "Custom prices set for {n} date ranges",
+                ).text
+              : i18n.resolve(
+                  "host.form.pricing.date_prices_title",
+                  "Charge different prices on certain dates?",
+                ).text}
+          </p>
+          <p className="text-[0.7rem] text-muted-foreground md:text-sm">
+            <Tx
+              k="host.form.pricing.date_prices_hint"
+              source="For example, charge more during holidays or less in quieter periods."
+            />
+          </p>
+        </div>
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        size="lg"
+        className="w-full shrink-0 sm:w-auto"
+        onClick={onOpen}
+      >
+        <CalendarRange className="size-4" />
+        {hasPrices
+          ? i18n.resolve("host.form.pricing.date_prices_edit", "Edit date prices")
+              .text
+          : i18n.resolve("host.form.pricing.date_prices_action", "Set date prices")
+              .text}
+      </Button>
+    </div>
+  );
+}
+
+/** "1 September" — the day and month the host picked, in their language. Built from the
+ *  parts rather than parsed, so the label cannot land a day out from the stored date. */
+function formatStartDate(value: PlanDate, locale: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString(locale, {
+    day: "numeric",
+    month: "long",
+  });
+}
+
+/**
+ * The one-line answer to "when can guests book?", used both on the availability screen
+ * and on the checklist so the two can never disagree: "Available now · no blocked
+ * dates", "Available from 1 September · 8 blocked nights".
+ */
+export function useAvailabilitySummary() {
+  const i18n = useI18n();
+  const { locale } = i18n;
+
+  return React.useCallback(
+    (plan: PrePublishPlan): string | null => {
+      if (!plan.availabilityStart) return null;
+      const start =
+        plan.availabilityStart.mode === "now"
+          ? i18n.resolve("host.prepublish.availability_now_summary", "Available now")
+              .text
+          : interpolate(
+              i18n.resolve(
+                "host.prepublish.availability_from_summary",
+                "Available from {date}",
+              ),
+              { date: formatStartDate(plan.availabilityStart.startDate, locale) },
+            ).text;
+
+      // Nights, not ranges — see blockedNightsCount. A host who blocked one long
+      // holiday and one weekend should read the total they took off the calendar.
+      const nights = blockedNightsCount(plan.blocks);
+      const blocked =
+        nights === 0
+          ? i18n.resolve(
+              "host.prepublish.availability_no_blocked",
+              "no blocked dates",
+            ).text
+          : i18n.plural(
+              "host.prepublish.availability_blocked_nights",
+              nights,
+              "{n} blocked night",
+              "{n} blocked nights",
+            ).text;
+
+      return `${start} · ${blocked}`;
+    },
+    [i18n, locale],
+  );
+}
+
+/**
+ * "When can guests book?" — the required screen between the last numbered step and the
+ * checklist.
+ *
+ * This exists because availability used to be skippable, and skipping it published a
+ * listing that took requests for every date from that moment on. The two choices are
+ * therefore a gate, not a suggestion: there is no way past this screen without picking
+ * one, and the publish action re-checks the answer rather than trusting the button.
+ *
+ * Blocking specific dates stays optional and separate, and the two compose — a host can
+ * open on 1 September and still block a week later that month. It reuses the existing
+ * pre-publish availability calendar rather than owning one, so there is exactly one
+ * blocking tool in the wizard.
+ */
+export function AvailabilityStartScreen({
+  plan,
+  onChange,
+  onOpenBlockingCalendar,
+  showError,
+}: {
+  plan: PrePublishPlan;
+  onChange: (plan: PrePublishPlan) => void;
+  onOpenBlockingCalendar: () => void;
+  /** Set once the host has tried to continue without answering, so the screen is quiet
+   *  on arrival and explicit afterwards rather than scolding them up front. */
+  showError: boolean;
+}) {
+  const i18n = useI18n();
+  const { locale } = i18n;
+  const summary = useAvailabilitySummary();
+  // Unique per instance so the radio ids, the date field and its error message can be
+  // associated without colliding with anything else on the page.
+  const fieldId = React.useId();
+  const dateFieldId = `${fieldId}-date`;
+  const dateErrorId = `${fieldId}-date-error`;
+  // Fixed for the life of the screen: the min on the date input and the "has it passed"
+  // check have to agree, and recomputing across a midnight would leave them disagreeing.
+  // Read in the marketplace's time zone, the same rule the publish action validates
+  // against — see todayYmd.
+  const [today] = React.useState(() => todayYmd());
+
+  /**
+   * The radio selection is local because it can be ahead of the answer: picking
+   * "a specific date" selects that radio while the plan still holds `null`, which is
+   * what keeps Continue disabled until a date is actually chosen.
+   */
+  const [mode, setMode] = React.useState<"now" | "from" | null>(
+    plan.availabilityStart?.mode ?? null,
+  );
+  const [startDate, setStartDate] = React.useState(
+    plan.availabilityStart?.mode === "from" ? plan.availabilityStart.startDate : "",
+  );
+
+  function commit(availabilityStart: AvailabilityStartChoice) {
+    onChange({ ...plan, availabilityStart });
+  }
+
+  function chooseNow() {
+    setMode("now");
+    commit({ mode: "now" });
+  }
+
+  /** Selecting the second radio keeps whatever date was already typed, so a host who
+   *  taps away to "now" and back does not lose it. */
+  function selectMode(value: "now" | "from") {
+    if (value === "now") {
+      chooseNow();
+      return;
+    }
+    setMode("from");
+    chooseFrom(startDate);
+  }
+
+  function chooseFrom(value: string) {
+    setStartDate(value);
+    // Anything not yet a usable date leaves the plan unanswered rather than storing a
+    // half-answer the host would then be able to publish on.
+    const usable =
+      value !== "" && parsePlanDate(value) !== null && compareYmd(value, today) >= 0;
+    commit(usable ? { mode: "from", startDate: value } : null);
+  }
+
+  const dateError =
+    mode !== "from"
+      ? ""
+      : startDate === ""
+        ? showError
+          ? i18n.resolve(
+              "host.prepublish.availability_date_required",
+              "Choose the first date guests can check in.",
+            ).text
+          : ""
+        : parsePlanDate(startDate) === null
+          ? i18n.resolve(
+              "host.prepublish.availability_date_invalid",
+              "That isn't a valid date.",
+            ).text
+          : compareYmd(startDate, today) < 0
+            ? i18n.resolve(
+                "host.prepublish.availability_date_past",
+                "That date has already passed. Choose today or a later date.",
+              ).text
+            : "";
+
+  const unanswered = showError && mode === null;
+  const blockedNights = blockedNightsCount(plan.blocks);
+  const summaryLine = summary(plan);
+
+  const choices: {
+    value: "now" | "from";
+    icon: LucideIcon;
+    label: string;
+    description: string;
+  }[] = [
+    {
+      value: "now",
+      icon: CalendarCheck,
+      label: i18n.resolve("host.prepublish.availability_now", "Available now").text,
+      description: i18n.resolve(
+        "host.prepublish.availability_now_hint",
+        "Guests can request stays starting today.",
+      ).text,
+    },
+    {
+      value: "from",
+      icon: CalendarClock,
+      label: i18n.resolve(
+        "host.prepublish.availability_from",
+        "Available from a specific date",
+      ).text,
+      description: i18n.resolve(
+        "host.prepublish.availability_from_hint",
+        "Choose the first date guests can check in.",
+      ).text,
+    },
+  ];
+
+  return (
+    <div className="space-y-4 md:space-y-5">
+      <div>
+        <h2 className="text-lg font-semibold tracking-tight md:text-2xl">
+          <Tx
+            k="host.prepublish.availability_start_title"
+            source="When can guests book?"
+          />
+        </h2>
+        <p className="mt-1 text-xs text-muted-foreground md:text-sm">
+          <Tx
+            k="host.prepublish.availability_start_hint"
+            source="This decides when your listing starts taking booking requests. You can change it any time from your calendar."
+          />
+        </p>
+      </div>
+
+      {/* Native radios: arrow-key navigation, the group label and the checked state all
+          come free and correct, where a custom widget would have to re-earn each one. */}
+      <fieldset
+        className="space-y-2.5"
+        aria-describedby={unanswered ? AVAILABILITY_START_ERROR_ID : undefined}
+      >
+        <legend className="sr-only">
+          {
+            i18n.resolve(
+              "host.prepublish.availability_start_title",
+              "When can guests book?",
+            ).text
+          }
+        </legend>
+
+        {choices.map(({ value, icon: Icon, label, description }) => {
+          const checked = mode === value;
+          return (
+            // A div, not a label: the date field lives inside this card, and a label
+            // may not contain another label or a second form control. The label below
+            // covers the whole non-interactive area instead, so clicking the card still
+            // selects the radio while the date field stays independently operable.
+            <div
+              key={value}
+              className={cn(
+                "rounded-xl border transition-all",
+                "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+                checked
+                  ? "border-primary bg-primary/[0.06] shadow-sm"
+                  : "border-border/70 bg-card hover:border-primary/40 hover:bg-muted/30",
+                unanswered && "border-destructive/60",
+              )}
+            >
+              <input
+                type="radio"
+                id={`${fieldId}-${value}`}
+                name="availabilityStartMode"
+                value={value}
+                checked={checked}
+                onChange={() => selectMode(value)}
+                className="sr-only"
+              />
+              <label
+                htmlFor={`${fieldId}-${value}`}
+                className="flex min-h-14 cursor-pointer items-start gap-3 p-3 md:gap-4 md:p-4"
+              >
+                <span
+                  aria-hidden="true"
+                  className={cn(
+                    "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+                    checked ? "border-primary" : "border-muted-foreground/40",
+                  )}
+                >
+                  {checked && <span className="size-2.5 rounded-full bg-primary" />}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2">
+                    <Icon
+                      className={cn(
+                        "size-4 shrink-0",
+                        checked ? "text-primary" : "text-muted-foreground",
+                      )}
+                      aria-hidden="true"
+                    />
+                    <span className="text-sm font-semibold md:text-base">{label}</span>
+                  </span>
+                  <span className="mt-1 block text-xs leading-snug text-muted-foreground md:text-sm">
+                    {description}
+                  </span>
+                </span>
+              </label>
+
+              {/* Revealed under its own choice so the date belongs to the option that
+                  asked for it, rather than floating below both. Indented to line up with
+                  the text above it, past the radio dot. */}
+              {value === "from" && checked && (
+                <div className="px-3 pb-3 pl-11 md:px-4 md:pb-4 md:pl-[3.25rem]">
+                  <Label
+                    htmlFor={dateFieldId}
+                    className="text-xs font-medium"
+                  >
+                    <Tx
+                      k="host.prepublish.availability_date_label"
+                      source="First date guests can check in"
+                    />
+                  </Label>
+                  <Input
+                    id={dateFieldId}
+                    type="date"
+                    value={startDate}
+                    min={today}
+                    onChange={(event) => chooseFrom(event.target.value)}
+                    aria-invalid={dateError ? true : undefined}
+                    aria-describedby={dateError ? dateErrorId : undefined}
+                    className="mt-1.5 h-11 w-full max-w-56"
+                  />
+                  {dateError && (
+                    <p
+                      id={dateErrorId}
+                      role="alert"
+                      className="mt-1.5 flex items-center gap-1.5 text-xs font-medium text-destructive"
+                    >
+                      <CircleAlert className="size-3.5 shrink-0" aria-hidden="true" />
+                      {dateError}
+                    </p>
+                  )}
+                  {!dateError && startDate !== "" && (
+                    <p className="mt-1.5 text-xs text-muted-foreground">
+                      {
+                        interpolate(
+                          i18n.resolve(
+                            "host.prepublish.availability_date_explainer",
+                            "{date} is the first night guests can book. Earlier nights stay blocked.",
+                          ),
+                          { date: formatStartDate(startDate, locale) },
+                        ).text
+                      }
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {unanswered && (
+          <p
+            id={AVAILABILITY_START_ERROR_ID}
+            role="alert"
+            className="flex items-center gap-1.5 text-xs font-medium text-destructive"
+          >
+            <CircleAlert className="size-3.5 shrink-0" aria-hidden="true" />
+            <Tx
+              k="host.prepublish.availability_required"
+              source="Choose when guests can start booking."
+            />
+          </p>
+        )}
+      </fieldset>
+
+      {/* Separate and optional on purpose: a start date and blocked dates are not
+          alternatives. Opening on 1 September and taking a week off later that month is
+          one host doing two things, so this never disables or replaces the choice above. */}
+      <section className="rounded-xl border border-border/70 bg-muted/20 p-3 md:p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+          <div className="flex min-w-0 flex-1 items-start gap-3 md:gap-4">
+            <span
+              className={cn(
+                "flex size-9 shrink-0 items-center justify-center rounded-lg md:size-10",
+                blockedNights > 0
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground",
+              )}
+            >
+              {blockedNights > 0 ? (
+                <Check className="size-5" strokeWidth={3} aria-hidden="true" />
+              ) : (
+                <CalendarOff className="size-5" aria-hidden="true" />
+              )}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold md:text-base">
+                <Tx
+                  k="host.prepublish.block_dates_title"
+                  source="Block specific dates"
+                />
+              </p>
+              <p className="mt-1 text-xs leading-snug text-muted-foreground md:text-sm">
+                <Tx
+                  k="host.prepublish.block_dates_hint"
+                  source="Block dates when you will use the property yourself, perform maintenance, or cannot host."
+                />
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="w-full shrink-0 sm:w-auto"
+            onClick={onOpenBlockingCalendar}
+          >
+            <CalendarOff className="size-4" />
+            {blockedNights > 0
+              ? i18n.resolve("host.prepublish.block_dates_edit", "Edit blocked dates")
+                  .text
+              : i18n.resolve("host.prepublish.block_dates_action", "Block dates").text}
+          </Button>
+        </div>
+      </section>
+
+      {summaryLine && (
+        <p className="flex items-center gap-2 rounded-lg bg-primary/[0.06] px-3 py-2.5 text-xs font-medium md:text-sm">
+          <CalendarCheck className="size-4 shrink-0 text-primary" aria-hidden="true" />
+          <span className="notranslate">{summaryLine}</span>
+        </p>
+      )}
     </div>
   );
 }

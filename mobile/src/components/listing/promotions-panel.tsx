@@ -81,7 +81,7 @@ export function PromotionsPanel({
     setPercent(String(promotion.discountPercent));
     setNights(String(promotion.minimumNights));
     setFreeCleaning(promotion.freeCleaning);
-    setRoundUp(promotion.roundUpToNearestFive);
+    setRoundUp(promotion.roundToWholeUnit);
     setUseSelection(Boolean(promotion.startDate && promotion.endDate));
     setOpen(true);
   }
@@ -98,7 +98,7 @@ export function PromotionsPanel({
           discountPercent: discount,
           minimumNights,
           freeCleaning,
-          roundUpToNearestFive: roundUp,
+          roundToWholeUnit: roundUp,
           // An offer with no window is always active.
           startDate: useSelection ? selection.start : undefined,
           endDate: useSelection ? selection.end : undefined,
@@ -162,7 +162,9 @@ export function PromotionsPanel({
             {promotion.freeCleaning && promotion.discountPercent > 0
               ? ` · ${t("Free cleaning")}`
               : ""}
-            {promotion.roundUpToNearestFive ? ` · ${t("Rounded up to nearest 5")}` : ""}
+            {promotion.roundToWholeUnit
+              ? ` · ${t("Rounded to the nearest whole number")}`
+              : ""}
           </Text>
           {promotion.startDate && promotion.endDate ? (
             <Text style={styles.cardMeta}>
@@ -219,7 +221,7 @@ export function PromotionsPanel({
             onChange={setFreeCleaning}
           />
           <Toggle
-            label={t("Round up to nearest 5")}
+            label={t("Round to the nearest whole number")}
             hint={t("Keeps discounted prices tidy.")}
             value={roundUp}
             onChange={setRoundUp}

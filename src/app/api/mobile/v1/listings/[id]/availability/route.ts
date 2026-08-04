@@ -45,7 +45,7 @@ async function managedListing(id: string, userId: string, isAdmin: boolean) {
           discountPercent: true,
           minimumNights: true,
           freeCleaning: true,
-          roundUpToNearestFive: true,
+          roundToWholeUnit: true,
           startDate: true,
           endDate: true,
         },
@@ -111,7 +111,7 @@ export async function GET(
       discountPercent: promotion.discountPercent,
       minimumNights: promotion.minimumNights ?? 1,
       freeCleaning: promotion.freeCleaning,
-      roundUpToNearestFive: promotion.roundUpToNearestFive,
+      roundToWholeUnit: promotion.roundToWholeUnit,
       startDate: promotion.startDate ? dbDateToYmd(promotion.startDate) : null,
       endDate: promotion.endDate ? dbDateToYmd(promotion.endDate) : null,
     })),
@@ -158,7 +158,7 @@ export async function POST(
     discountPercent?: number;
     minimumNights?: number;
     freeCleaning?: boolean;
-    roundUpToNearestFive?: boolean;
+    roundToWholeUnit?: boolean;
   };
   try {
     input = await request.json();
@@ -185,7 +185,7 @@ export async function POST(
       discountPercent: Number(input.discountPercent ?? 0),
       minimumNights: Number(input.minimumNights ?? 1),
       freeCleaning: Boolean(input.freeCleaning),
-      roundUpToNearestFive: Boolean(input.roundUpToNearestFive),
+      roundToWholeUnit: Boolean(input.roundToWholeUnit),
       startDate: input.startDate || undefined,
       endDate: input.endDate || undefined,
     });

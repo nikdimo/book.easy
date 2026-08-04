@@ -1745,6 +1745,56 @@
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
+    "key": "host.form.pricing.date_prices_action",
+    "sourceText": "Set date prices",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.form.pricing.date_prices_edit",
+    "sourceText": "Edit date prices",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.form.pricing.date_prices_hint",
+    "sourceText": "For example, charge more during holidays or less in quieter periods.",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.form.pricing.date_prices_summary.few",
+    "sourceText": "Custom prices set for {n} date ranges",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.form.pricing.date_prices_summary.many",
+    "sourceText": "Custom prices set for {n} date ranges",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.form.pricing.date_prices_summary.one",
+    "sourceText": "Custom prices set for {n} date range",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.form.pricing.date_prices_summary.other",
+    "sourceText": "Custom prices set for {n} date ranges",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.form.pricing.date_prices_summary.two",
+    "sourceText": "Custom prices set for {n} date ranges",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.form.pricing.date_prices_summary.zero",
+    "sourceText": "Custom prices set for {n} date ranges",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.form.pricing.date_prices_title",
+    "sourceText": "Charge different prices on certain dates?",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
     "key": "host.form.property_type_label",
     "sourceText": "Property type",
     "filePath": "src/components/host/listing-form.tsx"
@@ -1850,6 +1900,21 @@
     "filePath": "src/components/host/host-listing-card.tsx"
   },
   {
+    "key": "host.listings.archived_empty_description",
+    "sourceText": "Listings you archive are kept here with their booking history.",
+    "filePath": "src/app/(host)/host/listings/page.tsx"
+  },
+  {
+    "key": "host.listings.archived_empty_title",
+    "sourceText": "Nothing archived",
+    "filePath": "src/app/(host)/host/listings/page.tsx"
+  },
+  {
+    "key": "host.listings.back_to_active",
+    "sourceText": "Back to active listings",
+    "filePath": "src/app/(host)/host/listings/page.tsx"
+  },
+  {
     "key": "host.listings.continue",
     "sourceText": "Continue",
     "filePath": "src/app/(host)/host/listings/page.tsx"
@@ -1885,6 +1950,16 @@
     "filePath": "src/app/(host)/host/listings/page.tsx"
   },
   {
+    "key": "host.listings.filter_active",
+    "sourceText": "Active",
+    "filePath": "src/app/(host)/host/listings/page.tsx"
+  },
+  {
+    "key": "host.listings.filter_archived",
+    "sourceText": "Archived",
+    "filePath": "src/app/(host)/host/listings/page.tsx"
+  },
+  {
     "key": "host.listings.new",
     "sourceText": "New Listing",
     "filePath": "src/app/(host)/host/listings/page.tsx"
@@ -1915,19 +1990,149 @@
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
   },
   {
-    "key": "host.prepublish.availability_done",
-    "sourceText": "{count} blocked",
+    "key": "host.prepublish.availability_blocked_nights.few",
+    "sourceText": "{n} blocked nights",
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
   },
   {
-    "key": "host.prepublish.availability_example",
-    "sourceText": "For example: block the weeks you'll be using the property yourself, so nobody can book them.",
+    "key": "host.prepublish.availability_blocked_nights.many",
+    "sourceText": "{n} blocked nights",
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_blocked_nights.one",
+    "sourceText": "{n} blocked night",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_blocked_nights.other",
+    "sourceText": "{n} blocked nights",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_blocked_nights.two",
+    "sourceText": "{n} blocked nights",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_blocked_nights.zero",
+    "sourceText": "{n} blocked nights",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_confirm",
+    "sourceText": "Confirm",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_confirmed_title",
+    "sourceText": "When guests can book",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_date_explainer",
+    "sourceText": "{date} is the first night guests can book. Earlier nights stay blocked.",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_date_invalid",
+    "sourceText": "That isn't a valid date.",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_date_label",
+    "sourceText": "First date guests can check in",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_date_past",
+    "sourceText": "That date has already passed. Choose today or a later date.",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_date_required",
+    "sourceText": "Choose the first date guests can check in.",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_edit",
+    "sourceText": "Edit",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_from",
+    "sourceText": "Available from a specific date",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_from_hint",
+    "sourceText": "Choose the first date guests can check in.",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_from_summary",
+    "sourceText": "Available from {date}",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_no_blocked",
+    "sourceText": "no blocked dates",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_now",
+    "sourceText": "Available now",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_now_hint",
+    "sourceText": "Guests can request stays starting today.",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_now_summary",
+    "sourceText": "Available now",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_required",
+    "sourceText": "Choose when guests can start booking.",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_start_hint",
+    "sourceText": "This decides when your listing starts taking booking requests. You can change it any time from your calendar.",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_start_title",
+    "sourceText": "When can guests book?",
+    "filePath": "src/components/host/listing-form.tsx"
   },
   {
     "key": "host.prepublish.availability_title",
     "sourceText": "Set availability",
     "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.prepublish.block_dates_action",
+    "sourceText": "Block dates",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.block_dates_edit",
+    "sourceText": "Edit blocked dates",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.block_dates_hint",
+    "sourceText": "Block dates when you will use the property yourself, perform maintenance, or cannot host.",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.block_dates_title",
+    "sourceText": "Block specific dates",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
   },
   {
     "key": "host.prepublish.done",
@@ -4015,6 +4220,11 @@
     "filePath": "src/components/marketplace/search-labels.ts"
   },
   {
+    "key": "search.earliest_checkout",
+    "sourceText": "Earliest check-out",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
     "key": "search.edit",
     "sourceText": "Edit",
     "filePath": "src/components/marketplace/search-labels.ts"
@@ -4127,6 +4337,11 @@
   {
     "key": "search.minimum_stay_earliest",
     "sourceText": "Choose {date} or later for check-out.",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.minimum_stay_gap_too_short",
+    "sourceText": "Not enough free nights here for the {n}-night minimum.",
     "filePath": "src/components/marketplace/search-labels.ts"
   },
   {

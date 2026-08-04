@@ -62,7 +62,7 @@ export type StayPromotion = {
   discountPercent?: number | null;
   minimumNights?: number | null;
   freeCleaning?: boolean;
-  roundUpToNearestFive?: boolean;
+  roundToWholeUnit?: boolean;
   startDate?: Date | string | null;
   endDate?: Date | string | null;
   createdAt?: Date | string;
@@ -171,16 +171,19 @@ export function computeStayQuote({
 
   const discountPercent = applicablePromotion?.discountPercent ?? 0;
   if (promotionEligible && discountPercent > 0) {
-    if (applicablePromotion?.roundUpToNearestFive) {
+    if (applicablePromotion?.roundToWholeUnit) {
       accommodationDiscountCents = stay.nightlyBreakdown.reduce(
         (totalDiscount, night) => {
           const originalNightCents = toCents(night.rate);
           const discountedNightCents = Math.round(
             (originalNightCents * (100 - discountPercent)) / 100,
           );
+          // Standard rounding to the nearest whole currency unit: below .50
+          // rounds down, .50 and above rounds up. Capped at the original rate so
+          // a discount can never make a night more expensive.
           const roundedNightCents = Math.min(
             originalNightCents,
-            Math.ceil(discountedNightCents / 500) * 500,
+            Math.round(discountedNightCents / 100) * 100,
           );
           return totalDiscount + originalNightCents - roundedNightCents;
         },

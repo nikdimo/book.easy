@@ -19,7 +19,7 @@ export type ListingPromotionInput = {
   discountPercent: number;
   minimumNights: number;
   freeCleaning: boolean;
-  roundUpToNearestFive: boolean;
+  roundToWholeUnit: boolean;
   startDate?: string;
   endDate?: string;
 };
@@ -30,7 +30,7 @@ const promotionInputSchema = z
     discountPercent: z.coerce.number().int().min(0).max(50),
     minimumNights: z.coerce.number().int().min(1).max(365),
     freeCleaning: z.boolean(),
-    roundUpToNearestFive: z.boolean(),
+    roundToWholeUnit: z.boolean(),
     startDate: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -173,8 +173,8 @@ export async function upsertListingPromotion(
           discountPercent: data.discountPercent,
           minimumNights: data.minimumNights,
           freeCleaning: data.freeCleaning,
-          roundUpToNearestFive:
-            data.discountPercent > 0 && data.roundUpToNearestFive,
+          roundToWholeUnit:
+            data.discountPercent > 0 && data.roundToWholeUnit,
           startDate,
           endDate,
         },
@@ -186,8 +186,8 @@ export async function upsertListingPromotion(
           discountPercent: data.discountPercent,
           minimumNights: data.minimumNights,
           freeCleaning: data.freeCleaning,
-          roundUpToNearestFive:
-            data.discountPercent > 0 && data.roundUpToNearestFive,
+          roundToWholeUnit:
+            data.discountPercent > 0 && data.roundToWholeUnit,
           startDate,
           endDate,
         },
@@ -205,7 +205,7 @@ export async function upsertListingPromotion(
       discountPercent: saved.discountPercent,
       minimumNights: saved.minimumNights,
       freeCleaning: saved.freeCleaning,
-      roundUpToNearestFive: saved.roundUpToNearestFive,
+      roundToWholeUnit: saved.roundToWholeUnit,
       startDate: saved.startDate?.toISOString() ?? null,
       endDate: saved.endDate?.toISOString() ?? null,
     },
@@ -274,6 +274,6 @@ export async function saveListingPromotion(
       type === "PERCENT_DISCOUNT" ? Number(formData.get("discountPercent")) : 0,
     minimumNights,
     freeCleaning: type === "FREE_CLEANING",
-    roundUpToNearestFive: formData.get("roundUpToNearestFive") !== "false",
+    roundToWholeUnit: formData.get("roundToWholeUnit") !== "false",
   });
 }

@@ -44,6 +44,8 @@ export interface SearchLabels {
   checkOut: Resolved;
   closePicker: Resolved;
   minimumStayEarliest: Resolved;
+  minimumStayGapTooShort: Resolved;
+  earliestCheckout: Resolved;
   exactDates: Resolved;
   flexible1: Resolved;
   flexible2: Resolved;
@@ -139,6 +141,14 @@ export function useSearchLabels(): SearchLabels {
       minimumStayEarliest: i18n.resolve(
         "search.minimum_stay_earliest",
         "Choose {date} or later for check-out."
+      ),
+      minimumStayGapTooShort: i18n.resolve(
+        "search.minimum_stay_gap_too_short",
+        "Not enough free nights here for the {n}-night minimum."
+      ),
+      earliestCheckout: i18n.resolve(
+        "search.earliest_checkout",
+        "Earliest check-out"
       ),
       exactDates: i18n.resolve("search.exact_dates", "Exact dates"),
       flexible1: i18n.resolve("search.flexible_1", "+- 1 day"),

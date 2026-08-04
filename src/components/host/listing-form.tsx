@@ -54,6 +54,9 @@ import {
 } from "@/components/host/listing-location-field";
 import { ListingAddressField } from "@/components/host/listing-address-field";
 import {
+  AVAILABILITY_START_ERROR_ID,
+  AvailabilityStartScreen,
+  DatePricingCta,
   PrePublishMenu,
   PrePublishTaskScreen,
   type PrePublishScreen,
@@ -63,6 +66,11 @@ import {
   parsePrePublishPlan,
   type PrePublishPlan,
 } from "@/lib/types/listing-prepublish-plan";
+import {
+  prePublishBackTarget,
+  type PrePublishOrigin,
+} from "@/lib/types/listing-prepublish-navigation";
+import { availabilityBlocksPublish } from "@/lib/types/listing-availability-start";
 import { ListingStreetViewField } from "@/components/host/listing-street-view-field";
 import { SuggestMissingOption } from "@/components/host/suggest-missing-option";
 import type { HostListingFormData } from "@/lib/serializers/host-listing-form";
@@ -611,9 +619,17 @@ export function ListingForm({
    */
   const [prePublishScreen, setPrePublishScreen] =
     useState<PrePublishScreen | null>(null);
+  /** Which entrance the open task screen was reached through, so that closing it goes
+   *  back where the host actually was — the checklist, or the Pricing step. */
+  const [prePublishOrigin, setPrePublishOrigin] =
+    useState<PrePublishOrigin>("menu");
   const [prePublishPlan, setPrePublishPlan] = useState<PrePublishPlan>(() =>
     parsePrePublishPlan(initialDraft?.prePublishPlan)
   );
+  /** The host has tried to move on from the availability question without answering it.
+   *  Until then the screen stays quiet — arriving to a red error you have had no chance
+   *  to satisfy reads as broken rather than as guidance. */
+  const [availabilityAttempted, setAvailabilityAttempted] = useState(false);
   /** A create-wizard step check. Always false while editing, where sections are shown
    *  by showEditSections rather than by step, and false throughout the pre-publish
    *  screens, which replace the step body rather than sitting under it. */
@@ -666,6 +682,15 @@ export function ListingForm({
   const currentStepIssues = issuesByStep[currentStep] ?? [];
   const currentStepReady = currentStepIssues.length === 0;
   const listingReady = issuesByStep.every((issues) => issues.length === 0);
+  /** The availability answer is required, so it holds Publish alongside the numbered
+   *  steps. Never a gate while editing — a published listing's availability is edited
+   *  on its calendar, not here. The publish action re-checks this regardless; a
+   *  disabled button is a courtesy, not the enforcement. */
+  const availabilityUnconfirmed = availabilityBlocksPublish({
+    isEditing,
+    availabilityStart: prePublishPlan.availabilityStart,
+  });
+  const canPublishNew = listingReady && !availabilityUnconfirmed;
   // Hold Continue while the geocoder is still running, so the host can't land on
   // the Address step before it has been filled in.
   const continueReady =
@@ -686,7 +711,12 @@ export function ListingForm({
     locationStep === LISTING_STEP.location && geocodingAddress;
   /** What the header calls the current pre-publish screen. Unnumbered on purpose. */
   const prePublishHeading =
-    prePublishScreen === "availability"
+    prePublishScreen === "availability-start"
+      ? i18n.resolve(
+          "host.prepublish.availability_start_title",
+          "When can guests book?",
+        ).text
+      : prePublishScreen === "availability"
       ? i18n.resolve("host.prepublish.availability_title", "Set availability").text
       : prePublishScreen === "pricing"
         ? i18n.resolve("host.prepublish.pricing_title", "Customize pricing").text
@@ -992,6 +1022,15 @@ export function ListingForm({
       return;
     }
 
+    // Reachable even with Publish disabled — the keyboard, a stale render, a draft
+    // resumed from before this screen existed. Send the host to the question rather
+    // than letting the server reject a submit they can't see the reason for.
+    if (availabilityUnconfirmed) {
+      setAvailabilityAttempted(true);
+      openAvailabilityStart();
+      return;
+    }
+
     const fd = new FormData(formRef.current);
     startSubmitNewTransition(async () => {
       const result = await submitNewListing(fd, draftIdRef.current);
@@ -1137,27 +1176,60 @@ export function ListingForm({
     );
   }
 
-  /** Leaving the last numbered step lands on the checklist, not on publishing. */
+  /** Leaving the last numbered step lands on the availability question — the one thing
+   *  every host has to answer — and the optional checklist comes after it. */
+  function openAvailabilityStart() {
+    setPrePublishOrigin("menu");
+    setPrePublishScreen("availability-start");
+    selectMobilePane("edit");
+    scrollEditorToTop();
+  }
+
+  /** Past the availability question and on to the optional checklist. Held shut until
+   *  the answer is there, so the host cannot arrive at Publish without one. */
+  function continueFromAvailabilityStart() {
+    if (availabilityUnconfirmed) {
+      setAvailabilityAttempted(true);
+      return;
+    }
+    openPrePublishMenu();
+  }
+
+  /** The blocking calendar, opened from the availability question. Same screen and same
+   *  plan as the checklist's availability task — only the way back differs. */
+  function openBlockingCalendar() {
+    setPrePublishOrigin("availability-start");
+    setPrePublishScreen("availability");
+    selectMobilePane("edit");
+    scrollEditorToTop();
+  }
+
   function openPrePublishMenu() {
+    setPrePublishOrigin("menu");
     setPrePublishScreen("menu");
     selectMobilePane("edit");
     scrollEditorToTop();
   }
 
   function openPrePublishTask(task: PrePublishTask) {
+    setPrePublishOrigin("menu");
     setPrePublishScreen(task);
     scrollEditorToTop();
   }
 
-  /** Back out one screen at a time: a task returns to the checklist, the checklist
-   *  returns to the last step of the wizard. */
+  /** The Pricing step's own way into date pricing. Same screen, same plan — only the
+   *  way back differs, which is what the origin records. */
+  function openDatePricingFromPricingStep() {
+    setPrePublishOrigin("pricing-step");
+    setPrePublishScreen("pricing");
+    selectMobilePane("edit");
+    scrollEditorToTop();
+  }
+
+  /** Back out one screen at a time: a task returns to wherever it was opened from —
+   *  the checklist, or the Pricing step — and the checklist returns to the wizard. */
   function backFromPrePublish() {
-    if (prePublishScreen && prePublishScreen !== "menu") {
-      setPrePublishScreen("menu");
-      scrollEditorToTop();
-      return;
-    }
-    setPrePublishScreen(null);
+    setPrePublishScreen(prePublishBackTarget(prePublishScreen, prePublishOrigin));
     scrollEditorToTop();
   }
 
@@ -1438,14 +1510,19 @@ export function ListingForm({
                   type="button"
                   size="sm"
                   className="shrink-0"
-                  disabled={isSubmittingNew || !listingReady}
+                  disabled={isSubmittingNew || !canPublishNew}
                   title={
-                    listingReady
+                    canPublishNew
                       ? undefined
-                      : resolve(
-                        "host.form.publish_blocked",
-                        "Complete all required listing steps before publishing",
-                      ).text
+                      : availabilityUnconfirmed && listingReady
+                        ? resolve(
+                            "host.form.publish_blocked_availability",
+                            "Confirm when guests can start booking before publishing",
+                          ).text
+                        : resolve(
+                            "host.form.publish_blocked",
+                            "Complete all required listing steps before publishing",
+                          ).text
                   }
                   onClick={handleSubmitForReview}
                 >
@@ -1502,10 +1579,18 @@ export function ListingForm({
              rather than adding to it, and brings its own headings. */}
           {prePublishScreen !== null && (
             <div className="scroll-mt-32">
-              {prePublishScreen === "menu" ? (
+              {prePublishScreen === "availability-start" ? (
+                <AvailabilityStartScreen
+                  plan={prePublishPlan}
+                  onChange={updatePrePublishPlan}
+                  onOpenBlockingCalendar={openBlockingCalendar}
+                  showError={availabilityAttempted}
+                />
+              ) : prePublishScreen === "menu" ? (
                 <PrePublishMenu
                   plan={prePublishPlan}
                   onOpenTask={openPrePublishTask}
+                  onEditAvailability={openAvailabilityStart}
                 />
               ) : (
                 <PrePublishTaskScreen
@@ -1905,6 +1990,15 @@ export function ListingForm({
                 onBlur={() => handleBlur("baseNightlyRate")}
               />
                 <FieldError message={fieldErrors.baseNightlyRate} />
+              {/* Create wizard only: the plan exists to carry date prices into the
+                  listing that publish creates. An existing listing has its own
+                  calendar, which is where its date prices are edited. */}
+              {!isEditing && (
+                <DatePricingCta
+                  plan={prePublishPlan}
+                  onOpen={openDatePricingFromPricingStep}
+                />
+              )}
               <PricingField
                 id="cleaningFee"
                 label={
@@ -2221,7 +2315,7 @@ export function ListingForm({
                       setField("promotionFreeCleaning", "false");
                       setTimeout(() => {
                         void autosaveDraft();
-                        openPrePublishMenu();
+                        openAvailabilityStart();
                       }, 0);
                     }}
                   >
@@ -2479,18 +2573,33 @@ export function ListingForm({
                     }
                   />
                 )}
-                {/* A task screen's primary action returns to the checklist; the
-                    checklist itself is where publishing happens. */}
-                {prePublishScreen !== null && prePublishScreen !== "menu" ? (
+                {/* The availability question continues forwards to the checklist; a
+                    task screen's primary action returns to wherever it was opened
+                    from; the checklist itself is where publishing happens. */}
+                {prePublishScreen === "availability-start" ? (
+                  <Button
+                    type="button"
+                    // Left enabled so pressing it can say what is missing. A dead
+                    // button with no explanation is the worse of the two failures.
+                    onClick={continueFromAvailabilityStart}
+                    aria-describedby={
+                      availabilityUnconfirmed
+                        ? AVAILABILITY_START_ERROR_ID
+                        : undefined
+                    }
+                  >
+                    <ContinueLabel searching={false} />
+                  </Button>
+                ) : prePublishScreen !== null && prePublishScreen !== "menu" ? (
                   <Button type="button" onClick={backFromPrePublish}>
                     <Tx k="host.prepublish.done" source="Done" />
                   </Button>
                 ) : prePublishScreen === "menu" ? (
                   <Button
                     type="button"
-                    disabled={isSubmittingNew || !listingReady}
+                    disabled={isSubmittingNew || !canPublishNew}
                     aria-describedby={
-                      listingReady ? undefined : "listing-step-requirements"
+                      canPublishNew ? undefined : "listing-step-requirements"
                     }
                     onClick={handleSubmitForReview}
                   >
@@ -2514,14 +2623,14 @@ export function ListingForm({
                   </Button>
                 ) : (
                   // The last numbered step no longer publishes: it hands over to the
-                  // optional date setup, which carries Publish now itself.
+                  // availability question, and the optional date setup after it.
                   <Button
                     type="button"
                     disabled={!continueReady}
                     aria-describedby={
                       currentStepReady ? undefined : "listing-step-requirements"
                     }
-                    onClick={openPrePublishMenu}
+                    onClick={openAvailabilityStart}
                   >
                     <ContinueLabel searching={false} />
                   </Button>
@@ -2728,7 +2837,19 @@ export function ListingForm({
                 )}
               </span>
             </Button>
-            {prePublishScreen !== null && prePublishScreen !== "menu" ? (
+            {prePublishScreen === "availability-start" ? (
+              <Button
+                type="button"
+                size="lg"
+                className="flex-1"
+                onClick={continueFromAvailabilityStart}
+                aria-describedby={
+                  availabilityUnconfirmed ? AVAILABILITY_START_ERROR_ID : undefined
+                }
+              >
+                <ContinueLabel searching={false} />
+              </Button>
+            ) : prePublishScreen !== null && prePublishScreen !== "menu" ? (
               <Button
                 type="button"
                 size="lg"
@@ -2742,9 +2863,9 @@ export function ListingForm({
                 type="button"
                 size="lg"
                 className="flex-1"
-                disabled={isSubmittingNew || !listingReady}
+                disabled={isSubmittingNew || !canPublishNew}
                 aria-describedby={
-                  listingReady ? undefined : "listing-step-requirements-mobile"
+                  canPublishNew ? undefined : "listing-step-requirements-mobile"
                 }
                 onClick={handleSubmitForReview}
               >
@@ -2778,7 +2899,7 @@ export function ListingForm({
                     ? undefined
                     : "listing-step-requirements-mobile"
                 }
-                onClick={openPrePublishMenu}
+                onClick={openAvailabilityStart}
               >
                 <ContinueLabel searching={false} />
               </Button>

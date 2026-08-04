@@ -184,7 +184,7 @@ export interface PromotionSummary {
   discountPercent: number;
   minimumNights: number;
   freeCleaning: boolean;
-  roundUpToNearestFive: boolean;
+  roundToWholeUnit: boolean;
   /** yyyy-MM-dd, or null for an always-active offer. */
   startDate: string | null;
   endDate: string | null;

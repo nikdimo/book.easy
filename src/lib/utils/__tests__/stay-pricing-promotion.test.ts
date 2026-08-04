@@ -195,7 +195,7 @@ describe("computeStayQuote promotions", () => {
     expect(quote.total).toBe(300);
   });
 
-  it("rounds every discounted night upward to the nearest five euros", () => {
+  it("rounds every discounted night to the nearest whole unit", () => {
     const quote = computeStayQuote({
       baseNightly: 99,
       cleaningFee: 0,
@@ -208,14 +208,99 @@ describe("computeStayQuote promotions", () => {
           type: "PERCENT_DISCOUNT",
           discountPercent: 10,
           minimumNights: 1,
-          roundUpToNearestFive: true,
+          roundToWholeUnit: true,
         },
       ],
     });
 
-    // €99 -> €90, €121 -> €110, €99 -> €90.
+    // 89.10 -> 89 (down), 108.90 -> 109 (up), 89.10 -> 89 (down).
     expect(quote.originalAccommodationSubtotal).toBe(319);
-    expect(quote.accommodationSubtotal).toBe(290);
-    expect(quote.total).toBe(290);
+    expect(quote.accommodationSubtotal).toBe(287);
+    expect(quote.total).toBe(287);
+  });
+
+  function roundedNightly(baseNightly: number, discountPercent: number) {
+    const quote = computeStayQuote({
+      baseNightly,
+      cleaningFee: 0,
+      checkIn,
+      checkOut: new Date(2030, 5, 2),
+      overrides: new Map(),
+      promotions: [
+        {
+          id: "rounded",
+          type: "PERCENT_DISCOUNT",
+          discountPercent,
+          minimumNights: 1,
+          roundToWholeUnit: true,
+        },
+      ],
+    });
+    return quote.accommodationSubtotal;
+  }
+
+  it("rounds a decimal part below .50 down", () => {
+    // 27.40
+    expect(roundedNightly(68.5, 60)).toBe(27);
+  });
+
+  it("rounds a decimal part of exactly .50 up", () => {
+    // 27.50
+    expect(roundedNightly(55, 50)).toBe(28);
+  });
+
+  it("rounds a decimal part above .50 up", () => {
+    // 27.90 — the €31 at 10% off case from the spec.
+    expect(roundedNightly(31, 10)).toBe(28);
+  });
+
+  it("leaves an already whole discounted price untouched", () => {
+    // 27.00
+    expect(roundedNightly(30, 10)).toBe(27);
+  });
+
+  it("keeps the exact cent amount when rounding is disabled", () => {
+    const quote = computeStayQuote({
+      baseNightly: 31,
+      cleaningFee: 0,
+      checkIn,
+      checkOut: new Date(2030, 5, 2),
+      overrides: new Map(),
+      promotions: [
+        {
+          id: "exact",
+          type: "PERCENT_DISCOUNT",
+          discountPercent: 10,
+          minimumNights: 1,
+          roundToWholeUnit: false,
+        },
+      ],
+    });
+
+    expect(quote.accommodationSubtotal).toBe(27.9);
+    expect(quote.accommodationDiscount).toBe(3.1);
+  });
+
+  it("never rounds a discounted night above the original nightly price", () => {
+    // 9.60 would round to 10, which is more than the €9.80 rate.
+    const quote = computeStayQuote({
+      baseNightly: 9.8,
+      cleaningFee: 0,
+      checkIn,
+      checkOut: new Date(2030, 5, 2),
+      overrides: new Map(),
+      promotions: [
+        {
+          id: "capped",
+          type: "PERCENT_DISCOUNT",
+          discountPercent: 2,
+          minimumNights: 1,
+          roundToWholeUnit: true,
+        },
+      ],
+    });
+
+    expect(quote.accommodationSubtotal).toBe(9.8);
+    expect(quote.accommodationDiscount).toBe(0);
   });
 });

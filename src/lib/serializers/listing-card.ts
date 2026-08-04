@@ -34,7 +34,7 @@ export type ListingCardSerialized = {
     discountPercent: number;
     minimumNights: number | null;
     freeCleaning: boolean;
-    roundUpToNearestFive: boolean;
+    roundToWholeUnit: boolean;
     startDate: string | null;
     endDate: string | null;
     createdAt: string;
@@ -99,7 +99,7 @@ export const listingCardSelect = {
       discountPercent: true,
       minimumNights: true,
       freeCleaning: true,
-      roundUpToNearestFive: true,
+      roundToWholeUnit: true,
       startDate: true,
       endDate: true,
       createdAt: true,
@@ -151,7 +151,7 @@ export function serializeListingCard(
       discountPercent: promotion.discountPercent,
       minimumNights: promotion.minimumNights,
       freeCleaning: promotion.freeCleaning,
-      roundUpToNearestFive: promotion.roundUpToNearestFive,
+      roundToWholeUnit: promotion.roundToWholeUnit,
       startDate: promotion.startDate?.toISOString() ?? null,
       endDate: promotion.endDate?.toISOString() ?? null,
       createdAt: promotion.createdAt.toISOString(),

@@ -515,9 +515,11 @@ function RangePickerDialog({
 }
 
 function RoundUpControl({
+  label = "Round up to the nearest €5",
   enabled,
   onToggle,
 }: {
+  label?: string;
   enabled: boolean;
   onToggle: () => void;
 }) {
@@ -530,7 +532,7 @@ function RoundUpControl({
       className="flex w-full items-center justify-between gap-4 rounded-xl border bg-muted/20 p-3 text-left transition-colors hover:border-primary/30"
     >
       <span>
-        <span className="block text-xs font-semibold">Round up to the nearest €5</span>
+        <span className="block text-xs font-semibold">{label}</span>
         <span className="mt-0.5 block text-[0.65rem] text-muted-foreground">
           Keeps guest-facing prices clean and easy to scan.
         </span>
@@ -691,7 +693,13 @@ function EditorDialog({
     String(roundUp ? Math.ceil(value / 5) * 5 : Number(value.toFixed(2)));
   const numericPercent = Math.min(50, Math.max(0, Number(percent) || 0));
   const rawPromotionPrice = BASE_RATE * (1 - numericPercent / 100);
-  const promotionGuestPrice = formatAdjustedPrice(rawPromotionPrice, roundPromotion);
+  // Promotions round to the nearest whole unit (never above the base rate); the
+  // host's own price chips above still round up to 5.
+  const promotionGuestPrice = String(
+    roundPromotion
+      ? Math.min(BASE_RATE, Math.round(rawPromotionPrice))
+      : Number(rawPromotionPrice.toFixed(2)),
+  );
   const hasDiscount = numericPercent > 0;
   const hasPromotion = hasDiscount || freeCleaning;
   const promotionBenefits = [
@@ -1329,6 +1337,7 @@ function EditorDialog({
 
             {hasDiscount ? (
               <RoundUpControl
+                label="Round to the nearest whole number"
                 enabled={roundPromotion}
                 onToggle={() => setRoundPromotion((current) => !current)}
               />
@@ -1350,7 +1359,7 @@ function EditorDialog({
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     Estimated guest price: €{promotionGuestPrice} / night
                     {roundPromotion
-                      ? ` · rounded up from €${Number(rawPromotionPrice.toFixed(2))}`
+                      ? ` · rounded from €${Number(rawPromotionPrice.toFixed(2))}`
                       : ""}
                   </p>
                 ) : null}
