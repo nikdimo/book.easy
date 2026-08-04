@@ -4,7 +4,7 @@ import { useActionState, useCallback, useEffect, useMemo, useRef, useState, useT
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Bath, Bed, BedDouble, Building, CalendarDays, CalendarRange, Check, ChevronLeft, ChevronRight, CircleAlert, CircleDollarSign, Coffee, CookingPot, Eye, Flame, GripVertical, HeartPulse, Laptop, ListChecks, Loader2, MapPin, Microwave, Minus, Mountain, Pencil, Percent, Plus, Refrigerator, Rocket, Shirt, Shield, ShieldCheck, Sparkles, Sun, Thermometer, Trees, Tv, Users, Waves, Wind, Wifi, Car } from "lucide-react";
+import { Bath, Bed, BedDouble, Building, CalendarDays, CalendarRange, Check, ChevronLeft, ChevronRight, CircleAlert, CircleDollarSign, Coffee, CookingPot, Eye, Flame, GripVertical, HeartPulse, Laptop, ListChecks, Loader2, MapPin, Microwave, Minus, Mountain, Pencil, Plus, Refrigerator, Shirt, Shield, ShieldCheck, Sparkles, Sun, Thermometer, Trees, Tv, Users, Waves, Wind, Wifi, Car } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   saveListingDraft,
@@ -38,7 +38,7 @@ import { formatPrice } from "@/lib/utils/format";
 import { splitDescriptionPreviewTiers } from "@/lib/utils/description-preview";
 import { toast } from "sonner";
 import { Tx, interpolate, useI18n } from "@/lib/i18n/client";
-import { OfferPreview, OptionToggle } from "@/components/host/calendar-editor-ui";
+import { OfferPreview } from "@/components/host/calendar-editor-ui";
 import {
   resolveAmenityCategory,
   resolveAmenityLabel,
@@ -266,8 +266,8 @@ function listingInitialValues(
       cleaningFee: listing.pricingRule ? String(listing.pricingRule.cleaningFee) : "0",
       minNights: listing.pricingRule ? String(listing.pricingRule.minNights) : "1",
       promotionType: "NONE",
-      promotionPercent: "15",
-      promotionMinimumNights: "5",
+      promotionPercent: "",
+      promotionMinimumNights: "",
       promotionFreeCleaning: "false",
     };
   }
@@ -298,13 +298,17 @@ function listingInitialValues(
     baseNightlyRate: draft?.baseNightlyRate ?? "",
     cleaningFee: draft?.cleaningFee || "0",
     minNights: draft?.minNights || "1",
-    promotionType: draft?.promotionType || "NONE",
-    promotionPercent: draft?.promotionPercent || "15",
-    promotionMinimumNights: draft?.promotionMinimumNights || "5",
-    // Drafts saved before the toggle existed carry the benefit in the type.
-    promotionFreeCleaning:
-      draft?.promotionFreeCleaning ||
-      (draft?.promotionType === "FREE_CLEANING" ? "true" : "false"),
+    promotionType:
+      draft?.promotionType === "PERCENT_DISCOUNT" ? "PERCENT_DISCOUNT" : "NONE",
+    promotionPercent:
+      draft?.promotionType === "PERCENT_DISCOUNT"
+        ? draft.promotionPercent || "15"
+        : "",
+    promotionMinimumNights:
+      draft?.promotionType === "PERCENT_DISCOUNT"
+        ? draft.promotionMinimumNights || "5"
+        : "",
+    promotionFreeCleaning: "false",
   };
 }
 
@@ -453,12 +457,14 @@ const OFFER_DESC = "block text-[0.7rem] text-muted-foreground md:mt-1 md:text-sm
 function FieldSection({
   title,
   children,
+  className,
 }: {
   title?: string;
   children: ReactNode;
+  className?: string;
 }) {
   return (
-    <section className="space-y-3 border-b border-border/70 pb-4 last:border-b-0 last:pb-0 md:space-y-4 md:pb-6">
+    <section className={cn("space-y-3 border-b border-border/70 pb-4 last:border-b-0 last:pb-0 md:space-y-4 md:pb-6", className)}>
       {title && (
         <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground md:text-sm">
           {title}
@@ -682,6 +688,11 @@ export function ListingForm({
   const currentStepIssues = issuesByStep[currentStep] ?? [];
   const currentStepReady = currentStepIssues.length === 0;
   const listingReady = issuesByStep.every((issues) => issues.length === 0);
+  const hasLaunchOffer = values.promotionType === "PERCENT_DISCOUNT";
+  const launchOfferComplete =
+    hasLaunchOffer &&
+    values.promotionPercent !== "" &&
+    values.promotionMinimumNights !== "";
   /** The availability answer is required, so it holds Publish alongside the numbered
    *  steps. Never a gate while editing — a published listing's availability is edited
    *  on its calendar, not here. The publish action re-checks this regardless; a
@@ -691,6 +702,7 @@ export function ListingForm({
     availabilityStart: prePublishPlan.availabilityStart,
   });
   const canPublishNew = listingReady && !availabilityUnconfirmed;
+  const canPublishFromReview = canPublishNew && prePublishScreen === "menu";
   // Hold Continue while the geocoder is still running, so the host can't land on
   // the Address step before it has been filled in.
   const continueReady =
@@ -723,7 +735,10 @@ export function ListingForm({
         : prePublishScreen === "offers"
           ? i18n.resolve("host.prepublish.offers_title", "Customize promotions")
               .text
-          : i18n.resolve("host.prepublish.menu_title", "Before you publish").text;
+          : i18n.resolve(
+              "host.prepublish.review_heading",
+              "Review before publishing",
+            ).text;
 
   const [state, formAction, isPending] = useActionState(
     async (_prev: { error?: string; success?: boolean } | undefined, formData: FormData) => {
@@ -1028,6 +1043,10 @@ export function ListingForm({
     if (availabilityUnconfirmed) {
       setAvailabilityAttempted(true);
       openAvailabilityStart();
+      return;
+    }
+    if (!isEditing && prePublishScreen !== "menu") {
+      openPrePublishMenu();
       return;
     }
 
@@ -1510,10 +1529,15 @@ export function ListingForm({
                   type="button"
                   size="sm"
                   className="shrink-0"
-                  disabled={isSubmittingNew || !canPublishNew}
+                  disabled={isSubmittingNew || !canPublishFromReview}
                   title={
-                    canPublishNew
+                    canPublishFromReview
                       ? undefined
+                      : canPublishNew
+                        ? resolve(
+                            "host.form.publish_after_review",
+                            "Review your availability, pricing and promotions before publishing",
+                          ).text
                       : availabilityUnconfirmed && listingReady
                         ? resolve(
                             "host.form.publish_blocked_availability",
@@ -1565,7 +1589,12 @@ export function ListingForm({
             <div
               ref={editorScrollRef}
               onScroll={isEditing ? updateActiveEditSection : undefined}
-            className="min-h-0 flex-1 touch-pan-y space-y-3 overflow-y-auto overscroll-contain px-4 py-3 [-webkit-overflow-scrolling:touch] [scrollbar-gutter:stable] md:space-y-4 md:px-8 md:py-4"
+              className={cn(
+                "min-h-0 flex-1 px-4 py-3 md:px-8 md:py-4",
+                activeLocationStep === LISTING_STEP.location
+                  ? "flex flex-col overflow-hidden"
+                  : "touch-pan-y space-y-3 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch] [scrollbar-gutter:stable] md:space-y-4",
+              )}
           >
           {showEditSections && state?.error && (
             <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{state.error}</div>
@@ -1591,6 +1620,15 @@ export function ListingForm({
                   plan={prePublishPlan}
                   onOpenTask={openPrePublishTask}
                   onEditAvailability={openAvailabilityStart}
+                  onEditPricing={() => goToStep(LISTING_STEP.pricing)}
+                  onEditPromotion={() => goToStep(LISTING_STEP.specialOffer)}
+                  baseNightlyRate={values.baseNightlyRate}
+                  cleaningFee={values.cleaningFee}
+                  minimumNights={values.minNights}
+                  promotionType={values.promotionType}
+                  promotionPercent={values.promotionPercent}
+                  promotionMinimumNights={values.promotionMinimumNights}
+                  currency="EUR"
                 />
               ) : (
                 <PrePublishTaskScreen
@@ -1820,8 +1858,8 @@ export function ListingForm({
             </div>
           )}
 
-          <div className={activeLocationStep === LISTING_STEP.location ? "scroll-mt-32 block" : "hidden"}>
-          <FieldSection>
+          <div className={activeLocationStep === LISTING_STEP.location ? "flex min-h-0 flex-1 flex-col" : "hidden"}>
+          <FieldSection className="flex min-h-0 flex-1 flex-col space-y-0 border-0 pb-0 md:space-y-0 md:pb-0">
             <ListingLocationMapField
               value={values}
               onChange={updateLocation}
@@ -2046,13 +2084,16 @@ export function ListingForm({
           </div>
 
           {!isEditing && (
-            <div className={currentStep === LISTING_STEP.specialOffer ? "block" : "hidden"}>
-              <FieldSection
-                title={
-                  resolve("host.form.offer_section", "Launch with a special offer").text
-                }
-              >
-                <div className="space-y-3 md:space-y-6">
+            <div
+              className={
+                prePublishScreen === null &&
+                currentStep === LISTING_STEP.specialOffer
+                  ? "block"
+                  : "hidden"
+              }
+            >
+              <FieldSection>
+                <div className="space-y-4">
                   <div>
                     <p className="text-xs text-muted-foreground md:text-sm">
                       <Tx
@@ -2091,9 +2132,16 @@ export function ListingForm({
                             type="button"
                             aria-pressed={selected}
                             onClick={() => {
-                              setField("promotionType", "PERCENT_DISCOUNT");
-                              setField("promotionPercent", offer.percent);
-                              setField("promotionMinimumNights", offer.nights);
+                              setField(
+                                "promotionType",
+                                selected ? "NONE" : "PERCENT_DISCOUNT",
+                              );
+                              setField("promotionPercent", selected ? "" : offer.percent);
+                              setField(
+                                "promotionMinimumNights",
+                                selected ? "" : offer.nights,
+                              );
+                              setField("promotionFreeCleaning", "false");
                               setTimeout(() => void autosaveDraft(), 0);
                             }}
                             className={cn(
@@ -2116,128 +2164,92 @@ export function ListingForm({
                     </div>
                   </div>
 
-                  {/* A toggle, not a rival card: free cleaning stacks on top of a
-                     discount the way it does in the calendar's dated offers. */}
-                  {Number(values.cleaningFee) > 0 ? (
-                    <OptionToggle
-                      checked={values.promotionFreeCleaning === "true"}
-                      label={
-                        resolve("host.promotion.cleaning_title", "Free cleaning").text
-                      }
-                      description={
-                        interpolate(
-                          resolve(
-                            "host.form.offer_cleaning_toggle_hint",
-                            "Guests save the €{amount} cleaning fee on qualifying stays.",
-                          ),
-                          { amount: values.cleaningFee },
-                        ).text
-                      }
-                      onChange={() => {
-                        const next =
-                          values.promotionFreeCleaning === "true" ? "false" : "true";
-                        setField("promotionFreeCleaning", next);
-                        // Cleaning on its own is still an offer; cleaning off with no
-                        // discount is not.
-                        if (next === "true" && values.promotionType === "NONE") {
-                          setField("promotionType", "FREE_CLEANING");
-                          setField(
-                            "promotionMinimumNights",
-                            String(Math.max(1, Number(values.minNights) || 1))
-                          );
-                        }
-                        if (next === "false" && values.promotionType === "FREE_CLEANING") {
-                          setField("promotionType", "NONE");
-                        }
-                        setTimeout(() => void autosaveDraft(), 0);
-                      }}
-                    />
-                  ) : (
-                    <p className="text-sm text-muted-foreground md:text-xs">
-                      <Tx
-                        k="host.form.offer_cleaning_needs_fee"
-                        source="Want to offer free cleaning too? Add a cleaning fee on the Pricing step first."
-                      />
-                    </p>
-                  )}
-
-                  {values.promotionType === "PERCENT_DISCOUNT" && (
-                    <div className="rounded-xl border p-4">
-                      <Label className="text-sm font-semibold">
-                        <Tx
-                          k="host.promotion.discount_label"
-                          source="Discount percentage"
-                        />
-                      </Label>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {["10", "15", "20", "30"].map((percent) => (
-                          <Button
-                            key={percent}
-                            type="button"
-                            variant={
-                              values.promotionPercent === percent
-                                ? "default"
-                                : "outline"
-                            }
-                            onClick={() => {
-                              setField("promotionPercent", percent);
-                              setTimeout(() => void autosaveDraft(), 0);
+                  <div className="rounded-xl border p-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="promotionPercent">
+                          <Tx k="host.form.offer_percentage" source="Percentage" />
+                        </Label>
+                        <div className="relative">
+                          <Input
+                            id="promotionPercent"
+                            name="promotionPercent"
+                            type="number"
+                            min={5}
+                            max={50}
+                            value={values.promotionPercent}
+                            onChange={(event) => {
+                              const next = event.target.value;
+                              setField("promotionPercent", next);
+                              setField(
+                                "promotionType",
+                                next || values.promotionMinimumNights
+                                  ? "PERCENT_DISCOUNT"
+                                  : "NONE",
+                              );
                             }}
-                          >
-                            {percent}%
-                          </Button>
-                        ))}
-                      </div>
-                      <div className="mt-4 grid max-w-md gap-4 sm:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label htmlFor="promotionPercent">
-                            <Tx
-                              k="host.form.custom_percentage"
-                              source="Custom percentage"
-                            />
-                          </Label>
-                          <div className="flex items-center gap-2">
-                            <Input
-                              id="promotionPercent"
-                              name="promotionPercent"
-                              type="number"
-                              min={5}
-                              max={50}
-                              value={values.promotionPercent}
-                              onChange={(event) =>
-                                setField("promotionPercent", event.target.value)
-                              }
-                              onBlur={() => void autosaveDraft()}
-                            />
-                            <Percent className="size-4 text-muted-foreground" />
-                          </div>
+                            onBlur={() => void autosaveDraft()}
+                            className="pr-9"
+                          />
+                          <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground">
+                            %
+                          </span>
                         </div>
-                        <div className="space-y-2">
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-3">
                           <Label htmlFor="promotionMinimumNights">
                             <Tx
                               k="host.calendar.minimum_nights"
                               source="Minimum nights"
                             />
                           </Label>
-                          <Input
-                            id="promotionMinimumNights"
-                            name="promotionMinimumNights"
-                            type="number"
-                            min={1}
-                            max={365}
-                            value={values.promotionMinimumNights}
-                            onChange={(event) =>
-                              setField(
-                                "promotionMinimumNights",
-                                event.target.value
-                              )
-                            }
-                            onBlur={() => void autosaveDraft()}
-                          />
+                          {(hasLaunchOffer ||
+                            values.promotionPercent ||
+                            values.promotionMinimumNights) && (
+                            <button
+                              type="button"
+                              className="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                              onClick={() => {
+                                setField("promotionType", "NONE");
+                                setField("promotionPercent", "");
+                                setField("promotionMinimumNights", "");
+                                setField("promotionFreeCleaning", "false");
+                                setTimeout(() => void autosaveDraft(), 0);
+                              }}
+                            >
+                              <Tx k="filters.clear" source="Clear" />
+                            </button>
+                          )}
                         </div>
+                        <Input
+                          id="promotionMinimumNights"
+                          name="promotionMinimumNights"
+                          type="number"
+                          min={1}
+                          max={365}
+                          value={values.promotionMinimumNights}
+                          onChange={(event) => {
+                            const next = event.target.value;
+                            setField("promotionMinimumNights", next);
+                            setField(
+                              "promotionType",
+                              next || values.promotionPercent
+                                ? "PERCENT_DISCOUNT"
+                                : "NONE",
+                            );
+                          }}
+                          onBlur={() => void autosaveDraft()}
+                        />
                       </div>
                     </div>
-                  )}
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      <Tx
+                        k="host.form.offer_edit_hint"
+                        source="Feel free to edit manually."
+                      />
+                    </p>
+                  </div>
 
                   <input
                     type="hidden"
@@ -2249,94 +2261,37 @@ export function ListingForm({
                     name="promotionFreeCleaning"
                     value={values.promotionFreeCleaning}
                   />
-                  {values.promotionType !== "PERCENT_DISCOUNT" && (
-                    <>
-                      <input
-                        type="hidden"
-                        name="promotionPercent"
-                        value={values.promotionPercent}
-                      />
-                      <input
-                        type="hidden"
-                        name="promotionMinimumNights"
-                        value={values.promotionMinimumNights}
-                      />
-                    </>
-                  )}
-
-                  {/* The payoff of composable benefits: the host reads the combined
-                     offer as one sentence, the same one the guest will see. */}
-                  {values.promotionType !== "NONE" && (
-                    <OfferPreview
-                      headline={
+                  <OfferPreview
+                    headline={
+                      launchOfferComplete ? (
                         <>
-                          {[
-                            values.promotionType === "PERCENT_DISCOUNT"
-                              ? interpolate(
-                                  resolve(
-                                    "host.promotion.summary_percent",
-                                    "{percent}% off",
-                                  ),
-                                  { percent: values.promotionPercent || "0" },
-                                ).text
-                              : null,
-                            values.promotionFreeCleaning === "true"
-                              ? resolve(
-                                  "host.calendar.summary_cleaning",
-                                  "free cleaning",
-                                ).text
-                              : null,
-                          ]
-                            .filter(Boolean)
-                            .join(" + ")}
+                          {
+                            interpolate(
+                              resolve(
+                                "host.promotion.summary_percent",
+                                "{percent}% off",
+                              ),
+                              { percent: values.promotionPercent },
+                            ).text
+                          }
                           {
                             interpolate(
                               resolve(
                                 "host.promotion.summary_minimum",
                                 " · {nights}+ nights",
                               ),
-                              { nights: values.promotionMinimumNights || "1" },
+                              { nights: values.promotionMinimumNights },
                             ).text
                           }
                         </>
-                      }
-                    />
-                  )}
-
-                  {/* No "No promotion" card — declining is a quiet exit, not an
-                     option competing for the same attention as the offers. It
-                     clears *and* continues, because that is what it says. */}
-                  <Button
-                    type="button"
-                    variant="link"
-                    className="h-auto self-start px-0 text-muted-foreground"
-                    onClick={() => {
-                      setField("promotionType", "NONE");
-                      setField("promotionFreeCleaning", "false");
-                      setTimeout(() => {
-                        void autosaveDraft();
-                        openAvailabilityStart();
-                      }, 0);
-                    }}
-                  >
-                    <Tx
-                      k="host.form.offer_clear"
-                      source="Continue without promotion"
-                    />
-                  </Button>
-
-                  {/* Says the tools hosts ask for next aren't missing, just gated
-                     on having a live listing. One line, because the publish
-                     dialog now offers the calendar as an actual button. */}
-                  <p className="flex items-start gap-2 rounded-lg border bg-muted/35 p-2.5 text-[0.7rem] leading-snug text-muted-foreground md:p-4 md:text-sm">
-                    <Rocket className="mt-px size-3.5 shrink-0 text-primary md:size-4" />
-                    <span>
-                      <Tx
-                        k="host.form.after_publish_short"
-                        source="Once it's live you can block dates, price specific dates or seasons, and add more promotions — all from the listing's calendar."
-                      />
-                    </span>
-                  </p>
+                      ) : (
+                        <Tx
+                          k="host.form.offer_none_selected"
+                          source="No special offer selected"
+                        />
+                      )
+                    }
+                  />
                 </div>
               </FieldSection>
             </div>
@@ -2632,7 +2587,10 @@ export function ListingForm({
                     }
                     onClick={openAvailabilityStart}
                   >
-                    <ContinueLabel searching={false} />
+                    <ContinueLabel
+                      searching={false}
+                      withoutOffer={!hasLaunchOffer}
+                    />
                   </Button>
                 )}
               </div>
@@ -2901,7 +2859,10 @@ export function ListingForm({
                 }
                 onClick={openAvailabilityStart}
               >
-                <ContinueLabel searching={false} />
+                <ContinueLabel
+                  searching={false}
+                  withoutOffer={!hasLaunchOffer}
+                />
               </Button>
             )}
           </div>
@@ -3358,7 +3319,13 @@ function MediaUploadStatus({
  *  Keyed so React remounts the label rather than mutating its text node — Google
  *  Translate swaps those for its own <font> wrappers, and an in-place update then
  *  lands on a detached node. */
-function ContinueLabel({ searching }: { searching: boolean }) {
+function ContinueLabel({
+  searching,
+  withoutOffer = false,
+}: {
+  searching: boolean;
+  withoutOffer?: boolean;
+}) {
   return (
     <span
       key={searching ? "searching" : "continue"}
@@ -3368,6 +3335,14 @@ function ContinueLabel({ searching }: { searching: boolean }) {
         <>
           <Loader2 className="h-4 w-4 animate-spin" />
           <Tx k="host.form.searching_address" source="Searching address…" />
+        </>
+      ) : withoutOffer ? (
+        <>
+          <Tx
+            k="host.form.continue_without_offer"
+            source="Continue without offer"
+          />
+          <ChevronRight className="h-4 w-4" />
         </>
       ) : (
         <>

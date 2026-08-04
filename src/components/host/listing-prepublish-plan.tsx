@@ -206,55 +206,145 @@ export function PrePublishMenu({
   plan,
   onOpenTask,
   onEditAvailability,
+  onEditPricing,
+  onEditPromotion,
+  baseNightlyRate,
+  cleaningFee,
+  minimumNights,
+  promotionType,
+  promotionPercent,
+  promotionMinimumNights,
+  currency,
 }: {
   plan: PrePublishPlan;
   onOpenTask: (task: PrePublishTask) => void;
   /** Back to the availability question. The checklist reports that answer but never
    *  edits it — there is one screen that owns it, and this returns the host to it. */
   onEditAvailability: () => void;
+  onEditPricing: () => void;
+  onEditPromotion: () => void;
+  baseNightlyRate: string;
+  cleaningFee: string;
+  minimumNights: string;
+  promotionType: string;
+  promotionPercent: string;
+  promotionMinimumNights: string;
+  currency: string;
 }) {
   const i18n = useI18n();
+  const { locale } = i18n;
   const summary = useAvailabilitySummary();
   const availabilitySummary = summary(plan);
+  const money = (value: string | number) =>
+    new Intl.NumberFormat(locale, {
+      style: "currency",
+      currency,
+      maximumFractionDigits: 2,
+    }).format(Number(value) || 0);
 
   const tasks: {
     task: PrePublishTask;
     icon: LucideIcon;
     title: string;
-    example: string;
-    done: (count: number) => string;
+    details: React.ReactNode;
+    onEdit: () => void;
   }[] = [
     {
       task: "pricing",
       icon: Tags,
-      title: i18n.resolve("host.prepublish.pricing_title", "Customize pricing")
-        .text,
-      example: i18n.resolve(
-        "host.prepublish.pricing_example",
-        "For example: charge more over a holiday weekend, or less in the quiet months.",
-      ).text,
-      done: (count: number) =>
-        interpolate(
-          i18n.resolve("host.prepublish.pricing_done", "{count} set"),
-          { count },
-        ).text,
+      title: i18n.resolve("host.prepublish.review_pricing", "Pricing").text,
+      onEdit: onEditPricing,
+      details: (
+        <>
+          <span className="block font-medium text-foreground">
+            {interpolate(
+              i18n.resolve("host.prepublish.review_base_rate", "{rate} per night"),
+              { rate: money(baseNightlyRate) },
+            ).text}
+          </span>
+          <span className="block">
+            {interpolate(
+              i18n.resolve(
+                "host.prepublish.review_fees",
+                "Cleaning fee: {cleaning} · Minimum stay: {nights} nights",
+              ),
+              { cleaning: money(cleaningFee), nights: minimumNights },
+            ).text}
+          </span>
+          {plan.datePrices.map((price, index) => (
+            <span
+              key={`${price.startDate}-${price.endDate}-${index}`}
+              className="block"
+            >
+              {interpolate(
+                i18n.resolve(
+                  "host.prepublish.review_custom_price",
+                  "{dates}: {rate} per night",
+                ),
+                {
+                  dates: formatRange(price.startDate, price.endDate, locale),
+                  rate: money(price.nightlyRate),
+                },
+              ).text}
+            </span>
+          ))}
+        </>
+      ),
     },
     {
       task: "offers",
       icon: Percent,
-      title: i18n.resolve(
-        "host.prepublish.offers_title",
-        "Customize promotions",
-      ).text,
-      example: i18n.resolve(
-        "host.prepublish.offers_example",
-        "For example: a discount or free cleaning on specific dates you want to fill.",
-      ).text,
-      done: (count: number) =>
-        interpolate(
-          i18n.resolve("host.prepublish.offers_done", "{count} added"),
-          { count },
-        ).text,
+      title: i18n.resolve("host.prepublish.review_promotions", "Promotions").text,
+      onEdit: onEditPromotion,
+      details: (
+        <>
+          <span className="block font-medium text-foreground">
+            {promotionType === "PERCENT_DISCOUNT"
+              ? interpolate(
+                  i18n.resolve(
+                    "host.prepublish.review_launch_offer",
+                    "Launch offer: {percent}% off · {nights}+ nights",
+                  ),
+                  {
+                    percent: promotionPercent,
+                    nights: promotionMinimumNights,
+                  },
+                ).text
+              : i18n.resolve(
+                  "host.prepublish.review_no_promotion",
+                  "No launch offer",
+                ).text}
+          </span>
+          {plan.offers.length === 0 ? (
+            <span className="block">
+              {i18n.resolve(
+                "host.prepublish.review_no_dated_offers",
+                "No offers for specific dates",
+              ).text}
+            </span>
+          ) : (
+            plan.offers.map((offer, index) => (
+              <span
+                key={`${offer.startDate}-${offer.endDate}-${index}`}
+                className="block"
+              >
+                {formatRange(offer.startDate, offer.endDate, locale)}: {offer.type === "FREE_CLEANING"
+                  ? i18n.resolve(
+                      "host.prepublish.offer_cleaning",
+                      "Free cleaning",
+                    ).text
+                  : interpolate(
+                      i18n.resolve(
+                        "host.prepublish.offer_percent_summary",
+                        "{percent}% off",
+                      ),
+                      { percent: offer.discountPercent },
+                    ).text}
+              </span>
+            ))
+          )}
+        </>
+      ),
     },
   ];
 
@@ -263,14 +353,14 @@ export function PrePublishMenu({
       <div>
         <h2 className="text-lg font-semibold tracking-tight md:text-2xl">
           <Tx
-            k="host.prepublish.heading"
-            source="Anything to set up before you publish?"
+            k="host.prepublish.review_heading"
+            source="Review before publishing"
           />
         </h2>
         <p className="mt-1 text-xs text-muted-foreground md:text-sm">
           <Tx
-            k="host.prepublish.subheading"
-            source="All optional — you can publish now and change any of this later from your listing calendar."
+            k="host.prepublish.review_subheading"
+            source="Check what guests can book, what they will pay, and which offers they will receive."
           />
         </p>
       </div>
@@ -325,6 +415,20 @@ export function PrePublishMenu({
                 />
               )}
             </p>
+            {plan.blocks.map((block, index) => (
+              <p
+                key={`${block.startDate}-${block.endDate}-${index}`}
+                className="mt-1 text-xs text-muted-foreground md:text-sm"
+              >
+                {interpolate(
+                  i18n.resolve(
+                    "host.prepublish.review_blocked",
+                    "Blocked: {dates}",
+                  ),
+                  { dates: formatRange(block.startDate, block.endDate, locale) },
+                ).text}
+              </p>
+            ))}
           </div>
           <Button
             type="button"
@@ -342,15 +446,13 @@ export function PrePublishMenu({
       </div>
 
       <div className="space-y-2.5">
-        {tasks.map(({ task, icon: Icon, title, example, done }) => {
+        {tasks.map(({ task, icon: Icon, title, details, onEdit }) => {
           const count = prePublishTaskCount(plan, task);
           return (
-            <button
+            <div
               key={task}
-              type="button"
-              onClick={() => onOpenTask(task)}
               className={cn(
-                "group flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-all md:gap-4 md:p-4",
+                "flex w-full items-start gap-3 rounded-xl border p-3 text-left md:gap-4 md:p-4",
                 count > 0
                   ? "border-primary/40 bg-primary/[0.04]"
                   : "border-border/70 bg-card hover:border-primary/40 hover:bg-muted/30 hover:shadow-sm",
@@ -361,7 +463,7 @@ export function PrePublishMenu({
                   "flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors md:size-10",
                   count > 0
                     ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary",
+                    : "bg-muted text-muted-foreground",
                 )}
               >
                 {count > 0 ? (
@@ -375,22 +477,39 @@ export function PrePublishMenu({
                 )}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className="text-sm font-semibold md:text-base">
-                    {title}
-                  </span>
-                  {count > 0 && (
-                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[0.7rem] font-medium text-primary">
-                      {done(count)}
-                    </span>
-                  )}
+                <span className="text-sm font-semibold md:text-base">
+                  {title}
                 </span>
                 <span className="mt-1 block text-xs leading-snug text-muted-foreground md:text-sm">
-                  {example}
+                  {details}
                 </span>
+                {task === "offers" && plan.offers.length > 0 ? (
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    className="mt-2 h-auto px-0 text-xs"
+                    onClick={() => onOpenTask("offers")}
+                  >
+                    <Tx
+                      k="host.prepublish.review_edit_dated_offers"
+                      source="Edit dated offers"
+                    />
+                    <ChevronRight className="size-3.5" />
+                  </Button>
+                ) : null}
               </span>
-              <ChevronRight className="mt-1 size-4 shrink-0 text-muted-foreground" />
-            </button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="shrink-0"
+                onClick={onEdit}
+              >
+                <Pencil className="size-3.5" />
+                {i18n.resolve("host.prepublish.availability_edit", "Edit").text}
+              </Button>
+            </div>
           );
         })}
       </div>
@@ -567,7 +686,6 @@ export function AvailabilityStartScreen({
 }) {
   const i18n = useI18n();
   const { locale } = i18n;
-  const summary = useAvailabilitySummary();
   // Unique per instance so the radio ids, the date field and its error message can be
   // associated without colliding with anything else on the page.
   const fieldId = React.useId();
@@ -590,6 +708,7 @@ export function AvailabilityStartScreen({
   const [startDate, setStartDate] = React.useState(
     plan.availabilityStart?.mode === "from" ? plan.availabilityStart.startDate : "",
   );
+  const [datePickerOpen, setDatePickerOpen] = React.useState(false);
 
   function commit(availabilityStart: AvailabilityStartChoice) {
     onChange({ ...plan, availabilityStart });
@@ -609,6 +728,32 @@ export function AvailabilityStartScreen({
     }
     setMode("from");
     chooseFrom(startDate);
+    setDatePickerOpen(true);
+  }
+
+  function localDate(value: string) {
+    const parsed = parsePlanDate(value);
+    return parsed
+      ? new Date(
+          parsed.getUTCFullYear(),
+          parsed.getUTCMonth(),
+          parsed.getUTCDate(),
+        )
+      : undefined;
+  }
+
+  function chooseCalendarDate(range: DateRange | undefined) {
+    if (!range?.from) return;
+
+    const current = localDate(startDate);
+    const chosen =
+      range.to && current
+        ? planDateFromLocal(range.from) === planDateFromLocal(current)
+          ? range.to
+          : range.from
+        : range.from;
+    chooseFrom(planDateFromLocal(chosen));
+    setDatePickerOpen(false);
   }
 
   function chooseFrom(value: string) {
@@ -644,7 +789,6 @@ export function AvailabilityStartScreen({
 
   const unanswered = showError && mode === null;
   const blockedNights = blockedNightsCount(plan.blocks);
-  const summaryLine = summary(plan);
 
   const choices: {
     value: "now" | "from";
@@ -676,7 +820,7 @@ export function AvailabilityStartScreen({
   ];
 
   return (
-    <div className="space-y-4 md:space-y-5">
+    <div className="space-y-3.5 md:space-y-4">
       <div>
         <h2 className="text-lg font-semibold tracking-tight md:text-2xl">
           <Tx
@@ -736,7 +880,7 @@ export function AvailabilityStartScreen({
               />
               <label
                 htmlFor={`${fieldId}-${value}`}
-                className="flex min-h-14 cursor-pointer items-start gap-3 p-3 md:gap-4 md:p-4"
+                className="flex min-h-14 cursor-pointer items-start gap-3 p-3 md:gap-3"
               >
                 <span
                   aria-hidden="true"
@@ -768,7 +912,7 @@ export function AvailabilityStartScreen({
                   asked for it, rather than floating below both. Indented to line up with
                   the text above it, past the radio dot. */}
               {value === "from" && checked && (
-                <div className="px-3 pb-3 pl-11 md:px-4 md:pb-4 md:pl-[3.25rem]">
+                <div className="px-3 pb-3 pl-11">
                   <Label
                     htmlFor={dateFieldId}
                     className="text-xs font-medium"
@@ -778,16 +922,26 @@ export function AvailabilityStartScreen({
                       source="First date guests can check in"
                     />
                   </Label>
-                  <Input
+                  <button
                     id={dateFieldId}
-                    type="date"
-                    value={startDate}
-                    min={today}
-                    onChange={(event) => chooseFrom(event.target.value)}
-                    aria-invalid={dateError ? true : undefined}
+                    type="button"
+                    onClick={() => setDatePickerOpen(true)}
                     aria-describedby={dateError ? dateErrorId : undefined}
-                    className="mt-1.5 h-11 w-full max-w-56"
-                  />
+                    className={cn(
+                      "mt-1.5 flex h-11 w-full max-w-64 items-center gap-2 rounded-md border bg-background px-3 text-left text-sm shadow-xs transition-colors hover:border-primary/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                      dateError && "border-destructive",
+                    )}
+                  >
+                    <CalendarRange className="size-4 shrink-0 text-primary" />
+                    <span className={cn(!startDate && "text-muted-foreground")}>
+                      {startDate
+                        ? formatStartDate(startDate, locale)
+                        : i18n.resolve(
+                            "host.prepublish.availability_date_required",
+                            "Choose the first date guests can check in.",
+                          ).text}
+                    </span>
+                  </button>
                   {dateError && (
                     <p
                       id={dateErrorId}
@@ -883,12 +1037,42 @@ export function AvailabilityStartScreen({
         </div>
       </section>
 
-      {summaryLine && (
-        <p className="flex items-center gap-2 rounded-lg bg-primary/[0.06] px-3 py-2.5 text-xs font-medium md:text-sm">
-          <CalendarCheck className="size-4 shrink-0 text-primary" aria-hidden="true" />
-          <span className="notranslate">{summaryLine}</span>
-        </p>
-      )}
+      <Dialog open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+        <DialogContent
+          variant="sheet"
+          className="flex max-h-[90dvh] flex-col gap-0 overflow-hidden p-0 md:max-w-[48rem]"
+        >
+          <DialogHeader className="shrink-0 border-b px-6 py-4 pr-14">
+            <DialogTitle>
+              <Tx
+                k="host.prepublish.availability_date_label"
+                source="First date guests can check in"
+              />
+            </DialogTitle>
+            <DialogDescription>
+              <Tx
+                k="host.prepublish.availability_from_hint"
+                source="Choose the first date guests can check in."
+              />
+            </DialogDescription>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <DateRangeCalendarStep
+              active={datePickerOpen}
+              fitViewport
+              pagedDesktopMonthCount={2}
+              selected={
+                localDate(startDate)
+                  ? { from: localDate(startDate), to: undefined }
+                  : undefined
+              }
+              onRangeChange={chooseCalendarDate}
+              dayVariant="availability"
+              locale={locale}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

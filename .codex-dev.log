@@ -1,0 +1,34 @@
+
+> lingerhomes@0.1.0 predev
+> npm run i18n:extract
+
+
+> lingerhomes@0.1.0 i18n:extract
+> tsx scripts/extract-ui-strings.ts
+
+Extracted 900 UI strings to src/lib/i18n/generated-ui-strings.json.
+
+> lingerhomes@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.2 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://10.5.0.2:3000
+- Environments: .env
+✓ Ready in 390ms
+
+○ Compiling / ...
+ GET / 200 in 2.0s (next.js: 1372ms, proxy.ts: 5ms, application-code: 660ms)
+ GET / 200 in 310ms (next.js: 4ms, proxy.ts: 39ms, application-code: 266ms)
+ GET /login?callbackUrl=%2Fhost%2Flistings%2Fnew 200 in 194ms (next.js: 47ms, proxy.ts: 4ms, application-code: 142ms)
+ GET /api/auth/session 200 in 893ms (next.js: 871ms, application-code: 23ms)
+ GET /api/auth/session 200 in 18ms (next.js: 8ms, application-code: 9ms)
+ GET / 200 in 346ms (next.js: 4ms, proxy.ts: 6ms, application-code: 336ms)
+ GET /api/auth/session 200 in 16ms (next.js: 9ms, application-code: 7ms)
+ GET /api/auth/session 200 in 8ms (next.js: 3ms, application-code: 5ms)
+[browser] Image with src "/uploads/1785518288005-f526374c-cd0f-4ebe-a500-bf2b3385427b.jpg" was detected as the Largest Contentful Paint (LCP). Please add the `loading="eager"` property if this image is above the fold.
+Read more: https://nextjs.org/docs/app/api-reference/components/image#loading (file://C:/Users/Nikola Dimovski/book.easy.mk/.next/dev/static/chunks/node_modules_next_dist_115brz8._.js:2431:13)
+✓ Compiled in 6.1s
+✓ Compiled in 5.7s
+✓ Compiled in 5.7s
+✓ Compiled in 6.2s

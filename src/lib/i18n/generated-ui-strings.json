@@ -762,7 +762,7 @@
   {
     "key": "filters.clear",
     "sourceText": "Clear",
-    "filePath": "src/components/marketplace/properties-explorer-client.tsx"
+    "filePath": "src/components/host/listing-form.tsx"
   },
   {
     "key": "filters.clear_all",
@@ -1615,11 +1615,6 @@
     "filePath": "src/components/host/delete-listing-button.tsx"
   },
   {
-    "key": "host.form.after_publish_short",
-    "sourceText": "Once it's live you can block dates, price specific dates or seasons, and add more promotions — all from the listing's calendar.",
-    "filePath": "src/components/host/listing-form.tsx"
-  },
-  {
     "key": "host.form.back",
     "sourceText": "Back",
     "filePath": "src/components/host/listing-form.tsx"
@@ -1650,13 +1645,13 @@
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
-    "key": "host.form.create_listing",
-    "sourceText": "Create a listing",
+    "key": "host.form.continue_without_offer",
+    "sourceText": "Continue without offer",
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
-    "key": "host.form.custom_percentage",
-    "sourceText": "Custom percentage",
+    "key": "host.form.create_listing",
+    "sourceText": "Create a listing",
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
@@ -1705,18 +1700,23 @@
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
-    "key": "host.form.offer_cleaning_needs_fee",
-    "sourceText": "Want to offer free cleaning too? Add a cleaning fee on the Pricing step first.",
-    "filePath": "src/components/host/listing-form.tsx"
-  },
-  {
-    "key": "host.form.offer_clear",
-    "sourceText": "Continue without promotion",
+    "key": "host.form.offer_edit_hint",
+    "sourceText": "Feel free to edit manually.",
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
     "key": "host.form.offer_hint",
     "sourceText": "This is optional. Choose one ready-made offer or publish without a promotion.",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.offer_none_selected",
+    "sourceText": "No special offer selected",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.offer_percentage",
+    "sourceText": "Percentage",
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
@@ -2140,14 +2140,9 @@
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
-    "key": "host.prepublish.heading",
-    "sourceText": "Anything to set up before you publish?",
+    "key": "host.prepublish.offer_cleaning",
+    "sourceText": "Free cleaning",
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
-  },
-  {
-    "key": "host.prepublish.menu_title",
-    "sourceText": "Before you publish",
-    "filePath": "src/components/host/listing-form.tsx"
   },
   {
     "key": "host.prepublish.offer_cleaning_hint",
@@ -2155,18 +2150,13 @@
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
   },
   {
+    "key": "host.prepublish.offer_percent_summary",
+    "sourceText": "{percent}% off",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
     "key": "host.prepublish.offer_type_label",
     "sourceText": "What do guests get?",
-    "filePath": "src/components/host/listing-prepublish-plan.tsx"
-  },
-  {
-    "key": "host.prepublish.offers_done",
-    "sourceText": "{count} added",
-    "filePath": "src/components/host/listing-prepublish-plan.tsx"
-  },
-  {
-    "key": "host.prepublish.offers_example",
-    "sourceText": "For example: a discount or free cleaning on specific dates you want to fill.",
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
   },
   {
@@ -2177,16 +2167,6 @@
   {
     "key": "host.prepublish.price_scope_note",
     "sourceText": "This custom price applies only to the selected dates. Every other date keeps your normal price.",
-    "filePath": "src/components/host/listing-prepublish-plan.tsx"
-  },
-  {
-    "key": "host.prepublish.pricing_done",
-    "sourceText": "{count} set",
-    "filePath": "src/components/host/listing-prepublish-plan.tsx"
-  },
-  {
-    "key": "host.prepublish.pricing_example",
-    "sourceText": "For example: charge more over a holiday weekend, or less in the quiet months.",
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
   },
   {
@@ -2210,13 +2190,68 @@
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
   },
   {
-    "key": "host.prepublish.set_price",
-    "sourceText": "Set this price",
+    "key": "host.prepublish.review_base_rate",
+    "sourceText": "{rate} per night",
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
   },
   {
-    "key": "host.prepublish.subheading",
-    "sourceText": "All optional — you can publish now and change any of this later from your listing calendar.",
+    "key": "host.prepublish.review_blocked",
+    "sourceText": "Blocked: {dates}",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.review_custom_price",
+    "sourceText": "{dates}: {rate} per night",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.review_edit_dated_offers",
+    "sourceText": "Edit dated offers",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.review_fees",
+    "sourceText": "Cleaning fee: {cleaning} · Minimum stay: {nights} nights",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.review_heading",
+    "sourceText": "Review before publishing",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.prepublish.review_launch_offer",
+    "sourceText": "Launch offer: {percent}% off · {nights}+ nights",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.review_no_dated_offers",
+    "sourceText": "No offers for specific dates",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.review_no_promotion",
+    "sourceText": "No launch offer",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.review_pricing",
+    "sourceText": "Pricing",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.review_promotions",
+    "sourceText": "Promotions",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.review_subheading",
+    "sourceText": "Check what guests can book, what they will pay, and which offers they will receive.",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.set_price",
+    "sourceText": "Set this price",
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
   },
   {
@@ -2322,7 +2357,7 @@
   {
     "key": "host.promotion.discount_label",
     "sourceText": "Discount percentage",
-    "filePath": "src/components/host/listing-form.tsx"
+    "filePath": "src/components/host/listing-promotion-form.tsx"
   },
   {
     "key": "host.promotion.eligibility_question",

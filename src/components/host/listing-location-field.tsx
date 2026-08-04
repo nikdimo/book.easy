@@ -517,16 +517,12 @@ export function ListingLocationMapField({
     // next update to that same subtree can then throw ("insertBefore: not a child of
     // this node"). This whole form is host-only, plain-English UI with no i18n
     // integration already, so nothing is lost by keeping Translate out of it.
-    <div className="notranslate space-y-3">
+    <div className="notranslate flex min-h-0 flex-1 flex-col gap-3">
       {heading && (
-        <div>
+        <div className="shrink-0">
           <h2 className="text-lg font-semibold tracking-tight md:text-2xl">
-            Where is your property?
+            Pin your property location
           </h2>
-          <p className="mt-1 text-xs text-muted-foreground md:text-sm">
-            Search for it, then drag the map so the pin lands exactly where
-            guests will stay. Only you see this precise spot for now.
-          </p>
         </div>
       )}
 
@@ -534,18 +530,16 @@ export function ListingLocationMapField({
           costing it width it actually uses. It also takes the height the summary
           card below it used to occupy — aiming a pin is easier the more of the
           surroundings you can see at once. */}
-      <div className="relative -mx-4 min-h-[24rem] overflow-hidden border-y bg-muted md:mx-0 md:min-h-[30rem] md:rounded-xl md:border">
+      <div className="relative -mx-4 min-h-0 flex-1 overflow-hidden border-y bg-muted md:mx-0 md:rounded-xl md:border">
         <ListingLocationPickerInner
           lat={latitude}
           lng={longitude}
           hasPin={hasPin}
           zoom={hasPin ? 16 : mapZoom}
-          className={cn(
-            // The geocode lookup no longer freezes the map: it is superseded by the
-            // next pin position anyway, so blocking the gesture only made aiming
-            // feel sticky.
-            "h-[62dvh] min-h-[24rem] w-full md:h-[min(74vh,46rem)] md:min-h-[30rem]"
-          )}
+          // The geocode lookup no longer freezes the map: it is superseded by the
+          // next pin position anyway, so blocking the gesture only made aiming
+          // feel sticky.
+          className="h-full min-h-0 w-full"
           onChange={(nextLat, nextLng) => {
             void setCoordinates(nextLat, nextLng, "MANUAL_PIN");
           }}
@@ -641,6 +635,11 @@ export function ListingLocationMapField({
               {searchError}
             </p>
           )}
+          {locationMessage && (
+            <p className="rounded-lg bg-background/95 px-3 py-2 text-sm text-muted-foreground shadow">
+              {locationMessage}
+            </p>
+          )}
           {linkOpen && (
             <div className="flex gap-2 rounded-xl bg-background p-2 shadow-lg">
               <Input
@@ -707,10 +706,6 @@ export function ListingLocationMapField({
           the pin already shows, and the address lookup now reports itself on the
           Continue button instead of in a paragraph the host has to notice. Only a
           real problem (a refused geolocation prompt) still gets a line here. */}
-      {locationMessage && (
-        <p className="text-sm text-muted-foreground">{locationMessage}</p>
-      )}
-
       <Dialog open={locationDialogOpen} onOpenChange={setLocationDialogOpen}>
         <DialogContent variant="sheet" className="min-w-0 overflow-x-hidden overflow-y-auto md:max-h-[calc(100dvh-2rem)] md:w-[calc(100vw-2rem)] md:max-w-lg">
           <DialogHeader>
