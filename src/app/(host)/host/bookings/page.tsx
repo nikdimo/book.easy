@@ -14,6 +14,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Star } from "lucide-react";
 import { getT, T } from "@/lib/i18n/t";
+import { ListControls } from "@/components/shared/list-controls";
 
 export const metadata = { title: "Booking Requests" };
 
@@ -48,10 +49,28 @@ export default async function HostBookingsPage() {
       <h1 className="text-2xl font-bold mb-6">
         <T t={t} k="host.bookings.heading" source="Booking Requests" />
       </h1>
-      <div className="space-y-3">
-        {bookings.map((booking) => {
+      <ListControls
+        searchPlaceholder="Search bookings by property, city, guest, reference, status or note…"
+        filters={[{
+          key: "status",
+          label: "Status",
+          options: BOOKING_STATUSES.map((status) => ({ value: status.value, label: status.label })),
+        }]}
+        sorts={[
+          { value: "checkIn", label: "Check-in: newest", direction: "desc" },
+          { value: "checkInOldest", label: "Check-in: oldest" },
+          { value: "total", label: "Total: highest", direction: "desc" },
+          { value: "guest", label: "Guest: A–Z" },
+          { value: "listing", label: "Property: A–Z" },
+        ]}
+        items={bookings.map((booking) => {
           const statusConfig = BOOKING_STATUSES.find((s) => s.value === booking.status);
-          return (
+          return {
+            id: booking.id,
+            searchText: [booking.listing.title, booking.listing.property.city, booking.guest.name, booking.reference, booking.status, statusConfig?.label, booking.guestNote].filter(Boolean).join(" "),
+            filters: { status: booking.status },
+            sortValues: { checkIn: booking.checkIn.getTime(), checkInOldest: booking.checkIn.getTime(), total: Number(booking.totalPrice), guest: booking.guest.name, listing: booking.listing.title },
+            content: (
             <Card key={booking.id}>
               <CardContent className="p-4 space-y-3">
                 <div className="flex flex-wrap items-start justify-between gap-2">
@@ -144,9 +163,10 @@ export default async function HostBookingsPage() {
                 </div>
               </CardContent>
             </Card>
-          );
+            ),
+          };
         })}
-      </div>
+      />
     </div>
   );
 }

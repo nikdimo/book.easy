@@ -384,59 +384,66 @@ export async function markConversationRead(input: {
   });
   if (!message) throw new Error("Message not found");
 
-  await db.$transaction(async (tx) => {
-    const locked = await tx.$queryRaw<Array<{ userId: string }>>`
-      SELECT "userId"
-      FROM "ConversationParticipant"
-      WHERE "conversationId" = ${input.conversationId}
-        AND "userId" = ${input.userId}
-      FOR UPDATE
-    `;
-    if (locked.length === 0) throw new Error("Conversation not found");
+  await db.$transaction(
+    async (tx) => {
+      const locked = await tx.$queryRaw<Array<{ userId: string }>>`
+        SELECT "userId"
+        FROM "ConversationParticipant"
+        WHERE "conversationId" = ${input.conversationId}
+          AND "userId" = ${input.userId}
+        FOR UPDATE
+      `;
+      if (locked.length === 0) throw new Error("Conversation not found");
 
-    const remainingUnread = await tx.message.count({
-      where: {
-        conversationId: input.conversationId,
-        senderId: { not: input.userId },
-        createdAt: { gt: message.createdAt },
-      },
-    });
-    const readMessageIds = await tx.message.findMany({
-      where: {
-        conversationId: input.conversationId,
-        senderId: { not: input.userId },
-        createdAt: { lte: message.createdAt },
-      },
-      select: { id: true },
-    });
-    await tx.conversationParticipant.update({
-      where: {
-        conversationId_userId: {
+      const remainingUnread = await tx.message.count({
+        where: {
           conversationId: input.conversationId,
-          userId: input.userId,
+          senderId: { not: input.userId },
+          createdAt: { gt: message.createdAt },
         },
-      },
-      data: {
-        unreadCount: remainingUnread,
-        lastReadAt: message.createdAt,
-      },
-    });
-    await tx.notification.updateMany({
-      where: {
-        userId: input.userId,
-        type: { in: ["CHAT_MESSAGE", "SUPPORT_MESSAGE"] },
-        readAt: null,
-        OR: [
-          { messageId: { in: readMessageIds.map(({ id }) => id) } },
-          {
-            messageId: null,
-            data: { path: ["conversationId"], equals: input.conversationId },
+      });
+      const readMessageIds = await tx.message.findMany({
+        where: {
+          conversationId: input.conversationId,
+          senderId: { not: input.userId },
+          createdAt: { lte: message.createdAt },
+        },
+        select: { id: true },
+      });
+      await tx.conversationParticipant.update({
+        where: {
+          conversationId_userId: {
+            conversationId: input.conversationId,
+            userId: input.userId,
           },
-        ],
-      },
-      data: { readAt: new Date() },
-    });
-  });
+        },
+        data: {
+          unreadCount: remainingUnread,
+          lastReadAt: message.createdAt,
+        },
+      });
+      await tx.notification.updateMany({
+        where: {
+          userId: input.userId,
+          type: { in: ["CHAT_MESSAGE", "SUPPORT_MESSAGE"] },
+          readAt: null,
+          OR: [
+            { messageId: { in: readMessageIds.map(({ id }) => id) } },
+            {
+              messageId: null,
+              data: { path: ["conversationId"], equals: input.conversationId },
+            },
+          ],
+        },
+        data: { readAt: new Date() },
+      });
+    },
+    // The default interactive-transaction timeout is 5 seconds. Under concurrent test
+    // or production load this four-query, row-locked operation occasionally finished a
+    // few milliseconds beyond that boundary. Ten seconds preserves the lock/atomicity
+    // while avoiding a false failure caused by ordinary short-lived database contention.
+    { timeout: 10_000 },
+  );
 }
 
 export async function sendConversationMessage(input: {

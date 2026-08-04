@@ -1,32 +1,36 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { Cookie, Download, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { PrivacySettingsModal } from "@/components/shared/privacy-settings-modal";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { requestAccountDeletionAction } from "@/lib/actions/account-deletion.actions";
-
-/** Shared look for every control on this page: a plain underlined text link, never a
- * button. Deleting an account is a deliberate, rare act — a prominent destructive
- * button invites the mis-click it's meant to guard against. */
-const linkClass =
-  "underline underline-offset-4 hover:text-foreground disabled:no-underline disabled:opacity-60";
 
 function Row({
   title,
   description,
+  icon,
   children,
 }: {
   title: string;
   description: string;
+  icon: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col gap-2 border-t py-5 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6">
-      <div className="space-y-1">
-        <h2 className="text-sm font-semibold">{title}</h2>
-        <p className="text-sm text-muted-foreground">{description}</p>
+    <div className="flex flex-col gap-4 py-5 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
+      <div className="flex min-w-0 gap-3">
+        <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+          {icon}
+        </div>
+        <div className="space-y-1">
+          <h2 className="text-sm font-semibold">{title}</h2>
+          <p className="max-w-xl text-sm leading-6 text-muted-foreground">{description}</p>
+        </div>
       </div>
-      <div className="shrink-0 text-sm">{children}</div>
+      <div className="shrink-0 pl-12 text-sm sm:pl-0">{children}</div>
     </div>
   );
 }
@@ -74,63 +78,69 @@ export function PrivacyControls() {
   };
 
   return (
-    <div className="border-b">
-      <Row
-        title="Cookies and consent"
-        description="Choose which optional cookies we may use. You can change this at any time."
-      >
-        <button type="button" onClick={() => setShowPrivacyModal(true)} className={linkClass}>
-          Manage preferences
-        </button>
-      </Row>
-
-      <Row
-        title="Download your data"
-        description="A copy of your profile, bookings, listings and favourites as a JSON file."
-      >
-        <button
-          type="button"
-          onClick={handleExportData}
-          disabled={isExporting}
-          className={linkClass}
+    <Card>
+      <CardContent className="divide-y p-5 sm:p-6">
+        <Row
+          title="Cookies and consent"
+          description="Choose which optional cookies we may use. You can change this at any time."
+          icon={<Cookie className="size-4" aria-hidden="true" />}
         >
-          {isExporting ? "Preparing…" : "Download"}
-        </button>
-      </Row>
+          <Button type="button" variant="outline" onClick={() => setShowPrivacyModal(true)}>
+            Manage preferences
+          </Button>
+        </Row>
 
-      <Row
-        title="Delete your account"
-        description="Pending bookings are cancelled and your listings are archived. Booking records are kept
-          anonymously for 7 years to meet tax and legal obligations. This can't be undone."
-      >
-        {deletionRequested ? (
-          <span className="text-muted-foreground">
-            Confirmation email sent — the link expires in an hour.{" "}
-            <button
+        <Row
+          title="Download your data"
+          description="Download your profile, bookings, listings and favourites as JSON, a standard machine-readable format."
+          icon={<Download className="size-4" aria-hidden="true" />}
+        >
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleExportData}
+            disabled={isExporting}
+          >
+            {isExporting ? "Preparing…" : "Download"}
+          </Button>
+        </Row>
+
+        <Row
+          title="Delete your account"
+          description="Pending bookings are cancelled and your listings are archived. Booking records are kept anonymously for 7 years to meet tax and legal obligations. This can't be undone."
+          icon={<ShieldAlert className="size-4" aria-hidden="true" />}
+        >
+          {deletionRequested ? (
+            <div className="space-y-2 text-muted-foreground sm:text-right">
+              <p>Confirmation email sent. The link expires in an hour.</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleRequestDeletion}
+                disabled={isRequesting}
+              >
+                Resend
+              </Button>
+            </div>
+          ) : (
+            <Button
               type="button"
+              variant="outline"
               onClick={handleRequestDeletion}
               disabled={isRequesting}
-              className={linkClass}
+              className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
             >
-              Resend
-            </button>
-          </span>
-        ) : (
-          <button
-            type="button"
-            onClick={handleRequestDeletion}
-            disabled={isRequesting}
-            className={`${linkClass} text-destructive`}
-          >
-            {isRequesting ? "Sending…" : "Request deletion"}
-          </button>
-        )}
-      </Row>
+              {isRequesting ? "Sending…" : "Request deletion"}
+            </Button>
+          )}
+        </Row>
+      </CardContent>
 
       <PrivacySettingsModal
         isOpen={showPrivacyModal}
         onClose={() => setShowPrivacyModal(false)}
       />
-    </div>
+    </Card>
   );
 }

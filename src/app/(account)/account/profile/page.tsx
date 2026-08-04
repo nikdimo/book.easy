@@ -18,8 +18,13 @@ export default async function ProfilePage() {
   if (!user) redirect("/login");
 
   return (
-    <div className="max-w-2xl space-y-8">
-      <h1 className="text-2xl font-bold">My Profile</h1>
+    <div className="mx-auto max-w-2xl space-y-8">
+      <div className="space-y-2 text-center sm:text-left">
+        <h1 className="text-2xl font-bold">My Profile</h1>
+        <p className="text-sm text-muted-foreground">
+          Keep your personal details accurate and up to date.
+        </p>
+      </div>
       <ProfileForm
         user={{ name: user.name, email: user.email }}
         profile={{
@@ -30,7 +35,7 @@ export default async function ProfilePage() {
 
       {/* Deliberately understated: cookie choices, data export and account deletion all
           live one click away rather than as buttons beside "Save Changes". */}
-      <p className="text-sm text-muted-foreground">
+      <p className="rounded-lg border bg-muted/30 px-4 py-3 text-center text-sm text-muted-foreground">
         Manage your cookie preferences, download your data, or delete your account in{" "}
         <Link
           href="/account/privacy"

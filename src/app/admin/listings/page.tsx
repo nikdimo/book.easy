@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { LISTING_STATUSES } from "@/lib/constants";
 import { formatDate } from "@/lib/utils/format";
+import { ListControls } from "@/components/shared/list-controls";
 
 export const metadata = { title: "Admin - Listings" };
 
@@ -68,11 +69,27 @@ export default async function AdminListingsPage({
 
 function ListingsTable({ listings }: { listings: AdminListing[] }) {
   return (
-    <>
-      <div className="space-y-3 md:hidden">
-        {listings.map((listing) => {
+    <ListControls
+      searchPlaceholder="Search properties by title, city, host, email or status…"
+      filters={[
+        { key: "status", label: "Status", options: LISTING_STATUSES.map((status) => ({ value: status.value, label: status.label })) },
+        { key: "review", label: "Review", allLabel: "All review states", options: [{ value: "yes", label: "Needs review" }, { value: "no", label: "Reviewed" }] },
+      ]}
+      sorts={[
+        { value: "created", label: "Newest created", direction: "desc" },
+        { value: "oldest", label: "Oldest created" },
+        { value: "title", label: "Title: A–Z" },
+        { value: "host", label: "Host: A–Z" },
+        { value: "bookings", label: "Most bookings", direction: "desc" },
+      ]}
+      items={listings.map((listing) => {
           const statusConfig = LISTING_STATUSES.find((s) => s.value === listing.status);
-          return (
+          return { id: listing.id,
+            searchText: [listing.title, listing.property.city, listing.host.name, listing.host.email, listing.status, statusConfig?.label, listing.needsReview ? "needs review" : "reviewed", formatDate(listing.createdAt)].join(" "),
+            filters: { status: listing.status, review: listing.needsReview ? "yes" : "no" },
+            sortValues: { created: listing.createdAt.getTime(), oldest: listing.createdAt.getTime(), title: listing.title, host: listing.host.name, bookings: listing._count.bookings },
+            content: <>
+      <div className="md:hidden">
             <article key={listing.id} className="rounded-xl border bg-card p-4 shadow-sm">
               <div className="flex min-w-0 items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -99,8 +116,6 @@ function ListingsTable({ listings }: { listings: AdminListing[] }) {
                 <Link href={`/admin/listings/${listing.id}`}>Review listing</Link>
               </Button>
             </article>
-          );
-        })}
       </div>
       <div className="hidden border rounded-lg md:block">
         <Table className="table-stacked">
@@ -116,9 +131,6 @@ function ListingsTable({ listings }: { listings: AdminListing[] }) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {listings.map((listing) => {
-            const statusConfig = LISTING_STATUSES.find((s) => s.value === listing.status);
-            return (
               <TableRow key={listing.id}>
                 <TableCell className="font-medium max-w-[200px] truncate" data-label="Title">{listing.title}</TableCell>
                 <TableCell data-label="Host">
@@ -146,11 +158,12 @@ function ListingsTable({ listings }: { listings: AdminListing[] }) {
                   </Button>
                 </TableCell>
               </TableRow>
-            );
-          })}
         </TableBody>
         </Table>
       </div>
-    </>
+            </>,
+          };
+        })}
+    />
   );
 }

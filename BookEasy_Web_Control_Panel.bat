@@ -270,8 +270,9 @@ if errorlevel 1 (
 echo.
 echo [2/2] Pulling latest code, building, and restarting the service...
 rem Refresh before launching the script so a release that changes the deployment
-rem procedure runs the new procedure immediately, not the previous VPS copy.
-ssh -i "%KEY%" %HOST% "git -C %REMOTE_DIR% fetch origin && git -C %REMOTE_DIR% reset --hard origin/main && bash %REMOTE_DIR%/scripts/deploy-remote.sh"
+rem procedure runs the new procedure immediately, not the previous VPS copy. Tell the
+rem refreshed script not to fetch and reset the exact same commit a second time.
+ssh -i "%KEY%" %HOST% "git -C %REMOTE_DIR% fetch origin && git -C %REMOTE_DIR% reset --hard origin/main && SKIP_GIT_REFRESH=1 bash %REMOTE_DIR%/scripts/deploy-remote.sh"
 if errorlevel 1 (
     echo   ERROR - Deploy script failed on VPS. See output above.
     pause
@@ -447,7 +448,7 @@ if errorlevel 1 (
 
 echo.
 echo [preflight] Running the full automated test suite locally...
-call npm test
+call npm test -- --reporter=dot --silent
 if errorlevel 1 (
     echo.
     echo   ERROR - Tests failed. Tests are never run against production.
@@ -468,7 +469,10 @@ if errorlevel 1 (
 
 echo.
 echo [preflight] Checking the final diff for whitespace errors...
-git diff --check
+rem Disable the pager so a long list of Windows line-ending notices can never trap the
+rem release inside `less`. safecrlf=false only suppresses conversion warnings for this
+rem read-only check; it does not change files or repository configuration.
+git -c core.safecrlf=false --no-pager diff --check
 if errorlevel 1 (
     echo.
     echo   ERROR - Git found whitespace errors. Nothing was saved or deployed.

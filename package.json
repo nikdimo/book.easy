@@ -43,9 +43,6 @@
     "db:docker": "docker compose up -d",
     "db:setup": "prisma generate && prisma migrate deploy && prisma db seed"
   },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
-  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.112.3",
     "@auth/prisma-adapter": "^2.11.1",

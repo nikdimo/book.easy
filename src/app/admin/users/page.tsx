@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AdminUserActions } from "@/components/admin/admin-user-actions";
 import { formatDate } from "@/lib/utils/format";
+import { ListControls } from "@/components/shared/list-controls";
 
 export const metadata = { title: "Admin - Users" };
 
@@ -32,8 +33,27 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
           </Button>
         )}
       </div>
-      <div className="space-y-3 md:hidden">
-        {filteredUsers.map((user) => (
+      <ListControls
+        searchPlaceholder="Search users by name, email, role or account details…"
+        filters={[
+          { key: "role", label: "Role", options: [{ value: "ADMIN", label: "Admin" }, { value: "USER", label: "User" }] },
+          { key: "host", label: "Account type", allLabel: "All account types", options: [{ value: "yes", label: "Hosts" }, { value: "no", label: "Guests" }] },
+          { key: "active", label: "Activity", allLabel: "All activity", options: [{ value: "yes", label: "Active" }, { value: "no", label: "Inactive" }] },
+        ]}
+        sorts={[
+          { value: "created", label: "Newest users", direction: "desc" },
+          { value: "oldest", label: "Oldest users" },
+          { value: "name", label: "Name: A–Z" },
+          { value: "listings", label: "Most listings", direction: "desc" },
+          { value: "bookings", label: "Most bookings", direction: "desc" },
+        ]}
+        items={filteredUsers.map((user) => ({
+          id: user.id,
+          searchText: [user.name, user.email, user.role, user.isHost ? "host" : "guest", user.isActive ? "active" : "inactive", user._count.listings, user._count.bookings, formatDate(user.createdAt)].join(" "),
+          filters: { role: user.role, host: user.isHost ? "yes" : "no", active: user.isActive ? "yes" : "no" },
+          sortValues: { created: user.createdAt.getTime(), oldest: user.createdAt.getTime(), name: user.name, listings: user._count.listings, bookings: user._count.bookings },
+          content: <>
+      <div className="md:hidden">
           <article key={user.id} className="rounded-xl border bg-card p-4 shadow-sm">
             <div className="flex min-w-0 items-start justify-between gap-3">
               <div className="min-w-0">
@@ -55,7 +75,6 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
               <div className="mt-4 border-t pt-3"><AdminUserActions userId={user.id} isActive={user.isActive} /></div>
             )}
           </article>
-        ))}
       </div>
       <div className="hidden border rounded-lg md:block">
         <Table className="table-stacked">
@@ -73,7 +92,6 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredUsers.map((user) => (
               <TableRow key={user.id}>
                 <TableCell className="font-medium" data-label="Name">{user.name}</TableCell>
                 <TableCell className="text-sm" data-label="Email">{user.email}</TableCell>
@@ -95,10 +113,12 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                   )}
                 </TableCell>
               </TableRow>
-            ))}
           </TableBody>
         </Table>
       </div>
+          </>,
+        }))}
+      />
     </div>
   );
 }

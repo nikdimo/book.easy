@@ -675,7 +675,7 @@ export function DateRangeCalendarStep({
   onMinimumStayBlocked,
   fitViewport = false,
   pagedOnDesktop = false,
-  pagedDesktopMonthCount = 1,
+  pagedDesktopMonthCount = 2,
   dragToSelect = false,
   locale,
 }: {
@@ -763,7 +763,10 @@ export function DateRangeCalendarStep({
     if (!node) return;
 
     const observer = new ResizeObserver(([entry]) => {
-      setPagedMonthCapacity(entry.contentRect.width >= 820 ? 2 : 1);
+      // Two 20rem month columns, their gap, and a little breathing room for the
+      // navigation buttons. Narrow desktop windows fall back to one month without
+      // relying on the viewport width (the picker can also live in a smaller shell).
+      setPagedMonthCapacity(entry.contentRect.width >= 720 ? 2 : 1);
     });
     observer.observe(node);
     return () => observer.disconnect();
@@ -1361,7 +1364,7 @@ export function DateRangeCalendarStep({
         }}
         className={cn(
           pagedCalendar
-            ? "shrink-0 overflow-hidden px-5 py-5 md:px-7 md:py-6"
+            ? "flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain px-5 py-4 md:px-7 md:py-5"
             : "flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain [overflow-anchor:none] px-4 py-5 md:px-6 md:py-6",
           isDragging && "cursor-grabbing select-none",
         )}
@@ -1718,6 +1721,14 @@ export function MarketplaceStayDatePicker({
             translated: false,
           }
         : labels.addDates;
+  // False while the trigger is still showing the "Add dates" prompt, so the pill can
+  // grey it like the Where / Who placeholders instead of styling it as a real value.
+  const hasDateSelection = Boolean(selectedRange?.from);
+  // The narrow single-button variant only ever prints a full range, so it stays in the
+  // placeholder state until both ends are picked.
+  const hasFullDateRange = Boolean(
+    checkIn && checkOut && selectedRange?.from && selectedRange?.to,
+  );
   // Mirrors the calendar's own restriction, so the rule is on screen for exactly as
   // long as the greyed-out window is — hovering a day was never an option on touch.
   const minimumStayHint = React.useMemo<Resolved | null>(() => {
@@ -1879,6 +1890,7 @@ export function MarketplaceStayDatePicker({
             <span
               className={cn(
                 "notranslate mt-px block truncate text-sm leading-5 font-normal",
+                !hasFullDateRange && "text-muted-foreground",
                 mobileDatesLabel.translated && "notranslate",
               )}
               translate="no"
@@ -1912,6 +1924,7 @@ export function MarketplaceStayDatePicker({
             <span
               className={cn(
                 "notranslate mt-px block truncate text-sm leading-5 font-normal",
+                !hasDateSelection && "text-muted-foreground",
                 summaryText.translated && "notranslate",
               )}
               translate="no"
@@ -2041,8 +2054,10 @@ export function MarketplaceStayDatePicker({
                 : "md:left-1/2 md:right-auto md:top-[5.75rem] md:bottom-auto md:h-auto md:max-h-[min(35rem,calc(100dvh-7rem))] md:w-[45rem] md:max-w-[calc(100vw-2rem)] md:-translate-x-1/2 md:rounded-[1.75rem]"
               : !useSharedDesktopShell && dayVariant === "availability"
                 ? "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-[50rem] md:max-h-[calc(100dvh-5rem)] md:w-[58rem] md:max-w-[calc(100vw-4rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[2rem]"
-                : !useSharedDesktopShell &&
-                  "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-[50rem] md:max-h-[calc(100dvh-5rem)] md:w-[44rem] md:max-w-[calc(100vw-6rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[2rem]",
+                : !useSharedDesktopShell && pagedCalendarOnDesktop
+                  ? "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-[46rem] md:max-h-[calc(100dvh-2rem)] md:w-[58rem] md:max-w-[calc(100vw-4rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[2rem]"
+                  : !useSharedDesktopShell &&
+                    "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-[50rem] md:max-h-[calc(100dvh-5rem)] md:w-[44rem] md:max-w-[calc(100vw-6rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[2rem]",
           )}
           onPointerDownOutside={(event) => {
             const target = event.target;
@@ -2247,52 +2262,54 @@ export function MarketplaceStayDatePicker({
             <div
               key="dates"
               className={cn(
+                "relative flex min-h-0 flex-1 flex-col",
                 useSharedDesktopShell
-                  ? "desktop-search-panel-content flex min-h-0 flex-1 flex-col"
-                  : "contents",
+                  ? "desktop-search-panel-content"
+                  : "",
               )}
             >
-              {/* Above the grid, not below it: the rule has to be readable in the
-                  same glance as the greyed days it explains, without a hover the
-                  guest has to discover or a tap they have to get wrong first. */}
-              {datesBanner ? (
-                <div
-                  key={minimumStayNudgeKey}
-                  aria-live="polite"
-                  className={cn(
-                    "flex shrink-0 items-start gap-2 border-b border-border px-4 py-2.5 text-[0.8rem] leading-snug transition-colors duration-200 animate-in fade-in-0 zoom-in-[0.99] md:px-6",
-                    minimumStayNudging
-                      ? "bg-muted font-medium text-foreground"
-                      : "bg-muted/40 text-muted-foreground",
-                  )}
-                >
-                  <Info className="mt-px h-4 w-4 shrink-0" aria-hidden="true" />
-                  <span
-                    className={
-                      datesBanner.translated ? "notranslate" : undefined
-                    }
+              <div className="relative flex min-h-0 flex-1 flex-col">
+                {/* Keep guidance out of document flow. Inserting a banner above the
+                    calendar after check-in moves every date under the guest's finger. */}
+                {datesBanner ? (
+                  <div
+                    key={minimumStayNudgeKey}
+                    aria-live="polite"
+                    className={cn(
+                      "pointer-events-none absolute inset-x-3 bottom-3 z-30 flex items-start gap-2 rounded-2xl border border-border/70 px-3.5 py-3 text-[0.8rem] leading-snug shadow-[0_10px_30px_rgba(15,23,42,0.18)] backdrop-blur-md transition-colors duration-200 animate-in fade-in-0 slide-in-from-bottom-3 md:inset-x-auto md:left-1/2 md:w-[min(30rem,calc(100%-3rem))] md:-translate-x-1/2 md:px-4",
+                      minimumStayNudging
+                        ? "bg-foreground font-medium text-background"
+                        : "bg-background/95 text-foreground",
+                    )}
                   >
-                    {datesBanner.text}
-                  </span>
-                </div>
-              ) : null}
+                    <Info className="mt-px h-4 w-4 shrink-0" aria-hidden="true" />
+                    <span
+                      className={
+                        datesBanner.translated ? "notranslate" : undefined
+                      }
+                    >
+                      {datesBanner.text}
+                    </span>
+                  </div>
+                ) : null}
 
-              <DateRangeCalendarStep
-                active={open && step === "dates"}
-                selected={selectedRange}
-                onRangeChange={commitRange}
-                onFromOnlySelected={() => setActiveSegment("checkout")}
-                disabledDateRanges={disabledDateRanges}
-                dayMeta={dayMeta}
-                dayVariant={dayVariant}
-                dateModifiers={dateModifiers}
-                dateModifiersClassNames={dateModifiersClassNames}
-                minimumStayNights={minimumStayNights}
-                minimumStayMessage={minimumStayMessage}
-                onMinimumStayBlocked={nudgeMinimumStayHint}
-                fitViewport={isPillLayout}
-                pagedOnDesktop={pagedCalendarOnDesktop}
-              />
+                <DateRangeCalendarStep
+                  active={open && step === "dates"}
+                  selected={selectedRange}
+                  onRangeChange={commitRange}
+                  onFromOnlySelected={() => setActiveSegment("checkout")}
+                  disabledDateRanges={disabledDateRanges}
+                  dayMeta={dayMeta}
+                  dayVariant={dayVariant}
+                  dateModifiers={dateModifiers}
+                  dateModifiersClassNames={dateModifiersClassNames}
+                  minimumStayNights={minimumStayNights}
+                  minimumStayMessage={minimumStayMessage}
+                  onMinimumStayBlocked={nudgeMinimumStayHint}
+                  fitViewport={isPillLayout}
+                  pagedOnDesktop={pagedCalendarOnDesktop}
+                />
+              </div>
 
               <div className="shrink-0 border-t border-border bg-background">
                 {showDateFlexibility ? (
@@ -2319,19 +2336,19 @@ export function MarketplaceStayDatePicker({
                         summaryText,
                       })
                     ) : (
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center justify-between gap-3">
                         <Button
                           type="button"
                           variant="outline"
                           className={cn(
-                            "self-start rounded-full sm:min-w-[7rem]",
+                            "min-w-0 shrink-0 rounded-full sm:min-w-[7rem]",
                             labels.reset.translated && "notranslate",
                           )}
                           onClick={resetDates}
                         >
                           {labels.reset.text}
                         </Button>
-                        <div className="flex w-full items-center justify-end gap-3 sm:w-auto">
+                        <div className="flex min-w-0 items-center justify-end gap-3">
                           {showBackToPlace ? (
                             <Button
                               type="button"

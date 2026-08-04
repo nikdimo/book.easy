@@ -278,7 +278,7 @@ export function MarketplacePlaceSelector({
       <div className="min-w-0 flex-1">
         <span
           className={cn(
-            "block font-semibold tracking-wide text-foreground",
+            "block font-semibold text-foreground",
             layout === "pill"
               ? "text-[0.72rem] leading-4"
               : "text-xs tracking-wide",
@@ -289,8 +289,12 @@ export function MarketplacePlaceSelector({
         </span>
         <span
           className={cn(
-            "mt-px block truncate md:text-base",
-            layout === "pill" ? "text-sm leading-5 font-normal" : "text-sm font-medium",
+            "mt-px block truncate",
+            // The pill's value line stays 14px so all three segments (Where / When / Who)
+            // read as one row; only the taller hero layout steps up to 16px.
+            layout === "pill"
+              ? "text-sm leading-5 font-normal"
+              : "text-sm font-medium md:text-base",
             !city && "text-muted-foreground",
             (city || labels.searchDestinations.translated) && "notranslate"
           )}

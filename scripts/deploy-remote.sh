@@ -17,10 +17,15 @@ set -euo pipefail
 
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$APP_DIR"
+export PRISMA_HIDE_UPDATE_MESSAGE=1
 
-echo "[deploy] Fetching latest code in $APP_DIR"
-git fetch origin
-git reset --hard origin/main
+if [ "${SKIP_GIT_REFRESH:-0}" = "1" ]; then
+  echo "[deploy] Using the commit already refreshed by the control panel"
+else
+  echo "[deploy] Fetching latest code in $APP_DIR"
+  git fetch origin
+  git reset --hard origin/main
+fi
 
 echo "[deploy] Installing dependencies"
 # Deliberately `npm install`, not `npm ci`: some transitive dependency in this
@@ -57,11 +62,13 @@ echo "[deploy] Refreshing the UI catalog before validation"
 # machine (Windows and Linux can differ in path/line-ending normalization).
 npm run i18n:extract
 
-echo "[deploy] Lint + typecheck (fail fast before touching the DB or building)"
+echo "[deploy] Linting before the production build"
 npm run lint
-npm run typecheck
 
 echo "[deploy] Building"
+# Next's production build performs its own TypeScript pass on Linux. The control panel
+# already ran standalone web/mobile typechecks locally, so another standalone tsc here
+# only duplicated work without adding a distinct check.
 npm run build
 
 echo "[deploy] Backing up the production database before migrations"
@@ -110,7 +117,7 @@ echo "[deploy] Waiting for the public health check"
 HEALTH_URL="${DEPLOY_HEALTH_URL:-https://lingerhomes.com/api/mobile/v1/languages?locale=en}"
 HEALTHY=0
 for attempt in $(seq 1 12); do
-  if curl --fail --silent --show-error --max-time 3 "$HEALTH_URL" >/dev/null; then
+  if curl --fail --silent --max-time 3 "$HEALTH_URL" >/dev/null; then
     HEALTHY=1
     echo "[deploy] Health check passed on attempt $attempt"
     break

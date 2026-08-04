@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { AdminCancelBookingButton } from "@/components/admin/admin-cancel-booking-button";
 import { formatDate, formatPrice } from "@/lib/utils/format";
 import { BOOKING_STATUSES } from "@/lib/constants";
+import { ListControls } from "@/components/shared/list-controls";
 
 export const metadata = { title: "Admin - Bookings" };
 
@@ -40,11 +41,25 @@ export default async function AdminBookingsPage({
           </Button>
         )}
       </div>
-      <div className="space-y-3 md:hidden">
-        {filteredBookings.map((booking) => {
+      <ListControls
+        searchPlaceholder="Search bookings by property, city, guest, email, reference or status…"
+        filters={[{ key: "status", label: "Status", options: BOOKING_STATUSES.map((item) => ({ value: item.value, label: item.label })) }]}
+        sorts={[
+          { value: "checkIn", label: "Check-in: newest", direction: "desc" },
+          { value: "oldest", label: "Check-in: oldest" },
+          { value: "total", label: "Total: highest", direction: "desc" },
+          { value: "guest", label: "Guest: A–Z" },
+          { value: "listing", label: "Property: A–Z" },
+        ]}
+        items={filteredBookings.map((booking) => {
           const statusConfig = BOOKING_STATUSES.find((s) => s.value === booking.status);
           const canCancel = booking.status === "PENDING" || booking.status === "CONFIRMED";
-          return (
+          return { id: booking.id,
+            searchText: [booking.listing.title, booking.listing.property.city, booking.guest.name, booking.guest.email, booking.reference, booking.status, statusConfig?.label, formatDate(booking.checkIn), formatDate(booking.checkOut)].filter(Boolean).join(" "),
+            filters: { status: booking.status },
+            sortValues: { checkIn: booking.checkIn.getTime(), oldest: booking.checkIn.getTime(), total: Number(booking.totalPrice), guest: booking.guest.name, listing: booking.listing.title },
+            content: <>
+      <div className="md:hidden">
             <article key={booking.id} className="rounded-xl border bg-card p-4 shadow-sm">
               <div className="flex min-w-0 items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -62,8 +77,6 @@ export default async function AdminBookingsPage({
               </dl>
               {canCancel && <div className="mt-4 border-t pt-3"><AdminCancelBookingButton bookingId={booking.id} /></div>}
             </article>
-          );
-        })}
       </div>
       <div className="hidden border rounded-lg md:block">
         <Table className="table-stacked">
@@ -78,10 +91,6 @@ export default async function AdminBookingsPage({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredBookings.map((booking) => {
-              const statusConfig = BOOKING_STATUSES.find((s) => s.value === booking.status);
-              const canCancel = booking.status === "PENDING" || booking.status === "CONFIRMED";
-              return (
                 <TableRow key={booking.id}>
                   <TableCell data-label="Listing">
                     <div className="text-sm font-medium max-w-[200px] truncate">{booking.listing.title}</div>
@@ -104,11 +113,13 @@ export default async function AdminBookingsPage({
                     {canCancel && <AdminCancelBookingButton bookingId={booking.id} />}
                   </TableCell>
                 </TableRow>
-              );
-            })}
           </TableBody>
         </Table>
       </div>
+            </>,
+          };
+        })}
+      />
     </div>
   );
 }

@@ -33,7 +33,12 @@ try {
         throw "Could not determine the current Git branch."
     }
 
-    Invoke-Git -Arguments @("add", ".") -FailureMessage "Could not stage the working tree."
+    # The repository intentionally uses Git's configured Windows line-ending
+    # conversion. Suppress its per-file LF/CRLF notices for this one staging command;
+    # this changes neither file contents nor local/global Git configuration.
+    Invoke-Git `
+        -Arguments @("-c", "core.safecrlf=false", "add", "--all") `
+        -FailureMessage "Could not stage the working tree."
 
     & git diff --cached --quiet
     $diffExitCode = $LASTEXITCODE
