@@ -51,8 +51,8 @@
 
 /* Linger Homes light theme: warm neutrals with a coral primary. */
 :root {
-  --background: #fbf8f5;
-  --foreground: #252525;
+  --background: #f6f7f8;
+  --foreground: #1f2933;
   --card: hsl(0 0% 100%);
   --card-foreground: hsl(20 14% 10%);
   --popover: hsl(0 0% 100%);
@@ -61,14 +61,14 @@
   --primary-foreground: hsl(0 0% 98%);
   --secondary: #34788b;
   --secondary-foreground: hsl(24 9% 10%);
-  --muted: hsl(30 10% 94%);
-  --muted-foreground: hsl(25 5% 45%);
-  --accent: hsl(30 10% 94%);
+  --muted: hsl(210 18% 94%);
+  --muted-foreground: hsl(215 12% 40%);
+  --accent: hsl(210 24% 93%);
   --accent-foreground: hsl(24 9% 10%);
   --destructive: hsl(0 84.2% 60.2%);
   --destructive-foreground: hsl(0 0% 98%);
-  --border: hsl(30 10% 88%);
-  --input: hsl(30 10% 88%);
+  --border: hsl(214 18% 82%);
+  --input: hsl(214 20% 76%);
   --ring: hsl(15 65% 46%);
   --chart-1: hsl(15 65% 46%);
   --chart-2: hsl(173 58% 39%);
@@ -143,6 +143,19 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     overflow-x: hidden;
+  }
+  input,
+  textarea,
+  select {
+    background-color: var(--card);
+  }
+  button,
+  a,
+  [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--primary) 22%, white);
   }
   html {
     @apply font-sans;

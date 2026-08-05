@@ -32,11 +32,11 @@ export default async function AdminLayout({
         unreadReviewCount={unreadReviewCount}
         pendingCaseCount={pendingCaseCount}
       />
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background">
         <div className="hidden items-center justify-end border-b bg-background px-8 py-4 md:flex">
           <GoogleTranslateWidget languages={languages} />
         </div>
-        <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">{children}</main>
+        <main className="min-w-0 flex-1 bg-background p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
     </div>
   );
