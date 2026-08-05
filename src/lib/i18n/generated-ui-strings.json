@@ -265,6 +265,11 @@
     "filePath": "src/app/(public)/bookings/confirm/page.tsx"
   },
   {
+    "key": "booking.display_total_approx",
+    "sourceText": "Approximately {amount} at the time of booking. The booking is agreed in {currency}.",
+    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+  },
+  {
     "key": "booking.guests_label",
     "sourceText": "Guests",
     "filePath": "src/app/(public)/bookings/confirm/page.tsx"
@@ -408,6 +413,11 @@
     "key": "booking.no_charge_notice",
     "sourceText": "You won't be charged yet. The host will approve or decline your request.",
     "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.official_currency_notice",
+    "sourceText": "Prices are displayed in {display} for convenience. The booking is agreed in {official}: {amount}.",
+    "filePath": "src/components/shared/official-amount-notice.tsx"
   },
   {
     "key": "booking.pending",
@@ -720,6 +730,111 @@
     "filePath": "src/components/shared/consent-banner.tsx"
   },
   {
+    "key": "contact.category",
+    "sourceText": "What can we help with?",
+    "filePath": "src/app/(public)/contact/contact-form.tsx"
+  },
+  {
+    "key": "contact.category.booking",
+    "sourceText": "Booking",
+    "filePath": "src/app/(public)/contact/contact-form.tsx"
+  },
+  {
+    "key": "contact.category.general",
+    "sourceText": "General question",
+    "filePath": "src/app/(public)/contact/contact-form.tsx"
+  },
+  {
+    "key": "contact.category.hosting",
+    "sourceText": "Hosting",
+    "filePath": "src/app/(public)/contact/contact-form.tsx"
+  },
+  {
+    "key": "contact.category.other",
+    "sourceText": "Something else",
+    "filePath": "src/app/(public)/contact/contact-form.tsx"
+  },
+  {
+    "key": "contact.category.technical",
+    "sourceText": "Technical problem",
+    "filePath": "src/app/(public)/contact/contact-form.tsx"
+  },
+  {
+    "key": "contact.description",
+    "sourceText": "Have a question about a booking, hosting, or using Linger Homes? Send us a message and our team will help.",
+    "filePath": "src/app/(public)/contact/page.tsx"
+  },
+  {
+    "key": "contact.email",
+    "sourceText": "Email address",
+    "filePath": "src/app/(public)/contact/contact-form.tsx"
+  },
+  {
+    "key": "contact.error.generic",
+    "sourceText": "Something went wrong. Please try again.",
+    "filePath": "src/app/(public)/contact/contact-form.tsx"
+  },
+  {
+    "key": "contact.error.invalid",
+    "sourceText": "Please complete all fields correctly.",
+    "filePath": "src/app/(public)/contact/contact-form.tsx"
+  },
+  {
+    "key": "contact.error.network",
+    "sourceText": "We could not send your message. Check your connection and try again.",
+    "filePath": "src/app/(public)/contact/contact-form.tsx"
+  },
+  {
+    "key": "contact.error.rate_limit",
+    "sourceText": "Too many messages. Please try again later.",
+    "filePath": "src/app/(public)/contact/contact-form.tsx"
+  },
+  {
+    "key": "contact.error.too_large",
+    "sourceText": "Message is too large.",
+    "filePath": "src/app/(public)/contact/contact-form.tsx"
+  },
+  {
+    "key": "contact.message",
+    "sourceText": "Message",
+    "filePath": "src/app/(public)/contact/contact-form.tsx"
+  },
+  {
+    "key": "contact.name",
+    "sourceText": "Name",
+    "filePath": "src/app/(public)/contact/contact-form.tsx"
+  },
+  {
+    "key": "contact.send",
+    "sourceText": "Send message",
+    "filePath": "src/app/(public)/contact/contact-form.tsx"
+  },
+  {
+    "key": "contact.sending",
+    "sourceText": "Sending…",
+    "filePath": "src/app/(public)/contact/contact-form.tsx"
+  },
+  {
+    "key": "contact.subject",
+    "sourceText": "Subject",
+    "filePath": "src/app/(public)/contact/contact-form.tsx"
+  },
+  {
+    "key": "contact.success",
+    "sourceText": "Thank you. Your message has been sent.",
+    "filePath": "src/app/(public)/contact/contact-form.tsx"
+  },
+  {
+    "key": "contact.success_title",
+    "sourceText": "Message received",
+    "filePath": "src/app/(public)/contact/contact-form.tsx"
+  },
+  {
+    "key": "contact.title",
+    "sourceText": "Contact us",
+    "filePath": "src/app/(public)/contact/page.tsx"
+  },
+  {
     "key": "description.show_less",
     "sourceText": "Show less",
     "filePath": "src/components/public/expandable-description.tsx"
@@ -892,6 +1007,11 @@
   {
     "key": "footer.communication_preferences",
     "sourceText": "Communication preferences",
+    "filePath": "src/components/shared/footer.tsx"
+  },
+  {
+    "key": "footer.contact",
+    "sourceText": "Contact us",
     "filePath": "src/components/shared/footer.tsx"
   },
   {
@@ -1760,8 +1880,8 @@
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
-    "key": "host.form.offer_hint",
-    "sourceText": "Optionally offer a discount to attract guests. Choose a ready-made offer or publish without one.",
+    "key": "host.form.offer_free_cleaning",
+    "sourceText": "Free cleaning",
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
@@ -1772,6 +1892,16 @@
   {
     "key": "host.form.offer_percentage",
     "sourceText": "Percentage",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.offer_specific_dates",
+    "sourceText": "Specific dates",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.offer_specific_dates_edit",
+    "sourceText": "Edit specific dates",
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
@@ -2203,16 +2333,6 @@
     "key": "host.prepublish.availability_title",
     "sourceText": "Set availability",
     "filePath": "src/components/host/listing-form.tsx"
-  },
-  {
-    "key": "host.prepublish.block_dates_action",
-    "sourceText": "Block dates",
-    "filePath": "src/components/host/listing-prepublish-plan.tsx"
-  },
-  {
-    "key": "host.prepublish.block_dates_edit",
-    "sourceText": "Edit blocked dates",
-    "filePath": "src/components/host/listing-prepublish-plan.tsx"
   },
   {
     "key": "host.prepublish.block_dates_hint",
@@ -4005,6 +4125,26 @@
     "filePath": "src/app/(public)/newsletter/newsletter-form.tsx"
   },
   {
+    "key": "newsletter.error.generic",
+    "sourceText": "Something went wrong. Please try again.",
+    "filePath": "src/app/(public)/newsletter/newsletter-form.tsx"
+  },
+  {
+    "key": "newsletter.error.invalid",
+    "sourceText": "Enter a valid email and accept the marketing consent.",
+    "filePath": "src/app/(public)/newsletter/newsletter-form.tsx"
+  },
+  {
+    "key": "newsletter.error.network",
+    "sourceText": "We could not send the request. Check your connection and try again.",
+    "filePath": "src/app/(public)/newsletter/newsletter-form.tsx"
+  },
+  {
+    "key": "newsletter.error.rate_limit",
+    "sourceText": "Too many confirmation requests. Please try again later.",
+    "filePath": "src/app/(public)/newsletter/newsletter-form.tsx"
+  },
+  {
     "key": "newsletter.guest_offers",
     "sourceText": "Travel and guest offers",
     "filePath": "src/app/(public)/newsletter/newsletter-form.tsx"
@@ -4017,6 +4157,16 @@
   {
     "key": "newsletter.interest",
     "sourceText": "I am interested in",
+    "filePath": "src/app/(public)/newsletter/newsletter-form.tsx"
+  },
+  {
+    "key": "newsletter.request_success",
+    "sourceText": "Please check your inbox and confirm your subscription within 48 hours.",
+    "filePath": "src/app/(public)/newsletter/newsletter-form.tsx"
+  },
+  {
+    "key": "newsletter.thank_you",
+    "sourceText": "Thank you.",
     "filePath": "src/app/(public)/newsletter/newsletter-form.tsx"
   },
   {
@@ -4275,6 +4425,11 @@
     "filePath": "src/components/public/booking-widget.tsx"
   },
   {
+    "key": "property_card.price_per_night",
+    "sourceText": "{price} per night",
+    "filePath": "src/components/public/property-card.tsx"
+  },
+  {
     "key": "property_card.price_total",
     "sourceText": "{price} total",
     "filePath": "src/components/public/property-card.tsx"
@@ -4283,6 +4438,71 @@
     "key": "property_card.type_in_city",
     "sourceText": "{type} in {city}",
     "filePath": "src/components/public/property-card-spotlight.tsx"
+  },
+  {
+    "key": "regional.all_currencies",
+    "sourceText": "Choose a currency",
+    "filePath": "src/components/shared/regional-settings-dialog.tsx"
+  },
+  {
+    "key": "regional.all_languages",
+    "sourceText": "Choose a language and region",
+    "filePath": "src/components/shared/regional-settings-dialog.tsx"
+  },
+  {
+    "key": "regional.dialog_description",
+    "sourceText": "Choose the language you read the site in and the currency prices are shown in. They are separate settings.",
+    "filePath": "src/components/shared/regional-settings-dialog.tsx"
+  },
+  {
+    "key": "regional.no_currencies",
+    "sourceText": "No currencies found",
+    "filePath": "src/components/shared/regional-settings-dialog.tsx"
+  },
+  {
+    "key": "regional.rates_unavailable",
+    "sourceText": "Converted prices are temporarily unavailable. Prices are shown in the property's official currency.",
+    "filePath": "src/components/shared/regional-settings-dialog.tsx"
+  },
+  {
+    "key": "regional.search_currencies",
+    "sourceText": "Search currencies",
+    "filePath": "src/components/shared/regional-settings-dialog.tsx"
+  },
+  {
+    "key": "regional.search_currencies_label",
+    "sourceText": "Search currencies",
+    "filePath": "src/components/shared/regional-settings-dialog.tsx"
+  },
+  {
+    "key": "regional.search_languages_label",
+    "sourceText": "Search languages",
+    "filePath": "src/components/shared/regional-settings-dialog.tsx"
+  },
+  {
+    "key": "regional.suggested_currencies",
+    "sourceText": "Suggested currencies",
+    "filePath": "src/components/shared/regional-settings-dialog.tsx"
+  },
+  {
+    "key": "regional.suggested_languages",
+    "sourceText": "Suggested languages and regions",
+    "filePath": "src/components/shared/regional-settings-dialog.tsx"
+  },
+  {
+    "key": "regional.tab_currency",
+    "sourceText": "Currency",
+    "filePath": "src/components/shared/regional-settings-dialog.tsx"
+  },
+  {
+    "key": "regional.tab_language",
+    "sourceText": "Language and region",
+    "filePath": "src/components/shared/regional-settings-dialog.tsx"
+  },
+  {
+    "key": "regional.trigger_label",
+    "sourceText": "Language and currency",
+    "filePath": "src/components/shared/header.tsx"
   },
   {
     "key": "search.add_dates",

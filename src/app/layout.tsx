@@ -15,6 +15,8 @@ import {
 } from "@/lib/branding";
 import { getLocale, getT, localeDirection } from "@/lib/i18n/t";
 import { I18nProvider } from "@/lib/i18n/client";
+import { DisplayCurrencyProvider } from "@/lib/currency/client";
+import { getPriceFormatter } from "@/lib/currency/price";
 import { getEnabledLanguages } from "@/lib/services/language.service";
 
 const manrope = Manrope({
@@ -71,10 +73,11 @@ export default async function RootLayout({
   // translation target and the persisted cookies must follow the choice — handing the
   // catalog locale to the controller made `syncBrowserLanguageCookies` overwrite an
   // automatic (Google-only) selection with English on the very next page load.
-  const [translator, requestedLocale, languages] = await Promise.all([
+  const [translator, requestedLocale, languages, price] = await Promise.all([
     getT(),
     getLocale(),
     getEnabledLanguages(),
+    getPriceFormatter(),
   ]);
   return (
     <html
@@ -98,17 +101,25 @@ export default async function RootLayout({
           requestedLocale={requestedLocale}
           messages={translator.messages}
         >
-          <SessionProvider refetchOnWindowFocus={false} refetchInterval={0}>
-            <TooltipProvider>
-              {children}
-              {modal}
-              <Toaster richColors position="top-right" />
-              <ConsentBanner
-                languages={languages}
-                currentLocale={requestedLocale}
-              />
-            </TooltipProvider>
-          </SessionProvider>
+          <DisplayCurrencyProvider
+            currency={price.currency}
+            locale={price.locale}
+            context={price.context}
+            ratesUpdatedAt={price.ratesUpdatedAt}
+            stale={price.stale}
+          >
+            <SessionProvider refetchOnWindowFocus={false} refetchInterval={0}>
+              <TooltipProvider>
+                {children}
+                {modal}
+                <Toaster richColors position="top-right" />
+                <ConsentBanner
+                  languages={languages}
+                  currentLocale={requestedLocale}
+                />
+              </TooltipProvider>
+            </SessionProvider>
+          </DisplayCurrencyProvider>
         </I18nProvider>
       </body>
     </html>

@@ -110,20 +110,32 @@ async function getOrCreateContact(input: {
   locale?: string;
 }) {
   const email = normalizeMarketingEmail(input.email);
+  const account = input.userId
+    ? await db.user.findUnique({
+        where: { id: input.userId },
+        select: { email: true },
+      })
+    : null;
+  // Never bind or rewrite an account's durable marketing identity using an
+  // arbitrary address supplied by a public form.
+  const verifiedUserId =
+    account && normalizeMarketingEmail(account.email) === email
+      ? input.userId
+      : undefined;
   const existing = await db.marketingContact.findUnique({ where: { email } });
   if (existing) {
     return db.marketingContact.update({
       where: { id: existing.id },
       data: {
         locale: input.locale || existing.locale,
-        ...(!existing.userId && input.userId ? { userId: input.userId } : {}),
+        ...(!existing.userId && verifiedUserId ? { userId: verifiedUserId } : {}),
       },
     });
   }
 
-  if (input.userId) {
+  if (verifiedUserId) {
     const byUser = await db.marketingContact.findUnique({
-      where: { userId: input.userId },
+      where: { userId: verifiedUserId },
     });
     if (byUser) {
       return db.marketingContact.update({
@@ -134,7 +146,7 @@ async function getOrCreateContact(input: {
   }
 
   return db.marketingContact.create({
-    data: { email, userId: input.userId, locale: input.locale || "en" },
+    data: { email, userId: verifiedUserId, locale: input.locale || "en" },
   });
 }
 

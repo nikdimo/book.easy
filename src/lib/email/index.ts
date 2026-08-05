@@ -24,6 +24,7 @@ export interface SendEmailParams {
   html?: string;
   sender?: "customer" | "support";
   headers?: Record<string, string>;
+  replyTo?: string;
 }
 
 function resolveProvider(): "console" | "smtp" {
@@ -40,7 +41,7 @@ export async function sendTransactionalEmail(params: SendEmailParams): Promise<v
   if (provider === "console") {
     console.info("[email]", {
       from: communicationFromAddress(),
-      replyTo: communicationReplyToAddress(),
+      replyTo: params.replyTo || communicationReplyToAddress(),
       to: params.to,
       subject: params.subject,
       preview: params.text.slice(0, 200),
@@ -53,7 +54,7 @@ export async function sendTransactionalEmail(params: SendEmailParams): Promise<v
   await transport.sendMail({
     to: params.to,
     from: communicationFromAddress(),
-    replyTo: communicationReplyToAddress(),
+    replyTo: params.replyTo || communicationReplyToAddress(),
     subject: params.subject,
     text: params.text,
     html: params.html,
@@ -319,7 +320,7 @@ function bookingEmailLinks(booking: BookingEmailContext) {
 }
 
 function bookingEmailDetails(booking: BookingEmailContext, t: EmailTranslator) {
-  return [
+  const details = [
     {
       label: t.t("email.booking.check_in", "Check-in"),
       value: formatDate(booking.checkIn, t.locale),
@@ -337,6 +338,50 @@ function bookingEmailDetails(booking: BookingEmailContext, t: EmailTranslator) {
       value: formatPrice(Number(booking.totalPrice), booking.currency, t.locale),
     },
   ];
+
+  if (booking.displayCurrency && booking.displayTotal !== null) {
+    details.push({
+      label: t.t(
+        "email.booking.display_value_at_booking",
+        "Guest display value at booking",
+      ),
+      value: t.ti(
+        "email.booking.approximate_amount",
+        "Approximately {amount}",
+        {
+          amount: formatPrice(
+            Number(booking.displayTotal),
+            booking.displayCurrency,
+            t.locale,
+          ),
+        },
+      ),
+    });
+  }
+
+  return details;
+}
+
+function bookingEmailAmountLines(booking: BookingEmailContext, t: EmailTranslator) {
+  const lines = [
+    `${t.t("email.booking.total", "Total")}: ${formatPrice(Number(booking.totalPrice), booking.currency, t.locale)}`,
+  ];
+  if (booking.displayCurrency && booking.displayTotal !== null) {
+    lines.push(
+      `${t.t("email.booking.display_value_at_booking", "Guest display value at booking")}: ${t.ti(
+        "email.booking.approximate_amount",
+        "Approximately {amount}",
+        {
+          amount: formatPrice(
+            Number(booking.displayTotal),
+            booking.displayCurrency,
+            t.locale,
+          ),
+        },
+      )}`,
+    );
+  }
+  return lines;
 }
 
 /** Macedonian's plural rule splits on the final digit (1 гостин, 2 гости), not on
@@ -404,7 +449,7 @@ export async function notifyGuestBookingRequestReceived(bookingId: string): Prom
       `${t.t("email.booking.check_in", "Check-in")}: ${formatDate(booking.checkIn, t.locale)}`,
       `${t.t("email.booking.check_out", "Check-out")}: ${formatDate(booking.checkOut, t.locale)}`,
       `${t.t("email.booking.guests", "Guests")}: ${booking.guestCount}`,
-      `${t.t("email.booking.total", "Total")}: ${formatPrice(Number(booking.totalPrice), booking.currency, t.locale)}`,
+      ...bookingEmailAmountLines(booking, t),
       "",
       `${viewRequest}: ${links.guest}`,
       `${viewListing}: ${links.listing}`,
@@ -597,7 +642,7 @@ export async function notifyGuestBookingConfirmed(bookingId: string): Promise<vo
     ),
     `${t.t("email.booking.check_in", "Check-in")}: ${formatDate(booking.checkIn, t.locale)}`,
     `${t.t("email.booking.check_out", "Check-out")}: ${formatDate(booking.checkOut, t.locale)}`,
-    `${t.t("email.booking.total", "Total")}: ${formatPrice(Number(booking.totalPrice), booking.currency, t.locale)}`,
+    ...bookingEmailAmountLines(booking, t),
     ``,
     `— ${COMMUNICATION_BRAND.name}`,
   ];

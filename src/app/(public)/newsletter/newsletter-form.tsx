@@ -1,27 +1,73 @@
 "use client";
 
 import { useState } from "react";
-import { Tx } from "@/lib/i18n/client";
+import { Tx, useI18n } from "@/lib/i18n/client";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export function NewsletterForm() {
+  const t = useI18n();
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   async function submit(formData: FormData) {
     setPending(true);
     setMessage("");
-    const response = await fetch("/api/marketing/subscribe", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: formData.get("email"),
-        audience: formData.get("audience"),
-        consent: formData.get("consent") === "on",
-      }),
-    });
-    const result = (await response.json()) as { error?: string; message?: string };
-    setMessage(result.message || result.error || "Something went wrong.");
-    setPending(false);
+    try {
+      const response = await fetch("/api/marketing/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: formData.get("email"),
+          audience: formData.get("audience"),
+          consent: formData.get("consent") === "on",
+        }),
+      });
+      if (response.ok) {
+        setMessage(
+          t.resolve(
+            "newsletter.request_success",
+            "Please check your inbox and confirm your subscription within 48 hours."
+          ).text
+        );
+        setSubmitted(true);
+      } else {
+        setMessage(
+          response.status === 429
+            ? t.resolve(
+                "newsletter.error.rate_limit",
+                "Too many confirmation requests. Please try again later."
+              ).text
+            : response.status === 400
+              ? t.resolve(
+                  "newsletter.error.invalid",
+                  "Enter a valid email and accept the marketing consent."
+                ).text
+              : t.resolve(
+                  "newsletter.error.generic",
+                  "Something went wrong. Please try again."
+                ).text
+        );
+      }
+    } catch {
+      setMessage(
+        t.resolve(
+          "newsletter.error.network",
+          "We could not send the request. Check your connection and try again."
+        ).text
+      );
+    } finally {
+      setPending(false);
+    }
+  }
+
+  if (submitted) {
+    return (
+      <p role="status" className="mt-8 rounded-xl border p-5">
+        <Tx k="newsletter.thank_you" source="Thank you." />{" "}
+        {message || "Please check your inbox and confirm your subscription."}
+      </p>
+    );
   }
 
   return (
@@ -52,7 +98,7 @@ export function NewsletterForm() {
         </select>
       </label>
       <label className="flex items-start gap-3 text-sm">
-        <input required type="checkbox" name="consent" className="mt-1 h-4 w-4" />
+        <Checkbox required name="consent" className="mt-1" />
         <span>
           <Tx
             k="newsletter.consent"
@@ -66,7 +112,7 @@ export function NewsletterForm() {
       >
         {pending ? "Sending…" : "Send confirmation email"}
       </button>
-      {message && <p role="status" className="text-sm text-muted-foreground">{message}</p>}
+      {message && <p role="alert" className="text-sm text-destructive">{message}</p>}
     </form>
   );
 }

@@ -28,7 +28,6 @@ import {
   MarketplaceSearchBar,
   resetRememberedMarketplaceSearch,
 } from "@/components/marketplace/marketplace-search-bar";
-import { GoogleTranslateWidget } from "@/components/shared/google-translate-widget";
 import {
   Tooltip,
   TooltipContent,
@@ -79,14 +78,13 @@ export function Header({
   popularCities = [],
   availablePropertyTypesByCity = {},
   propertyTypes = [],
-  languages = [],
-  currentLocale,
   listYourProperty = { text: "List your property", translated: false },
   listYourPropertyTooltip = {
     text: "Start listing your property — takes about 10 minutes.",
     translated: false,
   },
   navLabels = DEFAULT_NAV_LABELS,
+  regionalSettings,
 }: {
   popularCities?: PlaceOption[];
   availablePropertyTypesByCity?: Record<string, string[]>;
@@ -94,13 +92,10 @@ export function Header({
   listYourProperty?: Resolved;
   listYourPropertyTooltip?: Resolved;
   navLabels?: HeaderNavLabels;
-  languages?: {
-    code: string;
-    name: string;
-    isDefault: boolean;
-    useAiTranslation: boolean;
-  }[];
-  currentLocale?: string;
+  /** The globe button and its modal, rendered by the layout as a server component
+   *  (`RegionalSettingsLauncher`) so it can read cookies, rates and the detected
+   *  country without any of that being threaded through this client component. */
+  regionalSettings?: React.ReactNode;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -187,10 +182,11 @@ export function Header({
         </div>
 
         <div className="flex items-center justify-end gap-2 min-w-0">
-          <GoogleTranslateWidget
-            languages={languages}
-            currentLocale={currentLocale}
-          />
+          {user ? (
+            <div className="hidden sm:block">{regionalSettings}</div>
+          ) : (
+            regionalSettings
+          )}
           {user ? (
             <>
               <Tooltip>
@@ -291,6 +287,18 @@ export function Header({
                   <p className="text-xs text-muted-foreground">{user.email}</p>
                 </div>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="cursor-default gap-2 p-0 sm:hidden"
+                  onSelect={(event) => event.preventDefault()}
+                >
+                  <span className="pl-2 text-sm">
+                    <Tx k="regional.trigger_label" source="Language and currency" />
+                  </span>
+                  <div className="ml-auto [&_button]:px-2 [&_span]:hidden">
+                    {regionalSettings}
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="sm:hidden" />
                 <DropdownMenuItem asChild>
                   <Link href="/account/favorites">
                     <Heart className="mr-2 h-4 w-4" />

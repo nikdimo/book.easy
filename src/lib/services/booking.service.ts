@@ -12,6 +12,10 @@ import {
   computeStayQuote,
 } from "@/lib/utils/stay-pricing";
 import { isAvailabilityOverlapConstraintError } from "@/lib/utils/db-errors";
+import {
+  conversionRate,
+  type ConversionContext,
+} from "@/lib/currency/convert";
 import { newBookingReference } from "@/lib/utils/booking-reference";
 import {
   enqueueBookingEmails,
@@ -225,10 +229,21 @@ interface CreateBookingInput {
   checkOut: Date;
   guestCount: number;
   guestNote?: string;
+  /**
+   * What the guest was browsing in, and the rate they were shown it at. Recorded
+   * only — every amount this function computes and stores is in the listing's
+   * official currency, and nothing here participates in that arithmetic.
+   *
+   * Frozen at this moment on purpose: rates move, and re-converting later would
+   * change the figure on a confirmation page and in an already-sent email. The rate
+   * is derived here rather than by the caller, because only this function knows the
+   * listing's official currency once it has loaded it.
+   */
+  display?: ConversionContext | null;
 }
 
 export async function createBooking(input: CreateBookingInput) {
-  const { listingId, guestId, checkIn, checkOut, guestCount, guestNote } =
+  const { listingId, guestId, checkIn, checkOut, guestCount, guestNote, display } =
     input;
 
   const createdAt = new Date();
@@ -369,6 +384,13 @@ export async function createBooking(input: CreateBookingInput) {
           : null,
       } satisfies Prisma.InputJsonObject;
 
+      // Computed only after the official currency is known, and applied to nothing
+      // above: every figure in `priceBreakdown` and every column below stays in the
+      // listing's own currency.
+      const displayRate = display
+        ? conversionRate(listing.pricingRule.currency, display)
+        : null;
+
       // 6. Create booking
       const created = await tx.booking.create({
         data: {
@@ -389,6 +411,16 @@ export async function createBooking(input: CreateBookingInput) {
           promotionType: appliedPromotion?.type ?? null,
           priceBreakdown,
           priceBreakdownVersion: 1,
+          // A snapshot of what the guest saw, never a second source of truth for
+          // what they owe. `totalPrice` above remains the payable amount. Null all
+          // round when the guest was already browsing in the official currency.
+          ...(displayRate === null
+            ? {}
+            : {
+                displayCurrency: display!.display,
+                displayRate,
+                displayTotal: totalPrice * displayRate,
+              }),
           numberOfNights,
           status: BookingStatus.PENDING,
           responseDueAt,

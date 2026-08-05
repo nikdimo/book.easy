@@ -10,7 +10,8 @@ import { LocalizedPrice } from "@/components/shared/localized-price";
 import { auth } from "@/lib/auth";
 import { getGuestBookingForConfirmation } from "@/lib/services/booking.service";
 import { formatDate } from "@/lib/utils/format";
-import { getT, T, ti, tPlural } from "@/lib/i18n/t";
+import { formatMoney } from "@/lib/currency/convert";
+import { getT, T, TWithValues, ti, tPlural } from "@/lib/i18n/t";
 import { BookingStatusHero } from "@/components/booking/booking-status-hero";
 import { BOOKING_STATUSES } from "@/lib/constants";
 
@@ -149,12 +150,12 @@ export default async function BookingConfirmPage({ searchParams }: ConfirmPagePr
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span><T t={t} k="booking.accommodation" source="Accommodation" /> · <span className={nights.translated ? "notranslate" : undefined}>{nights.text}</span></span>
-              <LocalizedPrice amount={accommodationSubtotal} currency={booking.currency} locale={t.locale} />
+              <LocalizedPrice official amount={accommodationSubtotal} currency={booking.currency} locale={t.locale} />
             </div>
             {Number(booking.cleaningFee) > 0 && (
               <div className="flex justify-between">
                 <span><T t={t} k="booking.cleaning_fee" source="Cleaning fee" /></span>
-                <LocalizedPrice amount={Number(booking.cleaningFee)} currency={booking.currency} locale={t.locale} />
+                <LocalizedPrice official amount={Number(booking.cleaningFee)} currency={booking.currency} locale={t.locale} />
               </div>
             )}
             {Number(booking.discountAmount) > 0 && (
@@ -164,7 +165,7 @@ export default async function BookingConfirmPage({ searchParams }: ConfirmPagePr
                     ? <T t={t} k="promotion.free_cleaning" source="Free cleaning" />
                     : <T t={t} k="promotion.special_offer" source="Special offer" />}
                 </span>
-                <span>−<LocalizedPrice amount={Number(booking.discountAmount)} currency={booking.currency} locale={t.locale} /></span>
+                <span>−<LocalizedPrice official amount={Number(booking.discountAmount)} currency={booking.currency} locale={t.locale} /></span>
               </div>
             )}
             <Separator />
@@ -172,11 +173,33 @@ export default async function BookingConfirmPage({ searchParams }: ConfirmPagePr
               <span><T t={t} k="booking.total" source="Total" /></span>
               <span className="flex items-baseline gap-2">
                 {booking.originalTotal && Number(booking.discountAmount) > 0 ? (
-                  <LocalizedPrice amount={Number(booking.originalTotal)} currency={booking.currency} locale={t.locale} className="text-sm font-normal text-muted-foreground line-through" />
+                  <LocalizedPrice official amount={Number(booking.originalTotal)} currency={booking.currency} locale={t.locale} className="text-sm font-normal text-muted-foreground line-through" />
                 ) : null}
-                <LocalizedPrice amount={Number(booking.totalPrice)} currency={booking.currency} locale={t.locale} />
+                <LocalizedPrice official amount={Number(booking.totalPrice)} currency={booking.currency} locale={t.locale} />
               </span>
             </div>
+            {/* The booking is agreed in the listing's currency. This line is the
+                figure the guest was browsing at when they booked, frozen with the
+                rate used — deliberately not re-converted at today's rate, so
+                reopening this page never changes what it says. */}
+            {booking.displayCurrency && booking.displayTotal ? (
+              <p className="text-right text-xs text-muted-foreground">
+                <TWithValues
+                  t={t}
+                  k="booking.display_total_approx"
+                  source="Approximately {amount} at the time of booking. The booking is agreed in {currency}."
+                  values={{
+                    amount: formatMoney(
+                      Number(booking.displayTotal),
+                      booking.displayCurrency,
+                      t.locale,
+                      { converted: true },
+                    ),
+                    currency: booking.currency,
+                  }}
+                />
+              </p>
+            ) : null}
           </div>
 
           <p className={reference.translated ? "notranslate text-xs text-muted-foreground" : "text-xs text-muted-foreground"}>{reference.text}</p>

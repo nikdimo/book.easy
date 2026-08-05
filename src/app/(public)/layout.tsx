@@ -6,8 +6,8 @@ import {
   getAvailablePropertyTypesByCity,
 } from "@/lib/services/search.service";
 import { getActivePropertyTypes } from "@/lib/services/property-type.service";
-import { getEnabledLanguages } from "@/lib/services/language.service";
-import { getLocale, getT, type Resolved } from "@/lib/i18n/t";
+import { RegionalSettingsLauncher } from "@/components/shared/regional-settings-launcher";
+import { getT, type Resolved } from "@/lib/i18n/t";
 import type { HeaderNavLabels } from "@/components/shared/header";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 import type { PlaceOption } from "@/lib/utils/place";
@@ -30,15 +30,12 @@ function resolveNavLabels(t: Awaited<ReturnType<typeof getT>>): HeaderNavLabels 
 
 async function HeaderWithPopularCities({
   t,
-  requestedLocale,
 }: {
   t: Awaited<ReturnType<typeof getT>>;
-  requestedLocale: string;
 }) {
   let popularCities: PlaceOption[] = [];
   let availablePropertyTypesByCity: Record<string, string[]> = {};
   let propertyTypes: PropertyTypeOption[] = [];
-  let languages: Awaited<ReturnType<typeof getEnabledLanguages>> = [];
   // Source text MUST be a string literal here so the translation scanner can extract it.
   let listYourProperty: Resolved = { text: "List your property", translated: false };
   let listYourPropertyTooltip: Resolved = {
@@ -46,12 +43,11 @@ async function HeaderWithPopularCities({
     translated: false,
   };
   try {
-    [popularCities, availablePropertyTypesByCity, propertyTypes, languages] =
+    [popularCities, availablePropertyTypesByCity, propertyTypes] =
       await Promise.all([
         getAvailableCities(),
         getAvailablePropertyTypesByCity(),
         getActivePropertyTypes(),
-        getEnabledLanguages(),
       ]);
     listYourProperty = t.resolve("header.list_your_property", "List your property");
     listYourPropertyTooltip = t.resolve(
@@ -62,24 +58,22 @@ async function HeaderWithPopularCities({
     popularCities = [];
     availablePropertyTypesByCity = {};
     propertyTypes = [];
-    languages = [];
   }
   return (
     <Header
       popularCities={popularCities}
       availablePropertyTypesByCity={availablePropertyTypesByCity}
       propertyTypes={propertyTypes}
-      languages={languages}
-      currentLocale={requestedLocale}
       listYourProperty={listYourProperty}
       listYourPropertyTooltip={listYourPropertyTooltip}
       navLabels={resolveNavLabels(t)}
+      regionalSettings={<RegionalSettingsLauncher />}
     />
   );
 }
 
 export default async function PublicLayout({ children }: { children: React.ReactNode }) {
-  const [t, requestedLocale] = await Promise.all([getT(), getLocale()]);
+  const t = await getT();
 
   // Search/picker copy is resolved by `useSearchLabels()` on the client, off the
   // root `I18nProvider` — there is no second provider here.
@@ -87,7 +81,7 @@ export default async function PublicLayout({ children }: { children: React.React
     <div className="h-dvh overflow-hidden">
       <div className="h-full overflow-y-auto">
         <Suspense fallback={<div className="h-[72px] border-b bg-background" />}>
-          <HeaderWithPopularCities t={t} requestedLocale={requestedLocale} />
+          <HeaderWithPopularCities t={t} />
         </Suspense>
         <main>{children}</main>
         <Footer />

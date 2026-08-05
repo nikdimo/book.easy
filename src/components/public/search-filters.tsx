@@ -40,6 +40,8 @@ import type { SearchFilterPreview } from "@/lib/types/search";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 import { cn } from "@/lib/utils";
 import { Tx, useI18n } from "@/lib/i18n/client";
+import { useDisplayCurrency } from "@/lib/currency/client";
+import { BASE_CURRENCY } from "@/lib/currency/currency-preference";
 import type { Resolved } from "@/lib/i18n/t";
 import {
   resolveAmenityCategory,
@@ -93,8 +95,16 @@ function parsePositiveInt(value: string | null): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
-function formatPrice(value: number, locale: string) {
-  return new Intl.NumberFormat(locale, { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(value);
+/**
+ * The slider's own values stay in the base currency and are what actually go into
+ * the query — "price sorting and filtering continue to use consistent underlying
+ * values", so changing display currency never changes which listings match. Only
+ * the two labels are converted, so a guest browsing in DKK can read the range they
+ * are setting.
+ */
+function usePriceRangeLabel() {
+  const display = useDisplayCurrency();
+  return (value: number) => display.format(value, BASE_CURRENCY).text;
 }
 
 function parseDateFlexibility(value: string | null): number {
@@ -251,6 +261,7 @@ function SearchFiltersInner({
   initialState: SearchFiltersState;
 }) {
   const i18n = useI18n();
+  const formatPrice = usePriceRangeLabel();
   const allPropertyTypeValues = useMemo(
     () => propertyTypeOptions.map((t) => t.value),
     [propertyTypeOptions]
@@ -536,7 +547,7 @@ function SearchFiltersInner({
                     <Tx k="filters.minimum" source="Minimum" />
                   </span>
                   <span className="notranslate mt-1 block text-base font-semibold text-foreground" translate="no" suppressHydrationWarning>
-                    {formatPrice(priceRange[0], i18n.locale)}
+                    {formatPrice(priceRange[0])}
                   </span>
                 </div>
                 <div className="rounded-[1.25rem] border border-border bg-background px-4 py-3">
@@ -544,7 +555,7 @@ function SearchFiltersInner({
                     <Tx k="filters.maximum" source="Maximum" />
                   </span>
                   <span className="notranslate mt-1 block text-base font-semibold text-foreground" translate="no" suppressHydrationWarning>
-                    {formatPrice(priceRange[1], i18n.locale)}
+                    {formatPrice(priceRange[1])}
                   </span>
                 </div>
               </div>

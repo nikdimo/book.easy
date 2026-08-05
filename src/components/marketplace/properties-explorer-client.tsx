@@ -43,6 +43,8 @@ import {
 } from "@/lib/map-bounds";
 import { Tx, useI18n } from "@/lib/i18n/client";
 import type { Resolved } from "@/lib/i18n/t";
+import { useDisplayCurrency } from "@/lib/currency/client";
+import { BASE_CURRENCY } from "@/lib/currency/currency-preference";
 
 function QuickFilterButton({
   active = false,
@@ -69,17 +71,21 @@ function QuickFilterButton({
   );
 }
 
-function formatPriceChipLabel(minPrice?: number, maxPrice?: number) {
+function formatPriceChipLabel(
+  minPrice: number | undefined,
+  maxPrice: number | undefined,
+  format: (amount: number) => string,
+) {
   if (minPrice != null && maxPrice != null) {
-    return `\u20AC${minPrice} - \u20AC${maxPrice}`;
+    return `${format(minPrice)} - ${format(maxPrice)}`;
   }
 
   if (minPrice != null) {
-    return `\u20AC${minPrice}+`;
+    return `${format(minPrice)}+`;
   }
 
   if (maxPrice != null) {
-    return `Up to \u20AC${maxPrice}`;
+    return `Up to ${format(maxPrice)}`;
   }
 
   return "Price";
@@ -108,7 +114,7 @@ function PriceFilterPopover({
   onApply: (range: [number, number]) => void;
   onClear: () => void;
 }) {
-  const i18n = useI18n();
+  const display = useDisplayCurrency();
   const [priceRange, setPriceRange] = useState(initialRange);
 
   return (
@@ -151,7 +157,7 @@ function PriceFilterPopover({
                 <Tx k="filters.minimum" source="Minimum" />
               </span>
               <span className="notranslate mt-1 block text-base font-semibold text-foreground" translate="no" suppressHydrationWarning>
-                {new Intl.NumberFormat(i18n.locale, { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(priceRange[0])}
+                {display.format(priceRange[0], BASE_CURRENCY).text}
               </span>
             </div>
             <div className="rounded-[1.25rem] border border-border bg-background px-4 py-3">
@@ -159,7 +165,7 @@ function PriceFilterPopover({
                 <Tx k="filters.maximum" source="Maximum" />
               </span>
               <span className="notranslate mt-1 block text-base font-semibold text-foreground" translate="no" suppressHydrationWarning>
-                {new Intl.NumberFormat(i18n.locale, { style: "currency", currency: "EUR", maximumFractionDigits: 0 }).format(priceRange[1])}
+                {display.format(priceRange[1], BASE_CURRENCY).text}
               </span>
             </div>
           </div>
@@ -209,6 +215,7 @@ export function PropertiesExplorerClient({
   featuredMarket?: boolean;
 }) {
   const i18n = useI18n();
+  const display = useDisplayCurrency();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [priceOpen, setPriceOpen] = useState(false);
@@ -359,7 +366,11 @@ export function PropertiesExplorerClient({
               open={priceOpen}
               onOpenChange={setPriceOpen}
               active={hasPriceFilter}
-              label={formatPriceChipLabel(params.minPrice, params.maxPrice)}
+              label={formatPriceChipLabel(
+                params.minPrice,
+                params.maxPrice,
+                (amount) => display.format(amount, BASE_CURRENCY).text,
+              )}
               initialRange={resolvePriceRange(params.minPrice, params.maxPrice)}
               onApply={applyPrice}
               onClear={() => {
@@ -592,10 +603,10 @@ export function PropertiesExplorerClient({
         </div>
 
         <aside
-          className="pointer-events-none absolute inset-y-0 right-0 z-30 hidden w-[45vw] border-l border-border bg-muted/20 p-3 pl-2 lg:block xl:w-[48vw]"
+          className="pointer-events-none absolute inset-y-0 right-0 z-30 hidden w-[45vw] border-l border-border bg-muted/20 p-0 lg:block xl:w-[48vw]"
           aria-label={i18n.resolve("map.listings", "Map of listings").text}
         >
-          <div className="pointer-events-auto sticky top-20 h-[calc(100dvh-5rem-1.5rem)]">
+          <div className="pointer-events-auto sticky top-0 h-[100dvh] min-h-0 p-5">
             <PropertiesMap
               pins={mapPins}
               hoveredPinId={hoveredPinId}

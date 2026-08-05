@@ -74,7 +74,8 @@ export async function ListingLocationMap({
             lng={longitude + lngOffset}
             hasPin={false}
             zoom={15}
-            interactive={false}
+            interactive
+            pinBehavior="location"
             className="h-full w-full"
           />
         </div>

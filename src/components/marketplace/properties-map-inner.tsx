@@ -8,6 +8,7 @@ import {
   Marker,
   Popup,
   ZoomControl,
+  ScaleControl,
   useMap,
 } from "react-leaflet";
 import L from "leaflet";
@@ -222,6 +223,10 @@ function priceDivIcon(label: string, active: boolean) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+  // Let Leaflet reserve approximately the same width as the rendered label. A fixed
+  // 96px box made short prices look padded and still was not reliable for longer
+  // currency formats.
+  const width = Math.max(70, Math.min(180, label.length * 9 + 24));
   return L.divIcon({
     className: "!border-0 !bg-transparent",
     html: `<div class="whitespace-nowrap rounded-full border px-3 py-1.5 text-sm font-semibold shadow-md transition-[transform,background-color,color,border-color] duration-150 ${
@@ -229,8 +234,8 @@ function priceDivIcon(label: string, active: boolean) {
         ? "scale-110 border-foreground bg-foreground text-background"
         : "border-border bg-background text-foreground hover:scale-105 hover:border-foreground hover:bg-foreground hover:text-background"
     }">${safe}</div>`,
-    iconSize: [96, 36],
-    iconAnchor: [48, 36],
+    iconSize: [width, 36],
+    iconAnchor: [width / 2, 36],
   });
 }
 
@@ -764,6 +769,7 @@ export default function PropertiesMapInner({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <ZoomControl position="bottomright" />
+        <ScaleControl position="bottomleft" imperial={false} maxWidth={120} />
         {mountBounds ? <ViewFromBounds bounds={mountBounds} /> : null}
         {!mountBounds && !userMoved ? (
           <FitBounds positions={positions} />

@@ -1272,6 +1272,13 @@ export function ListingForm({
     scrollEditorToTop();
   }
 
+  function openDateOffersFromOfferStep() {
+    setPrePublishOrigin("offer-step");
+    setPrePublishScreen("offers");
+    selectMobilePane("edit");
+    scrollEditorToTop();
+  }
+
   /** Back out one screen at a time: a task returns to wherever it was opened from —
    *  the checklist, or the Pricing step — and the checklist returns to the wizard. */
   function backFromPrePublish() {
@@ -2162,13 +2169,7 @@ export function ListingForm({
               <FieldSection>
                 <div className="space-y-3 md:space-y-4">
                   <div>
-                    <p className="text-xs text-muted-foreground md:text-sm">
-                      <Tx
-                        k="host.form.offer_hint"
-                        source="Optionally offer a discount to attract guests. Choose a ready-made offer or publish without one."
-                      />
-                    </p>
-                    <div className="mt-2 grid gap-2 md:mt-4 md:grid-cols-3 md:gap-3">
+                    <div className="grid gap-2 md:grid-cols-3 md:gap-3">
                       {[
                         {
                           title: "Recommended",
@@ -2310,12 +2311,71 @@ export function ListingForm({
                         />
                       </div>
                     </div>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      <Tx
-                        k="host.form.offer_edit_hint"
-                        source="Feel free to edit manually."
-                      />
-                    </p>
+                    <div className="mt-2 flex items-center justify-between gap-2.5">
+                      <p className="min-w-0 text-xs text-muted-foreground">
+                        <Tx
+                          k="host.form.offer_edit_hint"
+                          source="Feel free to edit manually."
+                        />
+                      </p>
+                      <button
+                        type="button"
+                        onClick={openDateOffersFromOfferStep}
+                        className="flex shrink-0 items-center gap-1 text-xs font-medium text-primary underline-offset-4 hover:underline"
+                      >
+                        <CalendarRange className="size-3.5" aria-hidden="true" />
+                        {prePublishPlan.offers.length > 0 ? (
+                          <Tx
+                            k="host.form.offer_specific_dates_edit"
+                            source="Edit specific dates"
+                          />
+                        ) : (
+                          <Tx
+                            k="host.form.offer_specific_dates"
+                            source="Specific dates"
+                          />
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={values.promotionFreeCleaning === "true"}
+                        aria-label={
+                          resolve(
+                            "host.form.offer_free_cleaning",
+                            "Free cleaning",
+                          ).text
+                        }
+                        onClick={() => {
+                          setField(
+                            "promotionFreeCleaning",
+                            values.promotionFreeCleaning === "true" ? "false" : "true",
+                          );
+                          setTimeout(() => void autosaveDraft(), 0);
+                        }}
+                        className="flex shrink-0 items-center gap-2 text-xs font-medium text-foreground"
+                      >
+                        <Tx k="host.form.offer_free_cleaning" source="Free cleaning" />
+                        <span
+                          aria-hidden="true"
+                          className={cn(
+                            "relative h-5 w-9 rounded-full transition-colors",
+                            values.promotionFreeCleaning === "true"
+                              ? "bg-primary"
+                              : "bg-muted-foreground/25",
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "absolute top-0.5 size-4 rounded-full bg-white shadow-sm transition-transform",
+                              values.promotionFreeCleaning === "true"
+                                ? "translate-x-4"
+                                : "translate-x-0.5",
+                            )}
+                          />
+                        </span>
+                      </button>
+                    </div>
                   </div>
 
                   <input
@@ -2330,7 +2390,8 @@ export function ListingForm({
                   />
                   <OfferPreview
                     headline={
-                      values.promotionPercent && values.promotionMinimumNights ? (
+                      values.promotionFreeCleaning === "true" ||
+                      (values.promotionPercent && values.promotionMinimumNights) ? (
                         <>
                           {" "}
                           {
@@ -2351,6 +2412,15 @@ export function ListingForm({
                               { nights: values.promotionMinimumNights },
                             ).text
                           }
+                          {values.promotionFreeCleaning === "true" && (
+                            <>
+                              {(values.promotionPercent && values.promotionMinimumNights) && " · "}
+                              <Tx
+                                k="host.form.offer_free_cleaning"
+                                source="Free cleaning"
+                              />
+                            </>
+                          )}
                         </>
                       ) : (
                         <Tx

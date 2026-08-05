@@ -31,7 +31,7 @@ import { getPropertyTypeLabel } from "@/lib/services/property-type.service";
 import { auth } from "@/lib/auth";
 import { getFavoriteListingIdSet } from "@/lib/services/favorite.service";
 import { getT, T, ti, tPlural } from "@/lib/i18n/t";
-import { formatPrice } from "@/lib/utils/format";
+import { getPriceFormatter } from "@/lib/currency/price";
 import type { Metadata } from "next";
 import { getPublishedListingReviews } from "@/lib/services/review.service";
 
@@ -67,7 +67,10 @@ export default async function ListingDetailPage({
 }: ListingPageProps) {
   const { slug } = await params;
   const search = await searchParams;
-  const listing = await getListingBySlug(slug);
+  const [listing, price] = await Promise.all([
+    getListingBySlug(slug),
+    getPriceFormatter(),
+  ]);
 
   if (!listing) notFound();
 
@@ -203,6 +206,35 @@ export default async function ListingDetailPage({
     listing.property.area,
     listing.property.country,
   ].filter((value): value is string => Boolean(value));
+  const bookingWidget = listing.pricingRule ? (
+    <BookingWidget
+      listingId={listing.id}
+      maxGuests={listing.maxGuests}
+      nightlyRate={Number(listing.pricingRule.baseNightlyRate)}
+      cleaningFee={Number(listing.pricingRule.cleaningFee)}
+      currency={listing.pricingRule.currency}
+      minNights={listing.pricingRule.minNights}
+      promotions={listing.promotions.map((promotion) => ({
+        id: promotion.id,
+        type: promotion.type,
+        discountPercent: promotion.discountPercent,
+        minimumNights: promotion.minimumNights,
+        freeCleaning: promotion.freeCleaning,
+        roundToWholeUnit: promotion.roundToWholeUnit,
+        startDate: promotion.startDate,
+        endDate: promotion.endDate,
+        createdAt: promotion.createdAt,
+      }))}
+      disabledDateRanges={disabledDateRanges}
+      priceOverrides={priceOverrides}
+      initialCheckIn={initialCheckIn}
+      initialCheckOut={initialCheckOut}
+      initialGuests={initialGuests}
+      initialGuestDetails={initialGuestDetails}
+      hasExplicitSearchSelection={hasExplicitSearchSelection}
+      reserveTooltip={reserveTooltip}
+    />
+  ) : null;
 
   return (
     <div className="max-w-[1120px] mx-auto px-4 md:px-6 pt-6 md:pt-8 pb-28 lg:pb-8">
@@ -312,11 +344,12 @@ export default async function ListingDetailPage({
                     >
                       {cleaningFeeLabel.text}
                     </span>{" "}
-                    {formatPrice(
-                      Number(listing.pricingRule.cleaningFee),
-                      listing.pricingRule.currency,
-                      t.locale,
-                    )}
+                    {
+                      price.format(
+                        Number(listing.pricingRule.cleaningFee),
+                        listing.pricingRule.currency,
+                      ).text
+                    }
                   </span>
                 </span>
               </>
@@ -362,6 +395,10 @@ export default async function ListingDetailPage({
           <Separator />
 
           <AmenityList amenities={listing.amenities} />
+
+          {bookingWidget && (
+            <div className="lg:hidden">{bookingWidget}</div>
+          )}
 
           {listing.property.latitude != null &&
             listing.property.longitude != null && (
@@ -431,36 +468,8 @@ export default async function ListingDetailPage({
           ) : null}
         </div>
 
-        <div className="relative">
-          {listing.pricingRule && (
-            <BookingWidget
-              listingId={listing.id}
-              maxGuests={listing.maxGuests}
-              nightlyRate={Number(listing.pricingRule.baseNightlyRate)}
-              cleaningFee={Number(listing.pricingRule.cleaningFee)}
-              currency={listing.pricingRule.currency}
-              minNights={listing.pricingRule.minNights}
-              promotions={listing.promotions.map((promotion) => ({
-                id: promotion.id,
-                type: promotion.type,
-                discountPercent: promotion.discountPercent,
-                minimumNights: promotion.minimumNights,
-                freeCleaning: promotion.freeCleaning,
-                roundToWholeUnit: promotion.roundToWholeUnit,
-                startDate: promotion.startDate,
-                endDate: promotion.endDate,
-                createdAt: promotion.createdAt,
-              }))}
-              disabledDateRanges={disabledDateRanges}
-              priceOverrides={priceOverrides}
-              initialCheckIn={initialCheckIn}
-              initialCheckOut={initialCheckOut}
-              initialGuests={initialGuests}
-              initialGuestDetails={initialGuestDetails}
-              hasExplicitSearchSelection={hasExplicitSearchSelection}
-              reserveTooltip={reserveTooltip}
-            />
-          )}
+        <div className="relative hidden lg:block">
+          {bookingWidget}
         </div>
       </div>
     </div>

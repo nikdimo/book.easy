@@ -1,14 +1,9 @@
 "use client";
 
-import { LogIn, LogOut } from "lucide-react";
+import * as React from "react";
+import { Check, ChevronDown, Clock3, LogIn, LogOut } from "lucide-react";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tx, useI18n } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
 
@@ -18,10 +13,6 @@ import { cn } from "@/lib/utils";
 export const DEFAULT_CHECK_IN_TIME = "15:00";
 export const DEFAULT_CHECK_OUT_TIME = "11:00";
 
-/** Radix rejects an empty SelectItem value, so "no fixed time" travels as a sentinel
- *  and is mapped back to "" at the edges. */
-const FLEXIBLE = "flexible";
-
 /** Every half hour of the day. Hosts outside the usual afternoon/morning window are
  *  common enough (early ferries, late flights) that trimming the list would just be a
  *  guess about which of them matter. */
@@ -30,6 +21,13 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, index) => {
   const minute = index % 2 === 0 ? "00" : "30";
   return `${String(hour).padStart(2, "0")}:${minute}`;
 });
+
+const TIME_GROUPS = [
+  { label: "Morning", times: TIME_OPTIONS.filter((time) => time >= "06:00" && time < "12:00") },
+  { label: "Afternoon", times: TIME_OPTIONS.filter((time) => time >= "12:00" && time < "18:00") },
+  { label: "Evening", times: TIME_OPTIONS.filter((time) => time >= "18:00") },
+  { label: "Night", times: TIME_OPTIONS.filter((time) => time < "06:00") },
+];
 
 /** A stored value is only offered back if it is one we recognise — a hand-edited draft
  *  or an older row should not put the select into a state the host cannot leave. */
@@ -58,6 +56,12 @@ function TimeSelect({
     "host.form.stay_times.flexible",
     "Flexible — agree with the guest",
   ).text;
+  const selectedLabel = value === "" ? flexibleLabel : value;
+  const [open, setOpen] = React.useState(false);
+  const selectTime = (next: string) => {
+    onChange(next);
+    setOpen(false);
+  };
 
   return (
     <div className="min-w-0 flex-1">
@@ -65,22 +69,55 @@ function TimeSelect({
         <Icon className="size-4 shrink-0 text-primary" aria-hidden="true" />
         {label}
       </Label>
-      <Select
-        value={value === "" ? FLEXIBLE : value}
-        onValueChange={(next) => onChange(next === FLEXIBLE ? "" : next)}
-      >
-        <SelectTrigger id={id} className="mt-1.5 w-full bg-background">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value={FLEXIBLE}>{flexibleLabel}</SelectItem>
-          {TIME_OPTIONS.map((time) => (
-            <SelectItem key={time} value={time}>
-              {time}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger
+          id={id}
+          className="mt-1.5 flex h-11 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-left text-sm shadow-xs transition-colors hover:border-primary/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        >
+          <span className={cn("flex items-center gap-2", value === "" && "text-muted-foreground")}>
+            <Clock3 className="size-4 text-primary" aria-hidden="true" />
+            {selectedLabel}
+          </span>
+          <ChevronDown className="size-4 text-muted-foreground" aria-hidden="true" />
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-[min(22rem,calc(100vw-2rem))]">
+          <button
+            type="button"
+            onClick={() => selectTime("")}
+            className={cn(
+              "flex h-10 w-full items-center justify-between rounded-md px-3 text-left text-sm transition-colors hover:bg-muted",
+              value === "" && "bg-primary/10 font-medium text-primary",
+            )}
+          >
+            {flexibleLabel}
+            {value === "" && <Check className="size-4" aria-hidden="true" />}
+          </button>
+          <div className="grid grid-cols-2 gap-3 border-t pt-2.5">
+            {TIME_GROUPS.map((group) => (
+              <div key={group.label}>
+                <p className="mb-1.5 px-1 text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground">
+                  {group.label}
+                </p>
+                <div className="grid grid-cols-2 gap-1">
+                  {group.times.map((time) => (
+                    <button
+                      key={time}
+                      type="button"
+                      onClick={() => selectTime(time)}
+                      className={cn(
+                        "h-9 rounded-md text-sm transition-colors hover:bg-muted",
+                        value === time && "bg-primary font-medium text-primary-foreground hover:bg-primary",
+                      )}
+                    >
+                      {time}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
       <p className="mt-1.5 text-xs text-muted-foreground">{hint}</p>
     </div>
   );

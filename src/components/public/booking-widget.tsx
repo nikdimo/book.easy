@@ -23,6 +23,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { LocalizedPrice } from "@/components/shared/localized-price";
+import { OfficialAmountNotice } from "@/components/shared/official-amount-notice";
 import { createBookingAction } from "@/lib/actions/booking.actions";
 import { toast } from "sonner";
 import { ChevronDown, ChevronUp } from "lucide-react";
@@ -578,6 +579,7 @@ export function BookingWidget({
             locale={i18n.locale}
           />
         </div>
+        <OfficialAmountNotice amount={total} officialCurrency={currency} />
       </div>
     );
   }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { auth } from "@/lib/auth";
 import { clientIpFromHeaders, rateLimit } from "@/lib/rate-limit";
 import {
   normalizeMarketingEmail,
@@ -13,6 +14,7 @@ const schema = z.object({
 });
 
 export async function POST(request: Request) {
+  const session = await auth();
   const ip = clientIpFromHeaders(request.headers);
   const body = schema.safeParse(await request.json().catch(() => null));
   if (!body.success) {
@@ -22,6 +24,9 @@ export async function POST(request: Request) {
     );
   }
   const email = normalizeMarketingEmail(body.data.email);
+  const sessionEmail = session?.user?.email
+    ? normalizeMarketingEmail(session.user.email)
+    : null;
   const ipLimit = rateLimit(`marketing-subscribe-ip:${ip}`, 10, 60 * 60 * 1000);
   const emailLimit = rateLimit(
     `marketing-subscribe-email:${email}`,
@@ -37,6 +42,9 @@ export async function POST(request: Request) {
 
   await requestEmailMarketingConsent({
     email,
+    // A signed-in visitor may deliberately subscribe a different address. Only
+    // bind the durable marketing identity to the account when the addresses match.
+    userId: sessionEmail === email ? session?.user?.id : undefined,
     audience: body.data.audience,
     source: "public-newsletter-form",
     metadata: {

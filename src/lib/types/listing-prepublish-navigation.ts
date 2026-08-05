@@ -23,7 +23,11 @@ export type PrePublishNavScreen =
 /** `"menu"` — opened from the pre-publish checklist. `"pricing-step"` — opened from the
  *  date-pricing call to action on the wizard's Pricing step. `"availability-start"` —
  *  the blocking calendar opened from the availability-confirmation screen. */
-export type PrePublishOrigin = "menu" | "pricing-step" | "availability-start";
+export type PrePublishOrigin =
+  | "menu"
+  | "pricing-step"
+  | "offer-step"
+  | "availability-start";
 
 /**
  * The screen a Back or Done press should land on, or `null` to leave the pre-publish
@@ -45,7 +49,7 @@ export function prePublishBackTarget(
   if (screen === "availability-start") return null;
   // A task opened from Pricing returns to Pricing, not to the checklist the host
   // never visited.
-  if (origin === "pricing-step") return null;
+  if (origin === "pricing-step" || origin === "offer-step") return null;
   // Closing the blocking calendar puts the host back on the availability question they
   // opened it from, with their answer and their new blocks both still there.
   if (origin === "availability-start") return "availability-start";

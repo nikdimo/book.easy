@@ -108,7 +108,7 @@ Keep the pricing step as the home for money, and reach the date-based tools from
 
 **Decision:** Pricing and Special Offer remain two separate, focused screens. They will not be merged. The nightly-rate CTA is **implemented** — see [listing-wizard-spec.md § Phase 3A](./listing-wizard-spec.md). It opens the existing pre-publish date-pricing screen against the existing plan state and returns the host to the Pricing step, and the summary line reads *"Custom prices set for 3 date ranges"*.
 
-The *"Discount specific dates instead?"* CTA under Special Offer (Phase 3B) is deliberately paused. Dated offers are already available from the final checklist, so this is a discoverability enhancement rather than missing functionality. Do not build it without a separate decision.
+**Decision and status: ✅ implemented.** A compact **Specific dates** link now sits in the existing helper row on Special Offer, opens the same dated-promotions calendar as the final checklist, and returns to Special Offer when closed. No additional row or calendar implementation was added.
 
 ---
 

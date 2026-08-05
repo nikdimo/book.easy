@@ -154,7 +154,17 @@
   [role="button"] {
     -webkit-tap-highlight-color: transparent;
   }
+  /* The marketplace behaves like an app surface. Small pointer drags while moving
+     between its controls can create a page-wide text selection that looks like a
+     hover highlight. Keep those accidental selections visually inert, while form
+     fields below retain a clear selection colour for editing. */
   ::selection {
+    background: transparent;
+    color: inherit;
+  }
+  input::selection,
+  textarea::selection,
+  [contenteditable="true"]::selection {
     background: color-mix(in oklab, var(--primary) 22%, white);
   }
   html {

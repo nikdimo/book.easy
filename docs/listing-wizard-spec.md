@@ -175,7 +175,7 @@ Note: `host.prepublish.round_label` (*"Round up to the nearest 5"*) belongs to t
 
 ---
 
-## Phase 3 — Reach date pricing from the pricing step 🟡 part A implemented, part B not started
+## Phase 3 — Reach date pricing and dated offers from their wizard steps ✅ implemented
 
 ### Phase 3A — date-pricing CTA ✅ implemented
 
@@ -191,9 +191,9 @@ The Pricing step now carries the date-pricing door. Below the nightly-rate field
 
 **Layout:** the task screen already renders inside the wizard's editor pane, so it is a full-screen editing experience on the phone and the existing wide task layout on desktop, and it keeps using the wizard's single bottom action row — no second mobile footer was introduced. The CTA row stacks to full width below `sm` and its button is `size="lg"` (48px tall on touch).
 
-### Phase 3B — dated-offer CTA ⛔ not started
+### Phase 3B — dated-offer CTA ✅ implemented
 
-The equivalent *"Discount specific dates instead?"* door under the special offer is **not** implemented and is still to be discussed. Pricing and Special Offer remain two separate wizard steps; merging them is not part of Phase 3A.
+The Special Offer step now has a compact **Specific dates** CTA in its existing helper row. It opens the existing `PrePublishTaskScreen` with `task="offers"` against the same `prePublishPlan` used by the final checklist. Its `"offer-step"` navigation origin makes Back and Done return to Special Offer. Pricing and Special Offer remain separate wizard steps.
 
 **Agreed shape (original):**
 

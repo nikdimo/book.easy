@@ -4,6 +4,7 @@ import {
   getUserCommunicationSettings,
   marketingConsentText,
 } from "@/lib/services/marketing-consent.service";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export const metadata = { title: "Communication preferences" };
 
@@ -20,11 +21,10 @@ function Toggle({
 }) {
   return (
     <label className="flex items-start gap-4 rounded-xl border p-4">
-      <input
-        type="checkbox"
+      <Checkbox
         name={name}
         defaultChecked={defaultChecked}
-        className="mt-1 h-5 w-5"
+        className="mt-1"
       />
       <span>
         <span className="block font-medium">{title}</span>

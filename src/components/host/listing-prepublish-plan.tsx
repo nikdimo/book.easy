@@ -1004,53 +1004,50 @@ export function AvailabilityStartScreen({
       {/* Separate and optional on purpose: a start date and blocked dates are not
           alternatives. Opening on 1 September and taking a week off later that month is
           one host doing two things, so this never disables or replaces the choice above. */}
-      <section className="rounded-xl border border-border/70 bg-muted/20 p-3 md:p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-          <div className="flex min-w-0 flex-1 items-start gap-3 md:gap-4">
-            <span
-              className={cn(
-                "flex size-9 shrink-0 items-center justify-center rounded-lg md:size-10",
-                blockedNights > 0
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground",
-              )}
-            >
-              {blockedNights > 0 ? (
-                <Check className="size-5" strokeWidth={3} aria-hidden="true" />
-              ) : (
-                <CalendarOff className="size-5" aria-hidden="true" />
-              )}
+      <button
+        type="button"
+        onClick={onOpenBlockingCalendar}
+        className={cn(
+          "flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-all",
+          "border-border/70 bg-card hover:border-primary/40 hover:bg-muted/30",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        )}
+      >
+        <span
+          aria-hidden="true"
+          className={cn(
+            "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border-2",
+            blockedNights > 0
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-muted-foreground/40 text-muted-foreground",
+          )}
+        >
+          {blockedNights > 0 ? (
+            <Check className="size-3" strokeWidth={3} />
+          ) : (
+            <CalendarOff className="size-3.5" />
+          )}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-2">
+            <CalendarOff className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <span className="text-sm font-semibold md:text-base">
+              <Tx
+                k="host.prepublish.block_dates_title"
+                source="Block specific dates"
+              />
             </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold md:text-base">
-                <Tx
-                  k="host.prepublish.block_dates_title"
-                  source="Block specific dates"
-                />
-              </p>
-              <p className="mt-1 text-xs leading-snug text-muted-foreground md:text-sm">
-                <Tx
-                  k="host.prepublish.block_dates_hint"
-                  source="Block dates when you will use the property yourself, perform maintenance, or cannot host."
-                />
-              </p>
-            </div>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            className="w-full shrink-0 sm:w-auto"
-            onClick={onOpenBlockingCalendar}
-          >
-            <CalendarOff className="size-4" />
+          </span>
+          <span className="mt-1 block text-xs leading-snug text-muted-foreground md:text-sm">
             {blockedNights > 0
-              ? i18n.resolve("host.prepublish.block_dates_edit", "Edit blocked dates")
-                  .text
-              : i18n.resolve("host.prepublish.block_dates_action", "Block dates").text}
-          </Button>
-        </div>
-      </section>
+              ? `${blockedNights} ${blockedNights === 1 ? "night" : "nights"} blocked`
+              : i18n.resolve(
+                  "host.prepublish.block_dates_hint",
+                  "Block dates when you will use the property yourself, perform maintenance, or cannot host.",
+                ).text}
+          </span>
+        </span>
+      </button>
 
       {stayTimes}
 

@@ -18,7 +18,8 @@ import {
 } from "@/lib/property-type-filter";
 import { getMapCoordinatesForListing } from "@/lib/utils/listing-map-coords";
 import { MAP_BOUNDS_PARAM, parseMapBounds } from "@/lib/map-bounds";
-import { formatPrice, getNightCount } from "@/lib/utils/format";
+import { getNightCount } from "@/lib/utils/format";
+import { getPriceFormatter } from "@/lib/currency/price";
 import type { MapPin } from "@/components/marketplace/properties-map";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { getT, T, ti, tPlural } from "@/lib/i18n/t";
@@ -181,6 +182,10 @@ export default async function PropertiesPage({
   );
   const listingQueryString = listingQuery.toString();
 
+  // Marker labels are converted alongside the cards, so a map and the grid beside it
+  // never disagree about what a stay costs.
+  const price = await getPriceFormatter();
+
   const mapPins: MapPin[] = results.listings.flatMap((l) => {
     const coordinates = getMapCoordinatesForListing(l);
     if (!coordinates) return [];
@@ -202,8 +207,8 @@ export default async function PropertiesPage({
             })
           : null;
       label = quote
-        ? formatPrice(quote.total, cur, t.locale)
-        : formatPrice(nightly, cur, t.locale);
+        ? price.format(quote.total, cur).text
+        : price.format(nightly, cur).text;
     }
     return [
       {

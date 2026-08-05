@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { Header } from "@/components/shared/header";
-import { getEnabledLanguages } from "@/lib/services/language.service";
+import { RegionalSettingsLauncher } from "@/components/shared/regional-settings-launcher";
 
 /** Used only for direct/hard-navigation visits to /login (email links, typed URLs,
  * refreshes) — the common case (clicking "Log in" while browsing) is intercepted into
@@ -12,17 +12,12 @@ export default async function AuthLayout({
 }: {
   children: React.ReactNode;
 }) {
-  let languages: Awaited<ReturnType<typeof getEnabledLanguages>> = [];
-  try {
-    languages = await getEnabledLanguages();
-  } catch {
-    // Authentication must remain available during a temporary database outage.
-  }
-
   return (
     <div className="min-h-screen flex flex-col bg-background">
+      {/* The launcher degrades on its own when the database is down — authentication
+          must stay available through a temporary outage. */}
       <Suspense fallback={<div className="h-20 border-b bg-background" />}>
-        <Header languages={languages} />
+        <Header regionalSettings={<RegionalSettingsLauncher />} />
       </Suspense>
 
       <div className="relative flex-1 flex items-center justify-center overflow-hidden px-4 py-12">

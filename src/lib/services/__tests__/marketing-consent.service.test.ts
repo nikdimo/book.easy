@@ -77,6 +77,24 @@ describe("marketing consent", () => {
     ).toMatchObject({ allowed: false });
   });
 
+  it("does not attach a different public-form address to the signed-in account", async () => {
+    const user = await createTestGuest();
+    const alternateEmail = `newsletter-${user.id}@example.com`;
+    userIds.push(user.id);
+    emails.push(user.email, alternateEmail);
+
+    await requestEmailMarketingConsent({
+      email: alternateEmail,
+      userId: user.id,
+      audience: "GUEST",
+      source: "automated-test-public-form",
+    });
+
+    expect(
+      await db.marketingContact.findUniqueOrThrow({ where: { email: alternateEmail } })
+    ).toMatchObject({ userId: null });
+  });
+
   it("allows affirmative push consent and blocks it immediately after withdrawal", async () => {
     const user = await createTestGuest();
     userIds.push(user.id);

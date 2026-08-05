@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
-import { formatDateShort, formatPrice } from "@/lib/utils/format";
+import { formatDateShort } from "@/lib/utils/format";
+import { getPriceFormatter } from "@/lib/currency/price";
 import { getPropertyTypeLabel } from "@/lib/services/property-type.service";
 import { parseISO, isValid } from "date-fns";
 import { PropertyCardGallery } from "@/components/public/property-card-gallery";
@@ -60,6 +61,8 @@ export async function PropertyCard({
   mapListingId,
 }: PropertyCardProps) {
   const t = await getT();
+  // Request-scoped: a grid of two hundred cards resolves the rate table once.
+  const price = await getPriceFormatter();
   const { slug, title, property, images, video, pricingRule, promotions } =
     listing;
   const displayImages = images.filter((img) => img.url?.trim());
@@ -125,15 +128,25 @@ export async function PropertyCard({
     "{n} guest",
     "{n} guests",
   );
+  // Converted into the guest's display currency where a rate exists, and left in the
+  // listing's official currency where it does not. Conversion happens here, after
+  // `computeStayQuote` has already applied promotions and fees in the official
+  // currency — never before, and never as a second pricing calculation.
   const totalPrice =
     pricingRule && tripTotal != null
       ? ti(t, "property_card.price_total", "{price} total", {
-          price: formatPrice(tripTotal, pricingRule.currency, t.locale),
+          price: price.format(tripTotal, pricingRule.currency).text,
+        })
+      : null;
+  const nightlyPrice =
+    pricingRule && tripTotal != null
+      ? ti(t, "property_card.price_per_night", "{price} per night", {
+          price: price.format(nightly, pricingRule.currency).text,
         })
       : null;
   const originalTotalPrice =
     pricingRule && quote?.promotionEligible && quote.discountAmount > 0
-      ? formatPrice(quote.originalTotal, pricingRule.currency, t.locale)
+      ? price.format(quote.originalTotal, pricingRule.currency).text
       : null;
   const promotionMinimum = promotion?.minimumNights;
   const promotionLabel = promotion
@@ -231,7 +244,15 @@ export async function PropertyCard({
         ) : null}
 
         {pricingRule && tripTotal != null ? (
-          <div className="mt-1 flex items-baseline gap-2">
+          <div className="mt-1 flex flex-col items-start leading-5">
+            <span className="text-[0.85rem] text-muted-foreground">
+              <span
+                className={nightlyPrice?.translated ? "notranslate" : undefined}
+              >
+                {nightlyPrice?.text}
+              </span>
+            </span>
+            <div className="flex items-baseline gap-2">
             {promotion?.type === "PERCENT_DISCOUNT" && originalTotalPrice ? (
               <span className="text-[0.9rem] text-muted-foreground line-through">
                 {originalTotalPrice}
@@ -244,6 +265,7 @@ export async function PropertyCard({
                 {totalPrice?.text}
               </span>
             </span>
+            </div>
           </div>
         ) : pricingRule ? (
           <div className="mt-1 flex min-w-0 items-center gap-2 text-[0.85rem] leading-5 text-muted-foreground">

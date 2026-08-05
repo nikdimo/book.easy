@@ -269,6 +269,31 @@ enum MarketingDeliveryStatus {
   SKIPPED
 }
 
+enum ContactMessageStatus {
+  NEW
+  IN_PROGRESS
+  RESOLVED
+  SPAM
+}
+
+model ContactMessage {
+  id        String               @id @default(cuid())
+  userId    String?
+  name      String
+  email     String
+  category  String
+  subject   String
+  message   String               @db.Text
+  status    ContactMessageStatus @default(NEW)
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([email, createdAt])
+}
+
 // ─── User & Profile ─────────────────────────────────────────────────────────────
 
 model User {
@@ -285,6 +310,11 @@ model User {
   /// the fact, where the request-scoped locale cookie no longer exists — so the
   /// choice has to live on the account, not in `getLocale()`.
   locale        String?
+  /// Display currency for browsing, so the choice follows the account to another
+  /// device. Purely presentational: prices are authored, charged and settled in the
+  /// listing's official currency regardless of what this says. Null means the
+  /// visitor has never chosen, and detection applies.
+  displayCurrency String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -322,6 +352,7 @@ model User {
   reviewAdminReads        ReviewAdminRead[]
   communicationPreference CommunicationPreference?
   marketingContact        MarketingContact?
+  contactMessages         ContactMessage[]
   deletionTokens          AccountDeletionToken[]
 
   @@index([email])
@@ -791,6 +822,15 @@ model Booking {
   promotionType         PromotionType?
   priceBreakdown        Json?
   priceBreakdownVersion Int?
+  /// What the guest was browsing in when they booked, plus the rate used to show it.
+  /// Frozen at confirmation so the confirmation page and email keep showing the same
+  /// approximate figure the guest saw, instead of silently re-converting at today's
+  /// rate every time the page is opened. `currency` above remains the official,
+  /// payable amount; these three are a record of a display, never of an obligation.
+  /// Null when the guest was already browsing in the official currency.
+  displayCurrency       String?
+  displayRate           Decimal?       @db.Decimal(20, 10)
+  displayTotal          Decimal?       @db.Decimal(14, 2)
   numberOfNights        Int
   status                BookingStatus  @default(PENDING)
   responseDueAt         DateTime       @default(dbgenerated("(CURRENT_TIMESTAMP + INTERVAL '24 hours')"))
@@ -1500,4 +1540,26 @@ model MarketingDelivery {
   @@unique([campaignId, contactId])
   @@index([status, createdAt])
   @@index([contactId, createdAt])
+}
+
+// ─── Exchange rates ─────────────────────────────────────────────────────────────
+
+/// The last successfully fetched rate table, stored as one row so display prices
+/// survive a provider outage and a server restart. Rates are cached in memory for
+/// normal traffic (see lib/currency/rates.ts); this row is the cold-start and
+/// fallback source, not the read path for every request.
+///
+/// Always quoted against BASE_CURRENCY ("EUR"): `rates` is a JSON object of
+/// `{ ISO4217: multiplier }` where multiplier converts one unit of base into that
+/// currency. Display-only — nothing here ever feeds a stored or payable amount.
+model ExchangeRateSnapshot {
+  id        String   @id @default("current")
+  base      String   @default("EUR")
+  rates     Json
+  provider  String
+  /// When the provider says the rates themselves were published, which is what the
+  /// "rate last updated" disclosure shows — not when this row was written.
+  fetchedAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

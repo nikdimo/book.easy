@@ -19,6 +19,12 @@ type GoogleMap = {
   setCenter(position: { lat: number; lng: number }): void;
   setZoom(zoom: number): void;
 };
+type AdvancedMarker = { map: GoogleMap | null };
+type AdvancedMarkerConstructor = new (options: {
+  map: GoogleMap;
+  position: { lat: number; lng: number };
+  title?: string;
+}) => AdvancedMarker;
 type MapConstructor = new (
   container: HTMLElement,
   options: {
@@ -67,6 +73,7 @@ export default function ListingLocationPickerInner({
   onChange = () => undefined,
   className,
   interactive = true,
+  pinBehavior = "center",
 }: {
   lat: number;
   lng: number;
@@ -75,11 +82,15 @@ export default function ListingLocationPickerInner({
   onChange?: (lat: number, lng: number) => void;
   className?: string;
   interactive?: boolean;
+  /** Host editing keeps the pin fixed in the viewport while the map moves beneath it.
+   *  Public maps anchor it to the approximate coordinates instead. */
+  pinBehavior?: "center" | "location";
 }) {
   const key =
     process.env.NEXT_PUBLIC_GOOGLE_MAPS_JAVASCRIPT_API_KEY?.trim();
   const containerRef = React.useRef<HTMLDivElement>(null);
   const mapRef = React.useRef<GoogleMap | null>(null);
+  const locationMarkerRef = React.useRef<AdvancedMarker | null>(null);
   const resizeObserverRef = React.useRef<ResizeObserver | null>(null);
   const listenersRef = React.useRef<MapsListener[]>([]);
   const onChangeRef = React.useRef(onChange);
@@ -146,6 +157,20 @@ export default function ListingLocationPickerInner({
           keyboardShortcuts: interactive,
         });
 
+        if (pinBehavior === "location") {
+          const markerLibrary = maps.marker as
+            | { AdvancedMarkerElement?: AdvancedMarkerConstructor }
+            | undefined;
+          const AdvancedMarkerElement = markerLibrary?.AdvancedMarkerElement;
+          if (AdvancedMarkerElement) {
+            locationMarkerRef.current = new AdvancedMarkerElement({
+              map,
+              position: { lat: initial.lat, lng: initial.lng },
+              title: "Approximate location",
+            });
+          }
+        }
+
         mapRef.current = map;
         resizeObserverRef.current = new ResizeObserver(() => {
           const current = initialOptionsRef.current;
@@ -196,9 +221,11 @@ export default function ListingLocationPickerInner({
       listenersRef.current = [];
       resizeObserverRef.current?.disconnect();
       resizeObserverRef.current = null;
+      if (locationMarkerRef.current) locationMarkerRef.current.map = null;
+      locationMarkerRef.current = null;
       mapRef.current = null;
     };
-  }, [emitPosition, interactive, key]);
+  }, [emitPosition, interactive, key, pinBehavior]);
 
   React.useEffect(() => {
     const map = mapRef.current;
@@ -237,7 +264,7 @@ export default function ListingLocationPickerInner({
 
       {/* The pin lives in the DOM at the exact centre of the map, not on the map. It
           is never draggable and never lags the gesture. */}
-      {ready && !loadFailed && (
+      {ready && !loadFailed && pinBehavior === "center" && (
         <div
           className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center"
           aria-hidden="true"

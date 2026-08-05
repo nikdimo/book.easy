@@ -47,6 +47,14 @@ export const EMAIL_CATALOG: Record<string, EmailCatalogEntry> = {
   "email.booking.check_out": { en: "Check-out", mk: "Заминување" },
   "email.booking.guests": { en: "Guests", mk: "Гости" },
   "email.booking.total": { en: "Total", mk: "Вкупно" },
+  "email.booking.display_value_at_booking": {
+    en: "Guest display value at booking",
+    mk: "Прикажана вредност за гостинот при резервирањето",
+  },
+  "email.booking.approximate_amount": {
+    en: "Approximately {amount}",
+    mk: "Приближно {amount}",
+  },
   "email.booking.reason": { en: "Reason: {reason}", mk: "Причина: {reason}" },
   "email.booking.view_request": { en: "View request", mk: "Погледнете го барањето" },
   "email.booking.view_listing": { en: "View listing", mk: "Погледнете го огласот" },

@@ -42,6 +42,7 @@ export async function Footer() {
   const eur = t.resolve("footer.eur", "EUR");
   const englishUs = t.resolve("footer.english_us", "English (US)");
   const newsletter = t.resolve("footer.newsletter", "Newsletter");
+  const contact = t.resolve("footer.contact", "Contact us");
   const communicationPreferences = t.resolve(
     "footer.communication_preferences",
     "Communication preferences"
@@ -150,6 +151,11 @@ export async function Footer() {
               <li>
                 <Link href="/newsletter" className="hover:text-foreground transition-colors">
                   {newsletter.text}
+                </Link>
+              </li>
+              <li>
+                <Link href="/contact" className="hover:text-foreground transition-colors">
+                  {contact.text}
                 </Link>
               </li>
               <li>

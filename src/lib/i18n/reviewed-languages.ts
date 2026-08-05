@@ -181,24 +181,8 @@ export function languageEditorGuidance(code: string): string {
   );
 }
 
-function normalizeSearch(value: string): string {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-}
-
 /** cmdk's default fuzzy matcher can surface unrelated languages for short Latin
  * searches. Language search is more predictable when every query token must occur
- * in the indexed native/English/alias text. */
-export function languageSearchScore(
-  value: string,
-  search: string,
-  keywords: readonly string[] = []
-): number {
-  const query = normalizeSearch(search);
-  if (!query) return 1;
-  const indexed = normalizeSearch([value, ...keywords].join(" "));
-  return query.split(/\s+/).every((token) => indexed.includes(token)) ? 1 : 0;
-}
+ * in the indexed native/English/alias text. Shared with the currency tab of the
+ * regional-settings modal so both lists match identically. */
+export { tokenContainmentScore as languageSearchScore } from "@/lib/utils/search-score";

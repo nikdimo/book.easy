@@ -24,6 +24,10 @@ describe("prePublishBackTarget", () => {
     expect(prePublishBackTarget("pricing", "pricing-step")).toBeNull();
   });
 
+  it("returns dated offers opened from the Special offer step to that step", () => {
+    expect(prePublishBackTarget("offers", "offer-step")).toBeNull();
+  });
+
   it("leaves the pre-publish flow from the checklist itself", () => {
     expect(prePublishBackTarget("menu", "menu")).toBeNull();
     expect(prePublishBackTarget("menu", "pricing-step")).toBeNull();

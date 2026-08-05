@@ -42,10 +42,17 @@ export const authConfig: NextAuthConfig = {
         token.id = user.id;
         token.role = (user as { role?: string }).role;
         token.isHost = (user as { isHost?: boolean }).isHost;
+        token.displayCurrency =
+          (user as { displayCurrency?: string | null }).displayCurrency ?? null;
       }
       if (trigger === "update" && session) {
         token.isHost = session.isHost ?? token.isHost;
         token.name = session.name ?? token.name;
+        // Picking a currency while signed in refreshes the token, so the proxy stops
+        // re-applying the stale account value on a browser that has no cookie yet.
+        if (session.displayCurrency !== undefined) {
+          token.displayCurrency = session.displayCurrency;
+        }
       }
       return token;
     },
@@ -54,6 +61,7 @@ export const authConfig: NextAuthConfig = {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
         session.user.isHost = token.isHost as boolean;
+        session.user.displayCurrency = (token.displayCurrency as string | null) ?? null;
       }
       return session;
     },
