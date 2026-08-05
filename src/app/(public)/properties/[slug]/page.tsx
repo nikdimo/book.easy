@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import {
   CalendarDays,
+  Clock,
   MapPin,
   Sparkles,
   Users,
@@ -18,6 +19,7 @@ import {
   PreservedPlaceText,
 } from "@/components/public/expandable-description";
 import { AmenityList } from "@/components/public/amenity-list";
+import { ListingLocationMap } from "@/components/public/listing-location-map";
 import { BookingWidget } from "@/components/public/booking-widget";
 import { ListingActions } from "@/components/public/listing-actions";
 import { ListingViewTracker } from "@/components/public/listing-view-tracker";
@@ -164,6 +166,24 @@ export default async function ListingDetailPage({
     "{n} nights minimum",
   );
   const cleaningFeeLabel = ti(t, "listing.cleaning_fee", "Cleaning fee", {});
+  // Only shown when the host actually stated a time. A listing that says nothing here
+  // is the host being flexible, and inventing "15:00" for it would be a promise the
+  // guest could hold them to.
+  const stayTimes =
+    listing.checkInTime || listing.checkOutTime
+      ? listing.checkInTime && listing.checkOutTime
+        ? ti(t, "listing.stay_times", "Check-in {in} · Check-out {out}", {
+            in: listing.checkInTime,
+            out: listing.checkOutTime,
+          })
+        : listing.checkInTime
+          ? ti(t, "listing.check_in_from", "Check-in from {time}", {
+              time: listing.checkInTime,
+            })
+          : ti(t, "listing.check_out_by", "Check-out by {time}", {
+              time: listing.checkOutTime as string,
+            })
+      : null;
   const hostedBy = ti(t, "listing.hosted_by", "Hosted by {name}", {
     name: hostName,
   });
@@ -262,6 +282,14 @@ export default async function ListingDetailPage({
                 {bathCount.text}
               </span>
             </span>
+            {stayTimes && (
+              <span className="flex items-center gap-1.5">
+                <Clock className="h-4 w-4" />
+                <span className={stayTimes.translated ? "notranslate" : undefined}>
+                  {stayTimes.text}
+                </span>
+              </span>
+            )}
             {listing.pricingRule && (
               <>
                 <span className="flex items-center gap-1.5">
@@ -334,6 +362,19 @@ export default async function ListingDetailPage({
           <Separator />
 
           <AmenityList amenities={listing.amenities} />
+
+          {listing.property.latitude != null &&
+            listing.property.longitude != null && (
+              <>
+                <Separator />
+                <ListingLocationMap
+                  listingId={listing.id}
+                  latitude={listing.property.latitude}
+                  longitude={listing.property.longitude}
+                  locationLine={locationLine}
+                />
+              </>
+            )}
 
           {reviewSummary.count > 0 ? (
             <>

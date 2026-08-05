@@ -23,6 +23,17 @@ export const STICKY_FOOTER =
   "sticky bottom-0 z-10 -mx-6 -mb-6 border-t bg-background/95 px-6 py-4 shadow-[0_-8px_20px_rgba(0,0,0,0.04)] backdrop-blur";
 
 /**
+ * Drops the cents: €62.40 becomes €62, not €60. Snapping to a 5 or a 10 moves the
+ * price by a euro or more in whichever direction the multiple happens to fall,
+ * which is a pricing decision the host did not make — the only thing worth losing
+ * here is the fractional tail a percentage adjustment leaves behind.
+ */
+export function roundToCleanPrice(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  return Math.round(value);
+}
+
+/**
  * "Guests will see …" — the offer read back in the guest's words. Four surfaces
  * showed this (calendar sheet, pre-publish plan, the standalone promotion form,
  * the wizard's launch offer) from four copies of the same markup, which had

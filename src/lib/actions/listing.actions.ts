@@ -72,6 +72,8 @@ function draftDataFromForm(formData: FormData): Prisma.InputJsonValue {
     baseNightlyRate: str("baseNightlyRate"),
     cleaningFee: str("cleaningFee"),
     minNights: str("minNights"),
+    checkInTime: str("checkInTime"),
+    checkOutTime: str("checkOutTime"),
     promotionType: str("promotionType"),
     promotionPercent: str("promotionPercent"),
     promotionMinimumNights: str("promotionMinimumNights"),
@@ -238,6 +240,8 @@ export async function submitNewListing(
     baseNightlyRate: formData.get("baseNightlyRate"),
     cleaningFee: formData.get("cleaningFee") || "0",
     minNights: formData.get("minNights") || "1",
+    checkInTime: formData.get("checkInTime") || undefined,
+    checkOutTime: formData.get("checkOutTime") || undefined,
     promotionType: formData.get("promotionType") || "NONE",
     promotionPercent: formData.get("promotionPercent") || "15",
     promotionMinimumNights: formData.get("promotionMinimumNights") || "5",
@@ -408,6 +412,10 @@ export async function submitNewListing(
       bedrooms: data.bedrooms,
       bathrooms: data.bathrooms,
       beds: data.beds,
+      // "" is the host choosing to stay flexible; null is how that reads everywhere it
+      // is displayed, so the empty string never reaches the database.
+      checkInTime: data.checkInTime || null,
+      checkOutTime: data.checkOutTime || null,
       pricingRule: {
         create: {
           baseNightlyRate: data.baseNightlyRate,
@@ -492,6 +500,8 @@ export async function updateListing(listingId: string, formData: FormData) {
     baseNightlyRate: formData.get("baseNightlyRate"),
     cleaningFee: formData.get("cleaningFee") || "0",
     minNights: formData.get("minNights") || "1",
+    checkInTime: formData.get("checkInTime") || undefined,
+    checkOutTime: formData.get("checkOutTime") || undefined,
     amenityIds: formData.getAll("amenityIds"),
   };
 
@@ -534,6 +544,8 @@ export async function updateListing(listingId: string, formData: FormData) {
       bedrooms: data.bedrooms,
       bathrooms: data.bathrooms,
       beds: data.beds,
+      checkInTime: data.checkInTime || null,
+      checkOutTime: data.checkOutTime || null,
       // Editing a live listing stays live (listings publish immediately), but flags it
       // for admin re-review since the content just changed post-approval.
       ...(listing.status === "APPROVED" ? { needsReview: true } : {}),

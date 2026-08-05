@@ -14,7 +14,11 @@ import {
   GuestCountsStep,
 } from "@/components/marketplace/marketplace-stay-date-picker";
 import { placeKey, type PlaceOption } from "@/lib/utils/place";
-import { localizedPlaceLabel } from "@/lib/i18n/place-name";
+import {
+  isSamePlaceName,
+  localizedPlaceLabel,
+  matchPlaceName,
+} from "@/lib/i18n/place-name";
 import { useSearchLabels } from "@/components/marketplace/search-labels";
 
 type SearchFlowStep = "where" | "when" | "who";
@@ -103,19 +107,20 @@ export function MarketplaceSearchFlowDialog({
   }, [open, step]);
 
   const filteredCities = React.useMemo(() => {
-    const q = draftCity.trim().toLowerCase();
+    const q = draftCity.trim();
     const sorted = [...popularCities].sort((a, b) => a.city.localeCompare(b.city));
     if (!q) return sorted;
 
+    // Script-agnostic, same as the desktop place selector.
     return sorted
       .filter(
         (place) =>
-          place.city.toLowerCase().includes(q) ||
-          place.country.toLowerCase().includes(q)
+          matchPlaceName(place.city, q).matches ||
+          matchPlaceName(place.country, q).matches
       )
       .sort((a, b) => {
-        const aStarts = a.city.toLowerCase().startsWith(q) ? 0 : 1;
-        const bStarts = b.city.toLowerCase().startsWith(q) ? 0 : 1;
+        const aStarts = matchPlaceName(a.city, q).startsWith ? 0 : 1;
+        const bStarts = matchPlaceName(b.city, q).startsWith ? 0 : 1;
         return aStarts - bStarts || a.city.localeCompare(b.city);
       });
   }, [draftCity, popularCities]);
@@ -123,12 +128,12 @@ export function MarketplaceSearchFlowDialog({
   // Exact match by city name only — ambiguous if the same city name exists in more
   // than one country; disambiguation happens by picking a specific row instead.
   const selectedPlace = React.useMemo(() => {
-    const normalizedDraftCity = draftCity.trim().toLowerCase();
+    const normalizedDraftCity = draftCity.trim();
     if (!normalizedDraftCity) return null;
 
     return (
-      popularCities.find(
-        (candidate) => candidate.city.toLowerCase() === normalizedDraftCity
+      popularCities.find((candidate) =>
+        isSamePlaceName(candidate.city, normalizedDraftCity)
       ) ?? null
     );
   }, [draftCity, popularCities]);
@@ -187,7 +192,9 @@ export function MarketplaceSearchFlowDialog({
 
   const handleApplySearch = () => {
     onApplySearch({
-      city: draftCity.trim(),
+      // Canonical DB spelling when the typed text resolves to a known city — see the
+      // same commit in the desktop place selector.
+      city: selectedPlace?.city ?? draftCity.trim(),
       country: selectedPlace?.country ?? "",
       checkIn: draftCheckIn,
       checkOut: draftCheckOut,
@@ -278,6 +285,7 @@ export function MarketplaceSearchFlowDialog({
                 active={open && step === "when"}
                 selected={selectedRange}
                 pagedOnDesktop
+                showEndpointHeader
                 onRangeChange={(range) => {
                   if (!range?.from) {
                     setDraftCheckIn("");
@@ -289,8 +297,10 @@ export function MarketplaceSearchFlowDialog({
                   const nextCheckOut = range.to
                     ? format(range.to, "yyyy-MM-dd")
                     : "";
+                  // Completing a range does not advance the flow. Moving on is the
+                  // guest's call — the footer action and the Who tab both do it — so
+                  // picking a check-out never yanks the calendar out from under them.
                   setDraftCheckOut(nextCheckOut);
-                  if (nextCheckOut) setStep("who");
                 }}
               />
               <div className="shrink-0 border-t border-border bg-background px-4 py-3 md:px-6">
@@ -372,8 +382,10 @@ export function MarketplaceSearchFlowDialog({
                       </li>
                     ) : (
                       filteredCities.map((place) => {
-                        const selected =
-                          draftCity.trim().toLowerCase() === place.city.toLowerCase();
+                        const selected = isSamePlaceName(
+                          place.city,
+                          draftCity.trim()
+                        );
                         return (
                           <li key={placeKey(place)}>
                             <button

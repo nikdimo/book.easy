@@ -16,6 +16,7 @@ import "leaflet/dist/leaflet.css";
 import { Maximize2, Minimize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tx, useI18n } from "@/lib/i18n/client";
+import type { MapBounds } from "@/lib/map-bounds";
 
 export type MapPin = {
   id: string;
@@ -32,6 +33,61 @@ export type MapPin = {
 };
 
 const MAP_MAX_ZOOM = 18;
+
+/** How long the map has to sit still before its viewport is pushed to the search. */
+const VIEWPORT_SETTLE_MS = 500;
+
+/**
+ * Runs `apply` once, as soon as the map container actually has a size.
+ *
+ * Measure the DOM, not map.getSize(): if the map was created while the container
+ * was unsized, Leaflet caches 0x0 and keeps returning it until something calls
+ * invalidateSize(). On a slow first paint fitBounds would then clamp to maxZoom
+ * at the wrong centre and, since we position the map only once, it would stay
+ * there.
+ *
+ * Retries on a timer rather than waiting for a resize event: `resize` only comes
+ * from invalidateSize(), which MapResize drives off a ResizeObserver — and
+ * ResizeObserver, like requestAnimationFrame, never fires while the tab is in
+ * the background. setTimeout does.
+ */
+function runWhenSized(map: L.Map, apply: () => void) {
+  let done = false;
+
+  const attempt = () => {
+    if (done) return true;
+    const container = map.getContainer();
+    if (container.clientWidth < 2 || container.clientHeight < 2) return false;
+    done = true;
+    map.invalidateSize({ pan: false, animate: false });
+    apply();
+    return true;
+  };
+
+  if (attempt()) return () => {};
+
+  let attempts = 0;
+  let timer = window.setTimeout(function retry() {
+    if (attempt() || (attempts += 1) > 20) return;
+    timer = window.setTimeout(retry, 100);
+  }, 0);
+  return () => window.clearTimeout(timer);
+}
+
+function toLatLngBounds(bounds: MapBounds) {
+  // A rectangle dragged across the antimeridian comes back with west > east;
+  // Leaflet is happy with a longitude past 180 and wraps it for us.
+  const east = bounds.east < bounds.west ? bounds.east + 360 : bounds.east;
+  return L.latLngBounds(
+    [bounds.south, bounds.west],
+    [bounds.north, east]
+  );
+}
+
+export function boundsCenter(bounds: MapBounds): [number, number] {
+  const east = bounds.east < bounds.west ? bounds.east + 360 : bounds.east;
+  return [(bounds.south + bounds.north) / 2, (bounds.west + east) / 2];
+}
 
 /**
  * Content signature for a pin set. `pins` is rebuilt by the server component, so
@@ -58,18 +114,8 @@ function FitBounds({ positions }: { positions: [number, number][] }) {
     // Same listings as the last fit — the current view is the user's to keep.
     if (fittedKey.current === key) return;
 
-    const fit = () => {
-      if (fittedKey.current === key) return true;
-
-      // Measure the DOM, not map.getSize(): if the map was created while the
-      // container was unsized, Leaflet caches 0x0 and keeps returning it until
-      // something calls invalidateSize(). On a slow first paint fitBounds would
-      // then clamp to maxZoom at the wrong centre and, since we fit only once
-      // per pin set, the map would stay there.
-      const container = map.getContainer();
-      if (container.clientWidth < 2 || container.clientHeight < 2) return false;
+    return runWhenSized(map, () => {
       fittedKey.current = key;
-      map.invalidateSize({ pan: false, animate: false });
 
       if (positions.length === 1) {
         map.setView(positions[0]!, 12, { animate: false });
@@ -79,24 +125,93 @@ function FitBounds({ positions }: { positions: [number, number][] }) {
         );
         map.fitBounds(b, { padding: [48, 48], maxZoom: 14, animate: false });
       }
-      return true;
-    };
-
-    if (fit()) return;
-
-    // Retry on a timer rather than waiting for a resize event: `resize` only
-    // comes from invalidateSize(), which MapResize drives off a ResizeObserver
-    // — and ResizeObserver, like requestAnimationFrame, never fires while the
-    // tab is in the background. setTimeout does.
-    let attempts = 0;
-    let timer = window.setTimeout(function retry() {
-      if (fit() || (attempts += 1) > 20) return;
-      timer = window.setTimeout(retry, 100);
-    }, 0);
-    return () => window.clearTimeout(timer);
+    });
     // `positions` is intentionally not a dep: `key` is its content signature.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, key]);
+  return null;
+}
+
+/**
+ * Restores the viewport the URL was written with, so a shared or reloaded link
+ * shows the same rectangle the results were filtered by. Applied once — later
+ * URL updates come *from* the map and must not be echoed back into it.
+ */
+function ViewFromBounds({ bounds }: { bounds: MapBounds }) {
+  const map = useMap();
+  const applied = React.useRef(false);
+
+  React.useLayoutEffect(() => {
+    if (applied.current) return;
+    return runWhenSized(map, () => {
+      applied.current = true;
+      map.fitBounds(toLatLngBounds(bounds), { animate: false });
+    });
+  }, [map, bounds]);
+
+  return null;
+}
+
+/**
+ * Pushes the visible rectangle to the search once the map settles.
+ *
+ * Only viewport changes the user caused are reported: the initial fit-to-pins is
+ * the app positioning itself, and echoing that back into the URL would re-filter
+ * the very results the fit was computed from — each pass cropping a little more
+ * off the edges. Interaction is detected on the container rather than through
+ * Leaflet's move events, which can't tell a drag from a setView().
+ */
+function ReportViewport({
+  onChange,
+}: {
+  onChange: (bounds: MapBounds) => void;
+}) {
+  const map = useMap();
+  const onChangeRef = React.useRef(onChange);
+
+  React.useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  React.useEffect(() => {
+    const container = map.getContainer();
+    let interacted = false;
+    let timer = 0;
+
+    const markInteracted = () => {
+      interacted = true;
+    };
+    container.addEventListener("pointerdown", markInteracted, true);
+    container.addEventListener("wheel", markInteracted, {
+      capture: true,
+      passive: true,
+    });
+    container.addEventListener("keydown", markInteracted, true);
+
+    const settle = () => {
+      if (!interacted) return;
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        const b = map.getBounds();
+        onChangeRef.current({
+          west: b.getWest(),
+          south: b.getSouth(),
+          east: b.getEast(),
+          north: b.getNorth(),
+        });
+      }, VIEWPORT_SETTLE_MS);
+    };
+    map.on("moveend zoomend", settle);
+
+    return () => {
+      window.clearTimeout(timer);
+      map.off("moveend zoomend", settle);
+      container.removeEventListener("pointerdown", markInteracted, true);
+      container.removeEventListener("wheel", markInteracted, true);
+      container.removeEventListener("keydown", markInteracted, true);
+    };
+  }, [map]);
+
   return null;
 }
 
@@ -556,29 +671,69 @@ export default function PropertiesMapInner({
   pins,
   className,
   hoveredPinId,
+  initialBounds,
+  onBoundsChange,
 }: {
   pins: MapPin[];
   className?: string;
   hoveredPinId?: string | null;
+  /** Viewport carried in the URL on first load; ignored on later renders. */
+  initialBounds?: MapBounds | null;
+  onBoundsChange?: (bounds: MapBounds) => void;
 }) {
   const i18n = useI18n();
   const [expanded, setExpanded] = React.useState(false);
   const [selectedPinId, setSelectedPinId] = React.useState<string | null>(null);
   const [mapHoveredPinId, setMapHoveredPinId] = React.useState<string | null>(null);
+  // Every reported move rewrites the URL and hands back a new `initialBounds`.
+  // Freeze the one we mounted with so restoring the view stays a one-off.
+  const [mountBounds] = React.useState<MapBounds | null>(
+    () => initialBounds ?? null
+  );
+  // Once the user has taken the wheel, the map is theirs: no auto-fit may move
+  // it again, not even when a narrowed search returns a smaller set of pins.
+  const [userMoved, setUserMoved] = React.useState(false);
   const positions = React.useMemo(
     () => pins.map((p) => [p.lat, p.lng] as [number, number]),
     [pins]
   );
-  const center = positions[0] ?? [41.6086, 21.7453];
+  const center = mountBounds
+    ? boundsCenter(mountBounds)
+    : positions[0] ?? [41.6086, 21.7453];
+
+  const handleBoundsChange = React.useCallback(
+    (bounds: MapBounds) => {
+      setUserMoved(true);
+      onBoundsChange?.(bounds);
+    },
+    [onBoundsChange]
+  );
+
+  React.useEffect(() => {
+    if (!expanded) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setExpanded(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [expanded]);
 
   return (
     <div
       className={cn(
         "relative flex flex-col overflow-hidden rounded-2xl border border-border bg-muted/30 shadow-sm",
+        className,
         expanded
-          ? "fixed inset-0 z-[100] m-0 h-[100dvh] rounded-none border-0"
-          : "h-full min-h-[320px] w-full",
-        className
+          ? "fixed inset-0 z-[100] m-0 h-[100dvh] min-h-0 w-screen max-w-none rounded-none border-0"
+          : "h-full min-h-[320px] w-full"
       )}
     >
       <button
@@ -609,7 +764,11 @@ export default function PropertiesMapInner({
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <ZoomControl position="bottomright" />
-        <FitBounds positions={positions} />
+        {mountBounds ? <ViewFromBounds bounds={mountBounds} /> : null}
+        {!mountBounds && !userMoved ? (
+          <FitBounds positions={positions} />
+        ) : null}
+        <ReportViewport onChange={handleBoundsChange} />
         <ClusteredMarkers
           pins={pins}
           hoveredPinId={hoveredPinId}

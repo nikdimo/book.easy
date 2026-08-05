@@ -14,7 +14,10 @@ import {
 import { Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { MarketplaceStayDatePicker } from "@/components/marketplace/marketplace-stay-date-picker";
+import {
+  isFlexibilityValue,
+  MarketplaceStayDatePicker,
+} from "@/components/marketplace/marketplace-stay-date-picker";
 import { MarketplacePlaceSelector } from "@/components/marketplace/marketplace-place-selector";
 import { MarketplaceSearchFlowDialog } from "@/components/marketplace/marketplace-search-flow-dialog";
 import {
@@ -70,7 +73,7 @@ export function resetRememberedMarketplaceSearch(): void {
 
 function parseDateFlexibility(value: string | null): number {
   const parsed = Number(value);
-  return [0, 1, 2, 3, 7, 14].includes(parsed) ? parsed : 0;
+  return isFlexibilityValue(parsed) ? parsed : 0;
 }
 
 function resolveStringValue(
@@ -194,7 +197,7 @@ function hasSearchBarState(state: SearchBarState): boolean {
       state.checkIn ||
       state.checkOut ||
       countsToGuestsParam(state.guestCounts) ||
-      state.dateFlexibility > 0 ||
+      state.dateFlexibility !== 0 ||
       state.propertyTypes.length > 0
   );
 }
@@ -533,7 +536,7 @@ function MarketplaceSearchBarInner({
     Object.entries(guestCountsToParams(guestCounts)).forEach(([key, value]) =>
       p.set(key, value)
     );
-    if (dateFlexibility > 0) {
+    if (dateFlexibility !== 0) {
       p.set("dateFlexibility", String(dateFlexibility));
     }
     p.delete("propertyType");
@@ -735,7 +738,7 @@ function MarketplaceSearchBarInner({
             Object.entries(guestCountsToParams(next.guestCounts)).forEach(
               ([key, value]) => p.set(key, value)
             );
-            if (next.dateFlexibility > 0) {
+            if (next.dateFlexibility !== 0) {
               p.set("dateFlexibility", String(next.dateFlexibility));
             }
             const typesParam = stringifyPropertyTypesParam(
@@ -830,7 +833,6 @@ function MarketplaceSearchBarInner({
               onRangeStringsChange={({ checkIn: ci, checkOut: co }) => {
                 setCheckIn(ci);
                 setCheckOut(co);
-                if (co) openGuestsStep();
               }}
               onGuestCountsChange={setGuestCounts}
               onDateFlexibilityChange={setDateFlexibility}
@@ -954,7 +956,6 @@ function MarketplaceSearchBarInner({
           onRangeStringsChange={({ checkIn: ci, checkOut: co }) => {
             setCheckIn(ci);
             setCheckOut(co);
-            if (co) openGuestsStep();
           }}
           onGuestCountsChange={setGuestCounts}
           onDateFlexibilityChange={setDateFlexibility}

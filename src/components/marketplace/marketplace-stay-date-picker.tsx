@@ -17,9 +17,12 @@ import type { DateRange } from "react-day-picker";
 import { DayButton, getDefaultClassNames, type Locale } from "react-day-picker";
 import {
   CalendarRange,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Info,
+  Minus,
+  Plus,
   Search,
   X,
 } from "lucide-react";
@@ -34,6 +37,13 @@ import {
 } from "@/lib/utils/booking-calendar";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Tooltip,
   TooltipContent,
@@ -86,6 +96,18 @@ const MINIMUM_STAY_HATCH: React.CSSProperties = {
     "repeating-linear-gradient(135deg, transparent 0, transparent 3px, color-mix(in srgb, var(--muted-foreground) 28%, transparent) 3px, color-mix(in srgb, var(--muted-foreground) 28%, transparent) 4px)",
 };
 
+/**
+ * The tint that spans the nights between check-in and check-out.
+ *
+ * Painted as a pseudo-element rather than a background utility for two reasons: the
+ * host lens puts its own `background-color` modifier (manualBlock/bookingHold) on this
+ * same cell, and a separate layer can't lose a Tailwind class-order tie against it;
+ * and insetting the band vertically leaves the endpoint circles standing proud of it,
+ * so the eye lands on the two dates rather than on the band between them.
+ */
+const RANGE_BAND =
+  "before:pointer-events-none before:absolute before:inset-x-0 before:inset-y-[3px] before:z-0 before:bg-[hsl(30_12%_93%)] before:content-[''] hover:before:bg-[hsl(30_12%_89%)] md:before:inset-y-[14%]";
+
 type Layout = "pill" | "hero" | "compact" | "field";
 type Step = "dates" | "guests";
 
@@ -112,6 +134,9 @@ type DragCtx = {
   ) => void;
   dayMeta?: (date: Date) => MarketplaceDayMeta | undefined;
   dayVariant?: "default" | "availability";
+  /** Paged (two-month, desktop-scale) grid: cells are big enough that the day circle
+   *  sits inside the cell with breathing room instead of filling it. */
+  paged?: boolean;
   dayBlock?: (date: Date) => DayBlock | undefined;
   /** The first day that satisfies the minimum stay, once a check-in is picked. Marked
    *  on the grid so the greyed band reads as a span between two known points. */
@@ -138,18 +163,58 @@ export type DayBlock = {
   message: Resolved;
 };
 
-export const FLEXIBILITY_VALUES = [0, 1, 2, 3, 7, 14] as const;
+/**
+ * "Any dates" — the guest has no fixed window at all, as opposed to a ±N-day window
+ * around the range they picked. Negative so it can never be read as a day count.
+ */
+export const FLEXIBILITY_ANY = -1;
 
-function flexibilityLabels(labels: SearchLabels) {
-  return {
-    0: labels.exactDates,
-    1: labels.flexible1,
-    2: labels.flexible2,
-    3: labels.flexible3,
-    7: labels.flexible7,
-    14: labels.flexible14,
-  } as const;
+/** Straight on the row; everything larger lives behind the Custom dropdown. */
+const FLEXIBILITY_QUICK_VALUES = [0, 1, 2] as const;
+const FLEXIBILITY_CUSTOM_VALUES = [3, 4, 5, 6, 7, 10, 14] as const;
+
+export const FLEXIBILITY_VALUES = [
+  FLEXIBILITY_ANY,
+  ...FLEXIBILITY_QUICK_VALUES,
+  ...FLEXIBILITY_CUSTOM_VALUES,
+] as const;
+
+export function isFlexibilityValue(value: number): boolean {
+  return (FLEXIBILITY_VALUES as readonly number[]).includes(value);
 }
+
+function flexibilityLabel(labels: SearchLabels, value: number): Resolved {
+  // The long-standing values keep their own keys so their existing translations are
+  // not thrown away; only the windows added with the Custom menu fall back to the
+  // generic plural form.
+  switch (value) {
+    case FLEXIBILITY_ANY:
+      return labels.anyDatesFlexible;
+    case 0:
+      return labels.exactDates;
+    case 1:
+      return labels.flexible1;
+    case 2:
+      return labels.flexible2;
+    case 3:
+      return labels.flexible3;
+    case 7:
+      return labels.flexible7;
+    case 14:
+      return labels.flexible14;
+    default:
+      return pluralText(labels.flexibleDay, value, labels.locale);
+  }
+}
+
+const FLEXIBILITY_PILL =
+  "shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-colors";
+// A bare outline was almost invisible next to the unselected pills, so the active
+// flexibility reads as a filled chip instead.
+const FLEXIBILITY_PILL_ON =
+  "border-foreground bg-foreground text-background hover:bg-foreground";
+const FLEXIBILITY_PILL_OFF =
+  "border-border bg-background text-foreground hover:bg-muted/40";
 
 export function DateFlexibilityRow({
   value,
@@ -159,26 +224,124 @@ export function DateFlexibilityRow({
   onChange: (next: number) => void;
 }) {
   const labels = useSearchLabels();
-  const optionLabels = flexibilityLabels(labels);
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+  const menuValues = [FLEXIBILITY_ANY, ...FLEXIBILITY_CUSTOM_VALUES];
+  const menuActive = menuValues.includes(value);
+  // The trigger doubles as the readout: once something is picked from the menu the pill
+  // shows it, so the row never hides the current selection behind the word "Custom".
+  const menuLabel = menuActive
+    ? flexibilityLabel(labels, value)
+    : labels.customDates;
+
+  // Touch already pans an overflowing row; a mouse does not. On a narrow window the
+  // pills are otherwise unreachable, so grabbing the row scrolls it. A press that never
+  // travels stays a plain click on the pill underneath.
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === "touch" || e.button !== 0) return;
+    const track = scrollRef.current;
+    if (!track || track.scrollWidth <= track.clientWidth) return;
+
+    const startX = e.clientX;
+    const startScrollLeft = track.scrollLeft;
+    let dragged = false;
+
+    const onMove = (ev: PointerEvent) => {
+      const dx = ev.clientX - startX;
+      if (!dragged && Math.abs(dx) < 5) return;
+      dragged = true;
+      track.scrollLeft = startScrollLeft - dx;
+    };
+
+    const onUp = () => {
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+      document.removeEventListener("pointercancel", onUp);
+      if (dragged) suppressNextClick();
+    };
+
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+    document.addEventListener("pointercancel", onUp);
+  };
 
   return (
-    <div className="flex w-max gap-2 whitespace-nowrap pr-4 md:pr-6">
-      {FLEXIBILITY_VALUES.map((optionValue) => (
-        <button
-          key={optionValue}
-          type="button"
-          onClick={() => onChange(optionValue)}
-          className={cn(
-            "rounded-full border px-4 py-2 text-sm font-medium transition-colors",
-            value === optionValue
-              ? "border-foreground bg-background text-foreground"
-              : "border-border bg-background text-foreground hover:bg-muted/40",
-            optionLabels[optionValue].translated && "notranslate",
-          )}
-        >
-          {optionLabels[optionValue].text}
-        </button>
-      ))}
+    // The scroller lives here rather than in each caller's wrapper, so every surface
+    // that renders this row can reach every pill on a narrow screen.
+    <div
+      ref={scrollRef}
+      onPointerDown={handlePointerDown}
+      className="-mx-1 overflow-x-auto overflow-y-hidden px-1 py-1 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x"
+    >
+      <div className="flex w-max items-center gap-2 whitespace-nowrap">
+        {FLEXIBILITY_QUICK_VALUES.map((optionValue) => {
+          const label = flexibilityLabel(labels, optionValue);
+          return (
+            <button
+              key={optionValue}
+              type="button"
+              onClick={() => onChange(optionValue)}
+              className={cn(
+                FLEXIBILITY_PILL,
+                value === optionValue
+                  ? FLEXIBILITY_PILL_ON
+                  : FLEXIBILITY_PILL_OFF,
+                label.translated && "notranslate",
+              )}
+            >
+              {label.text}
+            </button>
+          );
+        })}
+
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            className={cn(
+              FLEXIBILITY_PILL,
+              "flex items-center gap-1.5",
+              menuActive ? FLEXIBILITY_PILL_ON : FLEXIBILITY_PILL_OFF,
+              menuLabel.translated && "notranslate",
+            )}
+          >
+            {menuLabel.text}
+            <ChevronDown className="h-3.5 w-3.5 opacity-70" aria-hidden="true" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="start"
+            className="w-auto min-w-[9rem] rounded-2xl border border-border/60 p-1.5 shadow-[0_10px_32px_rgba(0,0,0,0.16)]"
+          >
+            {/* "I'm flexible" lives in the menu rather than on the row: it is the least
+                used option and the longest label, so on a phone it was the one pill that
+                pushed the row off screen. */}
+            <DropdownMenuItem
+              onSelect={() => onChange(FLEXIBILITY_ANY)}
+              className={cn(
+                "rounded-full px-3.5 py-2 text-sm font-medium",
+                value === FLEXIBILITY_ANY && "bg-muted",
+                labels.anyDatesFlexible.translated && "notranslate",
+              )}
+            >
+              {labels.anyDatesFlexible.text}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="mx-1 my-1.5" />
+            {FLEXIBILITY_CUSTOM_VALUES.map((optionValue) => {
+              const label = flexibilityLabel(labels, optionValue);
+              return (
+                <DropdownMenuItem
+                  key={optionValue}
+                  onSelect={() => onChange(optionValue)}
+                  className={cn(
+                    "rounded-full px-3.5 py-2 text-sm font-medium",
+                    value === optionValue && "bg-muted",
+                    label.translated && "notranslate",
+                  )}
+                >
+                  {label.text}
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </div>
   );
 }
@@ -231,11 +394,11 @@ function GuestRow({
   increaseDisabled?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-border/80 py-5 last:border-b-0">
+    <div className="flex items-center justify-between gap-4 border-b border-border/60 py-4 last:border-b-0">
       <div className="min-w-0 pr-2">
         <p
           className={cn(
-            "text-base font-semibold text-foreground md:text-lg",
+            "text-base font-medium leading-5 text-foreground",
             title.translated && "notranslate",
           )}
         >
@@ -244,7 +407,7 @@ function GuestRow({
         {subtitle ? (
           <p
             className={cn(
-              "mt-1 text-sm text-muted-foreground",
+              "mt-0.5 text-sm leading-[1.125rem] text-muted-foreground",
               subtitle.translated && "notranslate",
             )}
           >
@@ -255,7 +418,7 @@ function GuestRow({
           <button
             type="button"
             className={cn(
-              "mt-1 text-sm text-muted-foreground underline underline-offset-4",
+              "mt-0.5 text-sm leading-[1.125rem] text-muted-foreground underline underline-offset-2",
               linkText.translated && "notranslate",
             )}
           >
@@ -263,27 +426,27 @@ function GuestRow({
           </button>
         ) : null}
       </div>
-      <div className="flex shrink-0 items-center gap-3 md:gap-4">
+      <div className="flex shrink-0 items-center gap-2">
         <button
           type="button"
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/60 text-xl text-foreground disabled:opacity-35"
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-foreground transition-colors hover:bg-muted/70 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-muted"
           onClick={() => onChange(Math.max(0, value - 1))}
           disabled={value === 0}
           aria-label={`Decrease ${title.text}`}
         >
-          -
+          <Minus className="h-3.5 w-3.5" strokeWidth={1.75} />
         </button>
-        <span className="min-w-[1.5rem] text-center text-xl text-foreground tabular-nums md:text-2xl">
+        <span className="w-8 text-center text-base text-foreground tabular-nums">
           {value}
         </span>
         <button
           type="button"
-          className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted/60 text-xl text-foreground disabled:cursor-not-allowed disabled:opacity-35"
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-foreground transition-colors hover:bg-muted/70 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-muted"
           onClick={() => onChange(Math.min(16, value + 1))}
           disabled={increaseDisabled || value >= 16}
           aria-label={`Increase ${title.text}`}
         >
-          +
+          <Plus className="h-3.5 w-3.5" strokeWidth={1.75} />
         </button>
       </div>
     </div>
@@ -341,7 +504,7 @@ export function GuestCountsStep({
   return (
     <div
       className={cn(
-        "mx-auto w-full max-w-2xl rounded-[1.75rem] border border-border bg-background px-4 md:px-6",
+        "mx-auto w-full max-w-2xl bg-transparent",
         className,
       )}
     >
@@ -625,6 +788,10 @@ function MarketplaceRangeDayButton({
           (modifiers.range_start || modifiers.range_end) &&
           "touch-none cursor-grab active:cursor-grabbing select-none",
         defaultClassNames.day,
+        // A square button sized off the cell's *width* ends up shorter than the cell and
+        // sits at its top, which puts the day circle a pixel or two above the centre of
+        // the range band. Fill the cell instead and let flex centre the circle in it.
+        ctx?.paged && "md:aspect-auto md:h-full",
         className,
       )}
     >
@@ -636,6 +803,10 @@ function MarketplaceRangeDayButton({
         style={block ? MINIMUM_STAY_HATCH : undefined}
         className={cn(
           "flex size-full items-center justify-center rounded-full transition-[box-shadow,background-color,color,transform] duration-150 ease-out",
+          // Sized off the cell height rather than filling the cell, so the circle stays
+          // round on non-square cells, stands proud of the band it's centred on, and
+          // leaves a gap between neighbouring days.
+          ctx?.paged && "md:size-auto md:aspect-square md:h-[86%]",
           modifiers.unavailable && "line-through decoration-[1.5px]",
           marksCheckout &&
             !isEndpoint &&
@@ -652,6 +823,41 @@ function MarketplaceRangeDayButton({
         {children}
       </span>
     </Button>,
+  );
+}
+
+function EndpointSummary({
+  label,
+  value,
+  active,
+}: {
+  label: Resolved;
+  value: string | undefined;
+  /** The end the next tap will set — underlined so the guest knows what they're picking. */
+  active: boolean;
+}) {
+  return (
+    <div className="min-w-0">
+      <p
+        className={cn(
+          "text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground",
+          label.translated && "notranslate",
+        )}
+      >
+        {label.text}
+      </p>
+      <p
+        className={cn(
+          "notranslate mt-0.5 truncate text-sm font-semibold leading-tight decoration-2 underline-offset-[6px]",
+          value ? "text-foreground" : "text-muted-foreground",
+          active && "underline",
+        )}
+        translate="no"
+        suppressHydrationWarning
+      >
+        {value ?? "—"}
+      </p>
+    </div>
   );
 }
 
@@ -677,6 +883,7 @@ export function DateRangeCalendarStep({
   pagedOnDesktop = false,
   pagedDesktopMonthCount = 2,
   dragToSelect = false,
+  showEndpointHeader = false,
   locale,
 }: {
   active: boolean;
@@ -699,6 +906,9 @@ export function DateRangeCalendarStep({
   /** Press (or long-press on touch) a day and sweep to draw a range in one gesture.
    *  Host-side only: guests keep the plain tap-in / tap-out flow. */
   dragToSelect?: boolean;
+  /** Names the two endpoints and counts the nights above the grid. For surfaces that
+   *  don't already carry Check in / Check out segment cards of their own. */
+  showEndpointHeader?: boolean;
   locale?: string;
 }) {
   const labels = useSearchLabels();
@@ -766,7 +976,7 @@ export function DateRangeCalendarStep({
       // Two 20rem month columns, their gap, and a little breathing room for the
       // navigation buttons. Narrow desktop windows fall back to one month without
       // relying on the viewport width (the picker can also live in a smaller shell).
-      setPagedMonthCapacity(entry.contentRect.width >= 720 ? 2 : 1);
+      setPagedMonthCapacity(entry.contentRect.width >= 680 ? 2 : 1);
     });
     observer.observe(node);
     return () => observer.disconnect();
@@ -1269,6 +1479,7 @@ export function DateRangeCalendarStep({
       onDayPointerDown: dragToSelect ? handleDayPointerDown : undefined,
       dayMeta,
       dayVariant,
+      paged: pagedCalendar,
       dayBlock,
       isEarliestCheckout,
       earliestCheckoutLabel: earliestCheckout
@@ -1292,10 +1503,23 @@ export function DateRangeCalendarStep({
       isEarliestCheckout,
       labels,
       onMinimumStayBlocked,
+      pagedCalendar,
     ],
   );
 
   const calendarSelected = dragDisplayRange ?? selected;
+  const showEndpointSummary = showEndpointHeader && pagedCalendar;
+  const summaryFrom = calendarSelected?.from
+    ? formatMonthDay(calendarSelected.from, calendarLocale)
+    : undefined;
+  const summaryTo = calendarSelected?.to
+    ? formatMonthDay(calendarSelected.to, calendarLocale)
+    : undefined;
+  const summaryNightCount = getNightCount(calendarSelected);
+  const summaryNights =
+    summaryNightCount > 0
+      ? pluralText(labels.night, summaryNightCount, labels.locale)
+      : undefined;
   const disabledMatcher = React.useMemo(
     () => [{ before: startOfToday() }, ...effectiveDisabledRanges],
     [effectiveDisabledRanges],
@@ -1364,7 +1588,7 @@ export function DateRangeCalendarStep({
         }}
         className={cn(
           pagedCalendar
-            ? "flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain px-5 py-4 md:px-7 md:py-5"
+            ? "flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain px-5 py-4 md:px-10 md:pt-8 md:pb-4"
             : "flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain [overflow-anchor:none] px-4 py-5 md:px-6 md:py-6",
           isDragging && "cursor-grabbing select-none",
         )}
@@ -1390,6 +1614,42 @@ export function DateRangeCalendarStep({
             </button>
           </div>
         ) : null}
+        {showEndpointSummary ? (
+          // Two black circles say nothing about which end is which — least of all when
+          // the picker is reopened on a range chosen earlier. Name them, and count the
+          // nights so nobody has to count cells.
+          <div
+            className={cn(
+              "mx-auto mb-4 flex w-full items-end justify-between gap-4 md:mb-5",
+              pagedMonthCount === 2 ? "max-w-[58.5rem]" : "max-w-[24rem]",
+            )}
+          >
+            <div className="flex min-w-0 items-end gap-8">
+              <EndpointSummary
+                label={labels.checkIn}
+                value={summaryFrom}
+                // Only while a pick is in progress — underlining an endpoint of a
+                // finished range marks nothing, it just looks like stray decoration.
+                active={!selected?.from}
+              />
+              <EndpointSummary
+                label={labels.checkOut}
+                value={summaryTo}
+                active={Boolean(selected?.from) && !selected?.to}
+              />
+            </div>
+            {summaryNights ? (
+              <span
+                className={cn(
+                  "shrink-0 text-sm text-muted-foreground",
+                  summaryNights.translated && "notranslate",
+                )}
+              >
+                {summaryNights.text}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
         <div className="notranslate mx-auto w-full" translate="no">
           <Calendar
             mode="range"
@@ -1410,9 +1670,12 @@ export function DateRangeCalendarStep({
                   month: "long",
                   year: "numeric",
                 }).format(date),
+              // Single letters on the guest picker: the header is a rhythm cue, not
+              // something anyone reads, and dropping "SUN"→"S" lets the cells breathe.
+              // The host availability grid has room for the unambiguous short form.
               formatWeekdayName: (date) =>
                 new Intl.DateTimeFormat(calendarLocale, {
-                  weekday: "short",
+                  weekday: dayVariant === "availability" ? "short" : "narrow",
                 }).format(date),
             }}
             modifiers={calendarModifiers}
@@ -1422,69 +1685,77 @@ export function DateRangeCalendarStep({
               dayVariant === "availability"
                 ? "[--cell-size:3rem] md:[--cell-size:3.25rem]"
                 : pagedCalendar
-                  ? "[--cell-size:2.15rem] md:[--cell-size:2.55rem]"
+                  ? "[--cell-size:2.15rem] md:[--cell-size:2.4rem]"
                   : "[--cell-size:2.15rem] md:[--cell-size:2.8rem]",
             )}
             classNames={{
               root: "mx-auto w-full",
+              // The paged grid is fluid: each month fills half the panel and each cell a
+              // seventh of that, so the same rules give big Airbnb-scale cells in the
+              // 64rem search panel and smaller ones in a narrower dialog, without a
+              // breakpoint per surface.
               months: cn(
                 "relative mx-auto grid w-full grid-cols-1 justify-center gap-y-8 md:gap-y-10",
                 pagedCalendar
                   ? pagedMonthCount === 2
-                    ? "max-w-[49rem] md:grid-cols-2 md:gap-x-6"
-                    : "w-fit"
+                    ? "max-w-[58.5rem] md:grid-cols-2 md:gap-x-[4.25rem]"
+                    : "max-w-[24rem]"
                   : dayVariant === "availability"
                     ? "md:grid-cols-2 md:gap-x-6"
                     : "md:w-fit md:grid-cols-2 md:gap-x-8",
               ),
               month: cn(
-                "mx-auto w-full max-w-[19rem]",
-                dayVariant === "availability"
-                  ? "md:w-[23rem] md:max-w-none"
-                  : "md:w-[20rem] md:max-w-none",
+                "mx-auto w-full",
+                pagedCalendar
+                  ? "max-w-[24rem] md:max-w-none"
+                  : dayVariant === "availability"
+                    ? "max-w-[19rem] md:w-[23rem] md:max-w-none"
+                    : "max-w-[19rem] md:w-[20rem] md:max-w-none",
               ),
               nav: pagedCalendar
                 ? cn(
-                    "absolute left-1/2 top-0 z-10 flex h-10 -translate-x-1/2 items-center justify-between",
-                    pagedMonthCount === 2
-                      ? "w-full max-w-[49rem]"
-                      : "w-[17rem]",
+                    "absolute left-1/2 top-0 z-10 flex h-10 w-full -translate-x-1/2 items-center justify-between",
+                    pagedMonthCount === 2 ? "max-w-[58.5rem]" : "max-w-[24rem]",
                   )
                 : "hidden",
+              // Bare chevrons with a hover-only halo, and a visibly dead back arrow on
+              // the first bookable month rather than one that looks pressable.
               button_previous: pagedCalendar
-                ? "flex h-10 w-10 items-center justify-center rounded-full bg-muted/70 text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 [&_svg]:size-5"
+                ? "flex h-10 w-10 items-center justify-center rounded-full bg-transparent text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 aria-disabled:pointer-events-none aria-disabled:opacity-25 [&_svg]:size-4"
                 : "hidden",
               button_next: pagedCalendar
-                ? "flex h-10 w-10 items-center justify-center rounded-full bg-muted/70 text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 [&_svg]:size-5"
+                ? "flex h-10 w-10 items-center justify-center rounded-full bg-transparent text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 aria-disabled:pointer-events-none aria-disabled:opacity-25 [&_svg]:size-4"
                 : "hidden",
-              month_caption:
-                "mb-3 flex h-10 w-full items-center justify-center text-lg font-semibold text-foreground md:mb-4",
+              month_caption: cn(
+                "mb-4 flex h-10 w-full items-center justify-center font-semibold text-foreground md:mb-5",
+                pagedCalendar ? "text-[1.0625rem]" : "text-lg",
+              ),
               table: "mx-auto w-full border-collapse",
-              weekdays: "flex w-full",
+              weekdays: cn("flex w-full", pagedCalendar && "pb-3"),
               weekday:
                 "flex-1 text-center text-[0.68rem] font-medium uppercase text-muted-foreground select-none md:text-[0.72rem]",
-              week: "mt-2 flex w-full",
+              // No gap between weeks on the paged grid: each cell is taller than the
+              // band inside it, so the inset band supplies the rhythm and a multi-week
+              // range still reads as one continuous run rather than stacked dots.
+              week: cn("flex w-full", !pagedCalendar && "mt-1"),
               day: cn(
                 dayVariant === "availability"
                   ? "group/day relative h-[3.2rem] min-w-0 flex-1 p-0 text-center md:h-[3.6rem] md:w-[3.25rem] md:flex-none"
                   : pagedCalendar
-                    ? "group/day relative h-[2.2rem] min-w-0 flex-1 p-0 text-center md:h-10 md:w-10 md:flex-none"
+                    ? "group/day relative h-[2.6rem] min-w-0 flex-1 p-0 text-center md:h-auto md:aspect-[62/64]"
                     : "group/day relative h-[2.2rem] min-w-0 flex-1 p-0 text-center md:h-11 md:w-11 md:flex-none",
-                "[&:first-child[data-range-end=true]]:rounded-l-full",
-                "[&:last-child[data-range-start=true]]:rounded-r-full",
+                // A range that wraps onto the next week gets a rounded cap at each row
+                // edge, so Saturday closes the band and Sunday reopens it instead of the
+                // whole selection reading as one fused blob.
+                "[&:first-child]:before:rounded-l-full",
+                "[&:last-child]:before:rounded-r-full",
               ),
-              // Selection tint is painted via an inset box-shadow rather than a
-              // background-color utility. Blocked/booked days already carry their own
-              // background-color modifier class (manualBlock/bookingHold) on this same
-              // cell; box-shadow paints as a separate layer on top of that background,
-              // so the "this day is selected" tint stays visible instead of losing an
-              // unpredictable Tailwind class-order tie against the modifier's bg-*.
-              range_start:
-                "rounded-l-full shadow-[inset_0_0_0_999px_hsl(220_12%_86%)] hover:shadow-[inset_0_0_0_999px_hsl(220_12%_80%)] [&_button]:rounded-full",
-              range_middle:
-                "rounded-none shadow-[inset_0_0_0_999px_hsl(220_12%_86%)] hover:shadow-[inset_0_0_0_999px_hsl(220_12%_80%)] [&_button]:bg-transparent",
-              range_end:
-                "rounded-r-full shadow-[inset_0_0_0_999px_hsl(220_12%_86%)] hover:shadow-[inset_0_0_0_999px_hsl(220_12%_80%)] [&_button]:rounded-full",
+              range_start: cn(RANGE_BAND, "before:rounded-l-full [&_button]:rounded-full"),
+              range_middle: cn(RANGE_BAND, "[&_button]:bg-transparent"),
+              range_end: cn(RANGE_BAND, "before:rounded-r-full [&_button]:rounded-full"),
+              // The shadcn default fills today with `bg-muted`, which reads as a second
+              // selection sitting next to the real one. Today is marked by weight only.
+              today: "bg-transparent font-semibold text-foreground",
               outside: "opacity-0 pointer-events-none",
               hidden: "invisible",
             }}
@@ -1606,7 +1877,9 @@ export function MarketplaceStayDatePicker({
     dateDialogDescription ?? labels.chooseDatesDescription;
   const resolvedFinalActionLabel =
     finalActionLabel ?? (showGuestStep ? labels.search : labels.done);
-  const resolvedNextActionLabel = nextActionLabel ?? labels.next;
+  // The button that leaves the dates step should name where it goes; a bare "Next"
+  // gives no reason to press it.
+  const resolvedNextActionLabel = nextActionLabel ?? labels.whosComing;
   const resolvedGuestStepTitle = guestStepTitle ?? labels.who;
   const isPillLayout = layout === "pill";
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
@@ -2044,7 +2317,7 @@ export function MarketplaceStayDatePicker({
           className={cn(
             "notranslate",
             useSharedDesktopShell
-              ? "fixed z-[52] flex h-auto flex-col overflow-hidden rounded-[1.75rem] border border-border/60 bg-background text-popover-foreground shadow-[0_10px_32px_rgba(0,0,0,0.16)] outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2 data-[state=open]:duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-2 data-[state=closed]:duration-100"
+              ? "fixed z-[52] flex h-auto flex-col overflow-hidden rounded-[2rem] border border-border/60 bg-background text-popover-foreground shadow-[0_10px_32px_rgba(0,0,0,0.16)] outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2 data-[state=open]:duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-2 data-[state=closed]:duration-100"
               : "fixed z-50 flex flex-col overflow-hidden border border-border/60 bg-background text-popover-foreground shadow-[0_10px_32px_rgba(0,0,0,0.16)] outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-2",
             !useSharedDesktopShell &&
               "left-3 right-3 top-4 bottom-4 h-auto max-h-[calc(100dvh-2rem)] rounded-[2rem]",
@@ -2308,16 +2581,57 @@ export function MarketplaceStayDatePicker({
                   onMinimumStayBlocked={nudgeMinimumStayHint}
                   fitViewport={isPillLayout}
                   pagedOnDesktop={pagedCalendarOnDesktop}
+                  showEndpointHeader={isPillLayout}
                 />
               </div>
 
-              <div className="shrink-0 border-t border-border bg-background">
-                {showDateFlexibility ? (
-                  <div className="overflow-x-auto overflow-y-hidden px-4 py-3 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x md:px-6">
-                    <DateFlexibilityRow
-                      value={dateFlexibility}
-                      onChange={onDateFlexibilityChange}
-                    />
+              <div
+                className={cn(
+                  "shrink-0 bg-background",
+                  // The desktop panel reads as one surface, so the flexibility pills sit
+                  // on the same field as the grid instead of behind a rule.
+                  !isPillLayout && "border-t border-border",
+                )}
+              >
+                {showDateFlexibility || (isPillLayout && showGuestStep) ? (
+                  // One footer line on the desktop panel: flexibility on the left (it
+                  // scrolls on its own when the pills outgrow the space) and the step
+                  // action on the right, so the panel doesn't grow a second bar.
+                  <div
+                    className={cn(
+                      "flex items-center gap-4",
+                      isPillLayout
+                        ? "px-4 md:px-10 md:pb-7 md:pt-4"
+                        : "px-4 md:px-6",
+                    )}
+                  >
+                    {showDateFlexibility ? (
+                      <div className="min-w-0 flex-1 py-2">
+                        <DateFlexibilityRow
+                          value={dateFlexibility}
+                          onChange={onDateFlexibilityChange}
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex-1" />
+                    )}
+
+                    {isPillLayout && showGuestStep ? (
+                      // Completing a range used to fling the panel straight into the
+                      // guest step. Advancing is now the guest's call, and the button
+                      // names where it goes.
+                      <Button
+                        type="button"
+                        className={cn(
+                          "hidden shrink-0 rounded-full md:inline-flex",
+                          resolvedNextActionLabel.translated && "notranslate",
+                        )}
+                        disabled={!canGoNext}
+                        onClick={() => changeStep("guests")}
+                      >
+                        {resolvedNextActionLabel.text}
+                      </Button>
+                    ) : null}
                   </div>
                 ) : null}
 

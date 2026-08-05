@@ -16,7 +16,12 @@ import type { PropertyTypeOption } from "@/lib/types/property-type";
 import { cn } from "@/lib/utils";
 import { sortPropertyTypesInDisplayOrder } from "@/lib/property-type-filter";
 import { placeKey, type PlaceOption } from "@/lib/utils/place";
-import { localizePlaceName, localizedPlaceLabel } from "@/lib/i18n/place-name";
+import {
+  isSamePlaceName,
+  localizePlaceName,
+  localizedPlaceLabel,
+  matchPlaceName,
+} from "@/lib/i18n/place-name";
 import { Button } from "@/components/ui/button";
 import { interpolate } from "@/lib/i18n/client";
 import { useSearchLabels } from "@/components/marketplace/search-labels";
@@ -117,20 +122,22 @@ export function MarketplacePlaceSelector({
   }, [isPillLayout, open]);
 
   const filteredCities = React.useMemo(() => {
-    const q = draftCity.trim().toLowerCase();
+    const q = draftCity.trim();
     const sorted = [...popularCities].sort((a, b) => a.city.localeCompare(b.city));
 
     if (!q) return sorted;
 
+    // Matching is script-agnostic: a city stored as "Νέα Φλογητά" is rendered
+    // romanized, so it has to answer to "nea", "неа" and "νεα" alike.
     return sorted
       .filter(
         (place) =>
-          place.city.toLowerCase().includes(q) ||
-          place.country.toLowerCase().includes(q)
+          matchPlaceName(place.city, q).matches ||
+          matchPlaceName(place.country, q).matches
       )
       .sort((a, b) => {
-        const aStarts = a.city.toLowerCase().startsWith(q) ? 0 : 1;
-        const bStarts = b.city.toLowerCase().startsWith(q) ? 0 : 1;
+        const aStarts = matchPlaceName(a.city, q).startsWith ? 0 : 1;
+        const bStarts = matchPlaceName(b.city, q).startsWith ? 0 : 1;
         return aStarts - bStarts || a.city.localeCompare(b.city);
       });
   }, [draftCity, popularCities]);
@@ -139,12 +146,12 @@ export function MarketplacePlaceSelector({
   // than one country; disambiguation happens by picking a specific row instead (see
   // the list's onClick, which carries the full place object).
   const selectedPlace = React.useMemo(() => {
-    const normalizedDraftCity = draftCity.trim().toLowerCase();
+    const normalizedDraftCity = draftCity.trim();
     if (!normalizedDraftCity) return null;
 
     return (
-      popularCities.find(
-        (candidate) => candidate.city.toLowerCase() === normalizedDraftCity
+      popularCities.find((candidate) =>
+        isSamePlaceName(candidate.city, normalizedDraftCity)
       ) ?? null
     );
   }, [draftCity, popularCities]);
@@ -224,8 +231,11 @@ export function MarketplacePlaceSelector({
   };
 
   const commitDraftSelection = React.useCallback(() => {
+    // Commit the canonical DB spelling when the typed text resolves to a known city,
+    // so a romanized/Cyrillic query still hits the exact (city, country) branch of the
+    // property query instead of a `contains` that can never match.
     onPlaceChange({
-      city: draftCity.trim(),
+      city: selectedPlace?.city ?? draftCity.trim(),
       country: selectedPlace?.country ?? "",
     });
     if (showPropertyTypes) {
@@ -469,8 +479,7 @@ export function MarketplacePlaceSelector({
                     </li>
                   ) : (
                     filteredCities.map((place) => {
-                      const selected =
-                        draftCity.trim().toLowerCase() === place.city.toLowerCase();
+                      const selected = isSamePlaceName(place.city, draftCity.trim());
                       return (
                         <li key={placeKey(place)}>
                           <button

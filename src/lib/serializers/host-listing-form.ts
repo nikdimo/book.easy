@@ -9,6 +9,8 @@ export type HostListingFormData = {
   bedrooms: number;
   bathrooms: number;
   beds: number;
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
   property: {
     propertyType: string;
     address: string;
@@ -54,6 +56,8 @@ export function serializeHostListingForForm(
     bedrooms: listing.bedrooms,
     bathrooms: listing.bathrooms,
     beds: listing.beds,
+    checkInTime: listing.checkInTime,
+    checkOutTime: listing.checkOutTime,
     property: {
       propertyType: listing.property.propertyType,
       address: listing.property.address,

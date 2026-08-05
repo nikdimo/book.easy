@@ -12,6 +12,7 @@ import {
   getFirstVideoUrlsByListingIds,
 } from "@/lib/serializers/listing-card";
 import { placeKey, type PlaceOption } from "@/lib/utils/place";
+import { crossesAntimeridian } from "@/lib/map-bounds";
 import type {
   SearchFilterPreview,
   SearchFilters,
@@ -99,13 +100,36 @@ function buildListingWhere(filters: SearchFilters): Prisma.ListingWhereInput {
     };
   }
 
+  const andClauses: Prisma.ListingWhereInput[] = [];
+
   if (filters.amenities && filters.amenities.length > 0) {
     // Must have ALL selected amenities (US-05.05 / phase-1-scope.md technical
     // acceptance criteria), not just any one of them — one `some` clause per amenity,
     // ANDed together.
-    where.AND = filters.amenities.map((name) => ({
-      amenities: { some: { amenity: { name } } },
-    }));
+    andClauses.push(
+      ...filters.amenities.map((name) => ({
+        amenities: { some: { amenity: { name } } },
+      }))
+    );
+  }
+
+  if (filters.bounds) {
+    const { west, south, east, north } = filters.bounds;
+    // Kept out of `where.property` on purpose: that key is claimed by the city and
+    // property-type branches above, and the antimeridian case needs an `OR` of its
+    // own that would collide with the fuzzy-city `OR`.
+    andClauses.push({
+      property: {
+        latitude: { gte: south, lte: north },
+        ...(crossesAntimeridian(filters.bounds)
+          ? { OR: [{ longitude: { gte: west } }, { longitude: { lte: east } }] }
+          : { longitude: { gte: west, lte: east } }),
+      },
+    });
+  }
+
+  if (andClauses.length > 0) {
+    where.AND = andClauses;
   }
 
   if (filters.checkIn && filters.checkOut) {

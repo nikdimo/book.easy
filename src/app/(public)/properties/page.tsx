@@ -17,6 +17,7 @@ import {
   stringifyPropertyTypesParam,
 } from "@/lib/property-type-filter";
 import { getMapCoordinatesForListing } from "@/lib/utils/listing-map-coords";
+import { MAP_BOUNDS_PARAM, parseMapBounds } from "@/lib/map-bounds";
 import { formatPrice, getNightCount } from "@/lib/utils/format";
 import type { MapPin } from "@/components/marketplace/properties-map";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -98,6 +99,12 @@ export default async function PropertiesPage({
         ? (params.sort as "price_asc" | "price_desc" | "newest")
         : undefined,
     page: params.page ? Number(params.page) : 1,
+    bounds:
+      parseMapBounds(
+        typeof params[MAP_BOUNDS_PARAM] === "string"
+          ? params[MAP_BOUNDS_PARAM]
+          : undefined,
+      ) ?? undefined,
   };
 
   // Adults/children/infants/pets breakdown, carried through as opaque passthrough
@@ -135,6 +142,8 @@ export default async function PropertiesPage({
     if (filters.amenities)
       filters.amenities.forEach((a) => p.append("amenities", a));
     if (filters.sort) p.set("sort", filters.sort);
+    if (typeof params[MAP_BOUNDS_PARAM] === "string")
+      p.set(MAP_BOUNDS_PARAM, params[MAP_BOUNDS_PARAM]);
     p.set("page", String(page));
     return `/properties?${p.toString()}`;
   }

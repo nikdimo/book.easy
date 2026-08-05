@@ -33,6 +33,8 @@ export interface ListingDraftData {
   baseNightlyRate?: string;
   cleaningFee?: string;
   minNights?: string;
+  checkInTime?: string;
+  checkOutTime?: string;
   promotionType?: string;
   promotionPercent?: string;
   promotionMinimumNights?: string;

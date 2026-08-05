@@ -1706,7 +1706,7 @@
   },
   {
     "key": "host.form.offer_hint",
-    "sourceText": "This is optional. Choose one ready-made offer or publish without a promotion.",
+    "sourceText": "Optionally offer a discount to attract guests. Choose a ready-made offer or publish without one.",
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
@@ -1833,6 +1833,41 @@
     "key": "host.form.searching_address",
     "sourceText": "Searching address…",
     "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.stay_times.check_in",
+    "sourceText": "Check-in from",
+    "filePath": "src/components/host/listing-stay-times.tsx"
+  },
+  {
+    "key": "host.form.stay_times.check_in_hint",
+    "sourceText": "Earliest guests can arrive",
+    "filePath": "src/components/host/listing-stay-times.tsx"
+  },
+  {
+    "key": "host.form.stay_times.check_out",
+    "sourceText": "Check-out by",
+    "filePath": "src/components/host/listing-stay-times.tsx"
+  },
+  {
+    "key": "host.form.stay_times.check_out_hint",
+    "sourceText": "Latest guests can leave",
+    "filePath": "src/components/host/listing-stay-times.tsx"
+  },
+  {
+    "key": "host.form.stay_times.flexible",
+    "sourceText": "Flexible — agree with the guest",
+    "filePath": "src/components/host/listing-stay-times.tsx"
+  },
+  {
+    "key": "host.form.stay_times.hint",
+    "sourceText": "Guests see these on your listing before they book.",
+    "filePath": "src/components/host/listing-stay-times.tsx"
+  },
+  {
+    "key": "host.form.stay_times.title",
+    "sourceText": "Check-in and check-out times",
+    "filePath": "src/components/host/listing-stay-times.tsx"
   },
   {
     "key": "host.form.steps_hint",
@@ -2101,7 +2136,7 @@
   },
   {
     "key": "host.prepublish.availability_start_hint",
-    "sourceText": "This decides when your listing starts taking booking requests. You can change it any time from your calendar.",
+    "sourceText": "This decides when your listing starts taking booking requests. You can change the dates any time from your calendar.",
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
   },
   {
@@ -2137,6 +2172,11 @@
   {
     "key": "host.prepublish.done",
     "sourceText": "Done",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.prepublish.edit_price",
+    "sourceText": "Edit price",
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
@@ -2180,6 +2220,11 @@
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
+    "key": "host.prepublish.rate_exact_hint",
+    "sourceText": "Tap the field to type an exact amount.",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
     "key": "host.prepublish.rate_label",
     "sourceText": "Price per night for these dates",
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
@@ -2187,6 +2232,11 @@
   {
     "key": "host.prepublish.rate_normal",
     "sourceText": "Normally",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.rate_quick_label",
+    "sourceText": "Adjust your normal price",
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
   },
   {
@@ -2630,6 +2680,16 @@
     "filePath": "src/app/(public)/properties/[slug]/page.tsx"
   },
   {
+    "key": "listing.check_in_from",
+    "sourceText": "Check-in from {time}",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.check_out_by",
+    "sourceText": "Check-out by {time}",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
     "key": "listing.cleaning_fee",
     "sourceText": "Cleaning fee",
     "filePath": "src/app/(public)/properties/[slug]/page.tsx"
@@ -2683,6 +2743,16 @@
     "key": "listing.link_copied_clipboard",
     "sourceText": "Link copied to clipboard",
     "filePath": "src/components/public/listing-actions.tsx"
+  },
+  {
+    "key": "listing.location_approximate",
+    "sourceText": "Approximate location. The exact address is shared once your booking is confirmed.",
+    "filePath": "src/components/public/listing-location-map.tsx"
+  },
+  {
+    "key": "listing.location_heading",
+    "sourceText": "Where you'll be",
+    "filePath": "src/components/public/listing-location-map.tsx"
   },
   {
     "key": "listing.minimum_nights.few",
@@ -2748,6 +2818,11 @@
     "key": "listing.share_failed",
     "sourceText": "Could not share",
     "filePath": "src/components/public/listing-actions.tsx"
+  },
+  {
+    "key": "listing.stay_times",
+    "sourceText": "Check-in {in} · Check-out {out}",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
   },
   {
     "key": "listing.street_view",
@@ -4180,6 +4255,11 @@
     "filePath": "src/components/marketplace/search-labels.ts"
   },
   {
+    "key": "search.any_dates_flexible",
+    "sourceText": "I'm flexible",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
     "key": "search.back",
     "sourceText": "Back",
     "filePath": "src/components/marketplace/search-labels.ts"
@@ -4245,6 +4325,11 @@
     "filePath": "src/components/marketplace/search-labels.ts"
   },
   {
+    "key": "search.custom_dates",
+    "sourceText": "Custom",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
     "key": "search.destination_description",
     "sourceText": "Choose a destination city and optional property type filters.",
     "filePath": "src/components/marketplace/search-labels.ts"
@@ -4292,6 +4377,36 @@
   {
     "key": "search.flexible_7",
     "sourceText": "+- 7 days",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.flexible_day.few",
+    "sourceText": "+- {n} days",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.flexible_day.many",
+    "sourceText": "+- {n} days",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.flexible_day.one",
+    "sourceText": "+- {n} day",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.flexible_day.other",
+    "sourceText": "+- {n} days",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.flexible_day.two",
+    "sourceText": "+- {n} days",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "search.flexible_day.zero",
+    "sourceText": "+- {n} days",
     "filePath": "src/components/marketplace/search-labels.ts"
   },
   {

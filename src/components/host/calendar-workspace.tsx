@@ -31,6 +31,7 @@ import {
   OfferPreview,
   OptionToggle,
   STICKY_FOOTER,
+  roundToCleanPrice,
 } from "@/components/host/calendar-editor-ui";
 import { Button } from "@/components/ui/button";
 import { Calendar as MiniCalendar } from "@/components/ui/calendar";
@@ -514,6 +515,10 @@ function EditorDialog({
   const [fee, setFee] = useState(String(cleaningFee));
   const [minimumStay, setMinimumStay] = useState(String(minNights));
   const [roundPrice, setRoundPrice] = useState(true);
+  /** The multiplier behind the chosen quick adjustment, or `null` once the host types
+   *  their own figure — the rounding toggle recomputes from it so switching rounding
+   *  off gives back the exact percentage rather than the rounded number. */
+  const [priceFactor, setPriceFactor] = useState<number | null>(null);
   const [discount, setDiscount] = useState(
     String(state.promotion?.discountPercent ?? 15),
   );
@@ -526,6 +531,11 @@ function EditorDialog({
   const [roundPromotion, setRoundPromotion] = useState(
     state.promotion?.roundToWholeUnit ?? true,
   );
+
+  /** One place decides what a price looks like in the field, so the chips, the toggle
+   *  and the typed value can never disagree about it. */
+  const applyRounding = (value: number, round: boolean) =>
+    round ? roundToCleanPrice(value) : Number(value.toFixed(2));
 
   const isDateScoped = Boolean(range?.from);
   const selectedInput = range?.from ? calendarRangeToInput(range) : null;
@@ -969,7 +979,10 @@ function EditorDialog({
                     min={1}
                     step="0.01"
                     value={price}
-                    onChange={(event) => setPrice(event.target.value)}
+                    onChange={(event) => {
+                      setPriceFactor(null);
+                      setPrice(event.target.value);
+                    }}
                   />
                   <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm md:text-xs text-muted-foreground">
                     <Tx k="host.calendar.per_night" source="per night" />
@@ -983,22 +996,28 @@ function EditorDialog({
                 </p>
               </div>
               <div className="grid grid-cols-4 gap-2">
-                {[
-                  ["−10%", baseNightlyRate * 0.9],
-                  ["Base", baseNightlyRate],
-                  ["+20%", baseNightlyRate * 1.2],
-                  ["+50%", baseNightlyRate * 1.5],
-                ].map(([label, value]) => {
-                  const adjusted = roundPrice
-                    ? Math.ceil(Number(value) / 5) * 5
-                    : Number(Number(value).toFixed(2));
+                {(
+                  [
+                    ["−10%", 0.9],
+                    ["Base", 1],
+                    ["+20%", 1.2],
+                    ["+50%", 1.5],
+                  ] as const
+                ).map(([label, factor]) => {
+                  const adjusted = applyRounding(
+                    baseNightlyRate * factor,
+                    roundPrice,
+                  );
                   const selected = Number(price) === adjusted;
                   return (
                     <button
                       key={String(label)}
                       type="button"
                       aria-pressed={selected}
-                      onClick={() => setPrice(String(adjusted))}
+                      onClick={() => {
+                        setPriceFactor(factor);
+                        setPrice(String(adjusted));
+                      }}
                       className={cn(
                         "relative flex min-h-14 flex-col items-center justify-center rounded-xl border px-2 py-2 transition-colors",
                         selected
@@ -1025,22 +1044,34 @@ function EditorDialog({
                   );
                 })}
               </div>
+              {/* Same keys as the wizard's price sheet: the two surfaces round the
+                  same way now, so they should not say it in two different voices —
+                  and this copy was the one that had never been translated. */}
               <OptionToggle
                 checked={roundPrice}
-                label="Round up to the nearest €5"
-                description="Keeps guest-facing prices clean and easy to scan."
-                onChange={() =>
-                  setRoundPrice((current) => {
-                    const next = !current;
-                    if (next) {
-                      const currentPrice = Number(price);
-                      if (Number.isFinite(currentPrice) && currentPrice > 0) {
-                        setPrice(String(Math.ceil(currentPrice / 5) * 5));
-                      }
-                    }
-                    return next;
-                  })
+                label={
+                  resolve(
+                    "host.prepublish.round_clean_label",
+                    "Round to the closest round number",
+                  ).text
                 }
+                description={
+                  resolve(
+                    "host.prepublish.round_hint",
+                    "Keeps guest-facing prices clean and easy to scan.",
+                  ).text
+                }
+                onChange={() => {
+                  const next = !roundPrice;
+                  setRoundPrice(next);
+                  const source =
+                    priceFactor !== null && baseNightlyRate > 0
+                      ? baseNightlyRate * priceFactor
+                      : Number(price);
+                  if (Number.isFinite(source) && source > 0) {
+                    setPrice(String(applyRounding(source, next)));
+                  }
+                }}
               />
               {!isDateScoped ? (
                 <div className="rounded-xl border bg-muted/20 p-4">

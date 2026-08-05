@@ -35,6 +35,7 @@ import {
   PRICE_RANGE_STEP,
   resolvePriceRange,
 } from "@/lib/search-filter-config";
+import { isFlexibilityValue } from "@/components/marketplace/marketplace-stay-date-picker";
 import type { SearchFilterPreview } from "@/lib/types/search";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 import { cn } from "@/lib/utils";
@@ -98,7 +99,7 @@ function formatPrice(value: number, locale: string) {
 
 function parseDateFlexibility(value: string | null): number {
   const parsed = Number(value);
-  return [0, 1, 2, 3, 7, 14].includes(parsed) ? parsed : 0;
+  return isFlexibilityValue(parsed) ? parsed : 0;
 }
 
 function CounterRow({

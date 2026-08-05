@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Heart, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { Heart, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { toggleFavorite } from "@/lib/actions/favorite.actions";
@@ -200,11 +200,10 @@ export function PropertyCardGallery({
       ))}
 
       {promotionLabel?.text ? (
-        <div className="pointer-events-none absolute left-3 top-3 z-10 flex max-w-[75%] items-center gap-1.5 rounded-full bg-gradient-to-r from-rose-600 to-orange-500 px-3 py-1.5 text-white shadow-lg shadow-black/20 ring-1 ring-white/25">
-          <Sparkles className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
+        <div className="pointer-events-none absolute left-3 top-3 z-10 flex max-w-[75%] items-center rounded-md bg-white px-2 py-1 text-black shadow-sm">
           <span
             className={cn(
-              "truncate text-[0.75rem] font-semibold leading-none tracking-tight",
+              "truncate text-[0.7rem] font-semibold leading-none tracking-tight",
               promotionLabel.translated && "notranslate"
             )}
           >

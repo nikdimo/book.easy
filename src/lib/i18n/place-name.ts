@@ -83,6 +83,57 @@ export function localizePlaceName(value: string, locale: string): string {
   return latin;
 }
 
+function fold(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .trim();
+}
+
+/** Every script a place name (or a typed query) can reasonably be written in, folded
+ * for comparison. Latin↔Greek↔Cyrillic is lossy in both directions, so a name stored
+ * as "Νέα Φλογητά" is compared as Greek, as "nea flogita", and as "неа флогита" —
+ * whichever alphabet the visitor types in, one of the variants lines up. */
+function scriptVariants(value: string): string[] {
+  const latin = fold(romanize(value));
+  return [
+    ...new Set([
+      fold(value),
+      latin,
+      fold(latinToCyrillic(latin)),
+      fold(mapScript(latin, LATIN_TO_GREEK)),
+    ]),
+  ].filter(Boolean);
+}
+
+/** Substring match that ignores alphabet, case and accents; `startsWith` feeds the
+ * "prefix matches first" ordering in the destination pickers. */
+export function matchPlaceName(
+  value: string,
+  query: string
+): { matches: boolean; startsWith: boolean } {
+  const candidates = scriptVariants(value);
+  const queries = scriptVariants(query);
+
+  let matches = false;
+  let startsWith = false;
+  for (const candidate of candidates) {
+    for (const q of queries) {
+      if (!candidate.includes(q)) continue;
+      matches = true;
+      if (candidate.startsWith(q)) startsWith = true;
+    }
+  }
+  return { matches, startsWith };
+}
+
+/** True when the typed name refers to this exact city, in any alphabet. */
+export function isSamePlaceName(value: string, query: string): boolean {
+  const candidates = new Set(scriptVariants(value));
+  return scriptVariants(query).some((q) => candidates.has(q));
+}
+
 export function localizedPlaceLabel(
   place: { city: string; country: string },
   locale: string

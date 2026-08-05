@@ -39,6 +39,7 @@ import {
   OfferPreview,
   OptionToggle,
   STICKY_FOOTER,
+  roundToCleanPrice,
 } from "@/components/host/calendar-editor-ui";
 import { DateRangeCalendarStep } from "@/components/marketplace/marketplace-stay-date-picker";
 import { Tx, interpolate, useI18n } from "@/lib/i18n/client";
@@ -77,6 +78,10 @@ export type PrePublishScreen = "menu" | "availability-start" | PrePublishTask;
  *  availability screen is ever mounted, so a fixed id is safe here where the radio and
  *  date-field ids still come from `useId`. */
 export const AVAILABILITY_START_ERROR_ID = "availability-start-error";
+
+/** The handle `PrePublishTaskScreen` hands the wizard so its bottom bar can open the
+ *  same editor the in-card button opens. */
+export type PrePublishTaskActions = { openEditor: () => void };
 
 export function prePublishTaskCount(
   plan: PrePublishPlan,
@@ -676,6 +681,7 @@ export function AvailabilityStartScreen({
   onChange,
   onOpenBlockingCalendar,
   showError,
+  stayTimes,
 }: {
   plan: PrePublishPlan;
   onChange: (plan: PrePublishPlan) => void;
@@ -683,6 +689,10 @@ export function AvailabilityStartScreen({
   /** Set once the host has tried to continue without answering, so the screen is quiet
    *  on arrival and explicit afterwards rather than scolding them up front. */
   showError: boolean;
+  /** Check-in / check-out times, passed in rather than owned: they are listing form
+   *  state, and this screen deals in the pre-publish plan. Rendered last and visually
+   *  secondary so the radio group above stays the only thing that blocks Continue. */
+  stayTimes?: React.ReactNode;
 }) {
   const i18n = useI18n();
   const { locale } = i18n;
@@ -828,10 +838,12 @@ export function AvailabilityStartScreen({
             source="When can guests book?"
           />
         </h2>
+        {/* Scoped to "the dates" on purpose: the check-in times below are on this
+            screen too, and the calendar is not where those are changed. */}
         <p className="mt-1 text-xs text-muted-foreground md:text-sm">
           <Tx
             k="host.prepublish.availability_start_hint"
-            source="This decides when your listing starts taking booking requests. You can change it any time from your calendar."
+            source="This decides when your listing starts taking booking requests. You can change the dates any time from your calendar."
           />
         </p>
       </div>
@@ -1037,6 +1049,8 @@ export function AvailabilityStartScreen({
         </div>
       </section>
 
+      {stayTimes}
+
       <Dialog open={datePickerOpen} onOpenChange={setDatePickerOpen}>
         <DialogContent
           variant="sheet"
@@ -1106,6 +1120,8 @@ export function PrePublishTaskScreen({
   currency,
   baseNightlyRate,
   hasCleaningFee,
+  onSelectionChange,
+  actionRef,
 }: {
   task: PrePublishTask;
   plan: PrePublishPlan;
@@ -1115,6 +1131,11 @@ export function PrePublishTaskScreen({
   /** Free cleaning is not offerable when there's no cleaning fee to waive — the same
    *  rule the launch offer on the previous step follows. */
   hasCleaningFee: boolean;
+  /** The wizard's bottom bar turns into the editor's opener while dates are
+   *  selected, so it has to hear about the selection the calendar owns. */
+  onSelectionChange?: (selection: PrePublishRange | null) => void;
+  /** …and needs a way to open that editor, which is state in here. */
+  actionRef?: React.RefObject<PrePublishTaskActions | null>;
 }) {
   const i18n = useI18n();
   const { locale, resolve } = i18n;
@@ -1175,6 +1196,38 @@ export function PrePublishTaskScreen({
     blockedDates.has(day),
   ).length;
   const selectionOpen = selectionNights - selectionBlocked;
+
+  function openEditor() {
+    if (!selection) return;
+    setEditor(
+      task === "pricing"
+        ? { kind: "price", range: selection }
+        : { kind: "offer", range: selection },
+    );
+  }
+
+  // Refreshed after every render rather than through a dependency list: `openEditor`
+  // closes over the current selection, and a stale one would price the wrong dates.
+  React.useEffect(() => {
+    if (!actionRef) return;
+    actionRef.current = { openEditor };
+    return () => {
+      actionRef.current = null;
+    };
+  });
+
+  const selectionStart = selection?.startDate ?? null;
+  const selectionEnd = selection?.endDate ?? null;
+  React.useEffect(() => {
+    onSelectionChange?.(
+      selectionStart && selectionEnd
+        ? { startDate: selectionStart, endDate: selectionEnd }
+        : null,
+    );
+  }, [onSelectionChange, selectionStart, selectionEnd]);
+
+  // The screen unmounts with the wizard's Back; the bar it was feeding does not.
+  React.useEffect(() => () => onSelectionChange?.(null), [onSelectionChange]);
 
   function commit(next: Partial<PrePublishPlan>) {
     onChange({ ...plan, ...next });
@@ -1350,7 +1403,9 @@ export function PrePublishTaskScreen({
     task === "availability"
       ? resolve("host.calendar.block_dates", "Block dates").text
       : task === "pricing"
-        ? resolve("host.prepublish.set_price", "Set this price").text
+        ? // The button opens the editor rather than committing, so it can't wear the
+          // editor's own "Set this price" — that promise belonged one screen later.
+          resolve("host.prepublish.edit_price", "Edit price").text
         : resolve("host.prepublish.add_offer", "Add this offer").text;
   const PrimaryIcon =
     task === "availability"
@@ -1530,14 +1585,7 @@ export function PrePublishTaskScreen({
                 size="lg"
                 className="w-full"
                 disabled={!selection}
-                onClick={() => {
-                  if (!selection) return;
-                  setEditor(
-                    task === "pricing"
-                      ? { kind: "price", range: selection }
-                      : { kind: "offer", range: selection },
-                  );
-                }}
+                onClick={openEditor}
               >
                 <PrimaryIcon className="size-4" />
                 {primaryLabel}
@@ -1586,61 +1634,86 @@ export function PrePublishTaskScreen({
                     ? resolve("host.prepublish.type_promotion", "Promotion").text
                     : resolve("host.prepublish.type_availability", "Availability")
                         .text;
-              return (
-                <div
-                  key={row.key}
-                  className="grid gap-3 px-5 py-3.5 sm:grid-cols-[8rem_8rem_minmax(0,1fr)_13rem] sm:items-center"
-                >
-                  <span className="text-sm font-medium">
+              // Keep the row itself as the edit affordance. This leaves the mobile
+              // row enough room for the date, price and the single destructive action.
+              const openRow = () =>
+                setEditor(
+                  row.kind === "price"
+                    ? {
+                        kind: "price",
+                        range: {
+                          startDate: row.startDate,
+                          endDate: row.endDate,
+                        },
+                        initialRate: priceByDate.get(row.startDate),
+                      }
+                    : {
+                        kind: "offer",
+                        range: {
+                          startDate: row.startDate,
+                          endDate: row.endDate,
+                        },
+                        index: row.index,
+                      },
+                );
+              const rowBody = (
+                <>
+                  <span className="shrink-0 text-sm font-medium whitespace-nowrap">
                     {compactRange(row.startDate, row.endDate, locale)}
                   </span>
-                  <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs font-medium md:text-[0.68rem]">
+                  <span className="hidden w-fit shrink-0 items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs font-medium sm:inline-flex md:text-[0.68rem]">
                     <Icon className="size-3.5" /> {typeLabel}
                   </span>
-                  <span className="min-w-0">
-                    <span className="block text-sm font-medium">
-                      {row.label}
-                    </span>
-                    <span className="block truncate text-sm text-muted-foreground md:text-xs">
+                  <span className="min-w-0 flex-1 truncate whitespace-nowrap text-sm">
+                    <span className="font-medium">{row.label}</span>
+                    <span className="hidden text-muted-foreground sm:inline">
+                      {" · "}
                       {row.detail}
                     </span>
                   </span>
-                  <span className="flex justify-end gap-1">
-                    {row.kind !== "block" ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          setEditor(
-                            row.kind === "price"
-                              ? {
-                                  kind: "price",
-                                  range: {
-                                    startDate: row.startDate,
-                                    endDate: row.endDate,
-                                  },
-                                  initialRate: priceByDate.get(row.startDate),
-                                }
-                              : {
-                                  kind: "offer",
-                                  range: {
-                                    startDate: row.startDate,
-                                    endDate: row.endDate,
-                                  },
-                                  index: row.index,
-                                },
-                          )
-                        }
-                      >
-                        <Pencil className="size-3.5" />
-                        <Tx k="host.workspace.edit" source="Edit" />
-                      </Button>
-                    ) : null}
+                </>
+              );
+              return (
+                <div
+                  key={row.key}
+                  className="flex items-center gap-2 px-4 py-2.5 sm:gap-3 sm:px-5 sm:py-3.5"
+                >
+                  {row.kind === "block" ? (
+                    <span className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+                      {rowBody}
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={openRow}
+                      aria-label={`${resolve("host.workspace.edit", "Edit").text} ${compactRange(row.startDate, row.endDate, locale)}`}
+                      className="flex min-w-0 flex-1 items-center gap-2 rounded-lg text-left transition-colors hover:text-primary sm:gap-3"
+                    >
+                      {rowBody}
+                    </button>
+                  )}
+                  <span className="flex shrink-0 justify-end">
                     <Button
                       type="button"
                       variant="ghost"
-                      size="sm"
+                      size="icon"
+                      className="size-8 shrink-0"
+                      title={
+                        row.kind === "block"
+                          ? resolve(
+                              "host.calendar.make_available",
+                              "Make available",
+                            ).text
+                          : resolve("host.prepublish.remove", "Remove").text
+                      }
+                      aria-label={
+                        row.kind === "block"
+                          ? resolve(
+                              "host.calendar.make_available",
+                              "Make available",
+                            ).text
+                          : resolve("host.prepublish.remove", "Remove").text
+                      }
                       onClick={() => {
                         if (row.kind === "block") {
                           openDates(eachPlanDate(row.startDate, row.endDate));
@@ -1661,10 +1734,6 @@ export function PrePublishTaskScreen({
                       ) : (
                         <Trash2 className="size-3.5" />
                       )}
-                      {row.kind === "block"
-                        ? resolve("host.calendar.make_available", "Make available")
-                            .text
-                        : resolve("host.prepublish.remove", "Remove").text}
                     </Button>
                   </span>
                 </div>
@@ -1740,6 +1809,11 @@ function PlanEditorDialog({
     String(editor.kind === "price" ? (editor.initialRate ?? baseRate) : baseRate),
   );
   const [roundPrice, setRoundPrice] = React.useState(true);
+  /** The multiplier behind the chosen quick adjustment, or `null` once the host types
+   *  their own figure. Kept so the rounding toggle can recompute from the exact
+   *  percentage instead of re-rounding an already-rounded number — turning it off has
+   *  to give back the €76.80, which is unrecoverable from the €77 in the field. */
+  const [priceFactor, setPriceFactor] = React.useState<number | null>(null);
   const [offerType, setOfferType] = React.useState<
     "PERCENT_DISCOUNT" | "FREE_CLEANING"
   >(existingOffer?.type ?? "PERCENT_DISCOUNT");
@@ -1761,6 +1835,27 @@ function PlanEditorDialog({
     Number.isInteger(discountNumber) &&
     discountNumber >= MIN_OFFER_PERCENT &&
     discountNumber <= MAX_OFFER_PERCENT;
+
+  /** The shared `money` drops cents, which is right everywhere it reads back a price
+   *  but wrong on the chips: with rounding off they claimed "€77" for the €76.80 they
+   *  put in the field. Chips show the figure they actually apply. */
+  const chipMoney = React.useCallback(
+    (value: number) =>
+      new Intl.NumberFormat(locale, {
+        style: "currency",
+        currency,
+        maximumFractionDigits: Number.isInteger(value) ? 0 : 2,
+      }).format(value),
+    [currency, locale],
+  );
+
+  /** One place decides what a price looks like in the field, so the chips, the toggle
+   *  and the typed value can never disagree about it. */
+  const applyRounding = React.useCallback(
+    (value: number, round: boolean) =>
+      round ? roundToCleanPrice(value) : Number(value.toFixed(2)),
+    [],
+  );
 
   const isPrice = editor.kind === "price";
   const HeaderIcon = isPrice ? CircleDollarSign : BadgePercent;
@@ -1793,7 +1888,29 @@ function PlanEditorDialog({
     <Dialog open onOpenChange={(open) => (open ? undefined : onClose())}>
       <DialogContent
         variant="sheet"
-        className="flex flex-col gap-0 overflow-hidden p-0 md:h-auto md:max-h-[90dvh] md:max-w-[34rem]"
+        // The price sheet opens tall on a phone so the quick adjustments are above
+        // the fold instead of peeking over the bottom edge. Focus stays off the
+        // amount field: it is the second choice here, and autofocusing it threw the
+        // keyboard up over the very buttons the host came for.
+        className={cn(
+          "flex flex-col gap-0 overflow-hidden p-0 md:h-auto md:max-h-[90dvh] md:max-w-[34rem]",
+          isPrice && "h-[92dvh]",
+        )}
+        onOpenAutoFocus={
+          isPrice
+            ? (event) => {
+                event.preventDefault();
+                // Focus still has to land inside the sheet, or the focus trap has
+                // nothing to hold and a keyboard user is stranded on the page
+                // behind it — the panel itself takes it instead of the input.
+                const panel = event.currentTarget;
+                if (panel instanceof HTMLElement) {
+                  panel.tabIndex = -1;
+                  panel.focus();
+                }
+              }
+            : undefined
+        }
       >
         <DialogHeader className="shrink-0">
           <div className="flex min-w-0 items-center gap-2.5 border-b px-6 py-3.5 pr-12 text-left">
@@ -1815,7 +1932,70 @@ function PlanEditorDialog({
 
         <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
           {isPrice ? (
-            <div className="space-y-4 p-6">
+            <div className="flex min-h-full flex-col space-y-4 p-6">
+              {/* Quick adjustments lead: they answer the question ("a fifth more
+                  than usual") without anyone doing arithmetic, and they open the
+                  sheet without a keyboard covering half of it. The exact amount
+                  sits underneath for the hosts who already know their number. */}
+              {baseRate > 0 ? (
+                <div>
+                  <p className="text-sm font-semibold">
+                    <Tx
+                      k="host.prepublish.rate_quick_label"
+                      source="Adjust your normal price"
+                    />
+                  </p>
+                  <div className="mt-2 grid grid-cols-4 gap-2">
+                  {(
+                    [
+                      ["−10%", 0.9],
+                      [resolve("host.prepublish.rate_base", "Base").text, 1],
+                      ["+20%", 1.2],
+                      ["+50%", 1.5],
+                    ] as const
+                  ).map(([label, factor]) => {
+                    const adjusted = applyRounding(baseRate * factor, roundPrice);
+                    const selected = Number(price) === adjusted;
+                    return (
+                      <button
+                        key={String(label)}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => {
+                          setPriceFactor(factor);
+                          setPrice(String(adjusted));
+                        }}
+                        className={cn(
+                          "relative flex min-h-14 flex-col items-center justify-center rounded-xl border px-2 py-2 transition-colors",
+                          selected
+                            ? "border-primary bg-primary/10 text-primary ring-1 ring-primary"
+                            : "bg-background hover:border-primary/35 hover:bg-muted/30",
+                        )}
+                      >
+                        <span className="text-sm font-semibold md:text-xs">
+                          {label}
+                        </span>
+                        <span
+                          translate="no"
+                          className={cn(
+                            "notranslate mt-0.5 text-xs md:text-[0.65rem]",
+                            selected ? "text-primary" : "text-muted-foreground",
+                          )}
+                        >
+                          {chipMoney(adjusted)}
+                        </span>
+                        {selected ? (
+                          <span className="absolute top-1.5 right-1.5 grid size-4 place-items-center rounded-full bg-primary text-primary-foreground">
+                            <Check className="size-2.5" />
+                          </span>
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                  </div>
+                </div>
+              ) : null}
+
               <div className="rounded-2xl border-2 border-primary/30 bg-primary/[0.035] p-4 shadow-sm">
                 <Label
                   htmlFor="prepublish-nightly-rate"
@@ -1835,7 +2015,12 @@ function PlanEditorDialog({
                     step="0.01"
                     inputMode="decimal"
                     value={price}
-                    onChange={(event) => setPrice(event.target.value)}
+                    onChange={(event) => {
+                      // A typed figure is nobody's percentage of the base rate any
+                      // more, so the toggle stops recomputing and just rounds it.
+                      setPriceFactor(null);
+                      setPrice(event.target.value);
+                    }}
                   />
                   <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm text-muted-foreground md:text-xs">
                     {currency}
@@ -1843,67 +2028,19 @@ function PlanEditorDialog({
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground md:text-xs">
                   <Tx
-                    k="host.calendar.price_hint"
-                    source="Enter an exact amount or choose a quick adjustment below."
+                    k="host.prepublish.rate_exact_hint"
+                    source="Tap the field to type an exact amount."
                   />
                 </p>
               </div>
 
-              {baseRate > 0 ? (
-                <div className="grid grid-cols-4 gap-2">
-                  {(
-                    [
-                      ["−10%", baseRate * 0.9],
-                      [resolve("host.prepublish.rate_base", "Base").text, baseRate],
-                      ["+20%", baseRate * 1.2],
-                      ["+50%", baseRate * 1.5],
-                    ] as const
-                  ).map(([label, value]) => {
-                    const adjusted = roundPrice
-                      ? Math.ceil(Number(value) / 5) * 5
-                      : Number(Number(value).toFixed(2));
-                    const selected = Number(price) === adjusted;
-                    return (
-                      <button
-                        key={String(label)}
-                        type="button"
-                        aria-pressed={selected}
-                        onClick={() => setPrice(String(adjusted))}
-                        className={cn(
-                          "relative flex min-h-14 flex-col items-center justify-center rounded-xl border px-2 py-2 transition-colors",
-                          selected
-                            ? "border-primary bg-primary/10 text-primary ring-1 ring-primary"
-                            : "bg-background hover:border-primary/35 hover:bg-muted/30",
-                        )}
-                      >
-                        <span className="text-sm font-semibold md:text-xs">
-                          {label}
-                        </span>
-                        <span
-                          translate="no"
-                          className={cn(
-                            "notranslate mt-0.5 text-xs md:text-[0.65rem]",
-                            selected ? "text-primary" : "text-muted-foreground",
-                          )}
-                        >
-                          {money(adjusted)}
-                        </span>
-                        {selected ? (
-                          <span className="absolute top-1.5 right-1.5 grid size-4 place-items-center rounded-full bg-primary text-primary-foreground">
-                            <Check className="size-2.5" />
-                          </span>
-                        ) : null}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : null}
-
               <OptionToggle
                 checked={roundPrice}
                 label={
-                  resolve("host.prepublish.round_label", "Round up to the nearest 5")
-                    .text
+                  resolve(
+                    "host.prepublish.round_clean_label",
+                    "Round to the closest round number",
+                  ).text
                 }
                 description={
                   resolve(
@@ -1911,15 +2048,19 @@ function PlanEditorDialog({
                     "Keeps guest-facing prices clean and easy to scan.",
                   ).text
                 }
-                onChange={() =>
-                  setRoundPrice((current) => {
-                    const next = !current;
-                    if (next && priceValid) {
-                      setPrice(String(Math.ceil(priceNumber / 5) * 5));
-                    }
-                    return next;
-                  })
-                }
+                onChange={() => {
+                  const next = !roundPrice;
+                  setRoundPrice(next);
+                  // Both ways, and straight away: a switch that leaves the number
+                  // above it stale is a switch nobody can tell they have flipped.
+                  const source =
+                    priceFactor !== null && baseRate > 0
+                      ? baseRate * priceFactor
+                      : priceNumber;
+                  if (Number.isFinite(source) && source > 0) {
+                    setPrice(String(applyRounding(source, next)));
+                  }
+                }}
               />
 
               <div className="flex gap-3 px-1">
@@ -1932,7 +2073,7 @@ function PlanEditorDialog({
                 </p>
               </div>
 
-              <div className={STICKY_FOOTER}>
+              <div className={cn(STICKY_FOOTER, "mt-auto")}>
                 {baseRate > 0 ? (
                   <div className="mb-3 grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 text-sm md:text-xs">
                     <span className="min-w-0 break-words text-muted-foreground">
@@ -1954,7 +2095,7 @@ function PlanEditorDialog({
                         className="notranslate whitespace-nowrap"
                         translate="no"
                       >
-                        {money(priceValid ? priceNumber : 0)}
+                        {chipMoney(priceValid ? priceNumber : 0)}
                       </strong>
                     </span>
                   </div>

@@ -47,7 +47,7 @@ export const LISTING_STEPS = [
   {
     id: "specialOffer",
     title: "Special offer",
-    description: "Optionally launch with a discount that helps attract guests.",
+    description: "Optionally offer a discount to attract guests.",
   },
 ] as const;
 

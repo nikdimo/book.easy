@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+/** A half-hour slot on a 24-hour clock, or "" / absent for "flexible". Anything else
+ *  is normalised away rather than rejected — a stale draft or an older mobile client
+ *  sending a value this build no longer offers should still be able to publish. */
+const stayTime = z
+  .string()
+  .optional()
+  .transform((value) => (value && /^([01]\d|2[0-3]):(00|30)$/.test(value) ? value : ""));
+
 export const listingFormSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters").max(100),
   description: z.string().min(20, "Description must be at least 20 characters").max(5000),
@@ -39,6 +47,11 @@ export const listingFormSchema = z.object({
   baseNightlyRate: z.coerce.number().min(1, "Nightly rate is required"),
   cleaningFee: z.coerce.number().min(0).default(0),
   minNights: z.coerce.number().int().min(1).default(1),
+  // "HH:MM" on a 24-hour clock, or "" for a host who stays flexible. Never required:
+  // the form pre-fills both, so an empty value here is a deliberate choice rather than
+  // an unfinished field, and publishing must not stall on it.
+  checkInTime: stayTime,
+  checkOutTime: stayTime,
   amenityIds: z.array(z.string()).optional(),
 });
 

@@ -47,6 +47,9 @@ export interface SearchLabels {
   minimumStayGapTooShort: Resolved;
   earliestCheckout: Resolved;
   exactDates: Resolved;
+  customDates: Resolved;
+  anyDatesFlexible: Resolved;
+  flexibleDay: PluralForms;
   flexible1: Resolved;
   flexible2: Resolved;
   flexible3: Resolved;
@@ -156,6 +159,14 @@ export function useSearchLabels(): SearchLabels {
       flexible3: i18n.resolve("search.flexible_3", "+- 3 days"),
       flexible7: i18n.resolve("search.flexible_7", "+- 7 days"),
       flexible14: i18n.resolve("search.flexible_14", "+- 14 days"),
+      customDates: i18n.resolve("search.custom_dates", "Custom"),
+      anyDatesFlexible: i18n.resolve("search.any_dates_flexible", "I'm flexible"),
+      flexibleDay: pluralForms(
+        i18n,
+        "search.flexible_day",
+        "+- {n} day",
+        "+- {n} days"
+      ),
 
       who: i18n.resolve("search.who", "Who"),
       addGuests: i18n.resolve("search.add_guests", "Add guests"),

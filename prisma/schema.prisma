@@ -482,6 +482,14 @@ model Listing {
   bedrooms       Int
   bathrooms      Int
   beds           Int
+  /**
+   * Wall-clock house rules ("15:00"), not instants — a check-in time is whatever the
+   * clock on the wall says when the guest arrives, so storing it as DateTime would
+   * attach a timezone that has no meaning here and shifts under the server's. Null
+   * means the host is flexible and will agree arrival with the guest.
+   */
+  checkInTime    String?
+  checkOutTime   String?
   moderationNote String?
   /**
    * True whenever the live content was created/edited since an admin last looked at

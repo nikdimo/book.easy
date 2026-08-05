@@ -1,3 +1,5 @@
+import type { MapBounds } from "@/lib/map-bounds";
+
 export interface SearchFilters {
   city?: string;
   /** Only set when the exact (city, country) pair is known (e.g. picked from the
@@ -14,6 +16,9 @@ export interface SearchFilters {
   propertyTypes?: string[];
   page?: number;
   sort?: "price_asc" | "price_desc" | "newest";
+  /** Visible map rectangle; listings outside it (and listings with no coordinates
+   * at all, since they can never be shown on the map) are excluded. */
+  bounds?: MapBounds;
 }
 
 export interface SearchFilterPreview {

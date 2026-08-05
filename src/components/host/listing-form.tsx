@@ -61,10 +61,12 @@ import {
   PrePublishTaskScreen,
   type PrePublishScreen,
   type PrePublishTask,
+  type PrePublishTaskActions,
 } from "@/components/host/listing-prepublish-plan";
 import {
   parsePrePublishPlan,
   type PrePublishPlan,
+  type PrePublishRange,
 } from "@/lib/types/listing-prepublish-plan";
 import {
   prePublishBackTarget,
@@ -72,6 +74,12 @@ import {
 } from "@/lib/types/listing-prepublish-navigation";
 import { availabilityBlocksPublish } from "@/lib/types/listing-availability-start";
 import { ListingStreetViewField } from "@/components/host/listing-street-view-field";
+import {
+  DEFAULT_CHECK_IN_TIME,
+  DEFAULT_CHECK_OUT_TIME,
+  StayTimesFields,
+  normalizeStayTime,
+} from "@/components/host/listing-stay-times";
 import { SuggestMissingOption } from "@/components/host/suggest-missing-option";
 import type { HostListingFormData } from "@/lib/serializers/host-listing-form";
 import type { ListingMediaItem } from "@/lib/types/listing-media";
@@ -129,6 +137,8 @@ type ListingFormValues = {
   baseNightlyRate: string;
   cleaningFee: string;
   minNights: string;
+  checkInTime: string;
+  checkOutTime: string;
   promotionType: string;
   promotionPercent: string;
   promotionMinimumNights: string;
@@ -157,6 +167,7 @@ const EDIT_SECTIONS = [
   { id: "photos", label: "Photos" },
   { id: "details", label: "Property details" },
   { id: "pricing", label: "Pricing" },
+  { id: "rules", label: "Stay rules" },
   { id: "amenities", label: "Amenities" },
 ] as const;
 
@@ -265,6 +276,11 @@ function listingInitialValues(
       baseNightlyRate: listing.pricingRule ? String(listing.pricingRule.baseNightlyRate) : "",
       cleaningFee: listing.pricingRule ? String(listing.pricingRule.cleaningFee) : "0",
       minNights: listing.pricingRule ? String(listing.pricingRule.minNights) : "1",
+      // No default pair here, unlike a new draft: a listing published before these
+      // existed has no stated times, and inventing 15:00/11:00 for it would tell
+      // guests something the host never agreed to.
+      checkInTime: normalizeStayTime(listing.checkInTime),
+      checkOutTime: normalizeStayTime(listing.checkOutTime),
       promotionType: "NONE",
       promotionPercent: "",
       promotionMinimumNights: "",
@@ -298,6 +314,10 @@ function listingInitialValues(
     baseNightlyRate: draft?.baseNightlyRate ?? "",
     cleaningFee: draft?.cleaningFee || "0",
     minNights: draft?.minNights || "1",
+    // `??`, not `||`: "" is the host having picked "Flexible", and re-filling the
+    // standard time on every resume would quietly undo that choice.
+    checkInTime: normalizeStayTime(draft?.checkInTime ?? DEFAULT_CHECK_IN_TIME),
+    checkOutTime: normalizeStayTime(draft?.checkOutTime ?? DEFAULT_CHECK_OUT_TIME),
     promotionType:
       draft?.promotionType === "PERCENT_DISCOUNT" ? "PERCENT_DISCOUNT" : "NONE",
     promotionPercent:
@@ -636,6 +656,15 @@ export function ListingForm({
    *  Until then the screen stays quiet — arriving to a red error you have had no chance
    *  to satisfy reads as broken rather than as guidance. */
   const [availabilityAttempted, setAvailabilityAttempted] = useState(false);
+  /** The dates selected on the open task screen, and a handle to its editor. The
+   *  bottom bar is the only commit affordance a phone shows, so on the pricing screen
+   *  it becomes "Edit price" the moment a range exists rather than a Done that
+   *  abandons the selection the host just made. */
+  const [prePublishSelection, setPrePublishSelection] =
+    useState<PrePublishRange | null>(null);
+  const prePublishActions = useRef<PrePublishTaskActions | null>(null);
+  const pricingSelected =
+    prePublishScreen === "pricing" && prePublishSelection !== null;
   /** A create-wizard step check. Always false while editing, where sections are shown
    *  by showEditSections rather than by step, and false throughout the pre-publish
    *  screens, which replace the step body rather than sitting under it. */
@@ -689,10 +718,6 @@ export function ListingForm({
   const currentStepReady = currentStepIssues.length === 0;
   const listingReady = issuesByStep.every((issues) => issues.length === 0);
   const hasLaunchOffer = values.promotionType === "PERCENT_DISCOUNT";
-  const launchOfferComplete =
-    hasLaunchOffer &&
-    values.promotionPercent !== "" &&
-    values.promotionMinimumNights !== "";
   /** The availability answer is required, so it holds Publish alongside the numbered
    *  steps. Never a gate while editing — a published listing's availability is edited
    *  on its calendar, not here. The publish action re-checks this regardless; a
@@ -1023,6 +1048,8 @@ export function ListingForm({
       baseNightlyRate: values.baseNightlyRate,
       cleaningFee: values.cleaningFee || "0",
       minNights: values.minNights || "1",
+      checkInTime: values.checkInTime,
+      checkOutTime: values.checkOutTime,
     });
 
     const errors = parsed.success ? {} : zodFieldErrors(parsed.error);
@@ -1349,6 +1376,12 @@ export function ListingForm({
           />
         </>
       )}
+      {/* The visible selects live on one screen each — the availability question in the
+          wizard, the Stay rules section when editing — but publish submits from the
+          checklist, by which point those controls are unmounted. Carrying the values
+          here keeps them in the FormData from wherever the host happens to save. */}
+      <input type="hidden" name="checkInTime" value={values.checkInTime} />
+      <input type="hidden" name="checkOutTime" value={values.checkOutTime} />
       {state?.error && !isEditing && (
         <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
           {state.error}
@@ -1614,6 +1647,13 @@ export function ListingForm({
                   onChange={updatePrePublishPlan}
                   onOpenBlockingCalendar={openBlockingCalendar}
                   showError={availabilityAttempted}
+                  stayTimes={
+                    <StayTimesFields
+                      checkInTime={values.checkInTime}
+                      checkOutTime={values.checkOutTime}
+                      onChange={setField}
+                    />
+                  }
                 />
               ) : prePublishScreen === "menu" ? (
                 <PrePublishMenu
@@ -1639,6 +1679,8 @@ export function ListingForm({
                   currency="EUR"
                   baseNightlyRate={values.baseNightlyRate}
                   hasCleaningFee={toPositiveNumber(values.cleaningFee, 0) > 0}
+                  onSelectionChange={setPrePublishSelection}
+                  actionRef={prePublishActions}
                 />
               )}
             </div>
@@ -1882,6 +1924,7 @@ export function ListingForm({
               value={values}
               onChange={(field, nextValue) => setField(field, nextValue)}
               resolving={geocodingAddress}
+              active={activeLocationStep === LISTING_STEP.address}
               errors={{
                 address: fieldErrors.address,
                 city: fieldErrors.city,
@@ -2003,7 +2046,16 @@ export function ListingForm({
           </div>
 
           <div id={isEditing ? "edit-section-pricing" : undefined} className={showEditSections || onCreateStep(LISTING_STEP.pricing) ? "scroll-mt-32 block" : "hidden"}>
-          <FieldSection title={resolve("host.workspace.pricing", "Pricing").text}>
+          <FieldSection
+            // Same repetition as the property-type step: the step heading above already
+            // says "Pricing", and dropping the duplicate buys back a row of scroll on
+            // the screen where the fields are tallest.
+            title={
+              !isEditing && currentStep === LISTING_STEP.pricing
+                ? undefined
+                : resolve("host.workspace.pricing", "Pricing").text
+            }
+          >
             <div className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
               <PricingField
                 id="baseNightlyRate"
@@ -2083,6 +2135,17 @@ export function ListingForm({
           </FieldSection>
           </div>
 
+          {/* Edit only. In the create wizard the same fields sit under the availability
+              question, which every host has to answer — putting them here as well would
+              ask the same thing twice in one flow. */}
+          {showEditSections && (
+            <div id="edit-section-rules" className="scroll-mt-32 block">
+              <FieldSection title={resolve("host.form.rules_section", "Stay rules").text}>
+                <StayTimesFields checkInTime={values.checkInTime} checkOutTime={values.checkOutTime} onChange={setField} />
+              </FieldSection>
+            </div>
+          )}
+
           {!isEditing && (
             <div
               className={
@@ -2093,12 +2156,12 @@ export function ListingForm({
               }
             >
               <FieldSection>
-                <div className="space-y-4">
+                <div className="space-y-3 md:space-y-4">
                   <div>
                     <p className="text-xs text-muted-foreground md:text-sm">
                       <Tx
                         k="host.form.offer_hint"
-                        source="This is optional. Choose one ready-made offer or publish without a promotion."
+                        source="Optionally offer a discount to attract guests. Choose a ready-made offer or publish without one."
                       />
                     </p>
                     <div className="mt-2 grid gap-2 md:mt-4 md:grid-cols-3 md:gap-3">
@@ -2164,8 +2227,8 @@ export function ListingForm({
                     </div>
                   </div>
 
-                  <div className="rounded-xl border p-4">
-                    <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-xl border p-3 md:p-4">
+                    <div className="grid gap-3 sm:grid-cols-2 md:gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="promotionPercent">
                           <Tx k="host.form.offer_percentage" source="Percentage" />
@@ -2243,7 +2306,7 @@ export function ListingForm({
                         />
                       </div>
                     </div>
-                    <p className="mt-3 text-xs text-muted-foreground">
+                    <p className="mt-2 text-xs text-muted-foreground">
                       <Tx
                         k="host.form.offer_edit_hint"
                         source="Feel free to edit manually."
@@ -2263,8 +2326,9 @@ export function ListingForm({
                   />
                   <OfferPreview
                     headline={
-                      launchOfferComplete ? (
+                      values.promotionPercent && values.promotionMinimumNights ? (
                         <>
+                          {" "}
                           {
                             interpolate(
                               resolve(
@@ -2546,8 +2610,21 @@ export function ListingForm({
                     <ContinueLabel searching={false} />
                   </Button>
                 ) : prePublishScreen !== null && prePublishScreen !== "menu" ? (
-                  <Button type="button" onClick={backFromPrePublish}>
-                    <Tx k="host.prepublish.done" source="Done" />
+                  <Button
+                    type="button"
+                    onClick={
+                      pricingSelected
+                        ? () => prePublishActions.current?.openEditor()
+                        : backFromPrePublish
+                    }
+                  >
+                    <span key={pricingSelected ? "edit-price" : "done"}>
+                      {pricingSelected ? (
+                        <Tx k="host.prepublish.edit_price" source="Edit price" />
+                      ) : (
+                        <Tx k="host.prepublish.done" source="Done" />
+                      )}
+                    </span>
                   </Button>
                 ) : prePublishScreen === "menu" ? (
                   <Button
@@ -2760,11 +2837,15 @@ export function ListingForm({
             >
               <ChevronLeft />
             </Button>
+            {/* Nothing on the pricing screen reaches the guest preview — the custom
+                prices are not on a listing yet — so the button there was a trip to
+                an unchanged page and back. It keeps its place on every other screen,
+                where the preview does move. */}
             <Button
               type="button"
               variant="outline"
               size="lg"
-              className="flex-1"
+              className={cn("flex-1", prePublishScreen === "pricing" && "hidden")}
               aria-controls={
                 mobilePane === "preview"
                   ? "listing-editor-pane"
@@ -2812,9 +2893,22 @@ export function ListingForm({
                 type="button"
                 size="lg"
                 className="flex-1"
-                onClick={backFromPrePublish}
+                onClick={
+                  pricingSelected
+                    ? () => prePublishActions.current?.openEditor()
+                    : backFromPrePublish
+                }
               >
-                <Tx k="host.prepublish.done" source="Done" />
+                {/* Keyed for the same reason the Preview label is: Google Translate
+                    replaces the text node, and an in-place swap would land on the
+                    detached one and leave the old word on screen. */}
+                <span key={pricingSelected ? "edit-price" : "done"}>
+                  {pricingSelected ? (
+                    <Tx k="host.prepublish.edit_price" source="Edit price" />
+                  ) : (
+                    <Tx k="host.prepublish.done" source="Done" />
+                  )}
+                </span>
               </Button>
             ) : prePublishScreen === "menu" ? (
               <Button

@@ -157,9 +157,9 @@ export function ImageGallery({ images }: ImageGalleryProps) {
         </div>
         {images.length > 1 && (
           <Button
-            variant="secondary"
+            variant="outline"
             size="sm"
-            className="absolute bottom-4 right-4"
+            className="absolute bottom-4 right-4 rounded-lg border border-black/60 bg-white px-3 py-1.5 text-[0.8rem] font-medium text-black shadow-sm hover:bg-white hover:text-black dark:bg-white dark:text-black dark:border-black/60"
             onClick={() => { setGalleryOpen(true); setActiveIndex(null); }}
           >
             <Grid className="h-4 w-4 mr-2" />

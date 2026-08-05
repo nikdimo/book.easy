@@ -37,6 +37,7 @@ export function ListingAddressField({
   resolving = false,
   errors,
   heading = true,
+  active = true,
 }: {
   value: ListingLocationValue;
   onChange: (field: ListingAddressFieldName, next: string) => void;
@@ -44,10 +45,34 @@ export function ListingAddressField({
   resolving?: boolean;
   errors?: Partial<Record<"address" | "city" | "country", string>>;
   heading?: boolean;
+  /** This screen is the one on show. The wizard hides inactive steps with CSS rather
+   *  than unmounting them, so mounting says nothing about whether the host is looking
+   *  at it — and focusing a field inside a hidden container would scroll the page to
+   *  somewhere they never asked to be. */
+  active?: boolean;
 }) {
   const latitude = finiteCoordinate(value.latitude, -90, 90);
   const longitude = finiteCoordinate(value.longitude, -180, 180);
   const hasPin = latitude !== null && longitude !== null;
+  const addressRef = React.useRef<HTMLInputElement>(null);
+  /** The one field the geocoder routinely cannot fill: it gets the street right and the
+   *  house number wrong or missing. Empty while it is still working is not yet a
+   *  problem — the answer may be seconds away — so neither the highlight nor the focus
+   *  fires until it has finished and left the field blank. */
+  const addressMissing = !resolving && value.address.trim() === "";
+  /** Once per arrival. Re-focusing whenever the field goes empty would trap a host who
+   *  cleared it on purpose to retype, or who is tabbing past it to the city. */
+  const focusedOnArrival = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!active) {
+      focusedOnArrival.current = false;
+      return;
+    }
+    if (!addressMissing || focusedOnArrival.current) return;
+    focusedOnArrival.current = true;
+    addressRef.current?.focus();
+  }, [active, addressMissing]);
   const fieldClass = cn(
     "transition-colors duration-300",
     resolving && "animate-pulse border-primary/30 bg-primary/[0.04]"
@@ -99,14 +124,25 @@ export function ListingAddressField({
           <Label htmlFor="location-address">Address</Label>
           <Input
             id="location-address"
+            ref={addressRef}
             value={value.address}
             onChange={(event) => onChange("address", event.target.value)}
             placeholder="Street and building number"
             disabled={resolving}
+            // Input already renders aria-invalid as a destructive border and ring, so
+            // the empty state is highlighted the same way every other invalid field in
+            // the app is, and screen readers are told the same thing the border says.
+            aria-invalid={addressMissing || Boolean(errors?.address)}
+            aria-describedby={errors?.address ? "location-address-error" : undefined}
             className={fieldClass}
           />
           {errors?.address && (
-            <p className="text-sm md:text-xs text-destructive">{errors.address}</p>
+            <p
+              id="location-address-error"
+              className="text-sm md:text-xs text-destructive"
+            >
+              {errors.address}
+            </p>
           )}
         </div>
         <div className="grid grid-cols-2 gap-3">

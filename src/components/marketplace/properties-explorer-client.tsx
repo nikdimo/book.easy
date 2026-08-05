@@ -35,6 +35,12 @@ import {
 } from "@/lib/search-filter-config";
 import { cn } from "@/lib/utils";
 import { PropertiesMap, type MapPin } from "@/components/marketplace/properties-map";
+import {
+  MAP_BOUNDS_PARAM,
+  parseMapBounds,
+  stringifyMapBounds,
+  type MapBounds,
+} from "@/lib/map-bounds";
 import { Tx, useI18n } from "@/lib/i18n/client";
 import type { Resolved } from "@/lib/i18n/t";
 
@@ -249,6 +255,27 @@ export function PropertiesExplorerClient({
       nextParams.delete("page");
       const query = nextParams.toString();
       router.push(query ? `/properties?${query}` : "/properties");
+    },
+    [router, searchParams]
+  );
+
+  const initialBounds = useMemo(
+    () => parseMapBounds(searchParams.get(MAP_BOUNDS_PARAM)),
+    [searchParams]
+  );
+
+  /**
+   * The map is a filter, not just a picture: whatever rectangle it settles on
+   * becomes part of the query, so the list, the count and the pins agree — pan
+   * somewhere empty and the results go empty too. Replace rather than push so a
+   * handful of map moves don't bury the previous page under back-button history.
+   */
+  const handleBoundsChange = useCallback(
+    (bounds: MapBounds) => {
+      const nextParams = new URLSearchParams(searchParams.toString());
+      nextParams.set(MAP_BOUNDS_PARAM, stringifyMapBounds(bounds));
+      nextParams.delete("page");
+      router.replace(`/properties?${nextParams.toString()}`, { scroll: false });
     },
     [router, searchParams]
   );
@@ -536,6 +563,9 @@ export function PropertiesExplorerClient({
                         nextParams.delete("city");
                         nextParams.delete("country");
                         nextParams.delete("featured");
+                        // "Explore all" means the whole map too, not the corner
+                        // of it the featured city was framed in.
+                        nextParams.delete(MAP_BOUNDS_PARAM);
                         nextParams.set("all", "1");
                       })
                     }
@@ -553,6 +583,8 @@ export function PropertiesExplorerClient({
               <PropertiesMap
                 pins={mapPins}
                 hoveredPinId={hoveredPinId}
+                initialBounds={initialBounds}
+                onBoundsChange={handleBoundsChange}
                 className="h-full rounded-2xl border-0"
               />
             </div>
@@ -567,6 +599,8 @@ export function PropertiesExplorerClient({
             <PropertiesMap
               pins={mapPins}
               hoveredPinId={hoveredPinId}
+              initialBounds={initialBounds}
+              onBoundsChange={handleBoundsChange}
               className="h-full rounded-2xl"
             />
           </div>
