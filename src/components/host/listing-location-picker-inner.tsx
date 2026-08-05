@@ -64,7 +64,7 @@ export default function ListingLocationPickerInner({
   lng,
   hasPin,
   zoom = 2,
-  onChange,
+  onChange = () => undefined,
   className,
   interactive = true,
 }: {
@@ -72,7 +72,7 @@ export default function ListingLocationPickerInner({
   lng: number;
   hasPin: boolean;
   zoom?: number;
-  onChange: (lat: number, lng: number) => void;
+  onChange?: (lat: number, lng: number) => void;
   className?: string;
   interactive?: boolean;
 }) {

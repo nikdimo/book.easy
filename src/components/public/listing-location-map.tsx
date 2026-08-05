@@ -76,7 +76,6 @@ export async function ListingLocationMap({
             zoom={15}
             interactive={false}
             className="h-full w-full"
-            onChange={() => undefined}
           />
         </div>
         {/* Keeps the pin legible over bright map tiles and ties the card's bottom edge
