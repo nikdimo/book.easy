@@ -175,9 +175,17 @@
 body {
   top: 0 !important;
 }
-.goog-text-highlight {
-  background: none !important;
+/* Google Translate wraps translated words in these elements and applies its own
+   hover background/box-shadow. That looks like text selection across the whole
+   page, especially over hero headings. Keep translation enabled while removing
+   the translator's hover chrome. */
+.goog-text-highlight,
+font.goog-text-highlight,
+.goog-text-highlight * {
+  background: transparent !important;
+  background-color: transparent !important;
   box-shadow: none !important;
+  text-shadow: none !important;
 }
 #google_translate_element {
   display: none !important;

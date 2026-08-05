@@ -1165,6 +1165,26 @@
     "filePath": "src/app/(public)/page.tsx"
   },
   {
+    "key": "home.owner_hero.description",
+    "sourceText": "Book directly with hosts and save up to 20%—no service fees.",
+    "filePath": "src/app/(public)/page.tsx"
+  },
+  {
+    "key": "home.owner_hero.how_it_works",
+    "sourceText": "How it works",
+    "filePath": "src/components/public/owner-services-dialog.tsx"
+  },
+  {
+    "key": "home.owner_hero.image_alt",
+    "sourceText": "Modern coastal apartment living room overlooking the harbor",
+    "filePath": "src/app/(public)/page.tsx"
+  },
+  {
+    "key": "home.owner_hero.title",
+    "sourceText": "No service fees. Book direct with hosts.",
+    "filePath": "src/app/(public)/page.tsx"
+  },
+  {
     "key": "home.page_title",
     "sourceText": "Find places to stay around the world",
     "filePath": "src/app/(public)/page.tsx"
@@ -1183,6 +1203,41 @@
     "key": "home.popular_homes_subtitle",
     "sourceText": "Most viewed and booked in the last few weeks",
     "filePath": "src/app/(public)/page.tsx"
+  },
+  {
+    "key": "home.services.description",
+    "sourceText": "Linger Homes connects hosts and guests directly. We complement major booking platforms and help owners manage the wider business around them.",
+    "filePath": "src/components/public/owner-services-dialog.tsx"
+  },
+  {
+    "key": "home.services.safety_description",
+    "sourceText": "Hosts should use appropriate short-term-rental insurance, confirm booking and cancellation terms in writing, use secure traceable payment methods, and follow local registration, tax, and guest-reporting rules. Verify the lead guest's identity only where lawful and necessary, and handle personal information securely.",
+    "filePath": "src/components/public/owner-services-dialog.tsx"
+  },
+  {
+    "key": "home.services.safety_note",
+    "sourceText": "Requirements differ by country and property. Hosts remain responsible for their agreements, payments, insurance, and legal compliance.",
+    "filePath": "src/components/public/owner-services-dialog.tsx"
+  },
+  {
+    "key": "home.services.safety_title",
+    "sourceText": "Safer direct hosting",
+    "filePath": "src/components/public/owner-services-dialog.tsx"
+  },
+  {
+    "key": "home.services.title",
+    "sourceText": "A free direct-booking platform, backed by optional services",
+    "filePath": "src/components/public/owner-services-dialog.tsx"
+  },
+  {
+    "key": "home.services.why_free_description",
+    "sourceText": "We do not charge hosts to list or guests to book through Linger Homes. Our business earns from optional setup, management, channel, and pricing services chosen by property owners.",
+    "filePath": "src/components/public/owner-services-dialog.tsx"
+  },
+  {
+    "key": "home.services.why_free_title",
+    "sourceText": "Why is it free?",
+    "filePath": "src/components/public/owner-services-dialog.tsx"
   },
   {
     "key": "home.show_all",

@@ -25,6 +25,7 @@ echo   [C] VERSION CONTROL
 echo   3. Save version to GitHub
 echo   4. See all saved versions
 echo   5. Save version + Deploy (full release)
+echo   6. Quick deploy current files (no GitHub version)
 echo.
 echo   [0] Exit
 echo ============================================
@@ -39,6 +40,7 @@ if "%CHOICE%"=="2" goto DEPLOY
 if "%CHOICE%"=="3" goto SAVE
 if "%CHOICE%"=="4" goto LIST_VERSIONS
 if "%CHOICE%"=="5" goto RELEASE
+if "%CHOICE%"=="6" goto QUICK_DEPLOY
 if "%CHOICE%"=="0" exit /b 0
 goto MENU
 
@@ -256,6 +258,77 @@ echo   Deploy to lingerhomes.com
 echo ============================================
 echo.
 goto DEPLOY_BODY
+
+:QUICK_DEPLOY
+cls
+echo.
+echo ============================================
+echo   Quick Deploy (no GitHub version)
+echo ============================================
+echo.
+echo   This copies the current local files directly to the VPS.
+echo   It does NOT create a GitHub commit, tag, or rollback point.
+echo   Local tests and release checks are skipped.
+echo   The VPS build, database backup, migrations, restart, and health check still run.
+echo   Only Git-tracked files are eligible; untracked files and secrets are excluded.
+echo.
+choice /C YN /N /M "Continue with quick production deploy? [Y/N] "
+if errorlevel 2 goto MENU
+set "QUICK_ARCHIVE=%TEMP%\bookeasy-quick-deploy-%RANDOM%-%RANDOM%.tar.gz"
+set "REMOTE_ARCHIVE=/home/niki/bookeasy-quick-deploy.tar.gz"
+echo.
+echo [1/5] Checking the quick-deploy file set...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%REPO%\scripts\create-quick-deploy-archive.ps1" -ArchivePath "%QUICK_ARCHIVE%"
+if errorlevel 1 (
+    if exist "%QUICK_ARCHIVE%" del /q "%QUICK_ARCHIVE%"
+    echo   ERROR - Quick-deploy safety checks or packaging failed.
+    pause
+    goto MENU
+)
+echo.
+echo [2/5] Checking remote repository...
+ssh -i "%KEY%" %HOST% "test -d %REMOTE_DIR%/.git || git clone https://github.com/nikdimo/book.easy.git %REMOTE_DIR%"
+if errorlevel 1 (
+    del /q "%QUICK_ARCHIVE%"
+    echo   ERROR - Could not reach VPS or clone failed.
+    pause
+    goto MENU
+)
+echo.
+echo [3/5] Uploading the complete archive...
+scp -i "%KEY%" "%QUICK_ARCHIVE%" %HOST%:%REMOTE_ARCHIVE%
+if errorlevel 1 (
+    del /q "%QUICK_ARCHIVE%"
+    echo   ERROR - Could not upload the quick-deploy archive.
+    pause
+    goto MENU
+)
+del /q "%QUICK_ARCHIVE%"
+echo.
+echo [4/5] Validating and extracting on the VPS...
+ssh -i "%KEY%" %HOST% "tar -tzf %REMOTE_ARCHIVE% > /dev/null && tar --no-same-owner --no-same-permissions -xzf %REMOTE_ARCHIVE% -C %REMOTE_DIR% && rm -f %REMOTE_ARCHIVE%"
+if errorlevel 1 (
+    echo   ERROR - The archive failed validation or extraction on the VPS.
+    echo   The running service was not restarted.
+    pause
+    goto MENU
+)
+echo.
+echo [5/5] Building and restarting the VPS service...
+ssh -i "%KEY%" %HOST% "cd %REMOTE_DIR% && SKIP_GIT_REFRESH=1 bash scripts/deploy-remote.sh"
+if errorlevel 1 (
+    echo   ERROR - Quick deploy failed. See output above.
+    pause
+    goto MENU
+)
+echo.
+echo ============================================
+echo   SUCCESS - Quick deploy is live at https://lingerhomes.com
+echo ============================================
+echo.
+start "" https://lingerhomes.com
+pause
+goto MENU
 
 
 :DEPLOY_BODY

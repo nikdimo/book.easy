@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -35,6 +35,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { SITE_DOMAIN } from "@/lib/branding";
+import { cn } from "@/lib/utils";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 import type { PlaceOption } from "@/lib/utils/place";
 import type { Resolved } from "@/lib/i18n/t";
@@ -102,6 +103,8 @@ export function Header({
   currentLocale?: string;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const isHomePage = pathname === "/";
   const { data: session, update } = useSession();
   const user = session?.user;
   const { summary } = useAttentionSummary(Boolean(user));
@@ -127,7 +130,14 @@ export function Header({
   }
 
   return (
-    <header className="w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header
+      className={cn(
+        "w-full border-b",
+        isHomePage
+          ? "bg-background/95 backdrop-blur md:relative md:z-50 md:border-b-0 md:bg-white/75 md:backdrop-blur-xl"
+          : "bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
+      )}
+    >
       <div className="container mx-auto px-4 md:px-8 h-20 grid grid-cols-[auto_1fr_auto] items-center gap-4 max-w-[1760px]">
         <div className="flex items-center min-w-0">
           <Link
@@ -143,7 +153,12 @@ export function Header({
         </div>
 
         <div className="flex items-center justify-center min-w-0 px-2">
-          <div className="hidden 2xl:flex w-full max-w-3xl items-center justify-center">
+          <div
+            className={cn(
+              "hidden w-full max-w-3xl items-center justify-center 2xl:flex",
+              isHomePage && "2xl:hidden",
+            )}
+          >
             <MarketplaceSearchBar
               variant="pill"
               {...searchDefaults}
@@ -155,7 +170,12 @@ export function Header({
 
           {/* A container so the summary trigger collapses based on the space it actually
               has here, not on the viewport width. */}
-          <div className="@container flex 2xl:hidden w-full max-w-md items-center justify-center">
+          <div
+            className={cn(
+              "@container w-full max-w-md items-center justify-center 2xl:hidden",
+              isHomePage ? "flex md:hidden" : "flex",
+            )}
+          >
             <MarketplaceSearchBar
               variant="summary"
               {...searchDefaults}

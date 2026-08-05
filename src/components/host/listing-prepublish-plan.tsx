@@ -81,7 +81,10 @@ export const AVAILABILITY_START_ERROR_ID = "availability-start-error";
 
 /** The handle `PrePublishTaskScreen` hands the wizard so its bottom bar can open the
  *  same editor the in-card button opens. */
-export type PrePublishTaskActions = { openEditor: () => void };
+export type PrePublishTaskActions = {
+  openEditor: () => void;
+  clearSelection: () => void;
+};
 
 export function prePublishTaskCount(
   plan: PrePublishPlan,
@@ -1210,7 +1213,7 @@ export function PrePublishTaskScreen({
   // closes over the current selection, and a stale one would price the wrong dates.
   React.useEffect(() => {
     if (!actionRef) return;
-    actionRef.current = { openEditor };
+    actionRef.current = { openEditor, clearSelection: () => setRange(undefined) };
     return () => {
       actionRef.current = null;
     };
@@ -1449,6 +1452,7 @@ export function PrePublishTaskScreen({
           onRangeChange={setRange}
           dayVariant="availability"
           dragToSelect
+          toggleSelectedRange={task === "pricing"}
           locale={locale}
           dayMeta={(day) => {
             const key = planDateFromLocal(day);
@@ -1579,7 +1583,7 @@ export function PrePublishTaskScreen({
                   <Tx k="host.calendar.block_dates" source="Block dates" />
                 </Button>
               </div>
-            ) : (
+            ) : task === "pricing" ? null : (
               <Button
                 type="button"
                 size="lg"

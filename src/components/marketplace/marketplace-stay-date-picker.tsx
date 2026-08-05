@@ -215,6 +215,8 @@ const FLEXIBILITY_PILL_ON =
   "border-foreground bg-foreground text-background hover:bg-foreground";
 const FLEXIBILITY_PILL_OFF =
   "border-border bg-background text-foreground hover:bg-muted/40";
+const PILL_STEP_ACTION =
+  "h-10 w-[8.75rem] shrink-0 justify-center rounded-full border border-primary bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-none transition-colors hover:bg-primary/90 md:h-10";
 
 export function DateFlexibilityRow({
   value,
@@ -282,6 +284,7 @@ export function DateFlexibilityRow({
               onClick={() => onChange(optionValue)}
               className={cn(
                 FLEXIBILITY_PILL,
+                optionValue === 0 && "h-10 w-[8.75rem] justify-center",
                 value === optionValue
                   ? FLEXIBILITY_PILL_ON
                   : FLEXIBILITY_PILL_OFF,
@@ -883,6 +886,7 @@ export function DateRangeCalendarStep({
   pagedOnDesktop = false,
   pagedDesktopMonthCount = 2,
   dragToSelect = false,
+  toggleSelectedRange = false,
   showEndpointHeader = false,
   locale,
 }: {
@@ -906,6 +910,8 @@ export function DateRangeCalendarStep({
   /** Press (or long-press on touch) a day and sweep to draw a range in one gesture.
    *  Host-side only: guests keep the plain tap-in / tap-out flow. */
   dragToSelect?: boolean;
+  /** Host-side convenience: clicking inside a completed selection clears it. */
+  toggleSelectedRange?: boolean;
   /** Names the two endpoints and counts the nights above the grid. For surfaces that
    *  don't already carry Check in / Check out segment cards of their own. */
   showEndpointHeader?: boolean;
@@ -924,6 +930,7 @@ export function DateRangeCalendarStep({
     DateRange | undefined
   >(undefined);
   const [isDragging, setIsDragging] = React.useState(false);
+  const clearSelectionOnNextSelectRef = React.useRef(false);
   const [canScrollBack, setCanScrollBack] = React.useState(false);
   const [pagedMonthCapacity, setPagedMonthCapacity] = React.useState<1 | 2>(1);
   const [, startMonthAppendTransition] = React.useTransition();
@@ -1588,7 +1595,7 @@ export function DateRangeCalendarStep({
         }}
         className={cn(
           pagedCalendar
-            ? "flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain px-5 py-4 md:px-10 md:pt-8 md:pb-4"
+            ? "flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-auto px-5 py-4 md:px-10 md:pt-8 md:pb-4"
             : "flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain [overflow-anchor:none] px-4 py-5 md:px-6 md:py-6",
           isDragging && "cursor-grabbing select-none",
         )}
@@ -1657,7 +1664,25 @@ export function DateRangeCalendarStep({
             resetOnSelect
             excludeDisabled
             selected={calendarSelected}
-            onSelect={(range) => commitRange(range)}
+            onDayClick={(day) => {
+              if (
+                toggleSelectedRange &&
+                selected?.from &&
+                selected?.to &&
+                !isBefore(day, selected.from) &&
+                !isAfter(day, selected.to)
+              ) {
+                clearSelectionOnNextSelectRef.current = true;
+                onRangeChange(undefined);
+              }
+            }}
+            onSelect={(range) => {
+              if (clearSelectionOnNextSelectRef.current) {
+                clearSelectionOnNextSelectRef.current = false;
+                return;
+              }
+              commitRange(range);
+            }}
             numberOfMonths={pagedCalendar ? pagedMonthCount : visibleMonthCount}
             month={pagedCalendar ? displayMonth : undefined}
             onMonthChange={pagedCalendar ? setDisplayMonth : undefined}
@@ -1705,7 +1730,7 @@ export function DateRangeCalendarStep({
                     : "md:w-fit md:grid-cols-2 md:gap-x-8",
               ),
               month: cn(
-                "mx-auto w-full",
+                "mx-auto flex w-full flex-col items-center",
                 pagedCalendar
                   ? "max-w-[24rem] md:max-w-none"
                   : dayVariant === "availability"
@@ -1811,6 +1836,7 @@ export function MarketplaceStayDatePicker({
   desktopContentStyle,
   useSharedDesktopShell = false,
   showPillGuestAction = false,
+  searchPresentation = false,
   dialogContentId,
   className,
 }: {
@@ -1868,6 +1894,8 @@ export function MarketplaceStayDatePicker({
   desktopContentStyle?: React.CSSProperties;
   useSharedDesktopShell?: boolean;
   showPillGuestAction?: boolean;
+  /** Keep the caller's trigger while using the streamlined search calendar and guest panels. */
+  searchPresentation?: boolean;
   dialogContentId?: string;
   className?: string;
 }) {
@@ -1882,6 +1910,9 @@ export function MarketplaceStayDatePicker({
   const resolvedNextActionLabel = nextActionLabel ?? labels.whosComing;
   const resolvedGuestStepTitle = guestStepTitle ?? labels.who;
   const isPillLayout = layout === "pill";
+  const [isDesktopViewport, setIsDesktopViewport] = React.useState(false);
+  const useSearchPresentation =
+    isPillLayout || (searchPresentation && isDesktopViewport);
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
   const [step, setStep] = React.useState<Step>(initialStep);
   const [activeSegment, setActiveSegment] = React.useState<
@@ -1892,6 +1923,15 @@ export function MarketplaceStayDatePicker({
   const openingFromTriggerRef = React.useRef(false);
   const open = controlledOpen ?? uncontrolledOpen;
   const setOpen = onOpenChange ?? setUncontrolledOpen;
+
+  React.useEffect(() => {
+    const media = window.matchMedia("(min-width: 768px)");
+    const update = () => setIsDesktopViewport(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, []);
+
   const closePicker = React.useCallback(() => {
     setOpen(false);
     setStep("dates");
@@ -2327,10 +2367,14 @@ export function MarketplaceStayDatePicker({
                 : "md:left-1/2 md:right-auto md:top-[5.75rem] md:bottom-auto md:h-auto md:max-h-[min(35rem,calc(100dvh-7rem))] md:w-[45rem] md:max-w-[calc(100vw-2rem)] md:-translate-x-1/2 md:rounded-[1.75rem]"
               : !useSharedDesktopShell && dayVariant === "availability"
                 ? "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-[50rem] md:max-h-[calc(100dvh-5rem)] md:w-[58rem] md:max-w-[calc(100vw-4rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[2rem]"
-                : !useSharedDesktopShell && pagedCalendarOnDesktop
-                  ? "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-[46rem] md:max-h-[calc(100dvh-2rem)] md:w-[58rem] md:max-w-[calc(100vw-4rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[2rem]"
-                  : !useSharedDesktopShell &&
-                    "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-[50rem] md:max-h-[calc(100dvh-5rem)] md:w-[44rem] md:max-w-[calc(100vw-6rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[2rem]",
+                : !useSharedDesktopShell && useSearchPresentation && step === "guests"
+                  ? "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-auto md:max-h-[calc(100dvh-5rem)] md:w-[25rem] md:max-w-[calc(100vw-2rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[1.75rem]"
+                  : !useSharedDesktopShell && searchPresentation && step === "dates"
+                    ? "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-auto md:max-h-[min(42rem,calc(100dvh-4rem))] md:w-[58rem] md:max-w-[calc(100vw-4rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[2rem]"
+                  : !useSharedDesktopShell && pagedCalendarOnDesktop
+                    ? "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-[46rem] md:max-h-[calc(100dvh-2rem)] md:w-[58rem] md:max-w-[calc(100vw-4rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[2rem]"
+                    : !useSharedDesktopShell &&
+                      "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-[50rem] md:max-h-[calc(100dvh-5rem)] md:w-[44rem] md:max-w-[calc(100vw-6rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[2rem]",
           )}
           onPointerDownOutside={(event) => {
             const target = event.target;
@@ -2384,7 +2428,7 @@ export function MarketplaceStayDatePicker({
             </DialogPrimitive.Description>
           </div>
 
-          {!isPillLayout ? (
+          {!useSearchPresentation ? (
             <div className="border-b border-border/70 bg-background px-4 pt-4 pb-4 md:px-6 md:pt-5">
               <div className="mb-4 flex items-start justify-between gap-4">
                 <p
@@ -2579,9 +2623,9 @@ export function MarketplaceStayDatePicker({
                   minimumStayNights={minimumStayNights}
                   minimumStayMessage={minimumStayMessage}
                   onMinimumStayBlocked={nudgeMinimumStayHint}
-                  fitViewport={isPillLayout}
+                  fitViewport={useSearchPresentation}
                   pagedOnDesktop={pagedCalendarOnDesktop}
-                  showEndpointHeader={isPillLayout}
+                  showEndpointHeader={useSearchPresentation}
                 />
               </div>
 
@@ -2590,23 +2634,30 @@ export function MarketplaceStayDatePicker({
                   "shrink-0 bg-background",
                   // The desktop panel reads as one surface, so the flexibility pills sit
                   // on the same field as the grid instead of behind a rule.
-                  !isPillLayout && "border-t border-border",
+                  !useSearchPresentation && "border-t border-border",
                 )}
               >
-                {showDateFlexibility || (isPillLayout && showGuestStep) ? (
+                {showDateFlexibility || (useSearchPresentation && showGuestStep) ? (
                   // One footer line on the desktop panel: flexibility on the left (it
                   // scrolls on its own when the pills outgrow the space) and the step
                   // action on the right, so the panel doesn't grow a second bar.
                   <div
                     className={cn(
-                      "flex items-center gap-4",
-                      isPillLayout
-                        ? "px-4 md:px-10 md:pb-7 md:pt-4"
-                        : "px-4 md:px-6",
+                      "items-center gap-4",
+                      useSearchPresentation
+                        ? "grid grid-cols-[1fr_auto_1fr] px-4 md:px-10 md:pb-7 md:pt-4"
+                        : "flex px-4 md:px-6",
                     )}
                   >
+                    {useSearchPresentation ? <div aria-hidden="true" /> : null}
+
                     {showDateFlexibility ? (
-                      <div className="min-w-0 flex-1 py-2">
+                      <div
+                        className={cn(
+                          "min-w-0 py-2",
+                          !useSearchPresentation && "flex-1",
+                        )}
+                      >
                         <DateFlexibilityRow
                           value={dateFlexibility}
                           onChange={onDateFlexibilityChange}
@@ -2616,14 +2667,15 @@ export function MarketplaceStayDatePicker({
                       <div className="flex-1" />
                     )}
 
-                    {isPillLayout && showGuestStep ? (
+                    {useSearchPresentation && showGuestStep ? (
                       // Completing a range used to fling the panel straight into the
                       // guest step. Advancing is now the guest's call, and the button
                       // names where it goes.
                       <Button
                         type="button"
                         className={cn(
-                          "hidden shrink-0 rounded-full md:inline-flex",
+                          PILL_STEP_ACTION,
+                          "hidden justify-self-end md:inline-flex",
                           resolvedNextActionLabel.translated && "notranslate",
                         )}
                         disabled={!canGoNext}
@@ -2635,7 +2687,7 @@ export function MarketplaceStayDatePicker({
                   </div>
                 ) : null}
 
-                {!isPillLayout ? (
+                {!useSearchPresentation ? (
                   <div
                     className={cn(
                       "bg-background px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:px-6 md:pb-4",
@@ -2731,11 +2783,14 @@ export function MarketplaceStayDatePicker({
                 />
               </div>
 
-              {isPillLayout && showPillGuestAction ? (
-                <div className="shrink-0 border-t border-border bg-background px-4 py-3 md:px-6">
+              {useSearchPresentation && showPillGuestAction ? (
+                <div className="flex shrink-0 justify-center bg-background px-4 md:px-10 md:pb-7 md:pt-4">
                   <Button
                     type="button"
-                    className="w-full rounded-full"
+                    className={cn(
+                      PILL_STEP_ACTION,
+                      resolvedFinalActionLabel.translated && "notranslate",
+                    )}
                     disabled={finalActionDisabled}
                     onClick={() => {
                       if (onFinalAction) onFinalAction();
@@ -2751,7 +2806,7 @@ export function MarketplaceStayDatePicker({
                 </div>
               ) : null}
 
-              {!isPillLayout ? (
+              {!useSearchPresentation ? (
                 <div className="shrink-0 border-t border-border bg-background px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:px-6 md:pb-4">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <Button

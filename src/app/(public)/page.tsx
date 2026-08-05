@@ -1,20 +1,29 @@
 import Link from "next/link";
+import Image from "next/image";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { Button } from "@/components/ui/button";
 import { PropertyCard } from "@/components/public/property-card";
 import { PropertyCardSpotlight } from "@/components/public/property-card-spotlight";
 import {
   countApprovedListings,
+  getAvailableCities,
+  getAvailablePropertyTypesByCity,
   getFeaturedListings,
   getPopularListings,
 } from "@/lib/services/search.service";
+import { getActivePropertyTypes } from "@/lib/services/property-type.service";
 import { ListingCarousel } from "@/components/public/listing-carousel";
 import { HomeListingsView } from "@/components/public/home-listings-view";
+import { OwnerServicesDialog } from "@/components/public/owner-services-dialog";
+import { FloatingHomeSearch } from "@/components/public/floating-home-search";
+import { MarketplaceSearchBar } from "@/components/marketplace/marketplace-search-bar";
 import type { MapPin } from "@/components/marketplace/properties-map";
 import { getMapCoordinatesForListing } from "@/lib/utils/listing-map-coords";
 import { formatPrice } from "@/lib/utils/format";
 import type { ListingCardSerialized } from "@/lib/serializers/listing-card";
-import { getT, T } from "@/lib/i18n/t";
+import { getT, T, type Translator } from "@/lib/i18n/t";
+import type { PropertyTypeOption } from "@/lib/types/property-type";
+import type { PlaceOption } from "@/lib/utils/place";
 
 const HOME_LISTING_LIMIT = 24;
 const CAROUSEL_COUNT = 8;
@@ -65,6 +74,28 @@ async function loadHomeData() {
       ...empty,
       dbError:
         "Could not load listings. Start PostgreSQL, run prisma db push && prisma db seed, and check DATABASE_URL in .env.",
+    };
+  }
+}
+
+async function loadHeroSearchData(): Promise<{
+  popularCities: PlaceOption[];
+  availablePropertyTypesByCity: Record<string, string[]>;
+  propertyTypes: PropertyTypeOption[];
+}> {
+  try {
+    const [popularCities, availablePropertyTypesByCity, propertyTypes] =
+      await Promise.all([
+        getAvailableCities(),
+        getAvailablePropertyTypesByCity(),
+        getActivePropertyTypes(),
+      ]);
+    return { popularCities, availablePropertyTypesByCity, propertyTypes };
+  } catch {
+    return {
+      popularCities: [],
+      availablePropertyTypesByCity: {},
+      propertyTypes: [],
     };
   }
 }
@@ -126,9 +157,86 @@ function SpotlightGrid({ listings }: { listings: ListingCardSerialized[] }) {
   );
 }
 
+function OwnerGrowthHero({
+  t,
+  popularCities,
+  availablePropertyTypesByCity,
+  propertyTypes,
+}: {
+  t: Translator;
+  popularCities: PlaceOption[];
+  availablePropertyTypesByCity: Record<string, string[]>;
+  propertyTypes: PropertyTypeOption[];
+}) {
+  return (
+    <section className="w-full md:-mt-20" aria-labelledby="owner-growth-title">
+      <div className="relative min-h-[410px] w-full overflow-hidden bg-white md:min-h-[445px]">
+        <Image
+          src="/images/owner-hero-apartment.png"
+          alt={
+            t.resolve(
+              "home.owner_hero.image_alt",
+              "Modern coastal apartment living room overlooking the harbor",
+            ).text
+          }
+          fill
+          priority
+          sizes="(max-width: 768px) 100vw, 1760px"
+          className="object-cover object-[64%_center] opacity-[0.68] saturate-[0.88] md:object-center"
+        />
+        <div
+          className="absolute inset-0 bg-[radial-gradient(ellipse_70%_58%_at_50%_72%,rgba(8,15,25,0.58)_0%,rgba(8,15,25,0.38)_48%,rgba(8,15,25,0.08)_76%,transparent_100%)]"
+          aria-hidden="true"
+        />
+
+        <div className="relative z-10 flex min-h-[410px] select-none flex-col items-center justify-center px-6 py-8 md:min-h-[445px] md:px-12 md:pt-24">
+          <div
+            className="hidden w-full max-w-5xl select-auto md:block"
+            data-home-hero-search
+          >
+            <MarketplaceSearchBar
+              variant="pill"
+              popularCities={popularCities}
+              availablePropertyTypesByCity={availablePropertyTypesByCity}
+              propertyTypes={propertyTypes}
+            />
+          </div>
+
+          <div className="mt-0 text-center md:mt-7">
+            <h2
+              id="owner-growth-title"
+              className="text-4xl font-semibold leading-[1.05] tracking-tight text-white sm:text-5xl md:whitespace-nowrap md:text-[clamp(2.25rem,4vw,4rem)]"
+            >
+              <T
+                t={t}
+                k="home.owner_hero.title"
+                source="No service fees. Book direct with hosts."
+              />
+            </h2>
+            <p className="mt-4 text-base leading-relaxed text-white/85 sm:text-lg md:whitespace-nowrap">
+              <T
+                t={t}
+                k="home.owner_hero.description"
+                source="Book directly with hosts and save up to 20%—no service fees."
+              />
+            </p>
+            <div className="mt-6">
+              <OwnerServicesDialog />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default async function HomePage() {
   const t = await getT();
-  const { totalListings, popularListings, listings, dbError } = await loadHomeData();
+  const [homeData, heroSearchData] = await Promise.all([
+    loadHomeData(),
+    loadHeroSearchData(),
+  ]);
+  const { totalListings, popularListings, listings, dbError } = homeData;
   const isLowInventory = totalListings > 0 && totalListings <= LOW_INVENTORY_THRESHOLD;
   const showPopular = popularListings.length > 0;
 
@@ -141,6 +249,9 @@ export default async function HomePage() {
       )}
 
       <h1 className="sr-only"><T t={t} k="home.page_title" source="Find places to stay around the world" /></h1>
+
+      <OwnerGrowthHero t={t} {...heroSearchData} />
+      <FloatingHomeSearch {...heroSearchData} />
 
       {isLowInventory && (
         <section className="max-w-[1760px] mx-auto px-4 md:px-8 pt-6 pb-8">

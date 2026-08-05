@@ -667,6 +667,8 @@ export function BookingWidget({
                 showFinalActionIcon={false}
                 onFinalAction={handleSubmit}
                 pagedCalendarOnDesktop
+                searchPresentation
+                showPillGuestAction
                 disabledDateRanges={disabledDateRanges}
                 minimumStayNights={minNights}
                 minimumStayMessage={minimumStayMessage}

@@ -45,7 +45,7 @@ import {
   type ActiveSearchState,
 } from "@/lib/marketplace-search-state";
 
-type Variant = "hero" | "compact" | "pill" | "summary";
+type Variant = "hero" | "compact" | "pill" | "summary" | "floating";
 type DesktopPanel = "where" | "when" | "who";
 
 type CapsuleGeometry = {
@@ -349,6 +349,7 @@ function MarketplaceSearchBarInner({
   const isCompact = variant === "compact";
   const isPill = variant === "pill";
   const isSummary = variant === "summary";
+  const isFloating = variant === "floating";
   const [city, setCity] = useState(initialState.city);
   const [country, setCountry] = useState(initialState.country);
   const [checkIn, setCheckIn] = useState(initialState.checkIn);
@@ -656,6 +657,93 @@ function MarketplaceSearchBarInner({
       setDatePickerInitialStep("dates");
     });
   };
+
+  if (isFloating) {
+    const citySummary = city
+      ? localizePlaceName(city, labels.locale)
+      : labels.whereToPlaceholder.text;
+    const dateSummary = formatDateSummary(
+      checkIn,
+      checkOut,
+      labels.anyDates,
+      labels.locale,
+    );
+    const guestSummary = formatGuestSummary(guestCounts, labels);
+
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => setSearchFlowOpen(true)}
+          aria-label={labels.openSearch.text}
+          className="flex h-14 items-center rounded-full border border-border/70 bg-background px-2 pl-5 text-left shadow-[0_8px_28px_rgba(15,23,42,0.16)] transition-shadow hover:shadow-[0_10px_34px_rgba(15,23,42,0.2)]"
+        >
+          <span className="max-w-40 truncate px-3 text-sm font-semibold text-foreground">
+            {citySummary}
+          </span>
+          <span className="h-7 w-px bg-border" aria-hidden="true" />
+          <span className="max-w-32 truncate px-5 text-sm font-semibold text-foreground">
+            {dateSummary.text}
+          </span>
+          <span className="h-7 w-px bg-border" aria-hidden="true" />
+          <span className="max-w-32 truncate px-5 text-sm font-semibold text-foreground">
+            {guestSummary.text}
+          </span>
+          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
+            <Search className="size-4" strokeWidth={2.5} />
+          </span>
+        </button>
+
+        <MarketplaceSearchFlowDialog
+          open={searchFlowOpen}
+          onOpenChange={setSearchFlowOpen}
+          initialState={{
+            city,
+            country,
+            checkIn,
+            checkOut,
+            guestCounts,
+            dateFlexibility,
+            propertyTypes,
+          }}
+          popularCities={popularCities}
+          onApplySearch={(next) => {
+            setCity(next.city);
+            setCountry(next.country);
+            setCheckIn(next.checkIn);
+            setCheckOut(next.checkOut);
+            setGuestCounts(next.guestCounts);
+            setDateFlexibility(next.dateFlexibility);
+            setPropertyTypes(next.propertyTypes);
+
+            rememberedSearchState = next;
+            writeActiveSearchState(next);
+            const p = new URLSearchParams();
+            if (next.city.trim()) p.set("city", next.city.trim());
+            if (next.country.trim()) p.set("country", next.country.trim());
+            if (next.checkIn) p.set("checkIn", next.checkIn);
+            if (next.checkOut) p.set("checkOut", next.checkOut);
+            const guestsParam = countsToGuestsParam(next.guestCounts);
+            if (guestsParam) p.set("guests", guestsParam);
+            Object.entries(guestCountsToParams(next.guestCounts)).forEach(
+              ([key, value]) => p.set(key, value),
+            );
+            if (next.dateFlexibility !== 0) {
+              p.set("dateFlexibility", String(next.dateFlexibility));
+            }
+            const typesParam = stringifyPropertyTypesParam(
+              next.propertyTypes,
+              allPropertyTypeValues,
+            );
+            if (typesParam) p.set("propertyTypes", typesParam);
+
+            const q = p.toString();
+            router.push(q ? `/properties?${q}` : "/properties");
+          }}
+        />
+      </>
+    );
+  }
 
   if (isSummary) {
     const citySummary = city

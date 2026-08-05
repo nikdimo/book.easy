@@ -307,10 +307,10 @@ function listingInitialValues(
     streetViewHeading: draft?.streetViewHeading ?? "",
     streetViewPitch: draft?.streetViewPitch ?? "",
     streetViewPanoId: draft?.streetViewPanoId ?? "",
-    maxGuests: draft?.maxGuests || "2",
-    bedrooms: draft?.bedrooms || "1",
-    beds: draft?.beds || "1",
-    bathrooms: draft?.bathrooms || "1",
+    maxGuests: draft?.maxGuests ?? "0",
+    bedrooms: draft?.bedrooms ?? "0",
+    beds: draft?.beds ?? "0",
+    bathrooms: draft?.bathrooms ?? "0",
     baseNightlyRate: draft?.baseNightlyRate ?? "",
     cleaningFee: draft?.cleaningFee || "0",
     minNights: draft?.minNights || "1",
@@ -1006,10 +1006,10 @@ export function ListingForm({
   }
 
   const typeLabel = propertyTypes.find((type) => type.value === values.propertyType)?.label;
-  const guests = toPositiveNumber(values.maxGuests, 2);
-  const bedrooms = toPositiveNumber(values.bedrooms, 1);
-  const beds = toPositiveNumber(values.beds, 1);
-  const bathrooms = toPositiveNumber(values.bathrooms, 1);
+  const guests = toPositiveNumber(values.maxGuests, 0);
+  const bedrooms = toPositiveNumber(values.bedrooms, 0);
+  const beds = toPositiveNumber(values.beds, 0);
+  const bathrooms = toPositiveNumber(values.bathrooms, 0);
   const nightlyRate = toPositiveNumber(values.baseNightlyRate, 0);
   const locationLine = [values.area, values.city || "City", values.country || "Country"]
     .filter(Boolean)
@@ -1407,7 +1407,7 @@ export function ListingForm({
             onLeave={() => void leaveListingStudio()}
             onRetrySave={() => void autosaveDraft()}
           />
-          <div className="h-0.5 shrink-0 bg-muted md:hidden" aria-hidden="true">
+          <div className={cn("h-0.5 shrink-0 bg-muted md:hidden", prePublishScreen !== null && "hidden")} aria-hidden="true">
             <div
               className="h-full bg-primary transition-all"
               style={{
@@ -1531,7 +1531,11 @@ export function ListingForm({
                 </Button>
                 <span className="mx-1 h-5 w-px shrink-0 bg-border" aria-hidden="true" />
                 <h1 className="shrink-0 text-base font-semibold">
-                  <Tx k="host.form.create_listing" source="Create a listing" />
+                  {prePublishScreen === "pricing" ? (
+                    <Tx k="host.prepublish.pricing_title" source="Customize pricing" />
+                  ) : (
+                    <Tx k="host.form.create_listing" source="Create a listing" />
+                  )}
                 </h1>
                 <span
                   className={`ml-auto shrink-0 text-sm ${
@@ -1595,7 +1599,7 @@ export function ListingForm({
                   )}
                 </Button>
               </div>
-              <div className="mt-4 flex min-h-[30px] min-w-0 items-center gap-3">
+              {prePublishScreen === null && <div className="mt-4 flex min-h-[30px] min-w-0 items-center gap-3">
                 <button
                   type="button"
                   onClick={() => setStepsOpen(true)}
@@ -1616,7 +1620,7 @@ export function ListingForm({
                     }}
                   />
                 </div>
-              </div>
+              </div>}
             </header>
           )}
             <div
@@ -2610,22 +2614,33 @@ export function ListingForm({
                     <ContinueLabel searching={false} />
                   </Button>
                 ) : prePublishScreen !== null && prePublishScreen !== "menu" ? (
-                  <Button
-                    type="button"
-                    onClick={
-                      pricingSelected
-                        ? () => prePublishActions.current?.openEditor()
-                        : backFromPrePublish
-                    }
-                  >
-                    <span key={pricingSelected ? "edit-price" : "done"}>
-                      {pricingSelected ? (
-                        <Tx k="host.prepublish.edit_price" source="Edit price" />
-                      ) : (
-                        <Tx k="host.prepublish.done" source="Done" />
-                      )}
-                    </span>
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {pricingSelected ? (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => prePublishActions.current?.clearSelection()}
+                      >
+                        <Tx k="host.calendar.cancel" source="Cancel" />
+                      </Button>
+                    ) : null}
+                    <Button
+                      type="button"
+                      onClick={
+                        pricingSelected
+                          ? () => prePublishActions.current?.openEditor()
+                          : backFromPrePublish
+                      }
+                    >
+                      <span key={pricingSelected ? "edit-price" : "done"}>
+                        {pricingSelected ? (
+                          <Tx k="host.prepublish.edit_price" source="Edit price" />
+                        ) : (
+                          <Tx k="host.prepublish.done" source="Done" />
+                        )}
+                      </span>
+                    </Button>
+                  </div>
                 ) : prePublishScreen === "menu" ? (
                   <Button
                     type="button"
