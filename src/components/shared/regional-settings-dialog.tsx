@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Globe, Search, X } from "lucide-react";
+import { Check, Globe, Languages, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -395,7 +395,7 @@ export function RegionalSettingsDialog({
           <div className="grid w-full grid-cols-[minmax(0,44rem)_minmax(14rem,1fr)_auto] items-center gap-3 max-md:grid-cols-[minmax(0,1fr)_auto] max-md:gap-x-2 max-md:gap-y-1">
             <TabsList
               data-desktop-search-pill
-              className="relative z-[60] h-auto w-full min-w-0 justify-start gap-0 rounded-full border border-black/10 bg-[#f7f7f7] p-1 shadow-[0_1px_2px_rgba(0,0,0,0.08),0_8px_24px_rgba(0,0,0,0.08)] transition-shadow duration-200 hover:shadow-[0_2px_4px_rgba(0,0,0,0.10),0_10px_28px_rgba(0,0,0,0.10)] max-md:col-start-1 max-md:row-start-1"
+              className="relative z-[60] h-auto w-full min-w-0 items-stretch justify-start gap-0 rounded-full border border-black/10 bg-[#f7f7f7] p-1 shadow-[0_1px_2px_rgba(0,0,0,0.08),0_8px_24px_rgba(0,0,0,0.08)] transition-shadow duration-200 group-data-horizontal/tabs:h-auto hover:shadow-[0_2px_4px_rgba(0,0,0,0.10),0_10px_28px_rgba(0,0,0,0.10)] max-md:col-start-1 max-md:row-start-1"
             >
               <TabsTrigger
                 value="language"
@@ -425,13 +425,14 @@ export function RegionalSettingsDialog({
               </TabsTrigger>
             </TabsList>
 
-            <div className="flex min-w-0 items-center px-3 py-2 text-left max-md:col-span-2 max-md:row-start-2 max-md:px-2 max-md:py-1.5">
+            <div className="flex min-w-0 translate-y-1.5 items-center gap-3 rounded-2xl bg-[#f3f4f6] px-5 py-3 text-left max-md:col-span-2 max-md:row-start-2 max-md:translate-y-0 max-md:px-4 max-md:py-3">
+              <Languages className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
               <div className="min-w-0 flex-1 leading-tight">
-                <p className="truncate text-[0.72rem] font-semibold leading-4 text-foreground">
+                <p className="truncate text-sm font-semibold leading-5 text-foreground">
                   <Tx k="regional.translation_title" source="Translation" />
                 </p>
-                <p className="mt-px truncate text-sm font-normal leading-5 text-muted-foreground">
-                  Google Translate
+                <p className="mt-px whitespace-normal text-xs font-normal leading-5 text-muted-foreground">
+                  Automatically translate host-written descriptions and guest reviews.
                 </p>
               </div>
               <button
