@@ -8,7 +8,8 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: bookeasy
     ports:
-      - "5432:5432"
+      # Local development only: do not expose the default-credential database to LAN.
+      - "127.0.0.1:5432:5432"
     volumes:
       - bookeasy_pgdata:/var/lib/postgresql/data
     healthcheck:

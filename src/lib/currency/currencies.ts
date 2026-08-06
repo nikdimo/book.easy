@@ -93,7 +93,7 @@ export const CURRENCY_NAMES: Readonly<Record<string, string>> = {
   ZAR: "South African rand",
 } as const;
 
-export type SupportedCurrency = keyof typeof CURRENCY_NAMES;
+export type SupportedCurrency = string;
 
 /**
  * Country to the currency its residents normally price in, keyed by ISO 3166-1
@@ -212,12 +212,13 @@ export const COUNTRY_CURRENCY: Readonly<Record<string, SupportedCurrency>> = {
   ZA: "ZAR",
 } as const;
 
-export const SUPPORTED_CURRENCY_CODES = Object.keys(
-  CURRENCY_NAMES,
-) as SupportedCurrency[];
+export const SUPPORTED_CURRENCY_CODES = Object.keys(CURRENCY_NAMES);
 
 export function isSupportedCurrency(code: string): code is SupportedCurrency {
-  return Object.prototype.hasOwnProperty.call(CURRENCY_NAMES, code);
+  // The live rate table is the source of truth for what can actually be selected.
+  // Keeping this structural lets the provider add a valid ISO currency without a
+  // deployment; names still come from Intl, with CURRENCY_NAMES as a fallback.
+  return /^[A-Z]{3}$/.test(code);
 }
 
 /** The currency's name in `locale` when the runtime has one, falling back to the

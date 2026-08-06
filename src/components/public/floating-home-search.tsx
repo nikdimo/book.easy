@@ -31,8 +31,8 @@ export function FloatingHomeSearch({
   }, []);
 
   return visible ? (
-    <div className="fixed inset-x-0 top-3 z-50 hidden justify-center md:flex">
-      <div>
+    <div className="fixed inset-x-0 top-3 z-50 hidden justify-center px-4 md:flex">
+      <div className="flex w-full max-w-[64rem] justify-center">
         <MarketplaceSearchBar
           variant="floating"
           popularCities={popularCities}

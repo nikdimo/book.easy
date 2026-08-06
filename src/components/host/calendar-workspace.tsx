@@ -24,6 +24,10 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { DateRange } from "react-day-picker";
 import { toast } from "sonner";
+
+function officialMoney(amount: number | string, currency: string): string {
+  return new Intl.NumberFormat("en", { style: "currency", currency }).format(Number(amount));
+}
 import { DateRangeCalendarStep } from "@/components/marketplace/marketplace-stay-date-picker";
 import { ListingActionBarPortal } from "@/components/host/listing-action-bar-portal";
 import {
@@ -474,6 +478,7 @@ function EditorDialog({
   baseNightlyRate,
   cleaningFee,
   minNights,
+  currency,
   locale,
   blockedDates,
   bookedDates,
@@ -486,6 +491,7 @@ function EditorDialog({
   baseNightlyRate: number;
   cleaningFee: number;
   minNights: number;
+  currency: string;
   locale: string;
   blockedDates: Set<string>;
   bookedDates: Set<string>;
@@ -704,7 +710,7 @@ function EditorDialog({
     : state.kind === "availability"
       ? "Listing visibility"
       : state.kind === "price"
-        ? `Default nightly price · €${baseNightlyRate}`
+        ? `Default nightly price · ${officialMoney(baseNightlyRate, currency)}`
         : "Always active · no end date";
 
   /** The action the footer's primary button would run, for the Enter key. */
@@ -974,7 +980,7 @@ function EditorDialog({
                   </span>
                   <Input
                     id="nightly-price"
-                    className="h-14 rounded-xl border-primary/25 bg-background pr-24 pl-10 text-2xl font-semibold shadow-xs"
+                    className="h-14 appearance-none rounded-xl border-primary/25 bg-background pr-24 pl-10 text-2xl font-semibold shadow-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     type="number"
                     min={1}
                     step="0.01"
@@ -1127,14 +1133,14 @@ function EditorDialog({
                       className="notranslate whitespace-nowrap text-foreground"
                       translate="no"
                     >
-                      €{baseNightlyRate}
+                      {officialMoney(baseNightlyRate, currency)}
                     </strong>
                   </span>
                   <ArrowRight className="size-3.5 text-muted-foreground" />
                   <span className="min-w-0 break-words text-primary">
                     {isDateScoped ? "Custom price" : "New default"}{" "}
                     <strong className="notranslate whitespace-nowrap" translate="no">
-                      €{price || "0"}
+                      {officialMoney(price || "0", currency)}
                     </strong>
                   </span>
                 </div>
@@ -1500,9 +1506,9 @@ export function CalendarWorkspace({
           kind: "price",
           from: row.date,
           to: row.date,
-          label: `€${row.rate} / night`,
+          label: `${officialMoney(row.rate, currency)} / night`,
           detail: `${currency} ${row.rate}`,
-          source: `Default €${baseNightlyRate}`,
+          source: `Default ${officialMoney(baseNightlyRate, currency)}`,
           nightlyRate: row.rate,
         });
       }
@@ -2098,6 +2104,7 @@ export function CalendarWorkspace({
           baseNightlyRate={baseNightlyRate}
           cleaningFee={cleaningFee}
           minNights={minNights}
+          currency={currency}
           locale={locale}
           blockedDates={manualDates}
           bookedDates={bookingDates}

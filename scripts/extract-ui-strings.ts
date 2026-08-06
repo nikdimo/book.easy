@@ -182,6 +182,16 @@ function extract(): ExtractedUiString[] {
           const sourceText = sourceString(args[1]);
           if (key !== null && sourceText !== null) add(key, sourceText, filePath);
         } else if (
+          !filePath.includes("__tests__") &&
+          ts.isPropertyAccessExpression(expression) &&
+          (expression.name.text === "t" || expression.name.text === "ti")
+        ) {
+          // Transactional email uses an already-scoped translator (`t.t(...)`),
+          // so its key/source arguments start at zero rather than one.
+          const key = sourceString(args[0]);
+          const sourceText = sourceString(args[1]);
+          if (key !== null && sourceText !== null) add(key, sourceText, filePath);
+        } else if (
           ts.isPropertyAccessExpression(expression) &&
           expression.name.text === "plural"
         ) {

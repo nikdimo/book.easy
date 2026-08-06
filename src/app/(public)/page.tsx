@@ -172,7 +172,7 @@ function OwnerGrowthHero({
 }) {
   return (
     <section className="w-full md:-mt-20" aria-labelledby="owner-growth-title">
-      <div className="relative min-h-[410px] w-full overflow-hidden bg-white md:min-h-[445px]">
+      <div className="relative min-h-[410px] w-full overflow-hidden bg-white md:min-h-[500px]">
         <Image
           src="/images/owner-hero-apartment.png"
           alt={
@@ -191,7 +191,7 @@ function OwnerGrowthHero({
           aria-hidden="true"
         />
 
-        <div className="relative z-10 flex min-h-[410px] select-none flex-col items-center justify-center px-6 py-8 md:min-h-[445px] md:px-12 md:pt-24">
+        <div className="relative z-10 flex min-h-[410px] select-none flex-col items-center justify-center px-6 py-8 md:min-h-[500px] md:px-12 md:pt-24">
           <div
             className="hidden w-full max-w-5xl select-auto md:block"
             data-home-hero-search
@@ -204,10 +204,10 @@ function OwnerGrowthHero({
             />
           </div>
 
-          <div className="mt-0 text-center md:mt-7">
+          <div className="mx-auto mt-0 w-full max-w-[80rem] text-center md:mt-7">
             <h2
               id="owner-growth-title"
-              className="text-4xl font-semibold leading-[1.05] tracking-tight text-white sm:text-5xl md:whitespace-nowrap md:text-[clamp(2.25rem,4vw,4rem)]"
+              className="mx-auto max-w-[80rem] break-words text-3xl font-semibold leading-[1.08] tracking-tight text-white sm:text-5xl md:text-[clamp(2rem,3.2vw,3.5rem)]"
             >
               <T
                 t={t}
@@ -215,7 +215,7 @@ function OwnerGrowthHero({
                 source="No service fees. Book direct with hosts."
               />
             </h2>
-            <p className="mt-4 text-base leading-relaxed text-white/85 sm:text-lg md:whitespace-nowrap">
+            <p className="mx-auto mt-4 max-w-[60rem] break-words text-base leading-relaxed text-white/85 sm:text-lg">
               <T
                 t={t}
                 k="home.owner_hero.description"

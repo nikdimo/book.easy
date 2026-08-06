@@ -418,7 +418,7 @@ export async function notifyGuestBookingRequestReceived(bookingId: string): Prom
   const booking = await loadBookingEmailContext(bookingId);
   if (!booking) return;
   const links = bookingEmailLinks(booking);
-  const t = getEmailT(booking.guest.locale);
+  const t = getEmailT(booking.guestLocale ?? booking.guest.locale);
   const deadline = bookingDeadline(booking, t.locale);
   const viewRequest = t.t("email.booking.view_request", "View request");
   const viewListing = t.t("email.booking.view_listing", "View listing");
@@ -631,7 +631,7 @@ export async function notifyGuestBookingConfirmed(bookingId: string): Promise<vo
   if (!booking) return;
   const links = bookingEmailLinks(booking);
 
-  const t = getEmailT(booking.guest.locale);
+  const t = getEmailT(booking.guestLocale ?? booking.guest.locale);
   const lines = [
     greeting(booking.guest.name, t),
     ``,
@@ -692,7 +692,7 @@ export async function notifyGuestBookingRejected(bookingId: string): Promise<voi
   if (!booking) return;
   const links = bookingEmailLinks(booking);
 
-  const t = getEmailT(booking.guest.locale);
+  const t = getEmailT(booking.guestLocale ?? booking.guest.locale);
   const noPaymentCallout = t.t(
     "email.booking.no_payment_dates_free",
     "No payment was collected. Your dates are free to use for another booking."
@@ -761,7 +761,7 @@ export async function notifyGuestBookingExpired(bookingId: string): Promise<void
   if (!booking) return;
   const links = bookingEmailLinks(booking);
 
-  const t = getEmailT(booking.guest.locale);
+  const t = getEmailT(booking.guestLocale ?? booking.guest.locale);
   const viewRequest = t.t("email.booking.view_request", "View request");
 
   await sendTransactionalEmail({

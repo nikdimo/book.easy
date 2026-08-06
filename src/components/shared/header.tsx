@@ -182,11 +182,7 @@ export function Header({
         </div>
 
         <div className="flex items-center justify-end gap-2 min-w-0">
-          {user ? (
-            <div className="hidden sm:block">{regionalSettings}</div>
-          ) : (
-            regionalSettings
-          )}
+          {regionalSettings}
           {user ? (
             <>
               <Tooltip>
@@ -287,18 +283,6 @@ export function Header({
                   <p className="text-xs text-muted-foreground">{user.email}</p>
                 </div>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  className="cursor-default gap-2 p-0 sm:hidden"
-                  onSelect={(event) => event.preventDefault()}
-                >
-                  <span className="pl-2 text-sm">
-                    <Tx k="regional.trigger_label" source="Language and currency" />
-                  </span>
-                  <div className="ml-auto [&_button]:px-2 [&_span]:hidden">
-                    {regionalSettings}
-                  </div>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator className="sm:hidden" />
                 <DropdownMenuItem asChild>
                   <Link href="/account/favorites">
                     <Heart className="mr-2 h-4 w-4" />

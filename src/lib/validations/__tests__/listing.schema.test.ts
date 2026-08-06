@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { listingFormSchema } from "@/lib/validations/listing.schema";
 
 const validListing = {
+  currency: "EUR",
   title: "Apartment by the sea",
   description: "A comfortable apartment with everything guests need.",
   propertyType: "APARTMENT",

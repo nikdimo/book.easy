@@ -7,6 +7,7 @@ import { ListingForm } from "@/components/host/listing-form";
 import { LISTING_STATUSES } from "@/lib/constants";
 import { getActivePropertyTypes, getPropertyTypeOption } from "@/lib/services/property-type.service";
 import type { ListingMediaItem } from "@/lib/types/listing-media";
+import { getExchangeRates, quotableCurrencies } from "@/lib/currency/rates";
 
 interface EditListingPageProps {
   params: Promise<{ id: string }>;
@@ -34,10 +35,10 @@ export default async function EditListingPage({
     alt: img.alt,
   }));
 
-  const activeAmenities = await db.amenity.findMany({
+  const [activeAmenities, rates] = await Promise.all([db.amenity.findMany({
     where: { isActive: true },
     orderBy: [{ category: "asc" }, { name: "asc" }],
-  });
+  }), getExchangeRates()]);
   // A "this listing only" suggestion approval creates an inactive amenity/type that's
   // not offered to other hosts — but this listing is still using it, so the picker must
   // include it here or saving the form would silently drop it.
@@ -60,6 +61,7 @@ export default async function EditListingPage({
   return (
     <div className="host-split-view h-full min-h-0 overflow-hidden">
       <ListingForm
+        currencies={quotableCurrencies(rates)}
         amenities={amenities}
         propertyTypes={propertyTypes}
         listing={listingForm}

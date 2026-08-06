@@ -41,6 +41,7 @@ const TEXT_FIELDS = [
   "bedrooms",
   "bathrooms",
   "beds",
+  "currency",
   "baseNightlyRate",
   "cleaningFee",
   "minNights",

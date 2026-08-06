@@ -154,14 +154,8 @@
   [role="button"] {
     -webkit-tap-highlight-color: transparent;
   }
-  /* The marketplace behaves like an app surface. Small pointer drags while moving
-     between its controls can create a page-wide text selection that looks like a
-     hover highlight. Keep those accidental selections visually inert, while form
-     fields below retain a clear selection colour for editing. */
-  ::selection {
-    background: transparent;
-    color: inherit;
-  }
+  /* Keep selections clearly visible in editable fields. Regular page text uses the
+     browser's normal selection colour, including throughout host and admin screens. */
   input::selection,
   textarea::selection,
   [contenteditable="true"]::selection {
@@ -185,16 +179,45 @@
 body {
   top: 0 !important;
 }
+
+/* Route markers set browser-like magnification on the whole app body so dialogs,
+   toasts, and consent UI scale with the page. The compensated minimum heights keep
+   100dvh route shells flush with the viewport after magnification. Unlike
+   transform: scale(), zoom participates in layout, so responsive UI reflows. */
+body:has(.app-zoom-80) {
+  zoom: 0.8;
+  min-height: calc(100dvh / 0.8);
+}
+
+body:has(.app-zoom-90) {
+  zoom: 0.9;
+  min-height: calc(100dvh / 0.9);
+}
+
+.app-zoom-80 {
+  min-height: calc(100dvh / 0.8);
+}
+
+.app-zoom-90 {
+  min-height: calc(100dvh / 0.9);
+}
+
 /* Google Translate wraps translated words in these elements and applies its own
    hover background/box-shadow. That looks like text selection across the whole
    page, especially over hero headings. Keep translation enabled while removing
    the translator's hover chrome. */
 .goog-text-highlight,
 font.goog-text-highlight,
-.goog-text-highlight * {
+.goog-text-highlight *,
+.VIpgJd-yAWNEb-VIpgJd-fmcmS-sn54Q,
+.VIpgJd-yAWNEb-VIpgJd-fmcmS-sn54Q *,
+[class*="VIpgJd"][class*="fmcmS"],
+[class*="VIpgJd"][class*="fmcmS"] * {
   background: transparent !important;
   background-color: transparent !important;
+  border: 0 !important;
   box-shadow: none !important;
+  outline: 0 !important;
   text-shadow: none !important;
 }
 #google_translate_element {

@@ -552,19 +552,8 @@ export function DatePricingCta({
     // the host is setting rather than as an advert bolted under it.
     <div className="flex min-h-14 flex-col gap-2.5 border-b border-border/60 px-3 py-3 last:border-b-0 sm:flex-row sm:items-center sm:gap-2.5 md:min-h-[88px] md:gap-4 md:px-4 md:py-4 md:sm:px-6">
       <div className="flex min-w-0 flex-1 items-center gap-2.5 md:gap-4">
-        <span
-          className={cn(
-            "flex size-8 shrink-0 items-center justify-center rounded-lg md:size-10 md:rounded-xl",
-            hasPrices
-              ? "bg-primary text-primary-foreground"
-              : "bg-primary/10 text-primary",
-          )}
-        >
-          {hasPrices ? (
-            <Check className="size-4 md:size-5" strokeWidth={3} aria-hidden="true" />
-          ) : (
-            <CalendarRange className="size-4 md:size-5" aria-hidden="true" />
-          )}
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary md:size-10 md:rounded-xl">
+          <CalendarRange className="size-4 md:size-5" aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold md:text-base">
@@ -595,7 +584,7 @@ export function DatePricingCta({
         type="button"
         variant="outline"
         size="lg"
-        className="w-full shrink-0 sm:w-auto"
+        className="w-full shrink-0 sm:w-36 md:w-44"
         onClick={onOpen}
       >
         <CalendarRange className="size-4" />
@@ -1406,7 +1395,7 @@ export function PrePublishTaskScreen({
         ? // The button opens the editor rather than committing, so it can't wear the
           // editor's own "Set this price" — that promise belonged one screen later.
           resolve("host.prepublish.edit_price", "Edit price").text
-        : resolve("host.prepublish.add_offer", "Add this offer").text;
+        : resolve("host.prepublish.add_promotion", "Add promotion").text;
   const PrimaryIcon =
     task === "availability"
       ? LockKeyhole
@@ -2010,7 +1999,7 @@ function PlanEditorDialog({
                 <div className="relative mt-2">
                   <Input
                     id="prepublish-nightly-rate"
-                    className="h-14 rounded-xl border-primary/25 bg-background pr-24 text-2xl font-semibold shadow-xs"
+                    className="h-14 appearance-none rounded-xl border-primary/25 bg-background pr-24 text-2xl font-semibold shadow-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     type="number"
                     min={1}
                     step="0.01"
@@ -2267,7 +2256,7 @@ function PlanEditorDialog({
                   disabled={offerType === "PERCENT_DISCOUNT" && !discountValid}
                   onClick={submit}
                 >
-                  <Tx k="host.prepublish.add_offer" source="Add this offer" />
+                  <Tx k="host.prepublish.add_promotion" source="Add promotion" />
                 </Button>
               </div>
             </div>

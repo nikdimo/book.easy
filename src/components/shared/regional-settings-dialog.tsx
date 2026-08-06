@@ -2,10 +2,11 @@
 
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Globe, Search } from "lucide-react";
+import { Check, Globe, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogTitle,
@@ -37,6 +38,10 @@ import {
   currencySymbol,
 } from "@/lib/currency/currencies";
 import { tokenContainmentScore } from "@/lib/utils/search-score";
+import {
+  readAutoTranslateUserContentPreference,
+  writeAutoTranslateUserContentPreference,
+} from "@/lib/i18n/user-content-translation";
 
 export interface LanguageOption {
   code: string;
@@ -95,7 +100,7 @@ function PickerGrid({ rows, emptyLabel }: { rows: PickerRow[]; emptyLabel: strin
   }
 
   return (
-    <div className="grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-x-2 gap-y-0.5 min-[30rem]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
       {rows.map((row) => (
         <button
           key={row.key}
@@ -103,14 +108,14 @@ function PickerGrid({ rows, emptyLabel }: { rows: PickerRow[]; emptyLabel: strin
           onClick={row.onSelect}
           aria-current={row.selected ? "true" : undefined}
           className={cn(
-            "flex items-start gap-2 rounded-lg border px-3 py-2.5 text-left transition-colors",
+            "flex items-start gap-2 rounded-lg border px-2.5 py-2 text-left transition-colors",
             "hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             row.selected ? "border-foreground" : "border-transparent",
           )}
         >
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm">{row.title}</span>
-            <span className="block truncate text-xs text-muted-foreground">
+            <span className="block truncate text-sm leading-5">{row.title}</span>
+            <span className="block truncate text-xs leading-4 text-muted-foreground">
               {row.subtitle}
             </span>
           </span>
@@ -150,10 +155,10 @@ function PickerPanel({
   );
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-3 md:gap-4">
       <div className="relative">
         <Search
-          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+          className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
           aria-hidden
         />
         <Input
@@ -162,7 +167,7 @@ function PickerPanel({
           onChange={(event) => setQuery(event.target.value)}
           placeholder={searchPlaceholder}
           aria-label={searchLabel}
-          className="pl-9"
+          className="pr-10"
         />
       </div>
 
@@ -225,6 +230,24 @@ export function RegionalSettingsDialog({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [announcement, setAnnouncement] = useState("");
+  const [autoTranslateUserContent, setAutoTranslateUserContent] = useState(true);
+
+  function handleOpenChange(nextOpen: boolean) {
+    if (nextOpen) {
+      setAutoTranslateUserContent(readAutoTranslateUserContentPreference());
+    }
+    setOpen(nextOpen);
+  }
+
+  function toggleUserContentTranslation() {
+    const enabled = !autoTranslateUserContent;
+    setAutoTranslateUserContent(enabled);
+    writeAutoTranslateUserContentPreference(enabled);
+    // Google has already replaced text nodes on the current document. Reloading is
+    // the only reliable way to restore host and review source text when disabling,
+    // and it also lets Google translate newly enabled content in one clean pass.
+    window.location.reload();
+  }
 
   const automaticLanguages = useSyncExternalStore(
     subscribeAutomaticLanguages,
@@ -341,7 +364,7 @@ export function RegionalSettingsDialog({
   );
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button
           variant="ghost"
@@ -356,7 +379,10 @@ export function RegionalSettingsDialog({
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="notranslate flex h-[85vh] max-h-[46rem] w-[min(64rem,95vw)] max-w-none flex-col gap-4 overflow-hidden p-5 sm:p-6">
+      <DialogContent
+        showCloseButton={false}
+        className="notranslate flex h-[90vh] max-h-[52rem] w-[calc(100vw-1.5rem)] max-w-none flex-col gap-5 overflow-hidden p-4 max-md:h-[calc(100dvh-1rem)] max-md:max-h-none max-md:w-[calc(100vw-1rem)] max-md:gap-3 max-md:rounded-3xl max-md:p-3 sm:w-[calc(100vw-3rem)] sm:max-w-[78rem] sm:p-6 lg:p-7"
+      >
         <DialogTitle className="sr-only">{triggerLabel.text}</DialogTitle>
         <DialogDescription className="sr-only">
           <Tx
@@ -366,18 +392,92 @@ export function RegionalSettingsDialog({
         </DialogDescription>
 
         <Tabs defaultValue="language" className="flex min-h-0 flex-1 flex-col">
-          <TabsList className="justify-start">
-            <TabsTrigger value="language">
-              <Tx k="regional.tab_language" source="Language and region" />
-            </TabsTrigger>
-            <TabsTrigger value="currency">
-              <Tx k="regional.tab_currency" source="Currency" />
-            </TabsTrigger>
-          </TabsList>
+          <div className="grid w-full grid-cols-[minmax(0,44rem)_minmax(14rem,1fr)_auto] items-center gap-3 max-md:grid-cols-[minmax(0,1fr)_auto] max-md:gap-x-2 max-md:gap-y-1">
+            <TabsList
+              data-desktop-search-pill
+              className="relative z-[60] h-auto w-full min-w-0 justify-start gap-0 rounded-full border border-black/10 bg-[#f7f7f7] p-1 shadow-[0_1px_2px_rgba(0,0,0,0.08),0_8px_24px_rgba(0,0,0,0.08)] transition-shadow duration-200 hover:shadow-[0_2px_4px_rgba(0,0,0,0.10),0_10px_28px_rgba(0,0,0,0.10)] max-md:col-start-1 max-md:row-start-1"
+            >
+              <TabsTrigger
+                value="language"
+                className="relative h-auto min-w-0 flex-1 cursor-pointer items-center justify-start rounded-full border-0 px-6 py-2.5 text-left transition-[background-color,box-shadow,transform] duration-200 ease-out after:absolute after:right-0 after:top-1/2 after:h-8 after:w-px after:-translate-y-1/2 after:bg-black/8 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background data-active:bg-white data-active:shadow-[0_2px_10px_rgba(15,23,42,0.12)] data-active:after:opacity-0 max-md:px-4 max-md:py-2"
+              >
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block text-[0.72rem] font-semibold leading-4 text-foreground">
+                    <Tx k="regional.tab_language" source="Language and region" />
+                  </span>
+                  <span className="mt-px block truncate text-sm font-normal leading-5 text-muted-foreground">
+                    {currentLanguageLabel}
+                  </span>
+                </span>
+              </TabsTrigger>
+              <TabsTrigger
+                value="currency"
+                className="relative h-auto min-w-0 flex-1 cursor-pointer items-center justify-start rounded-full border-0 px-6 py-2.5 text-left transition-[background-color,box-shadow,transform] duration-200 ease-out after:hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background data-active:bg-white data-active:shadow-[0_2px_10px_rgba(15,23,42,0.12)] max-md:px-4 max-md:py-2"
+              >
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block text-[0.72rem] font-semibold leading-4 text-foreground">
+                    <Tx k="regional.tab_currency" source="Currency" />
+                  </span>
+                  <span className="mt-px block truncate text-sm font-normal leading-5 text-muted-foreground">
+                    {currentCurrency}
+                  </span>
+                </span>
+              </TabsTrigger>
+            </TabsList>
+
+            <div className="flex min-w-0 items-center px-3 py-2 text-left max-md:col-span-2 max-md:row-start-2 max-md:px-2 max-md:py-1.5">
+              <div className="min-w-0 flex-1 leading-tight">
+                <p className="truncate text-[0.72rem] font-semibold leading-4 text-foreground">
+                  <Tx k="regional.translation_title" source="Translation" />
+                </p>
+                <p className="mt-px truncate text-sm font-normal leading-5 text-muted-foreground">
+                  Google Translate
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={autoTranslateUserContent}
+                aria-label={
+                  i18n.resolve(
+                    "regional.translation_toggle_label",
+                    "Automatically translate descriptions and reviews",
+                  ).text
+                }
+                onClick={toggleUserContentTranslation}
+                className={cn(
+                  "relative ml-3 h-9 w-14 shrink-0 rounded-full border-2 transition-colors",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                  autoTranslateUserContent
+                    ? "border-foreground bg-foreground"
+                    : "border-muted-foreground/60 bg-background",
+                )}
+              >
+                <span
+                  className={cn(
+                    "absolute top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-background shadow transition-transform",
+                    autoTranslateUserContent ? "translate-x-[1.35rem]" : "translate-x-0.5",
+                  )}
+                >
+                  {autoTranslateUserContent ? <Check className="h-4 w-4" aria-hidden /> : null}
+                </span>
+              </button>
+            </div>
+
+            <DialogClose asChild>
+              <Button
+                size="icon"
+                className="relative z-10 h-11 w-11 shrink-0 justify-self-end rounded-full bg-primary px-0 text-primary-foreground shadow-none transition-all duration-200 hover:bg-primary/95 max-md:col-start-2 max-md:row-start-1 max-md:h-10 max-md:w-10"
+              >
+                <X aria-hidden />
+                <span className="sr-only">Close</span>
+              </Button>
+            </DialogClose>
+          </div>
 
           <TabsContent
             value="language"
-            className="mt-4 flex min-h-0 flex-1 flex-col"
+            className="mt-3 flex min-h-0 flex-1 flex-col md:mt-4"
           >
             <PickerPanel
               rows={languageRows}

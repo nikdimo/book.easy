@@ -729,8 +729,8 @@ model ListingAmenity {
 model PricingRule {
   id                String   @id @default(cuid())
   listingId         String   @unique
-  baseNightlyRate   Decimal  @db.Decimal(10, 2)
-  cleaningFee       Decimal  @default(0) @db.Decimal(10, 2)
+  baseNightlyRate   Decimal  @db.Decimal(14, 3)
+  cleaningFee       Decimal  @default(0) @db.Decimal(14, 3)
   serviceFeePercent Decimal  @default(0) @db.Decimal(5, 2)
   currency          String   @default("EUR")
   minNights         Int      @default(1)
@@ -771,7 +771,7 @@ model ListingDatePrice {
   id          String   @id @default(cuid())
   listingId   String
   date        DateTime @db.Date
-  nightlyRate Decimal  @db.Decimal(10, 2)
+  nightlyRate Decimal  @db.Decimal(14, 3)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -812,12 +812,12 @@ model Booking {
   checkOut              DateTime       @db.Date
   guestCount            Int
   currency              String         @default("EUR")
-  nightlyRate           Decimal        @db.Decimal(10, 2)
-  cleaningFee           Decimal        @default(0) @db.Decimal(10, 2)
-  serviceFee            Decimal        @default(0) @db.Decimal(10, 2)
-  totalPrice            Decimal        @db.Decimal(10, 2)
-  originalTotal         Decimal?       @db.Decimal(10, 2)
-  discountAmount        Decimal        @default(0) @db.Decimal(10, 2)
+  nightlyRate           Decimal        @db.Decimal(14, 3)
+  cleaningFee           Decimal        @default(0) @db.Decimal(14, 3)
+  serviceFee            Decimal        @default(0) @db.Decimal(14, 3)
+  totalPrice            Decimal        @db.Decimal(14, 3)
+  originalTotal         Decimal?       @db.Decimal(14, 3)
+  discountAmount        Decimal        @default(0) @db.Decimal(14, 3)
   promotionId           String?
   promotionType         PromotionType?
   priceBreakdown        Json?
@@ -830,7 +830,10 @@ model Booking {
   /// Null when the guest was already browsing in the official currency.
   displayCurrency       String?
   displayRate           Decimal?       @db.Decimal(20, 10)
-  displayTotal          Decimal?       @db.Decimal(14, 2)
+  displayTotal          Decimal?       @db.Decimal(14, 3)
+  /// Language selected by the guest at booking time. Confirmation pages and
+  /// transactional email use this snapshot, not a later account preference.
+  guestLocale           String?
   numberOfNights        Int
   status                BookingStatus  @default(PENDING)
   responseDueAt         DateTime       @default(dbgenerated("(CURRENT_TIMESTAMP + INTERVAL '24 hours')"))

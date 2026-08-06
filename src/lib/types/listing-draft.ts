@@ -30,6 +30,7 @@ export interface ListingDraftData {
   bedrooms?: string;
   beds?: string;
   bathrooms?: string;
+  currency?: string;
   baseNightlyRate?: string;
   cleaningFee?: string;
   minNights?: string;

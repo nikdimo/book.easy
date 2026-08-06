@@ -9,12 +9,12 @@ export default async function AccountLayout({ children }: { children: React.Reac
   await requireUserPage();
 
   return (
-    <>
+    <div className="app-zoom-90 flex min-h-screen flex-col">
       <Suspense fallback={<div className="h-[72px] border-b bg-background" />}>
         <Header regionalSettings={<RegionalSettingsLauncher />} />
       </Suspense>
       <main className="flex-1 container mx-auto px-4 py-8">{children}</main>
       <Footer />
-    </>
+    </div>
   );
 }

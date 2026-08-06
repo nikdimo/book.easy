@@ -117,7 +117,7 @@ export default async function HostBookingsPage() {
                     <span className="text-muted-foreground">
                       <T t={t} k="host.bookings.total_label" source="Total:" />{" "}
                     </span>
-                    <span className="font-medium">{formatPrice(Number(booking.totalPrice))}</span>
+                    <span className="font-medium">{formatPrice(Number(booking.totalPrice), booking.currency)}</span>
                   </div>
                 </div>
                 {booking.guestNote && (

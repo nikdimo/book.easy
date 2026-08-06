@@ -347,7 +347,6 @@ function MarketplaceSearchBarInner({
   const labels = useSearchLabels();
   const router = useRouter();
   const isCompact = variant === "compact";
-  const isPill = variant === "pill";
   const isSummary = variant === "summary";
   const isFloating = variant === "floating";
   const [city, setCity] = useState(initialState.city);
@@ -366,6 +365,10 @@ function MarketplaceSearchBarInner({
     "dates" | "guests"
   >("dates");
   const [searchFlowOpen, setSearchFlowOpen] = useState(false);
+  const [floatingExpanded, setFloatingExpanded] = useState(false);
+  // Once expanded, the floating search becomes the real desktop pill component. This
+  // keeps both placements on one implementation instead of maintaining a lookalike.
+  const isPill = variant === "pill" || (isFloating && floatingExpanded);
   const [dateFlexibility, setDateFlexibility] = useState(
     initialState.dateFlexibility
   );
@@ -658,7 +661,10 @@ function MarketplaceSearchBarInner({
     });
   };
 
-  if (isFloating) {
+  // The floating search is only mounted in the desktop header. Keep its collapsed
+  // trigger compact, but expand into the same full field layout used by the hero
+  // search when it is opened instead of sending desktop users through the mobile flow.
+  if (isFloating && !floatingExpanded) {
     const citySummary = city
       ? localizePlaceName(city, labels.locale)
       : labels.whereToPlaceholder.text;
@@ -674,7 +680,7 @@ function MarketplaceSearchBarInner({
       <>
         <button
           type="button"
-          onClick={() => setSearchFlowOpen(true)}
+          onClick={() => setFloatingExpanded(true)}
           aria-label={labels.openSearch.text}
           className="flex h-14 items-center rounded-full border border-border/70 bg-background px-2 pl-5 text-left shadow-[0_8px_28px_rgba(15,23,42,0.16)] transition-shadow hover:shadow-[0_10px_34px_rgba(15,23,42,0.2)]"
         >
@@ -694,53 +700,6 @@ function MarketplaceSearchBarInner({
           </span>
         </button>
 
-        <MarketplaceSearchFlowDialog
-          open={searchFlowOpen}
-          onOpenChange={setSearchFlowOpen}
-          initialState={{
-            city,
-            country,
-            checkIn,
-            checkOut,
-            guestCounts,
-            dateFlexibility,
-            propertyTypes,
-          }}
-          popularCities={popularCities}
-          onApplySearch={(next) => {
-            setCity(next.city);
-            setCountry(next.country);
-            setCheckIn(next.checkIn);
-            setCheckOut(next.checkOut);
-            setGuestCounts(next.guestCounts);
-            setDateFlexibility(next.dateFlexibility);
-            setPropertyTypes(next.propertyTypes);
-
-            rememberedSearchState = next;
-            writeActiveSearchState(next);
-            const p = new URLSearchParams();
-            if (next.city.trim()) p.set("city", next.city.trim());
-            if (next.country.trim()) p.set("country", next.country.trim());
-            if (next.checkIn) p.set("checkIn", next.checkIn);
-            if (next.checkOut) p.set("checkOut", next.checkOut);
-            const guestsParam = countsToGuestsParam(next.guestCounts);
-            if (guestsParam) p.set("guests", guestsParam);
-            Object.entries(guestCountsToParams(next.guestCounts)).forEach(
-              ([key, value]) => p.set(key, value),
-            );
-            if (next.dateFlexibility !== 0) {
-              p.set("dateFlexibility", String(next.dateFlexibility));
-            }
-            const typesParam = stringifyPropertyTypesParam(
-              next.propertyTypes,
-              allPropertyTypeValues,
-            );
-            if (typesParam) p.set("propertyTypes", typesParam);
-
-            const q = p.toString();
-            router.push(q ? `/properties?${q}` : "/properties");
-          }}
-        />
       </>
     );
   }
@@ -850,7 +809,10 @@ function MarketplaceSearchBarInner({
           ref={pillFormRef}
           data-desktop-search-pill
           onSubmit={onSubmit}
-          className="relative z-[60] flex w-full max-w-[64rem] items-center rounded-full border border-black/10 bg-[#f7f7f7] p-1 shadow-[0_1px_2px_rgba(0,0,0,0.08),0_8px_24px_rgba(0,0,0,0.08)] transition-shadow duration-200 hover:shadow-[0_2px_4px_rgba(0,0,0,0.10),0_10px_28px_rgba(0,0,0,0.10)]"
+          className={cn(
+            "relative z-[60] flex w-full max-w-[64rem] items-center rounded-full border border-black/10 bg-[#f7f7f7] p-1 shadow-[0_1px_2px_rgba(0,0,0,0.08),0_8px_24px_rgba(0,0,0,0.08)] transition-shadow duration-200 hover:shadow-[0_2px_4px_rgba(0,0,0,0.10),0_10px_28px_rgba(0,0,0,0.10)]",
+            isFloating && "animate-in fade-in-0 zoom-in-95 duration-300",
+          )}
         >
           <span
             aria-hidden

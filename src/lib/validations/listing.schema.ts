@@ -44,6 +44,7 @@ export const listingFormSchema = z.object({
   bedrooms: z.coerce.number().int().min(0).max(20),
   bathrooms: z.coerce.number().int().min(0).max(20),
   beds: z.coerce.number().int().min(0).max(40),
+  currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/, "Choose a valid currency"),
   baseNightlyRate: z.coerce.number().min(1, "Nightly rate is required"),
   cleaningFee: z.coerce.number().min(0).default(0),
   minNights: z.coerce.number().int().min(1).default(1),

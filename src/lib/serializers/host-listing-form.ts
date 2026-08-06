@@ -29,6 +29,7 @@ export type HostListingFormData = {
     streetViewPanoId?: string | null;
   };
   pricingRule: {
+    currency: string;
     baseNightlyRate: number;
     cleaningFee: number;
     minNights: number;
@@ -77,6 +78,7 @@ export function serializeHostListingForForm(
     },
     pricingRule: listing.pricingRule
       ? {
+          currency: listing.pricingRule.currency,
           baseNightlyRate: Number(listing.pricingRule.baseNightlyRate),
           cleaningFee: Number(listing.pricingRule.cleaningFee),
           minNights: listing.pricingRule.minNights,

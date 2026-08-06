@@ -1,4 +1,5 @@
 import { DEFAULT_LOCALE, normalizeLocaleCode } from "@/lib/i18n/locale-preference";
+import { REVIEWED_LANGUAGES, type ReviewedLocale } from "@/lib/i18n/reviewed-languages";
 
 /**
  * Deliberately narrower than the site's language list. A booking confirmation, a
@@ -10,12 +11,14 @@ import { DEFAULT_LOCALE, normalizeLocaleCode } from "@/lib/i18n/locale-preferenc
  *
  * Adding a locale here is a commitment to review every template in it.
  */
+/** Hand-reviewed inline catalog columns. Other reviewed site languages come from
+ * the generated, versioned translation snapshot. */
 export const EMAIL_LOCALES = [DEFAULT_LOCALE, "mk"] as const;
 
-export type EmailLocale = (typeof EMAIL_LOCALES)[number];
+export type EmailLocale = typeof DEFAULT_LOCALE | ReviewedLocale;
 
 export function isEmailLocale(value: string | null | undefined): value is EmailLocale {
-  return (EMAIL_LOCALES as readonly string[]).includes(value ?? "");
+  return value === DEFAULT_LOCALE || REVIEWED_LANGUAGES.some((language) => language.code === value);
 }
 
 /**

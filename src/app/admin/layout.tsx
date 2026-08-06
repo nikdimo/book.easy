@@ -25,7 +25,7 @@ export default async function AdminLayout({
   ]);
 
   return (
-    <div className="flex min-h-screen flex-col md:flex-row">
+    <div className="app-zoom-80 flex min-h-screen flex-col md:flex-row">
       <AdminSidebar
         languages={languages}
         pendingSuggestionCount={pendingSuggestionCount}

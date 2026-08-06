@@ -11,11 +11,11 @@ describe("resolveEmailLocale", () => {
     expect(resolveEmailLocale("mk-MK")).toBe("mk");
   });
 
-  it("falls back to English for a language nobody has reviewed", () => {
+  it("keeps every language in the reviewed site catalog", () => {
     // The site offers fifteen languages; email is only reviewed in two. Everything
     // else must get reviewed English, never unreviewed machine output.
-    expect(resolveEmailLocale("sq")).toBe("en");
-    expect(resolveEmailLocale("tr")).toBe("en");
+    expect(resolveEmailLocale("sq")).toBe("sq");
+    expect(resolveEmailLocale("tr")).toBe("tr");
   });
 
   it("falls back to English for missing or malformed values", () => {
@@ -33,8 +33,8 @@ describe("getEmailT", () => {
     );
   });
 
-  it("returns the English source for an unreviewed language", () => {
-    expect(getEmailT("sq").t("email.booking.check_in", "Check-in")).toBe("Check-in");
+  it("uses the generated reviewed translation for another site language", () => {
+    expect(getEmailT("fr").t("email.booking.check_in", "Check-in")).toBe("Arrivée");
   });
 
   it("falls back to English when the source no longer matches the snapshot", () => {
@@ -66,6 +66,6 @@ describe("getEmailT", () => {
     expect(getEmailT("mk").locale).toBe("mk");
     // A recipient whose language isn't reviewed gets English prose — their dates and
     // prices have to be English too, not formatted in the language they picked.
-    expect(getEmailT("sq").locale).toBe("en");
+    expect(getEmailT("sq").locale).toBe("sq");
   });
 });

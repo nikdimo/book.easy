@@ -70,8 +70,8 @@ export default async function AdminListingDetailPage({ params }: AdminListingDet
                 <>
                   <Separator />
                   <div className="grid grid-cols-1 gap-4 text-sm min-[420px]:grid-cols-3">
-                    <div><span className="text-muted-foreground">Nightly: </span>{formatPrice(Number(listing.pricingRule.baseNightlyRate))}</div>
-                    <div><span className="text-muted-foreground">Cleaning: </span>{formatPrice(Number(listing.pricingRule.cleaningFee))}</div>
+                    <div><span className="text-muted-foreground">Nightly: </span>{formatPrice(Number(listing.pricingRule.baseNightlyRate), listing.pricingRule.currency)}</div>
+                    <div><span className="text-muted-foreground">Cleaning: </span>{formatPrice(Number(listing.pricingRule.cleaningFee), listing.pricingRule.currency)}</div>
                     <div><span className="text-muted-foreground">Min nights: </span>{listing.pricingRule.minNights}</div>
                   </div>
                 </>

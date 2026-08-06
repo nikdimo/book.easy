@@ -1,6 +1,11 @@
 import { DEFAULT_LOCALE } from "@/lib/i18n/locale-preference";
 import { EMAIL_CATALOG } from "@/lib/email/i18n/catalog";
 import { resolveEmailLocale, type EmailLocale } from "@/lib/email/i18n/locales";
+import reviewed from "@/lib/i18n/reviewed-ai-translations.json";
+
+const REVIEWED_EMAIL_TRANSLATIONS = new Map(
+  reviewed.languages.map((language) => [language.code, language.translations as Record<string, string>]),
+);
 
 /**
  * Email translation is deliberately unlike `getT()`.
@@ -40,7 +45,8 @@ export function getEmailT(locale: string | null | undefined): EmailTranslator {
     // re-reviewed — a reviewed fallback beats a stale mistranslation, and it
     // fails that way without anyone having to remember to re-run anything.
     if (!entry || entry[DEFAULT_LOCALE] !== source) return source;
-    return entry[resolved] || source;
+    if (resolved === "mk") return entry.mk || source;
+    return REVIEWED_EMAIL_TRANSLATIONS.get(resolved)?.[key] || source;
   };
 
   return {

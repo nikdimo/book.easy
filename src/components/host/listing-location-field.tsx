@@ -547,7 +547,6 @@ export function ListingLocationMapField({
 
         <div className="absolute left-4 right-4 top-4 z-10 max-w-xl space-y-2 lg:right-auto lg:w-[min(34rem,calc(100%-2rem))]">
           <div className="relative rounded-xl bg-background shadow-[0_4px_24px_rgba(0,0,0,0.22)]">
-            <Search className="pointer-events-none absolute left-4 top-3.5 h-5 w-5 text-muted-foreground" />
             <Input
               id="address-search"
               role="combobox"
@@ -560,7 +559,7 @@ export function ListingLocationMapField({
                   : undefined
               }
               autoComplete="off"
-              className="h-12 border-0 bg-transparent pl-12 pr-11 text-base shadow-none focus-visible:ring-0"
+              className="h-12 border-0 bg-transparent pl-4 pr-12 text-base shadow-none focus-visible:ring-0"
               placeholder="Search Google for an address or place"
               value={query}
               onChange={(event) => {
@@ -597,9 +596,16 @@ export function ListingLocationMapField({
                 window.setTimeout(() => setPredictions([]), 150);
               }}
             />
+            <Search
+              className={cn(
+                "pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground",
+                (searching || resolving) && "invisible",
+              )}
+              aria-hidden="true"
+            />
             <Loader2
               className={cn(
-                "pointer-events-none absolute right-4 top-3.5 h-5 w-5 animate-spin text-muted-foreground",
+                "pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 animate-spin text-muted-foreground",
                 !searching && !resolving && "invisible"
               )}
               aria-hidden="true"

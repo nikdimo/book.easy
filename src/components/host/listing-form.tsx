@@ -87,6 +87,7 @@ import type { PropertyTypeOption } from "@/lib/types/property-type";
 import type { ListingDraftData } from "@/lib/types/listing-draft";
 import { PropertyTypeIcon } from "@/components/shared/property-type-icon";
 import { cn } from "@/lib/utils";
+import { currencyDecimals, currencyDisplayName } from "@/lib/currency/currencies";
 import {
   LISTING_STEP,
   LISTING_STEPS,
@@ -96,6 +97,7 @@ import {
 } from "@/lib/constants/listing-steps";
 
 interface ListingFormProps {
+  currencies: string[];
   amenities: { id: string; name: string; category: string; icon?: string | null }[];
   propertyTypes: PropertyTypeOption[];
   initialMediaItems?: ListingMediaItem[];
@@ -134,6 +136,7 @@ type ListingFormValues = {
   bedrooms: string;
   beds: string;
   bathrooms: string;
+  currency: string;
   baseNightlyRate: string;
   cleaningFee: string;
   minNights: string;
@@ -273,6 +276,7 @@ function listingInitialValues(
       bedrooms: String(listing.bedrooms),
       beds: String(listing.beds),
       bathrooms: String(listing.bathrooms),
+      currency: listing.pricingRule?.currency ?? "EUR",
       baseNightlyRate: listing.pricingRule ? String(listing.pricingRule.baseNightlyRate) : "",
       cleaningFee: listing.pricingRule ? String(listing.pricingRule.cleaningFee) : "0",
       minNights: listing.pricingRule ? String(listing.pricingRule.minNights) : "1",
@@ -311,6 +315,7 @@ function listingInitialValues(
     bedrooms: draft?.bedrooms ?? "0",
     beds: draft?.beds ?? "0",
     bathrooms: draft?.bathrooms ?? "0",
+    currency: draft?.currency ?? "EUR",
     baseNightlyRate: draft?.baseNightlyRate ?? "",
     cleaningFee: draft?.cleaningFee || "0",
     minNights: draft?.minNights || "1",
@@ -319,16 +324,24 @@ function listingInitialValues(
     checkInTime: normalizeStayTime(draft?.checkInTime ?? DEFAULT_CHECK_IN_TIME),
     checkOutTime: normalizeStayTime(draft?.checkOutTime ?? DEFAULT_CHECK_OUT_TIME),
     promotionType:
-      draft?.promotionType === "PERCENT_DISCOUNT" ? "PERCENT_DISCOUNT" : "NONE",
+      draft?.promotionType === "PERCENT_DISCOUNT" ||
+      draft?.promotionType === "FREE_CLEANING"
+        ? draft.promotionType
+        : "NONE",
     promotionPercent:
       draft?.promotionType === "PERCENT_DISCOUNT"
         ? draft.promotionPercent || "15"
         : "",
     promotionMinimumNights:
-      draft?.promotionType === "PERCENT_DISCOUNT"
-        ? draft.promotionMinimumNights || "5"
+      draft?.promotionType === "PERCENT_DISCOUNT" ||
+      draft?.promotionType === "FREE_CLEANING"
+        ? draft.promotionMinimumNights || "1"
         : "",
-    promotionFreeCleaning: "false",
+    promotionFreeCleaning:
+      draft?.promotionFreeCleaning === "true" ||
+      draft?.promotionType === "FREE_CLEANING"
+        ? "true"
+        : "false",
   };
 }
 
@@ -367,6 +380,7 @@ const FIELD_VALIDATORS: Partial<Record<keyof ListingFormValues, (value: string) 
     !Number.isInteger(Number(v)) || Number(v) < 0 || Number(v) > 20
       ? "Bathrooms must be between 0 and 20"
       : null,
+  currency: (v) => (/^[A-Z]{3}$/.test(v) ? null : "Choose a valid currency"),
   baseNightlyRate: (v) =>
     !v || !Number.isFinite(Number(v)) || Number(v) < 1
       ? "Nightly rate must be at least €1"
@@ -418,7 +432,7 @@ function listingStepIssues(
     [LISTING_STEP.address]: ["address", "city", "country"],
     [LISTING_STEP.details]: ["maxGuests", "bedrooms", "beds", "bathrooms"],
     [LISTING_STEP.description]: ["title", "description"],
-    [LISTING_STEP.pricing]: ["baseNightlyRate", "cleaningFee", "minNights"],
+    [LISTING_STEP.pricing]: ["currency", "baseNightlyRate", "cleaningFee", "minNights"],
   };
 
   const issues: ListingStepIssue[] = (fieldsByStep[step] ?? []).flatMap((field) => {
@@ -466,13 +480,13 @@ function listingStepIssues(
   return issues;
 }
 
-// The five launch-offer choices stack on a phone, so they read as a compact
-// list there (icon beside the text) and only become the desktop card at md.
+// The presets stay in one compact row on a phone: this is the final wizard step
+// and must fit above its footer without turning into a long stack.
 const OFFER_CARD =
-  "flex min-h-11 items-center gap-2.5 rounded-lg border p-2.5 text-left transition-colors md:block md:min-h-0 md:rounded-xl md:p-4";
-const OFFER_ICON = "size-4 shrink-0 md:mb-3 md:size-5";
-const OFFER_TITLE = "block text-sm font-semibold md:text-base";
-const OFFER_DESC = "block text-[0.7rem] text-muted-foreground md:mt-1 md:text-sm";
+  "min-h-[5.25rem] rounded-lg border p-2 text-left transition-colors md:min-h-0 md:rounded-xl md:p-4";
+const OFFER_ICON = "mb-1 size-4 shrink-0 md:mb-3 md:size-5";
+const OFFER_TITLE = "block text-xs font-semibold md:text-base";
+const OFFER_DESC = "mt-0.5 block text-[0.625rem] leading-tight text-muted-foreground md:mt-1 md:text-sm";
 
 function FieldSection({
   title,
@@ -566,6 +580,7 @@ function LocationSummary({
 }
 
 export function ListingForm({
+  currencies,
   amenities,
   propertyTypes,
   listing,
@@ -657,14 +672,18 @@ export function ListingForm({
    *  to satisfy reads as broken rather than as guidance. */
   const [availabilityAttempted, setAvailabilityAttempted] = useState(false);
   /** The dates selected on the open task screen, and a handle to its editor. The
-   *  bottom bar is the only commit affordance a phone shows, so on the pricing screen
-   *  it becomes "Edit price" the moment a range exists rather than a Done that
-   *  abandons the selection the host just made. */
+   *  bottom bar is the only commit affordance a phone shows, so pricing and offer
+   *  screens replace Done with the action for the selected range. */
   const [prePublishSelection, setPrePublishSelection] =
     useState<PrePublishRange | null>(null);
   const prePublishActions = useRef<PrePublishTaskActions | null>(null);
-  const pricingSelected =
-    prePublishScreen === "pricing" && prePublishSelection !== null;
+  const taskSelectionActive =
+    (prePublishScreen === "pricing" || prePublishScreen === "offers") &&
+    prePublishSelection !== null;
+  const selectedTaskActionLabel =
+    prePublishScreen === "offers"
+      ? resolve("host.prepublish.add_promotion", "Add promotion").text
+      : resolve("host.prepublish.edit_price", "Edit price").text;
   /** A create-wizard step check. Always false while editing, where sections are shown
    *  by showEditSections rather than by step, and false throughout the pre-publish
    *  screens, which replace the step body rather than sitting under it. */
@@ -717,7 +736,52 @@ export function ListingForm({
   const currentStepIssues = issuesByStep[currentStep] ?? [];
   const currentStepReady = currentStepIssues.length === 0;
   const listingReady = issuesByStep.every((issues) => issues.length === 0);
-  const hasLaunchOffer = values.promotionType === "PERCENT_DISCOUNT";
+  const hasPercentOffer =
+    values.promotionType === "PERCENT_DISCOUNT" &&
+    values.promotionPercent !== "";
+  const hasFreeCleaningOffer = values.promotionFreeCleaning === "true";
+  const hasLaunchOffer = hasPercentOffer || hasFreeCleaningOffer;
+  const offerMinimumNights = Number(values.promotionMinimumNights);
+  const offerHasStayThreshold =
+    Number.isInteger(offerMinimumNights) && offerMinimumNights > 1;
+  const offerPreviewText = (() => {
+    if (!hasLaunchOffer) return "";
+
+    const template = hasPercentOffer
+      ? hasFreeCleaningOffer
+        ? offerHasStayThreshold
+          ? resolve(
+              "host.form.offer_preview_combined",
+              "{percent}% off + free cleaning from {nights}+ nights",
+            )
+          : resolve(
+              "host.form.offer_preview_combined_no_threshold",
+              "{percent}% off + free cleaning",
+            )
+        : offerHasStayThreshold
+          ? resolve(
+              "host.form.offer_preview_percent",
+              "{percent}% off from {nights}+ nights",
+            )
+          : resolve(
+              "host.form.offer_preview_percent_no_threshold",
+              "{percent}% off",
+            )
+      : offerHasStayThreshold
+        ? resolve(
+            "host.form.offer_preview_cleaning",
+            "Free cleaning from {nights}+ nights",
+          )
+        : resolve(
+            "host.form.offer_preview_cleaning_no_threshold",
+            "Free cleaning",
+          );
+
+    return interpolate(template, {
+      percent: values.promotionPercent,
+      nights: values.promotionMinimumNights || "1",
+    }).text;
+  })();
   /** The availability answer is required, so it holds Publish alongside the numbered
    *  steps. Never a gate while editing — a published listing's availability is edited
    *  on its calendar, not here. The publish action re-checks this regardless; a
@@ -1045,6 +1109,7 @@ export function ListingForm({
       bedrooms: values.bedrooms,
       bathrooms: values.bathrooms,
       beds: values.beds,
+      currency: values.currency,
       baseNightlyRate: values.baseNightlyRate,
       cleaningFee: values.cleaningFee || "0",
       minNights: values.minNights || "1",
@@ -1679,7 +1744,7 @@ export function ListingForm({
                   promotionType={values.promotionType}
                   promotionPercent={values.promotionPercent}
                   promotionMinimumNights={values.promotionMinimumNights}
-                  currency="EUR"
+                  currency={values.currency}
                 />
               ) : (
                 <PrePublishTaskScreen
@@ -1687,7 +1752,7 @@ export function ListingForm({
                   task={prePublishScreen}
                   plan={prePublishPlan}
                   onChange={updatePrePublishPlan}
-                  currency="EUR"
+                  currency={values.currency}
                   baseNightlyRate={values.baseNightlyRate}
                   hasCleaningFee={toPositiveNumber(values.cleaningFee, 0) > 0}
                   onSelectionChange={setPrePublishSelection}
@@ -2068,6 +2133,31 @@ export function ListingForm({
             }
           >
             <div className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
+              <div className="space-y-2 border-b border-border/70 p-5">
+                <Label htmlFor="currency"><Tx k="host.form.pricing.official_currency" source="Official listing currency" /></Label>
+                <Input
+                  id="currency"
+                  name="currency"
+                  list="official-currency-options"
+                  value={values.currency}
+                  onChange={(event) => setField("currency", event.target.value.toUpperCase())}
+                  onBlur={() => handleBlur("currency")}
+                  placeholder={resolve("host.form.pricing.currency_placeholder", "Currency code").text}
+                  maxLength={3}
+                  autoComplete="off"
+                />
+                <datalist id="official-currency-options">
+                  {currencies.map((code) => (
+                    <option key={code} value={code}>
+                      {currencyDisplayName(code, i18n.locale)}
+                    </option>
+                  ))}
+                </datalist>
+                <p className="text-xs text-muted-foreground">
+                  <Tx k="host.form.pricing.official_currency_hint" source="Your rates, bookings, payouts, and contractual totals use this currency. Guests may view an approximate conversion in their own currency." />
+                </p>
+                <FieldError message={fieldErrors.currency} />
+              </div>
               <PricingField
                 id="baseNightlyRate"
                 label={
@@ -2085,8 +2175,8 @@ export function ListingForm({
                 icon={CircleDollarSign}
                 value={values.baseNightlyRate}
                 min={1}
-                step="0.01"
-                suffix="EUR / night"
+                step={String(10 ** -currencyDecimals(values.currency))}
+                suffix={`${values.currency || "EUR"} / night`}
                 onChange={(value) => setField("baseNightlyRate", value)}
                 onBlur={() => handleBlur("baseNightlyRate")}
               />
@@ -2117,8 +2207,8 @@ export function ListingForm({
                 icon={Sparkles}
                 value={values.cleaningFee}
                 min={0}
-                step="0.01"
-                suffix="EUR / stay"
+                step={String(10 ** -currencyDecimals(values.currency))}
+                suffix={`${values.currency || "EUR"} / stay`}
                 onChange={(value) => setField("cleaningFee", value)}
                 onBlur={() => void autosaveDraft()}
               />
@@ -2167,9 +2257,9 @@ export function ListingForm({
               }
             >
               <FieldSection>
-                <div className="space-y-3 md:space-y-4">
+                <div className="space-y-2.5 md:space-y-3">
                   <div>
-                    <div className="grid gap-2 md:grid-cols-3 md:gap-3">
+                    <div className="grid grid-cols-3 gap-2 md:gap-3">
                       {[
                         {
                           title: "Recommended",
@@ -2200,16 +2290,21 @@ export function ListingForm({
                             type="button"
                             aria-pressed={selected}
                             onClick={() => {
+                              const keepsFreeCleaning =
+                                values.promotionFreeCleaning === "true";
                               setField(
                                 "promotionType",
-                                selected ? "NONE" : "PERCENT_DISCOUNT",
+                                selected
+                                  ? keepsFreeCleaning
+                                    ? "FREE_CLEANING"
+                                    : "NONE"
+                                  : "PERCENT_DISCOUNT",
                               );
                               setField("promotionPercent", selected ? "" : offer.percent);
                               setField(
                                 "promotionMinimumNights",
-                                selected ? "" : offer.nights,
+                                selected && !keepsFreeCleaning ? "" : offer.nights,
                               );
-                              setField("promotionFreeCleaning", "false");
                               setTimeout(() => void autosaveDraft(), 0);
                             }}
                             className={cn(
@@ -2232,9 +2327,9 @@ export function ListingForm({
                     </div>
                   </div>
 
-                  <div className="rounded-xl border p-3 md:p-4">
-                    <div className="grid gap-3 sm:grid-cols-2 md:gap-4">
-                      <div className="space-y-2">
+                  <div className="rounded-xl border p-3">
+                    <div className="grid grid-cols-2 gap-2.5 md:gap-3">
+                      <div className="space-y-1.5">
                         <Label htmlFor="promotionPercent">
                           <Tx k="host.form.offer_percentage" source="Percentage" />
                         </Label>
@@ -2251,9 +2346,11 @@ export function ListingForm({
                               setField("promotionPercent", next);
                               setField(
                                 "promotionType",
-                                next || values.promotionMinimumNights
+                                next
                                   ? "PERCENT_DISCOUNT"
-                                  : "NONE",
+                                  : values.promotionFreeCleaning === "true"
+                                    ? "FREE_CLEANING"
+                                    : "NONE",
                               );
                             }}
                             onBlur={() => void autosaveDraft()}
@@ -2264,12 +2361,12 @@ export function ListingForm({
                           </span>
                         </div>
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-1.5">
                         <div className="flex items-center justify-between gap-3">
                           <Label htmlFor="promotionMinimumNights">
                             <Tx
-                              k="host.calendar.minimum_nights"
-                              source="Minimum nights"
+                              k="host.form.offer_applies_from"
+                              source="Offer from (nights)"
                             />
                           </Label>
                           {(hasLaunchOffer ||
@@ -2302,44 +2399,31 @@ export function ListingForm({
                             setField("promotionMinimumNights", next);
                             setField(
                               "promotionType",
-                              next || values.promotionPercent
+                              values.promotionPercent
                                 ? "PERCENT_DISCOUNT"
-                                : "NONE",
+                                : values.promotionFreeCleaning === "true"
+                                  ? "FREE_CLEANING"
+                                  : "NONE",
                             );
                           }}
                           onBlur={() => void autosaveDraft()}
                         />
                       </div>
                     </div>
-                    <div className="mt-2 flex items-center justify-between gap-2.5">
-                      <p className="min-w-0 text-xs text-muted-foreground">
-                        <Tx
-                          k="host.form.offer_edit_hint"
-                          source="Feel free to edit manually."
-                        />
-                      </p>
-                      <button
-                        type="button"
-                        onClick={openDateOffersFromOfferStep}
-                        className="flex shrink-0 items-center gap-1 text-xs font-medium text-primary underline-offset-4 hover:underline"
-                      >
-                        <CalendarRange className="size-3.5" aria-hidden="true" />
-                        {prePublishPlan.offers.length > 0 ? (
-                          <Tx
-                            k="host.form.offer_specific_dates_edit"
-                            source="Edit specific dates"
-                          />
-                        ) : (
-                          <Tx
-                            k="host.form.offer_specific_dates"
-                            source="Specific dates"
-                          />
-                        )}
-                      </button>
+                    <div className="mt-2 flex items-center justify-end gap-2.5">
                       <button
                         type="button"
                         role="switch"
                         aria-checked={values.promotionFreeCleaning === "true"}
+                        disabled={Number(values.cleaningFee) <= 0}
+                        title={
+                          Number(values.cleaningFee) <= 0
+                            ? resolve(
+                                "host.form.offer_free_cleaning_needs_fee",
+                                "Add a cleaning fee first",
+                              ).text
+                            : undefined
+                        }
                         aria-label={
                           resolve(
                             "host.form.offer_free_cleaning",
@@ -2347,13 +2431,26 @@ export function ListingForm({
                           ).text
                         }
                         onClick={() => {
+                          const next = values.promotionFreeCleaning !== "true";
+                          setField("promotionFreeCleaning", next ? "true" : "false");
                           setField(
-                            "promotionFreeCleaning",
-                            values.promotionFreeCleaning === "true" ? "false" : "true",
+                            "promotionType",
+                            next
+                              ? values.promotionPercent
+                                ? "PERCENT_DISCOUNT"
+                                : "FREE_CLEANING"
+                              : values.promotionPercent
+                                ? "PERCENT_DISCOUNT"
+                                : "NONE",
                           );
+                          if (next && !values.promotionMinimumNights) {
+                            setField("promotionMinimumNights", "1");
+                          } else if (!next && !values.promotionPercent) {
+                            setField("promotionMinimumNights", "");
+                          }
                           setTimeout(() => void autosaveDraft(), 0);
                         }}
-                        className="flex shrink-0 items-center gap-2 text-xs font-medium text-foreground"
+                        className="flex shrink-0 items-center gap-2 text-xs font-medium text-foreground disabled:cursor-not-allowed disabled:opacity-45"
                       >
                         <Tx k="host.form.offer_free_cleaning" source="Free cleaning" />
                         <span
@@ -2378,6 +2475,41 @@ export function ListingForm({
                     </div>
                   </div>
 
+                  <button
+                    type="button"
+                    onClick={openDateOffersFromOfferStep}
+                    className="flex min-h-12 w-full items-center gap-2.5 rounded-xl border px-3 py-2 text-left transition-colors hover:border-primary/40"
+                  >
+                    <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                      <CalendarRange className="size-4" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold">
+                        <Tx k="host.form.offer_specific_dates" source="Specific dates" />
+                      </span>
+                      <span className="block truncate text-[0.7rem] text-muted-foreground">
+                        {prePublishPlan.offers.length > 0
+                          ? i18n.plural(
+                              "host.form.offer_specific_dates_set",
+                              prePublishPlan.offers.length,
+                              "Promotion set for {n} date range",
+                              "Promotions set for {n} date ranges",
+                            ).text
+                          : resolve(
+                              "host.form.offer_specific_dates_hint",
+                              "Limit an offer to selected dates",
+                            ).text}
+                      </span>
+                    </span>
+                    <span className="shrink-0 text-xs font-medium text-primary">
+                      {prePublishPlan.offers.length > 0 ? (
+                        <Tx k="host.form.offer_specific_dates_edit" source="Edit" />
+                      ) : (
+                        <Tx k="host.form.offer_specific_dates_add" source="Add" />
+                      )}
+                    </span>
+                  </button>
+
                   <input
                     type="hidden"
                     name="promotionType"
@@ -2389,46 +2521,12 @@ export function ListingForm({
                     value={values.promotionFreeCleaning}
                   />
                   <OfferPreview
-                    headline={
-                      values.promotionFreeCleaning === "true" ||
-                      (values.promotionPercent && values.promotionMinimumNights) ? (
-                        <>
-                          {" "}
-                          {
-                            interpolate(
-                              resolve(
-                                "host.promotion.summary_percent",
-                                "{percent}% off",
-                              ),
-                              { percent: values.promotionPercent },
-                            ).text
-                          }
-                          {
-                            interpolate(
-                              resolve(
-                                "host.promotion.summary_minimum",
-                                " · {nights}+ nights",
-                              ),
-                              { nights: values.promotionMinimumNights },
-                            ).text
-                          }
-                          {values.promotionFreeCleaning === "true" && (
-                            <>
-                              {(values.promotionPercent && values.promotionMinimumNights) && " · "}
-                              <Tx
-                                k="host.form.offer_free_cleaning"
-                                source="Free cleaning"
-                              />
-                            </>
-                          )}
-                        </>
-                      ) : (
+                    headline={hasLaunchOffer ? offerPreviewText : (
                         <Tx
                           k="host.form.offer_none_selected"
                           source="No special offer selected"
                         />
-                      )
-                    }
+                      )}
                   />
                 </div>
               </FieldSection>
@@ -2685,7 +2783,7 @@ export function ListingForm({
                   </Button>
                 ) : prePublishScreen !== null && prePublishScreen !== "menu" ? (
                   <div className="flex items-center gap-2">
-                    {pricingSelected ? (
+                    {taskSelectionActive ? (
                       <Button
                         type="button"
                         variant="outline"
@@ -2697,14 +2795,14 @@ export function ListingForm({
                     <Button
                       type="button"
                       onClick={
-                        pricingSelected
+                        taskSelectionActive
                           ? () => prePublishActions.current?.openEditor()
                           : backFromPrePublish
                       }
                     >
-                      <span key={pricingSelected ? "edit-price" : "done"}>
-                        {pricingSelected ? (
-                          <Tx k="host.prepublish.edit_price" source="Edit price" />
+                      <span key={taskSelectionActive ? "selected-action" : "done"}>
+                        {taskSelectionActive ? (
+                          selectedTaskActionLabel
                         ) : (
                           <Tx k="host.prepublish.done" source="Done" />
                         )}
@@ -2873,6 +2971,7 @@ export function ListingForm({
               beds={beds}
               bathrooms={bathrooms}
               nightlyRate={nightlyRate}
+              currency={values.currency}
               amenities={selectedAmenities}
             />
           </div>
@@ -2908,19 +3007,27 @@ export function ListingForm({
               type="button"
               variant="outline"
               size="lg"
-              className="w-11 shrink-0 px-0"
+              className={cn(
+                taskSelectionActive ? "shrink-0 px-3" : "w-11 shrink-0 px-0",
+              )}
               aria-label={resolve("host.form.back", "Back").text}
               disabled={
                 prePublishScreen === null &&
                 currentStep === LISTING_STEP.propertyType
               }
               onClick={
-                prePublishScreen !== null
-                  ? backFromPrePublish
+                taskSelectionActive
+                  ? () => prePublishActions.current?.clearSelection()
+                  : prePublishScreen !== null
+                    ? backFromPrePublish
                   : () => goToStep(currentStep - 1)
               }
             >
-              <ChevronLeft />
+              {taskSelectionActive ? (
+                <Tx k="host.calendar.cancel" source="Cancel" />
+              ) : (
+                <ChevronLeft />
+              )}
             </Button>
             {/* Nothing on the pricing screen reaches the guest preview — the custom
                 prices are not on a listing yet — so the button there was a trip to
@@ -2930,7 +3037,10 @@ export function ListingForm({
               type="button"
               variant="outline"
               size="lg"
-              className={cn("flex-1", prePublishScreen === "pricing" && "hidden")}
+              className={cn(
+                "flex-1",
+                (prePublishScreen === "pricing" || taskSelectionActive) && "hidden",
+              )}
               aria-controls={
                 mobilePane === "preview"
                   ? "listing-editor-pane"
@@ -2979,7 +3089,7 @@ export function ListingForm({
                 size="lg"
                 className="flex-1"
                 onClick={
-                  pricingSelected
+                  taskSelectionActive
                     ? () => prePublishActions.current?.openEditor()
                     : backFromPrePublish
                 }
@@ -2987,9 +3097,9 @@ export function ListingForm({
                 {/* Keyed for the same reason the Preview label is: Google Translate
                     replaces the text node, and an in-place swap would land on the
                     detached one and leave the old word on screen. */}
-                <span key={pricingSelected ? "edit-price" : "done"}>
-                  {pricingSelected ? (
-                    <Tx k="host.prepublish.edit_price" source="Edit price" />
+                <span key={taskSelectionActive ? "selected-action" : "done"}>
+                  {taskSelectionActive ? (
+                    selectedTaskActionLabel
                   ) : (
                     <Tx k="host.prepublish.done" source="Done" />
                   )}
@@ -3565,7 +3675,7 @@ function PricingField({
         <Label htmlFor={id} className="text-sm font-semibold md:text-base">{label}</Label>
         <p className="line-clamp-1 text-[0.7rem] text-muted-foreground md:line-clamp-none md:text-sm">{description}</p>
       </div>
-      <div className="flex w-36 shrink-0 items-center gap-1.5 md:w-44 md:gap-2">
+      <div className="w-36 shrink-0 md:w-44">
         <Input
           id={id}
           name={id}
@@ -3578,7 +3688,7 @@ function PricingField({
           required={id !== "cleaningFee"}
           className="text-right font-semibold tabular-nums"
         />
-        <span className="w-14 shrink-0 text-[0.7rem] leading-tight text-muted-foreground md:w-20 md:text-xs">{suffix}</span>
+        <span className="mt-1 block text-right text-[0.65rem] leading-tight text-muted-foreground md:text-xs">{suffix}</span>
       </div>
     </div>
   );
@@ -3622,7 +3732,7 @@ function CapacityCounter({
           <p className="line-clamp-1 text-[0.7rem] text-muted-foreground md:line-clamp-none md:text-sm">{description}</p>
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-2 rounded-full border border-border/80 bg-background p-1 shadow-sm">
+      <div className="flex w-36 shrink-0 items-center justify-between gap-1 rounded-xl border border-border/80 bg-background p-1 shadow-sm md:w-44">
         <Button
           type="button"
           variant="ghost"
@@ -3730,6 +3840,7 @@ function ListingGuestPreview({
   beds,
   bathrooms,
   nightlyRate,
+  currency,
   amenities,
 }: {
   title: string;
@@ -3742,6 +3853,7 @@ function ListingGuestPreview({
   beds: number;
   bathrooms: number;
   nightlyRate: number;
+  currency: string;
   amenities: { id: string; name: string; category: string; icon?: string | null }[];
 }) {
   const { resolve } = useI18n();
@@ -3886,7 +3998,7 @@ function ListingGuestPreview({
             <div className="px-6 pb-2 pt-6">
               <div className="flex items-baseline gap-1">
                 <span className="text-2xl font-semibold">
-                  {nightlyRate > 0 ? formatPrice(nightlyRate) : "EUR"}
+                  {nightlyRate > 0 ? formatPrice(nightlyRate, currency) : currency}
                 </span>
                 <span className="text-base text-muted-foreground">
                   <Tx k="host.preview.per_night" source="/ night" />

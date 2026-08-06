@@ -73,7 +73,7 @@ export default async function AdminBookingsPage({
               <dl className="mt-4 space-y-2 text-sm">
                 <div><dt className="text-muted-foreground">Guest</dt><dd>{booking.guest.name}</dd><dd className="break-all text-xs text-muted-foreground">{booking.guest.email}</dd></div>
                 <div><dt className="text-muted-foreground">Dates</dt><dd>{formatDate(booking.checkIn)} – {formatDate(booking.checkOut)}</dd></div>
-                <div><dt className="text-muted-foreground">Total</dt><dd className="font-medium">{formatPrice(Number(booking.totalPrice))}</dd></div>
+                <div><dt className="text-muted-foreground">Total</dt><dd className="font-medium">{formatPrice(Number(booking.totalPrice), booking.currency)}</dd></div>
               </dl>
               {canCancel && <div className="mt-4 border-t pt-3"><AdminCancelBookingButton bookingId={booking.id} /></div>}
             </article>
@@ -103,7 +103,7 @@ export default async function AdminBookingsPage({
                   <TableCell className="text-sm" data-label="Dates">
                     {formatDate(booking.checkIn)} – {formatDate(booking.checkOut)}
                   </TableCell>
-                  <TableCell className="font-medium" data-label="Total">{formatPrice(Number(booking.totalPrice))}</TableCell>
+                  <TableCell className="font-medium" data-label="Total">{formatPrice(Number(booking.totalPrice), booking.currency)}</TableCell>
                   <TableCell data-label="Status">
                     <Badge variant={booking.status === "CONFIRMED" ? "default" : "secondary"}>
                       {statusConfig?.label || booking.status}

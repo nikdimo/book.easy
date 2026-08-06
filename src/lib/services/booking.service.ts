@@ -229,6 +229,9 @@ interface CreateBookingInput {
   checkOut: Date;
   guestCount: number;
   guestNote?: string;
+  /** Guest language at request time. Notifications and confirmation use this frozen
+   * value even if the account or browser preference changes later. */
+  guestLocale?: string | null;
   /**
    * What the guest was browsing in, and the rate they were shown it at. Recorded
    * only — every amount this function computes and stores is in the listing's
@@ -243,7 +246,7 @@ interface CreateBookingInput {
 }
 
 export async function createBooking(input: CreateBookingInput) {
-  const { listingId, guestId, checkIn, checkOut, guestCount, guestNote, display } =
+  const { listingId, guestId, checkIn, checkOut, guestCount, guestNote, guestLocale, display } =
     input;
 
   const createdAt = new Date();
@@ -397,6 +400,7 @@ export async function createBooking(input: CreateBookingInput) {
           reference,
           listingId,
           guestId,
+          guestLocale: guestLocale ?? null,
           checkIn,
           checkOut,
           guestCount,

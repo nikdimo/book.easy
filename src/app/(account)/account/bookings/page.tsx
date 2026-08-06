@@ -75,7 +75,7 @@ export default async function MyBookingsPage() {
                         <Calendar className="h-3 w-3" />
                         {formatDate(booking.checkIn)} – {formatDate(booking.checkOut)}
                       </span>
-                      <span className="font-medium">{formatPrice(Number(booking.totalPrice))}</span>
+                      <span className="font-medium">{formatPrice(Number(booking.totalPrice), booking.currency)}</span>
                     </div>
                   </div>
                 </CardContent>

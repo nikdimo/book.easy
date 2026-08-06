@@ -13,7 +13,7 @@ export default async function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="app-zoom-90 min-h-screen flex flex-col bg-background">
       {/* The launcher degrades on its own when the database is down — authentication
           must stay available through a temporary outage. */}
       <Suspense fallback={<div className="h-20 border-b bg-background" />}>

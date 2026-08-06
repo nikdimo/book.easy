@@ -16,12 +16,12 @@ describe("display currency preference", () => {
     expect(normalizeCurrencyCode(null)).toBeNull();
   });
 
-  it("rejects a well-formed code the platform does not support", () => {
-    // A stale cookie naming a dropped currency must fall through to the next
-    // source, not reach Intl and throw on the next render.
-    expect(normalizeCurrencyCode("ZZZ")).toBeNull();
+  it("accepts provider-shaped codes and rejects malformed ones", () => {
+    // Availability is decided against the live provider table, not a static subset.
+    expect(normalizeCurrencyCode("ZZZ")).toBe("ZZZ");
+    expect(normalizeCurrencyCode("ZZZZ")).toBeNull();
     expect(
-      resolveCurrencyPreference({ explicit: "ZZZ", country: "DK" }),
+      resolveCurrencyPreference({ explicit: "ZZZZ", country: "DK" }),
     ).toEqual({ currency: "DKK", source: "country" });
   });
 

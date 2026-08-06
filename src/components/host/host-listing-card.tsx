@@ -30,7 +30,7 @@ interface HostListingCardProps {
     status: string;
     imageUrl?: string | null;
     property: { city: string };
-    pricingRule: { baseNightlyRate: number } | null;
+    pricingRule: { baseNightlyRate: number; currency: string } | null;
     _count: { bookings: number };
   };
 }
@@ -89,7 +89,7 @@ export function HostListingCard({ listing }: HostListingCardProps) {
           <p className="text-sm text-muted-foreground">
             {listing.property.city}
             {listing.pricingRule &&
-              ` · ${formatPrice(Number(listing.pricingRule.baseNightlyRate))}/night`}
+              ` · ${formatPrice(Number(listing.pricingRule.baseNightlyRate), listing.pricingRule.currency)}/night`}
             {` · ${listing._count.bookings} booking${listing._count.bookings !== 1 ? "s" : ""}`}
           </p>
         </div>

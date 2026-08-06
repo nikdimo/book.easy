@@ -154,7 +154,10 @@ const proxyWithSession = auth((req: NextAuthRequest, event: NextFetchEvent) => {
   // the account-deletion confirmation link is one — are dead on arrival otherwise,
   // since signing in would drop the very parameter the page needs.
   const returnTo = `${pathname}${search}`;
-  const isLoggedIn = !!req.auth;
+  // A real session must have a concrete user id. Checking only `!!req.auth` used to
+  // fail open in affected Auth.js releases when configuration errors produced a
+  // truthy error object instead of a session.
+  const isLoggedIn = Boolean(req.auth?.user?.id);
   const userRole = req.auth?.user?.role;
   const isHost = req.auth?.user?.isHost;
   const accountCurrency = req.auth?.user?.displayCurrency;

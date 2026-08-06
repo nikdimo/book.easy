@@ -210,6 +210,7 @@ export default async function HostListingsPage({
                 pricingRule: listing.pricingRule
                   ? {
                       baseNightlyRate: Number(listing.pricingRule.baseNightlyRate),
+                      currency: listing.pricingRule.currency,
                     }
                   : null,
               }}

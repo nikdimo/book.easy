@@ -57,6 +57,7 @@ export function ExpandableDescription({
     <div>
       <p
         id={descriptionId}
+        data-user-generated-content
         className={cn(
           "whitespace-pre-line leading-relaxed text-muted-foreground",
           truncated && !expanded && "line-clamp-5"

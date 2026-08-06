@@ -1,5 +1,3 @@
-import type { EmailLocale } from "@/lib/email/i18n/locales";
-
 /**
  * Reviewed translations for system email.
  *
@@ -21,7 +19,7 @@ import type { EmailLocale } from "@/lib/email/i18n/locales";
  * standard idiomatic Macedonian, polite plural imperatives for guest actions,
  * оглас/огласете for listings, no Serbian or Bulgarian calques.
  */
-export type EmailCatalogEntry = Record<EmailLocale, string>;
+export type EmailCatalogEntry = Record<"en" | "mk", string>;
 
 export const EMAIL_CATALOG: Record<string, EmailCatalogEntry> = {
   // ---------------------------------------------------------------- shared

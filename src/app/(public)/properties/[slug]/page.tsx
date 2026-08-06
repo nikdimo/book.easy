@@ -241,7 +241,10 @@ export default async function ListingDetailPage({
       <ListingViewTracker listingId={listing.id} />
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between gap-y-4 mb-6">
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl md:text-[26px] font-semibold tracking-tight text-foreground leading-tight">
+          <h1
+            data-user-generated-content
+            className="text-xl md:text-[26px] font-semibold tracking-tight text-foreground leading-tight"
+          >
             <PreservedPlaceText
               text={listing.title}
               placeNames={protectedPlaceNames}
@@ -456,7 +459,10 @@ export default async function ListingDetailPage({
                             </span>
                           ) : null}
                         </div>
-                        <p className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground">
+                        <p
+                          data-user-generated-content
+                          className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground"
+                        >
                           {review.publicComment}
                         </p>
                       </article>

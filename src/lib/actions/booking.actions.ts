@@ -11,6 +11,7 @@ import {
 } from "@/lib/services/booking.service";
 import { createAuditLog } from "@/lib/services/audit.service";
 import { getPriceFormatter } from "@/lib/currency/price";
+import { getLocale } from "@/lib/i18n/t";
 import { rateLimit } from "@/lib/rate-limit";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -41,6 +42,10 @@ export async function createBookingAction(formData: FormData) {
 
   let bookingId: string;
   try {
+    const [formatter, guestLocale] = await Promise.all([
+      getPriceFormatter(),
+      getLocale(),
+    ]);
     const booking = await createBooking({
       listingId: parsed.data.listingId,
       guestId: session.user.id,
@@ -48,9 +53,10 @@ export async function createBookingAction(formData: FormData) {
       checkOut: new Date(parsed.data.checkOut),
       guestCount: parsed.data.guestCount,
       guestNote: parsed.data.guestNote,
+      guestLocale,
       // Recorded against the booking so the confirmation keeps showing the figure
       // this guest was actually looking at, whatever rates do afterwards.
-      display: (await getPriceFormatter()).context,
+      display: formatter.context,
     });
     bookingId = booking.id;
   } catch (error: unknown) {

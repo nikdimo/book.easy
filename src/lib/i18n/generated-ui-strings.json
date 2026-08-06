@@ -845,6 +845,661 @@
     "filePath": "src/components/public/expandable-description.tsx"
   },
   {
+    "key": "email.booking.approximate_amount",
+    "sourceText": "Approximately {amount}",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.cancelled.body",
+    "sourceText": "Your booking for \"{listing}\" ({checkIn} – {checkOut}) has been cancelled.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.cancelled.callout",
+    "sourceText": "View the booking page for the current status and contact support if you need help.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.cancelled.eyebrow",
+    "sourceText": "Booking cancelled",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.cancelled.headline",
+    "sourceText": "This booking is no longer active",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.cancelled.intro",
+    "sourceText": "The booking has been cancelled.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.cancelled.preheader",
+    "sourceText": "Booking {reference} has been cancelled.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.cancelled.subject",
+    "sourceText": "Cancelled",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.check_in",
+    "sourceText": "Check-in",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.check_out",
+    "sourceText": "Check-out",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.confirmed.callout",
+    "sourceText": "Keep your messages and any payment arrangements inside {brand} for support and security.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.confirmed.eyebrow",
+    "sourceText": "Booking confirmed",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.confirmed.good_news",
+    "sourceText": "Good news — your booking for \"{listing}\" has been confirmed.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.confirmed.headline",
+    "sourceText": "You’re all set",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.confirmed.intro",
+    "sourceText": "{host} accepted your booking request.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.confirmed.preheader",
+    "sourceText": "Your stay at {listing} is confirmed.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.confirmed.subject",
+    "sourceText": "Confirmed",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.declined.body",
+    "sourceText": "Unfortunately your booking request for \"{listing}\" ({checkIn} – {checkOut}) was declined by the host.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.declined.eyebrow",
+    "sourceText": "Booking request declined",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.declined.headline",
+    "sourceText": "This stay wasn’t confirmed",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.declined.host_reason",
+    "sourceText": "Host’s reason: {reason}",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.declined.intro",
+    "sourceText": "The host was unable to accept this request.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.declined.preheader",
+    "sourceText": "Your request for {listing} was not accepted.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.declined.subject",
+    "sourceText": "Request update",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.display_value_at_booking",
+    "sourceText": "Guest display value at booking",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.expired.body",
+    "sourceText": "The host did not respond in time to your request for \"{listing}\".",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.expired.eyebrow",
+    "sourceText": "Booking request expired",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.expired.headline",
+    "sourceText": "The host didn’t respond in time",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.expired.intro",
+    "sourceText": "This request expired and did not become a confirmed reservation.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.expired.preheader",
+    "sourceText": "The host did not respond to {reference} in time.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.expired.subject",
+    "sourceText": "Request expired",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.guest_cancelled.body",
+    "sourceText": "{guest} cancelled their booking for \"{listing}\" ({checkIn} – {checkOut}). Those dates are available again.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.guest_cancelled.callout",
+    "sourceText": "No action is required from you.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.guest_cancelled.eyebrow",
+    "sourceText": "Booking cancelled by guest",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.guest_cancelled.headline",
+    "sourceText": "{guest} cancelled their booking",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.guest_cancelled.intro",
+    "sourceText": "The reserved dates have been released in your calendar.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.guest_cancelled.preheader",
+    "sourceText": "{guest} cancelled booking {reference}.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.guest_cancelled.subject",
+    "sourceText": "Guest cancelled",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.guests",
+    "sourceText": "Guests",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.host_reminder.callout",
+    "sourceText": "Respond by {deadline} or the request will expire automatically.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.host_reminder.eyebrow",
+    "sourceText": "Reminder · Response required",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.host_reminder.headline",
+    "sourceText": "A booking request is waiting",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.host_reminder.intro",
+    "sourceText": "{guest} is still waiting for your decision.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.host_reminder.preheader",
+    "sourceText": "{reference} is still waiting for your response.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.host_reminder.respond_by",
+    "sourceText": "Respond by {deadline}.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.host_reminder.subject",
+    "sourceText": "Reminder",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.host_reminder.subject_detail",
+    "sourceText": "Booking request awaiting response",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.host_reminder.waiting",
+    "sourceText": "{guest}'s booking request is still waiting for your response.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.host_request.callout",
+    "sourceText": "Accept or decline by {deadline}. Opening the request does not change its status.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.host_request.check_dashboard",
+    "sourceText": "Check your host dashboard to confirm or reject.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.host_request.eyebrow",
+    "sourceText": "New booking request · Action required",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.host_request.guest_note",
+    "sourceText": "Guest message: “{note}”",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.host_request.headline",
+    "sourceText": "{guest} wants to stay at your place",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.host_request.intro",
+    "sourceText": "Review the stay details and respond before the request expires.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.host_request.preheader",
+    "sourceText": "{guest} requested {dates}. Respond by {deadline}.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.host_request.requested",
+    "sourceText": "{guest} requested a booking for \"{listing}\".",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.host_request.subject",
+    "sourceText": "Action required",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.no_payment_collected",
+    "sourceText": "No payment has been collected for this request.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.no_payment_dates_free",
+    "sourceText": "No payment was collected. Your dates are free to use for another booking.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.no_payment_was_collected",
+    "sourceText": "No payment was collected for this request.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.reason",
+    "sourceText": "Reason: {reason}",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.reference",
+    "sourceText": "Reference",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.request_received.callout",
+    "sourceText": "The host has until {deadline} to accept or decline. No payment has been collected for this request.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.request_received.eyebrow",
+    "sourceText": "Request sent · Awaiting host approval",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.request_received.headline",
+    "sourceText": "Your request has been sent to {host}",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.request_received.intro",
+    "sourceText": "This is a booking request, not a confirmed reservation yet.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.request_received.not_confirmed",
+    "sourceText": "This booking is not confirmed yet. The host has until {deadline} to respond.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.request_received.preheader",
+    "sourceText": "Your request is awaiting host approval until {deadline}.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.request_received.sent",
+    "sourceText": "Your request for \"{listing}\" has been sent to {host}.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.request_received.subject",
+    "sourceText": "Request received",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.review_request",
+    "sourceText": "Review request",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.total",
+    "sourceText": "Total",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.view_booking",
+    "sourceText": "View booking",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.view_listing",
+    "sourceText": "View listing",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.view_request",
+    "sourceText": "View request",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.case.claim_received",
+    "sourceText": "Claim received",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.case.current_status",
+    "sourceText": "Current status",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.case.follow",
+    "sourceText": "Follow the case",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.case.received_claim",
+    "sourceText": "We received your claim \"{subject}\".",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.case.received_report",
+    "sourceText": "We received your report \"{subject}\".",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.case.report_received",
+    "sourceText": "Report received",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.case.status",
+    "sourceText": "Status",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.case.update_subject",
+    "sourceText": "Update for {reference}",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.case.view_and_respond",
+    "sourceText": "View and respond",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.claim.amount",
+    "sourceText": "Amount",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.claim.counteroffer",
+    "sourceText": "Counteroffer",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.claim.note",
+    "sourceText": "Note",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.claim.released.body",
+    "sourceText": "{reporter} submitted a booking-related {kind} request.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.claim.released.rights",
+    "sourceText": "You can accept, counter, or reject after reviewing the evidence. You will not be silently charged for failing to respond.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.claim.released.subject",
+    "sourceText": "Response required for {reference}",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.claim.respond_securely",
+    "sourceText": "Respond securely",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.claim.response.body",
+    "sourceText": "The other party responded to your request.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.claim.response.label",
+    "sourceText": "Response",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.claim.response.subject",
+    "sourceText": "Response to {reference}",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.claim.response.updated",
+    "sourceText": "Updated",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.claim.view_case",
+    "sourceText": "View the case",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.deletion.body",
+    "sourceText": "We received a request to permanently delete your {product} account.",
+    "filePath": "src/lib/services/account-deletion.service.ts"
+  },
+  {
+    "key": "email.deletion.confirm_here",
+    "sourceText": "Confirm here (link expires in 1 hour):",
+    "filePath": "src/lib/services/account-deletion.service.ts"
+  },
+  {
+    "key": "email.deletion.confirm_link",
+    "sourceText": "Confirm account deletion",
+    "filePath": "src/lib/services/account-deletion.service.ts"
+  },
+  {
+    "key": "email.deletion.expires",
+    "sourceText": "(link expires in 1 hour)",
+    "filePath": "src/lib/services/account-deletion.service.ts"
+  },
+  {
+    "key": "email.deletion.questions",
+    "sourceText": "Questions?",
+    "filePath": "src/lib/services/account-deletion.service.ts"
+  },
+  {
+    "key": "email.deletion.subject",
+    "sourceText": "Confirm deletion of your {product} account",
+    "filePath": "src/lib/services/account-deletion.service.ts"
+  },
+  {
+    "key": "email.deletion.warning",
+    "sourceText": "This cannot be undone. If you didn't request this, ignore this email — your account stays exactly as it is, and you may want to sign out of any devices you don't recognise.",
+    "filePath": "src/lib/services/account-deletion.service.ts"
+  },
+  {
+    "key": "email.greeting.hello",
+    "sourceText": "Hello {name},",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.greeting.hi",
+    "sourceText": "Hi {name},",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.message.body",
+    "sourceText": "{sender} sent you a message about \"{listing}\".",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.message.privacy",
+    "sourceText": "For your privacy, keep the conversation inside {brand}.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.message.reply_securely",
+    "sourceText": "Reply securely in {brand}",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.message.subject",
+    "sourceText": "New message about {listing}",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.review.deadline",
+    "sourceText": "Deadline",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.review.leave_rating",
+    "sourceText": "Leave your rating",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.review.published.body",
+    "sourceText": "The approved ratings for \"{listing}\" are now available.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.review.published.subject",
+    "sourceText": "Ratings are now available",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.review.rejected.body",
+    "sourceText": "Your review for \"{listing}\" was not approved for publication.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.review.rejected.subject",
+    "sourceText": "Review moderation update",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.review.reminder.body",
+    "sourceText": "Your stay connected to \"{listing}\" has ended.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.review.reminder.instructions",
+    "sourceText": "Share an honest rating before the 14-day review window closes.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.review.reminder.subject",
+    "sourceText": "How was {listing}?",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.review.reminder.waiting_body",
+    "sourceText": "The other party has submitted a private rating for \"{listing}\".",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.review.reminder.waiting_instructions",
+    "sourceText": "Submit your own rating to unlock both after admin approval. We will not reveal their stars or comments beforehand.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.review.reminder.waiting_subject",
+    "sourceText": "A private rating is waiting for you",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.review.status",
+    "sourceText": "Review status",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.review.submitted.body",
+    "sourceText": "We received your private rating for \"{listing}\".",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.review.submitted.sealed",
+    "sourceText": "It will remain sealed until the other party submits or the review period closes, and an administrator approves the public content.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.review.submitted.subject",
+    "sourceText": "Rating received",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.review.view_ratings",
+    "sourceText": "View ratings",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.signin.cta",
+    "sourceText": "Click here to sign in",
+    "filePath": "src/lib/auth.ts"
+  },
+  {
+    "key": "email.signin.heading",
+    "sourceText": "Sign in to {product}",
+    "filePath": "src/lib/auth.ts"
+  },
+  {
+    "key": "email.signin.ignore",
+    "sourceText": "If you didn't request this, you can ignore this email.",
+    "filePath": "src/lib/auth.ts"
+  },
+  {
+    "key": "email.signin.subject",
+    "sourceText": "Sign in to {product}",
+    "filePath": "src/lib/auth.ts"
+  },
+  {
+    "key": "email.view_status",
+    "sourceText": "View status",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
     "key": "filters.all",
     "sourceText": "All filters",
     "filePath": "src/components/marketplace/properties-explorer-client.tsx"
@@ -1875,8 +2530,8 @@
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
-    "key": "host.form.offer_edit_hint",
-    "sourceText": "Feel free to edit manually.",
+    "key": "host.form.offer_applies_from",
+    "sourceText": "Offer from (nights)",
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
@@ -1900,8 +2555,43 @@
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
+    "key": "host.form.offer_specific_dates_add",
+    "sourceText": "Add",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
     "key": "host.form.offer_specific_dates_edit",
-    "sourceText": "Edit specific dates",
+    "sourceText": "Edit",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.offer_specific_dates_set.few",
+    "sourceText": "Promotions set for {n} date ranges",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.offer_specific_dates_set.many",
+    "sourceText": "Promotions set for {n} date ranges",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.offer_specific_dates_set.one",
+    "sourceText": "Promotion set for {n} date range",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.offer_specific_dates_set.other",
+    "sourceText": "Promotions set for {n} date ranges",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.offer_specific_dates_set.two",
+    "sourceText": "Promotions set for {n} date ranges",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.offer_specific_dates_set.zero",
+    "sourceText": "Promotions set for {n} date ranges",
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
@@ -1978,6 +2668,16 @@
     "key": "host.form.pricing.date_prices_title",
     "sourceText": "Charge different prices on certain dates?",
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.form.pricing.official_currency",
+    "sourceText": "Official listing currency",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.pricing.official_currency_hint",
+    "sourceText": "Your rates, bookings, payouts, and contractual totals use this currency. Guests may view an approximate conversion in their own currency.",
+    "filePath": "src/components/host/listing-form.tsx"
   },
   {
     "key": "host.form.property_type_label",
@@ -2205,8 +2905,8 @@
     "filePath": "src/components/host/listing-location-picker-inner.tsx"
   },
   {
-    "key": "host.prepublish.add_offer",
-    "sourceText": "Add this offer",
+    "key": "host.prepublish.add_promotion",
+    "sourceText": "Add promotion",
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
   },
   {
@@ -2347,11 +3047,6 @@
   {
     "key": "host.prepublish.done",
     "sourceText": "Done",
-    "filePath": "src/components/host/listing-form.tsx"
-  },
-  {
-    "key": "host.prepublish.edit_price",
-    "sourceText": "Edit price",
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
@@ -4500,9 +5195,19 @@
     "filePath": "src/components/shared/regional-settings-dialog.tsx"
   },
   {
+    "key": "regional.translation_title",
+    "sourceText": "Translation",
+    "filePath": "src/components/shared/regional-settings-dialog.tsx"
+  },
+  {
+    "key": "regional.translation_toggle_label",
+    "sourceText": "Automatically translate descriptions and reviews",
+    "filePath": "src/components/shared/regional-settings-dialog.tsx"
+  },
+  {
     "key": "regional.trigger_label",
     "sourceText": "Language and currency",
-    "filePath": "src/components/shared/header.tsx"
+    "filePath": "src/components/shared/regional-settings-dialog.tsx"
   },
   {
     "key": "search.add_dates",

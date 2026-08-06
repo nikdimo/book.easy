@@ -30,6 +30,12 @@ import {
   availabilityStartBlock,
   validateAvailabilityStartForPublish,
 } from "@/lib/types/listing-availability-start";
+import { getExchangeRates } from "@/lib/currency/rates";
+
+async function currencyIsCurrentlyQuotable(currency: string): Promise<boolean> {
+  const rates = await getExchangeRates();
+  return currency === "EUR" || Boolean(rates?.rates[currency]);
+}
 
 /**
  * Silently persists a new listing's in-progress form state before it's complete enough
@@ -69,6 +75,7 @@ function draftDataFromForm(formData: FormData): Prisma.InputJsonValue {
     bedrooms: str("bedrooms"),
     bathrooms: str("bathrooms"),
     beds: str("beds"),
+    currency: str("currency") || "EUR",
     baseNightlyRate: str("baseNightlyRate"),
     cleaningFee: str("cleaningFee"),
     minNights: str("minNights"),
@@ -237,6 +244,7 @@ export async function submitNewListing(
     bedrooms: formData.get("bedrooms"),
     bathrooms: formData.get("bathrooms"),
     beds: formData.get("beds"),
+    currency: formData.get("currency") || "EUR",
     baseNightlyRate: formData.get("baseNightlyRate"),
     cleaningFee: formData.get("cleaningFee") || "0",
     minNights: formData.get("minNights") || "1",
@@ -255,6 +263,9 @@ export async function submitNewListing(
   }
 
   const data = parsed.data;
+  if (!(await currencyIsCurrentlyQuotable(data.currency))) {
+    return { error: "That currency is not currently available. Choose another currency." };
+  }
   const promotionType =
     raw.promotionType === "PERCENT_DISCOUNT" ||
     raw.promotionType === "FREE_CLEANING"
@@ -418,6 +429,7 @@ export async function submitNewListing(
       checkOutTime: data.checkOutTime || null,
       pricingRule: {
         create: {
+          currency: data.currency,
           baseNightlyRate: data.baseNightlyRate,
           cleaningFee: data.cleaningFee,
           minNights: data.minNights,
@@ -470,7 +482,7 @@ export async function updateListing(listingId: string, formData: FormData) {
 
   const listing = await db.listing.findFirst({
     where: { id: listingId, hostId: session.user.id },
-    include: { property: true },
+    include: { property: true, pricingRule: true },
   });
   if (!listing) return { error: "Listing not found" };
 
@@ -497,6 +509,7 @@ export async function updateListing(listingId: string, formData: FormData) {
     bedrooms: formData.get("bedrooms"),
     bathrooms: formData.get("bathrooms"),
     beds: formData.get("beds"),
+    currency: formData.get("currency") || listing.pricingRule?.currency || "EUR",
     baseNightlyRate: formData.get("baseNightlyRate"),
     cleaningFee: formData.get("cleaningFee") || "0",
     minNights: formData.get("minNights") || "1",
@@ -511,6 +524,9 @@ export async function updateListing(listingId: string, formData: FormData) {
   }
 
   const data = parsed.data;
+  if (!(await currencyIsCurrentlyQuotable(data.currency))) {
+    return { error: "That currency is not currently available. Choose another currency." };
+  }
   const mediaItems = parseMediaItemsFromForm(formData);
   const primaryImageIndex = firstImageIndex(mediaItems);
 
@@ -560,12 +576,14 @@ export async function updateListing(listingId: string, formData: FormData) {
   await db.pricingRule.upsert({
     where: { listingId },
     update: {
+      currency: data.currency,
       baseNightlyRate: data.baseNightlyRate,
       cleaningFee: data.cleaningFee,
       minNights: data.minNights,
     },
     create: {
       listingId,
+      currency: data.currency,
       baseNightlyRate: data.baseNightlyRate,
       cleaningFee: data.cleaningFee,
       minNights: data.minNights,

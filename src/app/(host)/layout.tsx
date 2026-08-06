@@ -9,7 +9,7 @@ export default async function HostLayout({ children }: { children: React.ReactNo
   const languages = await getEnabledLanguages();
 
   return (
-    <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-background xl:flex-row">
+    <div className="app-zoom-90 flex h-dvh min-h-0 flex-col overflow-hidden bg-background xl:flex-row">
       <HostSidebar languages={languages} />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <main className="host-main min-h-0 min-w-0 flex-1 overflow-y-auto">{children}</main>

@@ -72,9 +72,12 @@ export function ListControls({
       <div className="mb-5 rounded-xl border bg-card p-3 shadow-sm">
         <div className="flex flex-col gap-2 lg:flex-row">
           <div className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={searchPlaceholder} className="pl-9 pr-9" aria-label={searchPlaceholder} />
-            {query && <button type="button" onClick={() => setQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label="Clear search"><X className="h-4 w-4" /></button>}
+            <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={searchPlaceholder} className="pl-3 pr-10" aria-label={searchPlaceholder} />
+            {query ? (
+              <button type="button" onClick={() => setQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label="Clear search"><X className="h-4 w-4" /></button>
+            ) : (
+              <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+            )}
           </div>
           {filters.map((filter) => (
             <Select key={filter.key} value={activeFilters[filter.key] || "all"} onValueChange={(value) => setActiveFilters((current) => ({ ...current, [filter.key]: value === "all" ? "" : value }))}>

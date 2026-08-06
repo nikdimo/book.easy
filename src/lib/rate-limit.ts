@@ -1,4 +1,5 @@
 import "server-only";
+import { isIP } from "node:net";
 
 interface Bucket {
   count: number;
@@ -54,7 +55,27 @@ export function rateLimit(key: string, limit: number, windowMs: number): RateLim
  * back to a shared bucket if absent rather than failing open with an unlimited bucket
  * per request. */
 export function clientIpFromHeaders(headers: Headers): string {
-  const forwarded = headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
-  return headers.get("x-real-ip") ?? "unknown";
+  // Prefer Cloudflare's canonical address. X-Forwarded-For is deliberately last:
+  // reverse proxies often append to a client-supplied value, making its first entry
+  // attacker-controlled unless the proxy explicitly strips the incoming header.
+  const candidates = [
+    headers.get("cf-connecting-ip"),
+    headers.get("x-real-ip"),
+    headers.get("x-forwarded-for")?.split(",")[0],
+  ];
+
+  for (const raw of candidates) {
+    if (!raw) continue;
+    let candidate = raw.trim();
+    const ipv4WithPort = candidate.match(/^(\d{1,3}(?:\.\d{1,3}){3}):\d+$/);
+    if (ipv4WithPort) candidate = ipv4WithPort[1];
+    if (candidate.startsWith("[") && candidate.endsWith("]")) {
+      candidate = candidate.slice(1, -1);
+    }
+    if (isIP(candidate)) return candidate;
+  }
+
+  // A shared fallback fails closed: callers without a trustworthy proxy address all
+  // consume the same bucket instead of choosing arbitrary strings to evade limits.
+  return "unknown";
 }

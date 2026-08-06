@@ -230,7 +230,10 @@ export async function PropertyCard({
           ) : null}
         </div>
 
-        <p className="truncate text-[0.9rem] leading-5 text-muted-foreground">
+        <p
+          data-user-generated-content
+          className="truncate text-[0.9rem] leading-5 text-muted-foreground"
+        >
           {title}
         </p>
 

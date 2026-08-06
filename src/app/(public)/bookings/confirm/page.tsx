@@ -11,7 +11,7 @@ import { auth } from "@/lib/auth";
 import { getGuestBookingForConfirmation } from "@/lib/services/booking.service";
 import { formatDate } from "@/lib/utils/format";
 import { formatMoney } from "@/lib/currency/convert";
-import { getT, T, TWithValues, ti, tPlural } from "@/lib/i18n/t";
+import { getTForLocale, T, TWithValues, ti, tPlural } from "@/lib/i18n/t";
 import { BookingStatusHero } from "@/components/booking/booking-status-hero";
 import { BOOKING_STATUSES } from "@/lib/constants";
 
@@ -24,7 +24,6 @@ export const metadata = {
 };
 
 export default async function BookingConfirmPage({ searchParams }: ConfirmPageProps) {
-  const t = await getT();
   const session = await auth();
   if (!session?.user) redirect("/login");
 
@@ -34,6 +33,7 @@ export default async function BookingConfirmPage({ searchParams }: ConfirmPagePr
   const booking = await getGuestBookingForConfirmation(id, session.user.id);
 
   if (!booking) redirect("/");
+  const t = await getTForLocale(booking.guestLocale ?? "en");
   const guests = tPlural(t, "booking.guests", booking.guestCount, "{n} guest", "{n} guests");
   const nights = tPlural(t, "booking.nights", booking.numberOfNights, "{n} night", "{n} nights");
   const reference = ti(t, "booking.reference", "Booking reference: {reference}", {

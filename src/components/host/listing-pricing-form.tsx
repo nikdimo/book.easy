@@ -83,7 +83,7 @@ export function ListingPricingForm({
                   step={field.step}
                   defaultValue={field.defaultValue}
                   required
-                  className="text-right font-semibold tabular-nums"
+                  className="appearance-none text-right font-semibold tabular-nums [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 />
                 <span className="w-20 shrink-0 text-sm md:text-xs text-muted-foreground">
                   {field.suffix}

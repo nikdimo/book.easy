@@ -1,7 +1,7 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
 import { db } from "@/lib/db";
-import { SUPPORTED_CURRENCY_CODES, isSupportedCurrency } from "@/lib/currency/currencies";
+import { isSupportedCurrency } from "@/lib/currency/currencies";
 import { BASE_CURRENCY } from "@/lib/currency/currency-preference";
 
 /** Invalidated by the admin action that forces a refresh; see
@@ -198,5 +198,5 @@ export const getExchangeRates = unstable_cache(
  *  list rather than becoming a broken selection. */
 export function quotableCurrencies(table: RateTable | null): string[] {
   if (!table) return [BASE_CURRENCY];
-  return SUPPORTED_CURRENCY_CODES.filter((code) => code in table.rates);
+  return Object.keys(table.rates).sort((a, b) => a.localeCompare(b));
 }

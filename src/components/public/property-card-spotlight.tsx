@@ -143,7 +143,10 @@ export async function PropertyCardSpotlight({
             protectedValues={["city"]}
           />
         </h3>
-        <p className="text-muted-foreground text-sm line-clamp-3">
+        <p
+          data-user-generated-content
+          className="text-muted-foreground text-sm line-clamp-3"
+        >
           {descriptionPreview.landing}
           {descriptionPreview.landingTruncated ? "…" : ""}
         </p>

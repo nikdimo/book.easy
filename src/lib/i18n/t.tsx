@@ -50,9 +50,8 @@ export type TranslationMessages = Record<string, string>;
 
 /** Builds a translator scoped to the current request's locale. Call once per request
  *  (e.g. at the top of a server component) and reuse the returned functions. */
-export const getT = cache(async (): Promise<Translator> => {
-  const locale = await getLocale();
-
+export const getTForLocale = cache(async (requestedLocale: string): Promise<Translator> => {
+  const locale = normalizeLocaleCode(requestedLocale) ?? SOURCE_LANGUAGE;
   if (locale === SOURCE_LANGUAGE) {
     return {
       locale,
@@ -92,6 +91,10 @@ export const getT = cache(async (): Promise<Translator> => {
     },
   };
 });
+
+export const getT = cache(async (): Promise<Translator> =>
+  getTForLocale(await getLocale()),
+);
 
 export type PluralCategory = Intl.LDMLPluralRule;
 export type PluralForms = Record<PluralCategory, Resolved>;

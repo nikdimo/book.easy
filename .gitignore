@@ -15,6 +15,8 @@
 
 # next.js
 /.next/
+/.next-build/
+/.next-previous/
 /out/
 
 # production
@@ -25,10 +27,17 @@
 *.pem
 
 # debug
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+
+# local agent/runtime state (may contain request URLs or personal data)
+/.codex/
+
+# local deployment control panel (contains VPS connection metadata)
+/BookEasy_Web_Control_Panel.bat
 
 # env files
 .env

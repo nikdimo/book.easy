@@ -78,7 +78,7 @@ export default async function PublicLayout({ children }: { children: React.React
   // Search/picker copy is resolved by `useSearchLabels()` on the client, off the
   // root `I18nProvider` — there is no second provider here.
   return (
-    <div className="h-dvh overflow-hidden">
+    <div className="app-zoom-90 h-dvh overflow-hidden">
       <div className="h-full overflow-y-auto">
         <Suspense fallback={<div className="h-[72px] border-b bg-background" />}>
           <HeaderWithPopularCities t={t} />
