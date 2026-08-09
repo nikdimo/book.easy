@@ -822,6 +822,10 @@ export function ListingForm({
         "Choose when guests can start booking to continue",
       ).text
     : undefined;
+  const deferringSelectedDateAvailability =
+    prePublishScreen === "availability-start" &&
+    prePublishPlan.availabilityStart?.mode === "selected" &&
+    prePublishPlan.openDates.length === 0;
   const canPublishNew = listingReady && !availabilityUnconfirmed;
   const canPublishFromReview = canPublishNew && prePublishScreen === "menu";
   // Hold Continue while the geocoder is still running, so the host can't land on
@@ -2889,7 +2893,14 @@ export function ListingForm({
                           : undefined
                       }
                     >
-                      <ContinueLabel searching={false} />
+                      {deferringSelectedDateAvailability ? (
+                        <Tx
+                          k="host.prepublish.open_dates_later"
+                          source="I'll open dates later"
+                        />
+                      ) : (
+                        <ContinueLabel searching={false} />
+                      )}
                     </Button>
                   </span>
                 ) : prePublishScreen !== null && prePublishScreen !== "menu" ? (
@@ -3196,7 +3207,14 @@ export function ListingForm({
                       : undefined
                   }
                 >
-                  <ContinueLabel searching={false} />
+                  {deferringSelectedDateAvailability ? (
+                    <Tx
+                      k="host.prepublish.open_dates_later"
+                      source="I'll open dates later"
+                    />
+                  ) : (
+                    <ContinueLabel searching={false} />
+                  )}
                 </Button>
               </span>
             ) : prePublishScreen !== null && prePublishScreen !== "menu" ? (

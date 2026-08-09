@@ -1063,7 +1063,9 @@ export function AvailabilityStartScreen({
         onClick={onOpenBlockingCalendar}
         className={cn(
           "flex w-full items-start gap-3 rounded-xl border p-3 text-left transition-all",
-          "border-border/70 bg-card hover:border-primary/40 hover:bg-muted/30",
+          mode === "selected" && openNights === 0
+            ? "border-primary/50 bg-primary/[0.05] shadow-sm hover:bg-primary/[0.08]"
+            : "border-border/70 bg-card hover:border-primary/40 hover:bg-muted/30",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
         )}
       >
@@ -1071,7 +1073,7 @@ export function AvailabilityStartScreen({
           aria-hidden="true"
           className={cn(
             "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg",
-            blockedNights > 0
+            (mode === "selected" ? openNights : blockedNights) > 0
               ? "bg-primary text-primary-foreground"
               : "bg-primary/10 text-primary",
           )}
@@ -1086,10 +1088,17 @@ export function AvailabilityStartScreen({
           <span className="flex items-center gap-2">
             <span className="text-sm font-semibold md:text-base">
               {mode === "selected" ? (
-                <Tx
-                  k="host.prepublish.open_dates_title"
-                  source="Open bookable dates"
-                />
+                openNights > 0 ? (
+                  <Tx
+                    k="host.prepublish.edit_open_dates"
+                    source="Edit open dates"
+                  />
+                ) : (
+                  <Tx
+                    k="host.prepublish.open_dates_now"
+                    source="Open dates now"
+                  />
+                )
               ) : (
                 <Tx
                   k="host.prepublish.block_dates_title"
@@ -1103,8 +1112,8 @@ export function AvailabilityStartScreen({
               ? openNights > 0
                 ? `${openNights} ${openNights === 1 ? "night" : "nights"} open`
                 : i18n.resolve(
-                    "host.prepublish.open_dates_hint",
-                    "Open only the dates guests should be able to book.",
+                    "host.prepublish.open_dates_later_warning",
+                    "No dates are open. Your listing will be live but hidden from search until you open some.",
                   ).text
               : blockedNights > 0
               ? `${blockedNights} ${blockedNights === 1 ? "night" : "nights"} blocked`

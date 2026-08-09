@@ -3390,6 +3390,11 @@
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
+    "key": "host.prepublish.edit_open_dates",
+    "sourceText": "Edit open dates",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
     "key": "host.prepublish.no_open_dates_warning",
     "sourceText": "Your listing will be live but hidden from search until you open dates.",
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
@@ -3420,13 +3425,18 @@
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
-    "key": "host.prepublish.open_dates_hint",
-    "sourceText": "Open only the dates guests should be able to book.",
+    "key": "host.prepublish.open_dates_later",
+    "sourceText": "I'll open dates later",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.prepublish.open_dates_later_warning",
+    "sourceText": "No dates are open. Your listing will be live but hidden from search until you open some.",
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
   },
   {
-    "key": "host.prepublish.open_dates_title",
-    "sourceText": "Open bookable dates",
+    "key": "host.prepublish.open_dates_now",
+    "sourceText": "Open dates now",
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
   },
   {
