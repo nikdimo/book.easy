@@ -1561,11 +1561,15 @@ export function PrePublishTaskScreen({
             const key = planDateFromLocal(day);
             if (task === "availability") {
               return {
-                sublabel: (opensSelectedDates ? openedDates : blockedDates).has(key)
-                  ? opensSelectedDates
-                    ? resolve("host.calendar.legend_open", "Open").text
-                    : resolve("host.calendar.legend_blocked", "Blocked").text
-                  : "",
+                // Closed dates use the hatch; opened dates return to white and get a
+                // quiet guest-facing label instead of looking like a green status.
+                sublabel: opensSelectedDates
+                  ? openedDates.has(key)
+                    ? resolve("host.calendar.day_available", "Available").text
+                    : ""
+                  : blockedDates.has(key)
+                    ? resolve("host.calendar.legend_blocked", "Blocked").text
+                    : "",
               };
             }
             if (task === "pricing") {
@@ -1586,6 +1590,8 @@ export function PrePublishTaskScreen({
                     ? {
                         openWindow: (day: Date) =>
                           openedDates.has(planDateFromLocal(day)),
+                        closedDefault: (day: Date) =>
+                          !openedDates.has(planDateFromLocal(day)),
                       }
                     : {
                         manualBlock: (day: Date) =>
@@ -1609,7 +1615,9 @@ export function PrePublishTaskScreen({
           dateModifiersClassNames={{
             manualBlock:
               "bg-muted after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:bg-[repeating-linear-gradient(-45deg,rgba(15,23,42,0.09)_0,rgba(15,23,42,0.09)_4px,transparent_4px,transparent_8px)]",
-            openWindow: "bg-emerald-500/15 ring-2 ring-emerald-600/35 ring-inset",
+            closedDefault:
+              "bg-muted after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:bg-[repeating-linear-gradient(-45deg,rgba(15,23,42,0.09)_0,rgba(15,23,42,0.09)_4px,transparent_4px,transparent_8px)]",
+            openWindow: "bg-card text-foreground",
             customPrice: "ring-2 ring-primary/40 ring-inset",
             promotion: "bg-amber-500/15",
           }}
@@ -1619,20 +1627,15 @@ export function PrePublishTaskScreen({
           {task === "availability" ? (
             <>
               <span className="inline-flex items-center gap-1.5">
-                <span
-                  className={cn(
-                    "size-2.5 rounded-[2px]",
-                    opensSelectedDates
-                      ? "bg-emerald-500/25 ring-1 ring-emerald-600/40"
-                      : "bg-[repeating-linear-gradient(-45deg,rgba(15,23,42,0.18)_0,rgba(15,23,42,0.18)_2px,transparent_2px,transparent_4px)]",
-                  )}
-                />
-                {opensSelectedDates ? (
-                  <Tx k="host.calendar.legend_open" source="Open" />
-                ) : (
-                  <Tx k="host.calendar.legend_blocked" source="Blocked" />
-                )}
+                <span className="size-2.5 rounded-[2px] bg-[repeating-linear-gradient(-45deg,rgba(15,23,42,0.18)_0,rgba(15,23,42,0.18)_2px,transparent_2px,transparent_4px)]" />
+                <Tx k="host.calendar.legend_blocked" source="Blocked" />
               </span>
+              {opensSelectedDates ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="size-2.5 rounded-[2px] border bg-card" />
+                  <Tx k="host.calendar.legend_open" source="Open" />
+                </span>
+              ) : null}
               <span className="ml-auto font-medium">
                 {selection
                   ? `${formatRange(selection.startDate, selection.endDate, locale)} · ${nightsLabel(selectionNights)}`

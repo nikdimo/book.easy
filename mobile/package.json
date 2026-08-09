@@ -39,6 +39,7 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
+    "postinstall": "node scripts/apply-image-size-security-patch.mjs",
     "start": "expo start",
     "android": "expo run:android",
     "android:debug": "node scripts/build-android-debug.mjs",
@@ -47,7 +48,8 @@
     "build:web": "expo export --platform web --output-dir dist",
     "preview": "node scripts/serve-web.mjs",
     "lint": "expo lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "audit:production": "node scripts/audit-production.mjs"
   },
   "overrides": {
     "xcode": {
