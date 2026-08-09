@@ -1,81 +1,70 @@
 "use client";
 
 import Link from "next/link";
-import { Banknote, CalendarDays, Eye, Pencil, Percent } from "lucide-react";
+import { CalendarDays, Eye, Pencil } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import {
-  LISTING_WORKSPACE_STOPS,
+  LISTING_PRIMARY_DESTINATIONS,
+  isCalendarWorkspaceStop,
   listingStopHref,
   withSelectionQuery,
+  type ListingPrimaryDestination,
   type ListingWorkspaceStop,
 } from "@/lib/host/listing-workspace";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/client";
 
-const STOP_ICONS: Record<ListingWorkspaceStop, LucideIcon> = {
+const DESTINATION_ICONS: Record<ListingPrimaryDestination, LucideIcon> = {
+  details: Pencil,
+  calendar: CalendarDays,
   preview: Eye,
-  edit: Pencil,
-  availability: CalendarDays,
-  pricing: Banknote,
-  promotions: Percent,
 };
 
 const ITEM_CLASS =
-  "flex min-h-14 flex-1 flex-col items-center justify-center gap-1 text-[0.6rem] font-medium transition-colors";
+  "flex min-h-14 flex-1 flex-col items-center justify-center gap-1 text-[0.65rem] font-medium transition-colors";
 
 /**
- * One bar across all five screens. It has to be the same object everywhere or it
- * stops being a place you can navigate from — which is exactly what happened when
- * it only existed inside the edit form.
- *
- * Publish is deliberately absent: it is a commit, not a destination, and a
- * slot-sized target between navigation items invites mis-taps. The edit form
- * renders its own Preview/Publish action row below this bar.
+ * The stable mobile navigation for a published listing. Calendar is one primary
+ * destination; availability, pricing and promotions are switched inside it.
  */
 export function ListingBottomNav({
   listingId,
   active,
   className,
   paneOnly = false,
-  omitPreview = false,
   preserveQuery = "",
   onSelectPane,
   onNavigate,
-  onKeyDown,
 }: {
   listingId: string;
   active: ListingWorkspaceStop;
   className?: string;
-  /**
-   * Carries the calendar's selected dates across a lens switch, the way the
-   * desktop tabs already do. Without it, picking a range on Availability and
-   * tapping Pricing silently threw the range away.
-   */
+  /** Carries a selected date range when navigating away from a calendar lens. */
   preserveQuery?: string;
-  /** A draft has no id-based calendar routes yet, so it shows the panes only. */
+  /** A draft has no id-based calendar route yet, so it shows the panes only. */
   paneOnly?: boolean;
-  /** Set where Preview lives in an action row instead, so it isn't offered twice. */
-  omitPreview?: boolean;
-  /** Provided by the edit form, where Preview and Edit are panes, not routes. */
+  /** Provided by the edit form, where Details and Preview are panes, not routes. */
   onSelectPane?: (pane: "edit" | "preview") => void;
   onNavigate?: (event: ReactMouseEvent<HTMLAnchorElement>) => void;
-  onKeyDown?: (event: React.KeyboardEvent<HTMLDivElement>) => void;
 }) {
   const { resolve } = useI18n();
-  const paneStops = LISTING_WORKSPACE_STOPS.slice(0, 2).filter(
-    ({ stop }) => !(omitPreview && stop === "preview"),
-  );
-
-  // Resolved here with literal key/source pairs because the shared stop constant is
-  // consumed by server components too, and the extractor cannot read a variable label.
-  const stopLabels: Record<ListingWorkspaceStop, string> = {
+  const destinationLabels: Record<ListingPrimaryDestination, string> = {
+    details: resolve("host.workspace.details", "Details").text,
+    calendar: resolve("host.workspace.calendar", "Calendar").text,
     preview: resolve("host.workspace.preview", "Preview").text,
-    edit: resolve("host.workspace.edit", "Edit").text,
-    availability: resolve("host.workspace.availability", "Availability").text,
-    pricing: resolve("host.workspace.pricing", "Pricing").text,
-    promotions: resolve("host.workspace.promotions", "Promos").text,
   };
+  const activeDestination: ListingPrimaryDestination =
+    active === "preview"
+      ? "preview"
+      : isCalendarWorkspaceStop(active)
+        ? "calendar"
+        : "details";
+  const destinations = paneOnly
+    ? LISTING_PRIMARY_DESTINATIONS.filter(
+        ({ destination }) => destination !== "calendar",
+      )
+    : LISTING_PRIMARY_DESTINATIONS;
 
   return (
     <nav
@@ -85,90 +74,54 @@ export function ListingBottomNav({
         className,
       )}
     >
-      <div
-        role={onSelectPane && !omitPreview ? "tablist" : undefined}
-        aria-label={
-          onSelectPane && !omitPreview
-            ? resolve("host.workspace.tablist_label", "Editor and preview").text
-            : undefined
-        }
-        onKeyDown={omitPreview ? undefined : onKeyDown}
-        className={cn("flex", omitPreview ? "flex-1" : "flex-[2]")}
-      >
-        {paneStops.map(({ stop }) => {
-          const label = stopLabels[stop];
-          const Icon = STOP_ICONS[stop];
-          const pane = stop === "preview" ? "preview" : "edit";
-          const current = active === stop;
+      {destinations.map(({ destination, stop }) => {
+        const label = destinationLabels[destination];
+        const Icon = DESTINATION_ICONS[destination];
+        const current = activeDestination === destination;
+        const pane = destination === "preview" ? "preview" : "edit";
 
-          if (!onSelectPane) {
-            return (
-              <Link
-                key={stop}
-                href={withSelectionQuery(
-                  listingStopHref(listingId, stop),
-                  preserveQuery,
-                )}
-                onClick={onNavigate}
-                aria-current={current ? "page" : undefined}
-                className={cn(
-                  ITEM_CLASS,
-                  current ? "text-primary" : "text-muted-foreground",
-                )}
-              >
-                <Icon className="h-5 w-5" />
-                {label}
-              </Link>
-            );
-          }
-
+        if (onSelectPane && destination !== "calendar") {
           return (
             <button
-              key={stop}
+              key={destination}
               type="button"
-              role={omitPreview ? undefined : "tab"}
-              aria-selected={omitPreview ? undefined : current}
-              aria-current={omitPreview && current ? "page" : undefined}
-              tabIndex={omitPreview || current ? 0 : -1}
+              aria-current={current ? "page" : undefined}
               aria-controls={`listing-${pane === "edit" ? "editor" : "preview"}-pane`}
-              id={`listing-${pane}-tab`}
               onClick={() => onSelectPane(pane)}
               className={cn(
                 ITEM_CLASS,
                 current ? "text-primary" : "text-muted-foreground",
               )}
             >
-              <Icon className="h-5 w-5" />
+              <Icon className="h-5 w-5" aria-hidden="true" />
               {label}
             </button>
           );
-        })}
-      </div>
-      {(paneOnly ? [] : LISTING_WORKSPACE_STOPS.slice(2)).map(
-        ({ stop }) => {
-          const label = stopLabels[stop];
-          const Icon = STOP_ICONS[stop];
-          const current = active === stop;
-          return (
-            <Link
-              key={stop}
-              href={withSelectionQuery(
-                listingStopHref(listingId, stop),
-                preserveQuery,
-              )}
-              onClick={onNavigate}
-              aria-current={current ? "page" : undefined}
-              className={cn(
-                ITEM_CLASS,
-                current ? "text-primary" : "text-muted-foreground",
-              )}
-            >
-              <Icon className="h-5 w-5" />
-              {label}
-            </Link>
-          );
-        },
-      )}
+        }
+
+        const hrefStop =
+          destination === "calendar" && isCalendarWorkspaceStop(active)
+            ? active
+            : stop;
+        return (
+          <Link
+            key={destination}
+            href={withSelectionQuery(
+              listingStopHref(listingId, hrefStop),
+              preserveQuery,
+            )}
+            onClick={onNavigate}
+            aria-current={current ? "page" : undefined}
+            className={cn(
+              ITEM_CLASS,
+              current ? "text-primary" : "text-muted-foreground",
+            )}
+          >
+            <Icon className="h-5 w-5" aria-hidden="true" />
+            {label}
+          </Link>
+        );
+      })}
     </nav>
   );
 }

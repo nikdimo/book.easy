@@ -3,7 +3,12 @@ import { Alert, Pressable, StyleSheet, Switch, Text, View } from "react-native";
 import { Pill, PrimaryButton, SoftButton } from "@/components/ui";
 import { LabeledInput } from "@/components/listing/labeled-input";
 import { useLanguage } from "@/context/language-context";
-import { apiFetch, formatDate, type PromotionSummary } from "@/lib/api";
+import {
+  apiFetch,
+  formatDate,
+  resolveIntlLocale,
+  type PromotionSummary,
+} from "@/lib/api";
 import { colors, radii, spacing, type } from "@/theme";
 
 /** Promotions against the shared calendar selection.
@@ -25,6 +30,7 @@ export function PromotionsPanel({
   currency,
   selection,
   reload,
+  onManagePricing,
 }: {
   listingId: string;
   promotions: PromotionSummary[];
@@ -34,6 +40,7 @@ export function PromotionsPanel({
   /** yyyy-MM-dd, end exclusive, from the shared calendar. */
   selection: { start: string; end: string };
   reload: () => Promise<void>;
+  onManagePricing: () => void;
 }) {
   const { locale, t } = useLanguage();
   const [editing, setEditing] = useState<PromotionSummary | null>(null);
@@ -48,6 +55,11 @@ export function PromotionsPanel({
   const hasSelection = Boolean(selection.start && selection.end);
   const discount = Number(percent);
   const minimumNights = Number(nights);
+  const formattedCleaningFee = new Intl.NumberFormat(resolveIntlLocale(locale), {
+    style: "currency",
+    currency,
+    maximumFractionDigits: cleaningFee % 1 === 0 ? 0 : 2,
+  }).format(cleaningFee);
 
   const problems: string[] = [];
   if (!Number.isInteger(discount) || discount < 0 || discount > 50) {
@@ -80,7 +92,7 @@ export function PromotionsPanel({
     setEditing(promotion);
     setPercent(String(promotion.discountPercent));
     setNights(String(promotion.minimumNights));
-    setFreeCleaning(promotion.freeCleaning);
+    setFreeCleaning(cleaningFee > 0 && promotion.freeCleaning);
     setRoundUp(promotion.roundToWholeUnit);
     setUseSelection(Boolean(promotion.startDate && promotion.endDate));
     setOpen(true);
@@ -210,16 +222,24 @@ export function PromotionsPanel({
             label={t("Free cleaning")}
             hint={
               cleaningFee > 0
-                ? `${t("Waives")} ${new Intl.NumberFormat(undefined, {
-                    style: "currency",
-                    currency,
-                    maximumFractionDigits: 0,
-                  }).format(cleaningFee)}`
-                : t("This listing has no cleaning fee yet")
+                ? `${t("Waives the current cleaning fee of")} ${formattedCleaningFee}`
+                : `${t("Current cleaning fee")}: ${formattedCleaningFee}`
             }
             value={freeCleaning}
+            disabled={!(cleaningFee > 0)}
             onChange={setFreeCleaning}
           />
+          {cleaningFee > 0 ? null : (
+            <View style={styles.noCleaningFee}>
+              <Text style={styles.noCleaningFeeText}>
+                {t("Set a cleaning fee in Pricing before offering free cleaning.")}
+              </Text>
+              <SoftButton
+                label={t("Set cleaning fee in Pricing")}
+                onPress={onManagePricing}
+              />
+            </View>
+          )}
           <Toggle
             label={t("Round to the nearest whole number")}
             hint={t("Keeps discounted prices tidy.")}
@@ -341,4 +361,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.dangerSoft,
   },
   problemText: { ...type.meta, color: colors.danger },
+  noCleaningFee: { gap: spacing.sm },
+  noCleaningFeeText: { ...type.caption, color: colors.muted },
 });

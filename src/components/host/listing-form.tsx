@@ -14,6 +14,7 @@ import {
 import { listingFormSchema } from "@/lib/validations/listing.schema";
 import { ListingBottomNav } from "@/components/host/listing-bottom-nav";
 import { ListingWizardHeaderActions } from "@/components/host/listing-wizard-header-actions";
+import { ListingCurrencyPicker } from "@/components/host/listing-currency-picker";
 import { listingStopHref } from "@/lib/host/listing-workspace";
 import { zodFieldErrors } from "@/lib/utils/zod-error";
 import { Badge } from "@/components/ui/badge";
@@ -87,7 +88,7 @@ import type { PropertyTypeOption } from "@/lib/types/property-type";
 import type { ListingDraftData } from "@/lib/types/listing-draft";
 import { PropertyTypeIcon } from "@/components/shared/property-type-icon";
 import { cn } from "@/lib/utils";
-import { currencyDecimals, currencyDisplayName } from "@/lib/currency/currencies";
+import { currencyDecimals } from "@/lib/currency/currencies";
 import {
   LISTING_STEP,
   LISTING_STEPS,
@@ -2135,103 +2136,180 @@ export function ListingForm({
             <div className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
               <div className="space-y-2 border-b border-border/70 p-5">
                 <Label htmlFor="currency"><Tx k="host.form.pricing.official_currency" source="Official listing currency" /></Label>
-                <Input
-                  id="currency"
-                  name="currency"
-                  list="official-currency-options"
+                <ListingCurrencyPicker
+                  currencies={currencies}
                   value={values.currency}
-                  onChange={(event) => setField("currency", event.target.value.toUpperCase())}
-                  onBlur={() => handleBlur("currency")}
-                  placeholder={resolve("host.form.pricing.currency_placeholder", "Currency code").text}
-                  maxLength={3}
-                  autoComplete="off"
+                  invalid={Boolean(fieldErrors.currency)}
+                  onChange={(code) => {
+                    setField("currency", code);
+                    validateFieldOnBlur("currency", code);
+                  }}
                 />
-                <datalist id="official-currency-options">
-                  {currencies.map((code) => (
-                    <option key={code} value={code}>
-                      {currencyDisplayName(code, i18n.locale)}
-                    </option>
-                  ))}
-                </datalist>
                 <p className="text-xs text-muted-foreground">
                   <Tx k="host.form.pricing.official_currency_hint" source="Your rates, bookings, payouts, and contractual totals use this currency. Guests may view an approximate conversion in their own currency." />
                 </p>
                 <FieldError message={fieldErrors.currency} />
               </div>
-              <PricingField
-                id="baseNightlyRate"
-                label={
-                  resolve(
-                    "host.form.pricing.nightly",
-                    "Nightly rate",
-                  ).text
-                }
-                description={
-                  resolve(
-                    "host.form.pricing.nightly_hint",
-                    "Your base price per night, before fees",
-                  ).text
-                }
-                icon={CircleDollarSign}
-                value={values.baseNightlyRate}
-                min={1}
-                step={String(10 ** -currencyDecimals(values.currency))}
-                suffix={`${values.currency || "EUR"} / night`}
-                onChange={(value) => setField("baseNightlyRate", value)}
-                onBlur={() => handleBlur("baseNightlyRate")}
-              />
-                <FieldError message={fieldErrors.baseNightlyRate} />
-              {/* Create wizard only: the plan exists to carry date prices into the
-                  listing that publish creates. An existing listing has its own
-                  calendar, which is where its date prices are edited. */}
-              {!isEditing && (
-                <DatePricingCta
-                  plan={prePublishPlan}
-                  onOpen={openDatePricingFromPricingStep}
-                />
+              {isEditing ? (
+                <div className="space-y-4 p-5">
+                  <div>
+                    <h3 className="text-sm font-semibold">
+                      <Tx k="host.form.pricing.booking_settings" source="Booking settings" />
+                    </h3>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      <Tx
+                        k="host.form.pricing.booking_settings_hint"
+                        source="Manage standard and date-specific rates in Pricing."
+                      />
+                    </p>
+                  </div>
+                  <dl className="grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-xl bg-muted/60 p-3">
+                      <dt className="text-xs text-muted-foreground">
+                        <Tx k="host.form.pricing.base_price" source="Base price" />
+                      </dt>
+                      <dd className="mt-1 text-sm font-semibold">
+                        {formatPrice(
+                          toPositiveNumber(values.baseNightlyRate, 0),
+                          values.currency || "EUR",
+                          i18n.locale,
+                        )}
+                        <span className="font-normal text-muted-foreground">
+                          {" "}
+                          <Tx
+                            k="host.form.pricing.summary_per_night"
+                            source="/ night"
+                          />
+                        </span>
+                      </dd>
+                    </div>
+                    <div className="rounded-xl bg-muted/60 p-3">
+                      <dt className="text-xs text-muted-foreground">
+                        <Tx k="host.form.pricing.cleaning" source="Cleaning fee" />
+                      </dt>
+                      <dd className="mt-1 text-sm font-semibold">
+                        {formatPrice(
+                          toPositiveNumber(values.cleaningFee, 0),
+                          values.currency || "EUR",
+                          i18n.locale,
+                        )}
+                        <span className="font-normal text-muted-foreground">
+                          {" "}
+                          <Tx
+                            k="host.form.pricing.summary_per_stay"
+                            source="/ stay"
+                          />
+                        </span>
+                      </dd>
+                    </div>
+                    <div className="rounded-xl bg-muted/60 p-3">
+                      <dt className="text-xs text-muted-foreground">
+                        <Tx k="host.form.pricing.minimum_stay" source="Minimum stay" />
+                      </dt>
+                      <dd className="mt-1 text-sm font-semibold">
+                        {(() => {
+                          const nights = toPositiveNumber(values.minNights, 1);
+                          const value = i18n.plural(
+                            "host.form.pricing.summary_minimum_nights",
+                            nights,
+                            "{n} night",
+                            "{n} nights",
+                          );
+                          return (
+                            <span className={value.translated ? "notranslate" : undefined}>
+                              {value.text}
+                            </span>
+                          );
+                        })()}
+                      </dd>
+                    </div>
+                  </dl>
+                  {listing?.id && (
+                    <Button type="button" variant="outline" className="w-full sm:w-auto" asChild>
+                      <Link
+                        href={listingStopHref(listing.id, "pricing")}
+                        onClick={confirmManagementNavigation}
+                      >
+                        <CircleDollarSign className="h-4 w-4" />
+                        <Tx k="host.form.pricing.manage" source="Manage pricing" />
+                        <ChevronRight className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <PricingField
+                    id="baseNightlyRate"
+                    label={
+                      resolve(
+                        "host.form.pricing.nightly",
+                        "Nightly rate",
+                      ).text
+                    }
+                    description={
+                      resolve(
+                        "host.form.pricing.nightly_hint",
+                        "Your base price per night, before fees",
+                      ).text
+                    }
+                    icon={CircleDollarSign}
+                    value={values.baseNightlyRate}
+                    min={1}
+                    step={String(10 ** -currencyDecimals(values.currency))}
+                    suffix={`${values.currency || "EUR"} / night`}
+                    onChange={(value) => setField("baseNightlyRate", value)}
+                    onBlur={() => handleBlur("baseNightlyRate")}
+                  />
+                  <FieldError message={fieldErrors.baseNightlyRate} />
+                  <DatePricingCta
+                    plan={prePublishPlan}
+                    onOpen={openDatePricingFromPricingStep}
+                  />
+                  <PricingField
+                    id="cleaningFee"
+                    label={
+                      resolve(
+                        "host.form.pricing.cleaning",
+                        "Cleaning fee",
+                      ).text
+                    }
+                    description={
+                      resolve(
+                        "host.form.pricing.cleaning_hint",
+                        "One-time fee added to each reservation",
+                      ).text
+                    }
+                    icon={Sparkles}
+                    value={values.cleaningFee}
+                    min={0}
+                    step={String(10 ** -currencyDecimals(values.currency))}
+                    suffix={`${values.currency || "EUR"} / stay`}
+                    onChange={(value) => setField("cleaningFee", value)}
+                    onBlur={() => void autosaveDraft()}
+                  />
+                  <CapacityCounter
+                    id="minNights"
+                    label={
+                      resolve(
+                        "host.form.pricing.min_nights",
+                        "Minimum nights",
+                      ).text
+                    }
+                    description={
+                      resolve(
+                        "host.form.pricing.min_nights_hint",
+                        "Shortest stay guests can book",
+                      ).text
+                    }
+                    icon={CalendarDays}
+                    value={values.minNights}
+                    min={1}
+                    onChange={(value) => setField("minNights", value)}
+                    onBlur={() => void autosaveDraft()}
+                  />
+                </>
               )}
-              <PricingField
-                id="cleaningFee"
-                label={
-                  resolve(
-                    "host.form.pricing.cleaning",
-                    "Cleaning fee",
-                  ).text
-                }
-                description={
-                  resolve(
-                    "host.form.pricing.cleaning_hint",
-                    "One-time fee added to each reservation",
-                  ).text
-                }
-                icon={Sparkles}
-                value={values.cleaningFee}
-                min={0}
-                step={String(10 ** -currencyDecimals(values.currency))}
-                suffix={`${values.currency || "EUR"} / stay`}
-                onChange={(value) => setField("cleaningFee", value)}
-                onBlur={() => void autosaveDraft()}
-              />
-              <CapacityCounter
-                id="minNights"
-                label={
-                  resolve(
-                    "host.form.pricing.min_nights",
-                    "Minimum nights",
-                  ).text
-                }
-                description={
-                  resolve(
-                    "host.form.pricing.min_nights_hint",
-                    "Shortest stay guests can book",
-                  ).text
-                }
-                icon={CalendarDays}
-                value={values.minNights}
-                min={1}
-                onChange={(value) => setField("minNights", value)}
-                onBlur={() => void autosaveDraft()}
-              />
             </div>
           </FieldSection>
           </div>
@@ -2622,21 +2700,6 @@ export function ListingForm({
             </div>
           </FieldSection>
           </div>
-          {/* Reaching the end of the form is the natural moment to move on to the
-              calendar, so say so instead of leaving the host to find the bar. */}
-          {showEditSections && listing?.id && (
-            <div className="flex justify-end pt-6">
-              <Button variant="outline" asChild>
-                <Link
-                  href={listingStopHref(listing.id, "availability")}
-                  onClick={confirmManagementNavigation}
-                >
-                  <Tx k="host.form.next_availability" source="Next: Availability" />
-                  <ChevronRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
-          )}
           </div>
           {/* The location editor's own desktop footer: the same Back / Continue pair
               the wizard uses, ending in Done rather than Publish — publishing stays
@@ -3241,74 +3304,33 @@ export function ListingForm({
         </div>
       )}
 
-      {/* Only the edit screen needs a nav bar: a draft has no calendar routes to
-          go to, so its bar was two pane tabs stacked above two more buttons.
-          The wizard folds Preview into its single action row instead. */}
       {showEditSections && (
-        <ListingBottomNav
-          listingId={listing?.id ?? ""}
-          paneOnly={!listing?.id}
-          omitPreview
-          /* The action row below owns the safe-area inset now. */
-          className="pb-0"
-          active={mobilePane === "preview" ? "preview" : "edit"}
-          onSelectPane={selectMobilePane}
-          onNavigate={confirmManagementNavigation}
-        />
-      )}
-
-      {/* The two commits sit last, under the navigation: Preview swaps the pane and
-          Publish saves, and both are actions on the listing rather than places to
-          go. Publish stays visible but disabled with nothing to save, so the pair
-          keeps a stable shape instead of the row appearing and shifting the nav. */}
-      {showEditSections && (
-        <div className="z-30 shrink-0 border-t bg-background px-4 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] md:hidden">
-          {mediaUploadState.active ? (
-            <MediaUploadStatus state={mediaUploadState} />
-          ) : (
-            <div className="flex items-stretch gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                className="flex-1"
-                aria-controls={
-                  mobilePane === "preview"
-                    ? "listing-editor-pane"
-                    : "listing-preview-pane"
-                }
-                onClick={() =>
-                  selectMobilePane(mobilePane === "preview" ? "edit" : "preview")
-                }
-              >
-                {/* Keyed for the same Google Translate reason as the wizard row. */}
-                <span
-                  key={mobilePane}
-                  className="inline-flex items-center gap-1.5"
-                >
-                  {mobilePane === "preview" ? (
-                    <>
-                      <Pencil className="h-4 w-4" />
-                      <Tx k="host.form.back_to_editor" source="Back to editor" />
-                    </>
-                  ) : (
-                    <>
-                      <Eye className="h-4 w-4" />
-                      <Tx k="host.workspace.preview" source="Preview" />
-                    </>
-                  )}
-                </span>
-              </Button>
+        <div className="z-30 shrink-0 md:hidden">
+          {/* Publish is the only commit action. Preview is already a destination in
+              the stable navigation, so it is not repeated here. */}
+          <div className="border-t bg-background px-4 py-2.5">
+            {mediaUploadState.active ? (
+              <MediaUploadStatus state={mediaUploadState} />
+            ) : (
               <Button
                 type="submit"
                 size="lg"
                 disabled={isPending || !hasUnpublishedChanges}
-                className="flex-1"
+                className="w-full"
               >
                 {isPending ? "Publishing…" : "Publish"}
               </Button>
-            </div>
-          )}
+            )}
+          </div>
+          {/* Details and Preview switch panes here. Calendar remains a route and
+              keeps the same unsaved-change confirmation as other management links. */}
+          <ListingBottomNav
+            listingId={listing?.id ?? ""}
+            paneOnly={!listing?.id}
+            active={mobilePane === "preview" ? "preview" : "edit"}
+            onSelectPane={selectMobilePane}
+            onNavigate={confirmManagementNavigation}
+          />
         </div>
       )}
 

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useMemo, useRef, useState } from "react";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import {
   ActivityIndicator,
   Alert,
@@ -33,7 +33,12 @@ import {
 } from "@/components/listing/street-view-field";
 import { useLanguage } from "@/context/language-context";
 import { useApiError } from "@/lib/use-api-error";
-import { apiFetch, ListingMediaItem, openControlPanel } from "@/lib/api";
+import {
+  apiFetch,
+  ListingMediaItem,
+  openControlPanel,
+  resolveIntlLocale,
+} from "@/lib/api";
 import { colors, radii, spacing, type } from "@/theme";
 
 /** Editing an existing listing is an operational workspace, not onboarding. The host
@@ -50,9 +55,6 @@ interface EditorValues extends LocationValues, StreetViewValues {
   bedrooms: string;
   beds: string;
   bathrooms: string;
-  baseNightlyRate: string;
-  cleaningFee: string;
-  minNights: string;
   amenityIds: string[];
   mediaItems: ListingMediaItem[];
 }
@@ -87,6 +89,7 @@ interface EditorResponse {
       streetViewPanoId?: string | null;
     };
     pricingRule: {
+      currency: string;
       baseNightlyRate: number;
       cleaningFee: number;
       minNights: number;
@@ -112,7 +115,7 @@ const SECTIONS: { id: SectionId; label: string; icon: IconName }[] = [
   { id: "location", label: "Location and arrival", icon: "info" },
   { id: "details", label: "Capacity", icon: "users" },
   { id: "amenities", label: "Amenities", icon: "check" },
-  { id: "pricing", label: "Price and minimum stay", icon: "confirmed" },
+  { id: "pricing", label: "Booking settings", icon: "confirmed" },
 ];
 
 function text(value: number | null | undefined): string {
@@ -129,9 +132,6 @@ function valuesFrom(data: EditorResponse): EditorValues {
     bedrooms: String(listing.bedrooms),
     beds: String(listing.beds),
     bathrooms: String(listing.bathrooms),
-    baseNightlyRate: text(listing.pricingRule?.baseNightlyRate),
-    cleaningFee: text(listing.pricingRule?.cleaningFee ?? 0),
-    minNights: text(listing.pricingRule?.minNights ?? 1),
     amenityIds: listing.amenities.map((entry) => entry.amenityId),
     mediaItems: data.mediaItems,
     address: listing.property.address,
@@ -157,7 +157,7 @@ function valuesFrom(data: EditorResponse): EditorValues {
 export default function EditListingScreen() {
   const router = useRouter();
   const describeError = useApiError();
-  const { t } = useLanguage();
+  const { locale, t } = useLanguage();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
@@ -169,6 +169,7 @@ export default function EditListingScreen() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const savedRef = useRef<string>("");
+  const initializedListingIdRef = useRef<string | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -177,20 +178,30 @@ export default function EditListingScreen() {
       const result = await apiFetch<EditorResponse>(
         `/api/mobile/v1/listings/${encodeURIComponent(id)}/editor`
       );
-      const next = valuesFrom(result);
       setData(result);
-      setValues(next);
-      savedRef.current = JSON.stringify(next);
-      setDirty(false);
+      // A focused screen may be returning from Calendar after a pricing change.
+      // Refresh server-backed display data (especially the pricing summary), but
+      // never replace detail fields or media the host may still be editing locally.
+      if (initializedListingIdRef.current !== id) {
+        const next = valuesFrom(result);
+        setValues(next);
+        savedRef.current = JSON.stringify(next);
+        initializedListingIdRef.current = id;
+        setDirty(false);
+      }
     } catch (caught) {
       setError(describeError(caught, "Could not load this listing"));
     }
   }, [describeError, id]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => void load(), 0);
-    return () => clearTimeout(timer);
-  }, [load]);
+  useFocusEffect(
+    useCallback(() => {
+      // Deferring avoids a synchronous state update inside the focus callback and
+      // lets a quick blur cancel a request that no longer needs to start.
+      const timer = setTimeout(() => void load(), 0);
+      return () => clearTimeout(timer);
+    }, [load])
+  );
 
   function patch(next: Partial<EditorValues>) {
     setValues((current) => {
@@ -213,9 +224,16 @@ export default function EditListingScreen() {
     if (!hasValidPin(values)) found.push("Place the pin on the map");
     if (!values.address.trim() || !values.city.trim() || !values.country.trim())
       found.push("Complete the address");
-    if (!(Number(values.baseNightlyRate) >= 1)) found.push("Set a nightly rate");
     return found;
   }, [values]);
+
+  function managePricing() {
+    if (!id) return;
+    router.push({
+      pathname: "/availability/[id]",
+      params: { id, lens: "pricing" },
+    });
+  }
 
   async function save() {
     if (!id || !values || saving || problems.length > 0) return;
@@ -459,25 +477,43 @@ export default function EditListingScreen() {
                   ) : null}
 
                   {section.id === "pricing" ? (
-                    <View style={styles.stack}>
-                      <LabeledInput
-                        label={t("Nightly rate (EUR)")}
-                        keyboardType="decimal-pad"
-                        value={values.baseNightlyRate}
-                        onChangeText={(value) => patch({ baseNightlyRate: value })}
-                      />
-                      <LabeledInput
-                        label={t("Cleaning fee (EUR)")}
-                        keyboardType="decimal-pad"
-                        value={values.cleaningFee}
-                        onChangeText={(value) => patch({ cleaningFee: value })}
-                      />
-                      <LabeledInput
-                        label={t("Minimum nights")}
-                        keyboardType="number-pad"
-                        value={values.minNights}
-                        onChangeText={(value) => patch({ minNights: value })}
-                      />
+                    <View style={styles.pricingSummary}>
+                      {data.listing.pricingRule ? (
+                        <>
+                          <SummaryRow
+                            label={t("Base price")}
+                            value={`${formatMoney(
+                              data.listing.pricingRule.baseNightlyRate,
+                              data.listing.pricingRule.currency,
+                              locale
+                            )} / ${t("night")}`}
+                          />
+                          <SummaryRow
+                            label={t("Cleaning fee")}
+                            value={formatMoney(
+                              data.listing.pricingRule.cleaningFee,
+                              data.listing.pricingRule.currency,
+                              locale
+                            )}
+                          />
+                          <SummaryRow
+                            label={t("Minimum stay")}
+                            value={`${data.listing.pricingRule.minNights} ${t(
+                              data.listing.pricingRule.minNights === 1 ? "night" : "nights"
+                            )}`}
+                          />
+                        </>
+                      ) : (
+                        <Text style={styles.pricingMissing}>
+                          {t("Pricing has not been set for this listing yet.")}
+                        </Text>
+                      )}
+                      <Text style={styles.pricingHint}>
+                        {t(
+                          "Standard and date-specific prices are managed together in Calendar."
+                        )}
+                      </Text>
+                      <SoftButton label={t("Manage pricing")} onPress={managePricing} />
                     </View>
                   ) : null}
                 </View>
@@ -523,6 +559,23 @@ export default function EditListingScreen() {
         </View>
         {saving ? <ActivityIndicator color={colors.primary} /> : null}
       </View>
+    </View>
+  );
+}
+
+function formatMoney(value: number, currency: string, locale?: string): string {
+  return new Intl.NumberFormat(resolveIntlLocale(locale), {
+    style: "currency",
+    currency,
+    maximumFractionDigits: value % 1 === 0 ? 0 : 2,
+  }).format(value);
+}
+
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.summaryRow}>
+      <Text style={styles.summaryLabel}>{label}</Text>
+      <Text style={styles.summaryValue}>{value}</Text>
     </View>
   );
 }
@@ -577,6 +630,22 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   stack: { gap: spacing.md },
+  pricingSummary: { gap: spacing.md },
+  summaryRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: spacing.md,
+  },
+  summaryLabel: { ...type.meta, color: colors.muted },
+  summaryValue: {
+    ...type.bodyStrong,
+    flexShrink: 1,
+    color: colors.ink,
+    textAlign: "right",
+  },
+  pricingHint: { ...type.caption, color: colors.muted },
+  pricingMissing: { ...type.meta, color: colors.warm },
   fieldGroupLabel: { ...type.label, color: colors.inkSoft },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   chip: {

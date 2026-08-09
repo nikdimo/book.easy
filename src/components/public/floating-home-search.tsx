@@ -20,19 +20,33 @@ export function FloatingHomeSearch({
     const heroSearch = document.querySelector("[data-home-hero-search]");
     if (!heroSearch) return;
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setVisible(!entry.isIntersecting && entry.boundingClientRect.top < 0);
-      },
-      { threshold: 0 },
-    );
-    observer.observe(heroSearch);
-    return () => observer.disconnect();
+    const scrollRoot = heroSearch.closest(".overflow-y-auto");
+    const scrollTarget: EventTarget = scrollRoot ?? window;
+    const updateVisibility = () => {
+      const bounds = heroSearch.getBoundingClientRect();
+      setVisible(bounds.bottom < 0);
+    };
+
+    updateVisibility();
+    scrollTarget.addEventListener("scroll", updateVisibility, { passive: true });
+    window.addEventListener("resize", updateVisibility);
+    return () => {
+      scrollTarget.removeEventListener("scroll", updateVisibility);
+      window.removeEventListener("resize", updateVisibility);
+    };
   }, []);
 
   return visible ? (
-    <div className="fixed inset-x-0 top-3 z-50 hidden justify-center px-4 md:flex">
-      <div className="flex w-full max-w-[64rem] justify-center">
+    <div className="fixed inset-x-0 top-0 z-50 flex justify-center border-b bg-background/95 px-4 py-3 shadow-sm backdrop-blur md:top-3 md:border-0 md:bg-transparent md:p-0 md:shadow-none">
+      <div className="@container w-full max-w-md md:hidden">
+        <MarketplaceSearchBar
+          variant="summary"
+          popularCities={popularCities}
+          availablePropertyTypesByCity={availablePropertyTypesByCity}
+          propertyTypes={propertyTypes}
+        />
+      </div>
+      <div className="hidden w-full max-w-[64rem] justify-center md:flex">
         <MarketplaceSearchBar
           variant="floating"
           popularCities={popularCities}

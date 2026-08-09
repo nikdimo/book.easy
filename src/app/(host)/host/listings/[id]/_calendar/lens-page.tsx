@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { ArrowLeft, ChevronLeft, ChevronRight, CircleHelp } from "lucide-react";
+import { ArrowLeft, CalendarDays, CircleHelp, Eye, Pencil } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
@@ -10,9 +10,7 @@ import { ListingBottomNav } from "@/components/host/listing-bottom-nav";
 import { CalendarHeaderActions } from "@/components/host/calendar-header-actions";
 import {
   LISTING_ACTION_BAR_ID,
-  LISTING_WORKSPACE_STOPS,
   listingStopHref,
-  withSelectionQuery,
 } from "@/lib/host/listing-workspace";
 import { Button } from "@/components/ui/button";
 import { ListingManagementTabs } from "@/components/host/listing-management-tabs";
@@ -46,7 +44,7 @@ const LENS_COPY: Record<
     hint: "What each night costs.",
     help: [
       "Every date shows the price a guest would pay for that night.",
-      "Dates without a custom price follow the base rate from the listing editor.",
+      "Dates without a custom price follow the base price in Standard pricing.",
       "Changing a price never changes what an existing booking already paid.",
     ],
   },
@@ -80,14 +78,6 @@ export async function CalendarLensPage({
   lens,
 }: CalendarLensPageProps) {
   const [session, locale, t] = await Promise.all([auth(), getLocale(), getT()]);
-  // Literal key/source pairs: the shared stop constant carries only English labels.
-  const stopLabels: Record<string, string> = {
-    preview: t.resolve("host.workspace.preview", "Preview").text,
-    edit: t.resolve("host.workspace.edit", "Edit").text,
-    availability: t.resolve("host.workspace.availability", "Availability").text,
-    pricing: t.resolve("host.workspace.pricing", "Pricing").text,
-    promotions: t.resolve("host.workspace.promotions", "Promos").text,
-  };
   if (!session?.user?.id) redirect("/login");
 
   const [{ id }, query] = await Promise.all([params, searchParams]);
@@ -124,19 +114,14 @@ export async function CalendarLensPage({
   ]);
 
   const copy = LENS_COPY[lens];
-  const stopIndex = LISTING_WORKSPACE_STOPS.findIndex(
-    (item) => item.stop === lens,
-  );
-  const previousStop = LISTING_WORKSPACE_STOPS[stopIndex - 1];
-  const nextStop = LISTING_WORKSPACE_STOPS[stopIndex + 1];
   const initialFrom = readYmd(query.from);
   const initialTo = readYmd(query.to);
   const selectionQuery =
     initialFrom && initialTo ? `?from=${initialFrom}&to=${initialTo}` : "";
 
   return (
-    // pb-36 on mobile keeps the last row clear of the fixed nav plus action row.
-    <div className="mx-auto max-w-7xl space-y-3 pb-36 md:pb-0">
+    // Mobile padding keeps the last row clear of the fixed action and nav bars.
+    <div className="mx-auto max-w-7xl space-y-3 pb-44 md:pb-0">
       {/* Phones get these two in the shell header instead — see below. */}
       <div className="hidden items-start justify-between gap-3 md:flex">
         <div className="flex min-w-0 items-start gap-2.5">
@@ -181,13 +166,32 @@ export async function CalendarLensPage({
 
       <CalendarHeaderActions heading={copy.heading} help={copy.help} />
 
-      {/* The bottom nav is the lens switcher on phones, so the tabs are desktop-only. */}
-      <div className="hidden md:block">
-        <ListingManagementTabs
-          listingId={listing.id}
-          preserveQuery={selectionQuery}
-        />
-      </div>
+      <nav
+        aria-label={t.resolve("host.workspace.nav_label", "Listing workspace").text}
+        className="hidden items-center gap-1 rounded-xl border bg-muted/40 p-1 md:flex"
+      >
+        <Button variant="ghost" size="sm" asChild>
+          <Link href={listingStopHref(listing.id, "edit")}>
+            <Pencil className="size-4" />
+            <T t={t} k="host.workspace.details" source="Details" />
+          </Link>
+        </Button>
+        <Button variant="secondary" size="sm" aria-current="page">
+          <CalendarDays className="size-4" />
+          <T t={t} k="host.workspace.calendar" source="Calendar" />
+        </Button>
+        <Button variant="ghost" size="sm" asChild>
+          <Link href={listingStopHref(listing.id, "preview")}>
+            <Eye className="size-4" />
+            <T t={t} k="host.workspace.preview" source="Preview" />
+          </Link>
+        </Button>
+      </nav>
+
+      <ListingManagementTabs
+        listingId={listing.id}
+        preserveQuery={selectionQuery}
+      />
 
       {listing.pricingRule ? (
         <CalendarWorkspace
@@ -230,43 +234,6 @@ export async function CalendarLensPage({
         </p>
       )}
 
-      {/* Explicit step controls rather than navigating on scroll: overscrolling at
-          the end of a list is constant on touch, and a scroll that changes screens
-          would fire navigations nobody asked for. */}
-      <div className="flex items-center justify-between gap-3 pt-1">
-        {previousStop ? (
-          <Button variant="ghost" asChild>
-            <Link
-              href={withSelectionQuery(
-                listingStopHref(listing.id, previousStop.stop),
-                selectionQuery,
-              )}
-            >
-              <ChevronLeft className="size-4" />
-              {stopLabels[previousStop.stop]}
-            </Link>
-          </Button>
-        ) : (
-          <span />
-        )}
-        {nextStop ? (
-          <Button variant="outline" asChild>
-            <Link
-              href={withSelectionQuery(
-                listingStopHref(listing.id, nextStop.stop),
-                selectionQuery,
-              )}
-            >
-              <T t={t} k="host.calendar.next" source="Next:" />{" "}
-              {stopLabels[nextStop.stop]}
-              <ChevronRight className="size-4" />
-            </Link>
-          </Button>
-        ) : (
-          <span />
-        )}
-      </div>
-
       {/* Fixed because this page scrolls inside the host shell's main area rather
           than owning its own flex column.
 
@@ -275,15 +242,12 @@ export async function CalendarLensPage({
           calendar entirely. The workspace fills the slot below with actions for the
           dates currently selected instead. */}
       <div className="fixed inset-x-0 bottom-0 z-30 md:hidden">
+        <div id={LISTING_ACTION_BAR_ID} className="[&>div]:!pb-2" />
         <ListingBottomNav
           listingId={listing.id}
           active={lens}
-          omitPreview
           preserveQuery={selectionQuery}
-          /* The action row below owns the safe-area inset now. */
-          className="pb-0"
         />
-        <div id={LISTING_ACTION_BAR_ID} />
       </div>
     </div>
   );

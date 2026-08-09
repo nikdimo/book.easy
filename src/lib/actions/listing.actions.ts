@@ -485,6 +485,9 @@ export async function updateListing(listingId: string, formData: FormData) {
     include: { property: true, pricingRule: true },
   });
   if (!listing) return { error: "Listing not found" };
+  if (!listing.pricingRule) {
+    return { error: "Set pricing before publishing listing changes." };
+  }
 
   const raw = {
     title: formData.get("title"),
@@ -509,10 +512,14 @@ export async function updateListing(listingId: string, formData: FormData) {
     bedrooms: formData.get("bedrooms"),
     bathrooms: formData.get("bathrooms"),
     beds: formData.get("beds"),
-    currency: formData.get("currency") || listing.pricingRule?.currency || "EUR",
-    baseNightlyRate: formData.get("baseNightlyRate"),
-    cleaningFee: formData.get("cleaningFee") || "0",
-    minNights: formData.get("minNights") || "1",
+    currency: formData.get("currency") || listing.pricingRule.currency,
+    // Standard pricing belongs to the Pricing workspace once a listing exists.
+    // Validate this detail edit against the persisted values, not values posted by a
+    // potentially stale editor. The write below deliberately updates only currency,
+    // so a calendar pricing save that lands during this request cannot be reverted.
+    baseNightlyRate: listing.pricingRule.baseNightlyRate,
+    cleaningFee: listing.pricingRule.cleaningFee,
+    minNights: listing.pricingRule.minNights,
     checkInTime: formData.get("checkInTime") || undefined,
     checkOutTime: formData.get("checkOutTime") || undefined,
     amenityIds: formData.getAll("amenityIds"),
@@ -573,21 +580,9 @@ export async function updateListing(listingId: string, formData: FormData) {
     revalidatePublicListingCaches();
   }
 
-  await db.pricingRule.upsert({
+  await db.pricingRule.update({
     where: { listingId },
-    update: {
-      currency: data.currency,
-      baseNightlyRate: data.baseNightlyRate,
-      cleaningFee: data.cleaningFee,
-      minNights: data.minNights,
-    },
-    create: {
-      listingId,
-      currency: data.currency,
-      baseNightlyRate: data.baseNightlyRate,
-      cleaningFee: data.cleaningFee,
-      minNights: data.minNights,
-    },
+    data: { currency: data.currency },
   });
 
   await db.listingAmenity.deleteMany({ where: { listingId } });

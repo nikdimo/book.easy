@@ -34,6 +34,7 @@ import {
   OFFER_PREVIEW_NOTE,
   OfferPreview,
   OptionToggle,
+  StandardPricingSummary,
   STICKY_FOOTER,
   roundToCleanPrice,
 } from "@/components/host/calendar-editor-ui";
@@ -196,9 +197,9 @@ const LENS_META: Record<
     segment: "pricing",
     editorKind: "price",
     changeKinds: ["price"],
-    changesTitle: "Custom prices",
-    changesDescription: "Dates priced differently from the base rate.",
-    emptyLabel: "Every date uses the base nightly rate.",
+    changesTitle: "Custom date prices",
+    changesDescription: "Dates priced differently from the base price.",
+    emptyLabel: "Every date uses the base price.",
     emptyHint: "Tap or drag across dates to price them.",
   },
   promotions: {
@@ -418,7 +419,8 @@ function DateFilter({
   value?: Date;
   onChange: (date?: Date) => void;
 }) {
-  const { resolve } = useI18n();
+  const i18n = useI18n();
+  const { resolve } = i18n;
   const [open, setOpen] = useState(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -532,7 +534,7 @@ function EditorDialog({
     String(state.promotion?.minimumNights ?? Math.max(5, minNights)),
   );
   const [freeCleaning, setFreeCleaning] = useState(
-    state.promotion?.freeCleaning ?? false,
+    cleaningFee > 0 && (state.promotion?.freeCleaning ?? false),
   );
   const [roundPromotion, setRoundPromotion] = useState(
     state.promotion?.roundToWholeUnit ?? true,
@@ -555,8 +557,24 @@ function EditorDialog({
         }
       : state.kind === "price"
         ? {
-            title: "Manage pricing",
-            description: "Change the default rate or price specific dates.",
+            title: isDateScoped
+              ? i18n.resolve(
+                  "host.calendar.price_editor.custom_title",
+                  "Set custom date price",
+                ).text
+              : i18n.resolve(
+                  "host.calendar.price_editor.standard_title",
+                  "Edit standard pricing",
+                ).text,
+            description: isDateScoped
+              ? i18n.resolve(
+                  "host.calendar.price_editor.custom_description",
+                  "Set a price for the selected dates.",
+                ).text
+              : i18n.resolve(
+                  "host.calendar.price_editor.standard_description",
+                  "Change the base price, cleaning fee, or minimum stay.",
+                ).text,
             icon: CircleDollarSign,
             pickerTitle: "Select pricing dates",
           }
@@ -643,7 +661,10 @@ function EditorDialog({
             endDate: selectedInput.endDate,
             nightlyRate,
           }),
-        "Custom price saved.",
+        i18n.resolve(
+          "host.calendar.price_editor.custom_saved",
+          "Custom date price saved.",
+        ).text,
       );
       return;
     }
@@ -665,7 +686,10 @@ function EditorDialog({
           cleaningFee: cleaning,
           minNights: nights,
         }),
-      "Default pricing saved.",
+      i18n.resolve(
+        "host.calendar.price_editor.standard_saved",
+        "Standard pricing saved.",
+      ).text,
     );
   }
 
@@ -710,7 +734,7 @@ function EditorDialog({
     : state.kind === "availability"
       ? "Listing visibility"
       : state.kind === "price"
-        ? `Default nightly price · ${officialMoney(baseNightlyRate, currency)}`
+        ? `Standard pricing · ${officialMoney(baseNightlyRate, currency)} base price`
         : "Always active · no end date";
 
   /** The action the footer's primary button would run, for the Enter key. */
@@ -747,6 +771,10 @@ function EditorDialog({
   const guestRate = roundPromotion
     ? Math.min(baseNightlyRate, Math.round(rawGuestRate))
     : Number(rawGuestRate.toFixed(2));
+  const currencySymbol =
+    new Intl.NumberFormat(locale, { style: "currency", currency })
+      .formatToParts(0)
+      .find((part) => part.type === "currency")?.value ?? currency;
   // The short verb key, not `block_selected`: its reviewed translations read
   // "Block selected range", which does not fit a half-width button.
   const blockCta = resolveReviewed("mobile.calendar.block", "Block dates");
@@ -967,16 +995,24 @@ function EditorDialog({
                   htmlFor="nightly-price"
                   className="text-sm font-semibold"
                 >
-                  {isDateScoped
-                    ? "New custom nightly price"
-                    : "New default nightly price"}
+                  {isDateScoped ? (
+                    <Tx
+                      k="host.calendar.price_editor.custom_price"
+                      source="Custom date price"
+                    />
+                  ) : (
+                    <Tx
+                      k="host.calendar.price_editor.base_price"
+                      source="Base price"
+                    />
+                  )}
                 </Label>
                 <div className="relative mt-2">
                   <span
                     className="notranslate pointer-events-none absolute inset-y-0 left-4 flex items-center text-xl font-semibold text-muted-foreground"
                     translate="no"
                   >
-                    €
+                    {currencySymbol}
                   </span>
                   <Input
                     id="nightly-price"
@@ -1039,7 +1075,7 @@ function EditorDialog({
                           selected ? "text-primary" : "text-muted-foreground",
                         )}
                       >
-                        €{adjusted}
+                        {officialMoney(adjusted, currency)}
                       </span>
                       {selected ? (
                         <span className="absolute top-1.5 right-1.5 grid size-4 place-items-center rounded-full bg-primary text-primary-foreground">
@@ -1056,13 +1092,13 @@ function EditorDialog({
               <OptionToggle
                 checked={roundPrice}
                 label={
-                  resolve(
+                  i18n.resolve(
                     "host.prepublish.round_clean_label",
                     "Round to the closest round number",
                   ).text
                 }
                 description={
-                  resolve(
+                  i18n.resolve(
                     "host.prepublish.round_hint",
                     "Keeps guest-facing prices clean and easy to scan.",
                   ).text
@@ -1084,7 +1120,7 @@ function EditorDialog({
                   <p className="text-sm md:text-xs font-semibold text-muted-foreground">
                     <Tx
                       k="host.calendar.additional_defaults"
-                      source="Additional default settings"
+                      source="Standard stay settings"
                     />
                   </p>
                   <div className="mt-3 grid grid-cols-2 gap-3">
@@ -1103,7 +1139,7 @@ function EditorDialog({
                     </div>
                     <div>
                       <Label htmlFor="minimum-stay">
-                        <Tx k="host.calendar.minimum_nights" source="Minimum nights" />
+                        <Tx k="host.calendar.minimum_nights" source="Minimum stay" />
                       </Label>
                       <Input
                         id="minimum-stay"
@@ -1120,15 +1156,33 @@ function EditorDialog({
               <div className="flex gap-3 px-1">
                 <ShieldCheck className="mt-0.5 size-4 shrink-0" />
                 <p className="text-sm md:text-xs text-muted-foreground">
-                  {isDateScoped
-                    ? "This custom price overrides the default only for the selected dates."
-                    : "Existing custom-priced dates remain unchanged. The new default applies everywhere else."}
+                  {isDateScoped ? (
+                    <Tx
+                      k="host.calendar.price_editor.custom_scope_hint"
+                      source="This custom date price overrides the base price only for the selected dates."
+                    />
+                  ) : (
+                    <Tx
+                      k="host.calendar.price_editor.standard_scope_hint"
+                      source="Existing custom date prices remain unchanged. The new base price applies everywhere else."
+                    />
+                  )}
                 </p>
               </div>
               <div className={STICKY_FOOTER}>
                 <div className="mb-3 grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 rounded-lg bg-muted/40 px-3 py-2 text-sm md:text-xs">
                   <span className="min-w-0 break-words text-muted-foreground">
-                    {isDateScoped ? "Default" : "Current default"}{" "}
+                    {isDateScoped ? (
+                      <Tx
+                        k="host.calendar.price_editor.base_price"
+                        source="Base price"
+                      />
+                    ) : (
+                      <Tx
+                        k="host.calendar.price_editor.current_base_price"
+                        source="Current base price"
+                      />
+                    )}{" "}
                     <strong
                       className="notranslate whitespace-nowrap text-foreground"
                       translate="no"
@@ -1138,7 +1192,17 @@ function EditorDialog({
                   </span>
                   <ArrowRight className="size-3.5 text-muted-foreground" />
                   <span className="min-w-0 break-words text-primary">
-                    {isDateScoped ? "Custom price" : "New default"}{" "}
+                    {isDateScoped ? (
+                      <Tx
+                        k="host.calendar.price_editor.custom_price"
+                        source="Custom date price"
+                      />
+                    ) : (
+                      <Tx
+                        k="host.calendar.price_editor.new_base_price"
+                        source="New base price"
+                      />
+                    )}{" "}
                     <strong className="notranslate whitespace-nowrap" translate="no">
                       {officialMoney(price || "0", currency)}
                     </strong>
@@ -1159,9 +1223,17 @@ function EditorDialog({
                     disabled={pending}
                     onClick={savePrice}
                   >
-                    {isDateScoped
-                      ? "Save custom price"
-                      : "Save default pricing"}
+                    {isDateScoped ? (
+                      <Tx
+                        k="host.calendar.price_editor.save_custom"
+                        source="Save custom date price"
+                      />
+                    ) : (
+                      <Tx
+                        k="host.calendar.price_editor.save_standard"
+                        source="Save standard pricing"
+                      />
+                    )}
                   </Button>
                 </div>
               </div>
@@ -1244,10 +1316,45 @@ function EditorDialog({
               </div>
               <OptionToggle
                 checked={freeCleaning}
-                label="Add free cleaning"
-                description={`Guests save the €${cleaningFee} cleaning fee on qualifying stays.`}
+                label={
+                  i18n.resolve(
+                    "host.calendar.promotion_free_cleaning",
+                    "Add free cleaning",
+                  ).text
+                }
+                description={
+                  cleaningFee > 0
+                    ? interpolate(
+                        i18n.resolve(
+                          "host.calendar.promotion_free_cleaning_hint",
+                          "Guests save the {fee} cleaning fee on qualifying stays.",
+                        ),
+                        { fee: officialMoney(cleaningFee, currency) },
+                      ).text
+                    : i18n.resolve(
+                        "host.calendar.promotion_no_cleaning_fee",
+                        "There is no cleaning fee to waive. Set one in Pricing first.",
+                      ).text
+                }
                 onChange={() => setFreeCleaning((current) => !current)}
+                disabled={cleaningFee <= 0}
               />
+              {cleaningFee <= 0 ? (
+                <Link
+                  href={`/host/listings/${listingId}/pricing${
+                    selectedInput
+                      ? `?from=${selectedInput.startDate}&to=${selectedInput.lastDate}`
+                      : ""
+                  }`}
+                  className="inline-flex items-center gap-1 text-sm font-semibold text-primary transition-colors hover:text-primary/75 md:text-xs"
+                >
+                  <Tx
+                    k="host.calendar.promotion_set_cleaning_fee"
+                    source="Set cleaning fee in Pricing"
+                  />
+                  <ArrowRight className="size-3.5" aria-hidden="true" />
+                </Link>
+              ) : null}
               {numericDiscount > 0 ? (
                 <OptionToggle
                   checked={roundPromotion}
@@ -1294,18 +1401,23 @@ function EditorDialog({
                       interpolate(
                         resolve(
                           "host.calendar.estimated_price",
-                          "Estimated default-night price: €{rate}",
+                          "Estimated base-night price: {rate}",
                         ),
-                        { rate: guestRate },
+                        { rate: officialMoney(guestRate, currency) },
                       ).text
                     }
                     {roundPromotion
                       ? interpolate(
                           resolve(
                             "host.calendar.rounded_from",
-                            " · rounded from €{original}",
+                            " · rounded from {original}",
                           ),
-                          { original: Number(rawGuestRate.toFixed(2)) },
+                          {
+                            original: officialMoney(
+                              Number(rawGuestRate.toFixed(2)),
+                              currency,
+                            ),
+                          },
                         ).text
                       : ""}
                   </p>
@@ -1369,7 +1481,8 @@ export function CalendarWorkspace({
 }: CalendarWorkspaceProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { resolve } = useI18n();
+  const i18n = useI18n();
+  const { resolve } = i18n;
   const meta = LENS_META[lens];
   const [range, setRange] = useState<DateRange | undefined>(() =>
     initialFrom
@@ -1508,7 +1621,7 @@ export function CalendarWorkspace({
           to: row.date,
           label: `${officialMoney(row.rate, currency)} / night`,
           detail: `${currency} ${row.rate}`,
-          source: `Default ${officialMoney(baseNightlyRate, currency)}`,
+          source: `Base price ${officialMoney(baseNightlyRate, currency)}`,
           nightlyRate: row.rate,
         });
       }
@@ -1548,6 +1661,10 @@ export function CalendarWorkspace({
   }, [baseNightlyRate, blocks, currency, datePrices, minNights, promotions]);
 
   const selection = range?.from ? calendarRangeToInput(range) : null;
+  const publishedBasePriceHint = i18n.resolve(
+    "host.calendar.published_legend_base_price_hint",
+    "Dates without a custom date price use the base price of {rate}.",
+  );
   const selectionNights = selection?.nights ?? 0;
   const selectionCounts = selection
     ? countSelectionNights(selection, manualDates, bookingDates)
@@ -1563,13 +1680,12 @@ export function CalendarWorkspace({
         }
       : lens === "pricing"
         ? {
-            label: selection ? "Set price for these dates" : "Change base price",
+            label: selection
+              ? "Set price for these dates"
+              : "Select dates for a custom price",
             detail: selection
-              ? `Applies to the ${selectionNights} selected ${selectionNights === 1 ? "night" : "nights"}. Existing bookings keep the price guests already paid.`
-              : `The base rate every date without a custom price uses. Currently ${new Intl.NumberFormat(
-                  "en",
-                  { style: "currency", currency, maximumFractionDigits: 0 },
-                ).format(baseNightlyRate)}.`,
+              ? `Saves a custom date price for the ${selectionNights} selected ${selectionNights === 1 ? "night" : "nights"}. Existing bookings keep the price guests already paid.`
+              : "Tap or drag across dates, then set a custom date price for that range.",
             icon: CircleDollarSign,
           }
         : {
@@ -1657,7 +1773,7 @@ export function CalendarWorkspace({
             startDate: change.from!,
             endDate,
           }),
-        "Custom price removed.",
+        "Custom date price removed.",
       );
       return;
     }
@@ -1670,15 +1786,6 @@ export function CalendarWorkspace({
       "Dates made available.",
     );
   }
-
-  // Availability → Pricing → Promotions is the order a host works in, so the
-  // empty action bar offers the next one instead of sitting idle.
-  const nextLens: CalendarLens | null =
-    lens === "availability"
-      ? "pricing"
-      : lens === "pricing"
-        ? "promotions"
-        : null;
 
   /**
    * Rendered twice: inside the card on desktop, and portaled into the fixed phone
@@ -1733,35 +1840,22 @@ export function CalendarWorkspace({
           </div>
         ) : (
           <div className="flex items-stretch gap-2">
-            <Button
-              type="button"
-              size="lg"
-              className="flex-1"
-              onClick={() =>
-                setEditor({
-                  kind: meta.editorKind,
-                  range: range?.from
-                    ? { from: range.from, to: range.to ?? range.from }
-                    : undefined,
-                })
-              }
-            >
-              <PrimaryActionIcon className="size-4" />
-              {primaryAction.label}
-            </Button>
-            {!selection && nextLens ? (
+            {lens !== "pricing" || selection ? (
               <Button
                 type="button"
                 size="lg"
-                variant="outline"
-                className="shrink-0"
-                asChild
+                className="flex-1"
+                onClick={() =>
+                  setEditor({
+                    kind: meta.editorKind,
+                    range: range?.from
+                      ? { from: range.from, to: range.to ?? range.from }
+                      : undefined,
+                  })
+                }
               >
-                <Link href={lensHref(nextLens)}>
-                  <Tx k="host.calendar.next" source="Next:" />{" "}
-                  {LENS_META[nextLens].heading}
-                  <ArrowRight className="size-4" />
-                </Link>
+                <PrimaryActionIcon className="size-4" />
+                {primaryAction.label}
               </Button>
             ) : null}
           </div>
@@ -1800,11 +1894,24 @@ export function CalendarWorkspace({
 
   return (
     <div className="space-y-5">
-      <ListingActionBarPortal>
-        <div className="border-t bg-background px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-2px_8px_rgb(0_0_0/0.04)]">
-          {actionPanel}
-        </div>
-      </ListingActionBarPortal>
+      {lens === "pricing" ? (
+        <StandardPricingSummary
+          baseNightlyRate={baseNightlyRate}
+          cleaningFee={cleaningFee}
+          minNights={minNights}
+          currency={currency}
+          locale={locale}
+          onEdit={() => setEditor({ kind: "price", range: null })}
+        />
+      ) : null}
+
+      {lens !== "pricing" || selection ? (
+        <ListingActionBarPortal>
+          <div className="border-t bg-background px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-2px_8px_rgb(0_0_0/0.04)]">
+            {actionPanel}
+          </div>
+        </ListingActionBarPortal>
+      ) : null}
 
       <section
         ref={calendarInteractionRef}
@@ -1882,15 +1989,15 @@ export function CalendarWorkspace({
             <>
               <span className="inline-flex items-center gap-1.5">
                 <span className="size-2.5 rounded-[2px] border-2 border-primary/50" />
-                <Tx k="host.calendar.legend_custom_price" source="Custom price" />
+                <Tx
+                  k="host.calendar.published_legend_custom_date_price"
+                  source="Custom date price"
+                />
               </span>
               <span>
                 {
                   interpolate(
-                    resolve(
-                      "host.calendar.legend_base_rate",
-                      "Dates without a custom price use the base rate of {rate}.",
-                    ),
+                    publishedBasePriceHint,
                     {
                       rate: new Intl.NumberFormat(locale, {
                         style: "currency",
@@ -2020,7 +2127,7 @@ export function CalendarWorkspace({
                       : LockKeyhole;
               const typeLabel =
                 change.kind === "price"
-                  ? "Price override"
+                  ? "Custom date price"
                   : change.kind === "promotion"
                     ? "Promotion"
                     : change.kind === "booking"

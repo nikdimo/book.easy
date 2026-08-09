@@ -219,6 +219,37 @@ Two full screens' worth of code — an old pricing form and an old promotions fo
 
 ---
 
+## Published-listing management ownership - final decision
+
+Creation and ongoing management are intentionally different parts of the listing
+lifecycle. The new-listing wizard remains the accepted guided flow: it collects the
+base price, cleaning fee, minimum stay, launch promotion, and initial availability
+before publication. None of those creation steps are being collapsed or removed.
+
+After publication, the listing workspace has three primary destinations:
+
+- **Details** owns listing content such as title, description, location, photos,
+  capacity, amenities, and stay rules.
+- **Calendar** contains the three operational lenses **Availability**, **Pricing**,
+  and **Promotions**.
+- **Preview** shows the guest-facing result.
+
+Standard pricing - base price, cleaning fee, and minimum stay - is editable only in
+Calendar > Pricing. Details shows a read-only Booking settings summary and a direct
+Manage pricing action. Date-specific prices stay in the Pricing calendar, and
+promotions stay in their own lens. A free-cleaning benefit is a promotion, but the
+cleaning fee it waives belongs to Pricing. Saving a cleaning fee of zero atomically
+removes free-cleaning benefits from active promotions so the product never advertises
+a fee waiver that has no value.
+
+Desktop exposes Details, Calendar, and Preview as the top-level management model,
+with the three Calendar lenses nested beneath Calendar. Mobile uses the same three
+primary destinations in its bottom navigation and a sticky Availability / Pricing /
+Promotions control inside Calendar. A selected date range carries between those
+lenses, and Calendar actions remain above the bottom navigation.
+
+---
+
 ## Dropped
 
 - ~~**Bulk date selection**~~ — I was wrong. Clicking the first day then the last day already selects everything between, so "block all of August" is 2 clicks. The narrower real gap (recurring weekend patterns) moved into item 7.

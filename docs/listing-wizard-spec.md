@@ -366,6 +366,52 @@ Unchanged and consistent across the disabled matcher, the `unavailable` modifier
 
 ---
 
+## Published-listing lifecycle and ownership
+
+This section is normative for editing an existing published listing. It does not
+change the creation wizard described above.
+
+### Creation remains guided
+
+The new-listing wizard remains the source of the initial base price, cleaning fee,
+minimum stay, launch promotion, and availability answer. Its Pricing and Special
+Offer steps remain separate, and its pre-publish date tools continue to write the
+same saved plan used at publication.
+
+### Published management is destination-based
+
+Published listings have three primary destinations:
+
+| Destination | Ownership |
+| --- | --- |
+| Details | Listing content: title, description, location, photos, capacity, amenities, and stay rules |
+| Calendar | Operational management through Availability, Pricing, and Promotions lenses |
+| Preview | Guest-facing listing preview |
+
+Availability, Pricing, and Promotions are sibling lenses inside Calendar, not later
+steps in another wizard. Desktop presents the three primary destinations and nests
+the lens tabs under Calendar. Mobile uses Details / Calendar / Preview in the bottom
+navigation and a sticky Availability / Pricing / Promotions control inside Calendar.
+The current date selection is preserved when switching lenses. Fixed Calendar
+actions render above the mobile bottom navigation and respect the safe-area inset.
+
+### One editable home for standard pricing
+
+For a published listing, base price, cleaning fee, and minimum stay are editable only
+in Calendar > Pricing. The Details editor renders those values as a read-only Booking
+settings summary with a Manage pricing deep link. Publishing unrelated Details edits
+must not post or overwrite standard-pricing values; server writes use the persisted
+pricing record so a newer Calendar save cannot be reverted by stale form state.
+
+Date-specific prices remain calendar-based custom date prices. Promotions remain a
+separate lens. The cleaning fee itself belongs to Pricing; free cleaning is only a
+promotion benefit that waives that fee. Saving the cleaning fee as zero performs one
+atomic transaction that updates standard pricing and removes free-cleaning benefits
+from active promotions. Both web and native clients disable free cleaning at zero and
+link back to Pricing to set a fee.
+
+---
+
 ## Integration checkpoint before any commit
 
 Several phases were developed concurrently in one uncommitted working tree. Before the user commits:

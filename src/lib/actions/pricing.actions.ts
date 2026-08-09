@@ -52,10 +52,25 @@ export async function saveListingPricing(
       error: `Minimum stay cannot exceed ${listing.pricingRule.maxNights} nights.`,
     };
   }
+  const pricingRuleId = listing.pricingRule.id;
 
-  await db.pricingRule.update({
-    where: { id: listing.pricingRule.id },
-    data: parsed.data,
+  const removedFreeCleaningBenefits = await db.$transaction(async (tx) => {
+    await tx.pricingRule.update({
+      where: { id: pricingRuleId },
+      data: parsed.data,
+    });
+
+    if (parsed.data.cleaningFee !== 0) return 0;
+
+    const result = await tx.listingPromotion.updateMany({
+      where: {
+        listingId: listing.id,
+        disabledAt: null,
+        freeCleaning: true,
+      },
+      data: { freeCleaning: false },
+    });
+    return result.count;
   });
 
   await createAuditLog({
@@ -73,5 +88,10 @@ export async function saveListingPricing(
   revalidatePath(`/properties/${listing.slug}`);
   revalidatePublicListingCaches();
 
-  return { success: "Pricing saved." };
+  return {
+    success:
+      removedFreeCleaningBenefits > 0
+        ? "Pricing saved. Free-cleaning benefits were removed from active promotions."
+        : "Pricing saved.",
+  };
 }

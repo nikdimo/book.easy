@@ -1,9 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Sparkles } from "lucide-react";
-import { Tx } from "@/lib/i18n/client";
+import { Pencil, Sparkles } from "lucide-react";
+import { Tx, translatedClass, useI18n } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 /**
  * The bits of the host calendar's editor sheet that the pre-publish wizard also
@@ -63,28 +64,141 @@ export function OfferPreview({
 
 export const OFFER_PREVIEW_NOTE = "mt-0.5 text-sm text-muted-foreground md:text-xs";
 
+export function StandardPricingSummary({
+  baseNightlyRate,
+  cleaningFee,
+  minNights,
+  currency,
+  locale,
+  onEdit,
+}: {
+  baseNightlyRate: number;
+  cleaningFee: number;
+  minNights: number;
+  currency: string;
+  locale: string;
+  onEdit: () => void;
+}) {
+  const i18n = useI18n();
+  const money = new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+  });
+  const minimumStay = i18n.plural(
+    "host.calendar.standard_pricing.minimum_nights",
+    minNights,
+    "{n} night",
+    "{n} nights",
+  );
+
+  return (
+    <section
+      aria-labelledby="standard-pricing-heading"
+      className="rounded-2xl border bg-card p-4 shadow-sm sm:p-5"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 id="standard-pricing-heading" className="font-semibold">
+            <Tx
+              k="host.calendar.standard_pricing.title"
+              source="Standard pricing"
+            />
+          </h2>
+          <p className="mt-0.5 text-sm text-muted-foreground md:text-xs">
+            <Tx
+              k="host.calendar.standard_pricing.hint"
+              source="Used on dates without a custom date price."
+            />
+          </p>
+        </div>
+        <Button type="button" variant="outline" size="sm" onClick={onEdit}>
+          <Pencil className="size-3.5" aria-hidden="true" />
+          <Tx k="host.calendar.standard_pricing.edit" source="Edit" />
+        </Button>
+      </div>
+      <dl className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <div className="rounded-xl bg-muted/35 px-3 py-2.5">
+          <dt className="text-xs text-muted-foreground">
+            <Tx
+              k="host.calendar.standard_pricing.base_price"
+              source="Base price"
+            />
+          </dt>
+          <dd className="mt-0.5 text-sm font-semibold">
+            <span className="notranslate" translate="no">
+              {money.format(baseNightlyRate)}
+            </span>{" "}
+            <span className="font-normal text-muted-foreground">
+              <Tx
+                k="host.calendar.standard_pricing.per_night"
+                source="/ night"
+              />
+            </span>
+          </dd>
+        </div>
+        <div className="rounded-xl bg-muted/35 px-3 py-2.5">
+          <dt className="text-xs text-muted-foreground">
+            <Tx
+              k="host.calendar.standard_pricing.cleaning_fee"
+              source="Cleaning fee"
+            />
+          </dt>
+          <dd className="mt-0.5 text-sm font-semibold">
+            <span className="notranslate" translate="no">
+              {money.format(cleaningFee)}
+            </span>{" "}
+            <span className="font-normal text-muted-foreground">
+              <Tx
+                k="host.calendar.standard_pricing.per_stay"
+                source="/ stay"
+              />
+            </span>
+          </dd>
+        </div>
+        <div className="rounded-xl bg-muted/35 px-3 py-2.5">
+          <dt className="text-xs text-muted-foreground">
+            <Tx
+              k="host.calendar.standard_pricing.minimum_stay"
+              source="Minimum stay"
+            />
+          </dt>
+          <dd className="mt-0.5 text-sm font-semibold">
+            <span className={translatedClass(minimumStay)}>
+              {minimumStay.text}
+            </span>
+          </dd>
+        </div>
+      </dl>
+    </section>
+  );
+}
+
 export function OptionToggle({
   checked,
   label,
   description,
   onChange,
+  disabled = false,
 }: {
   checked: boolean;
   label: string;
   description: string;
   onChange: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      disabled={disabled}
       onClick={onChange}
       className={cn(
         "flex w-full items-center justify-between gap-4 rounded-xl border p-3 text-left transition-colors",
+        disabled && "cursor-not-allowed opacity-60",
         checked
           ? "border-primary bg-primary/5"
-          : "bg-muted/20 hover:border-primary/30",
+          : "bg-muted/20 enabled:hover:border-primary/30",
       )}
     >
       <span>

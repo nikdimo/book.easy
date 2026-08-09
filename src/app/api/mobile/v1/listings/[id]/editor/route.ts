@@ -7,6 +7,7 @@ import {
   getPropertyTypeOption,
 } from "@/lib/services/property-type.service";
 import { mobileJson, mobileOptions, requireMobileHost } from "@/lib/mobile-api";
+import { appendMobileListingEditorTextFields } from "@/lib/mobile-listing-editor";
 
 /** Loads and saves an existing listing for the native editor.
  *
@@ -17,35 +18,6 @@ import { mobileJson, mobileOptions, requireMobileHost } from "@/lib/mobile-api";
  *
  *  PUT delegates to updateListing, the same action the web form posts to, so
  *  validation, media handling and moderation state stay in one place. */
-
-const TEXT_FIELDS = [
-  "title",
-  "description",
-  "propertyType",
-  "address",
-  "city",
-  "area",
-  "postalCode",
-  "country",
-  "latitude",
-  "longitude",
-  "locationSource",
-  "locationConfirmed",
-  "geocodingProvider",
-  "geocodingPlaceId",
-  "geocodingConfidence",
-  "streetViewHeading",
-  "streetViewPitch",
-  "streetViewPanoId",
-  "maxGuests",
-  "bedrooms",
-  "bathrooms",
-  "beds",
-  "currency",
-  "baseNightlyRate",
-  "cleaningFee",
-  "minNights",
-] as const;
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -123,10 +95,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
   }
 
   const formData = new FormData();
-  for (const field of TEXT_FIELDS) {
-    const value = body[field];
-    if (value !== undefined && value !== null) formData.set(field, String(value));
-  }
+  appendMobileListingEditorTextFields(formData, body);
   if (Array.isArray(body.amenityIds)) {
     for (const amenityId of body.amenityIds) {
       formData.append("amenityIds", String(amenityId));

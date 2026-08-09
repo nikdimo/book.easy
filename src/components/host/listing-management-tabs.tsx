@@ -46,9 +46,9 @@ export function ListingManagementTabs({
       // Tapping a tab must not count as clicking away from the calendar, or the
       // selection would be cleared on the way out and arrive here empty.
       data-keeps-calendar-selection
-      className="touch-pan-x overflow-x-auto overflow-y-hidden border-b [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className="sticky top-0 z-20 touch-pan-x bg-background/95 py-1 backdrop-blur md:static md:bg-transparent md:py-0 md:backdrop-blur-none"
     >
-      <div className="flex min-w-max gap-1">
+      <div className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-1 md:flex md:min-w-max md:rounded-none md:bg-transparent md:p-0">
         {tabs.map((tab) => {
           const active = pathname === tab.path;
           const Icon = tab.icon;
@@ -58,10 +58,10 @@ export function ListingManagementTabs({
               href={`${tab.path}${preserveQuery}`}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "relative flex min-h-12 items-center gap-2 rounded-t-lg border border-b-0 px-4 py-3 text-sm font-semibold transition-colors",
+                "relative flex min-h-11 items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-semibold transition-colors md:min-h-12 md:justify-start md:gap-2 md:rounded-t-lg md:border md:border-b-0 md:px-4 md:py-3 md:text-sm",
                 active
-                  ? "border-border bg-background text-foreground after:absolute after:inset-x-0 after:-bottom-px after:h-px after:bg-background"
-                  : "border-transparent bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                  ? "bg-background text-foreground shadow-sm md:border-border md:shadow-none md:after:absolute md:after:inset-x-0 md:after:-bottom-px md:after:h-px md:after:bg-background"
+                  : "text-muted-foreground hover:bg-background/60 hover:text-foreground md:border-transparent md:bg-muted/50 md:hover:bg-muted md:hover:text-foreground"
               )}
             >
               <Icon className="size-4" aria-hidden="true" />

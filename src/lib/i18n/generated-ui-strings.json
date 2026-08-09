@@ -2191,7 +2191,7 @@
   },
   {
     "key": "host.calendar.additional_defaults",
-    "sourceText": "Additional default settings",
+    "sourceText": "Standard stay settings",
     "filePath": "src/components/host/calendar-workspace.tsx"
   },
   {
@@ -2247,7 +2247,7 @@
   {
     "key": "host.calendar.legend_custom_price",
     "sourceText": "Custom price",
-    "filePath": "src/components/host/calendar-workspace.tsx"
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
   },
   {
     "key": "host.calendar.legend_promotion",
@@ -2266,17 +2266,12 @@
   },
   {
     "key": "host.calendar.minimum_nights",
-    "sourceText": "Minimum nights",
+    "sourceText": "Minimum stay",
     "filePath": "src/components/host/calendar-workspace.tsx"
   },
   {
     "key": "host.calendar.needs_pricing",
     "sourceText": "Add pricing on the listing edit page before managing the calendar.",
-    "filePath": "src/app/(host)/host/listings/[id]/_calendar/lens-page.tsx"
-  },
-  {
-    "key": "host.calendar.next",
-    "sourceText": "Next:",
     "filePath": "src/app/(host)/host/listings/[id]/_calendar/lens-page.tsx"
   },
   {
@@ -2295,8 +2290,93 @@
     "filePath": "src/components/host/calendar-workspace.tsx"
   },
   {
+    "key": "host.calendar.price_editor.base_price",
+    "sourceText": "Base price",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.price_editor.current_base_price",
+    "sourceText": "Current base price",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.price_editor.custom_description",
+    "sourceText": "Set a price for the selected dates.",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.price_editor.custom_price",
+    "sourceText": "Custom date price",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.price_editor.custom_saved",
+    "sourceText": "Custom date price saved.",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.price_editor.custom_scope_hint",
+    "sourceText": "This custom date price overrides the base price only for the selected dates.",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.price_editor.custom_title",
+    "sourceText": "Set custom date price",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.price_editor.new_base_price",
+    "sourceText": "New base price",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.price_editor.save_custom",
+    "sourceText": "Save custom date price",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.price_editor.save_standard",
+    "sourceText": "Save standard pricing",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.price_editor.standard_description",
+    "sourceText": "Change the base price, cleaning fee, or minimum stay.",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.price_editor.standard_saved",
+    "sourceText": "Standard pricing saved.",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.price_editor.standard_scope_hint",
+    "sourceText": "Existing custom date prices remain unchanged. The new base price applies everywhere else.",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.price_editor.standard_title",
+    "sourceText": "Edit standard pricing",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
     "key": "host.calendar.price_hint",
     "sourceText": "Enter an exact amount or choose a quick adjustment below.",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.promotion_free_cleaning",
+    "sourceText": "Add free cleaning",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.promotion_free_cleaning_hint",
+    "sourceText": "Guests save the {fee} cleaning fee on qualifying stays.",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.promotion_no_cleaning_fee",
+    "sourceText": "There is no cleaning fee to waive. Set one in Pricing first.",
     "filePath": "src/components/host/calendar-workspace.tsx"
   },
   {
@@ -2305,8 +2385,23 @@
     "filePath": "src/components/host/calendar-workspace.tsx"
   },
   {
+    "key": "host.calendar.promotion_set_cleaning_fee",
+    "sourceText": "Set cleaning fee in Pricing",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
     "key": "host.calendar.protected_reservation",
     "sourceText": "Protected reservation",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.published_legend_base_price_hint",
+    "sourceText": "Dates without a custom date price use the base price of {rate}.",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.published_legend_custom_date_price",
+    "sourceText": "Custom date price",
     "filePath": "src/components/host/calendar-workspace.tsx"
   },
   {
@@ -2318,6 +2413,76 @@
     "key": "host.calendar.recommended_offers",
     "sourceText": "Recommended offers",
     "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.standard_pricing.base_price",
+    "sourceText": "Base price",
+    "filePath": "src/components/host/calendar-editor-ui.tsx"
+  },
+  {
+    "key": "host.calendar.standard_pricing.cleaning_fee",
+    "sourceText": "Cleaning fee",
+    "filePath": "src/components/host/calendar-editor-ui.tsx"
+  },
+  {
+    "key": "host.calendar.standard_pricing.edit",
+    "sourceText": "Edit",
+    "filePath": "src/components/host/calendar-editor-ui.tsx"
+  },
+  {
+    "key": "host.calendar.standard_pricing.hint",
+    "sourceText": "Used on dates without a custom date price.",
+    "filePath": "src/components/host/calendar-editor-ui.tsx"
+  },
+  {
+    "key": "host.calendar.standard_pricing.minimum_nights.few",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/calendar-editor-ui.tsx"
+  },
+  {
+    "key": "host.calendar.standard_pricing.minimum_nights.many",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/calendar-editor-ui.tsx"
+  },
+  {
+    "key": "host.calendar.standard_pricing.minimum_nights.one",
+    "sourceText": "{n} night",
+    "filePath": "src/components/host/calendar-editor-ui.tsx"
+  },
+  {
+    "key": "host.calendar.standard_pricing.minimum_nights.other",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/calendar-editor-ui.tsx"
+  },
+  {
+    "key": "host.calendar.standard_pricing.minimum_nights.two",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/calendar-editor-ui.tsx"
+  },
+  {
+    "key": "host.calendar.standard_pricing.minimum_nights.zero",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/calendar-editor-ui.tsx"
+  },
+  {
+    "key": "host.calendar.standard_pricing.minimum_stay",
+    "sourceText": "Minimum stay",
+    "filePath": "src/components/host/calendar-editor-ui.tsx"
+  },
+  {
+    "key": "host.calendar.standard_pricing.per_night",
+    "sourceText": "/ night",
+    "filePath": "src/components/host/calendar-editor-ui.tsx"
+  },
+  {
+    "key": "host.calendar.standard_pricing.per_stay",
+    "sourceText": "/ stay",
+    "filePath": "src/components/host/calendar-editor-ui.tsx"
+  },
+  {
+    "key": "host.calendar.standard_pricing.title",
+    "sourceText": "Standard pricing",
+    "filePath": "src/components/host/calendar-editor-ui.tsx"
   },
   {
     "key": "host.calendar.use_dates",
@@ -2520,11 +2685,6 @@
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
-    "key": "host.form.next_availability",
-    "sourceText": "Next: Availability",
-    "filePath": "src/components/host/listing-form.tsx"
-  },
-  {
     "key": "host.form.no_changes",
     "sourceText": "No changes have been made.",
     "filePath": "src/components/host/listing-form.tsx"
@@ -2620,6 +2780,41 @@
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
+    "key": "host.form.pricing.base_price",
+    "sourceText": "Base price",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.pricing.booking_settings",
+    "sourceText": "Booking settings",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.pricing.booking_settings_hint",
+    "sourceText": "Manage standard and date-specific rates in Pricing.",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.pricing.choose_currency_description",
+    "sourceText": "Search by currency name, code, symbol, or country.",
+    "filePath": "src/components/host/listing-currency-picker.tsx"
+  },
+  {
+    "key": "host.form.pricing.choose_currency_title",
+    "sourceText": "Choose the listing currency",
+    "filePath": "src/components/host/listing-currency-picker.tsx"
+  },
+  {
+    "key": "host.form.pricing.cleaning",
+    "sourceText": "Cleaning fee",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.pricing.currency_placeholder",
+    "sourceText": "Choose a currency",
+    "filePath": "src/components/host/listing-currency-picker.tsx"
+  },
+  {
     "key": "host.form.pricing.date_prices_action",
     "sourceText": "Set date prices",
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
@@ -2670,6 +2865,16 @@
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
   },
   {
+    "key": "host.form.pricing.manage",
+    "sourceText": "Manage pricing",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.pricing.minimum_stay",
+    "sourceText": "Minimum stay",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
     "key": "host.form.pricing.official_currency",
     "sourceText": "Official listing currency",
     "filePath": "src/components/host/listing-form.tsx"
@@ -2677,6 +2882,51 @@
   {
     "key": "host.form.pricing.official_currency_hint",
     "sourceText": "Your rates, bookings, payouts, and contractual totals use this currency. Guests may view an approximate conversion in their own currency.",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.pricing.selected_currency",
+    "sourceText": "Selected currency",
+    "filePath": "src/components/host/listing-currency-picker.tsx"
+  },
+  {
+    "key": "host.form.pricing.summary_minimum_nights.few",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.pricing.summary_minimum_nights.many",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.pricing.summary_minimum_nights.one",
+    "sourceText": "{n} night",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.pricing.summary_minimum_nights.other",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.pricing.summary_minimum_nights.two",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.pricing.summary_minimum_nights.zero",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.pricing.summary_per_night",
+    "sourceText": "/ night",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.pricing.summary_per_stay",
+    "sourceText": "/ stay",
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
@@ -3170,6 +3420,16 @@
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
   },
   {
+    "key": "host.prepublish.round_clean_label",
+    "sourceText": "Round to the closest round number",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.prepublish.round_hint",
+    "sourceText": "Keeps guest-facing prices clean and easy to scan.",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
     "key": "host.prepublish.set_price",
     "sourceText": "Set this price",
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
@@ -3400,28 +3660,28 @@
     "filePath": "src/components/host/suggest-missing-option.tsx"
   },
   {
-    "key": "host.workspace.availability",
-    "sourceText": "Availability",
+    "key": "host.workspace.calendar",
+    "sourceText": "Calendar",
+    "filePath": "src/app/(host)/host/listings/[id]/_calendar/lens-page.tsx"
+  },
+  {
+    "key": "host.workspace.details",
+    "sourceText": "Details",
     "filePath": "src/app/(host)/host/listings/[id]/_calendar/lens-page.tsx"
   },
   {
     "key": "host.workspace.edit",
     "sourceText": "Edit",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.workspace.nav_label",
+    "sourceText": "Listing workspace",
     "filePath": "src/app/(host)/host/listings/[id]/_calendar/lens-page.tsx"
   },
   {
     "key": "host.workspace.preview",
     "sourceText": "Preview",
-    "filePath": "src/app/(host)/host/listings/[id]/_calendar/lens-page.tsx"
-  },
-  {
-    "key": "host.workspace.pricing",
-    "sourceText": "Pricing",
-    "filePath": "src/app/(host)/host/listings/[id]/_calendar/lens-page.tsx"
-  },
-  {
-    "key": "host.workspace.promotions",
-    "sourceText": "Promos",
     "filePath": "src/app/(host)/host/listings/[id]/_calendar/lens-page.tsx"
   },
   {
@@ -4125,6 +4385,11 @@
     "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
   },
   {
+    "key": "mobile.calendar.base_price",
+    "sourceText": "Base price",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
     "key": "mobile.calendar.base_rate",
     "sourceText": "Base rate",
     "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
@@ -4205,6 +4470,11 @@
     "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
   },
   {
+    "key": "mobile.calendar.cleaning_fee",
+    "sourceText": "Cleaning fee",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
     "key": "mobile.calendar.custom_price",
     "sourceText": "Custom price",
     "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
@@ -4267,6 +4537,11 @@
   {
     "key": "mobile.calendar.manual_block",
     "sourceText": "Manual block",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.minimum_stay",
+    "sourceText": "Minimum stay",
     "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
   },
   {
@@ -4340,6 +4615,16 @@
     "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
   },
   {
+    "key": "mobile.calendar.save_pricing_error",
+    "sourceText": "Could not save pricing",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.save_standard_pricing",
+    "sourceText": "Save standard pricing",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
     "key": "mobile.calendar.select_range",
     "sourceText": "Select a date range",
     "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
@@ -4347,6 +4632,16 @@
   {
     "key": "mobile.calendar.set_rate",
     "sourceText": "Set a nightly rate for the selected range.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.standard_pricing",
+    "sourceText": "Standard pricing",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.calendar.standard_pricing_hint",
+    "sourceText": "Applies to every night without a date-specific price.",
     "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
   },
   {
@@ -4605,6 +4900,26 @@
     "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
   },
   {
+    "key": "mobile.listing_editor.booking_settings",
+    "sourceText": "Booking settings",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.listing_editor.manage_pricing",
+    "sourceText": "Manage pricing",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.listing_editor.pricing_calendar_hint",
+    "sourceText": "Standard and date-specific prices are managed together in Calendar.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.listing_editor.pricing_missing",
+    "sourceText": "Pricing has not been set for this listing yet.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
     "key": "mobile.listings.approved",
     "sourceText": "Approved",
     "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
@@ -4792,6 +5107,26 @@
   {
     "key": "mobile.notifications.subtitle",
     "sourceText": "Booking updates and new messages in one place.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.promotions.current_cleaning_fee",
+    "sourceText": "Current cleaning fee",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.promotions.set_cleaning_fee",
+    "sourceText": "Set cleaning fee in Pricing",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.promotions.waives_current_cleaning_fee",
+    "sourceText": "Waives the current cleaning fee of",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.promotions.zero_cleaning_fee_hint",
+    "sourceText": "Set a cleaning fee in Pricing before offering free cleaning.",
     "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
   },
   {
@@ -5137,7 +5472,7 @@
   {
     "key": "regional.all_currencies",
     "sourceText": "Choose a currency",
-    "filePath": "src/components/shared/regional-settings-dialog.tsx"
+    "filePath": "src/components/shared/currency-picker-panel.tsx"
   },
   {
     "key": "regional.all_languages",
@@ -5152,7 +5487,7 @@
   {
     "key": "regional.no_currencies",
     "sourceText": "No currencies found",
-    "filePath": "src/components/shared/regional-settings-dialog.tsx"
+    "filePath": "src/components/shared/currency-picker-panel.tsx"
   },
   {
     "key": "regional.rates_unavailable",
@@ -5162,12 +5497,12 @@
   {
     "key": "regional.search_currencies",
     "sourceText": "Search currencies",
-    "filePath": "src/components/shared/regional-settings-dialog.tsx"
+    "filePath": "src/components/shared/currency-picker-panel.tsx"
   },
   {
     "key": "regional.search_currencies_label",
     "sourceText": "Search currencies",
-    "filePath": "src/components/shared/regional-settings-dialog.tsx"
+    "filePath": "src/components/shared/currency-picker-panel.tsx"
   },
   {
     "key": "regional.search_languages_label",
@@ -5177,7 +5512,7 @@
   {
     "key": "regional.suggested_currencies",
     "sourceText": "Suggested currencies",
-    "filePath": "src/components/shared/regional-settings-dialog.tsx"
+    "filePath": "src/components/shared/currency-picker-panel.tsx"
   },
   {
     "key": "regional.suggested_languages",

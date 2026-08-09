@@ -190,6 +190,69 @@ export function mobileUiCatalog(translator: Translator): string[] {
       "mobile.calendar.pricing_missing_description",
       "Add pricing on the listing edit page before managing the calendar."
     ),
+    t(
+      translator,
+      "mobile.calendar.standard_pricing",
+      "Standard pricing"
+    ),
+    t(
+      translator,
+      "mobile.calendar.standard_pricing_hint",
+      "Applies to every night without a date-specific price."
+    ),
+    t(translator, "mobile.calendar.base_price", "Base price"),
+    t(translator, "mobile.calendar.cleaning_fee", "Cleaning fee"),
+    t(translator, "mobile.calendar.minimum_stay", "Minimum stay"),
+    t(
+      translator,
+      "mobile.calendar.save_standard_pricing",
+      "Save standard pricing"
+    ),
+    t(
+      translator,
+      "mobile.calendar.save_pricing_error",
+      "Could not save pricing"
+    ),
+    t(
+      translator,
+      "mobile.listing_editor.booking_settings",
+      "Booking settings"
+    ),
+    t(
+      translator,
+      "mobile.listing_editor.manage_pricing",
+      "Manage pricing"
+    ),
+    t(
+      translator,
+      "mobile.listing_editor.pricing_missing",
+      "Pricing has not been set for this listing yet."
+    ),
+    t(
+      translator,
+      "mobile.listing_editor.pricing_calendar_hint",
+      "Standard and date-specific prices are managed together in Calendar."
+    ),
+    t(
+      translator,
+      "mobile.promotions.waives_current_cleaning_fee",
+      "Waives the current cleaning fee of"
+    ),
+    t(
+      translator,
+      "mobile.promotions.current_cleaning_fee",
+      "Current cleaning fee"
+    ),
+    t(
+      translator,
+      "mobile.promotions.zero_cleaning_fee_hint",
+      "Set a cleaning fee in Pricing before offering free cleaning."
+    ),
+    t(
+      translator,
+      "mobile.promotions.set_cleaning_fee",
+      "Set cleaning fee in Pricing"
+    ),
     t(translator, "mobile.notifications.activity", "ACTIVITY"),
     t(
       translator,

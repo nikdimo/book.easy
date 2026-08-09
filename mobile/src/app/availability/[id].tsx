@@ -26,10 +26,15 @@ import { colors, radii, spacing, type } from "@/theme";
  *  the web workspace. Only the action panel beneath the month grid swaps. */
 export default function AvailabilityScreen() {
   const describeError = useApiError();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{
+    id?: string | string[];
+    lens?: string | string[];
+  }>();
+  const id = firstParam(params.id);
+  const initialLens = calendarLensFromParam(firstParam(params.lens));
   const [data, setData] = useState<AvailabilityResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [lens, setLens] = useState<CalendarLens>("availability");
+  const [lens, setLens] = useState<CalendarLens>(initialLens);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -110,6 +115,7 @@ export default function AvailabilityScreen() {
                 currency={data.listing.currency}
                 selection={selection}
                 reload={load}
+                onManagePricing={() => setLens("pricing")}
               />
             )}
           />
@@ -117,6 +123,14 @@ export default function AvailabilityScreen() {
       ) : null}
     </AppScreen>
   );
+}
+
+function firstParam(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function calendarLensFromParam(value: string | undefined): CalendarLens {
+  return value === "pricing" || value === "promotions" ? value : "availability";
 }
 
 /** The listing-wide fallback price, distinct from a date-specific override. Shown
@@ -168,14 +182,14 @@ function DefaultPricing({
 
   return (
     <View style={styles.card}>
-      <Text style={styles.cardTitle}>{t("Default pricing")}</Text>
+      <Text style={styles.cardTitle}>{t("Standard pricing")}</Text>
       <Text style={styles.cardHint}>
         {t("Applies to every night without a date-specific price.")}
       </Text>
       <View style={styles.row}>
         <View style={{ flex: 1 }}>
           <LabeledInput
-            label={t("Nightly rate")}
+            label={`${t("Base price")} (${data.listing.currency})`}
             keyboardType="decimal-pad"
             value={rate}
             onChangeText={setRate}
@@ -183,7 +197,7 @@ function DefaultPricing({
         </View>
         <View style={{ flex: 1 }}>
           <LabeledInput
-            label={t("Cleaning fee")}
+            label={`${t("Cleaning fee")} (${data.listing.currency})`}
             keyboardType="decimal-pad"
             value={fee}
             onChangeText={setFee}
@@ -191,13 +205,13 @@ function DefaultPricing({
         </View>
       </View>
       <LabeledInput
-        label={t("Minimum nights")}
+        label={t("Minimum stay")}
         keyboardType="number-pad"
         value={nights}
         onChangeText={setNights}
       />
       <PrimaryButton
-        label={busy ? "Saving…" : "Save default pricing"}
+        label={t(busy ? "Saving…" : "Save standard pricing")}
         disabled={!changed || busy}
         onPress={() => void save()}
       />

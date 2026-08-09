@@ -142,8 +142,19 @@ export function Header({
             title={SITE_DOMAIN}
             translate="no"
           >
-            <BrandLogo compact className="h-11 2xl:hidden" />
-            <BrandLogo className="hidden h-[58px] 2xl:block" />
+            <BrandLogo
+              compact
+              className={cn(
+                "h-11 2xl:hidden",
+                isHomePage && "min-[360px]:hidden",
+              )}
+            />
+            <BrandLogo
+              className={cn(
+                "hidden h-[58px] 2xl:block",
+                isHomePage && "min-[360px]:block min-[360px]:h-11 2xl:h-[58px]",
+              )}
+            />
           </Link>
         </div>
 
@@ -168,7 +179,7 @@ export function Header({
           <div
             className={cn(
               "@container w-full max-w-md items-center justify-center 2xl:hidden",
-              isHomePage ? "flex md:hidden" : "flex",
+              isHomePage ? "hidden" : "flex",
             )}
           >
             <MarketplaceSearchBar
@@ -182,7 +193,9 @@ export function Header({
         </div>
 
         <div className="flex items-center justify-end gap-2 min-w-0">
-          {regionalSettings}
+          <div className={cn(isHomePage && "hidden md:block")}>
+            {regionalSettings}
+          </div>
           {user ? (
             <>
               <Tooltip>
@@ -209,7 +222,9 @@ export function Header({
                   {navLabels.favorites.text}
                 </TooltipContent>
               </Tooltip>
-              <NotificationBell enabled />
+              <div className={cn(isHomePage && "hidden md:block")}>
+                <NotificationBell enabled />
+              </div>
             </>
           ) : null}
           {user?.isHost ? (
@@ -267,9 +282,17 @@ export function Header({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="flex items-center gap-2 border rounded-full p-1.5 pl-3 hover:shadow-md transition-shadow cursor-pointer bg-background text-left"
+                  className={cn(
+                    "flex items-center gap-2 border rounded-full p-1.5 pl-3 hover:shadow-md transition-shadow cursor-pointer bg-background text-left",
+                    isHomePage && "pl-1.5 md:pl-3",
+                  )}
                 >
-                  <SlidersHorizontal className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <SlidersHorizontal
+                    className={cn(
+                      "h-4 w-4 text-muted-foreground shrink-0",
+                      isHomePage && "hidden md:block",
+                    )}
+                  />
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="text-xs bg-muted text-foreground">
                       {initials}

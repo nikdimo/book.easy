@@ -1,6 +1,6 @@
 /**
- * The five screens a host moves between while working on one listing. Preview leads:
- * see the listing, change it, then manage how it sells.
+ * Route-level stops still include each Calendar lens so deep links stay explicit.
+ * Primary navigation groups those lenses under the Calendar destination below.
  *
  * This lives outside the bottom-nav component on purpose. That component is
  * "use client", and every export of a client module reaches a server component as a
@@ -15,12 +15,26 @@
  */
 export const LISTING_ACTION_BAR_ID = "listing-action-bar";
 
+/** Route-level stops, including the three lenses nested inside Calendar. */
 export type ListingWorkspaceStop =
   | "preview"
   | "edit"
   | "availability"
   | "pricing"
   | "promotions";
+
+export type ListingPrimaryDestination = "details" | "calendar" | "preview";
+
+/** Published-listing management has three primary destinations. */
+export const LISTING_PRIMARY_DESTINATIONS: {
+  destination: ListingPrimaryDestination;
+  stop: ListingWorkspaceStop;
+  label: string;
+}[] = [
+  { destination: "details", stop: "edit", label: "Details" },
+  { destination: "calendar", stop: "availability", label: "Calendar" },
+  { destination: "preview", stop: "preview", label: "Preview" },
+];
 
 export const LISTING_WORKSPACE_STOPS: {
   stop: ListingWorkspaceStop;
@@ -33,6 +47,10 @@ export const LISTING_WORKSPACE_STOPS: {
   { stop: "pricing", label: "Pricing", segment: "pricing" },
   { stop: "promotions", label: "Promos", segment: "promotion" },
 ];
+
+export function isCalendarWorkspaceStop(stop: ListingWorkspaceStop): boolean {
+  return stop === "availability" || stop === "pricing" || stop === "promotions";
+}
 
 export function listingStopHref(
   listingId: string,

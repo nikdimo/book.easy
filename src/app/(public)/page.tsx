@@ -192,19 +192,26 @@ function OwnerGrowthHero({
         />
 
         <div className="relative z-10 flex min-h-[410px] select-none flex-col items-center justify-center px-6 py-8 md:min-h-[500px] md:px-12 md:pt-24">
-          <div
-            className="hidden w-full max-w-5xl select-auto md:block"
-            data-home-hero-search
-          >
-            <MarketplaceSearchBar
-              variant="pill"
-              popularCities={popularCities}
-              availablePropertyTypesByCity={availablePropertyTypesByCity}
-              propertyTypes={propertyTypes}
-            />
+          <div className="w-full max-w-5xl select-auto" data-home-hero-search>
+            <div className="@container mx-auto w-full max-w-md md:hidden">
+              <MarketplaceSearchBar
+                variant="summary"
+                popularCities={popularCities}
+                availablePropertyTypesByCity={availablePropertyTypesByCity}
+                propertyTypes={propertyTypes}
+              />
+            </div>
+            <div className="hidden md:block">
+              <MarketplaceSearchBar
+                variant="pill"
+                popularCities={popularCities}
+                availablePropertyTypesByCity={availablePropertyTypesByCity}
+                propertyTypes={propertyTypes}
+              />
+            </div>
           </div>
 
-          <div className="mx-auto mt-0 w-full max-w-[80rem] text-center md:mt-7">
+          <div className="mx-auto mt-7 w-full max-w-[80rem] text-center">
             <h2
               id="owner-growth-title"
               className="mx-auto max-w-[80rem] break-words text-3xl font-semibold leading-[1.08] tracking-tight text-white sm:text-5xl md:text-[clamp(2rem,3.2vw,3.5rem)]"
