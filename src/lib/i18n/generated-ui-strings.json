@@ -2780,6 +2780,11 @@
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
+    "key": "host.form.pricing.about_currency",
+    "sourceText": "about the listing currency",
+    "filePath": "src/components/host/listing-currency-picker.tsx"
+  },
+  {
     "key": "host.form.pricing.base_price",
     "sourceText": "Base price",
     "filePath": "src/components/host/listing-form.tsx"
@@ -2793,11 +2798,6 @@
     "key": "host.form.pricing.booking_settings_hint",
     "sourceText": "Manage standard and date-specific rates in Pricing.",
     "filePath": "src/components/host/listing-form.tsx"
-  },
-  {
-    "key": "host.form.pricing.choose_currency_description",
-    "sourceText": "Search by currency name, code, symbol, or country.",
-    "filePath": "src/components/host/listing-currency-picker.tsx"
   },
   {
     "key": "host.form.pricing.choose_currency_title",
@@ -2875,14 +2875,14 @@
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
-    "key": "host.form.pricing.official_currency",
-    "sourceText": "Official listing currency",
-    "filePath": "src/components/host/listing-form.tsx"
-  },
-  {
     "key": "host.form.pricing.official_currency_hint",
     "sourceText": "Your rates, bookings, payouts, and contractual totals use this currency. Guests may view an approximate conversion in their own currency.",
-    "filePath": "src/components/host/listing-form.tsx"
+    "filePath": "src/components/host/listing-currency-picker.tsx"
+  },
+  {
+    "key": "host.form.pricing.prices_in",
+    "sourceText": "Prices in",
+    "filePath": "src/components/host/listing-currency-picker.tsx"
   },
   {
     "key": "host.form.pricing.selected_currency",

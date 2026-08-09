@@ -552,8 +552,19 @@ export function DatePricingCta({
     // the host is setting rather than as an advert bolted under it.
     <div className="flex min-h-14 flex-col gap-2.5 border-b border-border/60 px-3 py-3 last:border-b-0 sm:flex-row sm:items-center sm:gap-2.5 md:min-h-[88px] md:gap-4 md:px-4 md:py-4 md:sm:px-6">
       <div className="flex min-w-0 flex-1 items-center gap-2.5 md:gap-4">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary md:size-10 md:rounded-xl">
-          <CalendarRange className="size-4 md:size-5" aria-hidden="true" />
+        <span
+          className={cn(
+            "flex size-8 shrink-0 items-center justify-center rounded-lg md:size-10 md:rounded-xl",
+            hasPrices
+              ? "bg-primary text-primary-foreground"
+              : "bg-primary/10 text-primary",
+          )}
+        >
+          {hasPrices ? (
+            <Check className="size-4 md:size-5" strokeWidth={3} aria-hidden="true" />
+          ) : (
+            <CalendarRange className="size-4 md:size-5" aria-hidden="true" />
+          )}
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold md:text-base">

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   prePublishBackTarget,
+  prePublishTaskPrimaryAction,
   type PrePublishNavScreen,
 } from "@/lib/types/listing-prepublish-navigation";
 import {
@@ -36,6 +37,25 @@ describe("prePublishBackTarget", () => {
   it("does nothing when the host is already in the wizard proper", () => {
     expect(prePublishBackTarget(null, "menu")).toBeNull();
     expect(prePublishBackTarget(null, "pricing-step")).toBeNull();
+  });
+});
+
+describe("prePublishTaskPrimaryAction", () => {
+  it("shows Done before a range is selected", () => {
+    expect(prePublishTaskPrimaryAction("pricing", false)).toBe("done");
+    expect(prePublishTaskPrimaryAction("offers", false)).toBe("done");
+  });
+
+  it("opens the price editor for a selected pricing range", () => {
+    expect(prePublishTaskPrimaryAction("pricing", true)).toBe("edit-price");
+  });
+
+  it("opens the promotion editor for a selected promotion range", () => {
+    expect(prePublishTaskPrimaryAction("offers", true)).toBe("add-promotion");
+  });
+
+  it("does not replace Done on the availability calendar", () => {
+    expect(prePublishTaskPrimaryAction("availability", true)).toBe("done");
   });
 });
 

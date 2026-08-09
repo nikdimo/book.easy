@@ -29,6 +29,23 @@ export type PrePublishOrigin =
   | "offer-step"
   | "availability-start";
 
+export type PrePublishTaskPrimaryAction =
+  | "done"
+  | "edit-price"
+  | "add-promotion";
+
+/** The wizard footer starts as Done. A selected range temporarily turns it into the
+ * editor opener for the task, then saving clears the range and restores Done. */
+export function prePublishTaskPrimaryAction(
+  screen: PrePublishNavScreen | null,
+  hasSelection: boolean,
+): PrePublishTaskPrimaryAction {
+  if (!hasSelection) return "done";
+  if (screen === "pricing") return "edit-price";
+  if (screen === "offers") return "add-promotion";
+  return "done";
+}
+
 /**
  * The screen a Back or Done press should land on, or `null` to leave the pre-publish
  * flow entirely and return to the numbered wizard step underneath.

@@ -16,6 +16,7 @@ import { ListingBottomNav } from "@/components/host/listing-bottom-nav";
 import { ListingWizardHeaderActions } from "@/components/host/listing-wizard-header-actions";
 import { ListingCurrencyPicker } from "@/components/host/listing-currency-picker";
 import { listingStopHref } from "@/lib/host/listing-workspace";
+import { promotionWizardIssues } from "@/lib/host/listing-wizard-validation";
 import { zodFieldErrors } from "@/lib/utils/zod-error";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -71,6 +72,7 @@ import {
 } from "@/lib/types/listing-prepublish-plan";
 import {
   prePublishBackTarget,
+  prePublishTaskPrimaryAction,
   type PrePublishOrigin,
 } from "@/lib/types/listing-prepublish-navigation";
 import { availabilityBlocksPublish } from "@/lib/types/listing-availability-start";
@@ -419,6 +421,9 @@ function stepForField(field: string) {
   }
   if (field === "media" || field === "mediaUpload") return LISTING_STEP.photos;
   if (field === "title" || field === "description") return LISTING_STEP.description;
+  if (field === "promotionPercent" || field === "promotionMinimumNights") {
+    return LISTING_STEP.specialOffer;
+  }
   return LISTING_STEP.pricing;
 }
 
@@ -476,6 +481,10 @@ function listingStepIssues(
         message: `Add ${remaining} more ${remaining === 1 ? "photo" : "photos"} to continue`,
       });
     }
+  }
+
+  if (step === LISTING_STEP.specialOffer) {
+    issues.push(...promotionWizardIssues(values));
   }
 
   return issues;
@@ -678,11 +687,13 @@ export function ListingForm({
   const [prePublishSelection, setPrePublishSelection] =
     useState<PrePublishRange | null>(null);
   const prePublishActions = useRef<PrePublishTaskActions | null>(null);
-  const taskSelectionActive =
-    (prePublishScreen === "pricing" || prePublishScreen === "offers") &&
-    prePublishSelection !== null;
+  const selectedTaskAction = prePublishTaskPrimaryAction(
+    prePublishScreen,
+    prePublishSelection !== null,
+  );
+  const taskSelectionActive = selectedTaskAction !== "done";
   const selectedTaskActionLabel =
-    prePublishScreen === "offers"
+    selectedTaskAction === "add-promotion"
       ? resolve("host.prepublish.add_promotion", "Add promotion").text
       : resolve("host.prepublish.edit_price", "Edit price").text;
   /** A create-wizard step check. Always false while editing, where sections are shown
@@ -742,6 +753,13 @@ export function ListingForm({
     values.promotionPercent !== "";
   const hasFreeCleaningOffer = values.promotionFreeCleaning === "true";
   const hasLaunchOffer = hasPercentOffer || hasFreeCleaningOffer;
+  const promotionIssues = promotionWizardIssues(values);
+  const promotionPercentIssue = promotionIssues.find(
+    (issue) => issue.field === "promotionPercent",
+  )?.message;
+  const promotionMinimumNightsIssue = promotionIssues.find(
+    (issue) => issue.field === "promotionMinimumNights",
+  )?.message;
   const offerMinimumNights = Number(values.promotionMinimumNights);
   const offerHasStayThreshold =
     Number.isInteger(offerMinimumNights) && offerMinimumNights > 1;
@@ -791,6 +809,14 @@ export function ListingForm({
     isEditing,
     availabilityStart: prePublishPlan.availabilityStart,
   });
+  /** Why Continue is held on the availability question. Undefined once answered, so
+   *  an enabled button carries no tooltip. */
+  const availabilityContinueHint = availabilityUnconfirmed
+    ? resolve(
+        "host.form.continue_blocked_availability",
+        "Choose when guests can start booking to continue",
+      ).text
+    : undefined;
   const canPublishNew = listingReady && !availabilityUnconfirmed;
   const canPublishFromReview = canPublishNew && prePublishScreen === "menu";
   // Hold Continue while the geocoder is still running, so the host can't land on
@@ -2134,21 +2160,22 @@ export function ListingForm({
             }
           >
             <div className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
-              <div className="space-y-2 border-b border-border/70 p-5">
-                <Label htmlFor="currency"><Tx k="host.form.pricing.official_currency" source="Official listing currency" /></Label>
+              <div className="border-b border-border/70 bg-muted/40">
                 <ListingCurrencyPicker
                   currencies={currencies}
                   value={values.currency}
                   invalid={Boolean(fieldErrors.currency)}
+                  variant="header"
                   onChange={(code) => {
                     setField("currency", code);
                     validateFieldOnBlur("currency", code);
                   }}
                 />
-                <p className="text-xs text-muted-foreground">
-                  <Tx k="host.form.pricing.official_currency_hint" source="Your rates, bookings, payouts, and contractual totals use this currency. Guests may view an approximate conversion in their own currency." />
-                </p>
-                <FieldError message={fieldErrors.currency} />
+                {fieldErrors.currency && (
+                  <div className="px-3 pb-2 md:px-4">
+                    <FieldError message={fieldErrors.currency} />
+                  </div>
+                )}
               </div>
               {isEditing ? (
                 <div className="space-y-4 p-5">
@@ -2433,11 +2460,13 @@ export function ListingForm({
                             }}
                             onBlur={() => void autosaveDraft()}
                             className="pr-9"
+                            aria-invalid={Boolean(promotionPercentIssue) || undefined}
                           />
                           <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground">
                             %
                           </span>
                         </div>
+                        <FieldError message={promotionPercentIssue} />
                       </div>
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between gap-3">
@@ -2485,7 +2514,11 @@ export function ListingForm({
                             );
                           }}
                           onBlur={() => void autosaveDraft()}
+                          aria-invalid={
+                            Boolean(promotionMinimumNightsIssue) || undefined
+                          }
                         />
+                        <FieldError message={promotionMinimumNightsIssue} />
                       </div>
                     </div>
                     <div className="mt-2 flex items-center justify-end gap-2.5">
@@ -2534,7 +2567,7 @@ export function ListingForm({
                         <span
                           aria-hidden="true"
                           className={cn(
-                            "relative h-5 w-9 rounded-full transition-colors",
+                            "inline-flex h-5 w-9 shrink-0 items-center rounded-full px-0.5 transition-colors",
                             values.promotionFreeCleaning === "true"
                               ? "bg-primary"
                               : "bg-muted-foreground/25",
@@ -2542,10 +2575,10 @@ export function ListingForm({
                         >
                           <span
                             className={cn(
-                              "absolute top-0.5 size-4 rounded-full bg-white shadow-sm transition-transform",
+                              "size-4 rounded-full bg-white shadow-sm transition-transform",
                               values.promotionFreeCleaning === "true"
                                 ? "translate-x-4"
-                                : "translate-x-0.5",
+                                : "translate-x-0",
                             )}
                           />
                         </span>
@@ -2558,8 +2591,19 @@ export function ListingForm({
                     onClick={openDateOffersFromOfferStep}
                     className="flex min-h-12 w-full items-center gap-2.5 rounded-xl border px-3 py-2 text-left transition-colors hover:border-primary/40"
                   >
-                    <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
-                      <CalendarRange className="size-4" aria-hidden="true" />
+                    <span
+                      className={cn(
+                        "grid size-8 shrink-0 place-items-center rounded-lg",
+                        prePublishPlan.offers.length > 0
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-primary/10 text-primary",
+                      )}
+                    >
+                      {prePublishPlan.offers.length > 0 ? (
+                        <Check className="size-4" strokeWidth={3} aria-hidden="true" />
+                      ) : (
+                        <CalendarRange className="size-4" aria-hidden="true" />
+                      )}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-semibold">
@@ -2831,19 +2875,22 @@ export function ListingForm({
                     task screen's primary action returns to wherever it was opened
                     from; the checklist itself is where publishing happens. */}
                 {prePublishScreen === "availability-start" ? (
-                  <Button
-                    type="button"
-                    // Left enabled so pressing it can say what is missing. A dead
-                    // button with no explanation is the worse of the two failures.
-                    onClick={continueFromAvailabilityStart}
-                    aria-describedby={
-                      availabilityUnconfirmed
-                        ? AVAILABILITY_START_ERROR_ID
-                        : undefined
-                    }
-                  >
-                    <ContinueLabel searching={false} />
-                  </Button>
+                  // The span carries the tooltip: a disabled button takes no
+                  // pointer events, so hovering it alone would say nothing.
+                  <span title={availabilityContinueHint}>
+                    <Button
+                      type="button"
+                      disabled={availabilityUnconfirmed}
+                      onClick={continueFromAvailabilityStart}
+                      aria-describedby={
+                        availabilityUnconfirmed
+                          ? AVAILABILITY_START_ERROR_ID
+                          : undefined
+                      }
+                    >
+                      <ContinueLabel searching={false} />
+                    </Button>
+                  </span>
                 ) : prePublishScreen !== null && prePublishScreen !== "menu" ? (
                   <div className="flex items-center gap-2">
                     {taskSelectionActive ? (
@@ -3135,17 +3182,22 @@ export function ListingForm({
               </span>
             </Button>
             {prePublishScreen === "availability-start" ? (
-              <Button
-                type="button"
-                size="lg"
-                className="flex-1"
-                onClick={continueFromAvailabilityStart}
-                aria-describedby={
-                  availabilityUnconfirmed ? AVAILABILITY_START_ERROR_ID : undefined
-                }
-              >
-                <ContinueLabel searching={false} />
-              </Button>
+              <span className="flex-1" title={availabilityContinueHint}>
+                <Button
+                  type="button"
+                  size="lg"
+                  className="w-full"
+                  disabled={availabilityUnconfirmed}
+                  onClick={continueFromAvailabilityStart}
+                  aria-describedby={
+                    availabilityUnconfirmed
+                      ? AVAILABILITY_START_ERROR_ID
+                      : undefined
+                  }
+                >
+                  <ContinueLabel searching={false} />
+                </Button>
+              </span>
             ) : prePublishScreen !== null && prePublishScreen !== "menu" ? (
               <Button
                 type="button"
