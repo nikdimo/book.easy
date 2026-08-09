@@ -272,6 +272,13 @@ export async function createBooking(input: CreateBookingInput) {
             where: { disabledAt: null },
             orderBy: { createdAt: "desc" },
           },
+          availabilityWindows: {
+            where: {
+              startDate: { lte: checkIn },
+              endDate: { gte: checkOut },
+            },
+            select: { id: true },
+          },
         },
       });
 
@@ -281,6 +288,15 @@ export async function createBooking(input: CreateBookingInput) {
 
       if (!listing.pricingRule) {
         throw new Error("Listing pricing not configured");
+      }
+
+      if (
+        listing.availabilityMode === "CLOSED" &&
+        listing.availabilityWindows.length === 0
+      ) {
+        throw new Error(
+          "These dates are not open for booking. Please select different dates.",
+        );
       }
 
       // 2. Validate guest count

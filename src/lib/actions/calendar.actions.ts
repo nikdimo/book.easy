@@ -3,12 +3,16 @@
 import {
   blockAllFutureDates,
   blockDates,
+  closeAvailabilityWindowRange,
   makeAllFutureDatesAvailable,
+  openAvailabilityWindowRange,
   removeListingDatePriceRange,
   unblockDateRange,
   upsertListingDatePriceRange,
+  setListingAvailabilityMode,
 } from "@/lib/actions/availability.actions";
 import { submitForReview, unpublishListing } from "@/lib/actions/listing.actions";
+import { db } from "@/lib/db";
 import { saveListingPricing } from "@/lib/actions/pricing.actions";
 import {
   disableListingPromotion,
@@ -65,6 +69,14 @@ export async function blockCalendarRange(
   input: { startDate: string; endDate: string; reason?: string },
 ) {
   const formData = rangeFormData(listingId, input);
+  const listing = await db.listing.findUnique({
+    where: { id: listingId },
+    select: { availabilityMode: true },
+  });
+  if (listing?.availabilityMode === "CLOSED") {
+    const result = await closeAvailabilityWindowRange(formData);
+    return normalizedResult(result, "Dates closed.");
+  }
   if (input.reason) formData.set("reason", input.reason);
   const result = await blockDates(formData);
   return normalizedResult(result, "Dates blocked.");
@@ -74,7 +86,15 @@ export async function openCalendarRange(
   listingId: string,
   input: { startDate: string; endDate: string },
 ) {
-  const result = await unblockDateRange(rangeFormData(listingId, input));
+  const formData = rangeFormData(listingId, input);
+  const listing = await db.listing.findUnique({
+    where: { id: listingId },
+    select: { availabilityMode: true },
+  });
+  const result =
+    listing?.availabilityMode === "CLOSED"
+      ? await openAvailabilityWindowRange(formData)
+      : await unblockDateRange(formData);
   return normalizedResult(result, "Dates made available.");
 }
 
@@ -86,6 +106,19 @@ export async function blockCalendarFuture(listingId: string) {
 export async function openCalendarFuture(listingId: string) {
   const result = await makeAllFutureDatesAvailable(listingId);
   return normalizedResult(result, "All manual future blocks removed.");
+}
+
+export async function setCalendarAvailabilityMode(
+  listingId: string,
+  mode: "OPEN" | "CLOSED",
+) {
+  const result = await setListingAvailabilityMode(listingId, mode);
+  return normalizedResult(
+    result,
+    mode === "CLOSED"
+      ? "Only explicitly opened dates are now bookable."
+      : "Dates are now open unless you block them.",
+  );
 }
 
 export async function saveCalendarDefaultPricing(

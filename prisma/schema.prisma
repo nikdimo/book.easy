@@ -40,6 +40,11 @@ enum ListingStatus {
   ARCHIVED
 }
 
+enum ListingAvailabilityMode {
+  OPEN
+  CLOSED
+}
+
 enum PromotionType {
   PERCENT_DISCOUNT
   FREE_CLEANING
@@ -532,6 +537,10 @@ model Listing {
   publishedAt    DateTime?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
+  /** OPEN keeps the traditional "available unless blocked" calendar. CLOSED means
+   * only explicit availability windows can be booked. The default preserves every
+   * listing created before selected-date hosting existed. */
+  availabilityMode ListingAvailabilityMode @default(OPEN)
 
   /**
    * Time-decayed demand signal (views + heavily-weighted bookings) recomputed by a
@@ -550,6 +559,7 @@ model Listing {
   pricingRule        PricingRule?
   datePrices         ListingDatePrice[]
   availabilityBlocks AvailabilityBlock[]
+  availabilityWindows ListingAvailabilityWindow[]
   bookings           Booking[]
   suggestions        Suggestion[]
   reports            ListingReport[]
@@ -799,6 +809,21 @@ model AvailabilityBlock {
 
   @@index([listingId, startDate, endDate])
   @@index([bookingId])
+}
+
+/** Bookable windows for listings whose calendar is CLOSED by default. Stored with an
+ * exclusive end date, matching bookings and AvailabilityBlock ranges. */
+model ListingAvailabilityWindow {
+  id        String   @id @default(cuid())
+  listingId String
+  startDate DateTime @db.Date
+  endDate   DateTime @db.Date
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId, startDate, endDate])
 }
 
 // ─── Booking ────────────────────────────────────────────────────────────────────

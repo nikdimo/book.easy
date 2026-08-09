@@ -5,7 +5,6 @@ import type { DateRange } from "react-day-picker";
 import {
   ArrowRight,
   BadgePercent,
-  BedDouble,
   CalendarCheck,
   CalendarClock,
   CalendarOff,
@@ -82,7 +81,7 @@ export const AVAILABILITY_START_ERROR_ID = "availability-start-error";
 /** The handle `PrePublishTaskScreen` hands the wizard so its bottom bar can open the
  *  same editor the in-card button opens. */
 export type PrePublishTaskActions = {
-  openEditor: () => void;
+  commitSelection: () => void;
   clearSelection: () => void;
 };
 
@@ -90,7 +89,11 @@ export function prePublishTaskCount(
   plan: PrePublishPlan,
   task: PrePublishTask,
 ) {
-  if (task === "availability") return plan.blocks.length;
+  if (task === "availability") {
+    return plan.availabilityStart?.mode === "selected"
+      ? plan.openDates.length
+      : plan.blocks.length;
+  }
   if (task === "pricing") return plan.datePrices.length;
   return plan.offers.length;
 }
@@ -394,7 +397,7 @@ export function PrePublishMenu({
             )}
           >
             {availabilitySummary ? (
-              <Check className="size-5" strokeWidth={3} aria-hidden="true" />
+              <CalendarCheck className="size-5" aria-hidden="true" />
             ) : (
               <CircleAlert className="size-5" aria-hidden="true" />
             )}
@@ -423,20 +426,37 @@ export function PrePublishMenu({
                 />
               )}
             </p>
-            {plan.blocks.map((block, index) => (
+            {(plan.availabilityStart?.mode === "selected"
+              ? plan.openDates
+              : plan.blocks
+            ).map((block, index) => (
               <p
                 key={`${block.startDate}-${block.endDate}-${index}`}
                 className="mt-1 text-xs text-muted-foreground md:text-sm"
               >
                 {interpolate(
-                  i18n.resolve(
-                    "host.prepublish.review_blocked",
-                    "Blocked: {dates}",
-                  ),
+                  plan.availabilityStart?.mode === "selected"
+                    ? i18n.resolve(
+                        "host.prepublish.review_open",
+                        "Open: {dates}",
+                      )
+                    : i18n.resolve(
+                        "host.prepublish.review_blocked",
+                        "Blocked: {dates}",
+                      ),
                   { dates: formatRange(block.startDate, block.endDate, locale) },
                 ).text}
               </p>
             ))}
+            {plan.availabilityStart?.mode === "selected" &&
+            plan.openDates.length === 0 ? (
+              <p className="mt-2 text-xs font-medium text-amber-700 md:text-sm">
+                <Tx
+                  k="host.prepublish.no_open_dates_warning"
+                  source="Your listing will be live but hidden from search until you open dates."
+                />
+              </p>
+            ) : null}
           </div>
           <Button
             type="button"
@@ -474,15 +494,7 @@ export function PrePublishMenu({
                     : "bg-muted text-muted-foreground",
                 )}
               >
-                {count > 0 ? (
-                  <Check
-                    className="size-5"
-                    strokeWidth={3}
-                    aria-hidden="true"
-                  />
-                ) : (
-                  <Icon className="size-5" aria-hidden="true" />
-                )}
+                <Icon className="size-5" aria-hidden="true" />
               </span>
               <span className="min-w-0 flex-1">
                 <span className="text-sm font-semibold md:text-base">
@@ -560,11 +572,7 @@ export function DatePricingCta({
               : "bg-primary/10 text-primary",
           )}
         >
-          {hasPrices ? (
-            <Check className="size-4 md:size-5" strokeWidth={3} aria-hidden="true" />
-          ) : (
-            <CalendarRange className="size-4 md:size-5" aria-hidden="true" />
-          )}
+          <CalendarRange className="size-4 md:size-5" aria-hidden="true" />
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold md:text-base">
@@ -631,8 +639,14 @@ export function useAvailabilitySummary() {
   return React.useCallback(
     (plan: PrePublishPlan): string | null => {
       if (!plan.availabilityStart) return null;
+      const selectedDates = plan.availabilityStart.mode === "selected";
       const start =
-        plan.availabilityStart.mode === "now"
+        selectedDates
+          ? i18n.resolve(
+              "host.prepublish.availability_selected_summary",
+              "Only available on dates you open",
+            ).text
+          : plan.availabilityStart.mode === "now"
           ? i18n.resolve("host.prepublish.availability_now_summary", "Available now")
               .text
           : interpolate(
@@ -640,18 +654,39 @@ export function useAvailabilitySummary() {
                 "host.prepublish.availability_from_summary",
                 "Available from {date}",
               ),
-              { date: formatStartDate(plan.availabilityStart.startDate, locale) },
+              {
+                date: formatStartDate(
+                  plan.availabilityStart.mode === "from"
+                    ? plan.availabilityStart.startDate
+                    : "",
+                  locale,
+                ),
+              },
             ).text;
 
       // Nights, not ranges — see blockedNightsCount. A host who blocked one long
       // holiday and one weekend should read the total they took off the calendar.
-      const nights = blockedNightsCount(plan.blocks);
+      const nights = blockedNightsCount(
+        selectedDates ? plan.openDates : plan.blocks,
+      );
       const blocked =
         nights === 0
-          ? i18n.resolve(
-              "host.prepublish.availability_no_blocked",
-              "no blocked dates",
-            ).text
+          ? selectedDates
+            ? i18n.resolve(
+                "host.prepublish.availability_no_open",
+                "no dates opened yet",
+              ).text
+            : i18n.resolve(
+                "host.prepublish.availability_no_blocked",
+                "no blocked dates",
+              ).text
+          : selectedDates
+            ? i18n.plural(
+                "host.prepublish.availability_open_nights",
+                nights,
+                "{n} open night",
+                "{n} open nights",
+              ).text
           : i18n.plural(
               "host.prepublish.availability_blocked_nights",
               nights,
@@ -715,7 +750,7 @@ export function AvailabilityStartScreen({
    * "a specific date" selects that radio while the plan still holds `null`, which is
    * what keeps Continue disabled until a date is actually chosen.
    */
-  const [mode, setMode] = React.useState<"now" | "from" | null>(
+  const [mode, setMode] = React.useState<"now" | "from" | "selected" | null>(
     plan.availabilityStart?.mode ?? null,
   );
   const [startDate, setStartDate] = React.useState(
@@ -734,9 +769,15 @@ export function AvailabilityStartScreen({
 
   /** Selecting the second radio keeps whatever date was already typed, so a host who
    *  taps away to "now" and back does not lose it. */
-  function selectMode(value: "now" | "from") {
+  function selectMode(value: "now" | "from" | "selected") {
     if (value === "now") {
       chooseNow();
+      return;
+    }
+    if (value === "selected") {
+      setMode("selected");
+      commit({ mode: "selected" });
+      setDatePickerOpen(false);
       return;
     }
     setMode("from");
@@ -802,9 +843,10 @@ export function AvailabilityStartScreen({
 
   const unanswered = showError && mode === null;
   const blockedNights = blockedNightsCount(plan.blocks);
+  const openNights = blockedNightsCount(plan.openDates);
 
   const choices: {
-    value: "now" | "from";
+    value: "now" | "from" | "selected";
     icon: LucideIcon;
     label: string;
     description: string;
@@ -828,6 +870,18 @@ export function AvailabilityStartScreen({
       description: i18n.resolve(
         "host.prepublish.availability_from_hint",
         "Choose the first date guests can check in.",
+      ).text,
+    },
+    {
+      value: "selected",
+      icon: CalendarRange,
+      label: i18n.resolve(
+        "host.prepublish.availability_selected",
+        "Only on dates I open",
+      ).text,
+      description: i18n.resolve(
+        "host.prepublish.availability_selected_hint",
+        "All dates stay closed until you open a bookable range.",
       ).text,
     },
   ];
@@ -1004,7 +1058,7 @@ export function AvailabilityStartScreen({
       {/* Separate and optional on purpose: a start date and blocked dates are not
           alternatives. Opening on 1 September and taking a week off later that month is
           one host doing two things, so this never disables or replaces the choice above. */}
-      <button
+      {mode !== null ? <button
         type="button"
         onClick={onOpenBlockingCalendar}
         className={cn(
@@ -1016,30 +1070,43 @@ export function AvailabilityStartScreen({
         <span
           aria-hidden="true"
           className={cn(
-            "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-md border-2",
+            "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg",
             blockedNights > 0
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-muted-foreground/40 text-muted-foreground",
+              ? "bg-primary text-primary-foreground"
+              : "bg-primary/10 text-primary",
           )}
         >
-          {blockedNights > 0 ? (
-            <Check className="size-3" strokeWidth={3} />
+          {mode === "selected" ? (
+            <CalendarRange className="size-4" />
           ) : (
-            <CalendarOff className="size-3.5" />
+            <CalendarOff className="size-4" />
           )}
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-2">
-            <CalendarOff className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             <span className="text-sm font-semibold md:text-base">
-              <Tx
-                k="host.prepublish.block_dates_title"
-                source="Block specific dates"
-              />
+              {mode === "selected" ? (
+                <Tx
+                  k="host.prepublish.open_dates_title"
+                  source="Open bookable dates"
+                />
+              ) : (
+                <Tx
+                  k="host.prepublish.block_dates_title"
+                  source="Block specific dates"
+                />
+              )}
             </span>
           </span>
           <span className="mt-1 block text-xs leading-snug text-muted-foreground md:text-sm">
-            {blockedNights > 0
+            {mode === "selected"
+              ? openNights > 0
+                ? `${openNights} ${openNights === 1 ? "night" : "nights"} open`
+                : i18n.resolve(
+                    "host.prepublish.open_dates_hint",
+                    "Open only the dates guests should be able to book.",
+                  ).text
+              : blockedNights > 0
               ? `${blockedNights} ${blockedNights === 1 ? "night" : "nights"} blocked`
               : i18n.resolve(
                   "host.prepublish.block_dates_hint",
@@ -1047,7 +1114,7 @@ export function AvailabilityStartScreen({
                 ).text}
           </span>
         </span>
-      </button>
+      </button> : null}
 
       {stayTimes}
 
@@ -1097,7 +1164,7 @@ type PlanEditor =
 
 type PlanRow = {
   key: string;
-  kind: "block" | "price" | "offer";
+  kind: "block" | "open" | "price" | "offer";
   startDate: PlanDate;
   endDate: PlanDate;
   label: string;
@@ -1142,6 +1209,7 @@ export function PrePublishTaskScreen({
   const nightsLabel = useNightsLabel();
   const [range, setRange] = React.useState<DateRange | undefined>();
   const [editor, setEditor] = React.useState<PlanEditor | null>(null);
+  const opensSelectedDates = plan.availabilityStart?.mode === "selected";
 
   const baseRate = Number(baseNightlyRate) || 0;
   const money = React.useCallback(
@@ -1163,6 +1231,15 @@ export function PrePublishTaskScreen({
     }
     return days;
   }, [plan.blocks]);
+  const openedDates = React.useMemo(() => {
+    const days = new Set<PlanDate>();
+    for (const window of plan.openDates) {
+      for (const day of eachPlanDate(window.startDate, window.endDate)) {
+        days.add(day);
+      }
+    }
+    return days;
+  }, [plan.openDates]);
 
   // Flattened the same way the publish action flattens it, so what the calendar
   // paints is exactly what gets written: overlapping ranges, later one wins.
@@ -1192,11 +1269,6 @@ export function PrePublishTaskScreen({
     ? eachPlanDate(selection.startDate, selection.endDate)
     : [];
   const selectionNights = selectionDays.length;
-  const selectionBlocked = selectionDays.filter((day) =>
-    blockedDates.has(day),
-  ).length;
-  const selectionOpen = selectionNights - selectionBlocked;
-
   function openEditor() {
     if (!selection) return;
     setEditor(
@@ -1205,16 +1277,6 @@ export function PrePublishTaskScreen({
         : { kind: "offer", range: selection },
     );
   }
-
-  // Refreshed after every render rather than through a dependency list: `openEditor`
-  // closes over the current selection, and a stale one would price the wrong dates.
-  React.useEffect(() => {
-    if (!actionRef) return;
-    actionRef.current = { openEditor, clearSelection: () => setRange(undefined) };
-    return () => {
-      actionRef.current = null;
-    };
-  });
 
   const selectionStart = selection?.startDate ?? null;
   const selectionEnd = selection?.endDate ?? null;
@@ -1234,17 +1296,39 @@ export function PrePublishTaskScreen({
     setRange(undefined);
   }
 
-  function blockSelection() {
+  function commitAvailabilitySelection() {
     if (!selection) return;
-    commit({
-      blocks: groupDates([...blockedDates, ...selectionDays]),
-    });
+    if (opensSelectedDates) {
+      commit({ openDates: groupDates([...openedDates, ...selectionDays]) });
+    } else {
+      commit({ blocks: groupDates([...blockedDates, ...selectionDays]) });
+    }
   }
 
-  function openDates(days: PlanDate[]) {
+  // Refreshed after every render rather than through a dependency list: both actions
+  // close over the current selection, and a stale handle would change the wrong dates.
+  React.useEffect(() => {
+    if (!actionRef) return;
+    actionRef.current = {
+      commitSelection:
+        task === "availability" ? commitAvailabilitySelection : openEditor,
+      clearSelection: () => setRange(undefined),
+    };
+    return () => {
+      actionRef.current = null;
+    };
+  });
+
+  function makeDatesAvailable(days: PlanDate[]) {
     const remaining = new Set(blockedDates);
     for (const day of days) remaining.delete(day);
     commit({ blocks: groupDates(remaining) });
+  }
+
+  function closeDates(days: PlanDate[]) {
+    const remaining = new Set(openedDates);
+    for (const day of days) remaining.delete(day);
+    commit({ openDates: groupDates(remaining) });
   }
 
   function savePrice(target: PrePublishRange, nightlyRate: number) {
@@ -1284,26 +1368,45 @@ export function PrePublishTaskScreen({
             "host.prepublish.availability_title",
             "Set availability",
           ).text,
-          hint: resolve(
-            "host.prepublish.availability_hint",
-            "Pick the dates you want to keep for yourself. Guests won't be able to book them.",
-          ).text,
-          emptyHint: resolve(
-            "host.calendar.empty_hint_availability",
-            "Tap or drag across dates to block them.",
-          ).text,
-          changesTitle: resolve(
-            "host.prepublish.changes_blocked",
-            "Blocked dates",
-          ).text,
-          changesDescription: resolve(
-            "host.prepublish.changes_blocked_hint",
-            "Dates guests will not be able to book.",
-          ).text,
-          emptyLabel: resolve(
-            "host.prepublish.availability_empty",
-            "No blocked dates yet. Your listing will be bookable on every date.",
-          ).text,
+          hint: opensSelectedDates
+            ? resolve(
+                "host.prepublish.open_availability_hint",
+                "Pick the dates guests should be able to book. Every other date stays closed.",
+              ).text
+            : resolve(
+                "host.prepublish.availability_hint",
+                "Pick the dates you want to keep for yourself. Guests won't be able to book them.",
+              ).text,
+          emptyHint: opensSelectedDates
+            ? resolve(
+                "host.calendar.empty_hint_open",
+                "Tap or drag across dates to open them.",
+              ).text
+            : resolve(
+                "host.calendar.empty_hint_availability",
+                "Tap or drag across dates to block them.",
+              ).text,
+          changesTitle: opensSelectedDates
+            ? resolve("host.prepublish.changes_open", "Open dates").text
+            : resolve("host.prepublish.changes_blocked", "Blocked dates").text,
+          changesDescription: opensSelectedDates
+            ? resolve(
+                "host.prepublish.changes_open_hint",
+                "The only dates guests will be able to book.",
+              ).text
+            : resolve(
+                "host.prepublish.changes_blocked_hint",
+                "Dates guests will not be able to book.",
+              ).text,
+          emptyLabel: opensSelectedDates
+            ? resolve(
+                "host.prepublish.open_empty",
+                "No dates are open yet. Your listing will be live but hidden from search.",
+              ).text
+            : resolve(
+                "host.prepublish.availability_empty",
+                "No blocked dates yet. Your listing will be bookable on every date.",
+              ).text,
         }
       : task === "pricing"
         ? {
@@ -1357,13 +1460,16 @@ export function PrePublishTaskScreen({
 
   const rows: PlanRow[] = React.useMemo(() => {
     if (task === "availability") {
-      return plan.blocks.map((block, index) => ({
-        key: `block-${block.startDate}-${block.endDate}-${index}`,
-        kind: "block" as const,
-        startDate: block.startDate,
-        endDate: block.endDate,
-        label: resolve("host.calendar.legend_blocked", "Blocked").text,
-        detail: nightsLabel(rangeNights(block.startDate, block.endDate)),
+      const ranges = opensSelectedDates ? plan.openDates : plan.blocks;
+      return ranges.map((range, index) => ({
+        key: `${opensSelectedDates ? "open" : "block"}-${range.startDate}-${range.endDate}-${index}`,
+        kind: opensSelectedDates ? ("open" as const) : ("block" as const),
+        startDate: range.startDate,
+        endDate: range.endDate,
+        label: opensSelectedDates
+          ? resolve("host.calendar.legend_open", "Open").text
+          : resolve("host.calendar.legend_blocked", "Blocked").text,
+        detail: nightsLabel(rangeNights(range.startDate, range.endDate)),
       }));
     }
     if (task === "pricing") {
@@ -1397,28 +1503,19 @@ export function PrePublishTaskScreen({
             ).text,
       detail: nightsLabel(rangeNights(offer.startDate, offer.endDate)),
     }));
-  }, [baseRate, money, nightsLabel, plan, resolve, task]);
+  }, [baseRate, money, nightsLabel, opensSelectedDates, plan, resolve, task]);
 
-  const primaryLabel =
-    task === "availability"
-      ? resolve("host.calendar.block_dates", "Block dates").text
-      : task === "pricing"
-        ? // The button opens the editor rather than committing, so it can't wear the
-          // editor's own "Set this price" — that promise belonged one screen later.
-          resolve("host.prepublish.edit_price", "Edit price").text
-        : resolve("host.prepublish.add_promotion", "Add promotion").text;
-  const PrimaryIcon =
-    task === "availability"
-      ? LockKeyhole
-      : task === "pricing"
-        ? CircleDollarSign
-        : BadgePercent;
   const primaryDetail =
     task === "availability"
-      ? resolve(
-          "host.prepublish.block_detail",
-          "Blocked dates stop booking requests. You can open them again at any time.",
-        ).text
+      ? opensSelectedDates
+        ? resolve(
+            "host.prepublish.open_detail",
+            "Only opened dates accept booking requests. You can close them again at any time.",
+          ).text
+        : resolve(
+            "host.prepublish.block_detail",
+            "Blocked dates stop booking requests. You can open them again at any time.",
+          ).text
       : task === "pricing"
         ? resolve(
             "host.prepublish.price_detail",
@@ -1455,8 +1552,10 @@ export function PrePublishTaskScreen({
             const key = planDateFromLocal(day);
             if (task === "availability") {
               return {
-                sublabel: blockedDates.has(key)
-                  ? resolve("host.calendar.legend_blocked", "Blocked").text
+                sublabel: (opensSelectedDates ? openedDates : blockedDates).has(key)
+                  ? opensSelectedDates
+                    ? resolve("host.calendar.legend_open", "Open").text
+                    : resolve("host.calendar.legend_blocked", "Blocked").text
                   : "",
               };
             }
@@ -1474,8 +1573,15 @@ export function PrePublishTaskScreen({
           dateModifiers={{
             ...(task === "availability"
               ? {
-                  manualBlock: (day: Date) =>
-                    blockedDates.has(planDateFromLocal(day)),
+                  ...(opensSelectedDates
+                    ? {
+                        openWindow: (day: Date) =>
+                          openedDates.has(planDateFromLocal(day)),
+                      }
+                    : {
+                        manualBlock: (day: Date) =>
+                          blockedDates.has(planDateFromLocal(day)),
+                      }),
                 }
               : {}),
             ...(task === "pricing"
@@ -1494,6 +1600,7 @@ export function PrePublishTaskScreen({
           dateModifiersClassNames={{
             manualBlock:
               "bg-muted after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:bg-[repeating-linear-gradient(-45deg,rgba(15,23,42,0.09)_0,rgba(15,23,42,0.09)_4px,transparent_4px,transparent_8px)]",
+            openWindow: "bg-emerald-500/15 ring-2 ring-emerald-600/35 ring-inset",
             customPrice: "ring-2 ring-primary/40 ring-inset",
             promotion: "bg-amber-500/15",
           }}
@@ -1501,10 +1608,28 @@ export function PrePublishTaskScreen({
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t px-5 py-2 text-xs text-muted-foreground md:text-[0.68rem]">
           {task === "availability" ? (
-            <span className="inline-flex items-center gap-1.5">
-              <span className="size-2.5 rounded-[2px] bg-[repeating-linear-gradient(-45deg,rgba(15,23,42,0.18)_0,rgba(15,23,42,0.18)_2px,transparent_2px,transparent_4px)]" />
-              <Tx k="host.calendar.legend_blocked" source="Blocked" />
-            </span>
+            <>
+              <span className="inline-flex items-center gap-1.5">
+                <span
+                  className={cn(
+                    "size-2.5 rounded-[2px]",
+                    opensSelectedDates
+                      ? "bg-emerald-500/25 ring-1 ring-emerald-600/40"
+                      : "bg-[repeating-linear-gradient(-45deg,rgba(15,23,42,0.18)_0,rgba(15,23,42,0.18)_2px,transparent_2px,transparent_4px)]",
+                  )}
+                />
+                {opensSelectedDates ? (
+                  <Tx k="host.calendar.legend_open" source="Open" />
+                ) : (
+                  <Tx k="host.calendar.legend_blocked" source="Blocked" />
+                )}
+              </span>
+              <span className="ml-auto font-medium">
+                {selection
+                  ? `${formatRange(selection.startDate, selection.endDate, locale)} · ${nightsLabel(selectionNights)}`
+                  : meta.emptyHint}
+              </span>
+            </>
           ) : null}
           {task === "pricing" ? (
             <>
@@ -1538,9 +1663,10 @@ export function PrePublishTaskScreen({
           ) : null}
         </div>
 
-        {/* The live calendar portals this row into the phone's fixed bar; here the
-            wizard already owns the bottom of the screen, so it stays in the card. */}
-        <div className="border-t bg-stone-50 px-5 py-3">
+        {/* All three tools commit from the wizard footer. Pricing alone keeps this
+            short explanation row because its next action opens a value editor. */}
+        {task === "pricing" ? (
+          <div className="border-t bg-stone-50 px-5 py-3">
           {selection ? (
             <p className="mb-2 text-center text-sm font-medium text-muted-foreground md:text-xs">
               {formatRange(selection.startDate, selection.endDate, locale)} ·{" "}
@@ -1552,51 +1678,12 @@ export function PrePublishTaskScreen({
             </p>
           )}
           <div className="mx-auto w-full max-w-3xl space-y-2">
-            {task === "availability" ? (
-              // Blocking and opening are opposite commits, not one "manage" step, so
-              // each gets its own button and goes dim when it would be a no-op. The
-              // live calendar opens a sheet to block because it can carry a reason;
-              // the plan has no reason to carry, so this commits straight away.
-              <div className="flex items-stretch gap-2">
-                <Button
-                  type="button"
-                  size="lg"
-                  variant="outline"
-                  className="flex-1"
-                  disabled={!selection || selectionBlocked === 0}
-                  onClick={() => openDates(selectionDays)}
-                >
-                  <BedDouble className="size-4" />
-                  <Tx k="host.calendar.make_available" source="Make available" />
-                </Button>
-                <Button
-                  type="button"
-                  size="lg"
-                  className="flex-1"
-                  disabled={!selection || selectionOpen === 0}
-                  onClick={blockSelection}
-                >
-                  <LockKeyhole className="size-4" />
-                  <Tx k="host.calendar.block_dates" source="Block dates" />
-                </Button>
-              </div>
-            ) : task === "pricing" ? null : (
-              <Button
-                type="button"
-                size="lg"
-                className="w-full"
-                disabled={!selection}
-                onClick={openEditor}
-              >
-                <PrimaryIcon className="size-4" />
-                {primaryLabel}
-              </Button>
-            )}
             <p className="text-center text-xs text-muted-foreground md:text-[0.65rem]">
               {primaryDetail}
             </p>
           </div>
-        </div>
+          </div>
+        ) : null}
       </section>
 
       <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
@@ -1627,7 +1714,9 @@ export function PrePublishTaskScreen({
                   ? CircleDollarSign
                   : row.kind === "offer"
                     ? BadgePercent
-                    : LockKeyhole;
+                    : row.kind === "open"
+                      ? UnlockKeyhole
+                      : LockKeyhole;
               const typeLabel =
                 row.kind === "price"
                   ? resolve("host.prepublish.type_price", "Price override").text
@@ -1679,7 +1768,7 @@ export function PrePublishTaskScreen({
                   key={row.key}
                   className="flex items-center gap-2 px-4 py-2.5 sm:gap-3 sm:px-5 sm:py-3.5"
                 >
-                  {row.kind === "block" ? (
+                  {row.kind === "block" || row.kind === "open" ? (
                     <span className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
                       {rowBody}
                     </span>
@@ -1705,6 +1794,8 @@ export function PrePublishTaskScreen({
                               "host.calendar.make_available",
                               "Make available",
                             ).text
+                          : row.kind === "open"
+                            ? resolve("host.calendar.close_dates", "Close dates").text
                           : resolve("host.prepublish.remove", "Remove").text
                       }
                       aria-label={
@@ -1713,11 +1804,17 @@ export function PrePublishTaskScreen({
                               "host.calendar.make_available",
                               "Make available",
                             ).text
+                          : row.kind === "open"
+                            ? resolve("host.calendar.close_dates", "Close dates").text
                           : resolve("host.prepublish.remove", "Remove").text
                       }
                       onClick={() => {
                         if (row.kind === "block") {
-                          openDates(eachPlanDate(row.startDate, row.endDate));
+                          makeDatesAvailable(eachPlanDate(row.startDate, row.endDate));
+                          return;
+                        }
+                        if (row.kind === "open") {
+                          closeDates(eachPlanDate(row.startDate, row.endDate));
                           return;
                         }
                         if (row.kind === "price") {
@@ -1732,6 +1829,8 @@ export function PrePublishTaskScreen({
                     >
                       {row.kind === "block" ? (
                         <UnlockKeyhole className="size-3.5" />
+                      ) : row.kind === "open" ? (
+                        <LockKeyhole className="size-3.5" />
                       ) : (
                         <Trash2 className="size-3.5" />
                       )}

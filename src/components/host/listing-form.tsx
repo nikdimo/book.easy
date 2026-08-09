@@ -690,10 +690,15 @@ export function ListingForm({
   const selectedTaskAction = prePublishTaskPrimaryAction(
     prePublishScreen,
     prePublishSelection !== null,
+    prePublishPlan.availabilityStart?.mode === "selected",
   );
   const taskSelectionActive = selectedTaskAction !== "done";
   const selectedTaskActionLabel =
-    selectedTaskAction === "add-promotion"
+    selectedTaskAction === "open-dates"
+      ? resolve("host.calendar.open_dates", "Open dates").text
+      : selectedTaskAction === "block-dates"
+      ? resolve("host.calendar.block_dates", "Block dates").text
+      : selectedTaskAction === "add-promotion"
       ? resolve("host.prepublish.add_promotion", "Add promotion").text
       : resolve("host.prepublish.edit_price", "Edit price").text;
   /** A create-wizard step check. Always false while editing, where sections are shown
@@ -2599,11 +2604,7 @@ export function ListingForm({
                           : "bg-primary/10 text-primary",
                       )}
                     >
-                      {prePublishPlan.offers.length > 0 ? (
-                        <Check className="size-4" strokeWidth={3} aria-hidden="true" />
-                      ) : (
-                        <CalendarRange className="size-4" aria-hidden="true" />
-                      )}
+                      <CalendarRange className="size-4" aria-hidden="true" />
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-sm font-semibold">
@@ -2906,7 +2907,7 @@ export function ListingForm({
                       type="button"
                       onClick={
                         taskSelectionActive
-                          ? () => prePublishActions.current?.openEditor()
+                          ? () => prePublishActions.current?.commitSelection()
                           : backFromPrePublish
                       }
                     >
@@ -3205,7 +3206,7 @@ export function ListingForm({
                 className="flex-1"
                 onClick={
                   taskSelectionActive
-                    ? () => prePublishActions.current?.openEditor()
+                    ? () => prePublishActions.current?.commitSelection()
                     : backFromPrePublish
                 }
               >

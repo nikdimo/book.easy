@@ -422,6 +422,22 @@ describe("the checklist reports blocked nights, not ranges", () => {
 });
 
 describe("draft save and resume", () => {
+  it("preserves a closed-by-default calendar and its open ranges", () => {
+    const plan: PrePublishPlan = {
+      ...EMPTY_PRE_PUBLISH_PLAN,
+      availabilityStart: { mode: "selected" },
+      openDates: [{ startDate: "2026-09-14", endDate: "2026-09-20" }],
+    };
+
+    const resumed = parsePrePublishPlan(JSON.stringify(plan));
+    expect(resumed.availabilityStart).toEqual({ mode: "selected" });
+    expect(resumed.openDates).toEqual(plan.openDates);
+    expect(
+      validateAvailabilityStartForPublish(resumed.availabilityStart, TODAY),
+    ).toEqual({ ok: true, value: { mode: "selected" } });
+    expect(availabilityStartBlock({ mode: "selected" }, TODAY)).toBeNull();
+  });
+
   it("preserves available now", () => {
     const plan: PrePublishPlan = {
       ...EMPTY_PRE_PUBLISH_PLAN,

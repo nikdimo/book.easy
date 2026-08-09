@@ -54,8 +54,15 @@ describe("prePublishTaskPrimaryAction", () => {
     expect(prePublishTaskPrimaryAction("offers", true)).toBe("add-promotion");
   });
 
-  it("does not replace Done on the availability calendar", () => {
-    expect(prePublishTaskPrimaryAction("availability", true)).toBe("done");
+  it("blocks a selected availability range from the footer", () => {
+    expect(prePublishTaskPrimaryAction("availability", false)).toBe("done");
+    expect(prePublishTaskPrimaryAction("availability", true)).toBe("block-dates");
+  });
+
+  it("opens a selected range for a closed-by-default listing", () => {
+    expect(prePublishTaskPrimaryAction("availability", true, true)).toBe(
+      "open-dates",
+    );
   });
 });
 

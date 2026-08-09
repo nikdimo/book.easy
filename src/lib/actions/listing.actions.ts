@@ -24,6 +24,7 @@ import {
   parsePrePublishPlan,
   planOfferToPromotion,
   planRangeToAvailabilityBlock,
+  planRangeToDbRange,
   type InclusiveBlockRange,
 } from "@/lib/types/listing-prepublish-plan";
 import {
@@ -379,6 +380,13 @@ export async function submitNewListing(
     return availabilityBlock ? [availabilityBlock] : [];
   });
 
+  const availabilityWindowCreates = mergeInclusiveBlockRanges(
+    plan.openDates.map((range) => ({ ...range, reason: "Open before publishing" })),
+  ).flatMap((range) => {
+    const window = planRangeToDbRange(range);
+    return window ? [window] : [];
+  });
+
   const datePriceCreates = datePriceRows.flatMap((row) => {
     const date = parsePlanDate(row.date);
     return date ? [{ date, nightlyRate: row.nightlyRate }] : [];
@@ -416,6 +424,8 @@ export async function submitNewListing(
       slug,
       description: data.description,
       status: "APPROVED",
+      availabilityMode:
+        availability.value.mode === "selected" ? "CLOSED" : "OPEN",
       needsReview: true,
       approvedAt: new Date(),
       publishedAt: new Date(),
@@ -443,6 +453,9 @@ export async function submitNewListing(
       // days they just said they were using it.
       ...(availabilityBlockCreates.length > 0
         ? { availabilityBlocks: { create: availabilityBlockCreates } }
+        : {}),
+      ...(availabilityWindowCreates.length > 0
+        ? { availabilityWindows: { create: availabilityWindowCreates } }
         : {}),
       ...(datePriceCreates.length > 0
         ? { datePrices: { create: datePriceCreates } }

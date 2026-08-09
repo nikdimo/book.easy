@@ -87,6 +87,11 @@ export async function CalendarLensPage({
       id: true,
       title: true,
       status: true,
+      availabilityMode: true,
+      availabilityWindows: {
+        where: { endDate: { gte: ymdToDbDate(format(new Date(), "yyyy-MM-dd")) } },
+        orderBy: { startDate: "asc" },
+      },
       pricingRule: true,
       promotions: {
         where: { disabledAt: null },
@@ -198,6 +203,7 @@ export async function CalendarLensPage({
           listingId={listing.id}
           listingTitle={listing.title}
           listingStatus={listing.status}
+          availabilityMode={listing.availabilityMode}
           lens={lens}
           locale={locale}
           currency={listing.pricingRule.currency}
@@ -212,6 +218,7 @@ export async function CalendarLensPage({
             nightlyRate: Number(row.nightlyRate),
           }))}
           blocks={blocks}
+          availabilityWindows={listing.availabilityWindows}
           promotions={listing.promotions.map((promotion) => ({
             id: promotion.id,
             type: promotion.type,

@@ -42,6 +42,10 @@ export interface PrePublishOffer extends PrePublishRange {
 
 export interface PrePublishPlan {
   blocks: PrePublishBlock[];
+  /** Ranges that are bookable when availabilityStart.mode is `selected`. They are
+   * kept separate from blocks so switching strategies never inverts or destroys the
+   * host's earlier calendar work. */
+  openDates: PrePublishRange[];
   datePrices: PrePublishDatePrice[];
   offers: PrePublishOffer[];
   /**
@@ -58,6 +62,7 @@ export interface PrePublishPlan {
 
 export const EMPTY_PRE_PUBLISH_PLAN: PrePublishPlan = {
   blocks: [],
+  openDates: [],
   datePrices: [],
   offers: [],
   availabilityStart: null,
@@ -179,6 +184,13 @@ export function parsePrePublishPlan(raw: unknown): PrePublishPlan {
     if (blocks.length >= MAX_PLAN_ENTRIES) break;
   }
 
+  const openDates: PrePublishRange[] = [];
+  for (const entry of Array.isArray(input.openDates) ? input.openDates : []) {
+    const range = validRange(entry);
+    if (range) openDates.push(range);
+    if (openDates.length >= MAX_PLAN_ENTRIES) break;
+  }
+
   const datePrices: PrePublishDatePrice[] = [];
   for (const entry of Array.isArray(input.datePrices) ? input.datePrices : []) {
     const range = validRange(entry);
@@ -218,6 +230,7 @@ export function parsePrePublishPlan(raw: unknown): PrePublishPlan {
   // existed is exactly that case, so old drafts stay loadable and simply ask again.
   return {
     blocks,
+    openDates,
     datePrices,
     offers,
     availabilityStart: parseAvailabilityStart(input.availabilityStart),
@@ -366,6 +379,7 @@ export function planOfferToPromotion(offer: PrePublishOffer): {
 export function isEmptyPrePublishPlan(plan: PrePublishPlan): boolean {
   return (
     plan.blocks.length === 0 &&
+    plan.openDates.length === 0 &&
     plan.datePrices.length === 0 &&
     plan.offers.length === 0
   );

@@ -31,6 +31,8 @@ export type PrePublishOrigin =
 
 export type PrePublishTaskPrimaryAction =
   | "done"
+  | "block-dates"
+  | "open-dates"
   | "edit-price"
   | "add-promotion";
 
@@ -39,8 +41,12 @@ export type PrePublishTaskPrimaryAction =
 export function prePublishTaskPrimaryAction(
   screen: PrePublishNavScreen | null,
   hasSelection: boolean,
+  opensSelectedDates = false,
 ): PrePublishTaskPrimaryAction {
   if (!hasSelection) return "done";
+  if (screen === "availability") {
+    return opensSelectedDates ? "open-dates" : "block-dates";
+  }
   if (screen === "pricing") return "edit-price";
   if (screen === "offers") return "add-promotion";
   return "done";

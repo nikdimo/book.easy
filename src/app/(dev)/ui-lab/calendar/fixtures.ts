@@ -40,6 +40,8 @@ const datePrices: WorkspaceDatePrice[] = Array.from(
 );
 
 export const labProps: CalendarWorkspaceProps = {
+  availabilityMode: "OPEN",
+  availabilityWindows: [],
   locale: "en",
   lens: "availability",
   listingId: "lab-listing",

@@ -22,7 +22,8 @@ export type AvailabilityDate = string;
 
 export type AvailabilityStart =
   | { mode: "now" }
-  | { mode: "from"; startDate: AvailabilityDate };
+  | { mode: "from"; startDate: AvailabilityDate }
+  | { mode: "selected" };
 
 /**
  * `null` is a real state, not a missing value: the host has not answered yet. Every
@@ -63,6 +64,7 @@ export function parseAvailabilityStart(raw: unknown): AvailabilityStartChoice {
   if (!raw || typeof raw !== "object") return null;
   const input = raw as Record<string, unknown>;
   if (input.mode === "now") return { mode: "now" };
+  if (input.mode === "selected") return { mode: "selected" };
   if (input.mode === "from") {
     const startDate = validDate(input.startDate);
     return startDate ? { mode: "from", startDate } : null;
@@ -92,6 +94,9 @@ export function validateAvailabilityStartForPublish(
   | { ok: false; reason: AvailabilityStartRejection } {
   if (!choice) return { ok: false, reason: "unconfirmed" };
   if (choice.mode === "now") return { ok: true, value: { mode: "now" } };
+  if (choice.mode === "selected") {
+    return { ok: true, value: { mode: "selected" } };
+  }
 
   const startDate = validDate(choice.startDate);
   if (!startDate) return { ok: false, reason: "invalid-date" };
@@ -118,7 +123,7 @@ export function availabilityStartBlock(
   start: AvailabilityStart,
   today: AvailabilityDate = todayYmd(),
 ): { startDate: AvailabilityDate; endDate: AvailabilityDate } | null {
-  if (start.mode === "now") return null;
+  if (start.mode === "now" || start.mode === "selected") return null;
   const startDate = validDate(start.startDate);
   if (!startDate) return null;
 

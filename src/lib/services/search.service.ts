@@ -43,6 +43,10 @@ function buildListingWhere(filters: SearchFilters): Prisma.ListingWhereInput {
   const where: Prisma.ListingWhereInput = {
     status: ListingStatus.APPROVED,
   };
+  const hasStayDates = Boolean(filters.checkIn && filters.checkOut);
+  // Closed-by-default listings are useful only to guests searching dates the host
+  // explicitly opened. Keep them out of undated discovery and the home page.
+  if (!hasStayDates) where.availabilityMode = "OPEN";
   const requestedNights =
     filters.checkIn && filters.checkOut
       ? getNightCount(filters.checkIn, filters.checkOut)
@@ -128,10 +132,6 @@ function buildListingWhere(filters: SearchFilters): Prisma.ListingWhereInput {
     });
   }
 
-  if (andClauses.length > 0) {
-    where.AND = andClauses;
-  }
-
   if (filters.checkIn && filters.checkOut) {
     where.availabilityBlocks = {
       none: {
@@ -139,7 +139,23 @@ function buildListingWhere(filters: SearchFilters): Prisma.ListingWhereInput {
         endDate: { gt: new Date(filters.checkIn) },
       },
     };
+    andClauses.push({
+      OR: [
+        { availabilityMode: "OPEN" },
+        {
+          availabilityMode: "CLOSED",
+          availabilityWindows: {
+            some: {
+              startDate: { lte: new Date(filters.checkIn) },
+              endDate: { gte: new Date(filters.checkOut) },
+            },
+          },
+        },
+      ],
+    });
   }
+
+  if (andClauses.length > 0) where.AND = andClauses;
 
   return where;
 }
@@ -240,6 +256,7 @@ export const getFeaturedListings = unstable_cache(
     const rows = await db.listing.findMany({
       where: {
         status: ListingStatus.APPROVED,
+        availabilityMode: "OPEN",
         ...(excludeIds.length > 0 ? { id: { notIn: excludeIds } } : {}),
       },
       select: cardSelectWithImages,
@@ -262,7 +279,11 @@ export const getFeaturedListings = unstable_cache(
 export const getPopularListings = unstable_cache(
   async (limit = 8) => {
     const rows = await db.listing.findMany({
-      where: { status: ListingStatus.APPROVED, popularityScore: { gt: 0 } },
+      where: {
+        status: ListingStatus.APPROVED,
+        availabilityMode: "OPEN",
+        popularityScore: { gt: 0 },
+      },
       select: cardSelectWithImages,
       orderBy: [{ popularityScore: "desc" }, { createdAt: "desc" }],
       take: limit,
@@ -277,7 +298,10 @@ export const getPopularListings = unstable_cache(
 /** Total publicly visible listings — drives how much of the home page is worth
  *  splitting into sections at all. */
 export const countApprovedListings = unstable_cache(
-  async () => db.listing.count({ where: { status: ListingStatus.APPROVED } }),
+  async () =>
+    db.listing.count({
+      where: { status: ListingStatus.APPROVED, availabilityMode: "OPEN" },
+    }),
   ["approved-listing-count"],
   { revalidate: HOME_LISTINGS_REVALIDATE_SECONDS, tags: [PUBLIC_HEADER_DATA_TAG] },
 );
@@ -382,6 +406,8 @@ export async function getSearchFilterPreview(
 export const getAvailableCities = unstable_cache(
   async (): Promise<PlaceOption[]> => {
     const properties = await db.property.findMany({
+      // Closed-by-default listings still contribute their place to autocomplete:
+      // otherwise a guest could never form the dated search that reveals them.
       where: { listings: { some: { status: ListingStatus.APPROVED } } },
       select: { city: true, country: true },
       distinct: ["city", "country"],

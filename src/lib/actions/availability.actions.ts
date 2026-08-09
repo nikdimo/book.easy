@@ -12,6 +12,7 @@ import {
 } from "@/lib/utils/date-only";
 import { isAvailabilityOverlapConstraintError } from "@/lib/utils/db-errors";
 import { format } from "date-fns";
+import { revalidatePublicListingCaches } from "@/lib/utils/revalidate-public-listing-caches";
 
 async function getListingForManager(userId: string, role: string, listingId: string) {
   const listing = await db.listing.findUnique({
@@ -243,6 +244,117 @@ export async function unblockDateRange(formData: FormData) {
   });
 
   revalidateListingPaths(listingId, listing.slug);
+  return { success: true };
+}
+
+/** Opens a range on a calendar that is closed by default. Overlapping and adjacent
+ * windows collapse into one row so dated search can prove a whole stay is covered
+ * with a single containing range. */
+export async function openAvailabilityWindowRange(formData: FormData) {
+  const listingId = formData.get("listingId") as string;
+  const startDate = formData.get("startDate") as string;
+  const endDate = formData.get("endDate") as string;
+  if (!listingId || !startDate || !endDate) return { error: "Missing required fields" };
+
+  const listingResult = await requireManagedListing(listingId);
+  if ("error" in listingResult) return { error: listingResult.error };
+  const listing = listingResult.listing;
+  const range = validateRange(startDate, endDate);
+  if ("error" in range) return { error: range.error };
+
+  await db.$transaction(async (tx) => {
+    const windows = await tx.listingAvailabilityWindow.findMany({
+      where: {
+        listingId,
+        startDate: { lte: range.end },
+        endDate: { gte: range.start },
+      },
+    });
+    let mergedStart = startDate;
+    let mergedEnd = endDate;
+    for (const window of windows) {
+      const windowStart = dbDateToYmd(window.startDate);
+      const windowEnd = dbDateToYmd(window.endDate);
+      if (compareYmd(windowStart, mergedStart) < 0) mergedStart = windowStart;
+      if (compareYmd(windowEnd, mergedEnd) > 0) mergedEnd = windowEnd;
+    }
+    if (windows.length > 0) {
+      await tx.listingAvailabilityWindow.deleteMany({
+        where: { id: { in: windows.map((window) => window.id) } },
+      });
+    }
+    await tx.listingAvailabilityWindow.create({
+      data: {
+        listingId,
+        startDate: ymdToDbDate(mergedStart),
+        endDate: ymdToDbDate(mergedEnd),
+      },
+    });
+  });
+
+  revalidateListingPaths(listingId, listing.slug);
+  return { success: true };
+}
+
+/** Closes part or all of an explicit open window without affecting reservations. */
+export async function closeAvailabilityWindowRange(formData: FormData) {
+  const listingId = formData.get("listingId") as string;
+  const startDate = formData.get("startDate") as string;
+  const endDate = formData.get("endDate") as string;
+  if (!listingId || !startDate || !endDate) return { error: "Missing required fields" };
+
+  const listingResult = await requireManagedListing(listingId);
+  if ("error" in listingResult) return { error: listingResult.error };
+  const listing = listingResult.listing;
+  const range = validateRange(startDate, endDate);
+  if ("error" in range) return { error: range.error };
+
+  await db.$transaction(async (tx) => {
+    const windows = await tx.listingAvailabilityWindow.findMany({
+      where: {
+        listingId,
+        startDate: { lt: range.end },
+        endDate: { gt: range.start },
+      },
+    });
+    for (const window of windows) {
+      const windowStart = dbDateToYmd(window.startDate);
+      const windowEnd = dbDateToYmd(window.endDate);
+      const keepBefore = compareYmd(windowStart, startDate) < 0;
+      const keepAfter = compareYmd(windowEnd, endDate) > 0;
+      await tx.listingAvailabilityWindow.delete({ where: { id: window.id } });
+      if (keepBefore) {
+        await tx.listingAvailabilityWindow.create({
+          data: { listingId, startDate: window.startDate, endDate: range.start },
+        });
+      }
+      if (keepAfter) {
+        await tx.listingAvailabilityWindow.create({
+          data: { listingId, startDate: range.end, endDate: window.endDate },
+        });
+      }
+    }
+  });
+
+  revalidateListingPaths(listingId, listing.slug);
+  return { success: true };
+}
+
+export async function setListingAvailabilityMode(
+  listingId: string,
+  mode: "OPEN" | "CLOSED",
+) {
+  if (!listingId) return { error: "Missing listing id" };
+  const listingResult = await requireManagedListing(listingId);
+  if ("error" in listingResult) return { error: listingResult.error };
+  const listing = listingResult.listing;
+
+  await db.listing.update({
+    where: { id: listingId },
+    data: { availabilityMode: mode },
+  });
+  revalidateListingPaths(listingId, listing.slug);
+  revalidatePublicListingCaches();
   return { success: true };
 }
 

@@ -2195,6 +2195,16 @@
     "filePath": "src/components/host/calendar-workspace.tsx"
   },
   {
+    "key": "host.calendar.availability_strategy",
+    "sourceText": "Availability strategy",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.availability_strategy_hint",
+    "sourceText": "Choose whether dates start open or stay closed until you open them.",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
     "key": "host.calendar.back_to_listings",
     "sourceText": "Back to listings",
     "filePath": "src/app/(host)/host/listings/[id]/_calendar/lens-page.tsx"
@@ -2235,6 +2245,11 @@
     "filePath": "src/components/host/calendar-workspace.tsx"
   },
   {
+    "key": "host.calendar.close_dates",
+    "sourceText": "Close dates",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
     "key": "host.calendar.legend_blocked",
     "sourceText": "Blocked",
     "filePath": "src/components/host/calendar-workspace.tsx"
@@ -2245,9 +2260,19 @@
     "filePath": "src/components/host/calendar-workspace.tsx"
   },
   {
+    "key": "host.calendar.legend_closed",
+    "sourceText": "Closed",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
     "key": "host.calendar.legend_custom_price",
     "sourceText": "Custom price",
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.calendar.legend_open",
+    "sourceText": "Open",
+    "filePath": "src/components/host/calendar-workspace.tsx"
   },
   {
     "key": "host.calendar.legend_promotion",
@@ -2277,6 +2302,21 @@
   {
     "key": "host.calendar.nights",
     "sourceText": "nights",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.only_dates_open",
+    "sourceText": "Only dates I open",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.open_by_default",
+    "sourceText": "Open by default",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.open_dates",
+    "sourceText": "Open dates",
     "filePath": "src/components/host/calendar-workspace.tsx"
   },
   {
@@ -3250,6 +3290,11 @@
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
   },
   {
+    "key": "host.prepublish.availability_no_open",
+    "sourceText": "no dates opened yet",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
     "key": "host.prepublish.availability_now",
     "sourceText": "Available now",
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
@@ -3265,8 +3310,53 @@
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
   },
   {
+    "key": "host.prepublish.availability_open_nights.few",
+    "sourceText": "{n} open nights",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_open_nights.many",
+    "sourceText": "{n} open nights",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_open_nights.one",
+    "sourceText": "{n} open night",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_open_nights.other",
+    "sourceText": "{n} open nights",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_open_nights.two",
+    "sourceText": "{n} open nights",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_open_nights.zero",
+    "sourceText": "{n} open nights",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
     "key": "host.prepublish.availability_required",
     "sourceText": "Choose when guests can start booking.",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_selected",
+    "sourceText": "Only on dates I open",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_selected_hint",
+    "sourceText": "All dates stay closed until you open a bookable range.",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.availability_selected_summary",
+    "sourceText": "Only available on dates you open",
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
   },
   {
@@ -3300,6 +3390,11 @@
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
+    "key": "host.prepublish.no_open_dates_warning",
+    "sourceText": "Your listing will be live but hidden from search until you open dates.",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
     "key": "host.prepublish.offer_cleaning",
     "sourceText": "Free cleaning",
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
@@ -3323,6 +3418,16 @@
     "key": "host.prepublish.offers_title",
     "sourceText": "Customize promotions",
     "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.prepublish.open_dates_hint",
+    "sourceText": "Open only the dates guests should be able to book.",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.open_dates_title",
+    "sourceText": "Open bookable dates",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
   },
   {
     "key": "host.prepublish.price_scope_note",
@@ -3402,6 +3507,11 @@
   {
     "key": "host.prepublish.review_no_promotion",
     "sourceText": "No launch offer",
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.review_open",
+    "sourceText": "Open: {dates}",
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
   },
   {

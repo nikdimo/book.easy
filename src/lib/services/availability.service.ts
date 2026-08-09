@@ -7,6 +7,24 @@ export async function checkAvailability(
   checkIn: Date,
   checkOut: Date
 ): Promise<{ available: boolean; conflictingDates?: { start: Date; end: Date }[] }> {
+  const listing = await db.listing.findUnique({
+    where: { id: listingId },
+    select: {
+      availabilityMode: true,
+      availabilityWindows: {
+        where: { startDate: { lte: checkIn }, endDate: { gte: checkOut } },
+        select: { id: true },
+      },
+    },
+  });
+  if (
+    !listing ||
+    (listing.availabilityMode === "CLOSED" &&
+      listing.availabilityWindows.length === 0)
+  ) {
+    return { available: false };
+  }
+
   const overlapping = await db.availabilityBlock.findMany({
     where: {
       listingId,
@@ -51,18 +69,45 @@ export async function getBlockedDateRangesForListing(
   const horizon = new Date(today);
   horizon.setMonth(horizon.getMonth() + PUBLIC_AVAILABILITY_HORIZON_MONTHS);
 
-  const blocks = await db.availabilityBlock.findMany({
-    where: {
-      listingId,
-      startDate: { lt: horizon },
-      endDate: { gt: today },
-    },
-    select: { startDate: true, endDate: true },
-    orderBy: { startDate: "asc" },
-  });
+  const [listing, blocks] = await Promise.all([
+    db.listing.findUnique({
+      where: { id: listingId },
+      select: {
+        availabilityMode: true,
+        availabilityWindows: {
+          where: { startDate: { lt: horizon }, endDate: { gt: today } },
+          select: { startDate: true, endDate: true },
+          orderBy: { startDate: "asc" },
+        },
+      },
+    }),
+    db.availabilityBlock.findMany({
+      where: {
+        listingId,
+        startDate: { lt: horizon },
+        endDate: { gt: today },
+      },
+      select: { startDate: true, endDate: true },
+      orderBy: { startDate: "asc" },
+    }),
+  ]);
 
-  return blocks.map((block) => ({
+  const result = blocks.map((block) => ({
     from: block.startDate < today ? today : block.startDate,
     to: block.endDate > horizon ? horizon : addDays(block.endDate, -1),
   }));
+
+  if (listing?.availabilityMode !== "CLOSED") return result;
+
+  // The guest calendar consumes blocked ranges, so complement explicit open windows
+  // inside its bounded horizon. Booking enforcement above remains unbounded.
+  let cursor = today;
+  for (const window of listing.availabilityWindows) {
+    const start = window.startDate < today ? today : window.startDate;
+    const end = window.endDate > horizon ? horizon : window.endDate;
+    if (start > cursor) result.push({ from: cursor, to: addDays(start, -1) });
+    if (end > cursor) cursor = end;
+  }
+  if (cursor < horizon) result.push({ from: cursor, to: horizon });
+  return result.sort((a, b) => a.from.getTime() - b.from.getTime());
 }

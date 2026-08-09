@@ -64,6 +64,7 @@ import {
   removeCalendarPromotion,
   saveCalendarDefaultPricing,
   saveCalendarPromotion,
+  setCalendarAvailabilityMode,
   setCalendarDatePrice,
 } from "@/lib/actions/calendar.actions";
 import { cn } from "@/lib/utils";
@@ -93,6 +94,12 @@ export interface WorkspaceDatePrice {
   nightlyRate: number;
 }
 
+export interface WorkspaceAvailabilityWindow {
+  id: string;
+  startDate: Date | string;
+  endDate: Date | string;
+}
+
 export interface WorkspacePromotion {
   id: string;
   type: "PERCENT_DISCOUNT" | "FREE_CLEANING";
@@ -117,6 +124,7 @@ export interface CalendarWorkspaceProps {
   listingId: string;
   listingTitle: string;
   listingStatus: string;
+  availabilityMode: "OPEN" | "CLOSED";
   lens: CalendarLens;
   locale: string;
   currency: string;
@@ -125,6 +133,7 @@ export interface CalendarWorkspaceProps {
   minNights: number;
   datePrices: WorkspaceDatePrice[];
   blocks: WorkspaceBlock[];
+  availabilityWindows: WorkspaceAvailabilityWindow[];
   promotions: WorkspacePromotion[];
   /**
    * Dates the host selected on another lens, carried over in the URL. The common task
@@ -137,7 +146,7 @@ export interface CalendarWorkspaceProps {
 }
 
 type EditorKind = "availability" | "price" | "promotion";
-type ChangeKind = "booking" | "block" | "price" | "promotion";
+type ChangeKind = "booking" | "block" | "open" | "price" | "promotion";
 type ChangeFilter = "all" | ChangeKind;
 
 type EditorState = {
@@ -162,6 +171,7 @@ type ScheduledChange = {
 const FILTERS: { value: ChangeFilter; label: string }[] = [
   { value: "all", label: "All" },
   { value: "block", label: "Blocks" },
+  { value: "open", label: "Open dates" },
   { value: "price", label: "Prices" },
   { value: "promotion", label: "Promotions" },
   { value: "booking", label: "Reservations" },
@@ -186,7 +196,7 @@ const LENS_META: Record<
     heading: "Availability",
     segment: "availability",
     editorKind: "availability",
-    changeKinds: ["block", "booking"],
+    changeKinds: ["block", "open", "booking"],
     changesTitle: "Blocked dates and reservations",
     changesDescription: "Dates guests cannot book, and why.",
     emptyLabel: "Every upcoming date is open for booking.",
@@ -1467,6 +1477,7 @@ export function CalendarWorkspace({
   listingId,
   listingTitle,
   listingStatus,
+  availabilityMode,
   lens,
   locale,
   currency,
@@ -1475,6 +1486,7 @@ export function CalendarWorkspace({
   minNights,
   datePrices,
   blocks,
+  availabilityWindows,
   promotions,
   initialFrom,
   initialTo,
@@ -1576,6 +1588,18 @@ export function CalendarWorkspace({
     }
     return { manualDates: manual, bookingDates: booking };
   }, [blocks]);
+  const openedDates = useMemo(() => {
+    const opened = new Set<string>();
+    for (const window of availabilityWindows) {
+      for (const day of eachYmdExclusive(
+        dbDateToYmd(window.startDate),
+        dbDateToYmd(window.endDate),
+      )) {
+        opened.add(day);
+      }
+    }
+    return opened;
+  }, [availabilityWindows]);
 
   const changes = useMemo<ScheduledChange[]>(() => {
     const blockChanges = blocks.map((block) => {
@@ -1596,6 +1620,16 @@ export function CalendarWorkspace({
         source: booking ? "Reservation" : "Manual block",
       };
     });
+
+    const openChanges: ScheduledChange[] = availabilityWindows.map((window) => ({
+      id: window.id,
+      kind: "open",
+      from: dbDateToYmd(window.startDate),
+      to: addDaysToYmd(dbDateToYmd(window.endDate), -1),
+      label: "Open",
+      detail: "Guests can book this range",
+      source: "Explicit availability",
+    }));
 
     const priceChanges: ScheduledChange[] = [];
     const sortedPrices = [...datePrices]
@@ -1654,11 +1688,11 @@ export function CalendarWorkspace({
       };
     });
 
-    return [...blockChanges, ...priceChanges, ...promotionChanges].sort(
+    return [...blockChanges, ...openChanges, ...priceChanges, ...promotionChanges].sort(
       (left, right) =>
         (left.from ?? "0000").localeCompare(right.from ?? "0000"),
     );
-  }, [baseNightlyRate, blocks, currency, datePrices, minNights, promotions]);
+  }, [availabilityWindows, baseNightlyRate, blocks, currency, datePrices, minNights, promotions]);
 
   const selection = range?.from ? calendarRangeToInput(range) : null;
   const publishedBasePriceHint = i18n.resolve(
@@ -1667,7 +1701,19 @@ export function CalendarWorkspace({
   );
   const selectionNights = selection?.nights ?? 0;
   const selectionCounts = selection
-    ? countSelectionNights(selection, manualDates, bookingDates)
+    ? availabilityMode === "CLOSED"
+      ? (() => {
+          let open = 0;
+          let booked = 0;
+          let nights = 0;
+          for (const day of eachYmdExclusive(selection.startDate, selection.endDate)) {
+            nights += 1;
+            if (bookingDates.has(day)) booked += 1;
+            else if (openedDates.has(day) && !manualDates.has(day)) open += 1;
+          }
+          return { nights, open, booked, blocked: nights - open - booked };
+        })()
+      : countSelectionNights(selection, manualDates, bookingDates)
     : { nights: 0, blocked: 0, booked: 0, open: 0 };
   const primaryAction =
     lens === "availability"
@@ -1739,6 +1785,27 @@ export function CalendarWorkspace({
     );
   }
 
+  function changeAvailabilityMode(mode: "OPEN" | "CLOSED") {
+    if (mode === availabilityMode) return;
+    if (
+      mode === "CLOSED" &&
+      !window.confirm(
+        resolve(
+          "host.calendar.switch_closed_confirm",
+          "Switch to only dates you open? Every other date will close and the listing will disappear from undated search.",
+        ).text,
+      )
+    ) {
+      return;
+    }
+    report(
+      () => setCalendarAvailabilityMode(listingId, mode),
+      mode === "CLOSED"
+        ? "Only explicitly opened dates are now bookable."
+        : "Dates are now open unless you block them.",
+    );
+  }
+
   function editChange(change: ScheduledChange) {
     if (change.kind === "promotion" && change.promotion) {
       setEditor({ kind: "promotion", promotion: change.promotion });
@@ -1766,6 +1833,17 @@ export function CalendarWorkspace({
     }
     if (!change.from || !change.to) return;
     const endDate = addDaysToYmd(change.to, 1);
+    if (change.kind === "open") {
+      report(
+        () =>
+          blockCalendarRange(listingId, {
+            startDate: change.from!,
+            endDate,
+          }),
+        "Dates closed.",
+      );
+      return;
+    }
     if (change.kind === "price") {
       report(
         () =>
@@ -1820,22 +1898,41 @@ export function CalendarWorkspace({
               onClick={openSelectedRange}
             >
               <BedDouble className="size-4" />
-              <Tx k="host.calendar.make_available" source="Make available" />
+              {availabilityMode === "CLOSED" ? (
+                <Tx k="host.calendar.open_dates" source="Open dates" />
+              ) : (
+                <Tx k="host.calendar.make_available" source="Make available" />
+              )}
             </Button>
             <Button
               type="button"
               size="lg"
               className="flex-1"
               disabled={pending || selectionCounts.open === 0}
-              onClick={() =>
+              onClick={() => {
+                if (availabilityMode === "CLOSED" && selection) {
+                  report(
+                    () =>
+                      blockCalendarRange(listingId, {
+                        startDate: selection.startDate,
+                        endDate: selection.endDate,
+                      }),
+                    "Dates closed.",
+                  );
+                  return;
+                }
                 setEditor({
                   kind: "availability",
                   range: { from: range!.from!, to: range!.to ?? range!.from! },
-                })
-              }
+                });
+              }}
             >
               <LockKeyhole className="size-4" />
-              <Tx k="host.calendar.block_dates" source="Block dates" />
+              {availabilityMode === "CLOSED" ? (
+                <Tx k="host.calendar.close_dates" source="Close dates" />
+              ) : (
+                <Tx k="host.calendar.block_dates" source="Block dates" />
+              )}
             </Button>
           </div>
         ) : (
@@ -1918,6 +2015,43 @@ export function CalendarWorkspace({
         aria-label={`${listingTitle} calendar`}
         className="overflow-hidden rounded-2xl border bg-card shadow-sm"
       >
+        {lens === "availability" ? (
+          <div className="border-b bg-muted/20 p-4 md:px-5">
+            <p className="text-sm font-semibold">
+              <Tx
+                k="host.calendar.availability_strategy"
+                source="Availability strategy"
+              />
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              <Tx
+                k="host.calendar.availability_strategy_hint"
+                source="Choose whether dates start open or stay closed until you open them."
+              />
+            </p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Button
+                type="button"
+                variant={availabilityMode === "OPEN" ? "default" : "outline"}
+                disabled={pending}
+                onClick={() => changeAvailabilityMode("OPEN")}
+              >
+                <Tx k="host.calendar.open_by_default" source="Open by default" />
+              </Button>
+              <Button
+                type="button"
+                variant={availabilityMode === "CLOSED" ? "default" : "outline"}
+                disabled={pending}
+                onClick={() => changeAvailabilityMode("CLOSED")}
+              >
+                <Tx
+                  k="host.calendar.only_dates_open"
+                  source="Only dates I open"
+                />
+              </Button>
+            </div>
+          </div>
+        ) : null}
         <DateRangeCalendarStep
           active
           fitViewport
@@ -1935,6 +2069,9 @@ export function CalendarWorkspace({
             if (lens === "availability") {
               if (bookingDates.has(key)) return { sublabel: "Booked" };
               if (manualDates.has(key)) return { sublabel: "Blocked" };
+              if (availabilityMode === "CLOSED") {
+                return { sublabel: openedDates.has(key) ? "Open" : "Closed" };
+              }
               return { sublabel: "" };
             }
             if (lens === "pricing") {
@@ -1957,7 +2094,15 @@ export function CalendarWorkspace({
             // explains why a date cannot be changed, whichever lens you are in.
             bookingHold: (day) => bookingDates.has(dateKey(day)),
             ...(lens === "availability"
-              ? { manualBlock: (day: Date) => manualDates.has(dateKey(day)) }
+              ? {
+                  manualBlock: (day: Date) => manualDates.has(dateKey(day)),
+                  ...(availabilityMode === "CLOSED"
+                    ? {
+                        openWindow: (day: Date) => openedDates.has(dateKey(day)),
+                        closedDefault: (day: Date) => !openedDates.has(dateKey(day)),
+                      }
+                    : {}),
+                }
               : {}),
             ...(lens === "pricing"
               ? { customPrice: (day: Date) => priceByDate.has(dateKey(day)) }
@@ -1969,6 +2114,8 @@ export function CalendarWorkspace({
           dateModifiersClassNames={{
             manualBlock:
               "bg-muted after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:bg-[repeating-linear-gradient(-45deg,rgba(15,23,42,0.09)_0,rgba(15,23,42,0.09)_4px,transparent_4px,transparent_8px)]",
+            closedDefault: "bg-muted/60 text-muted-foreground",
+            openWindow: "bg-emerald-500/15 ring-2 ring-emerald-600/35 ring-inset",
             bookingHold: "bg-destructive/20",
             customPrice: "ring-2 ring-primary/40 ring-inset",
             promotion: "bg-amber-500/15",
@@ -1980,10 +2127,23 @@ export function CalendarWorkspace({
             <Tx k="host.calendar.legend_booked" source="Booked" />
           </span>
           {lens === "availability" ? (
-            <span className="inline-flex items-center gap-1.5">
-              <span className="size-2.5 rounded-[2px] bg-[repeating-linear-gradient(-45deg,rgba(15,23,42,0.18)_0,rgba(15,23,42,0.18)_2px,transparent_2px,transparent_4px)]" />
-              <Tx k="host.calendar.legend_blocked" source="Blocked" />
-            </span>
+            availabilityMode === "CLOSED" ? (
+              <>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="size-2.5 rounded-[2px] bg-emerald-500/25 ring-1 ring-emerald-600/40" />
+                  <Tx k="host.calendar.legend_open" source="Open" />
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="size-2.5 rounded-[2px] bg-muted" />
+                  <Tx k="host.calendar.legend_closed" source="Closed" />
+                </span>
+              </>
+            ) : (
+              <span className="inline-flex items-center gap-1.5">
+                <span className="size-2.5 rounded-[2px] bg-[repeating-linear-gradient(-45deg,rgba(15,23,42,0.18)_0,rgba(15,23,42,0.18)_2px,transparent_2px,transparent_4px)]" />
+                <Tx k="host.calendar.legend_blocked" source="Blocked" />
+              </span>
+            )
           ) : null}
           {lens === "pricing" ? (
             <>
@@ -2124,7 +2284,9 @@ export function CalendarWorkspace({
                     ? BadgePercent
                     : change.kind === "booking"
                       ? BedDouble
-                      : LockKeyhole;
+                      : change.kind === "open"
+                        ? UnlockKeyhole
+                        : LockKeyhole;
               const typeLabel =
                 change.kind === "price"
                   ? "Custom date price"
@@ -2132,6 +2294,8 @@ export function CalendarWorkspace({
                     ? "Promotion"
                     : change.kind === "booking"
                       ? "Reservation"
+                      : change.kind === "open"
+                        ? "Open dates"
                       : "Availability";
               const dates =
                 change.from && change.to
@@ -2163,7 +2327,7 @@ export function CalendarWorkspace({
                     </span>
                   ) : (
                     <span className="flex justify-end gap-1">
-                      <Button
+                      {change.kind !== "open" ? <Button
                         type="button"
                         variant="ghost"
                         size="sm"
@@ -2171,7 +2335,7 @@ export function CalendarWorkspace({
                       >
                         <Pencil className="size-3.5" />{" "}
                         <Tx k="host.workspace.edit" source="Edit" />
-                      </Button>
+                      </Button> : null}
                       <Button
                         type="button"
                         variant="ghost"
@@ -2181,6 +2345,8 @@ export function CalendarWorkspace({
                       >
                         {change.kind === "block" ? (
                           <UnlockKeyhole className="size-3.5" />
+                        ) : change.kind === "open" ? (
+                          <LockKeyhole className="size-3.5" />
                         ) : change.kind === "promotion" ? (
                           <Trash2 className="size-3.5" />
                         ) : (
@@ -2188,6 +2354,8 @@ export function CalendarWorkspace({
                         )}
                         {change.kind === "block"
                           ? "Make available"
+                          : change.kind === "open"
+                            ? "Close dates"
                           : change.kind === "promotion"
                             ? "Remove"
                             : "Reset"}
