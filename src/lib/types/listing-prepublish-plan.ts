@@ -35,9 +35,13 @@ export interface PrePublishDatePrice extends PrePublishRange {
 }
 
 export interface PrePublishOffer extends PrePublishRange {
-  type: "PERCENT_DISCOUNT" | "FREE_CLEANING";
-  /** 0 for a free-cleaning offer, 5–50 for a percentage one. */
+  /** 0 when the offer is free cleaning alone, 5–50 otherwise. */
   discountPercent: number;
+  /** Waives the cleaning fee on these nights. Combinable with a percentage, the same
+   *  way the launch offer and the live calendar's promotion editor combine them —
+   *  `ListingPromotion` has carried both columns all along, only this plan forced a
+   *  choice between them. */
+  freeCleaning: boolean;
 }
 
 export interface PrePublishPlan {
@@ -135,6 +139,30 @@ export function rangeNights(startDate: PlanDate, endDate: PlanDate): number {
   return Math.round((end.getTime() - start.getTime()) / MS_PER_DAY) + 1;
 }
 
+/**
+ * Every night of `range` already sits inside one of `windows`.
+ *
+ * The open-dates calendar reads this to decide which way its footer action points: a
+ * selection made entirely of dates the host has already opened closes them again,
+ * so one screen both opens and takes back. A selection that touches even one closed
+ * date opens the whole thing instead — a drag across the edge of a window reads as
+ * "extend", never as "close half of what I just crossed".
+ */
+export function isRangeFullyOpen(
+  range: PrePublishRange,
+  windows: PrePublishRange[],
+): boolean {
+  const days = eachPlanDate(range.startDate, range.endDate);
+  if (days.length === 0) return false;
+  const open = new Set<PlanDate>();
+  for (const window of windows) {
+    for (const day of eachPlanDate(window.startDate, window.endDate)) {
+      open.add(day);
+    }
+  }
+  return days.every((day) => open.has(day));
+}
+
 function validRange(value: unknown): PrePublishRange | null {
   if (!value || typeof value !== "object") return null;
   const raw = value as Record<string, unknown>;
@@ -206,22 +234,23 @@ export function parsePrePublishPlan(raw: unknown): PrePublishPlan {
     const range = validRange(entry);
     if (!range) continue;
     const raw = entry as Record<string, unknown>;
-    const type =
-      raw.type === "FREE_CLEANING" ? "FREE_CLEANING" : "PERCENT_DISCOUNT";
-    if (type === "PERCENT_DISCOUNT") {
-      const percent = finiteNumber(raw.discountPercent);
-      if (
-        percent === null ||
-        !Number.isInteger(percent) ||
+    // Drafts written before an offer could be both carry `type` instead of the flag.
+    const freeCleaning =
+      typeof raw.freeCleaning === "boolean"
+        ? raw.freeCleaning
+        : raw.type === "FREE_CLEANING";
+    const percent = finiteNumber(raw.discountPercent) ?? 0;
+    if (
+      percent !== 0 &&
+      (!Number.isInteger(percent) ||
         percent < MIN_OFFER_PERCENT ||
-        percent > MAX_OFFER_PERCENT
-      ) {
-        continue;
-      }
-      offers.push({ ...range, type, discountPercent: percent });
-    } else {
-      offers.push({ ...range, type, discountPercent: 0 });
+        percent > MAX_OFFER_PERCENT)
+    ) {
+      continue;
     }
+    // Neither benefit is not an offer, whatever the range says.
+    if (percent === 0 && !freeCleaning) continue;
+    offers.push({ ...range, discountPercent: percent, freeCleaning });
     if (offers.length >= MAX_PLAN_ENTRIES) break;
   }
 
@@ -358,7 +387,7 @@ export function mergeInclusiveBlockRanges(
 }
 
 export function planOfferToPromotion(offer: PrePublishOffer): {
-  type: PrePublishOffer["type"];
+  type: "PERCENT_DISCOUNT" | "FREE_CLEANING";
   discountPercent: number;
   freeCleaning: boolean;
   roundToWholeUnit: boolean;
@@ -367,12 +396,16 @@ export function planOfferToPromotion(offer: PrePublishOffer): {
 } | null {
   const dbRange = planRangeToDbRange(offer);
   if (!dbRange) return null;
+  const hasDiscount = offer.discountPercent > 0;
   return {
     ...dbRange,
-    type: offer.type,
-    discountPercent: offer.type === "PERCENT_DISCOUNT" ? offer.discountPercent : 0,
-    freeCleaning: offer.type === "FREE_CLEANING",
-    roundToWholeUnit: offer.type === "PERCENT_DISCOUNT",
+    // `type` is the enum column, not the offer's shape: a percentage — with or without
+    // free cleaning on top — is a PERCENT_DISCOUNT. Same rule promotion.actions applies
+    // to the promotions hosts save after publishing.
+    type: hasDiscount ? "PERCENT_DISCOUNT" : "FREE_CLEANING",
+    discountPercent: hasDiscount ? offer.discountPercent : 0,
+    freeCleaning: offer.freeCleaning,
+    roundToWholeUnit: hasDiscount,
   };
 }
 

@@ -42,10 +42,15 @@ export function prePublishTaskPrimaryAction(
   screen: PrePublishNavScreen | null,
   hasSelection: boolean,
   opensSelectedDates = false,
+  /** Closed-by-default listings only: the selection is made entirely of dates the host
+   *  has already opened, so the action closes them again rather than re-opening what is
+   *  already open. Lets the one calendar both open and take back. */
+  selectionAlreadyOpen = false,
 ): PrePublishTaskPrimaryAction {
   if (!hasSelection) return "done";
   if (screen === "availability") {
-    return opensSelectedDates ? "open-dates" : "block-dates";
+    if (!opensSelectedDates) return "block-dates";
+    return selectionAlreadyOpen ? "block-dates" : "open-dates";
   }
   if (screen === "pricing") return "edit-price";
   if (screen === "offers") return "add-promotion";

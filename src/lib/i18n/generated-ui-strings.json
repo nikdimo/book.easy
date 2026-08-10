@@ -2747,7 +2747,7 @@
   {
     "key": "host.form.offer_percentage",
     "sourceText": "Percentage",
-    "filePath": "src/components/host/listing-form.tsx"
+    "filePath": "src/components/host/calendar-workspace.tsx"
   },
   {
     "key": "host.form.offer_specific_dates",
@@ -3417,7 +3417,7 @@
   {
     "key": "host.prepublish.offer_type_label",
     "sourceText": "What do guests get?",
-    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+    "filePath": "src/components/host/calendar-workspace.tsx"
   },
   {
     "key": "host.prepublish.offers_title",

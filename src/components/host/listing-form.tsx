@@ -66,6 +66,7 @@ import {
   type PrePublishTaskActions,
 } from "@/components/host/listing-prepublish-plan";
 import {
+  isRangeFullyOpen,
   parsePrePublishPlan,
   type PrePublishPlan,
   type PrePublishRange,
@@ -691,6 +692,8 @@ export function ListingForm({
     prePublishScreen,
     prePublishSelection !== null,
     prePublishPlan.availabilityStart?.mode === "selected",
+    prePublishSelection !== null &&
+      isRangeFullyOpen(prePublishSelection, prePublishPlan.openDates),
   );
   const taskSelectionActive = selectedTaskAction !== "done";
   const selectedTaskActionLabel =

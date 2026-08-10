@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   flattenPlanDatePrices,
+  parsePrePublishPlan,
   planOfferToPromotion,
   planRangeToAvailabilityBlock,
   planRangeToDbRange,
@@ -32,8 +33,8 @@ function dbBlock(range: PrePublishRange) {
 function dbOffer(range: PrePublishRange) {
   const offer = planOfferToPromotion({
     ...range,
-    type: "PERCENT_DISCOUNT",
     discountPercent: 20,
+    freeCleaning: false,
   });
   expect(offer).not.toBeNull();
   return {
@@ -139,6 +140,67 @@ describe("date prices stay inclusive", () => {
       "2026-08-07",
     ]);
     expect(rows.every((row) => row.nightlyRate === 90)).toBe(true);
+  });
+});
+
+describe("dated offers carry a percentage, free cleaning, or both", () => {
+  const range = { startDate: "2026-08-03", endDate: "2026-08-07" };
+
+  function offers(entries: unknown[]) {
+    return parsePrePublishPlan({ offers: entries }).offers;
+  }
+
+  it("keeps both benefits on one range", () => {
+    expect(offers([{ ...range, discountPercent: 20, freeCleaning: true }])).toEqual([
+      { ...range, discountPercent: 20, freeCleaning: true },
+    ]);
+  });
+
+  it("reads a draft written before an offer could be both", () => {
+    expect(
+      offers([
+        { ...range, type: "FREE_CLEANING", discountPercent: 0 },
+        { ...range, type: "PERCENT_DISCOUNT", discountPercent: 20 },
+      ]),
+    ).toEqual([
+      { ...range, discountPercent: 0, freeCleaning: true },
+      { ...range, discountPercent: 20, freeCleaning: false },
+    ]);
+  });
+
+  it("drops an out-of-range percentage and an offer with no benefit at all", () => {
+    expect(
+      offers([
+        { ...range, discountPercent: 80, freeCleaning: true },
+        { ...range, discountPercent: 0, freeCleaning: false },
+      ]),
+    ).toEqual([]);
+  });
+
+  it("stores a combined offer as a discount that also waives the cleaning fee", () => {
+    const promotion = planOfferToPromotion({
+      ...range,
+      discountPercent: 20,
+      freeCleaning: true,
+    });
+
+    expect(promotion).toMatchObject({
+      type: "PERCENT_DISCOUNT",
+      discountPercent: 20,
+      freeCleaning: true,
+      roundToWholeUnit: true,
+    });
+  });
+
+  it("stores a cleaning-only offer as a free-cleaning promotion", () => {
+    expect(
+      planOfferToPromotion({ ...range, discountPercent: 0, freeCleaning: true }),
+    ).toMatchObject({
+      type: "FREE_CLEANING",
+      discountPercent: 0,
+      freeCleaning: true,
+      roundToWholeUnit: false,
+    });
   });
 });
 

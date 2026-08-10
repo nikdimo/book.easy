@@ -6,6 +6,7 @@ import {
 } from "@/lib/types/listing-prepublish-navigation";
 import {
   EMPTY_PRE_PUBLISH_PLAN,
+  isRangeFullyOpen,
   parsePrePublishPlan,
   type PrePublishPlan,
 } from "@/lib/types/listing-prepublish-plan";
@@ -63,6 +64,49 @@ describe("prePublishTaskPrimaryAction", () => {
     expect(prePublishTaskPrimaryAction("availability", true, true)).toBe(
       "open-dates",
     );
+  });
+
+  it("closes a selection made entirely of dates the host already opened", () => {
+    expect(prePublishTaskPrimaryAction("availability", true, true, true)).toBe(
+      "block-dates",
+    );
+  });
+
+  it("still opens when the selection only partly overlaps an open window", () => {
+    expect(prePublishTaskPrimaryAction("availability", true, true, false)).toBe(
+      "open-dates",
+    );
+  });
+});
+
+describe("isRangeFullyOpen", () => {
+  const windows = [
+    { startDate: "2026-08-18", endDate: "2026-08-21" },
+    { startDate: "2026-09-01", endDate: "2026-09-02" },
+  ];
+
+  it("is true for a selection inside one window", () => {
+    expect(
+      isRangeFullyOpen({ startDate: "2026-08-19", endDate: "2026-08-20" }, windows),
+    ).toBe(true);
+  });
+
+  it("is false when the selection runs past the edge of a window", () => {
+    expect(
+      isRangeFullyOpen({ startDate: "2026-08-20", endDate: "2026-08-22" }, windows),
+    ).toBe(false);
+  });
+
+  it("is false for a selection spanning the gap between two windows", () => {
+    expect(
+      isRangeFullyOpen({ startDate: "2026-08-18", endDate: "2026-09-02" }, windows),
+    ).toBe(false);
+  });
+
+  it("is false when nothing is open yet", () => {
+    expect(
+      isRangeFullyOpen({ startDate: "2026-08-19", endDate: "2026-08-19" }, []),
+    ).toBe(false);
   });
 });
 

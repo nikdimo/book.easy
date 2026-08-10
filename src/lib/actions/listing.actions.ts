@@ -329,11 +329,16 @@ export async function submitNewListing(
     return { error: "Confirm when guests can start booking before publishing." };
   }
 
-  // The same rule the launch offer follows: a free-cleaning discount on a listing with
-  // no cleaning fee is not an offer, it's a no-op the guest would see as a lie.
-  const datedOffers = plan.offers.filter(
-    (offer) => offer.type !== "FREE_CLEANING" || data.cleaningFee > 0
-  );
+  // The same rule the launch offer follows: free cleaning on a listing with no cleaning
+  // fee is not an offer, it's a no-op the guest would see as a lie. Only that benefit is
+  // dropped — an offer that also discounts the nights still stands.
+  const datedOffers = plan.offers
+    .map((offer) =>
+      offer.freeCleaning && data.cleaningFee <= 0
+        ? { ...offer, freeCleaning: false }
+        : offer
+    )
+    .filter((offer) => offer.discountPercent > 0 || offer.freeCleaning);
   const datePriceRows = flattenPlanDatePrices(plan.datePrices);
 
   // One list: the launch offer (by length of stay, no dates) and the host's dated

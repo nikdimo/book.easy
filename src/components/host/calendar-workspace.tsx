@@ -49,6 +49,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 import { Tx, interpolate, translatedClass, useI18n } from "@/lib/i18n/client";
 import {
   Popover,
@@ -176,6 +177,8 @@ const FILTERS: { value: ChangeFilter; label: string }[] = [
   { value: "promotion", label: "Promotions" },
   { value: "booking", label: "Reservations" },
 ];
+
+const PROMOTION_PERCENT_CHOICES = [10, 15, 20, 30] as const;
 
 const LENS_META: Record<
   CalendarLens,
@@ -533,6 +536,8 @@ function EditorDialog({
   const [fee, setFee] = useState(String(cleaningFee));
   const [minimumStay, setMinimumStay] = useState(String(minNights));
   const [roundPrice, setRoundPrice] = useState(true);
+  const [priceAdjustOpen, setPriceAdjustOpen] = useState(false);
+  const priceHoldTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** The multiplier behind the chosen quick adjustment, or `null` once the host types
    *  their own figure — the rounding toggle recomputes from it so switching rounding
    *  off gives back the exact percentage rather than the rounded number. */
@@ -541,7 +546,7 @@ function EditorDialog({
     String(state.promotion?.discountPercent ?? 15),
   );
   const [promotionMinimum, setPromotionMinimum] = useState(
-    String(state.promotion?.minimumNights ?? Math.max(5, minNights)),
+    String(state.promotion?.minimumNights ?? minNights),
   );
   const [freeCleaning, setFreeCleaning] = useState(
     cleaningFee > 0 && (state.promotion?.freeCleaning ?? false),
@@ -554,6 +559,24 @@ function EditorDialog({
    *  and the typed value can never disagree about it. */
   const applyRounding = (value: number, round: boolean) =>
     round ? roundToCleanPrice(value) : Number(value.toFixed(2));
+
+  const clearPriceHold = () => {
+    if (priceHoldTimeout.current !== null) {
+      clearTimeout(priceHoldTimeout.current);
+      priceHoldTimeout.current = null;
+    }
+  };
+
+  const startPriceHold = () => {
+    clearPriceHold();
+    priceHoldTimeout.current = setTimeout(() => setPriceAdjustOpen(true), 350);
+  };
+
+  const setPriceFromPercent = (percent: number) => {
+    const factor = 1 + percent / 100;
+    setPriceFactor(factor);
+    setPrice(String(applyRounding(baseNightlyRate * factor, roundPrice)));
+  };
 
   const isDateScoped = Boolean(range?.from);
   const selectedInput = range?.from ? calendarRangeToInput(range) : null;
@@ -590,7 +613,9 @@ function EditorDialog({
           }
         : {
             title: state.promotion ? "Edit promotion" : "Create a promotion",
-            description: "Set the stay threshold, benefits, and date scope.",
+            description: isDateScoped
+              ? "Choose the benefits for these dates."
+              : "Set the stay threshold, benefits, and date scope.",
             icon: BadgePercent,
             pickerTitle: "Select promotion dates",
           };
@@ -705,7 +730,9 @@ function EditorDialog({
 
   function savePromotion() {
     const discountPercent = Number(discount);
-    const promotionNights = Number(promotionMinimum);
+    // The selected dates are the eligibility boundary for a custom-date offer.
+    // A separate minimum-stay condition belongs only to an always-active promotion.
+    const promotionNights = isDateScoped ? minNights : Number(promotionMinimum);
     if (
       !Number.isInteger(discountPercent) ||
       discountPercent < 0 ||
@@ -1035,6 +1062,10 @@ function EditorDialog({
                       setPriceFactor(null);
                       setPrice(event.target.value);
                     }}
+                    onPointerDown={startPriceHold}
+                    onPointerUp={clearPriceHold}
+                    onPointerCancel={clearPriceHold}
+                    onPointerLeave={clearPriceHold}
                   />
                   <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm md:text-xs text-muted-foreground">
                     <Tx k="host.calendar.per_night" source="per night" />
@@ -1047,13 +1078,20 @@ function EditorDialog({
                   />
                 </p>
               </div>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="flex gap-2 overflow-x-auto pb-1">
                 {(
                   [
+                    ["−50%", 0.5],
+                    ["−30%", 0.7],
+                    ["−20%", 0.8],
                     ["−10%", 0.9],
                     ["Base", 1],
+                    ["+10%", 1.1],
                     ["+20%", 1.2],
+                    ["+30%", 1.3],
                     ["+50%", 1.5],
+                    ["+75%", 1.75],
+                    ["+100%", 2],
                   ] as const
                 ).map(([label, factor]) => {
                   const adjusted = applyRounding(
@@ -1071,7 +1109,7 @@ function EditorDialog({
                         setPrice(String(adjusted));
                       }}
                       className={cn(
-                        "relative flex min-h-14 flex-col items-center justify-center rounded-xl border px-2 py-2 transition-colors",
+                        "relative flex min-h-14 min-w-20 flex-col items-center justify-center rounded-xl border px-2 py-2 transition-colors",
                         selected
                           ? "border-primary bg-primary/10 text-primary ring-1 ring-primary"
                           : "bg-background hover:border-primary/35 hover:bg-muted/30",
@@ -1096,6 +1134,35 @@ function EditorDialog({
                   );
                 })}
               </div>
+              {priceAdjustOpen && baseNightlyRate > 0 ? (
+                <div className="rounded-2xl border-2 border-primary/30 bg-primary/[0.035] p-4">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <p className="text-sm font-semibold">
+                      <Tx k="host.form.offer_percentage" source="Percentage" />
+                    </p>
+                    <span className="text-sm font-semibold text-primary">
+                      {Math.round(((Number(price) / baseNightlyRate) - 1) * 100) || 0}%
+                    </span>
+                  </div>
+                  <Slider
+                    className="mt-5 [&_[data-slot=slider-track]]:h-3 [&_[data-slot=slider-thumb]]:size-7"
+                    min={-50}
+                    max={100}
+                    step={1}
+                    value={[Math.max(-50, Math.min(100, Math.round(((Number(price) / baseNightlyRate) - 1) * 100) || 0))]}
+                    onValueChange={([percent]) => setPriceFromPercent(percent)}
+                    aria-label={
+                      resolve("host.calendar.discount_label", "Discount percentage").text
+                    }
+                  />
+                  <p className="mt-3 text-sm text-muted-foreground md:text-xs">
+                    <Tx
+                      k="host.calendar.price_hint"
+                      source="Enter an exact amount or choose a quick adjustment below."
+                    />
+                  </p>
+                </div>
+              ) : null}
               {/* Same keys as the wizard's price sheet: the two surfaces round the
                   same way now, so they should not say it in two different voices —
                   and this copy was the one that had never been translated. */}
@@ -1252,77 +1319,171 @@ function EditorDialog({
 
           {state.kind === "promotion" ? (
             <div className="space-y-4 p-6">
-              <fieldset>
-                <legend className="text-sm font-semibold">
-                  <Tx k="host.calendar.recommended_offers" source="Recommended offers" />
-                </legend>
-                <div className="mt-3 grid grid-cols-3 gap-2">
-                  {[
-                    { title: "Recommended", percent: 15, nights: 5 },
-                    { title: "Long stay", percent: 20, nights: 10 },
-                    { title: "Monthly", percent: 30, nights: 30 },
-                  ].map((offer) => (
-                    <button
-                      key={offer.title}
-                      type="button"
-                      aria-pressed={
-                        discount === String(offer.percent) &&
-                        promotionMinimum === String(offer.nights)
-                      }
-                      onClick={() => {
-                        setDiscount(String(offer.percent));
-                        setPromotionMinimum(String(offer.nights));
-                      }}
-                      className="rounded-xl border p-3 text-left hover:border-primary/35 aria-pressed:border-primary aria-pressed:bg-primary/5"
-                    >
-                      <span className="block text-sm md:text-xs font-semibold">
-                        {offer.title}
-                      </span>
-                      <span className="text-xs md:text-[0.65rem] text-muted-foreground">
-                        {
-                          interpolate(
-                            resolve(
-                              "host.calendar.offer_summary",
-                              "{percent}% · {nights}+ nights",
-                            ),
-                            { percent: offer.percent, nights: offer.nights },
+              {isDateScoped ? (
+                <fieldset>
+                  <legend className="text-sm font-semibold">
+                    <Tx
+                      k="host.prepublish.offer_type_label"
+                      source="What do guests get?"
+                    />
+                  </legend>
+                  <div className="mt-3 grid grid-cols-4 gap-2">
+                    {PROMOTION_PERCENT_CHOICES.map((percent) => {
+                      const selected = discount === String(percent);
+                      return (
+                        <button
+                          key={percent}
+                          type="button"
+                          aria-pressed={selected}
+                          onClick={() => setDiscount(String(percent))}
+                          className={cn(
+                            "relative min-h-12 rounded-xl border px-2 py-2 text-center text-sm font-semibold transition-colors",
+                            selected
+                              ? "border-primary bg-primary/10 text-primary ring-1 ring-primary"
+                              : "bg-background hover:border-primary/35 hover:bg-muted/30",
+                          )}
+                        >
+                          {percent}%
+                          {selected ? (
+                            <span className="absolute top-1.5 right-1.5 grid size-4 place-items-center rounded-full bg-primary text-primary-foreground">
+                              <Check className="size-2.5" aria-hidden="true" />
+                            </span>
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+              ) : (
+                <fieldset>
+                  <legend className="text-sm font-semibold">
+                    <Tx
+                      k="host.calendar.recommended_offers"
+                      source="Recommended offers"
+                    />
+                  </legend>
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    {[
+                      { title: "Recommended", percent: 15, nights: 5 },
+                      { title: "Long stay", percent: 20, nights: 10 },
+                      { title: "Monthly", percent: 30, nights: 30 },
+                    ].map((offer) => (
+                      <button
+                        key={offer.title}
+                        type="button"
+                        aria-pressed={
+                          discount === String(offer.percent) &&
+                          promotionMinimum === String(offer.nights)
+                        }
+                        onClick={() => {
+                          setDiscount(String(offer.percent));
+                          setPromotionMinimum(String(offer.nights));
+                        }}
+                        className="rounded-xl border p-3 text-left hover:border-primary/35 aria-pressed:border-primary aria-pressed:bg-primary/5"
+                      >
+                        <span className="block text-sm font-semibold md:text-xs">
+                          {offer.title}
+                        </span>
+                        <span className="text-xs text-muted-foreground md:text-[0.65rem]">
+                          {
+                            interpolate(
+                              resolve(
+                                "host.calendar.offer_summary",
+                                "{percent}% · {nights}+ nights",
+                              ),
+                              {
+                                percent: offer.percent,
+                                nights: offer.nights,
+                              },
+                            ).text
+                          }
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
+              <div>
+                <Label htmlFor="calendar-promotion-discount">
+                  <Tx k="host.form.offer_percentage" source="Percentage" />
+                </Label>
+                <div
+                  className={cn(
+                    "mt-1.5 grid items-center gap-2 rounded-xl border bg-primary/5 p-3",
+                    isDateScoped
+                      ? "grid-cols-[1fr_auto]"
+                      : "grid-cols-[1fr_auto_1fr_auto]",
+                  )}
+                >
+                  <Input
+                    id="calendar-promotion-discount"
+                    aria-label={
+                      resolve(
+                        "host.calendar.discount_label",
+                        "Discount percentage",
+                      ).text
+                    }
+                    type="number"
+                    min={0}
+                    max={50}
+                    value={discount}
+                    onChange={(event) => setDiscount(event.target.value)}
+                  />
+                  <span className="text-sm text-muted-foreground md:text-xs">
+                    <Tx k="host.calendar.percent_off" source="% off" />
+                  </span>
+                  {!isDateScoped ? (
+                    <>
+                      <Input
+                        aria-label={
+                          resolve(
+                            "host.calendar.promotion_minimum_label",
+                            "Promotion minimum stay",
                           ).text
                         }
+                        type="number"
+                        min={1}
+                        max={365}
+                        value={promotionMinimum}
+                        onChange={(event) =>
+                          setPromotionMinimum(event.target.value)
+                        }
+                      />
+                      <span className="text-sm text-muted-foreground md:text-xs">
+                        <Tx k="host.calendar.nights" source="nights" />
                       </span>
-                    </button>
-                  ))}
+                    </>
+                  ) : null}
                 </div>
-              </fieldset>
-              <div className="grid grid-cols-[1fr_auto_1fr_auto] items-center gap-2 rounded-xl border bg-primary/5 p-3">
-                <Input
+              </div>
+              <div className="rounded-xl border bg-muted/20 px-3 py-3">
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="text-sm font-semibold">
+                    <Tx k="host.form.offer_percentage" source="Percentage" />
+                  </p>
+                  <span className="text-sm font-semibold text-primary">
+                    {numericDiscount}%
+                  </span>
+                </div>
+                <Slider
+                  className="mt-4 [&_[data-slot=slider-track]]:h-2.5 [&_[data-slot=slider-thumb]]:size-6"
+                  min={5}
+                  max={50}
+                  step={1}
+                  value={[Math.max(5, numericDiscount || 5)]}
+                  onValueChange={([percent]) => setDiscount(String(percent))}
                   aria-label={
                     resolve("host.calendar.discount_label", "Discount percentage").text
                   }
-                  type="number"
-                  min={0}
-                  max={50}
-                  value={discount}
-                  onChange={(event) => setDiscount(event.target.value)}
                 />
-                <span className="text-sm md:text-xs text-muted-foreground">
-                  <Tx k="host.calendar.percent_off" source="% off" />
-                </span>
-                <Input
-                  aria-label={
-                    resolve(
-                      "host.calendar.promotion_minimum_label",
-                      "Promotion minimum stay",
+                <p className="mt-2 text-sm text-muted-foreground md:text-xs">
+                  {
+                    interpolate(
+                      resolve("host.prepublish.discount_hint", "Between {min}% and {max}%."),
+                      { min: 5, max: 50 },
                     ).text
                   }
-                  type="number"
-                  min={1}
-                  max={365}
-                  value={promotionMinimum}
-                  onChange={(event) => setPromotionMinimum(event.target.value)}
-                />
-                <span className="text-sm md:text-xs text-muted-foreground">
-                  <Tx k="host.calendar.nights" source="nights" />
-                </span>
+                </p>
               </div>
               <OptionToggle
                 checked={freeCleaning}
@@ -1396,12 +1557,15 @@ function EditorDialog({
                     {freeCleaning
                       ? resolve("host.calendar.summary_cleaning", "free cleaning").text
                       : ""}
-                    {
-                      interpolate(
-                        resolve("host.calendar.summary_minimum", " · {nights}+ nights"),
-                        { nights: promotionMinimum || "0" },
-                      ).text
-                    }
+                    {!isDateScoped
+                      ? interpolate(
+                          resolve(
+                            "host.calendar.summary_minimum",
+                            " · {nights}+ nights",
+                          ),
+                          { nights: promotionMinimum || "0" },
+                        ).text
+                      : ""}
                   </>
                 }
               >
@@ -1432,12 +1596,14 @@ function EditorDialog({
                       : ""}
                   </p>
                 ) : null}
-                <p className={cn(OFFER_PREVIEW_NOTE, "mt-1")}>
-                  <Tx
-                    k="host.calendar.promotion_priority"
-                    source="Date-specific offers take priority. Otherwise, the highest qualifying minimum-stay threshold wins."
-                  />
-                </p>
+                {!isDateScoped ? (
+                  <p className={cn(OFFER_PREVIEW_NOTE, "mt-1")}>
+                    <Tx
+                      k="host.calendar.promotion_priority"
+                      source="Date-specific offers take priority. Otherwise, the highest qualifying minimum-stay threshold wins."
+                    />
+                  </p>
+                ) : null}
               </OfferPreview>
               <div className={cn(STICKY_FOOTER, "flex justify-end gap-2")}>
                 <Button type="button" variant="outline" onClick={onClose}>

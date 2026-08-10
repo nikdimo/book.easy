@@ -17,7 +17,6 @@ import {
   Pencil,
   Percent,
   ShieldCheck,
-  Sparkles,
   Tags,
   Trash2,
   UnlockKeyhole,
@@ -33,6 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 import {
   OFFER_PREVIEW_NOTE,
   OfferPreview,
@@ -99,6 +99,7 @@ export function prePublishTaskCount(
 }
 
 const MS_PER_DAY = 86_400_000;
+const OFFER_PERCENT_CHOICES = [10, 15, 20, 30] as const;
 
 /** "1 night", not "1 nights" — this string sits in the action bar under every
  *  single-day selection, which is the most common one. */
@@ -188,15 +189,40 @@ function groupPrices(byDate: Map<PlanDate, number>): PrePublishDatePrice[] {
   return ranges;
 }
 
+/** One wording for a dated offer wherever it is listed back to the host. A percentage
+ *  and free cleaning can both sit on the same range, so neither reading may drop the
+ *  other. */
+function offerSummary(
+  offer: PrePublishOffer,
+  // The whole translator rather than its `resolve`: the string extractor only sees
+  // keys behind a property access, so a bare `resolve(...)` here would silently drop
+  // these three strings from the catalog.
+  i18n: Pick<ReturnType<typeof useI18n>, "resolve">,
+): string {
+  const percent =
+    offer.discountPercent > 0
+      ? interpolate(
+          i18n.resolve("host.prepublish.offer_percent_summary", "{percent}% off"),
+          { percent: offer.discountPercent },
+        ).text
+      : "";
+  const cleaning = offer.freeCleaning
+    ? i18n.resolve("host.prepublish.offer_cleaning", "Free cleaning").text
+    : "";
+  // Joined rather than a sentence of its own: a phrase with both benefits baked in
+  // would need its own catalog key in every reviewed language for no extra meaning.
+  if (percent && cleaning) return `${percent} · ${cleaning}`;
+  return percent || cleaning;
+}
+
 /** A cell has room for one badge, so the biggest benefit on that day wins — the same
  *  rule the live calendar uses. */
 function offerLabelByDate(offers: PrePublishOffer[]) {
   const best = new Map<PlanDate, { rank: number; label: string }>();
   for (const offer of offers) {
-    const rank =
-      offer.type === "PERCENT_DISCOUNT" ? offer.discountPercent : 0.5;
+    const rank = offer.discountPercent > 0 ? offer.discountPercent : 0.5;
     const label =
-      offer.type === "PERCENT_DISCOUNT" ? `-${offer.discountPercent}%` : "free";
+      offer.discountPercent > 0 ? `-${offer.discountPercent}%` : "free";
     for (const day of eachPlanDate(offer.startDate, offer.endDate)) {
       const existing = best.get(day);
       if (!existing || rank > existing.rank) best.set(day, { rank, label });
@@ -339,18 +365,8 @@ export function PrePublishMenu({
                 key={`${offer.startDate}-${offer.endDate}-${index}`}
                 className="block"
               >
-                {formatRange(offer.startDate, offer.endDate, locale)}: {offer.type === "FREE_CLEANING"
-                  ? i18n.resolve(
-                      "host.prepublish.offer_cleaning",
-                      "Free cleaning",
-                    ).text
-                  : interpolate(
-                      i18n.resolve(
-                        "host.prepublish.offer_percent_summary",
-                        "{percent}% off",
-                      ),
-                      { percent: offer.discountPercent },
-                    ).text}
+                {formatRange(offer.startDate, offer.endDate, locale)}:{" "}
+                {offerSummary(offer, i18n)}
               </span>
             ))
           )}
@@ -1278,6 +1294,10 @@ export function PrePublishTaskScreen({
     ? eachPlanDate(selection.startDate, selection.endDate)
     : [];
   const selectionNights = selectionDays.length;
+  const selectionAlreadyOpen =
+    opensSelectedDates &&
+    selectionNights > 0 &&
+    selectionDays.every((day) => openedDates.has(day));
   function openEditor() {
     if (!selection) return;
     setEditor(
@@ -1308,6 +1328,12 @@ export function PrePublishTaskScreen({
   function commitAvailabilitySelection() {
     if (!selection) return;
     if (opensSelectedDates) {
+      // A selection sitting entirely inside what is already open means the host is
+      // taking those nights back, not opening them twice — the footer says so too.
+      if (selectionAlreadyOpen) {
+        closeDates(selectionDays);
+        return;
+      }
       commit({ openDates: groupDates([...openedDates, ...selectionDays]) });
     } else {
       commit({ blocks: groupDates([...blockedDates, ...selectionDays]) });
@@ -1503,16 +1529,10 @@ export function PrePublishTaskScreen({
       startDate: offer.startDate,
       endDate: offer.endDate,
       index,
-      label:
-        offer.type === "FREE_CLEANING"
-          ? resolve("host.prepublish.offer_cleaning", "Free cleaning").text
-          : interpolate(
-              resolve("host.prepublish.offer_percent_summary", "{percent}% off"),
-              { percent: offer.discountPercent },
-            ).text,
+      label: offerSummary(offer, i18n),
       detail: nightsLabel(rangeNights(offer.startDate, offer.endDate)),
     }));
-  }, [baseRate, money, nightsLabel, opensSelectedDates, plan, resolve, task]);
+  }, [baseRate, i18n, money, nightsLabel, opensSelectedDates, plan, resolve, task]);
 
   const primaryDetail =
     task === "availability"
@@ -1910,7 +1930,8 @@ function PlanEditorDialog({
   onSavePrice: (nightlyRate: number) => void;
   onSaveOffer: (offer: PrePublishOffer, index?: number) => void;
 }) {
-  const { resolve } = useI18n();
+  const i18n = useI18n();
+  const { resolve } = i18n;
   const nightsLabel = useNightsLabel();
   const existingOffer =
     editor.kind === "offer" && editor.index !== undefined
@@ -1921,16 +1942,25 @@ function PlanEditorDialog({
     String(editor.kind === "price" ? (editor.initialRate ?? baseRate) : baseRate),
   );
   const [roundPrice, setRoundPrice] = React.useState(true);
+  const [priceAdjustOpen, setPriceAdjustOpen] = React.useState(false);
+  const priceHoldTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   /** The multiplier behind the chosen quick adjustment, or `null` once the host types
    *  their own figure. Kept so the rounding toggle can recompute from the exact
    *  percentage instead of re-rounding an already-rounded number — turning it off has
    *  to give back the €76.80, which is unrecoverable from the €77 in the field. */
   const [priceFactor, setPriceFactor] = React.useState<number | null>(null);
-  const [offerType, setOfferType] = React.useState<
-    "PERCENT_DISCOUNT" | "FREE_CLEANING"
-  >(existingOffer?.type ?? "PERCENT_DISCOUNT");
+  /** A percentage and free cleaning are independent benefits here, exactly as they are
+   *  on the launch offer and in the live calendar's promotion editor — an empty
+   *  percentage with the switch on is a cleaning-only offer. */
   const [discount, setDiscount] = React.useState(
-    String(existingOffer?.discountPercent || 15),
+    existingOffer
+      ? existingOffer.discountPercent > 0
+        ? String(existingOffer.discountPercent)
+        : ""
+      : "15",
+  );
+  const [freeCleaning, setFreeCleaning] = React.useState(
+    existingOffer?.freeCleaning ?? false,
   );
 
   const nights = rangeNights(editor.range.startDate, editor.range.endDate);
@@ -1942,11 +1972,15 @@ function PlanEditorDialog({
 
   const priceNumber = Number(price);
   const priceValid = Number.isFinite(priceNumber) && priceNumber > 0;
-  const discountNumber = Number(discount);
+  const discountEmpty = discount.trim() === "";
+  const discountNumber = discountEmpty ? 0 : Number(discount);
   const discountValid =
     Number.isInteger(discountNumber) &&
     discountNumber >= MIN_OFFER_PERCENT &&
     discountNumber <= MAX_OFFER_PERCENT;
+  /** Free cleaning alone is a complete offer, so an empty percentage is allowed — but a
+   *  typed one still has to be a real percentage. */
+  const offerValid = discountValid || (discountEmpty && freeCleaning);
 
   /** The shared `money` drops cents, which is right everywhere it reads back a price
    *  but wrong on the chips: with rounding off they claimed "€77" for the €76.80 they
@@ -1969,6 +2003,24 @@ function PlanEditorDialog({
     [],
   );
 
+  const clearPriceHold = () => {
+    if (priceHoldTimeout.current !== null) {
+      clearTimeout(priceHoldTimeout.current);
+      priceHoldTimeout.current = null;
+    }
+  };
+
+  const startPriceHold = () => {
+    clearPriceHold();
+    priceHoldTimeout.current = setTimeout(() => setPriceAdjustOpen(true), 350);
+  };
+
+  const setPriceFromPercent = (percent: number) => {
+    const factor = 1 + percent / 100;
+    setPriceFactor(factor);
+    setPrice(String(applyRounding(baseRate * factor, roundPrice)));
+  };
+
   const isPrice = editor.kind === "price";
   const HeaderIcon = isPrice ? CircleDollarSign : BadgePercent;
   const title = isPrice
@@ -1984,13 +2036,14 @@ function PlanEditorDialog({
       onSavePrice(Math.round(priceNumber * 100) / 100);
       return;
     }
-    if (offerType === "PERCENT_DISCOUNT" && !discountValid) return;
+    if (!offerValid) return;
     onSaveOffer(
       {
         ...editor.range,
-        type: offerType,
-        discountPercent:
-          offerType === "PERCENT_DISCOUNT" ? discountNumber : 0,
+        discountPercent: discountValid ? discountNumber : 0,
+        // The switch is disabled without a cleaning fee, but a host who turned it on
+        // and then cleared the fee should not carry a benefit that cannot apply.
+        freeCleaning: freeCleaning && hasCleaningFee,
       },
       editor.kind === "offer" ? editor.index : undefined,
     );
@@ -2057,13 +2110,20 @@ function PlanEditorDialog({
                       source="Adjust your normal price"
                     />
                   </p>
-                  <div className="mt-2 grid grid-cols-4 gap-2">
+                  <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
                   {(
                     [
+                      ["−50%", 0.5],
+                      ["−30%", 0.7],
+                      ["−20%", 0.8],
                       ["−10%", 0.9],
                       [resolve("host.prepublish.rate_base", "Base").text, 1],
+                      ["+10%", 1.1],
                       ["+20%", 1.2],
+                      ["+30%", 1.3],
                       ["+50%", 1.5],
+                      ["+75%", 1.75],
+                      ["+100%", 2],
                     ] as const
                   ).map(([label, factor]) => {
                     const adjusted = applyRounding(baseRate * factor, roundPrice);
@@ -2078,7 +2138,7 @@ function PlanEditorDialog({
                           setPrice(String(adjusted));
                         }}
                         className={cn(
-                          "relative flex min-h-14 flex-col items-center justify-center rounded-xl border px-2 py-2 transition-colors",
+                          "relative flex min-h-14 min-w-20 flex-col items-center justify-center rounded-xl border px-2 py-2 transition-colors",
                           selected
                             ? "border-primary bg-primary/10 text-primary ring-1 ring-primary"
                             : "bg-background hover:border-primary/35 hover:bg-muted/30",
@@ -2133,6 +2193,10 @@ function PlanEditorDialog({
                       setPriceFactor(null);
                       setPrice(event.target.value);
                     }}
+                    onPointerDown={startPriceHold}
+                    onPointerUp={clearPriceHold}
+                    onPointerCancel={clearPriceHold}
+                    onPointerLeave={clearPriceHold}
                   />
                   <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm text-muted-foreground md:text-xs">
                     {currency}
@@ -2145,6 +2209,36 @@ function PlanEditorDialog({
                   />
                 </p>
               </div>
+
+              {priceAdjustOpen && baseRate > 0 ? (
+                <div className="rounded-2xl border-2 border-primary/30 bg-primary/[0.035] p-4">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <p className="text-sm font-semibold">
+                      <Tx k="host.form.offer_percentage" source="Percentage" />
+                    </p>
+                    <span className="text-sm font-semibold text-primary">
+                      {Math.round(((priceNumber / baseRate) - 1) * 100) || 0}%
+                    </span>
+                  </div>
+                  <Slider
+                    className="mt-5 [&_[data-slot=slider-track]]:h-3 [&_[data-slot=slider-thumb]]:size-7"
+                    min={-50}
+                    max={100}
+                    step={1}
+                    value={[Math.max(-50, Math.min(100, Math.round(((priceNumber / baseRate) - 1) * 100) || 0))]}
+                    onValueChange={([percent]) => setPriceFromPercent(percent)}
+                    aria-label={
+                      resolve("host.prepublish.discount_label", "Discount").text
+                    }
+                  />
+                  <p className="mt-3 text-sm text-muted-foreground md:text-xs">
+                    <Tx
+                      k="host.prepublish.rate_exact_hint"
+                      source="Tap the field to type an exact amount."
+                    />
+                  </p>
+                </div>
+              ) : null}
 
               <OptionToggle
                 checked={roundPrice}
@@ -2231,61 +2325,26 @@ function PlanEditorDialog({
                     source="What do guests get?"
                   />
                 </legend>
-                <div className="mt-3 grid grid-cols-2 gap-3">
-                  {(
-                    [
-                      {
-                        value: "PERCENT_DISCOUNT",
-                        label: resolve("host.prepublish.offer_percent", "Discount")
-                          .text,
-                        description: resolve(
-                          "host.prepublish.offer_percent_hint",
-                          "A percentage off the nightly price.",
-                        ).text,
-                        icon: Percent,
-                        disabled: false,
-                      },
-                      {
-                        value: "FREE_CLEANING",
-                        label: resolve(
-                          "host.prepublish.offer_cleaning",
-                          "Free cleaning",
-                        ).text,
-                        description: resolve(
-                          "host.prepublish.offer_cleaning_short",
-                          "The cleaning fee is waived.",
-                        ).text,
-                        icon: Sparkles,
-                        disabled: !hasCleaningFee,
-                      },
-                    ] as const
-                  ).map((option) => {
-                    const selected = offerType === option.value;
-                    const Icon = option.icon;
+                <div className="mt-3 grid grid-cols-4 gap-2">
+                  {OFFER_PERCENT_CHOICES.map((percent) => {
+                    const selected = discount === String(percent);
                     return (
                       <button
-                        key={option.value}
+                        key={percent}
                         type="button"
                         aria-pressed={selected}
-                        disabled={option.disabled}
-                        onClick={() => setOfferType(option.value)}
+                        onClick={() => setDiscount(String(percent))}
                         className={cn(
-                          "relative rounded-xl border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                          "relative min-h-12 rounded-xl border px-2 py-2 text-center text-sm font-semibold transition-colors",
                           selected
-                            ? "border-primary bg-primary/5 ring-1 ring-primary"
-                            : "hover:border-primary/35",
+                            ? "border-primary bg-primary/10 text-primary ring-1 ring-primary"
+                            : "bg-background hover:border-primary/35 hover:bg-muted/30",
                         )}
                       >
-                        <Icon className="size-5 text-primary" />
-                        <span className="mt-4 block text-sm font-semibold">
-                          {option.label}
-                        </span>
-                        <span className="mt-1 block text-sm text-muted-foreground md:text-xs">
-                          {option.description}
-                        </span>
+                        {percent}%
                         {selected ? (
-                          <span className="absolute top-3 right-3 grid size-5 place-items-center rounded-full bg-primary text-primary-foreground">
-                            <Check className="size-3" />
+                          <span className="absolute top-1.5 right-1.5 grid size-4 place-items-center rounded-full bg-primary text-primary-foreground">
+                            <Check className="size-2.5" aria-hidden="true" />
                           </span>
                         ) : null}
                       </button>
@@ -2294,18 +2353,16 @@ function PlanEditorDialog({
                 </div>
               </fieldset>
 
-              {!hasCleaningFee ? (
-                <p className="text-sm text-muted-foreground md:text-xs">
-                  <Tx
-                    k="host.prepublish.offer_cleaning_hint"
-                    source="Free cleaning needs a cleaning fee to waive — add one on the Pricing step."
-                  />
-                </p>
-              ) : null}
-
-              {offerType === "PERCENT_DISCOUNT" ? (
-                <div className="grid grid-cols-[1fr_auto] items-center gap-2 rounded-xl border bg-primary/5 p-3">
+              <div>
+                <Label
+                  htmlFor="prepublish-offer-discount"
+                  className="text-sm font-semibold"
+                >
+                  <Tx k="host.form.offer_percentage" source="Percentage" />
+                </Label>
+                <div className="mt-3 grid grid-cols-[1fr_auto] items-center gap-2 rounded-xl border bg-primary/5 p-3">
                   <Input
+                    id="prepublish-offer-discount"
                     aria-label={
                       resolve("host.prepublish.discount_label", "Discount").text
                     }
@@ -2322,23 +2379,72 @@ function PlanEditorDialog({
                     <Tx k="host.calendar.percent_off" source="% off" />
                   </span>
                 </div>
-              ) : null}
+              </div>
 
-              <OfferPreview
-                headline={
-                  offerType === "FREE_CLEANING"
-                    ? resolve("host.prepublish.offer_cleaning", "Free cleaning")
-                        .text
-                    : interpolate(
-                        resolve(
-                          "host.prepublish.offer_percent_summary",
-                          "{percent}% off",
-                        ),
-                        { percent: discountValid ? discountNumber : 0 },
+              <div className="rounded-xl border bg-muted/20 px-3 py-3">
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="text-sm font-semibold">
+                    <Tx k="host.form.offer_percentage" source="Percentage" />
+                  </p>
+                  <span className="text-sm font-semibold text-primary">
+                    {discountValid ? discountNumber : MIN_OFFER_PERCENT}%
+                  </span>
+                </div>
+                <Slider
+                  className="mt-4 [&_[data-slot=slider-track]]:h-2.5 [&_[data-slot=slider-thumb]]:size-6"
+                  min={MIN_OFFER_PERCENT}
+                  max={MAX_OFFER_PERCENT}
+                  step={1}
+                  value={[Math.max(MIN_OFFER_PERCENT, discountValid ? discountNumber : MIN_OFFER_PERCENT)]}
+                  onValueChange={([percent]) => setDiscount(String(percent))}
+                  aria-label={
+                    resolve("host.prepublish.discount_label", "Discount").text
+                  }
+                />
+                <p className="mt-2 text-sm text-muted-foreground md:text-xs">
+                  {
+                    interpolate(
+                      resolve("host.prepublish.discount_hint", "Between {min}% and {max}%."),
+                      { min: MIN_OFFER_PERCENT, max: MAX_OFFER_PERCENT },
+                    ).text
+                  }
+                </p>
+              </div>
+
+              {/* The same pair of controls the launch offer on the previous step shows:
+                  a percentage and a switch, either or both. */}
+              <OptionToggle
+                checked={freeCleaning && hasCleaningFee}
+                label={
+                  i18n.resolve("host.prepublish.offer_cleaning", "Free cleaning")
+                    .text
+                }
+                description={
+                  hasCleaningFee
+                    ? resolve(
+                        "host.prepublish.offer_cleaning_short",
+                        "The cleaning fee is waived.",
+                      ).text
+                    : i18n.resolve(
+                        "host.prepublish.offer_cleaning_hint",
+                        "Free cleaning needs a cleaning fee to waive — add one on the Pricing step.",
                       ).text
                 }
+                disabled={!hasCleaningFee}
+                onChange={() => setFreeCleaning((current) => !current)}
+              />
+
+              <OfferPreview
+                headline={offerSummary(
+                  {
+                    ...editor.range,
+                    discountPercent: discountValid ? discountNumber : 0,
+                    freeCleaning: freeCleaning && hasCleaningFee,
+                  },
+                  i18n,
+                )}
               >
-                {offerType === "PERCENT_DISCOUNT" && baseRate > 0 ? (
+                {discountValid && baseRate > 0 ? (
                   <p className={OFFER_PREVIEW_NOTE}>
                     {
                       interpolate(
@@ -2347,37 +2453,34 @@ function PlanEditorDialog({
                           "About {rate} a night on these dates.",
                         ),
                         {
-                          rate: money(
-                            baseRate *
-                              (1 - (discountValid ? discountNumber : 0) / 100),
-                          ),
+                          rate: money(baseRate * (1 - discountNumber / 100)),
                         },
                       ).text
                     }
                   </p>
                 ) : null}
-                <p className={cn(OFFER_PREVIEW_NOTE, "mt-1")}>
-                  {
-                    interpolate(
-                      resolve(
-                        "host.prepublish.discount_hint",
-                        "Between {min}% and {max}%.",
-                      ),
-                      { min: MIN_OFFER_PERCENT, max: MAX_OFFER_PERCENT },
-                    ).text
-                  }
-                </p>
+                {/* Guidance for the percentage field, so it goes quiet on an offer that
+                    is free cleaning alone. */}
+                {discountEmpty && freeCleaning ? null : (
+                  <p className={cn(OFFER_PREVIEW_NOTE, "mt-1")}>
+                    {
+                      interpolate(
+                        resolve(
+                          "host.prepublish.discount_hint",
+                          "Between {min}% and {max}%.",
+                        ),
+                        { min: MIN_OFFER_PERCENT, max: MAX_OFFER_PERCENT },
+                      ).text
+                    }
+                  </p>
+                )}
               </OfferPreview>
 
               <div className={cn(STICKY_FOOTER, "flex flex-wrap justify-end gap-2")}>
                 <Button type="button" variant="outline" onClick={onClose}>
                   <Tx k="host.calendar.cancel" source="Cancel" />
                 </Button>
-                <Button
-                  type="button"
-                  disabled={offerType === "PERCENT_DISCOUNT" && !discountValid}
-                  onClick={submit}
-                >
+                <Button type="button" disabled={!offerValid} onClick={submit}>
                   <Tx k="host.prepublish.add_promotion" source="Add promotion" />
                 </Button>
               </div>
