@@ -1,6 +1,9 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { db } from "@/lib/db";
-import { archiveOrDeleteListing } from "@/lib/services/listing.service";
+import {
+  archiveOrDeleteListing,
+  getHostDashboardStats,
+} from "@/lib/services/listing.service";
 import {
   createTestHostAndListing,
   createTestGuest,
@@ -94,5 +97,46 @@ describe("archiveOrDeleteListing", () => {
 
     const listingRow = await db.listing.findUnique({ where: { id: listing.id } });
     expect(listingRow?.status).not.toBe("ARCHIVED");
+  });
+});
+
+describe("getHostDashboardStats", () => {
+  let fixtures: TestFixtures | undefined;
+
+  afterEach(async () => {
+    if (fixtures) await cleanupTestFixtures(fixtures);
+    fixtures = undefined;
+  });
+
+  it("counts active listings but excludes archived listings", async () => {
+    const { host, property, listing } = await createTestHostAndListing();
+    fixtures = {
+      hostId: host.id,
+      propertyId: property.id,
+      listingId: listing.id,
+      extraUserIds: [],
+    };
+
+    const archivedListing = await db.listing.create({
+      data: {
+        propertyId: property.id,
+        hostId: host.id,
+        title: "Archived test listing",
+        slug: `archived-test-listing-${listing.id}`,
+        description: "An archived listing that must not appear in the active count.",
+        status: "ARCHIVED",
+        maxGuests: 2,
+        bedrooms: 1,
+        bathrooms: 1,
+        beds: 1,
+      },
+    });
+
+    try {
+      const stats = await getHostDashboardStats(host.id);
+      expect(stats.listings).toBe(1);
+    } finally {
+      await db.listing.delete({ where: { id: archivedListing.id } });
+    }
   });
 });

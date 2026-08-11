@@ -537,6 +537,7 @@ function EditorDialog({
   const [minimumStay, setMinimumStay] = useState(String(minNights));
   const [roundPrice, setRoundPrice] = useState(true);
   const [priceAdjustOpen, setPriceAdjustOpen] = useState(false);
+  const [pricePercentText, setPricePercentText] = useState("");
   const priceHoldTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** The multiplier behind the chosen quick adjustment, or `null` once the host types
    *  their own figure — the rounding toggle recomputes from it so switching rounding
@@ -1053,7 +1054,7 @@ function EditorDialog({
                   </span>
                   <Input
                     id="nightly-price"
-                    className="h-14 appearance-none rounded-xl border-primary/25 bg-background pr-24 pl-10 text-2xl font-semibold shadow-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    className="h-14 appearance-none rounded-xl border-primary/25 bg-background pr-24 pl-14 text-2xl font-semibold tabular-nums shadow-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                     type="number"
                     min={1}
                     step="0.01"
@@ -1140,9 +1141,36 @@ function EditorDialog({
                     <p className="text-sm font-semibold">
                       <Tx k="host.form.offer_percentage" source="Percentage" />
                     </p>
-                    <span className="text-sm font-semibold text-primary">
-                      {Math.round(((Number(price) / baseNightlyRate) - 1) * 100) || 0}%
-                    </span>
+                    <div className="relative w-20">
+                      <Input
+                        aria-label={
+                          resolve("host.calendar.discount_label", "Discount percentage").text
+                        }
+                        type="text"
+                        inputMode="decimal"
+                        value={
+                          pricePercentText ||
+                          String(
+                            Math.round(
+                              ((Number(price) / baseNightlyRate) - 1) * 100,
+                            ) || 0,
+                          )
+                        }
+                        onChange={(event) => {
+                          const next = event.target.value;
+                          setPricePercentText(next);
+                          const percent = Number(next);
+                          if (Number.isFinite(percent)) {
+                            setPriceFromPercent(Math.max(-50, Math.min(100, percent)));
+                          }
+                        }}
+                        onBlur={() => setPricePercentText("")}
+                        className="h-8 pr-6 text-right text-sm font-semibold text-primary"
+                      />
+                      <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-sm font-semibold text-primary">
+                        %
+                      </span>
+                    </div>
                   </div>
                   <Slider
                     className="mt-5 [&_[data-slot=slider-track]]:h-3 [&_[data-slot=slider-thumb]]:size-7"
@@ -1150,7 +1178,10 @@ function EditorDialog({
                     max={100}
                     step={1}
                     value={[Math.max(-50, Math.min(100, Math.round(((Number(price) / baseNightlyRate) - 1) * 100) || 0))]}
-                    onValueChange={([percent]) => setPriceFromPercent(percent)}
+                    onValueChange={([percent]) => {
+                      setPricePercentText("");
+                      setPriceFromPercent(percent);
+                    }}
                     aria-label={
                       resolve("host.calendar.discount_label", "Discount percentage").text
                     }

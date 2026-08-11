@@ -1943,6 +1943,7 @@ function PlanEditorDialog({
   );
   const [roundPrice, setRoundPrice] = React.useState(true);
   const [priceAdjustOpen, setPriceAdjustOpen] = React.useState(false);
+  const [pricePercentText, setPricePercentText] = React.useState("");
   const priceHoldTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   /** The multiplier behind the chosen quick adjustment, or `null` once the host types
    *  their own figure. Kept so the rounding toggle can recompute from the exact
@@ -2216,9 +2217,34 @@ function PlanEditorDialog({
                     <p className="text-sm font-semibold">
                       <Tx k="host.form.offer_percentage" source="Percentage" />
                     </p>
-                    <span className="text-sm font-semibold text-primary">
-                      {Math.round(((priceNumber / baseRate) - 1) * 100) || 0}%
-                    </span>
+                    <div className="relative w-20">
+                      <Input
+                        aria-label={
+                          resolve("host.prepublish.discount_label", "Discount").text
+                        }
+                        type="text"
+                        inputMode="decimal"
+                        value={
+                          pricePercentText ||
+                          String(
+                            Math.round(((priceNumber / baseRate) - 1) * 100) || 0,
+                          )
+                        }
+                        onChange={(event) => {
+                          const next = event.target.value;
+                          setPricePercentText(next);
+                          const percent = Number(next);
+                          if (Number.isFinite(percent)) {
+                            setPriceFromPercent(Math.max(-50, Math.min(100, percent)));
+                          }
+                        }}
+                        onBlur={() => setPricePercentText("")}
+                        className="h-8 pr-6 text-right text-sm font-semibold text-primary"
+                      />
+                      <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-sm font-semibold text-primary">
+                        %
+                      </span>
+                    </div>
                   </div>
                   <Slider
                     className="mt-5 [&_[data-slot=slider-track]]:h-3 [&_[data-slot=slider-thumb]]:size-7"
@@ -2226,7 +2252,10 @@ function PlanEditorDialog({
                     max={100}
                     step={1}
                     value={[Math.max(-50, Math.min(100, Math.round(((priceNumber / baseRate) - 1) * 100) || 0))]}
-                    onValueChange={([percent]) => setPriceFromPercent(percent)}
+                    onValueChange={([percent]) => {
+                      setPricePercentText("");
+                      setPriceFromPercent(percent);
+                    }}
                     aria-label={
                       resolve("host.prepublish.discount_label", "Discount").text
                     }

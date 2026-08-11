@@ -154,7 +154,9 @@ export async function getHostDashboardStats(hostId: string) {
   await completePastBookings();
   const [listings, pendingBookings, confirmedBookings, totalBookings] =
     await Promise.all([
-      db.listing.count({ where: { hostId } }),
+      db.listing.count({
+        where: { hostId, status: { not: ListingStatus.ARCHIVED } },
+      }),
       db.booking.count({ where: { listing: { hostId }, status: "PENDING" } }),
       db.booking.count({ where: { listing: { hostId }, status: "CONFIRMED" } }),
       db.booking.count({ where: { listing: { hostId } } }),
