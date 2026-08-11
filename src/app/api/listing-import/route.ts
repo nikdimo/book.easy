@@ -194,9 +194,13 @@ export async function POST(request: Request) {
           : "",
         cleaningFee: "0",
         minNights: "1",
+        checkInTime: imported.checkInTime ?? "",
+        checkOutTime: imported.checkOutTime ?? "",
         mediaItems,
         amenityIds,
         importProvider: imported.provider,
+        importSpaceType: imported.spaceType,
+        importLocationApproximate: imported.locationApproximate === true,
         importSourceUrl: imported.sourceUrl,
         importedAt: new Date().toISOString(),
       } as Prisma.InputJsonValue;
@@ -210,6 +214,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       draftId: result.draft.id,
       imported: {
+        provider: imported.provider,
         photos: mediaItems.length,
         amenities: names.length,
         createdAmenities: result.createdAmenities,

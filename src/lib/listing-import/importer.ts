@@ -8,29 +8,15 @@ import type {
   ImportedListingData,
   ListingImportProvider,
 } from "@/lib/listing-import/types";
+import { providerForUrl } from "@/lib/listing-import/provider";
 
 const MAX_HTML_BYTES = 5 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
-const MAX_IMAGES = 15;
+/** A provider listing should normally have far fewer than this. The ceiling is abuse
+ * protection, not a product limit: every photo the public page exposes is retained. */
+const MAX_IMAGES = 100;
 const FETCH_TIMEOUT_MS = 15_000;
 const MAX_REDIRECTS = 5;
-
-const PROVIDER_HOSTS: Record<ListingImportProvider, string[]> = {
-  AIRBNB: [
-    "airbnb.com",
-    "airbnb.co.uk",
-    "airbnb.ca",
-    "airbnb.com.au",
-    "airbnb.de",
-    "airbnb.dk",
-    "airbnb.es",
-    "airbnb.fr",
-    "airbnb.it",
-    "airbnb.nl",
-  ],
-  BOOKING: ["booking.com"],
-  VRBO: ["vrbo.com", "vrbo.co.uk", "vrbo.ca", "vrbo.com.au"],
-};
 
 const IMAGE_TYPES: Record<string, { extension: string; magic: (bytes: Buffer) => boolean }> = {
   "image/jpeg": {
@@ -54,29 +40,6 @@ const IMAGE_TYPES: Record<string, { extension: string; magic: (bytes: Buffer) =>
       bytes.toString("ascii", 8, 12) === "WEBP",
   },
 };
-
-function hostMatches(hostname: string, allowed: string): boolean {
-  return hostname === allowed || hostname.endsWith(`.${allowed}`);
-}
-
-export function providerForUrl(value: string): ListingImportProvider | null {
-  let url: URL;
-  try {
-    url = new URL(value);
-  } catch {
-    return null;
-  }
-  if (url.protocol !== "https:") return null;
-
-  const hostname = url.hostname.toLowerCase().replace(/\.$/, "");
-  for (const [provider, hosts] of Object.entries(PROVIDER_HOSTS) as [
-    ListingImportProvider,
-    string[],
-  ][]) {
-    if (hosts.some((host) => hostMatches(hostname, host))) return provider;
-  }
-  return null;
-}
 
 function isPrivateIp(address: string): boolean {
   const normalized = address.toLowerCase().split("%")[0];
@@ -274,13 +237,188 @@ function uniqueImageUrls(values: string[]): string[] {
   for (const value of values) {
     try {
       const url = new URL(decodeHtml(value));
-      if (url.protocol !== "https:" || url.href.length > 4_000 || seen.has(url.href)) continue;
-      seen.add(url.href);
+      if (url.protocol !== "https:" || url.href.length > 4_000) continue;
+      // Airbnb repeats the cover image in Open Graph with resize/query parameters.
+      // The original photo path is the identity; importing both would create a
+      // duplicate tile that looks like an extra photo.
+      const identity = url.hostname.endsWith("muscache.com")
+        ? `${url.origin}${url.pathname}`
+        : url.href;
+      if (seen.has(identity)) continue;
+      seen.add(identity);
       result.push(url.href);
       if (result.length >= MAX_IMAGES) break;
     } catch {
       // Ignore malformed image candidates while keeping the rest of the listing.
     }
+  }
+  return result;
+}
+
+interface AirbnbPageSignals {
+  amenities: string[];
+  propertyType?: string;
+  spaceType?: string;
+  latitude?: number;
+  longitude?: number;
+  maxGuests?: number;
+  bedrooms?: number;
+  beds?: number;
+  bathrooms?: number;
+  city?: string;
+  country?: string;
+  checkInTime?: string;
+  checkOutTime?: string;
+  currency?: string;
+}
+
+function clockTime(value: string, meridiem: string | undefined): string | undefined {
+  const [rawHour, rawMinute = 0] = value.split(":").map(Number);
+  if (!Number.isInteger(rawHour) || !Number.isInteger(rawMinute) || rawMinute < 0 || rawMinute > 59) {
+    return undefined;
+  }
+  let hour = rawHour;
+  if (meridiem) {
+    if (hour < 1 || hour > 12) return undefined;
+    const upper = meridiem.toUpperCase();
+    if (upper === "PM" && hour !== 12) hour += 12;
+    if (upper === "AM" && hour === 12) hour = 0;
+  }
+  if (hour < 0 || hour > 23) return undefined;
+  // The listing form intentionally supports half-hour slots only. Keep an exact
+  // provider time only when the form can represent it without silently rounding.
+  if (rawMinute !== 0 && rawMinute !== 30) return undefined;
+  return `${String(hour).padStart(2, "0")}:${String(rawMinute).padStart(2, "0")}`;
+}
+
+function timeFromText(value: string, kind: "check-in" | "checkout"): string | undefined {
+  const pattern = kind === "check-in"
+    ? /check[ -]?in(?:\s+(?:is|time))?\s+(?:after|from|at)?\s*(\d{1,2}(?::\d{2})?)\s*(am|pm)?/i
+    : /check[ -]?out(?:\s+(?:is|time))?\s+(?:before|by|at|no later than)?\s*(\d{1,2}(?::\d{2})?)\s*(am|pm)?/i;
+  const match = value.replace(/[\u00a0\u202f]/g, " ").match(pattern);
+  return match ? clockTime(match[1], match[2]) : undefined;
+}
+
+function parseAirbnbSignals(
+  html: string,
+  meta: Map<string, string[]>,
+  knownCity?: string,
+): AirbnbPageSignals {
+  const result: AirbnbPageSignals = { amenities: [] };
+  const amenityNames: string[] = [];
+  const propertyTypes: string[] = [];
+  const strings: string[] = [];
+  const script = html.match(
+    /<script\b[^>]*\bid\s*=\s*(["'])data-deferred-state-0\1[^>]*>([\s\S]*?)<\/script>/i,
+  )?.[2];
+  const currency = html.match(/"serverDeterminedCurrency"\s*:\s*"([A-Z]{3})"/i)?.[1];
+  if (currency) result.currency = currency.toUpperCase();
+
+  if (script) {
+    try {
+      const root: unknown = JSON.parse(script.trim());
+      const seen = new Set<object>();
+      const visit = (value: unknown, depth = 0) => {
+        if (depth > 40 || value == null) return;
+        if (typeof value === "string") {
+          if (value.length <= 1_000) strings.push(value);
+          if (value.length <= 500_000 && /^[\[{]/.test(value.trim())) {
+            try {
+              visit(JSON.parse(value), depth + 1);
+            } catch {
+              // Ordinary text beginning with a brace is not necessarily JSON.
+            }
+          }
+          return;
+        }
+        if (typeof value !== "object" || seen.has(value)) return;
+        seen.add(value);
+        if (Array.isArray(value)) {
+          for (const item of value) visit(item, depth + 1);
+          return;
+        }
+
+        const object = value as Record<string, unknown>;
+        if (
+          object.__typename === "AmenityItem" &&
+          object.available !== false &&
+          typeof object.title === "string"
+        ) {
+          amenityNames.push(object.title);
+        }
+        if (typeof object.propertyType === "string") propertyTypes.push(object.propertyType);
+        if (typeof object.roomType === "string" && !result.spaceType) result.spaceType = object.roomType;
+        if (typeof object.personCapacity === "number" && !result.maxGuests) {
+          result.maxGuests = object.personCapacity;
+        }
+        if (typeof object.listingLat === "number" && result.latitude === undefined) {
+          result.latitude = object.listingLat;
+        }
+        if (typeof object.listingLng === "number" && result.longitude === undefined) {
+          result.longitude = object.listingLng;
+        }
+        for (const child of Object.values(object)) visit(child, depth + 1);
+      };
+      visit(root);
+    } catch {
+      // Airbnb can change this private payload independently of its stable JSON-LD.
+      // The generic parser remains a useful fallback when that happens.
+    }
+  }
+
+  result.amenities = uniqueStrings(amenityNames, 250);
+  result.propertyType = propertyTypes.find((type) => /^[A-Z][A-Z_]+$/.test(type))
+    ?? propertyTypes.find((type) => !/private|shared|entire/i.test(type));
+  result.spaceType ??= propertyTypes.find((type) => /private|shared|entire|hotel room/i.test(type));
+
+  const sharingTitle = meta.get("og:title")?.[0] ?? strings.find((value) => /\d+\s+beds?/i.test(value));
+  if (sharingTitle) {
+    result.bedrooms = firstNumber(sharingTitle.match(/(\d+(?:\.\d+)?)\s+bedrooms?\b/i)?.[1]);
+    result.beds = firstNumber(sharingTitle.match(/(\d+(?:\.\d+)?)\s+beds?\b/i)?.[1]);
+    result.bathrooms = firstNumber(
+      sharingTitle.match(/(\d+(?:\.\d+)?)\s+(?:(?:private|shared)\s+)?baths?\b/i)?.[1],
+    );
+    if (!result.propertyType) {
+      const label = sharingTitle.match(/^(Home|House|Apartment|Villa|Cabin|Cottage|Loft|Studio)\s+in\b/i)?.[1];
+      if (label) result.propertyType = label.toUpperCase();
+    }
+  }
+
+  const locationCandidates = [
+    ...strings.filter((value) =>
+      /\b(?:Room|Home|House|Apartment|Villa|Cabin|Cottage|Loft|Studio)\s+in\s+[^,]+,/i.test(value),
+    ),
+    ...Array.from(html.matchAll(
+      /(?:Room|Home|House|Apartment|Villa|Cabin|Cottage|Loft|Studio)\s+in\s+([^,<>{}"\\]{2,80}),\s*([^<>{}"\\]{2,80})/gi,
+    )).map((match) => match[0]),
+  ];
+  const parsedLocations: { city: string; country: string; score: number }[] = [];
+  for (const candidate of locationCandidates) {
+    const location = candidate.match(
+      /\b(?:Room|Home|House|Apartment|Villa|Cabin|Cottage|Loft|Studio)\s+in\s+([^,\n]{2,80}),\s*([^,\n·]{2,80})/i,
+    );
+    if (!location) continue;
+    const city = cleanText(location[1], 120);
+    const country = cleanText(location[2], 120);
+    if (!city || !country || /review|rating|bed|bath|plus access|shared spaces|according to/i.test(`${city} ${country}`)) continue;
+    const score = knownCity && city.toLowerCase() === knownCity.toLowerCase() ? 10 : 0;
+    parsedLocations.push({ city, country, score });
+  }
+  const bestLocation = parsedLocations.sort((a, b) => b.score - a.score)[0];
+  if (bestLocation) {
+    result.city = bestLocation.city;
+    result.country = bestLocation.country;
+  }
+
+  for (const value of strings) {
+    result.checkInTime ??= timeFromText(value, "check-in");
+    result.checkOutTime ??= timeFromText(value, "checkout");
+    if (result.checkInTime && result.checkOutTime) break;
+  }
+  const description = meta.get("description")?.[0] ?? meta.get("og:description")?.[0];
+  if (description) {
+    result.checkInTime ??= timeFromText(description, "check-in");
+    result.checkOutTime ??= timeFromText(description, "checkout");
   }
   return result;
 }
@@ -359,7 +497,7 @@ export function parseListingHtml(
     ? firstNumber(meta.get("product:price:amount")?.[0])
     : undefined;
 
-  return {
+  const generic: ImportedListingData = {
     provider,
     sourceUrl,
     title: cleanText(lodging.name ?? lodging.headline ?? meta.get("og:title")?.[0] ?? pageTitle, 200),
@@ -375,8 +513,8 @@ export function parseListingHtml(
         : address.addressCountry,
       120,
     ),
-    latitude: firstNumber(geo.latitude),
-    longitude: firstNumber(geo.longitude),
+    latitude: firstNumber(geo.latitude, lodging.latitude),
+    longitude: firstNumber(geo.longitude, lodging.longitude),
     maxGuests: firstNumber(occupancy.maxValue, lodging.numberOfGuests, propertyNumber(/guest|occupancy/)),
     bedrooms: firstNumber(lodging.numberOfBedrooms, propertyNumber(/bedroom/)),
     beds: firstNumber(lodging.numberOfBeds, propertyNumber(/^beds?|sleeping/)),
@@ -385,6 +523,27 @@ export function parseListingHtml(
     nightlyRate: schemaNightlyRate ?? metaNightlyRate,
     amenities,
     imageUrls,
+  };
+
+  if (provider !== "AIRBNB") return generic;
+  const airbnb = parseAirbnbSignals(html, meta, generic.city);
+  return {
+    ...generic,
+    propertyType: airbnb.propertyType ?? generic.propertyType,
+    spaceType: airbnb.spaceType,
+    city: airbnb.city ?? generic.city,
+    country: airbnb.country ?? generic.country,
+    latitude: airbnb.latitude ?? generic.latitude,
+    longitude: airbnb.longitude ?? generic.longitude,
+    maxGuests: airbnb.maxGuests ?? generic.maxGuests,
+    bedrooms: airbnb.bedrooms ?? generic.bedrooms,
+    beds: airbnb.beds ?? generic.beds,
+    bathrooms: airbnb.bathrooms ?? generic.bathrooms,
+    currency: airbnb.currency ?? generic.currency,
+    amenities: uniqueStrings([...airbnb.amenities, ...generic.amenities], 250),
+    checkInTime: airbnb.checkInTime,
+    checkOutTime: airbnb.checkOutTime,
+    locationApproximate: generic.latitude !== undefined || airbnb.latitude !== undefined,
   };
 }
 

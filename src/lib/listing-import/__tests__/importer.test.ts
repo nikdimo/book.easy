@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parseListingHtml, providerForUrl } from "@/lib/listing-import/importer";
+import { parseListingHtml } from "@/lib/listing-import/importer";
+import { providerForUrl } from "@/lib/listing-import/provider";
 
 describe("listing link providers", () => {
   it("accepts supported provider hosts and rejects lookalikes", () => {
@@ -83,5 +84,65 @@ describe("public listing metadata parser", () => {
     );
     expect(result.nightlyRate).toBeUndefined();
   });
-});
 
+  it("merges Airbnb's provider payload with its public JSON-LD", () => {
+    const html = `
+      <meta property="og:title" content="Home in Roskilde · ★4.89 · 1 bedroom · 3 beds · 1 private bath">
+      <script>{"serverDeterminedCurrency":"DKK"}</script>
+      <script type="application/ld+json">{
+        "@type":"VacationRental",
+        "name":"Bright room",
+        "description":"A bright private room.",
+        "image":["https://images.example/1.jpg","https://images.example/2.jpg"],
+        "latitude":55.634,
+        "longitude":12.0936,
+        "address":{"addressLocality":"Roskilde"}
+      }</script>
+      <script id="data-deferred-state-0" type="application/json">${JSON.stringify({
+        sections: [
+          { __typename: "AmenityItem", available: true, title: "Wifi" },
+          { __typename: "AmenityItem", available: true, title: "Free parking on premises" },
+          { __typename: "AmenityItem", available: false, title: "Carbon monoxide alarm" },
+        ],
+        eventData: {
+          __typename: "PdpEventData",
+          listingLat: 55.634,
+          listingLng: 12.0936,
+          roomType: "Private room",
+          personCapacity: 4,
+          propertyType: "HOUSE",
+        },
+        embedData: { propertyType: "Private room in home" },
+        labels: [
+          "Room in Roskilde, Denmark",
+          "Check-in after 3:00 PM",
+          "Checkout before 11:00 AM",
+        ],
+      })}</script>`;
+
+    const result = parseListingHtml(
+      html,
+      "https://www.airbnb.com/rooms/1716148263083007294",
+      "AIRBNB",
+    );
+
+    expect(result).toMatchObject({
+      propertyType: "HOUSE",
+      spaceType: "Private room",
+      city: "Roskilde",
+      country: "Denmark",
+      latitude: 55.634,
+      longitude: 12.0936,
+      locationApproximate: true,
+      maxGuests: 4,
+      bedrooms: 1,
+      beds: 3,
+      bathrooms: 1,
+      currency: "DKK",
+      checkInTime: "15:00",
+      checkOutTime: "11:00",
+      amenities: ["Wifi", "Free parking on premises"],
+    });
+    expect(result.imageUrls).toHaveLength(2);
+  });
+});

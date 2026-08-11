@@ -51,6 +51,8 @@ export interface ListingDraftData {
   /** Set when the host used the provider-link importer. Kept on the private draft for
    * troubleshooting and provenance; never rendered on the public listing. */
   importProvider?: "AIRBNB" | "BOOKING" | "VRBO";
+  importSpaceType?: string;
+  importLocationApproximate?: boolean;
   importSourceUrl?: string;
   importedAt?: string;
   /** Optional date-specific setup from the last screen — blocked dates, per-date

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Download, Link2, Loader2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
@@ -8,12 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tx, useI18n } from "@/lib/i18n/client";
+import { interpolate, Tx, useI18n } from "@/lib/i18n/client";
+import { providerForUrl, PROVIDER_LABELS } from "@/lib/listing-import/provider";
+import type { ListingImportProvider } from "@/lib/listing-import/types";
 
 interface ImportResponse {
   draftId?: string;
   error?: string;
   imported?: {
+    provider: ListingImportProvider;
     photos: number;
     amenities: number;
     createdAmenities: number;
@@ -26,10 +29,15 @@ export function ListingImportPanel() {
   const [url, setUrl] = useState("");
   const [rightsConfirmed, setRightsConfirmed] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const detectedProvider = useMemo(() => providerForUrl(url.trim()), [url]);
 
   function runImport() {
     if (!url.trim()) {
       toast.error("Paste an Airbnb, Booking.com, or Vrbo listing link.");
+      return;
+    }
+    if (!detectedProvider) {
+      toast.error("Paste a supported Airbnb, Booking.com, or Vrbo HTTPS listing link.");
       return;
     }
     if (!rightsConfirmed) {
@@ -50,7 +58,7 @@ export function ListingImportPanel() {
           return;
         }
         const details = data.imported
-          ? `${data.imported.photos} photos and ${data.imported.amenities} amenities found.`
+          ? `${PROVIDER_LABELS[data.imported.provider]} detected: ${data.imported.photos} photos and ${data.imported.amenities} amenities found.`
           : "Review every detail before publishing.";
         toast.success(`Listing imported. ${details}`);
         router.replace(`/host/listings/new?draft=${encodeURIComponent(data.draftId)}`);
@@ -111,6 +119,20 @@ export function ListingImportPanel() {
           )}
         </Button>
       </div>
+
+      {url.trim() && (
+        <p className={detectedProvider ? "mt-2 text-xs font-medium text-primary" : "mt-2 text-xs text-destructive"}>
+          {detectedProvider
+            ? interpolate(
+                resolve("host.import.provider_detected", "{provider} link detected automatically"),
+                { provider: PROVIDER_LABELS[detectedProvider] },
+              ).text
+            : resolve(
+                "host.import.provider_unsupported",
+                "This is not a supported Airbnb, Booking.com, or Vrbo link",
+              ).text}
+        </p>
+      )}
 
       <div className="mt-3 flex items-start gap-2.5">
         <Checkbox
