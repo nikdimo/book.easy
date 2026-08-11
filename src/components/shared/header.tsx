@@ -142,17 +142,18 @@ export function Header({
             title={SITE_DOMAIN}
             translate="no"
           >
+            {/* The home page has no search bar in the middle column, so it can
+                afford the wordmark — but only once there is room for it beside
+                the full action cluster (globe, favorites, bell, account). On
+                phones the symbol alone keeps those controls reachable. */}
             <BrandLogo
               compact
-              className={cn(
-                "h-11 2xl:hidden",
-                isHomePage && "min-[360px]:hidden",
-              )}
+              className={cn("h-11 2xl:hidden", isHomePage && "sm:hidden")}
             />
             <BrandLogo
               className={cn(
                 "hidden h-[58px] 2xl:block",
-                isHomePage && "min-[360px]:block min-[360px]:h-11 2xl:h-[58px]",
+                isHomePage && "sm:block sm:h-11 2xl:h-[58px]",
               )}
             />
           </Link>
@@ -193,9 +194,7 @@ export function Header({
         </div>
 
         <div className="flex items-center justify-end gap-2 min-w-0">
-          <div className={cn(isHomePage && "hidden md:block")}>
-            {regionalSettings}
-          </div>
+          {regionalSettings}
           {user ? (
             <>
               <Tooltip>
@@ -222,9 +221,7 @@ export function Header({
                   {navLabels.favorites.text}
                 </TooltipContent>
               </Tooltip>
-              <div className={cn(isHomePage && "hidden md:block")}>
-                <NotificationBell enabled />
-              </div>
+              <NotificationBell enabled />
             </>
           ) : null}
           {user?.isHost ? (

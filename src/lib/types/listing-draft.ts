@@ -48,6 +48,11 @@ export interface ListingDraftData {
   mediaItems?: ListingMediaItem[];
   imageUrls?: string[];
   amenityIds?: string[];
+  /** Set when the host used the provider-link importer. Kept on the private draft for
+   * troubleshooting and provenance; never rendered on the public listing. */
+  importProvider?: "AIRBNB" | "BOOKING" | "VRBO";
+  importSourceUrl?: string;
+  importedAt?: string;
   /** Optional date-specific setup from the last screen — blocked dates, per-date
    *  prices and dated offers, all applied at publish since there's no listing to hang
    *  them off before then. */

@@ -216,7 +216,9 @@ function firstImageIndex(mediaItems: ListingMediaItem[]): number {
 export async function submitNewListing(
   formData: FormData,
   draftId?: string | null
-): Promise<{ error: string } | { success: true; listingId: string }> {
+): Promise<
+  { error: string } | { success: true; listingId: string; slug: string }
+> {
   const session = await auth();
   if (!session?.user?.id || !session.user.isHost) {
     return { error: "Not authorized" };
@@ -489,7 +491,7 @@ export async function submitNewListing(
 
   revalidatePath("/host/listings");
   revalidatePublicListingCaches();
-  return { success: true, listingId: listing.id };
+  return { success: true, listingId: listing.id, slug: listing.slug };
 }
 
 export async function updateListing(listingId: string, formData: FormData) {

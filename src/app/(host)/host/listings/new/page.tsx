@@ -32,6 +32,7 @@ export default async function NewListingPage({ searchParams }: NewListingPagePro
   return (
     <div className="listing-studio h-full min-h-0 overflow-hidden">
       <ListingForm
+        key={draft?.id ?? "new-listing"}
         currencies={quotableCurrencies(rates)}
         amenities={amenities}
         propertyTypes={propertyTypes}

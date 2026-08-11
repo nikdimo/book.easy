@@ -2320,16 +2320,6 @@
     "filePath": "src/components/host/calendar-workspace.tsx"
   },
   {
-    "key": "host.calendar.per_night",
-    "sourceText": "per night",
-    "filePath": "src/components/host/calendar-workspace.tsx"
-  },
-  {
-    "key": "host.calendar.percent_off",
-    "sourceText": "% off",
-    "filePath": "src/components/host/calendar-workspace.tsx"
-  },
-  {
     "key": "host.calendar.price_editor.base_price",
     "sourceText": "Base price",
     "filePath": "src/components/host/calendar-workspace.tsx"
@@ -2400,11 +2390,6 @@
     "filePath": "src/components/host/calendar-workspace.tsx"
   },
   {
-    "key": "host.calendar.price_hint",
-    "sourceText": "Enter an exact amount or choose a quick adjustment below.",
-    "filePath": "src/components/host/calendar-workspace.tsx"
-  },
-  {
     "key": "host.calendar.promotion_free_cleaning",
     "sourceText": "Add free cleaning",
     "filePath": "src/components/host/calendar-workspace.tsx"
@@ -2412,6 +2397,11 @@
   {
     "key": "host.calendar.promotion_free_cleaning_hint",
     "sourceText": "Guests save the {fee} cleaning fee on qualifying stays.",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.promotion_minimum_label",
+    "sourceText": "Promotion minimum stay",
     "filePath": "src/components/host/calendar-workspace.tsx"
   },
   {
@@ -2676,7 +2666,7 @@
   },
   {
     "key": "host.form.continue_editing",
-    "sourceText": "Continue editing",
+    "sourceText": "Keep editing",
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
@@ -2701,7 +2691,7 @@
   },
   {
     "key": "host.form.go_to_listings",
-    "sourceText": "Go to My Listings",
+    "sourceText": "My listings",
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
@@ -2981,22 +2971,27 @@
   },
   {
     "key": "host.form.published_body",
-    "sourceText": "Your listing is live. You can return to My Listings or continue editing it now. Our team will still review the content shortly, so keep it accurate. Questions? Contact",
+    "sourceText": "Nice work — guests can find and book it right now.",
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
     "key": "host.form.published_calendar_cta",
-    "sourceText": "Set dates, prices & promotions",
+    "sourceText": "Dates & prices",
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
-    "key": "host.form.published_calendar_hint",
-    "sourceText": "Want different prices for specific dates, or to block days off? Set them up in your listing's calendar.",
+    "key": "host.form.published_footnote",
+    "sourceText": "Our team still reviews new listings, so keep the details accurate. Questions?",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.published_preview_cta",
+    "sourceText": "Preview your listing",
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
     "key": "host.form.published_title",
-    "sourceText": "Listing published successfully",
+    "sourceText": "Your listing is published!",
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
@@ -3083,6 +3078,41 @@
     "key": "host.images.retry",
     "sourceText": "Retry",
     "filePath": "src/components/host/listing-images-field.tsx"
+  },
+  {
+    "key": "host.import.action",
+    "sourceText": "Import",
+    "filePath": "src/components/host/listing-import-panel.tsx"
+  },
+  {
+    "key": "host.import.description",
+    "sourceText": "Paste an Airbnb, Booking.com, or Vrbo link to prefill photos, description, location, price, property details, and amenities.",
+    "filePath": "src/components/host/listing-import-panel.tsx"
+  },
+  {
+    "key": "host.import.importing",
+    "sourceText": "Importing…",
+    "filePath": "src/components/host/listing-import-panel.tsx"
+  },
+  {
+    "key": "host.import.note",
+    "sourceText": "Availability and date-specific prices are not imported. Some providers may limit what can be read from a public page.",
+    "filePath": "src/components/host/listing-import-panel.tsx"
+  },
+  {
+    "key": "host.import.rights_body",
+    "sourceText": "I have permission to reuse its text and photos. I will review imported details before publishing.",
+    "filePath": "src/components/host/listing-import-panel.tsx"
+  },
+  {
+    "key": "host.import.rights_title",
+    "sourceText": "I own or manage this listing.",
+    "filePath": "src/components/host/listing-import-panel.tsx"
+  },
+  {
+    "key": "host.import.title",
+    "sourceText": "Import an existing listing",
+    "filePath": "src/components/host/listing-import-panel.tsx"
   },
   {
     "key": "host.inbox.heading",
@@ -3417,7 +3447,7 @@
   {
     "key": "host.prepublish.offer_type_label",
     "sourceText": "What do guests get?",
-    "filePath": "src/components/host/calendar-workspace.tsx"
+    "filePath": "src/components/host/listing-prepublish-plan.tsx"
   },
   {
     "key": "host.prepublish.offers_title",
@@ -3457,7 +3487,7 @@
   {
     "key": "host.prepublish.rate_exact_hint",
     "sourceText": "Tap the field to type an exact amount.",
-    "filePath": "src/components/host/listing-prepublish-plan.tsx"
+    "filePath": "src/components/host/calendar-workspace.tsx"
   },
   {
     "key": "host.prepublish.rate_label",
@@ -3468,6 +3498,11 @@
     "key": "host.prepublish.rate_normal",
     "sourceText": "Normally",
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
+  },
+  {
+    "key": "host.prepublish.rate_pair_hint",
+    "sourceText": "Type a percentage or an exact amount — the other one follows.",
+    "filePath": "src/components/host/calendar-workspace.tsx"
   },
   {
     "key": "host.prepublish.rate_quick_label",

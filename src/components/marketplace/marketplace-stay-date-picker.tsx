@@ -108,6 +108,16 @@ const MINIMUM_STAY_HATCH: React.CSSProperties = {
 const RANGE_BAND =
   "before:pointer-events-none before:absolute before:inset-x-0 before:inset-y-[3px] before:z-0 before:bg-[hsl(30_12%_93%)] before:content-[''] hover:before:bg-[hsl(30_12%_89%)] md:before:inset-y-[14%]";
 
+/**
+ * The host lens paints its own state on the cell — the blocked/closed hatch sits in
+ * the cell's `after` layer — and the guest band, a near-white tint under that layer,
+ * disappeared under it: a drawn range read as two endpoint circles with nothing in
+ * between. Host surfaces get an accent-tinted band lifted above the hatch (still
+ * below the `z-10` day button, so the number and its sublabel stay legible).
+ */
+const HOST_RANGE_BAND =
+  "before:pointer-events-none before:absolute before:inset-x-0 before:inset-y-[3px] before:z-[1] before:bg-primary/20 before:content-[''] hover:before:bg-primary/25 md:before:inset-y-[14%]";
+
 type Layout = "pill" | "hero" | "compact" | "field";
 type Step = "dates" | "guests";
 
@@ -967,6 +977,9 @@ export function DateRangeCalendarStep({
   }, []);
 
   const pagedCalendar = fitViewport || (pagedOnDesktop && !isMobile);
+  // `dragToSelect` is the host-only flag, and the host lenses are the ones that paint
+  // hatches and tints on the same cell the band has to show through.
+  const band = dragToSelect ? HOST_RANGE_BAND : RANGE_BAND;
   const pagedMonthCount =
     !isMobile &&
     pagedDesktopMonthCount === 2 &&
@@ -1775,9 +1788,9 @@ export function DateRangeCalendarStep({
                 "[&:first-child]:before:rounded-l-full",
                 "[&:last-child]:before:rounded-r-full",
               ),
-              range_start: cn(RANGE_BAND, "before:rounded-l-full [&_button]:rounded-full"),
-              range_middle: cn(RANGE_BAND, "[&_button]:bg-transparent"),
-              range_end: cn(RANGE_BAND, "before:rounded-r-full [&_button]:rounded-full"),
+              range_start: cn(band, "before:rounded-l-full [&_button]:rounded-full"),
+              range_middle: cn(band, "[&_button]:bg-transparent"),
+              range_end: cn(band, "before:rounded-r-full [&_button]:rounded-full"),
               // The shadcn default fills today with `bg-muted`, which reads as a second
               // selection sitting next to the real one. Today is marked by weight only.
               today: "bg-transparent font-semibold text-foreground",

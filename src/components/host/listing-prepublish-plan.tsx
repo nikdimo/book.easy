@@ -9,7 +9,6 @@ import {
   CalendarClock,
   CalendarOff,
   CalendarRange,
-  Check,
   ChevronRight,
   CircleAlert,
   CircleDollarSign,
@@ -30,9 +29,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
+import { PercentAmountField } from "@/components/host/percent-amount-field";
 import {
   OFFER_PREVIEW_NOTE,
   OfferPreview,
@@ -99,7 +97,16 @@ export function prePublishTaskCount(
 }
 
 const MS_PER_DAY = 86_400_000;
-const OFFER_PERCENT_CHOICES = [10, 15, 20, 30] as const;
+/** The discounts hosts reach for, as labels under the promotion track. Everything
+ *  between them is a drag away, and the field takes anything in range. */
+const OFFER_PERCENT_STOPS = [
+  { label: "5%", percent: 5 },
+  { label: "10%", percent: 10 },
+  { label: "15%", percent: 15 },
+  { label: "20%", percent: 20 },
+  { label: "30%", percent: 30 },
+  { label: "50%", percent: 50 },
+] as const;
 
 /** "1 night", not "1 nights" — this string sits in the action bar under every
  *  single-day selection, which is the most common one. */
@@ -1367,6 +1374,13 @@ export function PrePublishTaskScreen({
   }
 
   function savePrice(target: PrePublishRange, nightlyRate: number) {
+    // Confirming the base rate is not a custom price. Writing it anyway would ring
+    // those dates as overridden while the number stayed the same, and would pin them
+    // to today's rate if the host later edits the base price.
+    if (nightlyRate === baseRate) {
+      clearPrice(target);
+      return;
+    }
     const next = new Map(priceByDate);
     for (const day of eachPlanDate(target.startDate, target.endDate)) {
       next.set(day, nightlyRate);
@@ -1581,12 +1595,12 @@ export function PrePublishTaskScreen({
             const key = planDateFromLocal(day);
             if (task === "availability") {
               return {
-                // Closed dates use the hatch; opened dates return to white and get a
-                // quiet guest-facing label instead of looking like a green status.
+                // Closed dates use the hatch and say so; opened dates return to white
+                // and get a quiet guest-facing label instead of a green-status look.
                 sublabel: opensSelectedDates
                   ? openedDates.has(key)
                     ? resolve("host.calendar.day_available", "Available").text
-                    : ""
+                    : resolve("host.calendar.legend_blocked", "Blocked").text
                   : blockedDates.has(key)
                     ? resolve("host.calendar.legend_blocked", "Blocked").text
                     : "",
@@ -1942,9 +1956,6 @@ function PlanEditorDialog({
     String(editor.kind === "price" ? (editor.initialRate ?? baseRate) : baseRate),
   );
   const [roundPrice, setRoundPrice] = React.useState(true);
-  const [priceAdjustOpen, setPriceAdjustOpen] = React.useState(false);
-  const [pricePercentText, setPricePercentText] = React.useState("");
-  const priceHoldTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   /** The multiplier behind the chosen quick adjustment, or `null` once the host types
    *  their own figure. Kept so the rounding toggle can recompute from the exact
    *  percentage instead of re-rounding an already-rounded number — turning it off has
@@ -2004,23 +2015,37 @@ function PlanEditorDialog({
     [],
   );
 
-  const clearPriceHold = () => {
-    if (priceHoldTimeout.current !== null) {
-      clearTimeout(priceHoldTimeout.current);
-      priceHoldTimeout.current = null;
-    }
-  };
-
-  const startPriceHold = () => {
-    clearPriceHold();
-    priceHoldTimeout.current = setTimeout(() => setPriceAdjustOpen(true), 350);
-  };
-
   const setPriceFromPercent = (percent: number) => {
     const factor = 1 + percent / 100;
     setPriceFactor(factor);
     setPrice(String(applyRounding(baseRate * factor, roundPrice)));
   };
+
+  /** The handful of adjustments hosts actually reach for, as labels under the track —
+   *  the slider covers everything between them, and typing covers everything past. */
+  const priceStops = React.useMemo(
+    () => [
+      { label: "−50%", percent: -50 },
+      { label: "−20%", percent: -20 },
+      { label: resolve("host.prepublish.rate_base", "Base").text, percent: 0 },
+      { label: "+20%", percent: 20 },
+      { label: "+50%", percent: 50 },
+      { label: "+100%", percent: 100 },
+    ],
+    [resolve],
+  );
+
+  /** What the percentage side of the field shows. A chosen adjustment answers for
+   *  itself — rounding €88 up to €90 must not report itself back as +13% — while a
+   *  typed amount is measured against the normal price. */
+  const pricePercent =
+    baseRate > 0
+      ? priceFactor !== null
+        ? Math.round((priceFactor - 1) * 100)
+        : Number.isFinite(priceNumber)
+          ? Math.round((priceNumber / baseRate - 1) * 100)
+          : 0
+      : null;
 
   const isPrice = editor.kind === "price";
   const HeaderIcon = isPrice ? CircleDollarSign : BadgePercent;
@@ -2054,14 +2079,11 @@ function PlanEditorDialog({
     <Dialog open onOpenChange={(open) => (open ? undefined : onClose())}>
       <DialogContent
         variant="sheet"
-        // The price sheet opens tall on a phone so the quick adjustments are above
-        // the fold instead of peeking over the bottom edge. Focus stays off the
-        // amount field: it is the second choice here, and autofocusing it threw the
-        // keyboard up over the very buttons the host came for.
-        className={cn(
-          "flex flex-col gap-0 overflow-hidden p-0 md:h-auto md:max-h-[90dvh] md:max-w-[34rem]",
-          isPrice && "h-[92dvh]",
-        )}
+        // The sheet hugs its content now that the price fits in one card — nothing
+        // here needs a tall panel or a scroll to reach. Focus stays off the amount
+        // field: it is one of two ways in, and autofocusing it threw the keyboard up
+        // over the very buttons the host came for.
+        className="flex max-h-[90dvh] flex-col gap-0 overflow-hidden p-0 md:h-auto md:max-h-[90dvh] md:max-w-[34rem]"
         onOpenAutoFocus={
           isPrice
             ? (event) => {
@@ -2099,175 +2121,70 @@ function PlanEditorDialog({
         <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]">
           {isPrice ? (
             <div className="flex min-h-full flex-col space-y-4 p-6">
-              {/* Quick adjustments lead: they answer the question ("a fifth more
-                  than usual") without anyone doing arithmetic, and they open the
-                  sheet without a keyboard covering half of it. The exact amount
-                  sits underneath for the hosts who already know their number. */}
-              {baseRate > 0 ? (
-                <div>
-                  <p className="text-sm font-semibold">
+              {/* The percentage and the money it comes to, side by side on one line:
+                  either one can be typed, the slider moves both, and nothing has to
+                  scroll sideways to be reached. */}
+              <div className="rounded-2xl border-2 border-primary/30 bg-primary/[0.035] p-4 shadow-sm">
+                <Label
+                  htmlFor={
+                    baseRate > 0
+                      ? "prepublish-nightly-rate-percent"
+                      : "prepublish-nightly-rate-amount"
+                  }
+                  className="text-sm font-semibold"
+                >
+                  {baseRate > 0 ? (
                     <Tx
                       k="host.prepublish.rate_quick_label"
                       source="Adjust your normal price"
                     />
-                  </p>
-                  <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
-                  {(
-                    [
-                      ["−50%", 0.5],
-                      ["−30%", 0.7],
-                      ["−20%", 0.8],
-                      ["−10%", 0.9],
-                      [resolve("host.prepublish.rate_base", "Base").text, 1],
-                      ["+10%", 1.1],
-                      ["+20%", 1.2],
-                      ["+30%", 1.3],
-                      ["+50%", 1.5],
-                      ["+75%", 1.75],
-                      ["+100%", 2],
-                    ] as const
-                  ).map(([label, factor]) => {
-                    const adjusted = applyRounding(baseRate * factor, roundPrice);
-                    const selected = Number(price) === adjusted;
-                    return (
-                      <button
-                        key={String(label)}
-                        type="button"
-                        aria-pressed={selected}
-                        onClick={() => {
-                          setPriceFactor(factor);
-                          setPrice(String(adjusted));
-                        }}
-                        className={cn(
-                          "relative flex min-h-14 min-w-20 flex-col items-center justify-center rounded-xl border px-2 py-2 transition-colors",
-                          selected
-                            ? "border-primary bg-primary/10 text-primary ring-1 ring-primary"
-                            : "bg-background hover:border-primary/35 hover:bg-muted/30",
-                        )}
-                      >
-                        <span className="text-sm font-semibold md:text-xs">
-                          {label}
-                        </span>
-                        <span
-                          translate="no"
-                          className={cn(
-                            "notranslate mt-0.5 text-xs md:text-[0.65rem]",
-                            selected ? "text-primary" : "text-muted-foreground",
-                          )}
-                        >
-                          {chipMoney(adjusted)}
-                        </span>
-                        {selected ? (
-                          <span className="absolute top-1.5 right-1.5 grid size-4 place-items-center rounded-full bg-primary text-primary-foreground">
-                            <Check className="size-2.5" />
-                          </span>
-                        ) : null}
-                      </button>
-                    );
-                  })}
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="rounded-2xl border-2 border-primary/30 bg-primary/[0.035] p-4 shadow-sm">
-                <Label
-                  htmlFor="prepublish-nightly-rate"
-                  className="text-sm font-semibold"
-                >
-                  <Tx
-                    k="host.prepublish.rate_label"
-                    source="Price per night for these dates"
-                  />
+                  ) : (
+                    <Tx
+                      k="host.prepublish.rate_label"
+                      source="Price per night for these dates"
+                    />
+                  )}
                 </Label>
-                <div className="relative mt-2">
-                  <Input
-                    id="prepublish-nightly-rate"
-                    className="h-14 appearance-none rounded-xl border-primary/25 bg-background pr-24 text-2xl font-semibold shadow-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                    type="number"
-                    min={1}
-                    step="0.01"
-                    inputMode="decimal"
-                    value={price}
-                    onChange={(event) => {
-                      // A typed figure is nobody's percentage of the base rate any
-                      // more, so the toggle stops recomputing and just rounds it.
-                      setPriceFactor(null);
-                      setPrice(event.target.value);
-                    }}
-                    onPointerDown={startPriceHold}
-                    onPointerUp={clearPriceHold}
-                    onPointerCancel={clearPriceHold}
-                    onPointerLeave={clearPriceHold}
-                  />
-                  <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm text-muted-foreground md:text-xs">
-                    {currency}
-                  </span>
-                </div>
-                <p className="mt-2 text-sm text-muted-foreground md:text-xs">
+                <PercentAmountField
+                  className="mt-2"
+                  id="prepublish-nightly-rate"
+                  percent={pricePercent}
+                  amount={priceValid ? priceNumber : null}
+                  onPercentChange={setPriceFromPercent}
+                  onAmountChange={(value) => {
+                    // A typed figure is nobody's percentage of the base rate any
+                    // more, so the toggle stops recomputing and just rounds it.
+                    setPriceFactor(null);
+                    setPrice(String(value));
+                  }}
+                  min={-50}
+                  max={100}
+                  grow={50}
+                  limitMin={-95}
+                  limitMax={900}
+                  stops={priceStops}
+                  currency={currency}
+                  hidePercent={baseRate <= 0}
+                  percentLabel={
+                    resolve(
+                      "host.prepublish.rate_percent_label",
+                      "Percentage of your normal price",
+                    ).text
+                  }
+                  amountLabel={
+                    resolve(
+                      "host.prepublish.rate_label",
+                      "Price per night for these dates",
+                    ).text
+                  }
+                />
+                <p className="mt-3 text-sm text-muted-foreground md:text-xs">
                   <Tx
-                    k="host.prepublish.rate_exact_hint"
-                    source="Tap the field to type an exact amount."
+                    k="host.prepublish.rate_pair_hint"
+                    source="Type a percentage or an exact amount — the other one follows."
                   />
                 </p>
               </div>
-
-              {priceAdjustOpen && baseRate > 0 ? (
-                <div className="rounded-2xl border-2 border-primary/30 bg-primary/[0.035] p-4">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <p className="text-sm font-semibold">
-                      <Tx k="host.form.offer_percentage" source="Percentage" />
-                    </p>
-                    <div className="relative w-20">
-                      <Input
-                        aria-label={
-                          resolve("host.prepublish.discount_label", "Discount").text
-                        }
-                        type="text"
-                        inputMode="decimal"
-                        value={
-                          pricePercentText ||
-                          String(
-                            Math.round(((priceNumber / baseRate) - 1) * 100) || 0,
-                          )
-                        }
-                        onChange={(event) => {
-                          const next = event.target.value;
-                          setPricePercentText(next);
-                          const percent = Number(next);
-                          if (Number.isFinite(percent)) {
-                            setPriceFromPercent(Math.max(-50, Math.min(100, percent)));
-                          }
-                        }}
-                        onBlur={() => setPricePercentText("")}
-                        className="h-8 pr-6 text-right text-sm font-semibold text-primary"
-                      />
-                      <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-sm font-semibold text-primary">
-                        %
-                      </span>
-                    </div>
-                  </div>
-                  <Slider
-                    className="mt-5 [&_[data-slot=slider-track]]:h-3 [&_[data-slot=slider-thumb]]:size-7"
-                    min={-50}
-                    max={100}
-                    step={1}
-                    value={[Math.max(-50, Math.min(100, Math.round(((priceNumber / baseRate) - 1) * 100) || 0))]}
-                    onValueChange={([percent]) => {
-                      setPricePercentText("");
-                      setPriceFromPercent(percent);
-                    }}
-                    aria-label={
-                      resolve("host.prepublish.discount_label", "Discount").text
-                    }
-                  />
-                  <p className="mt-3 text-sm text-muted-foreground md:text-xs">
-                    <Tx
-                      k="host.prepublish.rate_exact_hint"
-                      source="Tap the field to type an exact amount."
-                    />
-                  </p>
-                </div>
-              ) : null}
 
               <OptionToggle
                 checked={roundPrice}
@@ -2347,93 +2264,65 @@ function PlanEditorDialog({
             </div>
           ) : (
             <div className="space-y-4 p-6">
-              <fieldset>
-                <legend className="text-sm font-semibold">
+              {/* One decision, one card: the percentage, what a night comes to with
+                  it, and a track between the offers hosts pick most. */}
+              <div className="rounded-2xl border-2 border-primary/30 bg-primary/[0.035] p-4 shadow-sm">
+                <Label
+                  htmlFor="prepublish-offer-discount-percent"
+                  className="text-sm font-semibold"
+                >
                   <Tx
                     k="host.prepublish.offer_type_label"
                     source="What do guests get?"
                   />
-                </legend>
-                <div className="mt-3 grid grid-cols-4 gap-2">
-                  {OFFER_PERCENT_CHOICES.map((percent) => {
-                    const selected = discount === String(percent);
-                    return (
-                      <button
-                        key={percent}
-                        type="button"
-                        aria-pressed={selected}
-                        onClick={() => setDiscount(String(percent))}
-                        className={cn(
-                          "relative min-h-12 rounded-xl border px-2 py-2 text-center text-sm font-semibold transition-colors",
-                          selected
-                            ? "border-primary bg-primary/10 text-primary ring-1 ring-primary"
-                            : "bg-background hover:border-primary/35 hover:bg-muted/30",
-                        )}
-                      >
-                        {percent}%
-                        {selected ? (
-                          <span className="absolute top-1.5 right-1.5 grid size-4 place-items-center rounded-full bg-primary text-primary-foreground">
-                            <Check className="size-2.5" aria-hidden="true" />
-                          </span>
-                        ) : null}
-                      </button>
-                    );
-                  })}
-                </div>
-              </fieldset>
-
-              <div>
-                <Label
-                  htmlFor="prepublish-offer-discount"
-                  className="text-sm font-semibold"
-                >
-                  <Tx k="host.form.offer_percentage" source="Percentage" />
                 </Label>
-                <div className="mt-3 grid grid-cols-[1fr_auto] items-center gap-2 rounded-xl border bg-primary/5 p-3">
-                  <Input
-                    id="prepublish-offer-discount"
-                    aria-label={
-                      resolve("host.prepublish.discount_label", "Discount").text
-                    }
-                    type="number"
-                    min={MIN_OFFER_PERCENT}
-                    max={MAX_OFFER_PERCENT}
-                    step="1"
-                    inputMode="numeric"
-                    value={discount}
-                    onChange={(event) => setDiscount(event.target.value)}
-                    className="text-right font-semibold tabular-nums"
-                  />
-                  <span className="text-sm text-muted-foreground md:text-xs">
-                    <Tx k="host.calendar.percent_off" source="% off" />
-                  </span>
-                </div>
-              </div>
-
-              <div className="rounded-xl border bg-muted/20 px-3 py-3">
-                <div className="flex items-baseline justify-between gap-3">
-                  <p className="text-sm font-semibold">
-                    <Tx k="host.form.offer_percentage" source="Percentage" />
-                  </p>
-                  <span className="text-sm font-semibold text-primary">
-                    {discountValid ? discountNumber : MIN_OFFER_PERCENT}%
-                  </span>
-                </div>
-                <Slider
-                  className="mt-4 [&_[data-slot=slider-track]]:h-2.5 [&_[data-slot=slider-thumb]]:size-6"
+                <PercentAmountField
+                  className="mt-2"
+                  id="prepublish-offer-discount"
+                  percent={discountEmpty ? null : discountNumber}
+                  amount={
+                    baseRate > 0 && discountValid
+                      ? baseRate * (1 - discountNumber / 100)
+                      : null
+                  }
+                  onPercentChange={(percent) =>
+                    setDiscount(String(Math.round(percent)))
+                  }
+                  onPercentClear={() => setDiscount("")}
+                  onAmountChange={(value) => {
+                    if (baseRate <= 0) return;
+                    const percent = Math.round((1 - value / baseRate) * 100);
+                    setDiscount(
+                      String(
+                        Math.min(
+                          MAX_OFFER_PERCENT,
+                          Math.max(MIN_OFFER_PERCENT, percent),
+                        ),
+                      ),
+                    );
+                  }}
                   min={MIN_OFFER_PERCENT}
                   max={MAX_OFFER_PERCENT}
-                  step={1}
-                  value={[Math.max(MIN_OFFER_PERCENT, discountValid ? discountNumber : MIN_OFFER_PERCENT)]}
-                  onValueChange={([percent]) => setDiscount(String(percent))}
-                  aria-label={
+                  stops={OFFER_PERCENT_STOPS}
+                  currency={currency}
+                  hideAmount={baseRate <= 0}
+                  percentLabel={
                     resolve("host.prepublish.discount_label", "Discount").text
                   }
+                  amountLabel={
+                    resolve(
+                      "host.prepublish.offer_night_label",
+                      "Price a guest pays per night",
+                    ).text
+                  }
                 />
-                <p className="mt-2 text-sm text-muted-foreground md:text-xs">
+                <p className="mt-3 text-sm text-muted-foreground md:text-xs">
                   {
                     interpolate(
-                      resolve("host.prepublish.discount_hint", "Between {min}% and {max}%."),
+                      resolve(
+                        "host.prepublish.discount_hint",
+                        "Between {min}% and {max}%.",
+                      ),
                       { min: MIN_OFFER_PERCENT, max: MAX_OFFER_PERCENT },
                     ).text
                   }

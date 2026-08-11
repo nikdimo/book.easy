@@ -30,6 +30,7 @@ function officialMoney(amount: number | string, currency: string): string {
 }
 import { DateRangeCalendarStep } from "@/components/marketplace/marketplace-stay-date-picker";
 import { ListingActionBarPortal } from "@/components/host/listing-action-bar-portal";
+import { PercentAmountField } from "@/components/host/percent-amount-field";
 import {
   OFFER_PREVIEW_NOTE,
   OfferPreview,
@@ -49,7 +50,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Slider } from "@/components/ui/slider";
 import { Tx, interpolate, translatedClass, useI18n } from "@/lib/i18n/client";
 import {
   Popover,
@@ -178,7 +178,16 @@ const FILTERS: { value: ChangeFilter; label: string }[] = [
   { value: "booking", label: "Reservations" },
 ];
 
-const PROMOTION_PERCENT_CHOICES = [10, 15, 20, 30] as const;
+/** The discounts hosts reach for, as labels under the promotion track. Everything
+ *  between them is a drag away, and the field takes anything in range. */
+const PROMOTION_PERCENT_STOPS = [
+  { label: "5%", percent: 5 },
+  { label: "10%", percent: 10 },
+  { label: "15%", percent: 15 },
+  { label: "20%", percent: 20 },
+  { label: "30%", percent: 30 },
+  { label: "50%", percent: 50 },
+] as const;
 
 const LENS_META: Record<
   CalendarLens,
@@ -536,9 +545,6 @@ function EditorDialog({
   const [fee, setFee] = useState(String(cleaningFee));
   const [minimumStay, setMinimumStay] = useState(String(minNights));
   const [roundPrice, setRoundPrice] = useState(true);
-  const [priceAdjustOpen, setPriceAdjustOpen] = useState(false);
-  const [pricePercentText, setPricePercentText] = useState("");
-  const priceHoldTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** The multiplier behind the chosen quick adjustment, or `null` once the host types
    *  their own figure — the rounding toggle recomputes from it so switching rounding
    *  off gives back the exact percentage rather than the rounded number. */
@@ -561,18 +567,6 @@ function EditorDialog({
   const applyRounding = (value: number, round: boolean) =>
     round ? roundToCleanPrice(value) : Number(value.toFixed(2));
 
-  const clearPriceHold = () => {
-    if (priceHoldTimeout.current !== null) {
-      clearTimeout(priceHoldTimeout.current);
-      priceHoldTimeout.current = null;
-    }
-  };
-
-  const startPriceHold = () => {
-    clearPriceHold();
-    priceHoldTimeout.current = setTimeout(() => setPriceAdjustOpen(true), 350);
-  };
-
   const setPriceFromPercent = (percent: number) => {
     const factor = 1 + percent / 100;
     setPriceFactor(factor);
@@ -580,6 +574,26 @@ function EditorDialog({
   };
 
   const isDateScoped = Boolean(range?.from);
+  /** A percentage needs something to be a percentage of. Editing the base price is
+   *  editing that something, so there the amount stands on its own. */
+  const showPricePercent = isDateScoped && baseNightlyRate > 0;
+  /** A chosen adjustment answers for itself — rounding €88 up to €90 must not report
+   *  itself back as +13% — while a typed amount is measured against the base price. */
+  const pricePercent = !showPricePercent
+    ? null
+    : priceFactor !== null
+      ? Math.round((priceFactor - 1) * 100)
+      : Number.isFinite(Number(price))
+        ? Math.round((Number(price) / baseNightlyRate - 1) * 100)
+        : 0;
+  const priceStops = [
+    { label: "−50%", percent: -50 },
+    { label: "−20%", percent: -20 },
+    { label: resolve("host.prepublish.rate_base", "Base").text, percent: 0 },
+    { label: "+20%", percent: 20 },
+    { label: "+50%", percent: 50 },
+    { label: "+100%", percent: 100 },
+  ];
   const selectedInput = range?.from ? calendarRangeToInput(range) : null;
   const editorMeta =
     state.kind === "availability"
@@ -809,10 +823,6 @@ function EditorDialog({
   const guestRate = roundPromotion
     ? Math.min(baseNightlyRate, Math.round(rawGuestRate))
     : Number(rawGuestRate.toFixed(2));
-  const currencySymbol =
-    new Intl.NumberFormat(locale, { style: "currency", currency })
-      .formatToParts(0)
-      .find((part) => part.type === "currency")?.value ?? currency;
   // The short verb key, not `block_selected`: its reviewed translations read
   // "Block selected range", which does not fit a half-width button.
   const blockCta = resolveReviewed("mobile.calendar.block", "Block dates");
@@ -1028,9 +1038,17 @@ function EditorDialog({
 
           {state.kind === "price" ? (
             <div className="space-y-4 p-6">
+              {/* The percentage and the money it comes to on one line: either side
+                  can be typed, the slider moves both, and nothing scrolls sideways.
+                  The percentage only means something against a base price, so it sits
+                  out when the base price itself is what is being edited. */}
               <div className="rounded-2xl border-2 border-primary/30 bg-primary/[0.035] p-4 shadow-sm">
                 <Label
-                  htmlFor="nightly-price"
+                  htmlFor={
+                    showPricePercent
+                      ? "nightly-price-percent"
+                      : "nightly-price-amount"
+                  }
                   className="text-sm font-semibold"
                 >
                   {isDateScoped ? (
@@ -1045,155 +1063,48 @@ function EditorDialog({
                     />
                   )}
                 </Label>
-                <div className="relative mt-2">
-                  <span
-                    className="notranslate pointer-events-none absolute inset-y-0 left-4 flex items-center text-xl font-semibold text-muted-foreground"
-                    translate="no"
-                  >
-                    {currencySymbol}
-                  </span>
-                  <Input
-                    id="nightly-price"
-                    className="h-14 appearance-none rounded-xl border-primary/25 bg-background pr-24 pl-14 text-2xl font-semibold tabular-nums shadow-xs [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                    type="number"
-                    min={1}
-                    step="0.01"
-                    value={price}
-                    onChange={(event) => {
-                      setPriceFactor(null);
-                      setPrice(event.target.value);
-                    }}
-                    onPointerDown={startPriceHold}
-                    onPointerUp={clearPriceHold}
-                    onPointerCancel={clearPriceHold}
-                    onPointerLeave={clearPriceHold}
-                  />
-                  <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm md:text-xs text-muted-foreground">
-                    <Tx k="host.calendar.per_night" source="per night" />
-                  </span>
-                </div>
-                <p className="mt-2 text-sm md:text-xs text-muted-foreground">
-                  <Tx
-                    k="host.calendar.price_hint"
-                    source="Enter an exact amount or choose a quick adjustment below."
-                  />
+                <PercentAmountField
+                  className="mt-2"
+                  id="nightly-price"
+                  percent={pricePercent}
+                  amount={Number.isFinite(Number(price)) ? Number(price) : null}
+                  onPercentChange={setPriceFromPercent}
+                  onAmountChange={(value) => {
+                    setPriceFactor(null);
+                    setPrice(String(value));
+                  }}
+                  min={-50}
+                  max={100}
+                  grow={50}
+                  limitMin={-95}
+                  limitMax={900}
+                  stops={priceStops}
+                  currency={currency}
+                  hidePercent={!showPricePercent}
+                  percentLabel={
+                    resolve(
+                      "host.prepublish.rate_percent_label",
+                      "Percentage of your normal price",
+                    ).text
+                  }
+                  amountLabel={
+                    resolve("host.calendar.per_night", "per night").text
+                  }
+                />
+                <p className="mt-3 text-sm text-muted-foreground md:text-xs">
+                  {showPricePercent ? (
+                    <Tx
+                      k="host.prepublish.rate_pair_hint"
+                      source="Type a percentage or an exact amount — the other one follows."
+                    />
+                  ) : (
+                    <Tx
+                      k="host.prepublish.rate_exact_hint"
+                      source="Tap the field to type an exact amount."
+                    />
+                  )}
                 </p>
               </div>
-              <div className="flex gap-2 overflow-x-auto pb-1">
-                {(
-                  [
-                    ["−50%", 0.5],
-                    ["−30%", 0.7],
-                    ["−20%", 0.8],
-                    ["−10%", 0.9],
-                    ["Base", 1],
-                    ["+10%", 1.1],
-                    ["+20%", 1.2],
-                    ["+30%", 1.3],
-                    ["+50%", 1.5],
-                    ["+75%", 1.75],
-                    ["+100%", 2],
-                  ] as const
-                ).map(([label, factor]) => {
-                  const adjusted = applyRounding(
-                    baseNightlyRate * factor,
-                    roundPrice,
-                  );
-                  const selected = Number(price) === adjusted;
-                  return (
-                    <button
-                      key={String(label)}
-                      type="button"
-                      aria-pressed={selected}
-                      onClick={() => {
-                        setPriceFactor(factor);
-                        setPrice(String(adjusted));
-                      }}
-                      className={cn(
-                        "relative flex min-h-14 min-w-20 flex-col items-center justify-center rounded-xl border px-2 py-2 transition-colors",
-                        selected
-                          ? "border-primary bg-primary/10 text-primary ring-1 ring-primary"
-                          : "bg-background hover:border-primary/35 hover:bg-muted/30",
-                      )}
-                    >
-                      <span className="text-sm md:text-xs font-semibold">{label}</span>
-                      <span
-                        translate="no"
-                        className={cn(
-                          "notranslate mt-0.5 text-xs md:text-[0.65rem]",
-                          selected ? "text-primary" : "text-muted-foreground",
-                        )}
-                      >
-                        {officialMoney(adjusted, currency)}
-                      </span>
-                      {selected ? (
-                        <span className="absolute top-1.5 right-1.5 grid size-4 place-items-center rounded-full bg-primary text-primary-foreground">
-                          <Check className="size-2.5" />
-                        </span>
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
-              {priceAdjustOpen && baseNightlyRate > 0 ? (
-                <div className="rounded-2xl border-2 border-primary/30 bg-primary/[0.035] p-4">
-                  <div className="flex items-baseline justify-between gap-3">
-                    <p className="text-sm font-semibold">
-                      <Tx k="host.form.offer_percentage" source="Percentage" />
-                    </p>
-                    <div className="relative w-20">
-                      <Input
-                        aria-label={
-                          resolve("host.calendar.discount_label", "Discount percentage").text
-                        }
-                        type="text"
-                        inputMode="decimal"
-                        value={
-                          pricePercentText ||
-                          String(
-                            Math.round(
-                              ((Number(price) / baseNightlyRate) - 1) * 100,
-                            ) || 0,
-                          )
-                        }
-                        onChange={(event) => {
-                          const next = event.target.value;
-                          setPricePercentText(next);
-                          const percent = Number(next);
-                          if (Number.isFinite(percent)) {
-                            setPriceFromPercent(Math.max(-50, Math.min(100, percent)));
-                          }
-                        }}
-                        onBlur={() => setPricePercentText("")}
-                        className="h-8 pr-6 text-right text-sm font-semibold text-primary"
-                      />
-                      <span className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-sm font-semibold text-primary">
-                        %
-                      </span>
-                    </div>
-                  </div>
-                  <Slider
-                    className="mt-5 [&_[data-slot=slider-track]]:h-3 [&_[data-slot=slider-thumb]]:size-7"
-                    min={-50}
-                    max={100}
-                    step={1}
-                    value={[Math.max(-50, Math.min(100, Math.round(((Number(price) / baseNightlyRate) - 1) * 100) || 0))]}
-                    onValueChange={([percent]) => {
-                      setPricePercentText("");
-                      setPriceFromPercent(percent);
-                    }}
-                    aria-label={
-                      resolve("host.calendar.discount_label", "Discount percentage").text
-                    }
-                  />
-                  <p className="mt-3 text-sm text-muted-foreground md:text-xs">
-                    <Tx
-                      k="host.calendar.price_hint"
-                      source="Enter an exact amount or choose a quick adjustment below."
-                    />
-                  </p>
-                </div>
-              ) : null}
               {/* Same keys as the wizard's price sheet: the two surfaces round the
                   same way now, so they should not say it in two different voices —
                   and this copy was the one that had never been translated. */}
@@ -1350,42 +1261,7 @@ function EditorDialog({
 
           {state.kind === "promotion" ? (
             <div className="space-y-4 p-6">
-              {isDateScoped ? (
-                <fieldset>
-                  <legend className="text-sm font-semibold">
-                    <Tx
-                      k="host.prepublish.offer_type_label"
-                      source="What do guests get?"
-                    />
-                  </legend>
-                  <div className="mt-3 grid grid-cols-4 gap-2">
-                    {PROMOTION_PERCENT_CHOICES.map((percent) => {
-                      const selected = discount === String(percent);
-                      return (
-                        <button
-                          key={percent}
-                          type="button"
-                          aria-pressed={selected}
-                          onClick={() => setDiscount(String(percent))}
-                          className={cn(
-                            "relative min-h-12 rounded-xl border px-2 py-2 text-center text-sm font-semibold transition-colors",
-                            selected
-                              ? "border-primary bg-primary/10 text-primary ring-1 ring-primary"
-                              : "bg-background hover:border-primary/35 hover:bg-muted/30",
-                          )}
-                        >
-                          {percent}%
-                          {selected ? (
-                            <span className="absolute top-1.5 right-1.5 grid size-4 place-items-center rounded-full bg-primary text-primary-foreground">
-                              <Check className="size-2.5" aria-hidden="true" />
-                            </span>
-                          ) : null}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </fieldset>
-              ) : (
+              {isDateScoped ? null : (
                 <fieldset>
                   <legend className="text-sm font-semibold">
                     <Tx
@@ -1434,88 +1310,84 @@ function EditorDialog({
                   </div>
                 </fieldset>
               )}
-              <div>
-                <Label htmlFor="calendar-promotion-discount">
+              {/* One decision, one card: the discount, what a night comes to with
+                  it, and a track between the offers hosts pick most. */}
+              <div className="rounded-2xl border-2 border-primary/30 bg-primary/[0.035] p-4 shadow-sm">
+                <Label
+                  htmlFor="calendar-promotion-discount-percent"
+                  className="text-sm font-semibold"
+                >
                   <Tx k="host.form.offer_percentage" source="Percentage" />
                 </Label>
-                <div
-                  className={cn(
-                    "mt-1.5 grid items-center gap-2 rounded-xl border bg-primary/5 p-3",
-                    isDateScoped
-                      ? "grid-cols-[1fr_auto]"
-                      : "grid-cols-[1fr_auto_1fr_auto]",
-                  )}
-                >
-                  <Input
-                    id="calendar-promotion-discount"
-                    aria-label={
-                      resolve(
-                        "host.calendar.discount_label",
-                        "Discount percentage",
-                      ).text
-                    }
-                    type="number"
-                    min={0}
-                    max={50}
-                    value={discount}
-                    onChange={(event) => setDiscount(event.target.value)}
-                  />
-                  <span className="text-sm text-muted-foreground md:text-xs">
-                    <Tx k="host.calendar.percent_off" source="% off" />
-                  </span>
-                  {!isDateScoped ? (
-                    <>
-                      <Input
-                        aria-label={
-                          resolve(
-                            "host.calendar.promotion_minimum_label",
-                            "Promotion minimum stay",
-                          ).text
-                        }
-                        type="number"
-                        min={1}
-                        max={365}
-                        value={promotionMinimum}
-                        onChange={(event) =>
-                          setPromotionMinimum(event.target.value)
-                        }
-                      />
-                      <span className="text-sm text-muted-foreground md:text-xs">
-                        <Tx k="host.calendar.nights" source="nights" />
-                      </span>
-                    </>
-                  ) : null}
-                </div>
-              </div>
-              <div className="rounded-xl border bg-muted/20 px-3 py-3">
-                <div className="flex items-baseline justify-between gap-3">
-                  <p className="text-sm font-semibold">
-                    <Tx k="host.form.offer_percentage" source="Percentage" />
-                  </p>
-                  <span className="text-sm font-semibold text-primary">
-                    {numericDiscount}%
-                  </span>
-                </div>
-                <Slider
-                  className="mt-4 [&_[data-slot=slider-track]]:h-2.5 [&_[data-slot=slider-thumb]]:size-6"
+                <PercentAmountField
+                  className="mt-2"
+                  id="calendar-promotion-discount"
+                  percent={numericDiscount > 0 ? numericDiscount : null}
+                  amount={
+                    numericDiscount > 0 && baseNightlyRate > 0 ? guestRate : null
+                  }
+                  onPercentChange={(percent) =>
+                    setDiscount(String(Math.round(percent)))
+                  }
+                  onPercentClear={() => setDiscount("")}
+                  onAmountChange={(value) => {
+                    if (baseNightlyRate <= 0) return;
+                    const percent = Math.round(
+                      (1 - value / baseNightlyRate) * 100,
+                    );
+                    setDiscount(String(Math.min(50, Math.max(5, percent))));
+                  }}
                   min={5}
                   max={50}
-                  step={1}
-                  value={[Math.max(5, numericDiscount || 5)]}
-                  onValueChange={([percent]) => setDiscount(String(percent))}
-                  aria-label={
-                    resolve("host.calendar.discount_label", "Discount percentage").text
+                  stops={PROMOTION_PERCENT_STOPS}
+                  currency={currency}
+                  hideAmount={baseNightlyRate <= 0}
+                  percentLabel={
+                    resolve("host.calendar.discount_label", "Discount percentage")
+                      .text
+                  }
+                  amountLabel={
+                    resolve("host.calendar.per_night", "per night").text
                   }
                 />
-                <p className="mt-2 text-sm text-muted-foreground md:text-xs">
+                <p className="mt-3 text-sm text-muted-foreground md:text-xs">
                   {
                     interpolate(
-                      resolve("host.prepublish.discount_hint", "Between {min}% and {max}%."),
+                      resolve(
+                        "host.prepublish.discount_hint",
+                        "Between {min}% and {max}%.",
+                      ),
                       { min: 5, max: 50 },
                     ).text
                   }
                 </p>
               </div>
+              {isDateScoped ? null : (
+                <div>
+                  <Label htmlFor="calendar-promotion-minimum">
+                    <Tx
+                      k="host.calendar.promotion_minimum_label"
+                      source="Promotion minimum stay"
+                    />
+                  </Label>
+                  <div className="relative mt-1.5">
+                    <Input
+                      id="calendar-promotion-minimum"
+                      type="number"
+                      min={1}
+                      max={365}
+                      value={promotionMinimum}
+                      onChange={(event) =>
+                        setPromotionMinimum(event.target.value)
+                      }
+                      className="pr-16"
+                    />
+                    <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm text-muted-foreground md:text-xs">
+                      <Tx k="host.calendar.nights" source="nights" />
+                    </span>
+                  </div>
+                </div>
+              )}
               <OptionToggle
                 checked={freeCleaning}
                 label={

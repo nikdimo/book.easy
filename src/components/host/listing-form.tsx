@@ -4,7 +4,7 @@ import { useActionState, useCallback, useEffect, useMemo, useRef, useState, useT
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Bath, Bed, BedDouble, Building, CalendarDays, CalendarRange, Check, ChevronLeft, ChevronRight, CircleAlert, CircleDollarSign, Coffee, CookingPot, Eye, Flame, GripVertical, HeartPulse, Laptop, ListChecks, Loader2, MapPin, Microwave, Minus, Mountain, Pencil, Plus, Refrigerator, Shirt, Shield, ShieldCheck, Sparkles, Sun, Thermometer, Trees, Tv, Users, Waves, Wind, Wifi, Car } from "lucide-react";
+import { Bath, Bed, BedDouble, Building, CalendarDays, PartyPopper, CalendarRange, Check, ChevronLeft, ChevronRight, CircleAlert, CircleDollarSign, Coffee, CookingPot, Eye, Flame, GripVertical, HeartPulse, Laptop, ListChecks, Loader2, MapPin, Microwave, Minus, Mountain, Pencil, Plus, Refrigerator, Shirt, Shield, ShieldCheck, Sparkles, Sun, Thermometer, Trees, Tv, Users, Waves, Wind, Wifi, Car } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   saveListingDraft,
@@ -15,6 +15,7 @@ import { listingFormSchema } from "@/lib/validations/listing.schema";
 import { ListingBottomNav } from "@/components/host/listing-bottom-nav";
 import { ListingWizardHeaderActions } from "@/components/host/listing-wizard-header-actions";
 import { ListingCurrencyPicker } from "@/components/host/listing-currency-picker";
+import { ListingImportPanel } from "@/components/host/listing-import-panel";
 import { listingStopHref } from "@/lib/host/listing-workspace";
 import { promotionWizardIssues } from "@/lib/host/listing-wizard-validation";
 import { zodFieldErrors } from "@/lib/utils/zod-error";
@@ -721,7 +722,13 @@ export function ListingForm({
   const [geocodingAddress, setGeocodingAddress] = useState(false);
   const [publishChecklistOpen, setPublishChecklistOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [submittedListingId, setSubmittedListingId] = useState<string | null>(null);
+  /** Set once the wizard's submit succeeds; the slug rides along so the success
+   *  dialog can send the host straight to the public page they just created. */
+  const [submittedListing, setSubmittedListing] = useState<{
+    id: string;
+    slug: string;
+  } | null>(null);
+  const submittedListingId = submittedListing?.id ?? null;
   const [mediaUploadState, setMediaUploadState] = useState<ListingMediaUploadState>({
     active: false,
     progress: 0,
@@ -1187,7 +1194,7 @@ export function ListingForm({
       if ("error" in result) {
         toast.error(result.error);
       } else {
-        setSubmittedListingId(result.listingId);
+        setSubmittedListing({ id: result.listingId, slug: result.slug });
       }
     });
   }
@@ -1890,6 +1897,7 @@ export function ListingForm({
               </div>
             </div>
             <div className={showEditSections || onCreateStep(LISTING_STEP.propertyType) ? "space-y-3" : "hidden"}>
+              {!isEditing && !initialDraftId && <ListingImportPanel />}
               <Label
                 id="property-type-label"
                 className={isEditing ? undefined : "sr-only md:not-sr-only"}
@@ -3510,17 +3518,94 @@ export function ListingForm({
         }}
       >
         <DialogContent variant="sheet">
-          <DialogHeader>
-            <DialogTitle>
+          <DialogHeader className="items-center text-center">
+            {/* Publishing is the one genuinely celebratory moment in the wizard,
+                so the dialog leads with a mark rather than a line of text. The
+                ring animates once on mount; the icon itself never moves, so the
+                moment reads as festive without becoming a distraction. */}
+            <span className="relative mx-auto mb-1 flex h-16 w-16 items-center justify-center">
+              <span
+                aria-hidden
+                className="absolute inset-0 animate-ping rounded-full bg-primary/20 [animation-iteration-count:3]"
+              />
+              <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/20">
+                <PartyPopper className="h-8 w-8" />
+              </span>
+            </span>
+            <DialogTitle className="text-center text-2xl">
               <Tx
                 k="host.form.published_title"
-                source="Listing published successfully"
+                source="Your listing is published!"
               />
             </DialogTitle>
-            <DialogDescription className="pt-2 text-foreground">
+            <DialogDescription className="text-center text-base text-foreground">
               <Tx
                 k="host.form.published_body"
-                source="Your listing is live. You can return to My Listings or continue editing it now. Our team will still review the content shortly, so keep it accurate. Questions? Contact"
+                source="Nice work — guests can find and book it right now."
+              />
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-3">
+            <Button
+              type="button"
+              size="lg"
+              onClick={() => {
+                if (submittedListing) {
+                  router.push(`/properties/${submittedListing.slug}`);
+                }
+              }}
+            >
+              <Eye className="h-4 w-4" />
+              <Tx k="host.form.published_preview_cta" source="Preview your listing" />
+            </Button>
+
+            {/* A brand new listing has no blocked dates and one flat nightly rate,
+                so the calendar is the most valuable follow-up — kept as a real
+                button rather than a sentence, which is also the only shape that
+                survives the page being machine-translated. */}
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-auto flex-col gap-1.5 py-3 text-xs"
+                onClick={() => {
+                  if (submittedListingId) {
+                    router.push(listingStopHref(submittedListingId, "availability"));
+                  }
+                }}
+              >
+                <CalendarDays className="h-4 w-4" />
+                <Tx k="host.form.published_calendar_cta" source="Dates & prices" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-auto flex-col gap-1.5 py-3 text-xs"
+                onClick={() => {
+                  if (submittedListingId) {
+                    router.push(`/host/listings/${submittedListingId}/edit`);
+                  }
+                }}
+              >
+                <Pencil className="h-4 w-4" />
+                <Tx k="host.form.continue_editing" source="Keep editing" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-auto flex-col gap-1.5 py-3 text-xs"
+                onClick={() => router.push("/host/listings")}
+              >
+                <ListChecks className="h-4 w-4" />
+                <Tx k="host.form.go_to_listings" source="My listings" />
+              </Button>
+            </div>
+
+            <p className="text-center text-xs text-muted-foreground">
+              <Tx
+                k="host.form.published_footnote"
+                source="Our team still reviews new listings, so keep the details accurate. Questions?"
               />{" "}
               <a
                 href="mailto:hello@lingerhomes.com"
@@ -3529,55 +3614,7 @@ export function ListingForm({
               >
                 hello@lingerhomes.com
               </a>
-              .
-            </DialogDescription>
-          </DialogHeader>
-          {/* A brand new listing has no blocked dates and one flat nightly rate,
-              so the calendar is the most valuable next step — worth a real button
-              rather than a sentence, which is also the only shape that survives
-              the page being machine-translated. */}
-          <div className="flex flex-col gap-2">
-            <p className="text-xs text-muted-foreground md:text-sm">
-              <Tx
-                k="host.form.published_calendar_hint"
-                source="Want different prices for specific dates, or to block days off? Set them up in your listing's calendar."
-              />
             </p>
-            <Button
-              type="button"
-              size="lg"
-              onClick={() => {
-                if (submittedListingId) {
-                  router.push(listingStopHref(submittedListingId, "availability"));
-                }
-              }}
-            >
-              <CalendarDays className="h-4 w-4" />
-              <Tx
-                k="host.form.published_calendar_cta"
-                source="Set dates, prices & promotions"
-              />
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              onClick={() => {
-                if (submittedListingId) {
-                  router.push(`/host/listings/${submittedListingId}/edit`);
-                }
-              }}
-            >
-              <Tx k="host.form.continue_editing" source="Continue editing" />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="lg"
-              onClick={() => router.push("/host/listings")}
-            >
-              <Tx k="host.form.go_to_listings" source="Go to My Listings" />
-            </Button>
           </div>
         </DialogContent>
       </Dialog>
