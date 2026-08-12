@@ -16,6 +16,7 @@ import { ListingCarousel } from "@/components/public/listing-carousel";
 import { HomeListingsView } from "@/components/public/home-listings-view";
 import { OwnerServicesDialog } from "@/components/public/owner-services-dialog";
 import { FloatingHomeSearch } from "@/components/public/floating-home-search";
+import { HomeHeroShell } from "@/components/public/home-hero-shell";
 import { MarketplaceSearchBar } from "@/components/marketplace/marketplace-search-bar";
 import type { MapPin } from "@/components/marketplace/properties-map";
 import { getMapCoordinatesForListing } from "@/lib/utils/listing-map-coords";
@@ -269,7 +270,10 @@ export default async function HomePage() {
 
       <h1 className="sr-only"><T t={t} k="home.page_title" source="Find places to stay around the world" /></h1>
 
-      <OwnerGrowthHero t={t} {...heroSearchData} />
+      {/* The shell steps the hero aside in map view so the map starts at the fold. */}
+      <HomeHeroShell>
+        <OwnerGrowthHero t={t} {...heroSearchData} />
+      </HomeHeroShell>
       <FloatingHomeSearch {...heroSearchData} />
 
       {isLowInventory && (

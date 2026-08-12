@@ -193,46 +193,25 @@ export function Header({
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-2 min-w-0">
+        <div className="flex items-center justify-end gap-1">
           {regionalSettings}
-          {user ? (
-            <>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="rounded-full"
-                    asChild
-                  >
-                    <Link
-                      href="/account/favorites"
-                      aria-label={navLabels.favorites.text}
-                    >
-                      <Heart className="h-5 w-5" />
-                    </Link>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent
-                  className={
-                    navLabels.favorites.translated ? "notranslate" : undefined
-                  }
-                >
-                  {navLabels.favorites.text}
-                </TooltipContent>
-              </Tooltip>
-              <NotificationBell enabled />
-            </>
-          ) : null}
+
+          {/* Hairline between "how the site is shown to me" and "my account". */}
+          <span
+            aria-hidden
+            className="mx-1.5 hidden h-6 w-px shrink-0 bg-border md:block"
+          />
+
           {user?.isHost ? (
+            /* Not `size="icon"`: that locks the width to a square at `md`, which
+               the label then spills out of. Square only where it is icon-only. */
             <Button
               variant="ghost"
-              size="icon"
-              className="relative flex rounded-full text-sm font-medium sm:w-auto sm:px-3"
+              className="relative rounded-full font-medium max-sm:w-11 max-sm:px-0"
               asChild
             >
               <Link href="/host" aria-label={navLabels.switchToHosting.text}>
-                <Home className="h-5 w-5" />
+                <Home className="size-[18px]" />
                 <span
                   className={cn(
                     "hidden sm:inline",
@@ -255,7 +234,7 @@ export function Header({
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="hidden 2xl:flex rounded-full text-sm font-medium"
+                  className="hidden 2xl:flex rounded-full font-medium"
                   asChild
                 >
                   <Link href="/account/become-host">
@@ -279,18 +258,47 @@ export function Header({
             </Tooltip>
           )}
           {user ? (
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-full"
+                    asChild
+                  >
+                    <Link
+                      href="/account/favorites"
+                      aria-label={navLabels.favorites.text}
+                    >
+                      <Heart className="size-[18px]" />
+                    </Link>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent
+                  className={
+                    navLabels.favorites.translated ? "notranslate" : undefined
+                  }
+                >
+                  {navLabels.favorites.text}
+                </TooltipContent>
+              </Tooltip>
+              <NotificationBell enabled />
+            </>
+          ) : null}
+          {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
                   className={cn(
-                    "flex items-center gap-2 border rounded-full p-1.5 pl-3 hover:shadow-md transition-shadow cursor-pointer bg-background text-left",
+                    "ml-1 flex shrink-0 cursor-pointer items-center gap-2 rounded-full border border-border/80 bg-background p-1.5 pl-3 text-left shadow-xs transition-shadow hover:shadow-md",
                     isHomePage && "pl-1.5 md:pl-3",
                   )}
                 >
                   <SlidersHorizontal
                     className={cn(
-                      "h-4 w-4 text-muted-foreground shrink-0",
+                      "size-4 shrink-0 text-muted-foreground",
                       isHomePage && "hidden md:block",
                     )}
                   />

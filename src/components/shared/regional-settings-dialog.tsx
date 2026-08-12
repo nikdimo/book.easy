@@ -13,6 +13,11 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { Tx, useI18n } from "@/lib/i18n/client";
 import { recordLanguageSelection } from "@/lib/actions/language.actions";
@@ -363,6 +368,10 @@ export function RegionalSettingsDialog({
     languages.find((language) => language.code === DEFAULT_LOCALE)?.name ??
     "English";
 
+  /** "mk", "zh-CN" → "MK", "ZH". The region half is dropped: it is the language
+   *  being switched, and a four-character badge unbalances the pair. */
+  const localeBadge = locale.split("-")[0]!.toUpperCase();
+
   const triggerLabel = i18n.resolve(
     "regional.trigger_label",
     "Language and currency",
@@ -370,27 +379,45 @@ export function RegionalSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <div className="notranslate flex items-center gap-0.5">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="gap-1.5 rounded-full px-2.5 font-medium"
-          aria-label={i18n.resolve("regional.open_language", "Change language").text}
-          onClick={() => openSettings("language")}
-        >
-          <Globe className="h-4 w-4" />
-          <span className="hidden sm:inline">{currentLanguageLabel}</span>
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="gap-1.5 rounded-full px-2.5 font-medium"
-          aria-label={i18n.resolve("regional.open_currency", "Change currency").text}
-          onClick={() => openSettings("currency")}
-        >
-          <CircleDollarSign className="h-4 w-4" />
-          <span>{currentCurrency}</span>
-        </Button>
+      {/* Two halves of one control. The language shows its code rather than its
+          full name — "Македонски" beside a currency code made the header read as
+          loose text, and the name is one hover (or one tap) away either way. */}
+      <div className="notranslate flex shrink-0 items-center gap-0.5">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 rounded-full px-2.5 font-semibold"
+              aria-label={i18n.resolve("regional.open_language", "Change language").text}
+              onClick={() => openSettings("language")}
+            >
+              <Globe className="size-[18px]" />
+              <span className="hidden sm:inline">{localeBadge}</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>{currentLanguageLabel}</TooltipContent>
+        </Tooltip>
+
+        <span aria-hidden className="h-4 w-px shrink-0 bg-border" />
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 rounded-full px-2.5 font-semibold"
+              aria-label={i18n.resolve("regional.open_currency", "Change currency").text}
+              onClick={() => openSettings("currency")}
+            >
+              <CircleDollarSign className="size-[18px]" />
+              <span>{currentCurrency}</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            {currencyDisplayName(currentCurrency, i18n.locale)}
+          </TooltipContent>
+        </Tooltip>
       </div>
 
       <DialogContent

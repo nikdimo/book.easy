@@ -72,7 +72,7 @@ export function NotificationBell({ enabled }: { enabled: boolean }) {
           className="relative rounded-full"
           aria-label={`Notifications, ${unreadCount} unread`}
         >
-          <Bell className="h-5 w-5" />
+          <Bell className="size-[18px]" />
           <CountBadge
             value={unreadCount}
             label="unread notifications"

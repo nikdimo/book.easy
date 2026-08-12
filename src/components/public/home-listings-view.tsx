@@ -1,58 +1,20 @@
 "use client";
 
-import { useSyncExternalStore, type ReactNode } from "react";
+import { useEffect, useSyncExternalStore, type ReactNode } from "react";
 import { LayoutGrid, Map as MapIcon, Rows3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PropertiesMap, type MapPin } from "@/components/marketplace/properties-map";
 import { useI18n } from "@/lib/i18n/client";
+import {
+  isViewMode,
+  readStoredView,
+  setActiveHomeListingsView,
+  subscribeToStoredView,
+  writeStoredView,
+  type HomeListingsViewMode,
+} from "@/components/public/home-listings-view-store";
 
-export type HomeListingsViewMode = "compact" | "detailed" | "map";
-
-/** Survives navigation and reloads so the choice reads as a preference rather than a
- * per-visit toggle. Deliberately not in the URL: the home page has no other query
- * state and a shared link shouldn't carry someone else's layout taste. */
-const STORAGE_KEY = "home:listings-view";
-
-function isViewMode(
-  value: string | null,
-  mapAvailable: boolean,
-): value is HomeListingsViewMode {
-  if (value === "compact" || value === "detailed") return true;
-  return mapAvailable && value === "map";
-}
-
-/** `storage` events only reach *other* tabs, so a same-tab write has to notify
- * subscribers itself. */
-const storeListeners = new Set<() => void>();
-
-function subscribeToStoredView(onChange: () => void) {
-  storeListeners.add(onChange);
-  window.addEventListener("storage", onChange);
-  return () => {
-    storeListeners.delete(onChange);
-    window.removeEventListener("storage", onChange);
-  };
-}
-
-/** Returns a plain string, so React's identity check over successive snapshots is
- * stable without any caching of our own. Storage can be unavailable (private mode,
- * blocked cookies) — then there is simply no stored preference. */
-function readStoredView(): string | null {
-  try {
-    return window.localStorage.getItem(STORAGE_KEY);
-  } catch {
-    return null;
-  }
-}
-
-function writeStoredView(mode: HomeListingsViewMode) {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, mode);
-  } catch {
-    // Preference just won't persist; notifying below still switches the view.
-  }
-  for (const listener of storeListeners) listener();
-}
+export type { HomeListingsViewMode };
 
 /**
  * Heading row for the home page's listing section, with the layout switcher sitting on
@@ -88,6 +50,14 @@ export function HomeListingsView({
     () => null,
   );
   const view = isViewMode(stored, mapAvailable) ? stored : defaultView;
+
+  // Map view takes over the page, not just this section: the hero steps aside and the
+  // floating search takes its place over the map. Neither of those components can work
+  // this out for itself, so publish the resolved mode for them.
+  useEffect(() => {
+    setActiveHomeListingsView(view);
+    return () => setActiveHomeListingsView("compact");
+  }, [view]);
 
   const options = [
     {

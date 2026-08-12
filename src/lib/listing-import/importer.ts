@@ -3,7 +3,6 @@ import "server-only";
 import { lookup } from "node:dns/promises";
 import { randomUUID } from "node:crypto";
 import { isIP } from "node:net";
-import { Agent, fetch as guardedFetch } from "undici";
 import { getStorageAdapter } from "@/lib/storage";
 import type {
   ImportedListingData,
@@ -19,37 +18,6 @@ const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_IMAGES = 100;
 const FETCH_TIMEOUT_MS = 15_000;
 const MAX_REDIRECTS = 5;
-
-// The lookup used for the actual socket connection validates the exact address it
-// returns. This closes the DNS-rebinding gap that would exist if arbitrary generic
-// hosts were checked once and then resolved a second time by fetch.
-const PUBLIC_HTTPS_AGENT = new Agent({
-  connect: {
-    lookup(hostname, options, callback) {
-      lookup(hostname, { all: true, verbatim: true })
-        .then((addresses) => {
-          const publicAddresses = addresses.filter(({ address }) => !isPrivateIp(address));
-          if (publicAddresses.length !== addresses.length || publicAddresses.length === 0) {
-            const error = new Error("Private network URLs cannot be imported.") as NodeJS.ErrnoException;
-            error.code = "ENOTFOUND";
-            callback(error, "", 4);
-            return;
-          }
-          const requestedFamily = Number(options?.family);
-          // Prefer IPv4: some hosting environments expose IPv6 DNS records but do
-          // not have a working outbound IPv6 route, which otherwise surfaces as a
-          // misleading client-side “fetch failed”.
-          const selected = publicAddresses.find(({ family }) => requestedFamily
-            ? family === requestedFamily
-            : family === 4)
-            ?? publicAddresses.find(({ family }) => !requestedFamily || family === requestedFamily)
-            ?? publicAddresses[0];
-          callback(null, selected.address, selected.family);
-        })
-        .catch((error: NodeJS.ErrnoException) => callback(error, "", 4));
-    },
-  },
-});
 
 const IMAGE_TYPES: Record<string, { extension: string; magic: (bytes: Buffer) => boolean }> = {
   "image/jpeg": {
@@ -122,8 +90,7 @@ async function safeFetch(
     ) {
       throw new Error("The provider redirected to an unsupported website.");
     }
-    const response = await guardedFetch(url, {
-      dispatcher: PUBLIC_HTTPS_AGENT,
+    const response = await fetch(url, {
       redirect: "manual",
       cache: "no-store",
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
@@ -135,7 +102,7 @@ async function safeFetch(
       },
     });
     if (![301, 302, 303, 307, 308].includes(response.status)) {
-      return response as unknown as Response;
+      return response;
     }
     const location = response.headers.get("location");
     if (!location) throw new Error("The provider returned an invalid redirect.");
