@@ -12,14 +12,17 @@ import {
 import { Icon, type IconName } from "@/components/icon";
 import {
   EmptyNotice,
-  ListRow,
   LoadingState,
   Pill,
   PrimaryButton,
-  SoftButton,
   TAB_BAR_CLEARANCE,
 } from "@/components/ui";
+import {
+  ListingWorkspaceNav,
+  type ListingWorkspaceDestination,
+} from "@/components/listing-workspace-nav";
 import { LabeledInput } from "@/components/listing/labeled-input";
+import { SpaceTypeField } from "@/components/listing/space-type-field";
 import { PhotosField, MIN_PHOTOS, photoCount } from "@/components/listing/photos-field";
 import {
   LocationField,
@@ -37,7 +40,6 @@ import {
   apiFetch,
   ListingMediaItem,
   openControlPanel,
-  resolveIntlLocale,
 } from "@/lib/api";
 import { colors, radii, spacing, type } from "@/theme";
 
@@ -51,6 +53,7 @@ interface EditorValues extends LocationValues, StreetViewValues {
   title: string;
   description: string;
   propertyType: string;
+  spaceType: string;
   maxGuests: string;
   bedrooms: string;
   beds: string;
@@ -67,6 +70,7 @@ interface EditorResponse {
     moderationNote?: string | null;
     title: string;
     description: string;
+    spaceType: string;
     maxGuests: number;
     bedrooms: number;
     bathrooms: number;
@@ -106,8 +110,7 @@ type SectionId =
   | "photos"
   | "location"
   | "details"
-  | "amenities"
-  | "pricing";
+  | "amenities";
 
 const SECTIONS: { id: SectionId; label: string; icon: IconName }[] = [
   { id: "basics", label: "Title and description", icon: "listings" },
@@ -115,7 +118,6 @@ const SECTIONS: { id: SectionId; label: string; icon: IconName }[] = [
   { id: "location", label: "Location and arrival", icon: "info" },
   { id: "details", label: "Capacity", icon: "users" },
   { id: "amenities", label: "Amenities", icon: "check" },
-  { id: "pricing", label: "Booking settings", icon: "confirmed" },
 ];
 
 function text(value: number | null | undefined): string {
@@ -128,6 +130,7 @@ function valuesFrom(data: EditorResponse): EditorValues {
     title: listing.title,
     description: listing.description,
     propertyType: listing.property.propertyType,
+    spaceType: listing.spaceType,
     maxGuests: String(listing.maxGuests),
     bedrooms: String(listing.bedrooms),
     beds: String(listing.beds),
@@ -157,7 +160,7 @@ function valuesFrom(data: EditorResponse): EditorValues {
 export default function EditListingScreen() {
   const router = useRouter();
   const describeError = useApiError();
-  const { locale, t } = useLanguage();
+  const { t } = useLanguage();
   const params = useLocalSearchParams<{ id?: string | string[] }>();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
@@ -216,6 +219,7 @@ export default function EditListingScreen() {
     if (!values) return [];
     const found: string[] = [];
     if (!values.propertyType) found.push("Choose a property type");
+    if (!values.spaceType) found.push("Choose what guests will book");
     if (photoCount(values.mediaItems) < MIN_PHOTOS)
       found.push(`Add at least ${MIN_PHOTOS} photos`);
     if (values.title.trim().length < 5) found.push("Title needs at least 5 characters");
@@ -227,12 +231,25 @@ export default function EditListingScreen() {
     return found;
   }, [values]);
 
-  function managePricing() {
-    if (!id) return;
-    router.push({
-      pathname: "/availability/[id]",
-      params: { id, lens: "pricing" },
-    });
+  function selectWorkspace(destination: ListingWorkspaceDestination) {
+    if (!id || destination === "listing") return;
+    const navigate = () =>
+      router.push({
+        pathname: "/availability/[id]",
+        params: { id, lens: destination },
+      });
+    if (!dirty) {
+      navigate();
+      return;
+    }
+    Alert.alert(
+      t("Leave without publishing?"),
+      t("Your changes have not been published yet and will be lost."),
+      [
+        { text: t("Keep editing"), style: "cancel" },
+        { text: t("Discard"), style: "destructive", onPress: navigate },
+      ],
+    );
   }
 
   async function save() {
@@ -254,22 +271,6 @@ export default function EditListingScreen() {
     } finally {
       setSaving(false);
     }
-  }
-
-  function leave() {
-    // Unpublished edits are lost on exit, so make that the host's decision.
-    if (!dirty) {
-      router.back();
-      return;
-    }
-    Alert.alert(
-      t("Leave without publishing?"),
-      t("Your changes have not been published yet and will be lost."),
-      [
-        { text: t("Keep editing"), style: "cancel" },
-        { text: t("Discard"), style: "destructive", onPress: () => router.back() },
-      ]
-    );
   }
 
   if (error) {
@@ -320,6 +321,14 @@ export default function EditListingScreen() {
               {dirty ? <Pill label="Unpublished changes" tone="warning" /> : null}
             </View>
           </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("Preview")}
+            onPress={() => void openControlPanel(`/properties/${data.listing.slug}`)}
+            style={({ pressed }) => [styles.previewButton, pressed && { opacity: 0.6 }]}
+          >
+            <Icon color={colors.ink} name="preview" size={19} />
+          </Pressable>
         </View>
 
         {data.listing.moderationNote ? (
@@ -361,7 +370,20 @@ export default function EditListingScreen() {
                               accessibilityRole="radio"
                               accessibilityState={{ checked: selected }}
                               key={option.value}
-                              onPress={() => patch({ propertyType: option.value })}
+                              onPress={() =>
+                                patch({
+                                  propertyType: option.value,
+                                  spaceType:
+                                    option.value === "HOTEL"
+                                      ? values.spaceType === "ENTIRE_PLACE" ||
+                                        values.spaceType === "HOTEL_ROOM"
+                                        ? values.spaceType
+                                        : "HOTEL_ROOM"
+                                      : values.spaceType === "HOTEL_ROOM"
+                                        ? "ENTIRE_PLACE"
+                                        : values.spaceType,
+                                })
+                              }
                               style={[styles.chip, selected && styles.chipSelected]}
                             >
                               <Text
@@ -376,6 +398,11 @@ export default function EditListingScreen() {
                           );
                         })}
                       </View>
+                      <SpaceTypeField
+                        propertyType={values.propertyType}
+                        value={values.spaceType}
+                        onChange={(spaceType) => patch({ spaceType })}
+                      />
                       <LabeledInput
                         label={t("Title")}
                         maxLength={100}
@@ -476,65 +503,11 @@ export default function EditListingScreen() {
                     </View>
                   ) : null}
 
-                  {section.id === "pricing" ? (
-                    <View style={styles.pricingSummary}>
-                      {data.listing.pricingRule ? (
-                        <>
-                          <SummaryRow
-                            label={t("Base price")}
-                            value={`${formatMoney(
-                              data.listing.pricingRule.baseNightlyRate,
-                              data.listing.pricingRule.currency,
-                              locale
-                            )} / ${t("night")}`}
-                          />
-                          <SummaryRow
-                            label={t("Cleaning fee")}
-                            value={formatMoney(
-                              data.listing.pricingRule.cleaningFee,
-                              data.listing.pricingRule.currency,
-                              locale
-                            )}
-                          />
-                          <SummaryRow
-                            label={t("Minimum stay")}
-                            value={`${data.listing.pricingRule.minNights} ${t(
-                              data.listing.pricingRule.minNights === 1 ? "night" : "nights"
-                            )}`}
-                          />
-                        </>
-                      ) : (
-                        <Text style={styles.pricingMissing}>
-                          {t("Pricing has not been set for this listing yet.")}
-                        </Text>
-                      )}
-                      <Text style={styles.pricingHint}>
-                        {t(
-                          "Standard and date-specific prices are managed together in Calendar."
-                        )}
-                      </Text>
-                      <SoftButton label={t("Manage pricing")} onPress={managePricing} />
-                    </View>
-                  ) : null}
                 </View>
               ) : null}
             </View>
           );
         })}
-
-        <Text style={styles.groupTitle}>{t("Calendar")}</Text>
-        <ListRow
-          icon="bookings"
-          label="Availability, pricing and promotions"
-          onPress={() =>
-            router.push({ pathname: "/availability/[id]", params: { id: data.listing.id } })
-          }
-        />
-        <ListRow
-          icon="preview"
-          label="View public page"
-          onPress={() => void openControlPanel(`/properties/${data.listing.slug}`)}
-        />
 
         {problems.length ? (
           <View style={styles.problems}>
@@ -549,33 +522,14 @@ export default function EditListingScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <SoftButton label="Close" tone="neutral" onPress={leave} />
-        <View style={{ flex: 1 }}>
-          <PrimaryButton
-            label={saving ? "Publishing…" : dirty ? "Publish changes" : "Published"}
-            disabled={!dirty || saving || uploading || problems.length > 0}
-            onPress={() => void save()}
-          />
-        </View>
+        <PrimaryButton
+          label={saving ? "Publishing…" : dirty ? "Publish changes" : "Published"}
+          disabled={!dirty || saving || uploading || problems.length > 0}
+          onPress={() => void save()}
+        />
         {saving ? <ActivityIndicator color={colors.primary} /> : null}
       </View>
-    </View>
-  );
-}
-
-function formatMoney(value: number, currency: string, locale?: string): string {
-  return new Intl.NumberFormat(resolveIntlLocale(locale), {
-    style: "currency",
-    currency,
-    maximumFractionDigits: value % 1 === 0 ? 0 : 2,
-  }).format(value);
-}
-
-function SummaryRow({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.summaryRow}>
-      <Text style={styles.summaryLabel}>{label}</Text>
-      <Text style={styles.summaryValue}>{value}</Text>
+      <ListingWorkspaceNav active="listing" onSelect={selectWorkspace} />
     </View>
   );
 }
@@ -592,6 +546,16 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
   headerRow: { flexDirection: "row", alignItems: "flex-start", gap: spacing.md },
+  previewButton: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
+  },
   title: { ...type.title, color: colors.ink },
   statusRow: {
     flexDirection: "row",
@@ -630,22 +594,6 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   stack: { gap: spacing.md },
-  pricingSummary: { gap: spacing.md },
-  summaryRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: spacing.md,
-  },
-  summaryLabel: { ...type.meta, color: colors.muted },
-  summaryValue: {
-    ...type.bodyStrong,
-    flexShrink: 1,
-    color: colors.ink,
-    textAlign: "right",
-  },
-  pricingHint: { ...type.caption, color: colors.muted },
-  pricingMissing: { ...type.meta, color: colors.warm },
   fieldGroupLabel: { ...type.label, color: colors.inkSoft },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   chip: {
@@ -661,7 +609,6 @@ const styles = StyleSheet.create({
   chipSelected: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
   chipText: { ...type.meta, color: colors.inkSoft },
   chipTextSelected: { color: colors.primaryDark },
-  groupTitle: { ...type.section, color: colors.ink, marginTop: spacing.xl },
   problems: {
     gap: spacing.xs,
     padding: spacing.lg,
@@ -672,10 +619,8 @@ const styles = StyleSheet.create({
   problemsTitle: { ...type.label, color: colors.warm },
   problemText: { ...type.meta, color: colors.warm },
   footer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.md,
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     borderTopWidth: 1,
     borderTopColor: colors.border,
     backgroundColor: colors.surface,

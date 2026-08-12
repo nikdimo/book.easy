@@ -160,6 +160,7 @@ export function BookingWidget({
   const [priceDetailsOpen, setPriceDetailsOpen] = useState(false);
   const [desktopPriceDetailsOpen, setDesktopPriceDetailsOpen] = useState(false);
   const hasSyncedSearchRef = useRef(false);
+  const desktopPriceDetailsRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!hasSyncedSearchRef.current) {
@@ -206,6 +207,9 @@ export function BookingWidget({
   const subtotal = stayPricing?.originalAccommodationSubtotal ?? 0;
   const total = stayPricing?.total ?? 0;
   const hasVariableRates = priceOverrides.length > 0;
+  // Once dates are picked the headline rate is the stay's own average rather
+  // than the base rate, because the nights it covers may each be priced apart.
+  const hasStayQuote = nights > 0 && stayPricing !== null;
 
   const guests = guestDetails.adults + guestDetails.children;
   const guestParts = [
@@ -244,6 +248,12 @@ export function BookingWidget({
     nights,
     "{n} night",
     "{n} nights",
+  );
+  const averageNightsLabel = i18n.plural(
+    "booking.average_over_nights",
+    nights,
+    "Average over {n} night",
+    "Average over {n} nights",
   );
   const minimumStayMessage = i18n.plural(
     "booking.minimum_stay",
@@ -326,6 +336,30 @@ export function BookingWidget({
           )
         : i18n.resolve("promotion.free_cleaning", "Free cleaning")
     : null;
+
+  /**
+   * The breakdown lives in two places — an inline panel on desktop and a bottom
+   * sheet on mobile — so the headline rate opens whichever one is on screen.
+   */
+  function openPriceDetails() {
+    if (!hasStayQuote) return;
+
+    if (window.matchMedia("(min-width: 1024px)").matches) {
+      const opening = !desktopPriceDetailsOpen;
+      setDesktopPriceDetailsOpen(opening);
+      if (opening) {
+        requestAnimationFrame(() => {
+          desktopPriceDetailsRef.current?.scrollIntoView({
+            block: "nearest",
+            behavior: "smooth",
+          });
+        });
+      }
+      return;
+    }
+
+    setPriceDetailsOpen(true);
+  }
 
   function openPicker(step: "dates" | "guests") {
     setPickerStep(step);
@@ -592,18 +626,62 @@ export function BookingWidget({
       >
         <CardHeader className="pb-2">
           <CardTitle className="flex flex-col gap-1 font-normal">
-            <div className="flex items-baseline gap-1">
-              <LocalizedPrice
-                amount={nightlyRate}
-                currency={currency}
-                locale={i18n.locale}
-                className="text-2xl font-semibold"
-              />
-              <span className="text-base font-normal text-muted-foreground">
-                / <Tx k="property_card.per_night" source="night" />
-              </span>
-            </div>
-            {hasVariableRates && (
+            {hasStayQuote && stayPricing ? (
+              <button
+                type="button"
+                onClick={openPriceDetails}
+                aria-expanded={desktopPriceDetailsOpen || priceDetailsOpen}
+                className="flex flex-col items-start gap-0.5 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <span className="flex items-baseline gap-1">
+                  {stayPricing.accommodationDiscount > 0 && (
+                    <LocalizedPrice
+                      amount={stayPricing.averageNightly}
+                      currency={currency}
+                      locale={i18n.locale}
+                      className="text-base text-muted-foreground line-through"
+                    />
+                  )}
+                  <LocalizedPrice
+                    amount={stayPricing.effectiveAverageNightly}
+                    currency={currency}
+                    locale={i18n.locale}
+                    className="text-2xl font-semibold"
+                  />
+                  <span className="text-base font-normal text-muted-foreground">
+                    / <Tx k="property_card.per_night" source="night" />
+                  </span>
+                </span>
+                <span className="inline-flex items-center gap-1 text-xs font-normal text-muted-foreground underline underline-offset-2">
+                  <span
+                    className={
+                      averageNightsLabel.translated ? "notranslate" : undefined
+                    }
+                  >
+                    {averageNightsLabel.text}
+                  </span>{" "}
+                  · <Tx k="booking.price_details" source="Price details" />
+                  {desktopPriceDetailsOpen ? (
+                    <ChevronUp className="h-3.5 w-3.5" />
+                  ) : (
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  )}
+                </span>
+              </button>
+            ) : (
+              <div className="flex items-baseline gap-1">
+                <LocalizedPrice
+                  amount={nightlyRate}
+                  currency={currency}
+                  locale={i18n.locale}
+                  className="text-2xl font-semibold"
+                />
+                <span className="text-base font-normal text-muted-foreground">
+                  / <Tx k="property_card.per_night" source="night" />
+                </span>
+              </div>
+            )}
+            {hasVariableRates && !hasStayQuote && (
               <span className="text-xs font-normal text-muted-foreground">
                 <Tx
                   k="booking.variable_rate_notice"
@@ -740,7 +818,10 @@ export function BookingWidget({
           </div>
 
           {nights > 0 && stayPricing && (
-            <div className="hidden rounded-xl border border-border/70 bg-muted/20 px-4 py-3 lg:block">
+            <div
+              ref={desktopPriceDetailsRef}
+              className="hidden rounded-xl border border-border/70 bg-muted/20 px-4 py-3 lg:block"
+            >
               <div className="flex items-end justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium">

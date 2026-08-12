@@ -10,7 +10,16 @@ export const LISTING_STEPS = [
   {
     id: "propertyType",
     title: "Property type",
-    description: "What kind of place will guests book?",
+    description: "What kind of place is it?",
+  },
+  /** Deliberately after propertyType, not beside it. Asking both on one screen is what
+   *  let a host read the whole thing as a heading and never realise the tiles were the
+   *  question. Property type also decides which answers here are coherent — see
+   *  allowedListingSpaceTypes — so it has to be settled first. */
+  {
+    id: "spaceType",
+    title: "What guests book",
+    description: "Will guests have the whole place, or a room in it?",
   },
   {
     id: "photos",

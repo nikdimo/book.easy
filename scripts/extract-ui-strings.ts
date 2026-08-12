@@ -205,7 +205,14 @@ function extract(): ExtractedUiString[] {
           }
         } else if (ts.isIdentifier(expression)) {
           const name = expression.text;
-          if (name === "t" || name === "ti") {
+          if (name === "resolve") {
+            // Client components commonly destructure `resolve` from `useI18n()`.
+            // It has the same literal key/source contract as `translator.resolve`,
+            // so include it rather than silently leaving that UI in English.
+            const key = sourceString(args[0]);
+            const sourceText = sourceString(args[1]);
+            if (key !== null && sourceText !== null) add(key, sourceText, filePath);
+          } else if (name === "t" || name === "ti") {
             const key = sourceString(args[1]);
             const sourceText = sourceString(args[2]);
             if (key !== null && sourceText !== null) add(key, sourceText, filePath);

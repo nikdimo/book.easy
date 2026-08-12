@@ -70,16 +70,16 @@ export function ListingImportPanel() {
   }
 
   return (
-    <section className="rounded-2xl border border-primary/20 bg-primary/[0.035] p-4 shadow-sm md:p-5">
+    <section className="rounded-2xl border border-primary bg-primary p-4 text-primary-foreground shadow-sm md:p-5">
       <div className="flex items-start gap-3">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-foreground/15 text-primary-foreground">
           <Download className="size-5" />
         </span>
         <div className="min-w-0">
           <h2 className="font-semibold">
             <Tx k="host.import.title" source="Import an existing listing" />
           </h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">
+          <p className="mt-0.5 text-sm text-primary-foreground/85">
             <Tx
               k="host.import.description"
               source="Paste any public property or accommodation link. Recognized platforms receive deeper extraction; other websites use their public metadata."
@@ -90,7 +90,7 @@ export function ListingImportPanel() {
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row">
         <div className="relative min-w-0 flex-1">
-          <Link2 className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Link2 className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             aria-label={resolve("host.import.url_label", "Listing URL").text}
             type="url"
@@ -107,10 +107,15 @@ export function ListingImportPanel() {
               }
             }}
             placeholder={resolve("host.import.url_placeholder", "https://example.com/property/...").text}
-            className="pl-9"
+            className="pl-11"
           />
         </div>
-        <Button type="button" disabled={isPending} onClick={runImport} className="sm:min-w-32">
+        <Button
+          type="button"
+          disabled={isPending}
+          onClick={runImport}
+          className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 sm:min-w-32"
+        >
           {isPending ? <Loader2 className="animate-spin" /> : <Download />}
           {isPending ? (
             <Tx k="host.import.importing" source="Importing…" />
@@ -121,7 +126,7 @@ export function ListingImportPanel() {
       </div>
 
       {url.trim() && (
-        <p className={detectedProvider ? "mt-2 text-xs font-medium text-primary" : "mt-2 text-xs text-destructive"}>
+        <p className={detectedProvider ? "mt-2 text-xs font-medium text-primary-foreground" : "mt-2 text-xs text-destructive-foreground"}>
           {detectedProvider
             ? interpolate(
                 resolve("host.import.provider_detected", "{provider} link detected automatically"),
@@ -142,8 +147,8 @@ export function ListingImportPanel() {
           onCheckedChange={(checked) => setRightsConfirmed(checked === true)}
           className="mt-0.5"
         />
-        <Label htmlFor="listing-import-rights" className="cursor-pointer text-xs font-normal leading-relaxed text-muted-foreground">
-          <span className="inline-flex items-center gap-1 font-medium text-foreground">
+        <Label htmlFor="listing-import-rights" className="cursor-pointer text-xs font-normal leading-relaxed text-primary-foreground/85">
+          <span className="inline-flex items-center gap-1 font-medium text-primary-foreground">
             <ShieldCheck className="size-3.5" />
             <Tx k="host.import.rights_title" source="I own or manage this listing." />
           </span>{" "}
@@ -153,7 +158,7 @@ export function ListingImportPanel() {
           />
         </Label>
       </div>
-      <p className="mt-2 text-xs text-muted-foreground">
+      <p className="mt-2 text-xs text-primary-foreground/85">
         <Tx
           k="host.import.note"
           source="Only publicly exposed information is imported. Generic websites may provide fewer details, and every imported field must be reviewed before publishing."

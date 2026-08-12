@@ -42,6 +42,11 @@ async function HeaderWithPopularCities({
     text: "Start listing your property — takes about 10 minutes.",
     translated: false,
   };
+  listYourProperty = t.resolve("header.list_your_property", "List your property");
+  listYourPropertyTooltip = t.resolve(
+    "header.list_your_property_tooltip",
+    "Start listing your property — takes about 10 minutes."
+  );
   try {
     [popularCities, availablePropertyTypesByCity, propertyTypes] =
       await Promise.all([

@@ -1,5 +1,6 @@
 import { submitNewListing } from "@/lib/actions/listing.actions";
 import { mobileJson, mobileOptions, requireMobileHost } from "@/lib/mobile-api";
+import { normalizePropertyType } from "@/lib/types/property-type";
 
 /** Publishes a draft as a real listing.
  *
@@ -65,7 +66,12 @@ export async function POST(request: Request) {
 
   const formData = new FormData();
   for (const field of TEXT_FIELDS) {
-    const value = body[field];
+    const value =
+      field === "propertyType"
+        ? normalizePropertyType(
+            typeof body[field] === "string" ? body[field] : undefined
+          )
+        : body[field];
     if (value !== undefined && value !== null) formData.set(field, String(value));
   }
 

@@ -262,6 +262,18 @@ export default async function PropertiesPage({
           >
             {results.listings.length > 0 ? (
               <>
+                {!filters.checkIn && !filters.checkOut && (
+                  <div className="mb-8 flex items-start gap-3 rounded-2xl border border-border/70 bg-muted/35 px-4 py-3 text-sm text-muted-foreground">
+                    <span className="mt-0.5 text-base" aria-hidden="true">📅</span>
+                    <p>
+                      <T
+                        t={t}
+                        k="properties.dated_availability_hint"
+                        source="Some homes are available only on selected dates. Add your dates to see more bookable options."
+                      />
+                    </p>
+                  </div>
+                )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-10 max-w-6xl">
                   {results.listings.map((listing) => (
                     <PropertyCard
@@ -318,14 +330,28 @@ export default async function PropertiesPage({
               </>
             ) : (
               <EmptyState
-                title={t.resolve(
-                  "properties.none_found",
-                  "No properties found",
-                )}
-                description={t.resolve(
-                  "properties.none_description",
-                  "Try adjusting your search filters or explore a different area.",
-                )}
+                title={
+                  filters.checkIn && filters.checkOut
+                    ? t.resolve(
+                        "properties.none_found",
+                        "No properties found",
+                      )
+                    : t.resolve(
+                        "properties.add_dates_to_see_more",
+                        "Add dates to see more homes",
+                      )
+                }
+                description={
+                  filters.checkIn && filters.checkOut
+                    ? t.resolve(
+                        "properties.none_description",
+                        "Try adjusting your search filters or explore a different area.",
+                      )
+                    : t.resolve(
+                        "properties.dated_availability_hint",
+                        "Some homes are available only on selected dates. Add your dates to see more bookable options.",
+                      )
+                }
               >
                 <Button variant="outline" asChild>
                   <Link href="/properties">

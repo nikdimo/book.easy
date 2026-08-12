@@ -1,22 +1,26 @@
 import { useCallback, useEffect, useState } from "react";
-import { useLocalSearchParams } from "expo-router";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import {
   AppScreen,
   EmptyNotice,
   LoadingState,
   PrimaryButton,
-  Segmented,
 } from "@/components/ui";
+import {
+  ListingWorkspaceNav,
+  type ListingWorkspaceDestination,
+} from "@/components/listing-workspace-nav";
 import {
   AvailabilityCalendar,
   type CalendarLens,
 } from "@/components/availability-calendar";
 import { PromotionsPanel } from "@/components/listing/promotions-panel";
 import { LabeledInput } from "@/components/listing/labeled-input";
-import { AvailabilityResponse, apiFetch } from "@/lib/api";
+import { AvailabilityResponse, apiFetch, openControlPanel } from "@/lib/api";
 import { useLanguage } from "@/context/language-context";
 import { useApiError } from "@/lib/use-api-error";
+import { Icon } from "@/components/icon";
 import { colors, radii, spacing, type } from "@/theme";
 
 /** One calendar, three lenses.
@@ -25,6 +29,7 @@ import { colors, radii, spacing, type } from "@/theme";
  *  range carries from Availability to Pricing to Promotions — which is the point of
  *  the web workspace. Only the action panel beneath the month grid swaps. */
 export default function AvailabilityScreen() {
+  const router = useRouter();
   const describeError = useApiError();
   const params = useLocalSearchParams<{
     id?: string | string[];
@@ -55,73 +60,87 @@ export default function AvailabilityScreen() {
     return () => clearTimeout(timer);
   }, [load]);
 
+  function selectWorkspace(destination: ListingWorkspaceDestination) {
+    if (!id) return;
+    if (destination === "listing") {
+      router.replace({ pathname: "/listing/[id]", params: { id } });
+      return;
+    }
+    setLens(destination);
+  }
+
+  const title =
+    lens === "availability"
+      ? "Availability"
+      : lens === "pricing"
+        ? "Pricing"
+        : "Promotions";
+
   return (
-    <AppScreen
-      title="Calendar"
-      subtitle={data?.listing.title}
-      onRefresh={load}
-      sticky={
-        data ? (
-          <Segmented
-            value={lens}
-            onChange={setLens}
-            options={[
-              { value: "availability", label: "Availability" },
-              { value: "pricing", label: "Pricing" },
-              {
-                value: "promotions",
-                label: "Promotions",
-                count: data.promotions.length,
-              },
-            ]}
+    <View style={styles.screen}>
+      <AppScreen
+        title={title}
+        subtitle={data?.listing.title}
+        onRefresh={load}
+        action={
+          data ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Preview"
+              onPress={() => void openControlPanel(`/properties/${data.listing.slug}`)}
+              style={({ pressed }) => [styles.previewButton, pressed && { opacity: 0.6 }]}
+            >
+              <Icon color={colors.ink} name="preview" size={19} />
+            </Pressable>
+          ) : null
+        }
+      >
+        {!data && !error ? <LoadingState /> : null}
+        {error ? (
+          <EmptyNotice
+            icon="alert"
+            title="Calendar unavailable"
+            description={error}
+            onRetry={load}
           />
-        ) : null
-      }
-    >
-      {!data && !error ? <LoadingState /> : null}
-      {error ? (
-        <EmptyNotice
-          icon="alert"
-          title="Calendar unavailable"
-          description={error}
-          onRetry={load}
-        />
-      ) : null}
-      {data && data.listing.baseNightlyRate == null ? (
-        <EmptyNotice
-          icon="alert"
-          title="Listing pricing is missing"
-          description="Add a nightly rate on the listing before managing the calendar."
-        />
-      ) : null}
-
-      {data?.listing.baseNightlyRate != null && id ? (
-        <>
-          {lens === "pricing" ? (
-            <DefaultPricing listingId={id} data={data} reload={load} />
-          ) : null}
-
-          <AvailabilityCalendar
-            data={data}
-            listingId={id}
-            reload={load}
-            lens={lens}
-            promotionsPanel={(selection) => (
-              <PromotionsPanel
-                listingId={id}
-                promotions={data.promotions}
-                cleaningFee={data.listing.cleaningFee}
-                maxNights={data.listing.maxNights}
-                currency={data.listing.currency}
-                selection={selection}
-                reload={load}
-                onManagePricing={() => setLens("pricing")}
-              />
-            )}
+        ) : null}
+        {data && data.listing.baseNightlyRate == null ? (
+          <EmptyNotice
+            icon="alert"
+            title="Listing pricing is missing"
+            description="Add a nightly rate on the listing before managing the calendar."
           />
-        </>
-      ) : null}
-    </AppScreen>
+        ) : null}
+
+        {data?.listing.baseNightlyRate != null && id ? (
+          <>
+            {lens === "pricing" ? (
+              <DefaultPricing listingId={id} data={data} reload={load} />
+            ) : null}
+
+            <AvailabilityCalendar
+              data={data}
+              listingId={id}
+              reload={load}
+              lens={lens}
+              promotionsPanel={(selection) => (
+                <PromotionsPanel
+                  listingId={id}
+                  promotions={data.promotions}
+                  cleaningFee={data.listing.cleaningFee}
+                  maxNights={data.listing.maxNights}
+                  currency={data.listing.currency}
+                  selection={selection}
+                  reload={load}
+                  onManagePricing={() => setLens("pricing")}
+                />
+              )}
+            />
+          </>
+        ) : null}
+      </AppScreen>
+      <ListingWorkspaceNav active={lens} onSelect={selectWorkspace} />
+    </View>
   );
 }
 
@@ -220,6 +239,17 @@ function DefaultPricing({
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: colors.background },
+  previewButton: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
+  },
   card: {
     gap: spacing.md,
     padding: spacing.lg,

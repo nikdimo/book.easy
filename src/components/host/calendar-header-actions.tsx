@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, CircleHelp } from "lucide-react";
+import { ArrowLeft, CircleHelp, Eye } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/popover";
 import { HostHeaderPortal } from "@/components/host/host-header-portal";
 import { interpolate, useI18n } from "@/lib/i18n/client";
+import { listingStopHref } from "@/lib/host/listing-workspace";
 
 /**
  * On phones the calendar owns the whole screen: the bottom nav already says which
@@ -18,9 +19,11 @@ import { interpolate, useI18n } from "@/lib/i18n/client";
 export function CalendarHeaderActions({
   heading,
   help,
+  listingId,
 }: {
   heading: string;
   help: string[];
+  listingId: string;
 }) {
   const { resolve } = useI18n();
   return (
@@ -57,6 +60,13 @@ export function CalendarHeaderActions({
             </ul>
           </PopoverContent>
         </Popover>
+        <Link
+          href={listingStopHref(listingId, "preview")}
+          aria-label={resolve("host.workspace.preview", "Preview").text}
+          className="grid size-9 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <Eye className="size-5" />
+        </Link>
       </div>
     </HostHeaderPortal>
   );

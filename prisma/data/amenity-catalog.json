@@ -80,6 +80,12 @@
       "isActive": true
     },
     {
+      "name": "Sea view",
+      "category": "Features",
+      "icon": "sailboat",
+      "isActive": true
+    },
+    {
       "name": "Workspace",
       "category": "Features",
       "icon": "laptop",
@@ -89,6 +95,12 @@
       "name": "Coffee maker",
       "category": "Kitchen",
       "icon": "coffee",
+      "isActive": true
+    },
+    {
+      "name": "Dishwasher",
+      "category": "Kitchen",
+      "icon": "utensils",
       "isActive": true
     },
     {

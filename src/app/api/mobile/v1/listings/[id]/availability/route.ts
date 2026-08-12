@@ -26,6 +26,7 @@ async function managedListing(id: string, userId: string, isAdmin: boolean) {
     where: { id, ...(isAdmin ? {} : { hostId: userId }) },
     select: {
       id: true,
+      slug: true,
       title: true,
       status: true,
       pricingRule: {
@@ -91,6 +92,7 @@ export async function GET(
   return mobileJson(request, {
     listing: {
       id: listing.id,
+      slug: listing.slug,
       title: listing.title,
       status: listing.status,
       baseNightlyRate: listing.pricingRule

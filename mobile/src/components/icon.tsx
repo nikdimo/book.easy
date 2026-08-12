@@ -29,6 +29,10 @@ export const ICONS = {
   users: "users",
   search: "search",
   language: "globe",
+  property: "home",
+  availability: "calendar",
+  pricing: "dollar-sign",
+  promotions: "percent",
   // Status
   bell: "bell",
   alert: "alert-circle",

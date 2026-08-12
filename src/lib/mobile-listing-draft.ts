@@ -6,6 +6,7 @@ import {
   resumeListingStep,
 } from "@/lib/constants/listing-steps";
 import type { ListingDraftData } from "@/lib/types/listing-draft";
+import { normalizePropertyType } from "@/lib/types/property-type";
 
 const draftString = z.string().max(5000);
 
@@ -127,7 +128,14 @@ export function mergeMobileListingDraft(
 }
 
 export function listingDraftData(value: Prisma.JsonValue): ListingDraftData {
-  return (
+  const data = (
     value && typeof value === "object" && !Array.isArray(value) ? value : {}
   ) as ListingDraftData;
+
+  return {
+    ...data,
+    ...(data.propertyType === undefined
+      ? {}
+      : { propertyType: normalizePropertyType(data.propertyType) }),
+  };
 }

@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AuthForm } from "@/components/auth/login-form";
-import { BRAND_TAGLINE } from "@/lib/branding";
 
 /** Rendered only via the intercepted /login route — a true overlay on top of whatever
  * page the user was already on (dimmed, not replaced), closed with Escape, a backdrop
@@ -36,11 +35,7 @@ export function LoginModal() {
         onClick={() => router.back()}
       />
       <div className="relative w-full max-w-[420px]">
-        <AuthForm
-          heading="Log in or sign up"
-          description={BRAND_TAGLINE}
-          onClose={() => router.back()}
-        />
+        <AuthForm onClose={() => router.back()} />
       </div>
     </div>
   );

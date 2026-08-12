@@ -68,7 +68,6 @@ export default async function EditListingPage({
         initialMediaItems={initialMediaItems}
         editStatusLabel={statusConfig?.label || listing.status}
         editStatusApproved={listing.status === "APPROVED"}
-        availabilityHref={`/host/listings/${listing.id}/availability`}
         moderationNote={listing.moderationNote}
         initialPane={query.pane === "preview" ? "preview" : "edit"}
       />

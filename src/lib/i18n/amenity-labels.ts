@@ -40,10 +40,14 @@ export function resolveAmenityLabel(
       return translator.resolve("amenities.items.lake_view", "Lake view");
     case "Pool":
       return translator.resolve("amenities.items.swimming_pool", "Pool");
+    case "Sea view":
+      return translator.resolve("amenities.items.sea_view", "Sea view");
     case "Workspace":
       return translator.resolve("amenities.items.workspace", "Workspace");
     case "Coffee maker":
       return translator.resolve("amenities.items.coffee_maker", "Coffee maker");
+    case "Dishwasher":
+      return translator.resolve("amenities.items.dishwasher", "Dishwasher");
     case "Kitchen":
       return translator.resolve("amenities.items.kitchen", "Kitchen");
     case "Microwave":

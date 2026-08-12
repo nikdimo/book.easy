@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Globe, Languages, Search, X } from "lucide-react";
+import { Check, CircleDollarSign, Globe, Languages, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,7 +10,6 @@ import {
   DialogContent,
   DialogDescription,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -229,8 +228,14 @@ export function RegionalSettingsDialog({
   const i18n = useI18n();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"language" | "currency">("language");
   const [announcement, setAnnouncement] = useState("");
   const [autoTranslateUserContent, setAutoTranslateUserContent] = useState(true);
+
+  function openSettings(tab: "language" | "currency") {
+    setActiveTab(tab);
+    setOpen(true);
+  }
 
   function handleOpenChange(nextOpen: boolean) {
     if (nextOpen) {
@@ -365,19 +370,28 @@ export function RegionalSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
+      <div className="notranslate flex items-center gap-0.5">
         <Button
           variant="ghost"
           size="sm"
-          className="notranslate gap-1.5 rounded-full px-3 font-medium"
-          aria-label={triggerLabel.text}
+          className="gap-1.5 rounded-full px-2.5 font-medium"
+          aria-label={i18n.resolve("regional.open_language", "Change language").text}
+          onClick={() => openSettings("language")}
         >
           <Globe className="h-4 w-4" />
-          <span className="hidden sm:inline">
-            {currentLanguageLabel} · {currentCurrency}
-          </span>
+          <span className="hidden sm:inline">{currentLanguageLabel}</span>
         </Button>
-      </DialogTrigger>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-1.5 rounded-full px-2.5 font-medium"
+          aria-label={i18n.resolve("regional.open_currency", "Change currency").text}
+          onClick={() => openSettings("currency")}
+        >
+          <CircleDollarSign className="h-4 w-4" />
+          <span>{currentCurrency}</span>
+        </Button>
+      </div>
 
       <DialogContent
         showCloseButton={false}
@@ -391,7 +405,11 @@ export function RegionalSettingsDialog({
           />
         </DialogDescription>
 
-        <Tabs defaultValue="language" className="flex min-h-0 flex-1 flex-col">
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => setActiveTab(value as "language" | "currency")}
+          className="flex min-h-0 flex-1 flex-col"
+        >
           <div className="grid w-full grid-cols-[minmax(0,44rem)_minmax(14rem,1fr)_auto] items-center gap-3 max-md:grid-cols-[minmax(0,1fr)_auto] max-md:gap-x-2 max-md:gap-y-1">
             <TabsList
               data-desktop-search-pill

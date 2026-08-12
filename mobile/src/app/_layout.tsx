@@ -69,7 +69,7 @@ function AppNavigator() {
       <Stack.Screen name="admin" options={{ headerShown: false }} />
       <Stack.Screen
         name="availability/[id]"
-        options={{ title: t("Availability & pricing") }}
+        options={{ title: t("Manage listing") }}
       />
       <Stack.Screen
         name="listing/[id]"

@@ -36,7 +36,13 @@ const PUBLIC_HTTPS_AGENT = new Agent({
             return;
           }
           const requestedFamily = Number(options?.family);
-          const selected = publicAddresses.find(({ family }) => !requestedFamily || family === requestedFamily)
+          // Prefer IPv4: some hosting environments expose IPv6 DNS records but do
+          // not have a working outbound IPv6 route, which otherwise surfaces as a
+          // misleading client-side “fetch failed”.
+          const selected = publicAddresses.find(({ family }) => requestedFamily
+            ? family === requestedFamily
+            : family === 4)
+            ?? publicAddresses.find(({ family }) => !requestedFamily || family === requestedFamily)
             ?? publicAddresses[0];
           callback(null, selected.address, selected.family);
         })

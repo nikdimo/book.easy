@@ -4,6 +4,21 @@ export const CURATED_TRANSLATION_OVERRIDES: Record<string, Record<string, string
   "amenities.items.clothes_iron": {
     mk: "Пегла",
   },
+  /** The machine pass invents a compound noun for the appliance and drops the
+   *  sentence case the rest of the amenity list uses. */
+  "amenities.items.dishwasher": {
+    mk: "Машина за миење садови",
+    sq: "Pjatalarëse",
+    sr: "Машина за судове",
+  },
+  /** Keep every view amenity phrased like its siblings ("Поглед на езеро",
+   *  "Vistas al lago") so the Features group reads as one list. */
+  "amenities.items.sea_view": {
+    mk: "Поглед на море",
+    sr: "Поглед на море",
+    bg: "Изглед към морето",
+    es: "Vistas al mar",
+  },
   "footer.product_description": {
     mk: "Резервирајте сместување на {site} — дел од пакетот алатки на {family}.",
     sq: "Rezervoni qëndrime në {site} — pjesë e paketës së mjeteve {family}.",

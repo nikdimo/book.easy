@@ -7,10 +7,10 @@ import {
 } from "@/lib/host/listing-workspace";
 
 describe("listing workspace navigation", () => {
-  it("exposes only Details, Calendar, and Preview as primary destinations", () => {
+  it("exposes the four listing-management destinations", () => {
     expect(
       LISTING_PRIMARY_DESTINATIONS.map(({ destination }) => destination),
-    ).toEqual(["details", "calendar", "preview"]);
+    ).toEqual(["listing", "availability", "pricing", "promotions"]);
   });
 
   it.each(["availability", "pricing", "promotions"] as const)(

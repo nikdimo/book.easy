@@ -187,13 +187,15 @@ The Pricing step now carries the date-pricing door. Below the nightly-rate field
 - The state is the same `prePublishPlan` (`PrePublishPlan`), edited through the same `updatePrePublishPlan`, which still autosaves the draft on the next frame through the existing hidden `prePublishPlan` field. Prices set from either door appear at the other, and survive draft save and resume.
 - The summary count is `plan.datePrices.length` — the ranges the plan already groups, so it matches the rows the task screen and the checklist list.
 
-**Return navigation:** a new `prePublishOrigin` (`"menu"` | `"pricing-step"`) records which door was used, and `prePublishBackTarget` in `src/lib/types/listing-prepublish-navigation.ts` turns it into a destination. Opened from the checklist, Back and Done return to the checklist as before; opened from Pricing, they leave the pre-publish screens entirely and land back on the Pricing step, with the base price and every other form value untouched. Unit-tested in `src/lib/types/__tests__/listing-prepublish-navigation.test.ts`.
+**Return navigation:** a new `prePublishOrigin` (`"menu"` | `"pricing-step"`) records which door was used, and `prePublishBackTarget` in `src/lib/types/listing-prepublish-navigation.ts` turns it into a destination. Opened from the checklist, Done returns to the checklist as before; opened from Pricing, it leaves the pre-publish screens entirely and lands back on the Pricing step, with the base price and every other form value untouched. Unit-tested in `src/lib/types/__tests__/listing-prepublish-navigation.test.ts`.
+
+A task screen shows **no Back button** — Back and Done resolved to the same destination, so the row offered two buttons for one trip, and the left one read as "discard the dates I just set" when it did nothing of the kind. Done is the only exit. On the phone that slot still appears while a range is selected, where it is **Cancel** and clears the selection; the numbered steps, the availability question and the checklist keep their Back as before.
 
 **Layout:** the task screen already renders inside the wizard's editor pane, so it is a full-screen editing experience on the phone and the existing wide task layout on desktop, and it keeps using the wizard's single bottom action row — no second mobile footer was introduced. The CTA row stacks to full width below `sm` and its button is `size="lg"` (48px tall on touch).
 
 ### Phase 3B — dated-offer CTA ✅ implemented
 
-The Special Offer step now has a compact **Specific dates** CTA in its existing helper row. It opens the existing `PrePublishTaskScreen` with `task="offers"` against the same `prePublishPlan` used by the final checklist. Its `"offer-step"` navigation origin makes Back and Done return to Special Offer. Pricing and Special Offer remain separate wizard steps.
+The Special Offer step now has a compact **Specific dates** CTA in its existing helper row. It opens the existing `PrePublishTaskScreen` with `task="offers"` against the same `prePublishPlan` used by the final checklist. Its `"offer-step"` navigation origin makes Done return to Special Offer. Pricing and Special Offer remain separate wizard steps.
 
 **Agreed shape (original):**
 
@@ -380,28 +382,28 @@ same saved plan used at publication.
 
 ### Published management is destination-based
 
-Published listings have three primary destinations:
+Published listings have four primary destinations:
 
 | Destination | Ownership |
 | --- | --- |
-| Details | Listing content: title, description, location, photos, capacity, amenities, and stay rules |
-| Calendar | Operational management through Availability, Pricing, and Promotions lenses |
-| Preview | Guest-facing listing preview |
+| Listing | Listing content: title, description, property and space type, location, photos, capacity, amenities, and stay rules |
+| Availability | Calendar availability and blocked dates |
+| Pricing | Standard and date-specific prices, cleaning fee, and stay length |
+| Promotions | Discounts and promotional benefits |
 
-Availability, Pricing, and Promotions are sibling lenses inside Calendar, not later
-steps in another wizard. Desktop presents the three primary destinations and nests
-the lens tabs under Calendar. Mobile uses Details / Calendar / Preview in the bottom
-navigation and a sticky Availability / Pricing / Promotions control inside Calendar.
-The current date selection is preserved when switching lenses. Fixed Calendar
-actions render above the mobile bottom navigation and respect the safe-area inset.
+These destinations use one consistent navigation model on desktop, mobile web, and
+the native app. The three operational destinations share one mounted calendar so the
+current date selection is preserved when switching between them. Preview is a header
+action, not a fifth workspace destination. Contextual calendar actions render above
+the mobile bottom navigation and respect the safe-area inset.
 
 ### One editable home for standard pricing
 
 For a published listing, base price, cleaning fee, and minimum stay are editable only
-in Calendar > Pricing. The Details editor renders those values as a read-only Booking
-settings summary with a Manage pricing deep link. Publishing unrelated Details edits
-must not post or overwrite standard-pricing values; server writes use the persisted
-pricing record so a newer Calendar save cannot be reverted by stale form state.
+in Pricing. They are removed from the Listing editor rather than duplicated there.
+Publishing unrelated Listing edits must not overwrite standard-pricing values; server
+writes use the persisted pricing record so a newer Pricing save cannot be reverted by
+stale form state.
 
 Date-specific prices remain calendar-based custom date prices. Promotions remain a
 separate lens. The cleaning fee itself belongs to Pricing; free cleaning is only a

@@ -229,8 +229,17 @@ function OwnerGrowthHero({
                 source="Book directly with hosts and save up to 20%—no service fees."
               />
             </p>
-            <div className="mt-6">
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               <OwnerServicesDialog />
+              <Button size="lg" className="rounded-full px-6" asChild>
+                <Link href="/account/become-host">
+                  <T
+                    t={t}
+                    k="header.list_your_property"
+                    source="List your property"
+                  />
+                </Link>
+              </Button>
             </div>
           </div>
         </div>

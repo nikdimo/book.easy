@@ -17,6 +17,7 @@ import { LocationField, hasValidPin, type LocationValues } from "@/components/li
 import { AddressField } from "@/components/listing/address-field";
 import { StreetViewField, type StreetViewValues } from "@/components/listing/street-view-field";
 import { SpecialOfferField, offerProblems, type OfferValues } from "@/components/listing/special-offer-field";
+import { SpaceTypeField } from "@/components/listing/space-type-field";
 import {
   apiFetch,
   ListingDraftData,
@@ -34,6 +35,7 @@ import { colors, radii, shadows, spacing, fonts, type } from "@/theme";
  *  never strands a host on a screen that is silently missing. */
 const NATIVE_STEPS = new Set([
   "propertyType",
+  "spaceType",
   "photos",
   "description",
   "location",
@@ -51,6 +53,7 @@ interface EditorValues extends LocationValues, StreetViewValues, OfferValues {
   title: string;
   description: string;
   propertyType: string;
+  spaceType: string;
   maxGuests: string;
   bedrooms: string;
   beds: string;
@@ -66,6 +69,7 @@ const defaultValues: EditorValues = {
   title: "",
   description: "",
   propertyType: "",
+  spaceType: "",
   maxGuests: "2",
   bedrooms: "1",
   beds: "1",
@@ -99,7 +103,9 @@ function valuesFromDraft(data?: ListingDraftData): EditorValues {
   return {
     title: data?.title ?? "",
     description: data?.description ?? "",
-    propertyType: data?.propertyType ?? "",
+    propertyType:
+      data?.propertyType === "DETACHED_HOUSE" ? "HOUSE" : data?.propertyType ?? "",
+    spaceType: data?.spaceType ?? "",
     maxGuests: data?.maxGuests || "2",
     bedrooms: data?.bedrooms || "1",
     beds: data?.beds || "1",
@@ -300,6 +306,8 @@ export default function NewListingScreen() {
     const blockers: { stepId: string; message: string }[] = [];
     if (!values.propertyType)
       blockers.push({ stepId: "propertyType", message: "Choose a property type" });
+    if (!values.spaceType)
+      blockers.push({ stepId: "spaceType", message: "Choose what guests will book" });
     if (photoCount(values.mediaItems) < MIN_PHOTOS)
       blockers.push({
         stepId: "photos",
@@ -516,8 +524,27 @@ export default function NewListingScreen() {
             <PropertyTypeStep
               options={catalog?.propertyTypes ?? []}
               selected={values.propertyType}
-              onSelect={(value) => updateField("propertyType", value)}
+              onSelect={(value) =>
+                patchValues({
+                  propertyType: value,
+                  spaceType:
+                    value === "HOTEL"
+                      ? values.spaceType === "ENTIRE_PLACE"
+                        ? "ENTIRE_PLACE"
+                        : "HOTEL_ROOM"
+                      : values.spaceType === "HOTEL_ROOM"
+                        ? "ENTIRE_PLACE"
+                        : values.spaceType,
+                })
+              }
               t={t}
+            />
+          ) : null}
+          {step.id === "spaceType" ? (
+            <SpaceTypeField
+              propertyType={values.propertyType}
+              value={values.spaceType}
+              onChange={(value) => updateField("spaceType", value)}
             />
           ) : null}
           {step.id === "photos" ? (

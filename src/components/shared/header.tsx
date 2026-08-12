@@ -227,22 +227,26 @@ export function Header({
           {user?.isHost ? (
             <Button
               variant="ghost"
-              className="hidden 2xl:flex rounded-full text-sm font-medium"
+              size="icon"
+              className="relative flex rounded-full text-sm font-medium sm:w-auto sm:px-3"
               asChild
             >
-              <Link href="/host">
+              <Link href="/host" aria-label={navLabels.switchToHosting.text}>
+                <Home className="h-5 w-5" />
                 <span
-                  className={
+                  className={cn(
+                    "hidden sm:inline",
                     navLabels.switchToHosting.translated
                       ? "notranslate"
-                      : undefined
-                  }
+                      : undefined,
+                  )}
                 >
                   {navLabels.switchToHosting.text}
                 </span>
                 <CountBadge
                   value={summary?.host?.total}
                   label="hosting items needing attention"
+                  className="absolute -right-1 -top-1 sm:static"
                 />
               </Link>
             </Button>

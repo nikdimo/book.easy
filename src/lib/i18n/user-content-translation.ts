@@ -27,11 +27,19 @@ export function writeAutoTranslateUserContentPreference(enabled: boolean) {
 export function applyUserContentTranslationPreference(root: ParentNode = document) {
   if (typeof document === "undefined") return;
   const enabled = readAutoTranslateUserContentPreference();
-  root.querySelectorAll<HTMLElement>("[data-user-generated-content]").forEach(
-    (element) => {
-      element.classList.toggle("notranslate", !enabled);
-      if (enabled) element.removeAttribute("translate");
-      else element.setAttribute("translate", "no");
-    },
-  );
+  const elements = [
+    ...(root instanceof HTMLElement && root.matches("[data-user-generated-content]")
+      ? [root]
+      : []),
+    ...root.querySelectorAll<HTMLElement>("[data-user-generated-content]"),
+  ];
+
+  elements.forEach((element) => {
+    element.classList.toggle("notranslate", !enabled);
+    // Google Translate can retain an earlier `translate="no"` decision while it
+    // processes a page. Explicitly opting host-authored content back in makes a
+    // changed preference reliable for listing titles, descriptions, and reviews.
+    if (enabled) element.setAttribute("translate", "yes");
+    else element.setAttribute("translate", "no");
+  });
 }

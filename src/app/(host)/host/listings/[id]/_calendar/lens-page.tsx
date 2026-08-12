@@ -1,5 +1,5 @@
 import { format } from "date-fns";
-import { ArrowLeft, CalendarDays, CircleHelp, Eye, Pencil } from "lucide-react";
+import { ArrowLeft, CircleHelp, Eye } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
@@ -148,54 +148,45 @@ export async function CalendarLensPage({
             </p>
           </div>
         </div>
-        <Popover>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              aria-label={`How ${copy.heading.toLowerCase()} works`}
-              className="grid size-8 shrink-0 place-items-center rounded-full border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <CircleHelp className="size-4.5" />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-80 p-4">
-            <p className="text-sm font-semibold">{copy.heading}</p>
-            <ul className="mt-2 space-y-2 text-sm md:text-xs leading-relaxed text-muted-foreground">
-              {copy.help.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
-          </PopoverContent>
-        </Popover>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link href={listingStopHref(listing.id, "preview")}>
+              <Eye className="size-4" />
+              <T t={t} k="host.workspace.preview" source="Preview" />
+            </Link>
+          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label={`How ${copy.heading.toLowerCase()} works`}
+                className="grid size-8 shrink-0 place-items-center rounded-full border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <CircleHelp className="size-4.5" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-80 p-4">
+              <p className="text-sm font-semibold">{copy.heading}</p>
+              <ul className="mt-2 space-y-2 text-sm md:text-xs leading-relaxed text-muted-foreground">
+                {copy.help.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </PopoverContent>
+          </Popover>
+        </div>
       </div>
 
-      <CalendarHeaderActions heading={copy.heading} help={copy.help} />
-
-      <nav
-        aria-label={t.resolve("host.workspace.nav_label", "Listing workspace").text}
-        className="hidden items-center gap-1 rounded-xl border bg-muted/40 p-1 md:flex"
-      >
-        <Button variant="ghost" size="sm" asChild>
-          <Link href={listingStopHref(listing.id, "edit")}>
-            <Pencil className="size-4" />
-            <T t={t} k="host.workspace.details" source="Details" />
-          </Link>
-        </Button>
-        <Button variant="secondary" size="sm" aria-current="page">
-          <CalendarDays className="size-4" />
-          <T t={t} k="host.workspace.calendar" source="Calendar" />
-        </Button>
-        <Button variant="ghost" size="sm" asChild>
-          <Link href={listingStopHref(listing.id, "preview")}>
-            <Eye className="size-4" />
-            <T t={t} k="host.workspace.preview" source="Preview" />
-          </Link>
-        </Button>
-      </nav>
+      <CalendarHeaderActions
+        heading={copy.heading}
+        help={copy.help}
+        listingId={listing.id}
+      />
 
       <ListingManagementTabs
         listingId={listing.id}
         preserveQuery={selectionQuery}
+        className="hidden md:block"
       />
 
       {listing.pricingRule ? (

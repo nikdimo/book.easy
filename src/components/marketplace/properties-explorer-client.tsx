@@ -42,6 +42,7 @@ import {
   type MapBounds,
 } from "@/lib/map-bounds";
 import { Tx, useI18n } from "@/lib/i18n/client";
+import { resolvePropertyTypeLabel } from "@/lib/i18n/property-type-labels";
 import type { Resolved } from "@/lib/i18n/t";
 import { useDisplayCurrency } from "@/lib/currency/client";
 import { BASE_CURRENCY } from "@/lib/currency/currency-preference";
@@ -236,8 +237,14 @@ export function PropertiesExplorerClient({
     [propertyTypes]
   );
   const propertyTypeLabelByValue = useMemo(
-    () => new Map(propertyTypes.map(({ value, label }) => [value, label] as const)),
-    [propertyTypes]
+    () =>
+      new Map(
+        propertyTypes.map(
+          ({ value, label }) =>
+            [value, resolvePropertyTypeLabel(i18n, value, label).text] as const
+        )
+      ),
+    [propertyTypes, i18n]
   );
 
   const params = useMemo(() => {

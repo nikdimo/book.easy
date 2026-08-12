@@ -4,17 +4,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   BedDouble,
-  Building2,
-  Castle,
   Home,
   Minus,
   Plus,
   Search,
-  Tent,
-  TreePine,
-  Warehouse,
   type LucideIcon,
 } from "lucide-react";
+import { PropertyTypeIcon } from "@/components/shared/property-type-icon";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import {
@@ -47,17 +43,7 @@ import {
   resolveAmenityCategory,
   resolveAmenityLabel,
 } from "@/lib/i18n/amenity-labels";
-
-const PROPERTY_TYPE_ICONS = {
-  APARTMENT: Building2,
-  HOUSE: Home,
-  VILLA: Castle,
-  STUDIO: Warehouse,
-  CABIN: TreePine,
-  COTTAGE: Tent,
-  LOFT: Building2,
-  OTHER: Home,
-} as const;
+import { resolvePropertyTypeLabel } from "@/lib/i18n/property-type-labels";
 
 export type SearchFiltersSection =
   | "price"
@@ -596,11 +582,8 @@ function SearchFiltersInner({
               description={i18n.resolve("filters.property_type_description", "Choose one or more types of stay.")}
             />
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {propertyTypeOptions.map(({ value, label }) => {
-                const Icon =
-                  PROPERTY_TYPE_ICONS[
-                    value as keyof typeof PROPERTY_TYPE_ICONS
-                  ] ?? Home;
+              {propertyTypeOptions.map(({ value, label, icon }) => {
+                const typeLabel = resolvePropertyTypeLabel(i18n, value, label);
                 const selected = propertyTypes.includes(value);
                 const unavailable = !selected && !availablePropertyTypeSet.has(value);
                 const button = (
@@ -629,16 +612,21 @@ function SearchFiltersInner({
                         unavailable ? "text-muted-foreground" : "text-foreground"
                       )}
                     >
-                      <Icon className="h-5 w-5" strokeWidth={1.9} />
+                      <PropertyTypeIcon
+                        name={icon}
+                        className="h-5 w-5"
+                        strokeWidth={1.9}
+                      />
                     </span>
                     <span className="min-w-0 pt-1">
                       <span
                         className={cn(
                           "block text-base font-semibold",
-                          unavailable ? "text-muted-foreground" : "text-foreground"
+                          unavailable ? "text-muted-foreground" : "text-foreground",
+                          typeLabel.translated && "notranslate"
                         )}
                       >
-                        {label}
+                        {typeLabel.text}
                       </span>
                       <span className="mt-1 block text-sm text-muted-foreground">
                         {selected

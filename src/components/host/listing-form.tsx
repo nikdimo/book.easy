@@ -3,8 +3,7 @@
 import { useActionState, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { Bath, Bed, BedDouble, Building, CalendarDays, CalendarRange, Check, ChevronLeft, ChevronRight, CircleAlert, CircleDollarSign, Coffee, CookingPot, Eye, Flame, GripVertical, HeartPulse, Laptop, ListChecks, Loader2, MapPin, Microwave, Minus, Mountain, Pencil, Plus, Refrigerator, Shirt, Shield, ShieldCheck, Sparkles, Sun, Thermometer, Trees, Tv, Users, Waves, Wind, Wifi, Car } from "lucide-react";
+import { Bath, Bed, BedDouble, Building, CalendarDays, CalendarRange, Check, ChevronLeft, ChevronRight, CircleAlert, CircleDollarSign, Coffee, CookingPot, Eye, Flame, GripVertical, HeartPulse, Laptop, ListChecks, Loader2, MapPin, Microwave, Minus, Mountain, Pencil, Plus, Refrigerator, Sailboat, Shirt, Shield, ShieldCheck, Sparkles, Sun, Thermometer, Trees, Tv, Users, Utensils, Waves, Wind, Wifi, Car } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   saveListingDraft,
@@ -13,11 +12,11 @@ import {
 } from "@/lib/actions/listing.actions";
 import { listingFormSchema } from "@/lib/validations/listing.schema";
 import { ListingBottomNav } from "@/components/host/listing-bottom-nav";
+import { ListingManagementTabs } from "@/components/host/listing-management-tabs";
 import { ListingWizardHeaderActions } from "@/components/host/listing-wizard-header-actions";
 import { ListingCurrencyPicker } from "@/components/host/listing-currency-picker";
 import { ListingImportPanel } from "@/components/host/listing-import-panel";
 import { ListingPublishedScreen } from "@/components/host/listing-published-screen";
-import { listingStopHref } from "@/lib/host/listing-workspace";
 import { promotionWizardIssues } from "@/lib/host/listing-wizard-validation";
 import { zodFieldErrors } from "@/lib/utils/zod-error";
 import { Badge } from "@/components/ui/badge";
@@ -42,7 +41,7 @@ import {
 import { formatPrice } from "@/lib/utils/format";
 import { splitDescriptionPreviewTiers } from "@/lib/utils/description-preview";
 import { toast } from "sonner";
-import { Tx, interpolate, useI18n } from "@/lib/i18n/client";
+import { Tx, interpolate, translatedClass, useI18n } from "@/lib/i18n/client";
 import { OfferPreview } from "@/components/host/calendar-editor-ui";
 import {
   resolveAmenityCategory,
@@ -91,13 +90,18 @@ import { SuggestMissingOption } from "@/components/host/suggest-missing-option";
 import type { HostListingFormData } from "@/lib/serializers/host-listing-form";
 import type { ListingMediaItem } from "@/lib/types/listing-media";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
+import { normalizePropertyType } from "@/lib/types/property-type";
 import type { ListingDraftData } from "@/lib/types/listing-draft";
 import type { ImportedPriceQuote } from "@/lib/listing-import/types";
 import {
-  LISTING_SPACE_TYPES,
-  listingSpaceTypeLabel,
+  allowedListingSpaceTypes,
   normalizeListingSpaceType,
+  spaceTypeForPropertyType,
 } from "@/lib/types/listing-space-type";
+import {
+  resolvePropertyTypeDescription,
+  resolvePropertyTypeLabel,
+} from "@/lib/i18n/property-type-labels";
 import { PropertyTypeIcon } from "@/components/shared/property-type-icon";
 import { cn } from "@/lib/utils";
 import { currencyDecimals } from "@/lib/currency/currencies";
@@ -121,7 +125,6 @@ interface ListingFormProps {
   initialDraft?: ListingDraftData;
   editStatusLabel?: string;
   editStatusApproved?: boolean;
-  availabilityHref?: string;
   moderationNote?: string | null;
   initialPane?: "edit" | "preview";
 }
@@ -162,10 +165,6 @@ type ListingFormValues = {
   promotionFreeCleaning: string;
 };
 
-const FALLBACK_TITLE = "Your listing title";
-const FALLBACK_DESCRIPTION =
-  "Describe the space, the neighborhood, and the details guests should know before booking.";
-
 const STEPS = LISTING_STEPS;
 const LOCATION_STEPS: number[] = [
   LISTING_STEP.location,
@@ -183,7 +182,6 @@ const EDIT_SECTIONS = [
   { id: "location", label: "Location" },
   { id: "photos", label: "Photos" },
   { id: "details", label: "Property details" },
-  { id: "pricing", label: "Pricing" },
   { id: "rules", label: "Stay rules" },
   { id: "amenities", label: "Amenities" },
 ] as const;
@@ -246,7 +244,7 @@ function listingInitialValues(
     return {
       title: listing.title,
       description: listing.description,
-      propertyType: listing.property.propertyType,
+      propertyType: normalizePropertyType(listing.property.propertyType),
       spaceType: listing.spaceType,
       address: listing.property.address,
       city: listing.property.city,
@@ -310,7 +308,7 @@ function listingInitialValues(
   return {
     title: draft?.title ?? "",
     description: draft?.description ?? "",
-    propertyType: draft?.propertyType ?? "",
+    propertyType: normalizePropertyType(draft?.propertyType),
     // Drafts imported before spaceType became a first-class field still retain the
     // provider's raw value, so reopening one should immediately recover "Private room"
     // instead of silently falling back to an entire place.
@@ -425,7 +423,8 @@ type ListingStepIssue = {
  *  there. Pricing is the fallback because that's where the remaining validated fields
  *  (rate, cleaning fee, minimum stay) are. */
 function stepForField(field: string) {
-  if (field === "propertyType" || field === "spaceType") return LISTING_STEP.propertyType;
+  if (field === "propertyType") return LISTING_STEP.propertyType;
+  if (field === "spaceType") return LISTING_STEP.spaceType;
   if (["latitude", "longitude", "locationSource"].includes(field)) {
     return LISTING_STEP.location;
   }
@@ -445,6 +444,28 @@ function stepForField(field: string) {
   return LISTING_STEP.pricing;
 }
 
+/** Element to send the host to when they act on a requirement. Most validated fields
+ *  are inputs whose id already matches the field name; the two radio grids are not,
+ *  so they're named here. */
+const STEP_ISSUE_TARGETS: Record<string, string> = {
+  propertyType: "property-type-group",
+  spaceType: "space-type-group",
+};
+
+/** A blocked Continue says what is missing but not where it is, and the requirement
+ *  text sits in the footer — often a full screen below the grid it's talking about.
+ *  Acting on it scrolls the offending field into view and focuses its first control. */
+function focusStepIssue(field: string) {
+  const target = document.getElementById(STEP_ISSUE_TARGETS[field] ?? field);
+  if (!target) return;
+  target.scrollIntoView({ behavior: "smooth", block: "center" });
+  const focusable =
+    target.querySelector<HTMLElement>(
+      '[role="radio"], input:not([type="hidden"]), textarea, select, button'
+    ) ?? target;
+  window.requestAnimationFrame(() => focusable.focus({ preventScroll: true }));
+}
+
 function listingStepIssues(
   step: number,
   values: ListingFormValues,
@@ -452,7 +473,8 @@ function listingStepIssues(
   uploadActive: boolean
 ): ListingStepIssue[] {
   const fieldsByStep: Partial<Record<number, (keyof ListingFormValues)[]>> = {
-    [LISTING_STEP.propertyType]: ["spaceType", "propertyType"],
+    [LISTING_STEP.propertyType]: ["propertyType"],
+    [LISTING_STEP.spaceType]: ["spaceType"],
     [LISTING_STEP.address]: ["address", "city", "country"],
     [LISTING_STEP.details]: ["maxGuests", "bedrooms", "beds", "bathrooms"],
     [LISTING_STEP.description]: ["title", "description"],
@@ -617,13 +639,47 @@ export function ListingForm({
   initialDraft,
   editStatusLabel,
   editStatusApproved = false,
-  availabilityHref,
   moderationNote,
   initialPane,
 }: ListingFormProps) {
   const isEditing = !!listing;
   const i18n = useI18n();
   const { resolve } = i18n;
+  const stepCopy = (step: (typeof STEPS)[number]) => {
+    switch (step.id) {
+      case "propertyType": return { title: resolve("host.step.property_type.title", "Property type").text, description: resolve("host.step.property_type.description", "What kind of place is it?").text };
+      case "spaceType": return { title: resolve("host.step.space_type.title", "What guests book").text, description: resolve("host.step.space_type.description", "Will guests have the whole place, or a room in it?").text };
+      case "photos": return { title: resolve("host.step.photos.title", "Photos").text, description: resolve("host.step.photos.description", "Add your best photo first — it's the one guests see in search.").text };
+      case "description": return { title: resolve("host.step.description.title", "Title and description").text, description: resolve("host.step.description.description", "Give guests a clear, inviting overview.").text };
+      case "location": return { title: resolve("host.step.location.title", "Location").text, description: resolve("host.step.location.description", "Place the pin exactly where guests will stay.").text };
+      case "address": return { title: resolve("host.step.address.title", "Address").text, description: resolve("host.step.address.description", "Check the address we found and fix anything that's off.").text };
+      case "streetView": return { title: resolve("host.step.street_view.title", "Street View").text, description: resolve("host.step.street_view.description", "Show guests how to recognise the place when they arrive.").text };
+      case "details": return { title: resolve("host.step.details.title", "Property details").text, description: resolve("host.step.details.description", "Set the capacity and sleeping arrangements.").text };
+      case "amenities": return { title: resolve("host.step.amenities.title", "Amenities").text, description: resolve("host.step.amenities.description", "Choose what your property offers.").text };
+      case "pricing": return { title: resolve("host.step.pricing.title", "Pricing").text, description: resolve("host.step.pricing.description", "Set the price and minimum stay.").text };
+      case "specialOffer": return { title: resolve("host.step.special_offer.title", "Special offer").text, description: resolve("host.step.special_offer.description", "Add an optional discount to attract guests.").text };
+    }
+  };
+  const spaceTypeCopy = (value: string) => {
+    switch (value) {
+      case "ENTIRE_PLACE": return { label: resolve("host.space_type.entire_place", "Entire place").text, description: resolve("host.space_type.entire_place_description", "Guests have the whole property to themselves.").text };
+      case "PRIVATE_ROOM": return { label: resolve("host.space_type.private_room", "Private room").text, description: resolve("host.space_type.private_room_description", "Guests have a private room and may share other spaces.").text };
+      case "SHARED_ROOM": return { label: resolve("host.space_type.shared_room", "Shared room").text, description: resolve("host.space_type.shared_room_description", "Guests sleep in a room or area shared with others.").text };
+      case "HOTEL_ROOM": return { label: resolve("host.space_type.hotel_room", "Hotel room").text, description: resolve("host.space_type.hotel_room_description", "Guests book a private room in a hotel or similar property.").text };
+      default: return { label: resolve("host.space_type.entire_place", "Entire place").text, description: resolve("host.space_type.entire_place_description", "Guests have the whole property to themselves.").text };
+    }
+  };
+  const sectionLabel = (id: (typeof EDIT_SECTIONS)[number]["id"]) => {
+    switch (id) {
+      case "basics": return resolve("host.section.basics", "Basics").text;
+      case "description": return resolve("host.section.description", "Description").text;
+      case "location": return resolve("host.section.location", "Location").text;
+      case "photos": return resolve("host.section.photos", "Photos").text;
+      case "details": return resolve("host.section.details", "Property details").text;
+      case "rules": return resolve("host.section.stay_rules", "Stay rules").text;
+      case "amenities": return resolve("host.section.amenities", "Amenities").text;
+    }
+  };
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
@@ -713,6 +769,14 @@ export function ListingForm({
       isRangeFullyOpen(prePublishSelection, prePublishPlan.openDates),
   );
   const taskSelectionActive = selectedTaskAction !== "done";
+  /** On a task screen — the date calendars for availability, prices and promotions.
+   *  These have exactly one way out, and it is Done: Back landed on the same screen
+   *  Done does, so the row offered two buttons for one trip and the left one read as
+   *  "undo my dates" when it wasn't. Done stays; Back is hidden here. */
+  const onPrePublishTask =
+    prePublishScreen !== null &&
+    prePublishScreen !== "menu" &&
+    prePublishScreen !== "availability-start";
   const selectedTaskActionLabel =
     selectedTaskAction === "open-dates"
       ? resolve("host.calendar.open_dates", "Open dates").text
@@ -1136,8 +1200,11 @@ export function ListingForm({
     setTimeout(() => void autosaveDraft(), 0);
   }
 
-  const typeLabel = propertyTypes.find((type) => type.value === values.propertyType)?.label;
-  const spaceTypeLabel = listingSpaceTypeLabel(values.spaceType);
+  const selectedType = propertyTypes.find((type) => type.value === values.propertyType);
+  const typeLabel = selectedType
+    ? resolvePropertyTypeLabel(i18n, selectedType.value, selectedType.label).text
+    : undefined;
+  const spaceTypeLabel = spaceTypeCopy(values.spaceType).label;
   const guests = toPositiveNumber(values.maxGuests, 0);
   const bedrooms = toPositiveNumber(values.bedrooms, 0);
   const beds = toPositiveNumber(values.beds, 0);
@@ -1525,6 +1592,17 @@ export function ListingForm({
       <input type="hidden" name="checkInTime" value={values.checkInTime} />
       <input type="hidden" name="checkOutTime" value={values.checkOutTime} />
       <input type="hidden" name="spaceType" value={values.spaceType} />
+      {isEditing && (
+        <>
+          {/* Pricing is owned by the Pricing workspace. The listing update action still
+              validates the complete record, so preserve its current server-backed
+              values without presenting a second editor here. */}
+          <input type="hidden" name="currency" value={values.currency} />
+          <input type="hidden" name="baseNightlyRate" value={values.baseNightlyRate} />
+          <input type="hidden" name="cleaningFee" value={values.cleaningFee} />
+          <input type="hidden" name="minNights" value={values.minNights} />
+        </>
+      )}
       {state?.error && !isEditing && (
         <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
           {state.error}
@@ -1542,7 +1620,7 @@ export function ListingForm({
             showCounter={prePublishScreen === null}
             stepTitle={
               prePublishScreen === null
-                ? STEPS[currentStep].title
+                ? stepCopy(STEPS[currentStep]).title
                 : prePublishHeading
             }
             saveStatus={saveStatus}
@@ -1593,7 +1671,7 @@ export function ListingForm({
                   aria-hidden="true"
                 />
                 <h1 className="min-w-0 truncate text-base font-semibold">
-                  {STEPS[locationStep!].title}
+                  {stepCopy(STEPS[locationStep!]).title}
                 </h1>
               </div>
               <div className="mt-3 flex min-w-0 items-center gap-3">
@@ -1616,44 +1694,39 @@ export function ListingForm({
           )}
           {showEditSections && (
             <header className="z-20 shrink-0 border-b bg-background px-5 pb-2.5 pt-2.5 shadow-sm md:pb-3 md:pt-5 md:px-8">
-              {/* On mobile the heading only repeats the Edit tab in the bottom bar,
-                  and the management link is a bottom-bar destination, so both are
-                  desktop-only. That leaves the section chips as the one thing pinned
-                  above the form. */}
-              <div className="hidden min-w-0 md:block">
-                <h1 className="text-2xl font-bold">
-                  <Tx k="host.form.edit_listing" source="Edit Listing" />
+              <div className="flex min-w-0 items-center justify-between gap-3">
+                <h1 className="hidden text-2xl font-bold md:block">
+                  <Tx k="host.workspace.listing" source="Listing" />
                 </h1>
-                {availabilityHref && (
-                  <Button
-                    className="mt-3 h-auto min-h-10 max-w-full justify-start whitespace-normal py-2 text-left shadow-sm"
-                    asChild
-                  >
-                    <Link
-                      href={availabilityHref}
-                      onClick={confirmManagementNavigation}
-                    >
-                      <CalendarDays className="mr-2 h-4 w-4 shrink-0" />
-                      <span className="min-w-0 break-words">
-                        <Tx
-                          k="host.form.manage_link"
-                          source="Manage availability, pricing & promotions"
-                        />
-                      </span>
-                    </Link>
-                  </Button>
-                )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="ml-auto md:hidden"
+                  aria-label={resolve("host.workspace.preview", "Preview").text}
+                  aria-controls="listing-preview-pane"
+                  onClick={() => selectMobilePane("preview")}
+                >
+                  <Eye className="size-5" />
+                </Button>
               </div>
+              {listing?.id && (
+                <ListingManagementTabs
+                  listingId={listing.id}
+                  onNavigate={confirmManagementNavigation}
+                  className="mt-4 hidden md:block"
+                />
+              )}
               {/* One scrollable row on mobile: wrapping these seven chips cost three
                   stacked rows of the little vertical space the form has. */}
               <nav
                 ref={editSectionNavRef}
-                className="-mx-5 flex gap-1 overflow-x-auto px-5 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] md:mx-0 md:mt-4 md:flex-wrap md:px-0 [&::-webkit-scrollbar]:hidden"
+                className="-mx-5 flex gap-1 overflow-x-auto px-5 [-webkit-overflow-scrolling:touch] [scrollbar-width:none] md:mx-0 md:mt-3 md:flex-wrap md:px-0 [&::-webkit-scrollbar]:hidden"
                 aria-label={resolve("host.form.sections_label", "Listing sections").text}
               >
                 {EDIT_SECTIONS.map((section) => (
                   <button key={section.id} type="button" data-section-chip={section.id} aria-current={activeEditSection === section.id ? "location" : undefined} onClick={() => scrollToEditSection(section.id)} className={`shrink-0 rounded-full px-3 py-1.5 text-sm md:text-xs font-medium transition-colors ${activeEditSection === section.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"}`}>
-                    {section.label}
+                    {sectionLabel(section.id)}
                   </button>
                 ))}
               </nav>
@@ -1751,7 +1824,10 @@ export function ListingForm({
                   <ListChecks className="h-4 w-4 shrink-0" />
                   <span className="notranslate truncate" translate="no">
                     {prePublishScreen === null
-                      ? `Step ${currentStep + 1} of ${STEPS.length}: ${STEPS[currentStep].title}`
+                      ? interpolate(
+                          resolve("host.form.step_counter", "Step {current} of {total}: {title}"),
+                          { current: currentStep + 1, total: STEPS.length, title: stepCopy(STEPS[currentStep]).title },
+                        ).text
                       : prePublishHeading}
                   </span>
                 </button>
@@ -1841,7 +1917,7 @@ export function ListingForm({
             <h2 className="text-lg font-semibold md:text-2xl">
               {isEditing
                 ? resolve("host.form.listing_details", "Listing details").text
-                : STEPS[currentStep].title}
+                : stepCopy(STEPS[currentStep]).title}
             </h2>
             <p className="mt-1 line-clamp-2 text-xs text-muted-foreground md:line-clamp-none md:text-sm">
               {isEditing
@@ -1849,16 +1925,19 @@ export function ListingForm({
                     "host.form.listing_details_hint",
                     "Build the listing exactly as guests will understand it.",
                   ).text
-                : STEPS[currentStep].description}
+                : stepCopy(STEPS[currentStep]).description}
             </p>
           </div>
 
-          <div id={isEditing ? "edit-section-basics" : undefined} className={showEditSections || onCreateStep(LISTING_STEP.propertyType, LISTING_STEP.description) ? "scroll-mt-32 block" : "hidden"}>
+          <div id={isEditing ? "edit-section-basics" : undefined} className={showEditSections || onCreateStep(LISTING_STEP.propertyType, LISTING_STEP.spaceType, LISTING_STEP.description) ? "scroll-mt-32 block" : "hidden"}>
           <FieldSection
-            // On the wizard's property-type step the step heading already says
-            // "Property type", so a section title here is a third repetition.
+            // On the wizard's own steps for these questions the step heading already
+            // says "Property type" / "What guests book", so a section title here is a
+            // third repetition.
             title={
-              !isEditing && currentStep === LISTING_STEP.propertyType
+              !isEditing &&
+              (currentStep === LISTING_STEP.propertyType ||
+                currentStep === LISTING_STEP.spaceType)
                 ? undefined
                 : resolve("host.form.guest_basics", "Guest-facing basics").text
             }
@@ -1923,50 +2002,24 @@ export function ListingForm({
             </div>
             <div className={showEditSections || onCreateStep(LISTING_STEP.propertyType) ? "space-y-3" : "hidden"}>
               {!isEditing && !initialDraftId && <ListingImportPanel />}
-              <div className="space-y-2">
-                <Label id="space-type-label">
-                  <Tx k="host.form.space_type_label" source="What will guests book?" />
-                </Label>
-                <div
-                  role="radiogroup"
-                  aria-labelledby="space-type-label"
-                  className="grid grid-cols-2 gap-2"
-                >
-                  {LISTING_SPACE_TYPES.map((option) => {
-                    const selected = values.spaceType === option.value;
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        role="radio"
-                        aria-checked={selected}
-                        onClick={() => {
-                          setField("spaceType", option.value);
-                          setFieldErrors((current) => ({ ...current, spaceType: "" }));
-                          setTimeout(() => void autosaveDraft(), 0);
-                        }}
-                        className={cn(
-                          "rounded-xl border bg-background px-3 py-3 text-left shadow-sm transition-colors hover:border-primary/50",
-                          selected && "border-primary bg-primary/6 ring-1 ring-primary",
-                        )}
-                      >
-                        <span className="block text-sm font-semibold">{option.label}</span>
-                        <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">
-                          {option.description}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <FieldError message={fieldErrors.spaceType} />
-              </div>
-              <Separator />
               <Label
                 id="property-type-label"
                 className={isEditing ? undefined : "sr-only md:not-sr-only"}
               >
                 <Tx k="host.form.property_type_label" source="Property type" />
               </Label>
+              {/* The tiles below carry no visible verb, and on a phone the label above
+                 is screen-reader-only — without this line the whole screen reads as a
+                 heading over decoration, which is exactly how a host ends up staring
+                 at "Property type is required" with nothing to click. */}
+              <p id="property-type-hint" className="text-sm text-muted-foreground md:text-xs">
+                {
+                  resolve(
+                    "host.form.property_type_hint",
+                    "Pick the one that fits best — you can change it later.",
+                  ).text
+                }
+              </p>
               <input
                 id="propertyType"
                 type="hidden"
@@ -1974,8 +2027,10 @@ export function ListingForm({
                 value={values.propertyType}
               />
               <div
+                id="property-type-group"
                 role="radiogroup"
                 aria-labelledby="property-type-label"
+                aria-describedby="property-type-hint"
                 aria-required="true"
                 aria-invalid={Boolean(fieldErrors.propertyType)}
                 className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:gap-3"
@@ -1987,6 +2042,12 @@ export function ListingForm({
               >
                 {propertyTypes.map((type) => {
                   const selected = values.propertyType === type.value;
+                  const label = resolvePropertyTypeLabel(i18n, type.value, type.label);
+                  const description = resolvePropertyTypeDescription(
+                    i18n,
+                    type.value,
+                    type.description,
+                  );
                   return (
                     <Tooltip key={type.value}>
                       <TooltipTrigger asChild>
@@ -1995,23 +2056,42 @@ export function ListingForm({
                           role="radio"
                           aria-checked={selected}
                           className={cn(
-                            "group relative flex min-h-20 flex-col items-center justify-center gap-1.5 rounded-xl border bg-background px-2 py-2.5 text-center shadow-sm outline-none transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40 md:min-h-28 md:gap-3 md:rounded-2xl md:px-3 md:py-4",
+                            // cursor-pointer is not decoration: Tailwind v4's preflight
+                            // leaves buttons on the default arrow, so a grid of bordered
+                            // cards gives the pointer no reason to look interactive.
+                            "group relative flex min-h-20 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border bg-background px-2 py-2.5 text-center shadow-sm outline-none transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40 md:min-h-28 md:gap-3 md:rounded-2xl md:px-3 md:py-4",
+                            // Selected is an outline, not a fill. A solid primary card
+                            // leaves its own label and description sitting on top of
+                            // the brand colour, which is unreadable — and the one card
+                            // that has to demonstrate what "chosen" looks like is the
+                            // worst place to lose contrast.
                             selected &&
-                              "border-primary bg-primary/6 text-primary shadow-[0_10px_30px_-18px_var(--primary)] ring-1 ring-primary"
+                              "border-primary shadow-[0_10px_30px_-18px_var(--primary)] ring-2 ring-primary"
                           )}
                           onClick={() => {
                             setField("propertyType", type.value);
+                            // Picking Hotel answers the next step by itself; switching
+                            // away from it drops a "Hotel room" that no longer applies.
+                            setField(
+                              "spaceType",
+                              spaceTypeForPropertyType(type.value, values.spaceType),
+                            );
                             setFieldErrors((current) => ({
                               ...current,
                               propertyType: "",
                             }));
-                            window.setTimeout(() => goToStep(1), 0);
+                            if (!isEditing) {
+                              window.setTimeout(
+                                () => goToStep(LISTING_STEP.spaceType),
+                                0,
+                              );
+                            }
                           }}
                         >
                           <span
                             className={cn(
                               "flex size-9 items-center justify-center rounded-lg bg-muted text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary md:size-12 md:rounded-xl",
-                              selected && "bg-primary/12 text-primary"
+                              selected && "bg-primary text-primary-foreground"
                             )}
                           >
                             <PropertyTypeIcon
@@ -2019,8 +2099,13 @@ export function ListingForm({
                               className="size-5 md:size-7"
                             />
                           </span>
-                          <span className="text-xs font-semibold leading-tight text-foreground md:text-sm">
-                            {type.label}
+                          <span
+                            className={cn(
+                              "text-xs font-semibold leading-tight text-foreground md:text-sm",
+                              translatedClass(label),
+                            )}
+                          >
+                            {label.text}
                           </span>
                           {selected && (
                             <span
@@ -2034,10 +2119,10 @@ export function ListingForm({
                         sideOffset={8}
                         className={cn(
                           "max-w-64 text-center",
-                          !type.description && "hidden"
+                          !description.text && "hidden"
                         )}
                       >
-                        {type.description}
+                        {description.text}
                       </TooltipContent>
                     </Tooltip>
                   );
@@ -2057,6 +2142,68 @@ export function ListingForm({
                   resolve("host.form.suggest_type_placeholder", "e.g. Houseboat").text
                 }
               />
+            </div>
+            {showEditSections && <Separator />}
+            {/* Its own wizard step, after property type. The two used to share a screen,
+               where the second question read as a subtitle for the first — and property
+               type has to be settled first anyway, since it decides which answers here
+               are even offered. */}
+            <div className={showEditSections || onCreateStep(LISTING_STEP.spaceType) ? "space-y-3" : "hidden"}>
+              <Label
+                id="space-type-label"
+                className={isEditing ? undefined : "sr-only md:not-sr-only"}
+              >
+                <Tx k="host.form.space_type_label" source="What will guests book?" />
+              </Label>
+              <p id="space-type-hint" className="text-sm text-muted-foreground md:text-xs">
+                {
+                  resolve(
+                    "host.form.space_type_hint",
+                    "Pick the one that matches how you rent it out.",
+                  ).text
+                }
+              </p>
+              <div
+                id="space-type-group"
+                role="radiogroup"
+                aria-labelledby="space-type-label"
+                aria-describedby="space-type-hint"
+                aria-required="true"
+                aria-invalid={Boolean(fieldErrors.spaceType)}
+                className="grid gap-2 sm:grid-cols-2"
+              >
+                {allowedListingSpaceTypes(values.propertyType, values.spaceType).map(
+                  (option) => {
+                    const selected = values.spaceType === option.value;
+                    const copy = spaceTypeCopy(option.value);
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        onClick={() => {
+                          setField("spaceType", option.value);
+                          setFieldErrors((current) => ({ ...current, spaceType: "" }));
+                          setTimeout(() => void autosaveDraft(), 0);
+                        }}
+                        className={cn(
+                          "cursor-pointer rounded-xl border bg-background px-3 py-3 text-left shadow-sm outline-none transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40",
+                          selected && "border-primary ring-2 ring-primary",
+                        )}
+                      >
+                        <span className="block text-sm font-semibold text-foreground">
+                          {copy.label}
+                        </span>
+                        <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">
+                          {copy.description}
+                        </span>
+                      </button>
+                    );
+                  },
+                )}
+              </div>
+              <FieldError message={fieldErrors.spaceType} />
             </div>
           </FieldSection>
           </div>
@@ -2231,7 +2378,7 @@ export function ListingForm({
           </FieldSection>
           </div>
 
-          <div id={isEditing ? "edit-section-pricing" : undefined} className={showEditSections || onCreateStep(LISTING_STEP.pricing) ? "scroll-mt-32 block" : "hidden"}>
+          <div className={onCreateStep(LISTING_STEP.pricing) ? "block" : "hidden"}>
           <FieldSection
             // Same repetition as the property-type step: the step heading above already
             // says "Pricing", and dropping the duplicate buys back a row of scroll on
@@ -2260,95 +2407,7 @@ export function ListingForm({
                   </div>
                 )}
               </div>
-              {isEditing ? (
-                <div className="space-y-4 p-5">
-                  <div>
-                    <h3 className="text-sm font-semibold">
-                      <Tx k="host.form.pricing.booking_settings" source="Booking settings" />
-                    </h3>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      <Tx
-                        k="host.form.pricing.booking_settings_hint"
-                        source="Manage standard and date-specific rates in Pricing."
-                      />
-                    </p>
-                  </div>
-                  <dl className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-xl bg-muted/60 p-3">
-                      <dt className="text-xs text-muted-foreground">
-                        <Tx k="host.form.pricing.base_price" source="Base price" />
-                      </dt>
-                      <dd className="mt-1 text-sm font-semibold">
-                        {formatPrice(
-                          toPositiveNumber(values.baseNightlyRate, 0),
-                          values.currency || "EUR",
-                          i18n.locale,
-                        )}
-                        <span className="font-normal text-muted-foreground">
-                          {" "}
-                          <Tx
-                            k="host.form.pricing.summary_per_night"
-                            source="/ night"
-                          />
-                        </span>
-                      </dd>
-                    </div>
-                    <div className="rounded-xl bg-muted/60 p-3">
-                      <dt className="text-xs text-muted-foreground">
-                        <Tx k="host.form.pricing.cleaning" source="Cleaning fee" />
-                      </dt>
-                      <dd className="mt-1 text-sm font-semibold">
-                        {formatPrice(
-                          toPositiveNumber(values.cleaningFee, 0),
-                          values.currency || "EUR",
-                          i18n.locale,
-                        )}
-                        <span className="font-normal text-muted-foreground">
-                          {" "}
-                          <Tx
-                            k="host.form.pricing.summary_per_stay"
-                            source="/ stay"
-                          />
-                        </span>
-                      </dd>
-                    </div>
-                    <div className="rounded-xl bg-muted/60 p-3">
-                      <dt className="text-xs text-muted-foreground">
-                        <Tx k="host.form.pricing.minimum_stay" source="Minimum stay" />
-                      </dt>
-                      <dd className="mt-1 text-sm font-semibold">
-                        {(() => {
-                          const nights = toPositiveNumber(values.minNights, 1);
-                          const value = i18n.plural(
-                            "host.form.pricing.summary_minimum_nights",
-                            nights,
-                            "{n} night",
-                            "{n} nights",
-                          );
-                          return (
-                            <span className={value.translated ? "notranslate" : undefined}>
-                              {value.text}
-                            </span>
-                          );
-                        })()}
-                      </dd>
-                    </div>
-                  </dl>
-                  {listing?.id && (
-                    <Button type="button" variant="outline" className="w-full sm:w-auto" asChild>
-                      <Link
-                        href={listingStopHref(listing.id, "pricing")}
-                        onClick={confirmManagementNavigation}
-                      >
-                        <CircleDollarSign className="h-4 w-4" />
-                        <Tx k="host.form.pricing.manage" source="Manage pricing" />
-                        <ChevronRight className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <>
+              <>
                   {initialDraft?.importedPriceQuote && (
                     <ImportedPriceProposal
                       quote={initialDraft.importedPriceQuote}
@@ -2429,8 +2488,7 @@ export function ListingForm({
                     onChange={(value) => setField("minNights", value)}
                     onBlur={() => void autosaveDraft()}
                   />
-                </>
-              )}
+              </>
             </div>
           </FieldSection>
           </div>
@@ -2875,21 +2933,7 @@ export function ListingForm({
           )}
           {showEditSections && (
             <footer className="z-20 hidden shrink-0 border-t bg-background px-5 py-4 shadow-[0_-2px_8px_rgb(0_0_0/0.04)] md:block md:px-8">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              {availabilityHref && (
-                <Button variant="outline" size="lg" asChild>
-                  <Link
-                    href={availabilityHref}
-                    onClick={confirmManagementNavigation}
-                  >
-                    <CalendarDays className="mr-2 h-4 w-4" />
-                    <Tx
-                      k="host.form.manage_link"
-                      source="Manage availability, pricing & promotions"
-                    />
-                  </Link>
-                </Button>
-              )}
+              <div className="flex justify-end">
               {mediaUploadState.active ? (
                 <MediaUploadStatus
                   state={mediaUploadState}
@@ -2936,24 +2980,31 @@ export function ListingForm({
           {!isEditing && (
             <footer className="z-20 hidden shrink-0 border-t bg-background px-5 py-4 shadow-[0_-2px_8px_rgb(0_0_0/0.04)] md:block md:px-8">
               <div className="flex items-center justify-between gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={
-                    prePublishScreen === null &&
-                    currentStep === LISTING_STEP.propertyType
-                  }
-                  onClick={
-                    prePublishScreen !== null
-                      ? backFromPrePublish
-                      : () => goToStep(currentStep - 1)
-                  }
-                >
-                  <ChevronLeft /> <Tx k="host.form.back" source="Back" />
-                </Button>
+                {/* The empty span holds the left end of the row so that Done stays
+                    where it has been all along instead of sliding across. */}
+                {onPrePublishTask ? (
+                  <span />
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={
+                      prePublishScreen === null &&
+                      currentStep === LISTING_STEP.propertyType
+                    }
+                    onClick={
+                      prePublishScreen !== null
+                        ? backFromPrePublish
+                        : () => goToStep(currentStep - 1)
+                    }
+                  >
+                    <ChevronLeft /> <Tx k="host.form.back" source="Back" />
+                  </Button>
+                )}
                 {prePublishScreen === null && (
                   <StepRequirementStatus
                     issues={currentStepIssues}
+                    onFocusIssue={focusStepIssue}
                     uploadState={
                       currentStep === LISTING_STEP.photos && mediaUploadState.active
                         ? mediaUploadState
@@ -3123,9 +3174,23 @@ export function ListingForm({
         >
           <header className="z-20 shrink-0 border-b bg-background px-5 pb-3 pt-5 shadow-sm md:px-6">
             <div className="flex min-h-9 items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                <Tx k="host.form.preview_heading" source="Guest booking preview" />
-              </h2>
+              <div className="flex min-w-0 items-center gap-1">
+                {isEditing && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="-ml-2 md:hidden"
+                    aria-label={resolve("host.form.back_to_editor", "Back to editor").text}
+                    onClick={() => selectMobilePane("edit")}
+                  >
+                    <ChevronLeft className="size-5" />
+                  </Button>
+                )}
+                <h2 className="truncate text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  <Tx k="host.form.preview_heading" source="Guest booking preview" />
+                </h2>
+              </div>
               <div className="flex shrink-0 items-center gap-2">
                 {editStatusLabel && (
                   <Badge
@@ -3157,7 +3222,7 @@ export function ListingForm({
                       : "bg-muted text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {section.label}
+                  {sectionLabel(section.id)}
                 </button>
               ))}
             </nav>
@@ -3168,8 +3233,8 @@ export function ListingForm({
             className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 [scrollbar-gutter:stable] md:px-6"
           >
             <ListingGuestPreview
-              title={values.title || FALLBACK_TITLE}
-              description={values.description || FALLBACK_DESCRIPTION}
+              title={values.title || resolve("host.preview.fallback_title", "Your listing title").text}
+              description={values.description || resolve("host.preview.fallback_description", "Describe the space, the neighborhood, and the details guests should know before booking.").text}
               typeLabel={typeLabel}
               spaceTypeLabel={spaceTypeLabel}
               locationLine={locationLine}
@@ -3203,6 +3268,7 @@ export function ListingForm({
               <StepRequirementStatus
                 id="listing-step-requirements-mobile"
                 issues={currentStepIssues}
+                onFocusIssue={focusStepIssue}
                 uploadState={
                   currentStep === LISTING_STEP.photos && mediaUploadState.active
                     ? mediaUploadState
@@ -3212,32 +3278,41 @@ export function ListingForm({
             </div>
           )}
           <div className="flex items-stretch gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              className={cn(
-                taskSelectionActive ? "shrink-0 px-3" : "w-11 shrink-0 px-0",
-              )}
-              aria-label={resolve("host.form.back", "Back").text}
-              disabled={
-                prePublishScreen === null &&
-                currentStep === LISTING_STEP.propertyType
-              }
-              onClick={
-                taskSelectionActive
-                  ? () => prePublishActions.current?.clearSelection()
-                  : prePublishScreen !== null
-                    ? backFromPrePublish
-                  : () => goToStep(currentStep - 1)
-              }
-            >
-              {taskSelectionActive ? (
-                <Tx k="host.calendar.cancel" source="Cancel" />
-              ) : (
-                <ChevronLeft />
-              )}
-            </Button>
+            {/* On a task screen this slot is Cancel or nothing: the chevron there was
+                a second Done, and the one button a host needs mid-selection is the
+                one that drops the range. */}
+            {onPrePublishTask && !taskSelectionActive ? null : (
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                className={cn(
+                  taskSelectionActive ? "shrink-0 px-3" : "w-11 shrink-0 px-0",
+                )}
+                aria-label={
+                  taskSelectionActive
+                    ? undefined
+                    : resolve("host.form.back", "Back").text
+                }
+                disabled={
+                  prePublishScreen === null &&
+                  currentStep === LISTING_STEP.propertyType
+                }
+                onClick={
+                  taskSelectionActive
+                    ? () => prePublishActions.current?.clearSelection()
+                    : prePublishScreen !== null
+                      ? backFromPrePublish
+                    : () => goToStep(currentStep - 1)
+                }
+              >
+                {taskSelectionActive ? (
+                  <Tx k="host.calendar.cancel" source="Cancel" />
+                ) : (
+                  <ChevronLeft />
+                )}
+              </Button>
+            )}
             {/* Nothing on the pricing screen reaches the guest preview — the custom
                 prices are not on a listing yet — so the button there was a trip to
                 an unchanged page and back. It keeps its place on every other screen,
@@ -3464,8 +3539,8 @@ export function ListingForm({
 
       {showEditSections && (
         <div className="z-30 shrink-0 md:hidden">
-          {/* Publish is the only commit action. Preview is already a destination in
-              the stable navigation, so it is not repeated here. */}
+          {/* Listing changes have one commit action. Calendar destinations save their
+              own contextual operations, so they do not share this Publish button. */}
           <div className="border-t bg-background px-4 py-2.5">
             {mediaUploadState.active ? (
               <MediaUploadStatus state={mediaUploadState} />
@@ -3480,13 +3555,11 @@ export function ListingForm({
               </Button>
             )}
           </div>
-          {/* Details and Preview switch panes here. Calendar remains a route and
-              keeps the same unsaved-change confirmation as other management links. */}
+          {/* Preview lives in the header; the footer is reserved for editing areas. */}
           <ListingBottomNav
             listingId={listing?.id ?? ""}
-            paneOnly={!listing?.id}
-            active={mobilePane === "preview" ? "preview" : "edit"}
-            onSelectPane={selectMobilePane}
+            active="edit"
+            onSelectPane={() => selectMobilePane("edit")}
             onNavigate={confirmManagementNavigation}
           />
         </div>
@@ -3536,11 +3609,14 @@ export function ListingForm({
                       {index + 1}
                     </span>
                     <span className="min-w-0">
-                      <span className="block text-sm font-medium">{step.title}</span>
+                      <span className="block text-sm font-medium">{stepCopy(step).title}</span>
                       <span className="block truncate text-xs text-muted-foreground">
                         {disabled
-                          ? `Complete ${STEPS[blockingStep].title} first`
-                          : step.description}
+                          ? interpolate(
+                              resolve("host.form.complete_step_first", "Complete {title} first"),
+                              { title: stepCopy(STEPS[blockingStep]).title },
+                            ).text
+                          : stepCopy(step).description}
                       </span>
                     </span>
                   </button>
@@ -3576,6 +3652,9 @@ export function ListingForm({
                 onClick={() => {
                   goToStep(stepForField(field));
                   setPublishChecklistOpen(false);
+                  // The step can be a long screen; land on the field itself rather
+                  // than the top of it.
+                  window.setTimeout(() => focusStepIssue(field), 0);
                 }}
               >
                 <span>{message}</span><ChevronRight className="h-4 w-4" />
@@ -3616,6 +3695,8 @@ const AMENITY_ICON_MAP: Record<string, LucideIcon> = {
   "mountain-snow": Mountain,
   building: Building,
   laptop: Laptop,
+  sailboat: Sailboat,
+  utensils: Utensils,
 };
 
 function StepRequirementStatus({
@@ -3624,10 +3705,14 @@ function StepRequirementStatus({
   // The mobile action row and the desktop footer are both mounted, so they can't
   // share one id — each points its own aria-describedby at its own copy.
   id = "listing-step-requirements",
+  onFocusIssue,
 }: {
   issues: ListingStepIssue[];
   uploadState?: ListingMediaUploadState;
   id?: string;
+  /** Makes the requirement text actionable — Continue is disabled while an issue is
+   *  open, so this line is the only thing left for the host to click. */
+  onFocusIssue?: (field: string) => void;
 }) {
   if (issues.length === 0 && !uploadState) return <span className="ml-auto" />;
 
@@ -3649,9 +3734,19 @@ function StepRequirementStatus({
         // checklist sheet is where the full list is readable.
         <p className="flex min-w-0 items-start gap-1.5 text-right text-[0.7rem] leading-tight text-destructive md:text-xs md:leading-relaxed">
           <CircleAlert className="mt-px size-3.5 shrink-0 md:mt-0.5" aria-hidden="true" />
-          <span className="line-clamp-1 md:line-clamp-none">
-            {issues.map((issue) => issue.message).join(" · ")}
-          </span>
+          {onFocusIssue ? (
+            <button
+              type="button"
+              onClick={() => onFocusIssue(issues[0].field)}
+              className="line-clamp-1 cursor-pointer text-left underline decoration-dotted underline-offset-2 outline-none hover:decoration-solid focus-visible:ring-3 focus-visible:ring-ring/40 md:line-clamp-none"
+            >
+              {issues.map((issue) => issue.message).join(" · ")}
+            </button>
+          ) : (
+            <span className="line-clamp-1 md:line-clamp-none">
+              {issues.map((issue) => issue.message).join(" · ")}
+            </span>
+          )}
         </p>
       )}
     </div>

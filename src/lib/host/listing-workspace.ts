@@ -15,7 +15,8 @@
  */
 export const LISTING_ACTION_BAR_ID = "listing-action-bar";
 
-/** Route-level stops, including the three lenses nested inside Calendar. */
+/** Route-level stops. Preview remains addressable, but it is a supporting action
+ * rather than one of the four editing destinations. */
 export type ListingWorkspaceStop =
   | "preview"
   | "edit"
@@ -23,17 +24,24 @@ export type ListingWorkspaceStop =
   | "pricing"
   | "promotions";
 
-export type ListingPrimaryDestination = "details" | "calendar" | "preview";
+export type ListingPrimaryDestination =
+  | "listing"
+  | "availability"
+  | "pricing"
+  | "promotions";
 
-/** Published-listing management has three primary destinations. */
+/** Creation teaches these same four ownership buckets. Existing-listing management
+ * exposes them directly so a host never has to remember that three unrelated jobs
+ * were hidden below a generic Calendar destination. */
 export const LISTING_PRIMARY_DESTINATIONS: {
   destination: ListingPrimaryDestination;
   stop: ListingWorkspaceStop;
   label: string;
 }[] = [
-  { destination: "details", stop: "edit", label: "Details" },
-  { destination: "calendar", stop: "availability", label: "Calendar" },
-  { destination: "preview", stop: "preview", label: "Preview" },
+  { destination: "listing", stop: "edit", label: "Listing" },
+  { destination: "availability", stop: "availability", label: "Availability" },
+  { destination: "pricing", stop: "pricing", label: "Pricing" },
+  { destination: "promotions", stop: "promotions", label: "Promotions" },
 ];
 
 export const LISTING_WORKSPACE_STOPS: {

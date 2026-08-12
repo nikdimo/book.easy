@@ -226,27 +226,26 @@ lifecycle. The new-listing wizard remains the accepted guided flow: it collects 
 base price, cleaning fee, minimum stay, launch promotion, and initial availability
 before publication. None of those creation steps are being collapsed or removed.
 
-After publication, the listing workspace has three primary destinations:
+After publication, the listing workspace has four primary destinations:
 
-- **Details** owns listing content such as title, description, location, photos,
+- **Listing** owns listing content such as title, description, location, photos,
   capacity, amenities, and stay rules.
-- **Calendar** contains the three operational lenses **Availability**, **Pricing**,
-  and **Promotions**.
-- **Preview** shows the guest-facing result.
+- **Availability** owns open and blocked dates.
+- **Pricing** owns standard and date-specific prices, fees, and stay length.
+- **Promotions** owns discounts and promotional benefits.
 
 Standard pricing - base price, cleaning fee, and minimum stay - is editable only in
-Calendar > Pricing. Details shows a read-only Booking settings summary and a direct
-Manage pricing action. Date-specific prices stay in the Pricing calendar, and
-promotions stay in their own lens. A free-cleaning benefit is a promotion, but the
+Pricing and is not repeated as a read-only section inside Listing. Date-specific
+prices stay in Pricing, and promotions stay in their own destination. A free-cleaning
+benefit is a promotion, but the
 cleaning fee it waives belongs to Pricing. Saving a cleaning fee of zero atomically
 removes free-cleaning benefits from active promotions so the product never advertises
 a fee waiver that has no value.
 
-Desktop exposes Details, Calendar, and Preview as the top-level management model,
-with the three Calendar lenses nested beneath Calendar. Mobile uses the same three
-primary destinations in its bottom navigation and a sticky Availability / Pricing /
-Promotions control inside Calendar. A selected date range carries between those
-lenses, and Calendar actions remain above the bottom navigation.
+Desktop, mobile web, and the native app expose the same four destinations. The three
+operational destinations share the calendar state so a selected range carries between
+them, and contextual actions remain above the bottom navigation. Preview is available
+as a header action instead of occupying a persistent navigation slot.
 
 ---
 

@@ -88,11 +88,30 @@ async function generateBatch(
   for (const language of languages) {
     const translated = parsed.translations[language.code];
     if (!translated) throw new Error(`OpenAI omitted locale ${language.code}.`);
-    parsed.translations[language.code] = validateTranslationMap(
-      sourceByKey,
-      translated,
-      `OpenAI ${language.code} response`
-    );
+    try {
+      parsed.translations[language.code] = validateTranslationMap(
+        sourceByKey,
+        translated,
+        `OpenAI ${language.code} response`
+      );
+    } catch (error) {
+      // A model response that drops a runtime placeholder is never safe to ship.
+      // Keep the English source for only the malformed entry and validate the rest
+      // of the batch again, so one bad response cannot hold the whole locale back.
+      for (const [key, source] of Object.entries(sourceByKey)) {
+        const placeholders = source.match(/\{[A-Za-z][A-Za-z0-9_]*\}/g) ?? [];
+        const value = translated[key] ?? "";
+        const translatedPlaceholders = value.match(/\{[A-Za-z][A-Za-z0-9_]*\}/g) ?? [];
+        if (placeholders.sort().join("\u0000") !== translatedPlaceholders.sort().join("\u0000")) {
+          translated[key] = source;
+        }
+      }
+      parsed.translations[language.code] = validateTranslationMap(
+        sourceByKey,
+        translated,
+        `OpenAI ${language.code} response after placeholder fallback`
+      );
+    }
   }
   return parsed.translations;
 }

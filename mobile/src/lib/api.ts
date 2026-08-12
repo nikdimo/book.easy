@@ -95,6 +95,7 @@ export interface ListingDraftData {
   title?: string;
   description?: string;
   propertyType?: string;
+  spaceType?: "ENTIRE_PLACE" | "PRIVATE_ROOM" | "SHARED_ROOM" | "HOTEL_ROOM";
   address?: string;
   city?: string;
   area?: string;
@@ -193,6 +194,7 @@ export interface PromotionSummary {
 export interface AvailabilityResponse {
   listing: {
     id: string;
+    slug: string;
     title: string;
     status: string;
     baseNightlyRate: number | null;
@@ -725,4 +727,3 @@ export async function toggleUserStatus(
     body: JSON.stringify({ userId, isActive }),
   });
 }
-

@@ -1,7 +1,7 @@
 import {
   Wifi, Wind, Thermometer, Shirt, Tv, CookingPot, Refrigerator, Microwave,
   Coffee, Sun, Trees, Car, Waves, Bath, Flame, Shield, HeartPulse,
-  Mountain, Building, Laptop, LucideIcon,
+  Mountain, Building, Laptop, Sailboat, Utensils, LucideIcon,
 } from "lucide-react";
 import { getT, T } from "@/lib/i18n/t";
 import { resolveAmenityLabel } from "@/lib/i18n/amenity-labels";
@@ -27,6 +27,8 @@ const iconMap: Record<string, LucideIcon> = {
   "mountain-snow": Mountain,
   building: Building,
   laptop: Laptop,
+  sailboat: Sailboat,
+  utensils: Utensils,
 };
 
 interface AmenityListProps {

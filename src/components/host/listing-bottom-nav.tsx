@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarDays, Eye, Pencil } from "lucide-react";
+import { Banknote, CalendarDays, House, Percent } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import {
   LISTING_PRIMARY_DESTINATIONS,
-  isCalendarWorkspaceStop,
   listingStopHref,
   withSelectionQuery,
   type ListingPrimaryDestination,
@@ -16,23 +15,23 @@ import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/client";
 
 const DESTINATION_ICONS: Record<ListingPrimaryDestination, LucideIcon> = {
-  details: Pencil,
-  calendar: CalendarDays,
-  preview: Eye,
+  listing: House,
+  availability: CalendarDays,
+  pricing: Banknote,
+  promotions: Percent,
 };
 
 const ITEM_CLASS =
   "flex min-h-14 flex-1 flex-col items-center justify-center gap-1 text-[0.65rem] font-medium transition-colors";
 
 /**
- * The stable mobile navigation for a published listing. Calendar is one primary
- * destination; availability, pricing and promotions are switched inside it.
+ * The stable mobile navigation for a published listing. These are the same four
+ * ownership buckets the creation flow teaches; Preview is a header action.
  */
 export function ListingBottomNav({
   listingId,
   active,
   className,
-  paneOnly = false,
   preserveQuery = "",
   onSelectPane,
   onNavigate,
@@ -42,29 +41,21 @@ export function ListingBottomNav({
   className?: string;
   /** Carries a selected date range when navigating away from a calendar lens. */
   preserveQuery?: string;
-  /** A draft has no id-based calendar route yet, so it shows the panes only. */
-  paneOnly?: boolean;
-  /** Provided by the edit form, where Details and Preview are panes, not routes. */
-  onSelectPane?: (pane: "edit" | "preview") => void;
+  /** Provided by the edit form, where Listing is already the active pane. */
+  onSelectPane?: (pane: "edit") => void;
   onNavigate?: (event: ReactMouseEvent<HTMLAnchorElement>) => void;
 }) {
   const { resolve } = useI18n();
   const destinationLabels: Record<ListingPrimaryDestination, string> = {
-    details: resolve("host.workspace.details", "Details").text,
-    calendar: resolve("host.workspace.calendar", "Calendar").text,
-    preview: resolve("host.workspace.preview", "Preview").text,
+    listing: resolve("host.workspace.listing", "Listing").text,
+    availability: resolve("host.workspace.availability", "Availability").text,
+    pricing: resolve("host.workspace.pricing", "Pricing").text,
+    promotions: resolve("host.tabs.promotions", "Promotions").text,
   };
   const activeDestination: ListingPrimaryDestination =
-    active === "preview"
-      ? "preview"
-      : isCalendarWorkspaceStop(active)
-        ? "calendar"
-        : "details";
-  const destinations = paneOnly
-    ? LISTING_PRIMARY_DESTINATIONS.filter(
-        ({ destination }) => destination !== "calendar",
-      )
-    : LISTING_PRIMARY_DESTINATIONS;
+    active === "availability" || active === "pricing" || active === "promotions"
+      ? active
+      : "listing";
 
   return (
     <nav
@@ -74,20 +65,18 @@ export function ListingBottomNav({
         className,
       )}
     >
-      {destinations.map(({ destination, stop }) => {
+      {LISTING_PRIMARY_DESTINATIONS.map(({ destination, stop }) => {
         const label = destinationLabels[destination];
         const Icon = DESTINATION_ICONS[destination];
         const current = activeDestination === destination;
-        const pane = destination === "preview" ? "preview" : "edit";
-
-        if (onSelectPane && destination !== "calendar") {
+        if (onSelectPane && destination === "listing") {
           return (
             <button
               key={destination}
               type="button"
               aria-current={current ? "page" : undefined}
-              aria-controls={`listing-${pane === "edit" ? "editor" : "preview"}-pane`}
-              onClick={() => onSelectPane(pane)}
+              aria-controls="listing-editor-pane"
+              onClick={() => onSelectPane("edit")}
               className={cn(
                 ITEM_CLASS,
                 current ? "text-primary" : "text-muted-foreground",
@@ -99,15 +88,11 @@ export function ListingBottomNav({
           );
         }
 
-        const hrefStop =
-          destination === "calendar" && isCalendarWorkspaceStop(active)
-            ? active
-            : stop;
         return (
           <Link
             key={destination}
             href={withSelectionQuery(
-              listingStopHref(listingId, hrefStop),
+              listingStopHref(listingId, stop),
               preserveQuery,
             )}
             onClick={onNavigate}

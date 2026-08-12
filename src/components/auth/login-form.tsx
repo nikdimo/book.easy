@@ -11,21 +11,18 @@ import { Label } from "@/components/ui/label";
 import { BrandLogo } from "@/components/shared/brand-logo";
 import { emailSignInSchema } from "@/lib/validations/auth.schema";
 import { firstZodMessage } from "@/lib/utils/zod-error";
-import { BRAND_TAGLINE } from "@/lib/branding";
+import { Tx, useI18n } from "@/lib/i18n/client";
 
 const RESEND_COOLDOWN_SECONDS = 30;
 
 export function AuthForm({
-  heading,
-  description,
   onClose,
 }: {
-  heading: string;
-  description: string;
   /** When set, the close (×) button calls this instead of linking home — used inside
    * the intercepted-route modal to dismiss back to whatever page triggered it. */
   onClose?: () => void;
 }) {
+  const i18n = useI18n();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/";
 
@@ -52,7 +49,9 @@ export function AuthForm({
     setEmailLoading(false);
 
     if (res?.error) {
-      setError("Couldn't send the link. Please try again.");
+      setError(
+        i18n.resolve("auth.send_link_error", "Couldn't send the link. Please try again.").text,
+      );
       return;
     }
 
@@ -85,7 +84,7 @@ export function AuthForm({
       {onClose ? (
         <button
           type="button"
-          aria-label="Close"
+          aria-label={i18n.resolve("auth.close", "Close").text}
           onClick={onClose}
           className="absolute right-4 top-4 rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
@@ -94,7 +93,7 @@ export function AuthForm({
       ) : (
         <Link
           href="/"
-          aria-label="Close"
+          aria-label={i18n.resolve("auth.close", "Close").text}
           className="absolute right-4 top-4 rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
           <X className="size-5" />
@@ -104,8 +103,12 @@ export function AuthForm({
       <div className="flex flex-col items-center gap-3 pb-6 text-center">
         <BrandLogo compact className="h-10 w-auto" />
         <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight">{heading}</h1>
-          <p className="text-sm text-muted-foreground">{description}</p>
+          <h1 className="text-xl font-semibold tracking-tight">
+            <Tx k="auth.heading" source="Log in or sign up" />
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            <Tx k="auth.description" source="Holiday homes and stays" />
+          </p>
         </div>
       </div>
 
@@ -122,10 +125,16 @@ export function AuthForm({
               <MailCheck className="size-7" />
             </div>
             <div className="space-y-1">
-              <p className="text-sm font-medium">Check your inbox</p>
+              <p className="text-sm font-medium">
+                <Tx k="auth.check_inbox" source="Check your inbox" />
+              </p>
               <p className="text-sm text-muted-foreground">
-                We sent a sign-in link to <span className="font-medium text-foreground">{sentTo}</span>.
-                It may take a minute to arrive — check spam too.
+                {i18n
+                  .resolve(
+                    "auth.email_sent_detail",
+                    "We sent a sign-in link to {email}. It may take a minute to arrive — check spam too.",
+                  )
+                  .text.replace("{email}", sentTo)}
               </p>
             </div>
             <Button
@@ -136,10 +145,12 @@ export function AuthForm({
               onClick={() => sendMagicLink(sentTo)}
             >
               {emailLoading
-                ? "Sending…"
+                ? i18n.resolve("auth.sending", "Sending…").text
                 : cooldown > 0
-                  ? `Resend link (${cooldown}s)`
-                  : "Resend link"}
+                  ? i18n
+                      .resolve("auth.resend_with_seconds", "Resend link ({seconds}s)")
+                      .text.replace("{seconds}", String(cooldown))
+                  : i18n.resolve("auth.resend", "Resend link").text}
             </Button>
             <button
               type="button"
@@ -149,7 +160,7 @@ export function AuthForm({
                 setError(null);
               }}
             >
-              Use a different email
+              <Tx k="auth.use_different_email" source="Use a different email" />
             </button>
           </div>
         ) : (
@@ -162,7 +173,9 @@ export function AuthForm({
               onClick={handleGoogle}
             >
               <GoogleIcon className="size-4 shrink-0" />
-              {googleLoading ? "Redirecting…" : "Continue with Google"}
+              {googleLoading
+                ? i18n.resolve("auth.redirecting", "Redirecting…").text
+                : i18n.resolve("auth.continue_google", "Continue with Google").text}
             </Button>
 
             <div className="relative">
@@ -170,20 +183,22 @@ export function AuthForm({
                 <span className="w-full border-t" />
               </div>
               <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">or</span>
+                <span className="bg-card px-2 text-muted-foreground">
+                  <Tx k="auth.or" source="or" />
+                </span>
               </div>
             </div>
 
             <form onSubmit={handleEmailSubmit} className="space-y-3">
               <div className="space-y-2">
                 <Label htmlFor="email" className="sr-only">
-                  Email
+                  <Tx k="auth.email_label" source="Email" />
                 </Label>
                 <Input
                   id="email"
                   name="email"
                   type="email"
-                  placeholder="Email address"
+                  placeholder={i18n.resolve("auth.email_address", "Email address").text}
                   required
                   autoComplete="email"
                   className="h-12 rounded-xl px-4"
@@ -194,7 +209,9 @@ export function AuthForm({
                 className="w-full h-12 rounded-xl font-medium"
                 disabled={emailLoading}
               >
-                {emailLoading ? "Sending…" : "Continue with email"}
+                {emailLoading
+                  ? i18n.resolve("auth.sending", "Sending…").text
+                  : i18n.resolve("auth.continue_email", "Continue with email").text}
               </Button>
             </form>
           </>
@@ -228,10 +245,5 @@ function GoogleIcon({ className }: { className?: string }) {
 }
 
 export function LoginForm() {
-  return (
-    <AuthForm
-      heading="Log in or sign up"
-      description={BRAND_TAGLINE}
-    />
-  );
+  return <AuthForm />;
 }
