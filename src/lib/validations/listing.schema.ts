@@ -12,6 +12,9 @@ export const listingFormSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters").max(100),
   description: z.string().min(20, "Description must be at least 20 characters").max(5000),
   propertyType: z.string().min(1, "Property type is required"),
+  spaceType: z
+    .enum(["ENTIRE_PLACE", "PRIVATE_ROOM", "SHARED_ROOM", "HOTEL_ROOM"])
+    .default("ENTIRE_PLACE"),
   address: z.string().min(3, "Address is required"),
   city: z.string().min(2, "City is required"),
   area: z.string().optional(),

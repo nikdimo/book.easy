@@ -5,6 +5,52 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Fast deploy promises never to change the database, and the VPS enforces that with
+# `prisma migrate status`. That remote check alone is not sufficient, because a new
+# migration directory is usually still untracked when it is first created: `git ls-files`
+# would leave it out of the archive while shipping the tracked, already-edited
+# schema.prisma. The VPS would then generate a client with the new fields, find no new
+# migration to apply, report the schema as current, and serve code that queries columns
+# production does not have. So refuse here on any schema change at all - staged,
+# unstaged, or untracked - and send it to option 5, which migrates properly.
+$prismaBlockers = New-Object System.Collections.Generic.List[string]
+
+# core.safecrlf=false only silences this read-only comparison's per-file LF/CRLF
+# notices, which would otherwise print once per git invocation and bury the result.
+# It changes no file and no Git configuration.
+& git rev-parse --verify --quiet origin/main *> $null
+if ($LASTEXITCODE -eq 0) {
+    & git -c core.safecrlf=false diff --quiet origin/main -- prisma/schema.prisma prisma/migrations
+    if ($LASTEXITCODE -eq 1) {
+        $changed = @(git -c core.safecrlf=false diff --name-only origin/main -- prisma/schema.prisma prisma/migrations)
+        foreach ($entry in $changed) { $prismaBlockers.Add("  $entry   (differs from origin/main)") }
+    } elseif ($LASTEXITCODE -gt 1) {
+        throw "Could not compare the Prisma schema against origin/main. Use option 5."
+    }
+}
+
+$untrackedPrisma = @(git ls-files --others --exclude-standard -- prisma)
+foreach ($entry in $untrackedPrisma) { $prismaBlockers.Add("  $entry   (new, not in Git)") }
+
+if ($prismaBlockers.Count -gt 0) {
+    $newline = [Environment]::NewLine
+    Write-Host ""
+    Write-Host "  This change touches the database schema:"
+    Write-Host (($prismaBlockers | Sort-Object -Unique) -join $newline)
+    Write-Host ""
+    Write-Host "  Fast deploy never migrates, so it cannot ship this change safely."
+    Write-Host "  Use option 5 (full release). It backs up the database, applies the"
+    Write-Host "  migrations, and runs every check."
+    Write-Host ""
+    Write-Host "  Nothing was uploaded and production was not contacted."
+    Write-Host ""
+    # `exit` rather than `throw`: this is an expected, deliberate refusal, and a thrown
+    # terminating error would print a PowerShell exception dump that makes a working
+    # safety check look like a crashed script. The non-zero code still fails the
+    # control panel's `if errorlevel 1` check.
+    exit 1
+}
+
 $deletedFiles = @(
     git diff --name-only --diff-filter=D --
     git diff --cached --name-only --diff-filter=D --
@@ -112,17 +158,22 @@ foreach ($sourceFile in ($trackedFiles | Where-Object { $_ -match '^src/.*\.(ts|
 }
 
 if ($unresolvedImports.Count -gt 0) {
+    # Print the detail with Write-Host and keep the thrown message to a single line.
+    # A multi-line throw is echoed twice by PowerShell - once as the message and again
+    # inside the FullyQualifiedErrorId dump - with the second copy hard-wrapped and
+    # interleaved, which made the real list hard to read in the control panel.
     $newline = [Environment]::NewLine
-    $details = ($unresolvedImports | Sort-Object -Unique) -join $newline
-    throw @"
-Deploy would ship an incomplete file set - the VPS build would fail with "Module not found".
-
-$details
-
-Files marked "exists locally but is not in Git" are new files you have not staged yet.
-Only Git-tracked files are uploaded, so run `git add` on them and try again.
-Nothing was uploaded and production was not contacted.
-"@
+    Write-Host ""
+    Write-Host "  These imports would not resolve on the VPS:"
+    Write-Host (($unresolvedImports | Sort-Object -Unique) -join $newline)
+    Write-Host ""
+    Write-Host "  Files marked ""exists locally but is not in Git"" are new files you have"
+    Write-Host "  not staged yet. Only Git-tracked files are uploaded, so stage them with"
+    Write-Host "  git add and try again."
+    Write-Host ""
+    Write-Host "  Nothing was uploaded and production was not contacted."
+    Write-Host ""
+    exit 1
 }
 
 if (Test-Path -LiteralPath $ArchivePath) {

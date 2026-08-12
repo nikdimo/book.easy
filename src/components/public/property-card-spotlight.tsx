@@ -7,6 +7,7 @@ import { PropertyCardSpotlightMedia } from "@/components/public/property-card-sp
 import { localizePlaceName } from "@/lib/i18n/place-name";
 import { Moon, UserRound } from "lucide-react";
 import { splitDescriptionPreviewTiers } from "@/lib/utils/description-preview";
+import { listingSpaceTypeLabel } from "@/lib/types/listing-space-type";
 
 interface PropertyCardSpotlightProps {
   listing: ListingCardSerialized;
@@ -41,6 +42,10 @@ export async function PropertyCardSpotlight({
   const [main, ...rest] = displayImages;
   const sideImages = rest.slice(0, 2);
   const typeLabel = await getPropertyTypeLabel(property.propertyType);
+  const displayTypeLabel =
+    listing.spaceType !== "ENTIRE_PLACE"
+      ? listingSpaceTypeLabel(listing.spaceType)
+      : typeLabel;
   const guests = tPlural(
     t,
     "listing.guests",
@@ -137,7 +142,7 @@ export async function PropertyCardSpotlight({
             k="property_card.type_in_city"
             source="{type} in {city}"
             values={{
-              type: typeLabel,
+              type: displayTypeLabel,
               city: localizePlaceName(property.city, t.locale),
             }}
             protectedValues={["city"]}

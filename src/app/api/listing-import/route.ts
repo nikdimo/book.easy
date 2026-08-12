@@ -12,6 +12,9 @@ import {
 import { getStorageAdapter } from "@/lib/storage";
 import { AMENITIES_TAG } from "@/lib/services/amenity.service";
 import { isSupportedCurrency } from "@/lib/currency/currencies";
+import { normalizeListingSpaceType } from "@/lib/types/listing-space-type";
+import { reverseGeocode } from "@/lib/services/location.service";
+import { normalizeAmenityName } from "@/lib/amenities/normalize";
 
 export const runtime = "nodejs";
 
@@ -43,9 +46,7 @@ const AMENITY_ALIASES: Record<string, string> = {
   wirelessinternet: "Wi-Fi",
 };
 
-function amenityKey(value: string): string {
-  return value.normalize("NFKD").replace(/[^a-z0-9]+/gi, "").toLowerCase();
-}
+const amenityKey = normalizeAmenityName;
 
 function cleanAmenity(value: string): string | null {
   const cleaned = value
@@ -128,23 +129,54 @@ export async function POST(request: Request) {
     );
   }
 
+  // Airbnb and its peers never publish a street address, postcode, or neighbourhood —
+  // only an approximate pin. Reverse-geocoding that pin fills the administrative parts
+  // of the Address step so the host confirms them instead of typing them from scratch.
+  // The street line stays empty on purpose: the pin is offset by design, so a house
+  // number taken from it would look authoritative while being wrong.
+  const geocoded = imported.latitude !== undefined && imported.longitude !== undefined
+    && (!imported.city || !imported.postalCode || !imported.area)
+    ? await reverseGeocode({
+        latitude: imported.latitude,
+        longitude: imported.longitude,
+      }).catch(() => null)
+    : null;
+
   const mediaItems = await copyImportedImages(imported.imageUrls);
   const storage = getStorageAdapter();
   try {
-    const [existingAmenities, propertyTypes] = await Promise.all([
+    const [existingAmenities, savedAliases, propertyTypes] = await Promise.all([
       db.amenity.findMany(),
+      db.amenityAlias.findMany({
+        where: { provider: imported.provider },
+        include: { amenity: true },
+      }),
       db.propertyType.findMany({
         where: { isActive: true },
         select: { value: true, label: true },
       }),
     ]);
     const existingByKey = new Map(existingAmenities.map((amenity) => [amenityKey(amenity.name), amenity]));
+    const aliasesByKey = new Map(
+      savedAliases.map((alias) => [alias.normalizedName, alias.amenity]),
+    );
     const names = [...new Set(imported.amenities.map(cleanAmenity).filter((name): name is string => Boolean(name)))];
 
     const result = await db.$transaction(async (transaction) => {
       const amenityIds: string[] = [];
       let createdAmenities = 0;
       for (const name of names) {
+        const savedAlias = aliasesByKey.get(amenityKey(name));
+        if (savedAlias) {
+          amenityIds.push(savedAlias.id);
+          if (!savedAlias.isActive) {
+            await transaction.amenity.update({
+              where: { id: savedAlias.id },
+              data: { isActive: true },
+            });
+          }
+          continue;
+        }
         const aliasName = AMENITY_ALIASES[amenityKey(name)] ?? name;
         const existing = existingByKey.get(amenityKey(aliasName));
         if (existing) {
@@ -174,11 +206,12 @@ export async function POST(request: Request) {
         title: imported.title?.slice(0, 100) ?? "",
         description: imported.description?.slice(0, 5_000) ?? "",
         propertyType: matchPropertyType(imported.propertyType, propertyTypes),
+        spaceType: normalizeListingSpaceType(imported.spaceType),
         address: imported.address ?? "",
-        city: imported.city ?? "",
-        area: imported.area ?? "",
-        postalCode: imported.postalCode?.slice(0, 20) ?? "",
-        country: imported.country ?? "",
+        city: imported.city ?? geocoded?.city ?? "",
+        area: imported.area ?? geocoded?.area ?? "",
+        postalCode: (imported.postalCode ?? geocoded?.postalCode)?.slice(0, 20) ?? "",
+        country: imported.country ?? geocoded?.country ?? "",
         latitude: hasCoordinates ? String(imported.latitude) : "",
         longitude: hasCoordinates ? String(imported.longitude) : "",
         locationSource: hasCoordinates ? "import" : "",

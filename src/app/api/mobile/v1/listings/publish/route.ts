@@ -18,6 +18,7 @@ const TEXT_FIELDS = [
   "title",
   "description",
   "propertyType",
+  "spaceType",
   "address",
   "city",
   "area",

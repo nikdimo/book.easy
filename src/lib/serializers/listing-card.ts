@@ -11,6 +11,7 @@ export type ListingCardSerialized = {
   maxGuests: number;
   bedrooms: number;
   bathrooms: number;
+  spaceType: "ENTIRE_PLACE" | "PRIVATE_ROOM" | "SHARED_ROOM" | "HOTEL_ROOM";
   property: {
     city: string;
     area?: string | null;
@@ -73,6 +74,7 @@ export const listingCardSelect = {
   maxGuests: true,
   bedrooms: true,
   bathrooms: true,
+  spaceType: true,
   property: {
     select: {
       city: true,
@@ -125,6 +127,7 @@ export function serializeListingCard(
     maxGuests: listing.maxGuests,
     bedrooms: listing.bedrooms,
     bathrooms: listing.bathrooms,
+    spaceType: listing.spaceType,
     property: {
       city: listing.property.city,
       area: listing.property.area,

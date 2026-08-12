@@ -13,6 +13,7 @@ export interface ListingDraftData {
   title?: string;
   description?: string;
   propertyType?: string;
+  spaceType?: "ENTIRE_PLACE" | "PRIVATE_ROOM" | "SHARED_ROOM" | "HOTEL_ROOM";
   address?: string;
   city?: string;
   area?: string;

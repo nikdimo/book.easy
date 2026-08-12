@@ -25,6 +25,7 @@ const mobileListingDraftPatchSchema = z
     title: z.string().max(100).optional(),
     description: z.string().max(5000).optional(),
     propertyType: z.string().max(100).optional(),
+    spaceType: z.enum(["ENTIRE_PLACE", "PRIVATE_ROOM", "SHARED_ROOM", "HOTEL_ROOM"]).optional(),
     maxGuests: draftString.optional(),
     bedrooms: draftString.optional(),
     beds: draftString.optional(),

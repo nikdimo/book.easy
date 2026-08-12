@@ -15,6 +15,7 @@ import {
   parseLocalYmd,
   type StayPromotion,
 } from "@/lib/utils/stay-pricing";
+import { listingSpaceTypeLabel } from "@/lib/types/listing-space-type";
 
 interface PropertyCardProps {
   listing: {
@@ -24,6 +25,7 @@ interface PropertyCardProps {
     maxGuests: number;
     bedrooms: number;
     bathrooms: number;
+    spaceType?: "ENTIRE_PLACE" | "PRIVATE_ROOM" | "SHARED_ROOM" | "HOTEL_ROOM";
     property: {
       city: string;
       area?: string | null;
@@ -68,6 +70,10 @@ export async function PropertyCard({
   const displayImages = images.filter((img) => img.url?.trim());
   const city = localizePlaceName(property.city, t.locale);
   const typeLabel = await getPropertyTypeLabel(property.propertyType);
+  const displayTypeLabel =
+    listing.spaceType && listing.spaceType !== "ENTIRE_PLACE"
+      ? listingSpaceTypeLabel(listing.spaceType)
+      : typeLabel;
   const href = `/properties/${slug}${searchQuery ? `?${searchQuery}` : ""}`;
 
   const session = await auth();
@@ -212,7 +218,7 @@ export async function PropertyCard({
               t={t}
               k="property_card.type_in_city"
               source="{type} in {city}"
-              values={{ type: typeLabel, city }}
+              values={{ type: displayTypeLabel, city }}
               protectedValues={["city"]}
             />
           </h3>

@@ -1,0 +1,10 @@
+CREATE TYPE "ListingSpaceType" AS ENUM (
+  'ENTIRE_PLACE',
+  'PRIVATE_ROOM',
+  'SHARED_ROOM',
+  'HOTEL_ROOM'
+);
+
+ALTER TABLE "Listing"
+ADD COLUMN "spaceType" "ListingSpaceType" NOT NULL DEFAULT 'ENTIRE_PLACE';
+

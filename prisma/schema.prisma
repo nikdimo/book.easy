@@ -513,6 +513,9 @@ model Listing {
   title          String
   slug           String        @unique
   description    String
+  /** What the guest exclusively books. Kept separate from Property.propertyType:
+   * a private room can be inside a house, apartment, villa, or hotel. */
+  spaceType      ListingSpaceType @default(ENTIRE_PLACE)
   status         ListingStatus @default(DRAFT)
   maxGuests      Int
   bedrooms       Int
@@ -574,6 +577,13 @@ model Listing {
   @@index([status])
   @@index([slug])
   @@index([status, popularityScore])
+}
+
+enum ListingSpaceType {
+  ENTIRE_PLACE
+  PRIVATE_ROOM
+  SHARED_ROOM
+  HOTEL_ROOM
 }
 
 /**
@@ -649,8 +659,25 @@ model Amenity {
   createdAt DateTime @default(now())
 
   listings ListingAmenity[]
+  aliases  AmenityAlias[]
 
   @@index([isActive])
+}
+
+/** Provider-specific labels that resolve to one canonical Linger Homes amenity. */
+model AmenityAlias {
+  id             String   @id @default(cuid())
+  provider       String
+  providerName   String
+  normalizedName String
+  amenityId      String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  amenity Amenity @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, normalizedName])
+  @@index([amenityId])
 }
 
 /**

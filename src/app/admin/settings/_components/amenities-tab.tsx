@@ -6,7 +6,12 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { addAmenity, toggleAmenityActive } from "@/lib/actions/amenity.actions";
+import {
+  addAmenity,
+  mergeAmenities,
+  saveAmenityAlias,
+  toggleAmenityActive,
+} from "@/lib/actions/amenity.actions";
 import { AMENITY_CATEGORIES } from "@/lib/constants";
 
 interface AmenityRow {
@@ -14,6 +19,7 @@ interface AmenityRow {
   name: string;
   category: string;
   isActive: boolean;
+  aliases: { id: string; provider: string; providerName: string }[];
 }
 
 export function AmenitiesTab({ amenities }: { amenities: AmenityRow[] }) {
@@ -21,6 +27,9 @@ export function AmenitiesTab({ amenities }: { amenities: AmenityRow[] }) {
   const [isPending, startTransition] = useTransition();
   const [newName, setNewName] = useState("");
   const [newCategory, setNewCategory] = useState<string>(AMENITY_CATEGORIES[0]);
+  const [aliasProvider, setAliasProvider] = useState("AIRBNB");
+  const [aliasName, setAliasName] = useState("");
+  const [aliasTargetId, setAliasTargetId] = useState(amenities[0]?.id ?? "");
 
   const grouped = useMemo(() => {
     const categories = new Map<string, AmenityRow[]>();
@@ -47,6 +56,34 @@ export function AmenitiesTab({ amenities }: { amenities: AmenityRow[] }) {
       else {
         toast.success(`${newName.trim()} added`);
         setNewName("");
+        router.refresh();
+      }
+    });
+  }
+
+  function handleAlias() {
+    startTransition(async () => {
+      const result = await saveAmenityAlias(aliasProvider, aliasName, aliasTargetId);
+      if (result?.error) toast.error(result.error);
+      else {
+        toast.success("Amenity mapping saved for future imports");
+        setAliasName("");
+        router.refresh();
+      }
+    });
+  }
+
+  function handleMerge(sourceId: string, targetId: string) {
+    const source = amenities.find((amenity) => amenity.id === sourceId);
+    const target = amenities.find((amenity) => amenity.id === targetId);
+    if (!source || !target || !window.confirm(
+      `Merge "${source.name}" into "${target.name}"? Existing listings and aliases will move to "${target.name}".`,
+    )) return;
+    startTransition(async () => {
+      const result = await mergeAmenities(sourceId, targetId, aliasProvider);
+      if (result?.error) toast.error(result.error);
+      else if ("sourceName" in result && result.sourceName && result.targetName) {
+        toast.success(`${result.sourceName} merged into ${result.targetName}`);
         router.refresh();
       }
     });
@@ -83,6 +120,47 @@ export function AmenitiesTab({ amenities }: { amenities: AmenityRow[] }) {
         </Button>
       </div>
 
+      <div className="space-y-3 rounded-2xl border bg-muted/20 p-4">
+        <div>
+          <p className="text-sm font-semibold">Provider amenity mapping</p>
+          <p className="text-xs text-muted-foreground">
+            Map a provider label once and all future imports will use the selected Linger amenity.
+          </p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-[130px_1fr_1fr_auto]">
+          <select
+            value={aliasProvider}
+            onChange={(event) => setAliasProvider(event.target.value)}
+            className="flex h-9 rounded-lg border border-input bg-background px-3 text-sm"
+          >
+            <option value="AIRBNB">Airbnb</option>
+            <option value="BOOKING">Booking.com</option>
+            <option value="VRBO">Vrbo</option>
+          </select>
+          <Input
+            value={aliasName}
+            onChange={(event) => setAliasName(event.target.value)}
+            placeholder='Provider name, e.g. "Smoke alarm"'
+          />
+          <select
+            value={aliasTargetId}
+            onChange={(event) => setAliasTargetId(event.target.value)}
+            className="flex h-9 rounded-lg border border-input bg-background px-3 text-sm"
+          >
+            {amenities.map((amenity) => (
+              <option key={amenity.id} value={amenity.id}>{amenity.name}</option>
+            ))}
+          </select>
+          <Button
+            variant="secondary"
+            disabled={isPending || aliasName.trim().length < 2 || !aliasTargetId}
+            onClick={handleAlias}
+          >
+            Save mapping
+          </Button>
+        </div>
+      </div>
+
       <div className="space-y-6">
         {Array.from(grouped.entries()).map(([category, rows]) => {
           const active = rows.filter((r) => r.isActive);
@@ -102,6 +180,8 @@ export function AmenitiesTab({ amenities }: { amenities: AmenityRow[] }) {
                       amenity={amenity}
                       isPending={isPending}
                       onToggle={() => handleToggle(amenity.id)}
+                      amenities={amenities}
+                      onMerge={(targetId) => handleMerge(amenity.id, targetId)}
                     />
                   ))}
                   {active.length === 0 && (
@@ -124,6 +204,8 @@ export function AmenitiesTab({ amenities }: { amenities: AmenityRow[] }) {
                         amenity={amenity}
                         isPending={isPending}
                         onToggle={() => handleToggle(amenity.id)}
+                        amenities={amenities}
+                        onMerge={(targetId) => handleMerge(amenity.id, targetId)}
                       />
                     ))}
                   </div>
@@ -141,20 +223,53 @@ function AmenityRowItem({
   amenity,
   isPending,
   onToggle,
+  amenities,
+  onMerge,
 }: {
   amenity: AmenityRow;
   isPending: boolean;
   onToggle: () => void;
+  amenities: AmenityRow[];
+  onMerge: (targetId: string) => void;
 }) {
+  const [mergeTargetId, setMergeTargetId] = useState("");
   return (
-    <div className="flex items-center justify-between rounded-[1.25rem] border border-border/60 bg-background/92 px-4 py-2.5 shadow-sm">
-      <div className="flex items-center gap-3">
-        <Checkbox checked={amenity.isActive} disabled={isPending} onCheckedChange={onToggle} />
-        <span className="text-sm font-medium">{amenity.name}</span>
+    <div className="rounded-[1.25rem] border border-border/60 bg-background/92 px-4 py-2.5 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Checkbox checked={amenity.isActive} disabled={isPending} onCheckedChange={onToggle} />
+          <span className="text-sm font-medium">{amenity.name}</span>
+        </div>
+        <span className="text-xs text-muted-foreground">
+          {amenity.isActive ? "Active" : "Hidden"}
+        </span>
       </div>
-      <span className="text-xs text-muted-foreground">
-        {amenity.isActive ? "Active" : "Hidden"}
-      </span>
+      {amenity.aliases.length > 0 && (
+        <p className="mt-1 pl-7 text-xs text-muted-foreground">
+          {amenity.aliases.map((alias) => `${alias.provider}: ${alias.providerName}`).join(" · ")}
+        </p>
+      )}
+      <div className="mt-2 flex gap-2 pl-7">
+        <select
+          aria-label={`Merge ${amenity.name} into`}
+          value={mergeTargetId}
+          onChange={(event) => setMergeTargetId(event.target.value)}
+          className="h-8 min-w-0 flex-1 rounded-lg border border-input bg-background px-2 text-xs"
+        >
+          <option value="">Merge duplicate into…</option>
+          {amenities.filter((candidate) => candidate.id !== amenity.id).map((candidate) => (
+            <option key={candidate.id} value={candidate.id}>{candidate.name}</option>
+          ))}
+        </select>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={isPending || !mergeTargetId}
+          onClick={() => onMerge(mergeTargetId)}
+        >
+          Merge
+        </Button>
+      </div>
     </div>
   );
 }

@@ -7,6 +7,7 @@ const MOBILE_LISTING_EDITOR_TEXT_FIELDS = [
   "title",
   "description",
   "propertyType",
+  "spaceType",
   "address",
   "city",
   "area",

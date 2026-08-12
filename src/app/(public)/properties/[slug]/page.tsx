@@ -32,6 +32,7 @@ import { auth } from "@/lib/auth";
 import { getFavoriteListingIdSet } from "@/lib/services/favorite.service";
 import { getT, T, ti, tPlural } from "@/lib/i18n/t";
 import { getPriceFormatter } from "@/lib/currency/price";
+import { listingSpaceTypeLabel } from "@/lib/types/listing-space-type";
 import type { Metadata } from "next";
 import { getPublishedListingReviews } from "@/lib/services/review.service";
 
@@ -206,6 +207,7 @@ export default async function ListingDetailPage({
     listing.property.area,
     listing.property.country,
   ].filter((value): value is string => Boolean(value));
+  const spaceTypeLabel = listingSpaceTypeLabel(listing.spaceType);
   const bookingWidget = listing.pricingRule ? (
     <BookingWidget
       listingId={listing.id}
@@ -262,6 +264,11 @@ export default async function ListingDetailPage({
                building, so it is held back until the host has confirmed a booking and
                arrival is close — see canSeeExactLocation and the guest's booking
                detail page. Public visitors get the area, not the front door. */}
+            {spaceTypeLabel && (
+              <Badge className="font-normal rounded-md">
+                {spaceTypeLabel}
+              </Badge>
+            )}
             {typeLabel && (
               <>
                 <span className="text-muted-foreground hidden sm:inline">

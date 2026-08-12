@@ -5,6 +5,7 @@ export type HostListingFormData = {
   id: string;
   title: string;
   description: string;
+  spaceType: "ENTIRE_PLACE" | "PRIVATE_ROOM" | "SHARED_ROOM" | "HOTEL_ROOM";
   maxGuests: number;
   bedrooms: number;
   bathrooms: number;
@@ -53,6 +54,7 @@ export function serializeHostListingForForm(
     id: listing.id,
     title: listing.title,
     description: listing.description,
+    spaceType: listing.spaceType,
     maxGuests: listing.maxGuests,
     bedrooms: listing.bedrooms,
     bathrooms: listing.bathrooms,

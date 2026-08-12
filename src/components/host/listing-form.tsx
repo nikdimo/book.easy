@@ -90,6 +90,11 @@ import type { HostListingFormData } from "@/lib/serializers/host-listing-form";
 import type { ListingMediaItem } from "@/lib/types/listing-media";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 import type { ListingDraftData } from "@/lib/types/listing-draft";
+import {
+  LISTING_SPACE_TYPES,
+  listingSpaceTypeLabel,
+  normalizeListingSpaceType,
+} from "@/lib/types/listing-space-type";
 import { PropertyTypeIcon } from "@/components/shared/property-type-icon";
 import { cn } from "@/lib/utils";
 import { currencyDecimals } from "@/lib/currency/currencies";
@@ -122,6 +127,7 @@ type ListingFormValues = {
   title: string;
   description: string;
   propertyType: string;
+  spaceType: string;
   address: string;
   city: string;
   area: string;
@@ -238,6 +244,7 @@ function listingInitialValues(
       title: listing.title,
       description: listing.description,
       propertyType: listing.property.propertyType,
+      spaceType: listing.spaceType,
       address: listing.property.address,
       city: listing.property.city,
       area: listing.property.area ?? "",
@@ -301,6 +308,11 @@ function listingInitialValues(
     title: draft?.title ?? "",
     description: draft?.description ?? "",
     propertyType: draft?.propertyType ?? "",
+    // Drafts imported before spaceType became a first-class field still retain the
+    // provider's raw value, so reopening one should immediately recover "Private room"
+    // instead of silently falling back to an entire place.
+    spaceType:
+      draft?.spaceType ?? normalizeListingSpaceType(draft?.importSpaceType),
     address: draft?.address ?? "",
     city: draft?.city ?? "",
     area: draft?.area ?? "",
@@ -366,6 +378,7 @@ const FIELD_VALIDATORS: Partial<Record<keyof ListingFormValues, (value: string) 
         ? "Description must be 5,000 characters or fewer"
         : null,
   propertyType: (v) => (v ? null : "Property type is required"),
+  spaceType: (v) => (v ? null : "Choose what guests will book"),
   address: (v) => (v.trim().length < 3 ? "Address is required" : null),
   city: (v) => (v.trim().length < 2 ? "City is required" : null),
   country: (v) => (v.trim().length < 2 ? "Country is required" : null),
@@ -409,7 +422,7 @@ type ListingStepIssue = {
  *  there. Pricing is the fallback because that's where the remaining validated fields
  *  (rate, cleaning fee, minimum stay) are. */
 function stepForField(field: string) {
-  if (field === "propertyType") return LISTING_STEP.propertyType;
+  if (field === "propertyType" || field === "spaceType") return LISTING_STEP.propertyType;
   if (["latitude", "longitude", "locationSource"].includes(field)) {
     return LISTING_STEP.location;
   }
@@ -436,7 +449,7 @@ function listingStepIssues(
   uploadActive: boolean
 ): ListingStepIssue[] {
   const fieldsByStep: Partial<Record<number, (keyof ListingFormValues)[]>> = {
-    [LISTING_STEP.propertyType]: ["propertyType"],
+    [LISTING_STEP.propertyType]: ["spaceType", "propertyType"],
     [LISTING_STEP.address]: ["address", "city", "country"],
     [LISTING_STEP.details]: ["maxGuests", "bedrooms", "beds", "bathrooms"],
     [LISTING_STEP.description]: ["title", "description"],
@@ -1116,6 +1129,7 @@ export function ListingForm({
   }
 
   const typeLabel = propertyTypes.find((type) => type.value === values.propertyType)?.label;
+  const spaceTypeLabel = listingSpaceTypeLabel(values.spaceType);
   const guests = toPositiveNumber(values.maxGuests, 0);
   const bedrooms = toPositiveNumber(values.bedrooms, 0);
   const beds = toPositiveNumber(values.beds, 0);
@@ -1136,6 +1150,7 @@ export function ListingForm({
       title: values.title,
       description: values.description,
       propertyType: values.propertyType,
+      spaceType: values.spaceType,
       address: values.address,
       city: values.city,
       area: values.area || undefined,
@@ -1500,6 +1515,7 @@ export function ListingForm({
           here keeps them in the FormData from wherever the host happens to save. */}
       <input type="hidden" name="checkInTime" value={values.checkInTime} />
       <input type="hidden" name="checkOutTime" value={values.checkOutTime} />
+      <input type="hidden" name="spaceType" value={values.spaceType} />
       {state?.error && !isEditing && (
         <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
           {state.error}
@@ -1898,6 +1914,44 @@ export function ListingForm({
             </div>
             <div className={showEditSections || onCreateStep(LISTING_STEP.propertyType) ? "space-y-3" : "hidden"}>
               {!isEditing && !initialDraftId && <ListingImportPanel />}
+              <div className="space-y-2">
+                <Label id="space-type-label">
+                  <Tx k="host.form.space_type_label" source="What will guests book?" />
+                </Label>
+                <div
+                  role="radiogroup"
+                  aria-labelledby="space-type-label"
+                  className="grid grid-cols-2 gap-2"
+                >
+                  {LISTING_SPACE_TYPES.map((option) => {
+                    const selected = values.spaceType === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        onClick={() => {
+                          setField("spaceType", option.value);
+                          setFieldErrors((current) => ({ ...current, spaceType: "" }));
+                          setTimeout(() => void autosaveDraft(), 0);
+                        }}
+                        className={cn(
+                          "rounded-xl border bg-background px-3 py-3 text-left shadow-sm transition-colors hover:border-primary/50",
+                          selected && "border-primary bg-primary/6 ring-1 ring-primary",
+                        )}
+                      >
+                        <span className="block text-sm font-semibold">{option.label}</span>
+                        <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">
+                          {option.description}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <FieldError message={fieldErrors.spaceType} />
+              </div>
+              <Separator />
               <Label
                 id="property-type-label"
                 className={isEditing ? undefined : "sr-only md:not-sr-only"}
@@ -3097,6 +3151,7 @@ export function ListingForm({
               title={values.title || FALLBACK_TITLE}
               description={values.description || FALLBACK_DESCRIPTION}
               typeLabel={typeLabel}
+              spaceTypeLabel={spaceTypeLabel}
               locationLine={locationLine}
               mediaItems={mediaItems}
               guests={guests}
@@ -3966,6 +4021,7 @@ function ListingGuestPreview({
   title,
   description,
   typeLabel,
+  spaceTypeLabel,
   locationLine,
   mediaItems,
   guests,
@@ -3979,6 +4035,7 @@ function ListingGuestPreview({
   title: string;
   description: string;
   typeLabel?: string;
+  spaceTypeLabel: string;
   locationLine: string;
   mediaItems: ListingMediaItem[];
   guests: number;
@@ -4008,6 +4065,11 @@ function ListingGuestPreview({
                 <MapPin className="h-4 w-4 shrink-0" />
                 <span className="truncate">{locationLine}</span>
               </span>
+              {spaceTypeLabel && (
+                <Badge className="rounded-md font-normal">
+                  {spaceTypeLabel}
+                </Badge>
+              )}
               {typeLabel && (
                 <Badge variant="secondary" className="rounded-md font-normal">
                   {typeLabel}

@@ -3005,6 +3005,11 @@
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
+    "key": "host.form.space_type_label",
+    "sourceText": "What will guests book?",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
     "key": "host.form.stay_times.check_in",
     "sourceText": "Check-in from",
     "filePath": "src/components/host/listing-stay-times.tsx"

@@ -20,6 +20,7 @@ export const getActiveAmenities = unstable_cache(
 /** Full catalog including soft-hidden rows, for the admin Settings tab. */
 export async function getAllAmenitiesForAdmin() {
   return db.amenity.findMany({
+    include: { aliases: { orderBy: [{ provider: "asc" }, { providerName: "asc" }] } },
     orderBy: [{ category: "asc" }, { name: "asc" }],
   });
 }
