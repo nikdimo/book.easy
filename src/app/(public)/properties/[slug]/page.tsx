@@ -21,6 +21,8 @@ import {
 import { AmenityList } from "@/components/public/amenity-list";
 import { ListingLocationMap } from "@/components/public/listing-location-map";
 import { BookingWidget } from "@/components/public/booking-widget";
+import { ListingStayProvider } from "@/components/public/listing-stay-context";
+import { ListingAvailabilityCalendar } from "@/components/public/listing-availability-calendar";
 import { ListingActions } from "@/components/public/listing-actions";
 import { ListingViewTracker } from "@/components/public/listing-view-tracker";
 import { getListingBySlug } from "@/lib/services/property.service";
@@ -237,6 +239,15 @@ export default async function ListingDetailPage({
       reserveTooltip={reserveTooltip}
     />
   ) : null;
+  // Airbnb-style: the open nights are on the page itself, so a guest who arrived
+  // without dates can pick them here rather than through the widget's picker.
+  const availabilityCalendar = listing.pricingRule ? (
+    <ListingAvailabilityCalendar
+      placeName={listing.property.city}
+      minNights={listing.pricingRule.minNights}
+      disabledDateRanges={disabledDateRanges}
+    />
+  ) : null;
 
   return (
     <div className="max-w-[1120px] mx-auto px-4 md:px-6 pt-6 md:pt-8 pb-28 lg:pb-8">
@@ -265,9 +276,7 @@ export default async function ListingDetailPage({
                arrival is close — see canSeeExactLocation and the guest's booking
                detail page. Public visitors get the area, not the front door. */}
             {spaceTypeLabel && (
-              <Badge className="font-normal rounded-md">
-                {spaceTypeLabel}
-              </Badge>
+              <Badge className="font-normal rounded-md">{spaceTypeLabel}</Badge>
             )}
             {typeLabel && (
               <>
@@ -291,200 +300,221 @@ export default async function ListingDetailPage({
 
       <ImageGallery images={listing.images} />
 
-      <div className="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-10 lg:gap-14">
-        <div className="lg:col-span-2 space-y-8">
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground pb-2 border-b border-border/80">
-            <span className="flex items-center gap-1.5">
-              <Users className="h-4 w-4" />
-              <span
-                className={guestCount.translated ? "notranslate" : undefined}
-              >
-                {guestCount.text}
-              </span>
-            </span>
-            <span className="flex items-center gap-1.5">
-              <BedDouble className="h-4 w-4" />
-              <span
-                className={bedroomCount.translated ? "notranslate" : undefined}
-              >
-                {bedroomCount.text}
-              </span>
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Bed className="h-4 w-4" />
-              <span className={bedCount.translated ? "notranslate" : undefined}>
-                {bedCount.text}
-              </span>
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Bath className="h-4 w-4" />
-              <span
-                className={bathCount.translated ? "notranslate" : undefined}
-              >
-                {bathCount.text}
-              </span>
-            </span>
-            {stayTimes && (
+      <ListingStayProvider
+        initialCheckIn={initialCheckIn}
+        initialCheckOut={initialCheckOut}
+      >
+        <div className="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-10 lg:gap-14">
+          <div className="lg:col-span-2 space-y-8">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground pb-2 border-b border-border/80">
               <span className="flex items-center gap-1.5">
-                <Clock className="h-4 w-4" />
-                <span className={stayTimes.translated ? "notranslate" : undefined}>
-                  {stayTimes.text}
+                <Users className="h-4 w-4" />
+                <span
+                  className={guestCount.translated ? "notranslate" : undefined}
+                >
+                  {guestCount.text}
                 </span>
               </span>
-            )}
-            {listing.pricingRule && (
-              <>
+              <span className="flex items-center gap-1.5">
+                <BedDouble className="h-4 w-4" />
+                <span
+                  className={
+                    bedroomCount.translated ? "notranslate" : undefined
+                  }
+                >
+                  {bedroomCount.text}
+                </span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Bed className="h-4 w-4" />
+                <span
+                  className={bedCount.translated ? "notranslate" : undefined}
+                >
+                  {bedCount.text}
+                </span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Bath className="h-4 w-4" />
+                <span
+                  className={bathCount.translated ? "notranslate" : undefined}
+                >
+                  {bathCount.text}
+                </span>
+              </span>
+              {stayTimes && (
                 <span className="flex items-center gap-1.5">
-                  <CalendarDays className="h-4 w-4" />
+                  <Clock className="h-4 w-4" />
                   <span
-                    className={
-                      minimumNights.translated ? "notranslate" : undefined
-                    }
+                    className={stayTimes.translated ? "notranslate" : undefined}
                   >
-                    {minimumNights.text}
+                    {stayTimes.text}
                   </span>
                 </span>
-                <span className="flex items-center gap-1.5">
-                  <Sparkles className="h-4 w-4" />
-                  <span>
+              )}
+              {listing.pricingRule && (
+                <>
+                  <span className="flex items-center gap-1.5">
+                    <CalendarDays className="h-4 w-4" />
                     <span
                       className={
-                        cleaningFeeLabel.translated ? "notranslate" : undefined
+                        minimumNights.translated ? "notranslate" : undefined
                       }
                     >
-                      {cleaningFeeLabel.text}
-                    </span>{" "}
-                    {
-                      price.format(
-                        Number(listing.pricingRule.cleaningFee),
-                        listing.pricingRule.currency,
-                      ).text
-                    }
+                      {minimumNights.text}
+                    </span>
                   </span>
-                </span>
-              </>
-            )}
-          </div>
-
-          <div className="flex items-center gap-4">
-            <Avatar className="h-14 w-14 border-2 border-border">
-              <AvatarFallback className="text-lg font-medium">
-                {hostInitials}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <p
-                className={
-                  hostedBy.translated
-                    ? "notranslate font-semibold"
-                    : "font-semibold"
-                }
-              >
-                {hostedBy.text}
-              </p>
-              {listing.host.profile?.hostBio && (
-                <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                  {listing.host.profile.hostBio}
-                </p>
+                  <span className="flex items-center gap-1.5">
+                    <Sparkles className="h-4 w-4" />
+                    <span>
+                      <span
+                        className={
+                          cleaningFeeLabel.translated
+                            ? "notranslate"
+                            : undefined
+                        }
+                      >
+                        {cleaningFeeLabel.text}
+                      </span>{" "}
+                      {
+                        price.format(
+                          Number(listing.pricingRule.cleaningFee),
+                          listing.pricingRule.currency,
+                        ).text
+                      }
+                    </span>
+                  </span>
+                </>
               )}
             </div>
-          </div>
 
-          <Separator />
+            <div className="flex items-center gap-4">
+              <Avatar className="h-14 w-14 border-2 border-border">
+                <AvatarFallback className="text-lg font-medium">
+                  {hostInitials}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p
+                  className={
+                    hostedBy.translated
+                      ? "notranslate font-semibold"
+                      : "font-semibold"
+                  }
+                >
+                  {hostedBy.text}
+                </p>
+                {listing.host.profile?.hostBio && (
+                  <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
+                    {listing.host.profile.hostBio}
+                  </p>
+                )}
+              </div>
+            </div>
 
-          <div>
-            <h2 className="text-xl font-semibold mb-4">
-              <T t={t} k="listing.about" source="About this space" />
-            </h2>
-            <ExpandableDescription
-              text={listing.description}
-              preservePlaceNames={protectedPlaceNames}
-            />
-          </div>
+            <Separator />
 
-          <Separator />
+            <div>
+              <h2 className="text-xl font-semibold mb-4">
+                <T t={t} k="listing.about" source="About this space" />
+              </h2>
+              <ExpandableDescription
+                text={listing.description}
+                preservePlaceNames={protectedPlaceNames}
+              />
+            </div>
 
-          <AmenityList amenities={listing.amenities} />
+            <Separator />
 
-          {bookingWidget && (
-            <div className="lg:hidden">{bookingWidget}</div>
-          )}
+            <AmenityList amenities={listing.amenities} />
 
-          {listing.property.latitude != null &&
-            listing.property.longitude != null && (
+            {availabilityCalendar && (
               <>
                 <Separator />
-                <ListingLocationMap
-                  listingId={listing.id}
-                  latitude={listing.property.latitude}
-                  longitude={listing.property.longitude}
-                  locationLine={locationLine}
-                />
+                {availabilityCalendar}
               </>
             )}
 
-          {reviewSummary.count > 0 ? (
-            <>
-              <Separator />
-              <section aria-labelledby="guest-reviews-heading">
-                <div className="mb-5 flex flex-wrap items-center gap-3">
-                  <h2
-                    id="guest-reviews-heading"
-                    className="text-xl font-semibold"
-                  >
-                    <T t={t} k="listing.guest_reviews" source="Guest reviews" />
-                  </h2>
-                  {reviewSummary.count >= 3 && reviewSummary.average != null ? (
-                    <span className="flex items-center gap-1 font-semibold">
-                      <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
-                      {reviewSummary.average.toFixed(2)}
-                    </span>
-                  ) : null}
-                  <span className="text-sm text-muted-foreground">
-                    {reviewSummary.count}{" "}
-                    {reviewSummary.count === 1 ? "review" : "reviews"}
-                  </span>
-                </div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {reviewSummary.reviews.map((review) => {
-                    const overall = review.ratings.find(
-                      (rating) => rating.category === "OVERALL",
-                    )?.score;
-                    return (
-                      <article
-                        key={review.id}
-                        className="rounded-xl border p-4"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="font-medium">
-                            {review.author?.name || "BookEasy guest"}
-                          </p>
-                          {overall ? (
-                            <span className="flex items-center gap-1 text-sm font-semibold">
-                              <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
-                              {overall}
-                            </span>
-                          ) : null}
-                        </div>
-                        <p
-                          data-user-generated-content
-                          className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground"
-                        >
-                          {review.publicComment}
-                        </p>
-                      </article>
-                    );
-                  })}
-                </div>
-              </section>
-            </>
-          ) : null}
-        </div>
+            {bookingWidget && <div className="lg:hidden">{bookingWidget}</div>}
 
-        <div className="relative hidden lg:block">
-          {bookingWidget}
+            {listing.property.latitude != null &&
+              listing.property.longitude != null && (
+                <>
+                  <Separator />
+                  <ListingLocationMap
+                    listingId={listing.id}
+                    latitude={listing.property.latitude}
+                    longitude={listing.property.longitude}
+                    locationLine={locationLine}
+                  />
+                </>
+              )}
+
+            {reviewSummary.count > 0 ? (
+              <>
+                <Separator />
+                <section aria-labelledby="guest-reviews-heading">
+                  <div className="mb-5 flex flex-wrap items-center gap-3">
+                    <h2
+                      id="guest-reviews-heading"
+                      className="text-xl font-semibold"
+                    >
+                      <T
+                        t={t}
+                        k="listing.guest_reviews"
+                        source="Guest reviews"
+                      />
+                    </h2>
+                    {reviewSummary.count >= 3 &&
+                    reviewSummary.average != null ? (
+                      <span className="flex items-center gap-1 font-semibold">
+                        <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
+                        {reviewSummary.average.toFixed(2)}
+                      </span>
+                    ) : null}
+                    <span className="text-sm text-muted-foreground">
+                      {reviewSummary.count}{" "}
+                      {reviewSummary.count === 1 ? "review" : "reviews"}
+                    </span>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {reviewSummary.reviews.map((review) => {
+                      const overall = review.ratings.find(
+                        (rating) => rating.category === "OVERALL",
+                      )?.score;
+                      return (
+                        <article
+                          key={review.id}
+                          className="rounded-xl border p-4"
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="font-medium">
+                              {review.author?.name || "BookEasy guest"}
+                            </p>
+                            {overall ? (
+                              <span className="flex items-center gap-1 text-sm font-semibold">
+                                <Star className="h-4 w-4 fill-amber-500 text-amber-500" />
+                                {overall}
+                              </span>
+                            ) : null}
+                          </div>
+                          <p
+                            data-user-generated-content
+                            className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground"
+                          >
+                            {review.publicComment}
+                          </p>
+                        </article>
+                      );
+                    })}
+                  </div>
+                </section>
+              </>
+            ) : null}
+          </div>
+
+          <div className="relative hidden lg:block">{bookingWidget}</div>
         </div>
-      </div>
+      </ListingStayProvider>
     </div>
   );
 }

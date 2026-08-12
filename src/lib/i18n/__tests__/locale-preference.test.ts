@@ -22,14 +22,22 @@ describe("locale preference", () => {
     expect(googleTranslateCookieValue("en")).toBe("/auto/en");
   });
 
-  it("uses an explicit selection before legacy Google state or geolocation", () => {
+  it("uses an explicit selection before an account, legacy Google state or geolocation", () => {
     expect(
       resolveLocalePreference({
-        siteLocale: "en",
+        explicit: "en",
+        account: "mk",
         googleTranslate: "/auto/mk",
         country: "FR",
       })
     ).toEqual({ locale: "en", source: "explicit" });
+  });
+
+  it("uses an account preference before a cached browser default", () => {
+    expect(resolveLocalePreference({ siteLocale: "en", account: "mk" })).toEqual({
+      locale: "mk",
+      source: "account",
+    });
   });
 
   it("migrates a legacy Google selection before applying geolocation", () => {

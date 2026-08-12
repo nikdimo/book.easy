@@ -11,6 +11,7 @@ import {
 import {
   GOOGLE_TRANSLATE_COOKIE,
   SITE_LOCALE_COOKIE,
+  SITE_LOCALE_EXPLICIT_COOKIE,
   googleTranslateCookieValue,
   resolveLocalePreference,
 } from "@/lib/i18n/locale-preference";
@@ -34,6 +35,7 @@ function requestHeadersWithSettings(
   const headers = new Headers(req.headers);
   const managedCookies = new Set([
     SITE_LOCALE_COOKIE,
+    SITE_LOCALE_EXPLICIT_COOKIE,
     GOOGLE_TRANSLATE_COOKIE,
     DISPLAY_CURRENCY_COOKIE,
     DISPLAY_CURRENCY_EXPLICIT_COOKIE,
@@ -56,6 +58,10 @@ function requestHeadersWithSettings(
   if (explicitMarker) {
     existingCookies.push(`${DISPLAY_CURRENCY_EXPLICIT_COOKIE}=${explicitMarker}`);
   }
+  const localeExplicitMarker = req.cookies.get(SITE_LOCALE_EXPLICIT_COOKIE)?.value;
+  if (localeExplicitMarker) {
+    existingCookies.push(`${SITE_LOCALE_EXPLICIT_COOKIE}=${localeExplicitMarker}`);
+  }
   headers.set("cookie", existingCookies.join("; "));
   return headers;
 }
@@ -66,13 +72,22 @@ function requestHeadersWithSettings(
  * changing one never rewrites the other. Detection only ever supplies a default:
  * both resolvers put a stored choice ahead of the IP country.
  */
-function requestSettings(req: NextRequest, accountCurrency?: string | null): RegionalSettings {
+function requestSettings(
+  req: NextRequest,
+  accountCurrency?: string | null,
+  accountLocale?: string | null,
+): RegionalSettings {
   const country = req.headers.get("cf-ipcountry");
 
   return {
     locale: resolveLocalePreference({
       siteLocale: req.cookies.get(SITE_LOCALE_COOKIE)?.value,
+      explicit:
+        req.cookies.get(SITE_LOCALE_EXPLICIT_COOKIE)?.value === "1"
+          ? req.cookies.get(SITE_LOCALE_COOKIE)?.value
+          : null,
       googleTranslate: req.cookies.get(GOOGLE_TRANSLATE_COOKIE)?.value,
+      account: accountLocale,
       country,
     }).locale,
     currency: resolveCurrencyPreference({
@@ -117,8 +132,12 @@ function persistSettings(
   return response;
 }
 
-function continueWithSettings(req: NextRequest, accountCurrency?: string | null) {
-  const settings = requestSettings(req, accountCurrency);
+function continueWithSettings(
+  req: NextRequest,
+  accountCurrency?: string | null,
+  accountLocale?: string | null,
+) {
+  const settings = requestSettings(req, accountCurrency, accountLocale);
   const response = NextResponse.next({
     request: { headers: requestHeadersWithSettings(req, settings) },
   });
@@ -129,11 +148,12 @@ function redirectWithSettings(
   req: NextRequest,
   url: URL,
   accountCurrency?: string | null,
+  accountLocale?: string | null,
 ) {
   return persistSettings(
     NextResponse.redirect(url),
     req,
-    requestSettings(req, accountCurrency),
+    requestSettings(req, accountCurrency, accountLocale),
   );
 }
 
@@ -161,10 +181,11 @@ const proxyWithSession = auth((req: NextAuthRequest, event: NextFetchEvent) => {
   const userRole = req.auth?.user?.role;
   const isHost = req.auth?.user?.isHost;
   const accountCurrency = req.auth?.user?.displayCurrency;
+  const accountLocale = req.auth?.user?.locale;
 
   if (pathname.startsWith("/admin")) {
     if (!isLoggedIn || userRole !== "ADMIN") {
-      return redirectWithSettings(req, new URL("/login", req.nextUrl), accountCurrency);
+      return redirectWithSettings(req, new URL("/login", req.nextUrl), accountCurrency, accountLocale);
     }
   }
 
@@ -172,7 +193,7 @@ const proxyWithSession = auth((req: NextAuthRequest, event: NextFetchEvent) => {
     if (!isLoggedIn) {
       const loginUrl = new URL("/login", req.nextUrl);
       loginUrl.searchParams.set("callbackUrl", returnTo);
-      return redirectWithSettings(req, loginUrl, accountCurrency);
+      return redirectWithSettings(req, loginUrl, accountCurrency, accountLocale);
     }
   }
 
@@ -180,18 +201,19 @@ const proxyWithSession = auth((req: NextAuthRequest, event: NextFetchEvent) => {
     if (!isLoggedIn) {
       const loginUrl = new URL("/login", req.nextUrl);
       loginUrl.searchParams.set("callbackUrl", returnTo);
-      return redirectWithSettings(req, loginUrl, accountCurrency);
+      return redirectWithSettings(req, loginUrl, accountCurrency, accountLocale);
     }
     if (!isHost && userRole !== "ADMIN") {
       return redirectWithSettings(
         req,
         new URL("/account/become-host", req.nextUrl),
         accountCurrency,
+        accountLocale,
       );
     }
   }
 
-  return continueWithSettings(req, accountCurrency);
+  return continueWithSettings(req, accountCurrency, accountLocale);
 });
 
 export default function proxy(req: NextRequest, event: NextFetchEvent) {

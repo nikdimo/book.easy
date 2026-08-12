@@ -100,13 +100,21 @@ function draftDataFromForm(formData: FormData): Prisma.InputJsonValue {
 export async function saveListingDraft(
   draftId: string | null,
   formData: FormData
-): Promise<{ draftId: string } | { error: string }> {
+): Promise<{ draftId: string | null } | { error: string }> {
   const session = await auth();
   if (!session?.user?.id || !session.user.isHost) {
     return { error: "Not authorized" };
   }
 
   const jsonData = draftDataFromForm(formData);
+
+  // Nothing is worth remembering until the host leaves the first step: opening
+  // /host/listings/new and walking away would otherwise litter My listings with
+  // empty "stopped at step 1" drafts. An existing draft still gets updated, even
+  // if the host steps back to the first screen.
+  if (!draftId && normalizeListingStep(formData.get("currentStep")) === 0) {
+    return { draftId: null };
+  }
 
   if (draftId) {
     const existing = await db.listingDraft.findFirst({

@@ -138,12 +138,14 @@ export async function recordLanguageSelection(code: string) {
 
   const ip = clientIpFromHeaders(await headers());
   const limit = rateLimit(`language-selection:${ip}`, 30, 60 * 60 * 1000);
-  if (!limit.success) return { success: true };
+  if (!limit.success) return { success: true, locale: normalizeLocaleCode(code) };
   const language = await getLanguageByCode(code);
-  if (!language || language.isDefault || !language.isEnabled) return { success: true };
+  if (!language || language.isDefault || !language.isEnabled) {
+    return { success: true, locale: normalizeLocaleCode(code) };
+  }
 
   await incrementLanguageSelection(code);
-  return { success: true };
+  return { success: true, locale: normalizeLocaleCode(code) };
 }
 
 export async function reorderLanguageList(codesInOrder: string[]) {

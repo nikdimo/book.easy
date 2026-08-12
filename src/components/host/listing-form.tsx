@@ -57,6 +57,7 @@ import {
   type ListingLocationValue,
 } from "@/components/host/listing-location-field";
 import { ListingAddressField } from "@/components/host/listing-address-field";
+import { CalendarConnections } from "@/components/host/calendar-connections";
 import {
   AVAILABILITY_START_ERROR_ID,
   AvailabilityStartScreen,
@@ -996,11 +997,14 @@ export function ListingForm({
       try {
         const result = await saveListingDraft(draftIdRef.current, fd);
         if (result && "draftId" in result) {
+          // A null id means the server deliberately skipped the save — nothing is
+          // persisted until the host leaves the first step, so there is no empty
+          // draft to resume. Still a success as far as the form is concerned.
           draftIdRef.current = result.draftId;
           // Once the first autosave creates the draft, keep its ID in the URL so
           // refreshes and accidental navigation back to this form reopen the same
           // draft. The plain /new route remains reserved for an intentional new draft.
-          if (!initialDraftId && window.location.pathname.endsWith("/new")) {
+          if (result.draftId && !initialDraftId && window.location.pathname.endsWith("/new")) {
             const nextUrl = new URL(window.location.href);
             nextUrl.searchParams.set("draft", result.draftId);
             window.history.replaceState(window.history.state, "", nextUrl);
@@ -1894,17 +1898,27 @@ export function ListingForm({
                   currency={values.currency}
                 />
               ) : (
-                <PrePublishTaskScreen
-                  key={prePublishScreen}
-                  task={prePublishScreen}
-                  plan={prePublishPlan}
-                  onChange={updatePrePublishPlan}
-                  currency={values.currency}
-                  baseNightlyRate={values.baseNightlyRate}
-                  hasCleaningFee={toPositiveNumber(values.cleaningFee, 0) > 0}
-                  onSelectionChange={setPrePublishSelection}
-                  actionRef={prePublishActions}
-                />
+                <>
+                  <PrePublishTaskScreen
+                    key={prePublishScreen}
+                    task={prePublishScreen}
+                    plan={prePublishPlan}
+                    onChange={updatePrePublishPlan}
+                    currency={values.currency}
+                    baseNightlyRate={values.baseNightlyRate}
+                    hasCleaningFee={toPositiveNumber(values.cleaningFee, 0) > 0}
+                    onSelectionChange={setPrePublishSelection}
+                    actionRef={prePublishActions}
+                  />
+                  {/* Channel sync writes straight to the draft's own calendar rather
+                      than into the pre-publish plan, so it needs a saved listing to
+                      attach to — which the wizard always has by this screen. */}
+                  {prePublishScreen === "availability" && listing?.id ? (
+                    <div className="mt-4">
+                      <CalendarConnections listingId={listing.id} />
+                    </div>
+                  ) : null}
+                </>
               )}
             </div>
           )}

@@ -5,6 +5,7 @@ import {
 } from "@/lib/services/chat.service";
 import { rateLimit } from "@/lib/rate-limit";
 import { sendMessageSchema } from "@/lib/validations/communication.schema";
+import { getRequestLocale } from "@/lib/email/i18n/request-locale";
 
 export async function GET(
   request: Request,
@@ -69,6 +70,7 @@ export async function POST(
       senderId: session.user.id,
       body: parsed.data.body,
       clientId: parsed.data.clientId,
+      sourceLocale: await getRequestLocale(),
     });
     return Response.json({ message }, { status: 201 });
   } catch (error) {

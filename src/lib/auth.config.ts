@@ -44,6 +44,10 @@ export const authConfig: NextAuthConfig = {
         token.isHost = (user as { isHost?: boolean }).isHost;
         token.displayCurrency =
           (user as { displayCurrency?: string | null }).displayCurrency ?? null;
+        // The proxy runs at the edge and cannot query Prisma. Keep the account
+        // language on the JWT alongside the currency so a signed-in person's
+        // preference wins on the very first render on every device.
+        token.locale = (user as { locale?: string | null }).locale ?? null;
       }
       if (trigger === "update" && session) {
         token.isHost = session.isHost ?? token.isHost;
@@ -52,6 +56,9 @@ export const authConfig: NextAuthConfig = {
         // re-applying the stale account value on a browser that has no cookie yet.
         if (session.displayCurrency !== undefined) {
           token.displayCurrency = session.displayCurrency;
+        }
+        if (session.locale !== undefined) {
+          token.locale = session.locale;
         }
       }
       return token;
@@ -62,6 +69,7 @@ export const authConfig: NextAuthConfig = {
         session.user.role = token.role as string;
         session.user.isHost = token.isHost as boolean;
         session.user.displayCurrency = (token.displayCurrency as string | null) ?? null;
+        session.user.locale = (token.locale as string | null) ?? null;
       }
       return session;
     },

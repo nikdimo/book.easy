@@ -1,23 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MarketplaceSearchBar } from "@/components/marketplace/marketplace-search-bar";
-import { cn } from "@/lib/utils";
-import { useActiveHomeListingsView } from "@/components/public/home-listings-view-store";
-import type { PropertyTypeOption } from "@/lib/types/property-type";
-import type { PlaceOption } from "@/lib/utils/place";
+import {
+  CompactHomeSearch,
+  type HomeSearchData,
+} from "@/components/public/compact-home-search";
 
-export function FloatingHomeSearch({
-  popularCities,
-  availablePropertyTypesByCity,
-  propertyTypes,
-}: {
-  popularCities: PlaceOption[];
-  availablePropertyTypesByCity: Record<string, string[]>;
-  propertyTypes: PropertyTypeOption[];
-}) {
-  const [scrolledPast, setScrolledPast] = useState(false);
-  const view = useActiveHomeListingsView();
+/**
+ * The compact search that takes over once the hero search has scrolled out of sight.
+ *
+ * Scroll is the only thing that summons it. Map view does *not*: it keeps its own copy
+ * of the compact search over the map, because this one is fixed to the top of the
+ * viewport and would cover the header.
+ */
+export function FloatingHomeSearch(props: HomeSearchData) {
+  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     const heroSearch = document.querySelector("[data-home-hero-search]");
@@ -27,9 +24,9 @@ export function FloatingHomeSearch({
     const scrollTarget: EventTarget = scrollRoot ?? window;
     const updateVisibility = () => {
       const bounds = heroSearch.getBoundingClientRect();
-      // All zeros while the hero is hidden for map view — which reads as "not scrolled
-      // past", and that is right: `pinnedByMap` below is what shows the bar there.
-      setScrolledPast(bounds.bottom < 0 && bounds.height > 0);
+      // The height check matters in map view, where the hero is hidden and every
+      // measurement comes back zero — which would otherwise read as "scrolled past".
+      setVisible(bounds.height > 0 && bounds.bottom < 0);
     };
 
     updateVisibility();
@@ -41,37 +38,9 @@ export function FloatingHomeSearch({
     };
   }, []);
 
-  // Map view hides the hero, so the search it contained has to come from somewhere —
-  // it becomes the compact bar floating over the map, without waiting for a scroll.
-  const pinnedByMap = view === "map";
-  if (!scrolledPast && !pinnedByMap) return null;
-
-  return (
-    <div
-      className={cn(
-        "fixed inset-x-0 top-0 z-50 flex justify-center border-b bg-background/95 px-4 py-3 shadow-sm backdrop-blur md:top-3 md:border-0 md:bg-transparent md:p-0 md:shadow-none",
-        // On phones this bar covers the header instead of sitting beside it, which is
-        // fine once the header has scrolled away but not while it is still on screen.
-        // So map view only pins it on the layouts that have a free middle column.
-        pinnedByMap && !scrolledPast && "max-md:hidden",
-      )}
-    >
-      <div className="@container w-full max-w-md md:hidden">
-        <MarketplaceSearchBar
-          variant="summary"
-          popularCities={popularCities}
-          availablePropertyTypesByCity={availablePropertyTypesByCity}
-          propertyTypes={propertyTypes}
-        />
-      </div>
-      <div className="hidden w-full max-w-[64rem] justify-center md:flex">
-        <MarketplaceSearchBar
-          variant="floating"
-          popularCities={popularCities}
-          availablePropertyTypesByCity={availablePropertyTypesByCity}
-          propertyTypes={propertyTypes}
-        />
-      </div>
+  return visible ? (
+    <div className="fixed inset-x-0 top-0 z-50 flex justify-center border-b bg-background/95 px-4 py-3 shadow-sm backdrop-blur md:top-3 md:border-0 md:bg-transparent md:p-0 md:shadow-none">
+      <CompactHomeSearch {...props} />
     </div>
-  );
+  ) : null;
 }

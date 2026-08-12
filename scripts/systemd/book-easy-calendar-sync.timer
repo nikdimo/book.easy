@@ -1,0 +1,13 @@
+[Unit]
+Description=Mirror connected external calendars hourly
+
+[Timer]
+# Hourly matches how often the channels poll our own feed, so both directions close in
+# about the same time. The randomized delay keeps every host's calendars from hitting
+# Airbnb on the same minute of the hour.
+OnCalendar=hourly
+RandomizedDelaySec=600
+Persistent=true
+
+[Install]
+WantedBy=timers.target

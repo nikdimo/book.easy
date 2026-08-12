@@ -955,6 +955,11 @@
     "filePath": "src/app/(public)/contact/page.tsx"
   },
   {
+    "key": "conversation.google_translated_from",
+    "sourceText": "Google translated from {language}",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
     "key": "description.show_less",
     "sourceText": "Show less",
     "filePath": "src/components/public/expandable-description.tsx"
@@ -5090,6 +5095,146 @@
     "filePath": "src/components/host/suggest-missing-option.tsx"
   },
   {
+    "key": "host.sync.connect",
+    "sourceText": "Connect",
+    "filePath": "src/components/host/calendar-connections.tsx"
+  },
+  {
+    "key": "host.sync.copied",
+    "sourceText": "Calendar link copied.",
+    "filePath": "src/components/host/calendar-connections.tsx"
+  },
+  {
+    "key": "host.sync.copied_short",
+    "sourceText": "Copied",
+    "filePath": "src/components/host/calendar-connections.tsx"
+  },
+  {
+    "key": "host.sync.copy",
+    "sourceText": "Copy",
+    "filePath": "src/components/host/calendar-connections.tsx"
+  },
+  {
+    "key": "host.sync.copy_failed",
+    "sourceText": "Could not copy — select the link and copy it manually.",
+    "filePath": "src/components/host/calendar-connections.tsx"
+  },
+  {
+    "key": "host.sync.export_hint",
+    "sourceText": "Paste it wherever the other platform asks to import a calendar. It publishes only which nights are taken — never guest names or prices.",
+    "filePath": "src/components/host/calendar-connections.tsx"
+  },
+  {
+    "key": "host.sync.export_label",
+    "sourceText": "Your calendar link",
+    "filePath": "src/components/host/calendar-connections.tsx"
+  },
+  {
+    "key": "host.sync.export_title",
+    "sourceText": "1. Give this link to the other site",
+    "filePath": "src/components/host/calendar-connections.tsx"
+  },
+  {
+    "key": "host.sync.feed_stats",
+    "sourceText": "{nights} night(s) blocked · last checked {when}",
+    "filePath": "src/components/host/calendar-connections.tsx"
+  },
+  {
+    "key": "host.sync.frequency_note",
+    "sourceText": "Connected calendars are checked automatically about once an hour. Platforms poll your link on their own schedule, so a change can take an hour or two to appear on both sides — for a same-day change, block the dates on each site directly.",
+    "filePath": "src/components/host/calendar-connections.tsx"
+  },
+  {
+    "key": "host.sync.import_hint",
+    "sourceText": "Copy the calendar link the other platform gives you and paste it here. Its reservations will block those dates on this listing.",
+    "filePath": "src/components/host/calendar-connections.tsx"
+  },
+  {
+    "key": "host.sync.import_title",
+    "sourceText": "2. Add a calendar from another site",
+    "filePath": "src/components/host/calendar-connections.tsx"
+  },
+  {
+    "key": "host.sync.loading",
+    "sourceText": "Loading your calendar links…",
+    "filePath": "src/components/host/calendar-connections.tsx"
+  },
+  {
+    "key": "host.sync.name_label",
+    "sourceText": "Calendar name",
+    "filePath": "src/components/host/calendar-connections.tsx"
+  },
+  {
+    "key": "host.sync.name_placeholder",
+    "sourceText": "Airbnb",
+    "filePath": "src/components/host/calendar-connections.tsx"
+  },
+  {
+    "key": "host.sync.never_synced",
+    "sourceText": "Not checked yet",
+    "filePath": "src/components/host/calendar-connections.tsx"
+  },
+  {
+    "key": "host.sync.refresh",
+    "sourceText": "Update now",
+    "filePath": "src/components/host/calendar-connections.tsx"
+  },
+  {
+    "key": "host.sync.remove",
+    "sourceText": "Disconnect",
+    "filePath": "src/components/host/calendar-connections.tsx"
+  },
+  {
+    "key": "host.sync.rotate",
+    "sourceText": "Create a new link",
+    "filePath": "src/components/host/calendar-connections.tsx"
+  },
+  {
+    "key": "host.sync.rotate_hint",
+    "sourceText": "Anyone holding this link can see your booked dates. Create a new one if it has been shared by mistake — then paste the new link into every platform again.",
+    "filePath": "src/components/host/calendar-connections.tsx"
+  },
+  {
+    "key": "host.sync.status_error",
+    "sourceText": "Not updating",
+    "filePath": "src/components/host/calendar-connections.tsx"
+  },
+  {
+    "key": "host.sync.status_ok",
+    "sourceText": "Syncing",
+    "filePath": "src/components/host/calendar-connections.tsx"
+  },
+  {
+    "key": "host.sync.summary_connected",
+    "sourceText": "{count} calendar(s) connected — booked dates stay in step automatically.",
+    "filePath": "src/components/host/calendar-connections.tsx"
+  },
+  {
+    "key": "host.sync.summary_empty",
+    "sourceText": "Block dates here when a guest books elsewhere, and the other way round.",
+    "filePath": "src/components/host/calendar-connections.tsx"
+  },
+  {
+    "key": "host.sync.title",
+    "sourceText": "Sync with Airbnb, Booking.com and others",
+    "filePath": "src/components/host/calendar-connections.tsx"
+  },
+  {
+    "key": "host.sync.url_label",
+    "sourceText": "Calendar link",
+    "filePath": "src/components/host/calendar-connections.tsx"
+  },
+  {
+    "key": "host.sync.url_placeholder",
+    "sourceText": "https://…/calendar.ics",
+    "filePath": "src/components/host/calendar-connections.tsx"
+  },
+  {
+    "key": "host.sync.url_required",
+    "sourceText": "Paste the calendar link first.",
+    "filePath": "src/components/host/calendar-connections.tsx"
+  },
+  {
     "key": "host.tabs.promotions",
     "sourceText": "Promotions",
     "filePath": "src/components/host/listing-bottom-nav.tsx"
@@ -5130,18 +5275,8 @@
     "filePath": "src/components/shared/google-translate-widget.tsx"
   },
   {
-    "key": "languages.automatic_heading",
-    "sourceText": "Automatic Google translation",
-    "filePath": "src/components/shared/google-translate-widget.tsx"
-  },
-  {
     "key": "languages.no_results",
     "sourceText": "No languages found",
-    "filePath": "src/components/shared/google-translate-widget.tsx"
-  },
-  {
-    "key": "languages.reviewed_heading",
-    "sourceText": "AI-translated system text",
     "filePath": "src/components/shared/google-translate-widget.tsx"
   },
   {
@@ -5248,6 +5383,56 @@
     "key": "listing.beds.zero",
     "sourceText": "{n} beds",
     "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.calendar_add_dates",
+    "sourceText": "Add your travel dates for exact pricing",
+    "filePath": "src/components/public/listing-availability-calendar.tsx"
+  },
+  {
+    "key": "listing.calendar_clear_dates",
+    "sourceText": "Clear dates",
+    "filePath": "src/components/public/listing-availability-calendar.tsx"
+  },
+  {
+    "key": "listing.calendar_nights_in.few",
+    "sourceText": "{n} nights in {place}",
+    "filePath": "src/components/public/listing-availability-calendar.tsx"
+  },
+  {
+    "key": "listing.calendar_nights_in.many",
+    "sourceText": "{n} nights in {place}",
+    "filePath": "src/components/public/listing-availability-calendar.tsx"
+  },
+  {
+    "key": "listing.calendar_nights_in.one",
+    "sourceText": "{n} night in {place}",
+    "filePath": "src/components/public/listing-availability-calendar.tsx"
+  },
+  {
+    "key": "listing.calendar_nights_in.other",
+    "sourceText": "{n} nights in {place}",
+    "filePath": "src/components/public/listing-availability-calendar.tsx"
+  },
+  {
+    "key": "listing.calendar_nights_in.two",
+    "sourceText": "{n} nights in {place}",
+    "filePath": "src/components/public/listing-availability-calendar.tsx"
+  },
+  {
+    "key": "listing.calendar_nights_in.zero",
+    "sourceText": "{n} nights in {place}",
+    "filePath": "src/components/public/listing-availability-calendar.tsx"
+  },
+  {
+    "key": "listing.calendar_select_checkin",
+    "sourceText": "Select a check-in date",
+    "filePath": "src/components/public/listing-availability-calendar.tsx"
+  },
+  {
+    "key": "listing.calendar_select_checkout",
+    "sourceText": "Select a check-out date",
+    "filePath": "src/components/public/listing-availability-calendar.tsx"
   },
   {
     "key": "listing.check_in_from",

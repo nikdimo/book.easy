@@ -82,6 +82,16 @@ enum BookingEmailDeliveryStatus {
 enum BlockType {
   MANUAL_BLOCK
   BOOKING_HOLD
+  /** Mirrored from an external calendar (Airbnb, Booking.com, …) by the iCal sync.
+   * Owned by the feed that created it: a re-sync deletes and recreates only these,
+   * so a host's own manual blocks are never touched by a remote calendar. */
+  EXTERNAL_SYNC
+}
+
+enum CalendarFeedStatus {
+  PENDING
+  OK
+  ERROR
 }
 
 enum ListingMediaType {
@@ -555,6 +565,16 @@ model Listing {
   popularityScore     Float     @default(0)
   popularityUpdatedAt DateTime?
 
+  /**
+   * Secret path segment of this listing's public iCal export — /api/calendar/<token>.ics.
+   * The token *is* the credential: anyone holding it can read the listing's booked and
+   * blocked dates (dates only, never guest identity), which is exactly what Airbnb and
+   * Booking.com need and no more. Null until the host first opens the export, so
+   * listings that never sync expose no feed at all, and rotatable from the calendar
+   * screen when a host wants to cut an old subscriber off.
+   */
+  calendarFeedToken   String?   @unique
+
   property           Property            @relation(fields: [propertyId], references: [id])
   host               User                @relation(fields: [hostId], references: [id])
   images             ListingImage[]
@@ -563,6 +583,7 @@ model Listing {
   datePrices         ListingDatePrice[]
   availabilityBlocks AvailabilityBlock[]
   availabilityWindows ListingAvailabilityWindow[]
+  calendarFeeds      ListingCalendarFeed[]
   bookings           Booking[]
   suggestions        Suggestion[]
   reports            ListingReport[]
@@ -827,15 +848,55 @@ model AvailabilityBlock {
   endDate   DateTime  @db.Date
   blockType BlockType
   bookingId String?
+  /** Set only on EXTERNAL_SYNC rows — which imported calendar put this block here.
+   * Cascades, so disconnecting a feed frees every date it was holding. */
+  feedId    String?
   reason    String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
   listing Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
   booking Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  feed    ListingCalendarFeed? @relation(fields: [feedId], references: [id], onDelete: Cascade)
 
   @@index([listingId, startDate, endDate])
   @@index([bookingId])
+  @@index([feedId])
+}
+
+/**
+ * An external iCal calendar mirrored into this listing — the import half of channel
+ * sync, the export half being Listing.calendarFeedToken.
+ *
+ * Deliberately one row per remote calendar rather than a single "airbnbUrl" column on
+ * Listing: a host with the same place on Airbnb, Booking.com and Vrbo needs all three,
+ * and each has to report its own freshness. `lastStatus` and `lastError` are kept so a
+ * feed that has started failing (URL rotated, listing deleted upstream) is visible on
+ * the calendar screen instead of silently going stale — the dates it already blocked
+ * stay blocked until the host removes the feed, which is the safe direction to fail.
+ */
+model ListingCalendarFeed {
+  id                String             @id @default(cuid())
+  listingId         String
+  /** Host-facing label ("Airbnb", "Booking.com"). Free text — the platform is not
+   *  something we can reliably detect from an opaque .ics URL. */
+  name              String
+  url               String
+  lastSyncedAt      DateTime?
+  lastStatus        CalendarFeedStatus @default(PENDING)
+  lastError         String?
+  /** Counters from the last successful sync, shown to the host as proof it worked. */
+  lastEventCount    Int                @default(0)
+  lastBlockedNights Int                @default(0)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  listing Listing             @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  blocks  AvailabilityBlock[]
+
+  @@unique([listingId, url])
+  @@index([listingId])
+  @@index([lastSyncedAt])
 }
 
 /** Bookable windows for listings whose calendar is CLOSED by default. Stored with an
@@ -1039,6 +1100,10 @@ model Message {
   conversationId String
   senderId       String?
   body           String    @db.Text
+  /// Locale chosen by the sender when this message was written. It lets the
+  /// recipient see an honest "Google translated from …" disclosure when their
+  /// reading language differs, without guessing from the text itself.
+  sourceLocale   String    @default("en")
   editedAt       DateTime?
   deletedAt      DateTime?
   createdAt      DateTime  @default(now())

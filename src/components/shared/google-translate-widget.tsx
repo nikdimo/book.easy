@@ -10,7 +10,6 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-  CommandSeparator,
 } from "@/components/ui/command";
 import {
   Popover,
@@ -23,6 +22,7 @@ import { DEFAULT_LOCALE, normalizeLocaleCode } from "@/lib/i18n/locale-preferenc
 import {
   getActiveLocale,
   getAutomaticLanguages,
+  getFallbackAutomaticLanguages,
   getServerActiveLocale,
   getServerAutomaticLanguages,
   subscribeActiveLocale,
@@ -33,6 +33,7 @@ import {
   languageSearchScore,
   reviewedLanguageSearchText,
 } from "@/lib/i18n/reviewed-languages";
+import { sortLanguagePickerRows } from "@/lib/i18n/language-picker-order";
 
 interface LanguageOption {
   code: string;
@@ -108,8 +109,23 @@ export function GoogleTranslateWidget({
     (language) => language.isDefault || language.useAiTranslation,
   );
   const reviewedCodes = new Set(reviewed.map((language) => language.code));
-  const automatic = automaticLanguages.filter(
+  const availableAutomaticLanguages =
+    automaticLanguages.length > 0
+      ? automaticLanguages
+      : getFallbackAutomaticLanguages(i18n.requestedLocale);
+  const automatic = availableAutomaticLanguages.filter(
     (language) => !reviewedCodes.has(language.code),
+  );
+  const languageOptions = sortLanguagePickerRows(
+    [
+      ...reviewed.map((language) => ({
+        code: language.code,
+        name: language.name,
+        searchTerms: reviewedLanguageSearchText(language.code, language.name),
+        automatic: false,
+      })),
+      ...automatic.map((language) => ({ ...language, automatic: true })),
+    ].map((language) => ({ ...language, key: language.code, title: language.name })),
   );
   const currentLabel =
     reviewed.find((language) => language.code === current)?.name ??
@@ -148,61 +164,26 @@ export function GoogleTranslateWidget({
             <CommandEmpty>
               <Tx k="languages.no_results" source="No languages found" />
             </CommandEmpty>
-            <CommandGroup
-              heading={
-                <Tx
-                  k="languages.reviewed_heading"
-                  source="AI-translated system text"
-                />
-              }
-            >
-              {reviewed.map((language) => (
+            <CommandGroup>
+              {languageOptions.map((language) => (
                 <CommandItem
                   key={language.code}
-                  value={reviewedLanguageSearchText(
-                    language.code,
-                    language.name,
-                  )}
+                  value={language.searchTerms}
                   data-checked={language.code === current}
                   onSelect={() => {
                     setOpen(false);
                     void setLanguage(language.code);
                   }}
                 >
-                  <span>{language.name}</span>
+                  <span className="flex-1">{language.name}</span>
+                  {language.automatic ? (
+                    <span className="text-[0.68rem] text-muted-foreground">
+                      <Tx k="languages.automatic_badge" source="Automatic" />
+                    </span>
+                  ) : null}
                 </CommandItem>
               ))}
             </CommandGroup>
-            {automatic.length > 0 && (
-              <>
-                <CommandSeparator />
-                <CommandGroup
-                  heading={
-                    <Tx
-                      k="languages.automatic_heading"
-                      source="Automatic Google translation"
-                    />
-                  }
-                >
-                  {automatic.map((language) => (
-                    <CommandItem
-                      key={language.code}
-                      value={`${language.name} ${language.searchTerms} ${language.code}`}
-                      data-checked={language.code === current}
-                      onSelect={() => {
-                        setOpen(false);
-                        void setLanguage(language.code);
-                      }}
-                    >
-                      <span className="flex-1">{language.name}</span>
-                      <span className="text-[0.68rem] text-muted-foreground">
-                        <Tx k="languages.automatic_badge" source="Automatic" />
-                      </span>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </>
-            )}
           </CommandList>
         </Command>
       </PopoverContent>

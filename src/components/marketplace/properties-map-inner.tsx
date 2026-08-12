@@ -735,10 +735,16 @@ export default function PropertiesMapInner({
     <div
       className={cn(
         "relative flex flex-col overflow-hidden rounded-2xl border border-border bg-muted/30 shadow-sm",
+        // `className` sits *after* the resting size so a caller that states its own
+        // height gets it. It used to come first, which meant `h-full` silently won and
+        // any height passed in was discarded — a caller whose parent had no height then
+        // collapsed to `min-h-[320px]`. Callers that size the map from a parent still
+        // pass `h-full` themselves, so nothing changes for them.
+        !expanded && "h-full min-h-[320px] w-full",
         className,
-        expanded
-          ? "fixed inset-0 z-[100] m-0 h-[100dvh] min-h-0 w-screen max-w-none rounded-none border-0"
-          : "h-full min-h-[320px] w-full"
+        // Full screen is not the caller's call to make, so it wins over both.
+        expanded &&
+          "fixed inset-0 z-[100] m-0 h-[100dvh] min-h-0 w-screen max-w-none rounded-none border-0"
       )}
     >
       <button

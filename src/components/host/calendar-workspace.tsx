@@ -1674,19 +1674,25 @@ export function CalendarWorkspace({
     const blockChanges = blocks.map((block) => {
       const from = dbDateToYmd(block.startDate);
       const to = addDaysToYmd(dbDateToYmd(block.endDate), -1);
+      // Anything that isn't the host's own manual block is protected from editing here:
+      // a reservation because it is owed to a guest, an imported block because the
+      // remote calendar owns it and the next sync would only put it back.
+      const imported = block.blockType === "EXTERNAL_SYNC";
       const booking = block.blockType !== "MANUAL_BLOCK";
       return {
         id: block.id,
         kind: booking ? ("booking" as const) : ("block" as const),
         from,
         to,
-        label: booking ? "Booked" : "Blocked",
-        detail: booking
-          ? block.booking
-            ? `${block.booking.guest.name} · ${block.booking.status}`
-            : "Protected reservation"
-          : block.reason?.trim() || "No reason added",
-        source: booking ? "Reservation" : "Manual block",
+        label: imported ? "Booked elsewhere" : booking ? "Booked" : "Blocked",
+        detail: imported
+          ? "Held by a connected calendar"
+          : booking
+            ? block.booking
+              ? `${block.booking.guest.name} · ${block.booking.status}`
+              : "Protected reservation"
+            : block.reason?.trim() || "No reason added",
+        source: imported ? "Connected calendar" : booking ? "Reservation" : "Manual block",
       };
     });
 

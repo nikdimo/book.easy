@@ -17,6 +17,7 @@ import { HomeListingsView } from "@/components/public/home-listings-view";
 import { OwnerServicesDialog } from "@/components/public/owner-services-dialog";
 import { FloatingHomeSearch } from "@/components/public/floating-home-search";
 import { HomeHeroShell } from "@/components/public/home-hero-shell";
+import { CompactHomeSearch } from "@/components/public/compact-home-search";
 import { MarketplaceSearchBar } from "@/components/marketplace/marketplace-search-bar";
 import type { MapPin } from "@/components/marketplace/properties-map";
 import { getMapCoordinatesForListing } from "@/lib/utils/listing-map-coords";
@@ -284,6 +285,9 @@ export default async function HomePage() {
             pins={toMapPins(listings, price)}
             detailed={<SpotlightGrid listings={listings} />}
             compact={<CompactGrid listings={listings} />}
+            mapSearch={
+              <CompactHomeSearch {...heroSearchData} desktopClassName="md:w-auto" />
+            }
           />
         </section>
       )}
@@ -330,6 +334,9 @@ export default async function HomePage() {
             pins={toMapPins([...popularListings, ...listings], price)}
             compact={<CompactGrid listings={listings} />}
             detailed={<SpotlightGrid listings={listings} />}
+            mapSearch={
+              <CompactHomeSearch {...heroSearchData} desktopClassName="md:w-auto" />
+            }
             footer={
               totalListings > listings.length + popularListings.length ? (
                 <div className="mt-6 flex justify-center">

@@ -2,6 +2,7 @@
 
 import {
   GOOGLE_TRANSLATE_COOKIE,
+  SITE_LOCALE_EXPLICIT_COOKIE,
   GOOGLE_TRANSLATE_SOURCE,
   SITE_LOCALE_COOKIE,
   googleTranslateCookieValue,
@@ -123,6 +124,49 @@ export interface AutomaticLanguage {
 }
 
 const NO_AUTOMATIC_LANGUAGES: readonly AutomaticLanguage[] = [];
+
+/**
+ * Google Translate's selector is an enhancement, not a reliable language
+ * catalog. It is fetched from a third party and can be delayed by a slow network,
+ * privacy extension or content-security policy. Keeping this supported-language
+ * fallback in the application means the picker always offers a complete useful
+ * list; once Google's selector arrives, its own authoritative list replaces it.
+ */
+const GOOGLE_LANGUAGE_CODES = [
+  "af", "am", "ar", "az", "be", "bg", "bn", "bs", "ca", "ceb", "co", "cs",
+  "cy", "da", "de", "el", "en", "eo", "es", "et", "eu", "fa", "fi", "fil",
+  "fr", "fy", "ga", "gd", "gl", "gu", "ha", "haw", "he", "hi", "hmn", "hr",
+  "ht", "hu", "hy", "id", "ig", "is", "it", "ja", "jv", "ka", "kk", "km",
+  "kn", "ko", "ku", "ky", "la", "lb", "lo", "lt", "lv", "mg", "mi", "mk",
+  "ml", "mn", "mr", "ms", "mt", "my", "ne", "nl", "no", "ny", "or", "pa",
+  "pl", "ps", "pt", "ro", "ru", "rw", "sd", "si", "sk", "sl", "sm", "sn",
+  "so", "sq", "sr", "st", "su", "sv", "sw", "ta", "te", "tg", "th", "tk",
+  "tr", "ug", "uk", "ur", "uz", "vi", "xh", "yi", "yo", "zh-CN", "zh-TW", "zu",
+] as const;
+
+/** A local, searchable language list used until Google has populated its hidden
+ * selector. Names include native and English forms, so "portu" finds Portuguese
+ * even while the interface itself is Macedonian. */
+export function getFallbackAutomaticLanguages(
+  displayLocale: string,
+): readonly AutomaticLanguage[] {
+  return GOOGLE_LANGUAGE_CODES.map((code) => {
+    const name =
+      languageDisplayName(code, displayLocale) ??
+      languageDisplayName(code, code) ??
+      languageDisplayName(code, "en") ??
+      code;
+    const englishName = languageDisplayName(code, "en");
+    const nativeName = languageDisplayName(code, code);
+    return {
+      code,
+      name,
+      searchTerms: [name, englishName, nativeName, code]
+        .filter((value): value is string => Boolean(value))
+        .join(" "),
+    };
+  });
+}
 
 let automaticLanguages: readonly AutomaticLanguage[] = NO_AUTOMATIC_LANGUAGES;
 const listeners = new Set<() => void>();
@@ -412,6 +456,7 @@ export function syncBrowserLanguageCookies(code: string) {
   // Keep both cookies host-scoped. English is an explicit Google target too:
   // user-authored Macedonian (or any other source language) still needs /auto/en.
   document.cookie = `${SITE_LOCALE_COOKIE}=${locale}; max-age=31536000${common}`;
+  document.cookie = `${SITE_LOCALE_EXPLICIT_COOKIE}=1; max-age=31536000${common}`;
   document.cookie =
     `${GOOGLE_TRANSLATE_COOKIE}=${googleTranslateCookieValue(locale)}; ` +
     `max-age=31536000${common}`;

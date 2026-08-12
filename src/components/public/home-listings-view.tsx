@@ -27,6 +27,7 @@ export function HomeListingsView({
   compact,
   detailed,
   footer,
+  mapSearch,
   pins,
   defaultView = "compact",
 }: {
@@ -35,6 +36,9 @@ export function HomeListingsView({
   detailed: ReactNode;
   /** Rendered under the cards — hidden in map view, where it would float over nothing. */
   footer?: ReactNode;
+  /** The compact search, floated over the map. Map view swallows the hero, so this is
+   *  where the search someone was about to use has to reappear. */
+  mapSearch?: ReactNode;
   pins: MapPin[];
   defaultView?: HomeListingsViewMode;
 }) {
@@ -81,51 +85,79 @@ export function HomeListingsView({
       : []),
   ];
 
+  const isMap = view === "map";
+
+  const switcher = (
+    <div
+      role="group"
+      aria-label={i18n.resolve("home.view_switcher", "Choose a layout").text}
+      className={cn(
+        "inline-flex shrink-0 items-center gap-0.5 rounded-full border border-border bg-background p-0.5",
+        // Over the map it is no longer sitting on the page background, so it needs to
+        // lift off the tiles the way the map's own controls do — and to opt back into
+        // pointer events, which the overlay around it switches off.
+        isMap &&
+          "pointer-events-auto shadow-[0_4px_16px_rgba(15,23,42,0.18)]",
+      )}
+    >
+      {options.map(({ mode, icon: Icon, label }) => (
+        <button
+          key={mode}
+          type="button"
+          onClick={() => writeStoredView(mode)}
+          aria-pressed={view === mode}
+          aria-label={label.text}
+          title={label.text}
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium transition-colors sm:px-3",
+            view === mode
+              ? "bg-foreground text-background"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          )}
+        >
+          <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span
+            className={cn("hidden sm:inline", label.translated && "notranslate")}
+          >
+            {label.text}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+
+  if (isMap) {
+    return (
+      <div className="relative">
+        {/* Roughly the height the hero gives up, so the map reads as the page rather
+            than as a panel on it. A stated height, not `70vh`: viewport units inside
+            the layout's `zoom: 0.9` resolve against the unzoomed viewport and then
+            render at 90%, which makes them lie about how tall the map looks. */}
+        <PropertiesMap pins={pins} className="h-[32rem] md:h-[50rem]" />
+
+        {/* Above the map's own controls (z-1000) and its markers. Transparent to the
+            pointer except on the controls themselves, so the map still drags. */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-[1001] flex flex-col gap-3 p-3 md:p-4">
+          {/* Clears the map's expand button, which sits at the top right, on the
+              narrow screens where the search would otherwise run under it. */}
+          <div className="flex justify-center pr-11 md:pr-0">{mapSearch}</div>
+          <div className="flex justify-end">{switcher}</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="mb-4 flex items-center justify-between gap-3">
         <h2 className="min-w-0 text-base md:text-lg font-semibold tracking-tight">
           {heading}
         </h2>
-        <div
-          role="group"
-          aria-label={i18n.resolve("home.view_switcher", "Choose a layout").text}
-          className="inline-flex shrink-0 items-center gap-0.5 rounded-full border border-border bg-background p-0.5"
-        >
-          {options.map(({ mode, icon: Icon, label }) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => writeStoredView(mode)}
-              aria-pressed={view === mode}
-              aria-label={label.text}
-              title={label.text}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium transition-colors sm:px-3",
-                view === mode
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
-              )}
-            >
-              <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              <span
-                className={cn("hidden sm:inline", label.translated && "notranslate")}
-              >
-                {label.text}
-              </span>
-            </button>
-          ))}
-        </div>
+        {switcher}
       </div>
 
-      {view === "map" ? (
-        <PropertiesMap pins={pins} className="h-[70vh] min-h-[420px]" />
-      ) : (
-        <>
-          {view === "detailed" ? detailed : compact}
-          {footer}
-        </>
-      )}
+      {view === "detailed" ? detailed : compact}
+      {footer}
     </>
   );
 }

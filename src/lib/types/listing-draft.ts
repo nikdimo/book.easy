@@ -63,3 +63,20 @@ export interface ListingDraftData {
    *  them off before then. */
   prePublishPlan?: PrePublishPlan;
 }
+
+/** True when a draft holds nothing worth resuming — the host opened the wizard and
+ *  left without filling anything in. New saves like this are no longer stored
+ *  (see saveListingDraft), but rows created before that are still in the table. */
+export function isEmptyListingDraft(data: ListingDraftData): boolean {
+  return !(
+    data.title?.trim() ||
+    data.description?.trim() ||
+    data.propertyType?.trim() ||
+    data.address?.trim() ||
+    data.city?.trim() ||
+    data.baseNightlyRate?.trim() ||
+    data.mediaItems?.length ||
+    data.imageUrls?.length ||
+    data.amenityIds?.length
+  );
+}

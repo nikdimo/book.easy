@@ -7,6 +7,7 @@ import { dispatchNotificationPushes } from "@/lib/services/notification.service"
 import { COMMUNICATION_BRAND } from "@/lib/communication-brand";
 import { kickMessageEmailDelivery } from "@/lib/services/message-email-outbox.service";
 import { publishConversationChanged } from "@/lib/services/communication-realtime.service";
+import { normalizeLocaleCode } from "@/lib/i18n/locale-preference";
 
 const MESSAGE_MAX_LENGTH = 2000;
 const EMAIL_PATTERN = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i;
@@ -348,6 +349,7 @@ export async function getConversationMessages(
       id: message.id,
       clientId: message.clientId,
       body: message.deletedAt ? "Message removed" : message.body,
+      sourceLocale: message.sourceLocale,
       sender: message.sender ?? { id: "", name: "Deleted user", image: null },
       senderId: message.senderId,
       senderRole:
@@ -451,6 +453,7 @@ export async function sendConversationMessage(input: {
   senderId: string;
   body: string;
   clientId?: string;
+  sourceLocale?: string | null;
 }) {
   const body = input.body.trim();
   const clientId = input.clientId ?? randomUUID();
@@ -537,6 +540,7 @@ export async function sendConversationMessage(input: {
           conversationId: input.conversationId,
           senderId: input.senderId,
           body,
+          sourceLocale: normalizeLocaleCode(input.sourceLocale) ?? "en",
         },
         include: {
           sender: { select: { id: true, name: true, image: true } },

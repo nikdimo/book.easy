@@ -2,6 +2,9 @@ import { REVIEWED_LANGUAGES } from "@/lib/i18n/reviewed-languages";
 
 export const DEFAULT_LOCALE = "en";
 export const SITE_LOCALE_COOKIE = "bookeasy_locale";
+/** Distinguishes a language picked by the person from a country/browser default the
+ * proxy cached for first-paint stability. Account preferences must beat the latter. */
+export const SITE_LOCALE_EXPLICIT_COOKIE = "bookeasy_locale_explicit";
 export const GOOGLE_TRANSLATE_COOKIE = "googtrans";
 export const GOOGLE_TRANSLATE_SOURCE = "auto";
 
@@ -46,14 +49,19 @@ export function localeFromCountry(country: string | null | undefined): string | 
 }
 
 export interface LocalePreferenceInput {
+  /** A language the visitor explicitly picked in this browser. */
+  explicit?: string | null;
+  /** A detected/default language cached by the proxy for first-paint stability. */
   siteLocale?: string | null;
   googleTranslate?: string | null;
+  /** The signed-in account's stored choice, carried to the edge on the JWT. */
+  account?: string | null;
   country?: string | null;
 }
 
 export interface LocalePreference {
   locale: string;
-  source: "explicit" | "legacy-google" | "country" | "default";
+  source: "explicit" | "account" | "browser" | "legacy-google" | "country" | "default";
 }
 
 /**
@@ -62,12 +70,20 @@ export interface LocalePreference {
  * application cookie.
  */
 export function resolveLocalePreference({
+  explicit: explicitValue,
   siteLocale,
   googleTranslate,
+  account,
   country,
 }: LocalePreferenceInput): LocalePreference {
-  const explicit = normalizeLocaleCode(siteLocale);
+  const explicit = normalizeLocaleCode(explicitValue);
   if (explicit) return { locale: explicit, source: "explicit" };
+
+  const accountLocale = normalizeLocaleCode(account);
+  if (accountLocale) return { locale: accountLocale, source: "account" };
+
+  const browserLocale = normalizeLocaleCode(siteLocale);
+  if (browserLocale) return { locale: browserLocale, source: "browser" };
 
   const legacyGoogle = localeFromGoogleTranslateCookie(googleTranslate);
   if (legacyGoogle) return { locale: legacyGoogle, source: "legacy-google" };

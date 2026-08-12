@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/tooltip";
 import type { Resolved } from "@/lib/i18n/t";
 import { interpolate, Tx, useI18n } from "@/lib/i18n/client";
+import { useListingStayRange } from "./listing-stay-context";
 
 interface BookingWidgetProps {
   listingId: string;
@@ -131,8 +132,13 @@ export function BookingWidget({
   // the same sheet, they just start it in different places.
   const [pickerStep, setPickerStep] = useState<"dates" | "guests">("dates");
   const [dateFlexibility, setDateFlexibility] = useState(0);
-  const [checkInStr, setCheckInStr] = useState(initialCheckIn);
-  const [checkOutStr, setCheckOutStr] = useState(initialCheckOut);
+  // Shared with the page's inline availability calendar (and with this widget's
+  // own second mount at the other breakpoint) when a provider is above.
+  const [{ checkIn: checkInStr, checkOut: checkOutStr }, setStayRange] =
+    useListingStayRange({
+      checkIn: initialCheckIn,
+      checkOut: initialCheckOut,
+    });
   const [guestDetails, setGuestDetails] = useState(() => {
     const occupancy = initialGuestDetails.adults + initialGuestDetails.children;
     if (occupancy > 0) return initialGuestDetails;
@@ -428,8 +434,7 @@ export function BookingWidget({
   }
 
   function clearSelection() {
-    setCheckInStr("");
-    setCheckOutStr("");
+    setStayRange({ checkIn: "", checkOut: "" });
     setDateFlexibility(0);
     setGuestDetails({ adults: 1, children: 0, infants: 0, pets: 0 });
     setGuestsConfirmed(false);
@@ -742,7 +747,9 @@ export function BookingWidget({
                 guestStepTitle={whosComingLabel}
                 finalActionLabel={reserveLabel}
                 finalActionDisabled={
-                  isPending || selectionValidation.status !== "valid" || guests < 1
+                  isPending ||
+                  selectionValidation.status !== "valid" ||
+                  guests < 1
                 }
                 showFinalActionIcon={false}
                 onFinalAction={handleSubmit}
@@ -753,8 +760,7 @@ export function BookingWidget({
                 minimumStayNights={minNights}
                 minimumStayMessage={minimumStayMessage}
                 onRangeStringsChange={({ checkIn: ci, checkOut: co }) => {
-                  setCheckInStr(ci);
-                  setCheckOutStr(co);
+                  setStayRange({ checkIn: ci, checkOut: co });
                   setError(null);
                 }}
                 className="w-full [&_button]:!rounded-none [&_button]:!border-0"

@@ -10,7 +10,10 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { HostListingCard } from "@/components/host/host-listing-card";
 import { DeleteDraftButton } from "@/components/host/delete-draft-button";
 import { formatDate } from "@/lib/utils/format";
-import type { ListingDraftData } from "@/lib/types/listing-draft";
+import {
+  isEmptyListingDraft,
+  type ListingDraftData,
+} from "@/lib/types/listing-draft";
 import {
   LISTING_STEPS,
   resumeListingStep,
@@ -42,7 +45,13 @@ export default async function HostListingsPage({
   const activeListings = allListings.filter((l) => l.status !== "ARCHIVED");
   const listings = showArchived ? archivedListings : activeListings;
   // Drafts are work in progress, never archived — they only belong on the active tab.
-  const drafts = showArchived ? [] : allDrafts;
+  // Empty ones (opened the wizard, filled in nothing) are noise: newer saves never
+  // create them, and older rows are hidden here rather than migrated away.
+  const drafts = showArchived
+    ? []
+    : allDrafts.filter(
+        (draft) => !isEmptyListingDraft(draft.data as ListingDraftData)
+      );
 
   return (
     <div>

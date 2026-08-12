@@ -26,6 +26,7 @@ import { DEFAULT_LOCALE, normalizeLocaleCode } from "@/lib/i18n/locale-preferenc
 import {
   getActiveLocale,
   getAutomaticLanguages,
+  getFallbackAutomaticLanguages,
   getServerActiveLocale,
   getServerAutomaticLanguages,
   subscribeActiveLocale,
@@ -46,6 +47,7 @@ import {
   readAutoTranslateUserContentPreference,
   writeAutoTranslateUserContentPreference,
 } from "@/lib/i18n/user-content-translation";
+import { sortLanguagePickerRows } from "@/lib/i18n/language-picker-order";
 
 export interface LanguageOption {
   code: string;
@@ -311,11 +313,15 @@ export function RegionalSettingsDialog({
     (language) => language.isDefault || language.useAiTranslation,
   );
   const reviewedCodes = new Set(reviewed.map((language) => language.code));
-  const automatic = automaticLanguages.filter(
+  const availableAutomaticLanguages =
+    automaticLanguages.length > 0
+      ? automaticLanguages
+      : getFallbackAutomaticLanguages(i18n.requestedLocale);
+  const automatic = availableAutomaticLanguages.filter(
     (language) => !reviewedCodes.has(language.code),
   );
 
-  const languageRows: PickerRow[] = [
+  const languageRows = sortLanguagePickerRows<PickerRow>([
     ...reviewed.map((language) => ({
       key: language.code,
       title: language.name,
@@ -338,7 +344,7 @@ export function RegionalSettingsDialog({
         void selectLanguage(language.code);
       },
     })),
-  ];
+  ]);
 
   const currencyRows: PickerRow[] = currencies.map((code) => ({
     key: code,

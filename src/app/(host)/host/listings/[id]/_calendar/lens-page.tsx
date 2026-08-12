@@ -6,6 +6,7 @@ import {
   CalendarWorkspace,
   type CalendarLens,
 } from "@/components/host/calendar-workspace";
+import { CalendarConnections } from "@/components/host/calendar-connections";
 import { ListingBottomNav } from "@/components/host/listing-bottom-nav";
 import { CalendarHeaderActions } from "@/components/host/calendar-header-actions";
 import {
@@ -102,7 +103,7 @@ export async function CalendarLensPage({
   if (!listing) notFound();
 
   const today = ymdToDbDate(format(new Date(), "yyyy-MM-dd"));
-  const [blocks, datePrices] = await Promise.all([
+  const [blocks, datePrices, connectedFeeds] = await Promise.all([
     db.availabilityBlock.findMany({
       where: { listingId: listing.id, endDate: { gte: today } },
       include: {
@@ -116,6 +117,11 @@ export async function CalendarLensPage({
       where: { listingId: listing.id, date: { gte: today } },
       orderBy: { date: "asc" },
     }),
+    // Only the count: the panel loads its own detail when the host opens it, which is
+    // also what keeps the export token from being minted on every calendar view.
+    lens === "availability"
+      ? db.listingCalendarFeed.count({ where: { listingId: listing.id } })
+      : Promise.resolve(0),
   ]);
 
   const copy = LENS_COPY[lens];
@@ -231,6 +237,12 @@ export async function CalendarLensPage({
           />
         </p>
       )}
+
+      {/* Only under Availability: connecting a channel is a statement about which dates
+          are bookable, and it would be noise on the pricing and promotion lenses. */}
+      {lens === "availability" ? (
+        <CalendarConnections listingId={listing.id} feedCount={connectedFeeds} />
+      ) : null}
 
       {/* Fixed because this page scrolls inside the host shell's main area rather
           than owning its own flex column.

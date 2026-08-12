@@ -24,6 +24,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { COMMUNICATION_BRAND } from "@/lib/communication-brand";
 import { DamageReportDialog } from "@/components/communication/damage-report-dialog";
+import { Tx, useI18n } from "@/lib/i18n/client";
+import { normalizeLocaleCode } from "@/lib/i18n/locale-preference";
 
 type DeliveryState = "sending" | "failed" | "sent";
 
@@ -31,6 +33,7 @@ interface ThreadMessage {
   id: string;
   clientId: string | null;
   body: string;
+  sourceLocale: string;
   senderId: string | null;
   senderRole: "MEMBER" | "SUPPORT";
   sender: { id: string; name: string | null; image?: string | null };
@@ -137,6 +140,7 @@ export function ConversationThread({
   initial: ThreadPayload;
   currentUserId: string;
 }) {
+  const { requestedLocale } = useI18n();
   const [thread, setThread] = useState(initial);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -255,6 +259,7 @@ export function ConversationThread({
             senderId: currentUserId,
             senderRole: role,
             sender: { id: currentUserId, name: "You" },
+            sourceLocale: normalizeLocaleCode(requestedLocale) ?? "en",
             createdAt: new Date().toISOString(),
             deletedAt: null,
             deliveryState: "sending",
@@ -648,6 +653,14 @@ export function ConversationThread({
   );
 }
 
+function languageName(locale: string, displayLocale: string): string {
+  try {
+    return new Intl.DisplayNames([displayLocale], { type: "language" }).of(locale) ?? locale;
+  } catch {
+    return locale;
+  }
+}
+
 function MessageBubble({
   message,
   mine,
@@ -657,6 +670,14 @@ function MessageBubble({
   mine: boolean;
   onRetry: (message: ThreadMessage) => void;
 }) {
+  const { requestedLocale, resolve } = useI18n();
+  const sourceLocale = normalizeLocaleCode(message.sourceLocale) ?? "en";
+  const readerLocale = normalizeLocaleCode(requestedLocale) ?? "en";
+  const translatedForReader = sourceLocale.split("-")[0] !== readerLocale.split("-")[0];
+  const translationNotice = resolve(
+    "conversation.google_translated_from",
+    "Google translated from {language}",
+  ).text.replace("{language}", languageName(sourceLocale, readerLocale));
   return (
     <div className={cn("flex", mine ? "justify-end" : "justify-start")}>
       <div className="max-w-[82%]">
@@ -678,8 +699,11 @@ function MessageBubble({
             message.deliveryState === "failed" && "border-destructive"
           )}
         >
-          {message.body}
+          <span data-user-generated-content>{message.body}</span>
         </div>
+        {translatedForReader ? (
+          <p className="mt-1 px-1 text-[11px] text-muted-foreground">{translationNotice}</p>
+        ) : null}
         <div
           className={cn(
             "mt-1 flex items-center gap-2 px-1",
