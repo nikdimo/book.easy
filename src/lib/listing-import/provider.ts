@@ -1,6 +1,6 @@
 import type { ListingImportProvider } from "@/lib/listing-import/types";
 
-const PROVIDER_HOSTS: Record<ListingImportProvider, string[]> = {
+const PROVIDER_HOSTS: Record<Exclude<ListingImportProvider, "GENERIC">, string[]> = {
   AIRBNB: [
     "airbnb.com",
     "airbnb.co.uk",
@@ -21,8 +21,9 @@ function hostMatches(hostname: string, allowed: string): boolean {
   return hostname === allowed || hostname.endsWith(`.${allowed}`);
 }
 
-/** Detects the provider solely from an allow-listed HTTPS hostname. This module has
- * no server dependencies so the paste field can show the same decision the API uses. */
+/** Recognized hosts get their specialized parser; every other syntactically public
+ * HTTPS host uses conservative generic metadata extraction. DNS/private-network
+ * validation still happens server-side immediately before fetching. */
 export function providerForUrl(value: string): ListingImportProvider | null {
   let url: URL;
   try {
@@ -30,21 +31,22 @@ export function providerForUrl(value: string): ListingImportProvider | null {
   } catch {
     return null;
   }
-  if (url.protocol !== "https:") return null;
+  if (url.protocol !== "https:" || url.username || url.password) return null;
 
   const hostname = url.hostname.toLowerCase().replace(/\.$/, "");
   for (const [provider, hosts] of Object.entries(PROVIDER_HOSTS) as [
-    ListingImportProvider,
+    Exclude<ListingImportProvider, "GENERIC">,
     string[],
   ][]) {
     if (hosts.some((host) => hostMatches(hostname, host))) return provider;
   }
-  return null;
+  if (!hostname || hostname === "localhost" || hostname.endsWith(".localhost")) return null;
+  return "GENERIC";
 }
 
 export const PROVIDER_LABELS: Record<ListingImportProvider, string> = {
   AIRBNB: "Airbnb",
   BOOKING: "Booking.com",
   VRBO: "Vrbo",
+  GENERIC: "Public website",
 };
-

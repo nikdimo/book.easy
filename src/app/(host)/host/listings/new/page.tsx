@@ -31,8 +31,12 @@ export default async function NewListingPage({ searchParams }: NewListingPagePro
 
   return (
     <div className="listing-studio h-full min-h-0 overflow-hidden">
+      {/* Keyed off the URL, never off the loaded draft. Publishing deletes the
+          draft row and revalidates, which re-runs this page with `draft` null —
+          keying off it would flip the key, remount the form, and replace the
+          "your listing is published" screen with a blank new wizard. */}
       <ListingForm
-        key={draft?.id ?? "new-listing"}
+        key={draftIdParam ?? "new-listing"}
         currencies={quotableCurrencies(rates)}
         amenities={amenities}
         propertyTypes={propertyTypes}

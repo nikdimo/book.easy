@@ -4,7 +4,7 @@ import { useActionState, useCallback, useEffect, useMemo, useRef, useState, useT
 import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Bath, Bed, BedDouble, Building, CalendarDays, PartyPopper, CalendarRange, Check, ChevronLeft, ChevronRight, CircleAlert, CircleDollarSign, Coffee, CookingPot, Eye, Flame, GripVertical, HeartPulse, Laptop, ListChecks, Loader2, MapPin, Microwave, Minus, Mountain, Pencil, Plus, Refrigerator, Shirt, Shield, ShieldCheck, Sparkles, Sun, Thermometer, Trees, Tv, Users, Waves, Wind, Wifi, Car } from "lucide-react";
+import { Bath, Bed, BedDouble, Building, CalendarDays, CalendarRange, Check, ChevronLeft, ChevronRight, CircleAlert, CircleDollarSign, Coffee, CookingPot, Eye, Flame, GripVertical, HeartPulse, Laptop, ListChecks, Loader2, MapPin, Microwave, Minus, Mountain, Pencil, Plus, Refrigerator, Shirt, Shield, ShieldCheck, Sparkles, Sun, Thermometer, Trees, Tv, Users, Waves, Wind, Wifi, Car } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   saveListingDraft,
@@ -16,6 +16,7 @@ import { ListingBottomNav } from "@/components/host/listing-bottom-nav";
 import { ListingWizardHeaderActions } from "@/components/host/listing-wizard-header-actions";
 import { ListingCurrencyPicker } from "@/components/host/listing-currency-picker";
 import { ListingImportPanel } from "@/components/host/listing-import-panel";
+import { ListingPublishedScreen } from "@/components/host/listing-published-screen";
 import { listingStopHref } from "@/lib/host/listing-workspace";
 import { promotionWizardIssues } from "@/lib/host/listing-wizard-validation";
 import { zodFieldErrors } from "@/lib/utils/zod-error";
@@ -24,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Tooltip,
@@ -90,6 +92,7 @@ import type { HostListingFormData } from "@/lib/serializers/host-listing-form";
 import type { ListingMediaItem } from "@/lib/types/listing-media";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 import type { ListingDraftData } from "@/lib/types/listing-draft";
+import type { ImportedPriceQuote } from "@/lib/listing-import/types";
 import {
   LISTING_SPACE_TYPES,
   listingSpaceTypeLabel,
@@ -736,12 +739,15 @@ export function ListingForm({
   const [publishChecklistOpen, setPublishChecklistOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   /** Set once the wizard's submit succeeds; the slug rides along so the success
-   *  dialog can send the host straight to the public page they just created. */
+   *  screen can send the host straight to the public page they just created. */
   const [submittedListing, setSubmittedListing] = useState<{
     id: string;
     slug: string;
   } | null>(null);
-  const submittedListingId = submittedListing?.id ?? null;
+  /** Publishing consumes the draft row, so every later autosave would either fail
+   *  or — worse — create a second, empty draft and adopt it as this form's. Read
+   *  from a ref because the queued saves below capture it at run time. */
+  const publishedRef = useRef(false);
   const [mediaUploadState, setMediaUploadState] = useState<ListingMediaUploadState>({
     active: false,
     progress: 0,
@@ -910,7 +916,9 @@ export function ListingForm({
   // partial/empty values are expected. No-op once editing a real listing, which is
   // already persisted.
   const autosaveDraft = useCallback((stepOverride?: number): Promise<boolean> => {
-    if (isEditing || !formRef.current) return Promise.resolve(true);
+    if (isEditing || publishedRef.current || !formRef.current) {
+      return Promise.resolve(true);
+    }
     const request = ++saveRequestRef.current;
     setSaveStatus("saving");
     const fd = new FormData(formRef.current);
@@ -1209,6 +1217,7 @@ export function ListingForm({
       if ("error" in result) {
         toast.error(result.error);
       } else {
+        publishedRef.current = true;
         setSubmittedListing({ id: result.listingId, slug: result.slug });
       }
     });
@@ -2340,6 +2349,17 @@ export function ListingForm({
                 </div>
               ) : (
                 <>
+                  {initialDraft?.importedPriceQuote && (
+                    <ImportedPriceProposal
+                      quote={initialDraft.importedPriceQuote}
+                      locale={i18n.locale}
+                      onChoose={(rate) => {
+                        setField("currency", initialDraft.importedPriceQuote!.currency);
+                        setField("baseNightlyRate", String(rate));
+                        setTimeout(() => void autosaveDraft(), 0);
+                      }}
+                    />
+                  )}
                   <PricingField
                     id="baseNightlyRate"
                     label={
@@ -3160,6 +3180,7 @@ export function ListingForm({
               bathrooms={bathrooms}
               nightlyRate={nightlyRate}
               currency={values.currency}
+              importedPriceQuote={initialDraft?.importedPriceQuote}
               amenities={selectedAmenities}
             />
           </div>
@@ -3564,115 +3585,12 @@ export function ListingForm({
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={!!submittedListingId}
-        onOpenChange={(open) => {
-          if (!open && submittedListingId) {
-            router.push("/host/listings");
-          }
-        }}
-      >
-        <DialogContent variant="sheet">
-          <DialogHeader className="items-center text-center">
-            {/* Publishing is the one genuinely celebratory moment in the wizard,
-                so the dialog leads with a mark rather than a line of text. The
-                ring animates once on mount; the icon itself never moves, so the
-                moment reads as festive without becoming a distraction. */}
-            <span className="relative mx-auto mb-1 flex h-16 w-16 items-center justify-center">
-              <span
-                aria-hidden
-                className="absolute inset-0 animate-ping rounded-full bg-primary/20 [animation-iteration-count:3]"
-              />
-              <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary ring-1 ring-primary/20">
-                <PartyPopper className="h-8 w-8" />
-              </span>
-            </span>
-            <DialogTitle className="text-center text-2xl">
-              <Tx
-                k="host.form.published_title"
-                source="Your listing is published!"
-              />
-            </DialogTitle>
-            <DialogDescription className="text-center text-base text-foreground">
-              <Tx
-                k="host.form.published_body"
-                source="Nice work — guests can find and book it right now."
-              />
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex flex-col gap-3">
-            <Button
-              type="button"
-              size="lg"
-              onClick={() => {
-                if (submittedListing) {
-                  router.push(`/properties/${submittedListing.slug}`);
-                }
-              }}
-            >
-              <Eye className="h-4 w-4" />
-              <Tx k="host.form.published_preview_cta" source="Preview your listing" />
-            </Button>
-
-            {/* A brand new listing has no blocked dates and one flat nightly rate,
-                so the calendar is the most valuable follow-up — kept as a real
-                button rather than a sentence, which is also the only shape that
-                survives the page being machine-translated. */}
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <Button
-                type="button"
-                variant="outline"
-                className="h-auto flex-col gap-1.5 py-3 text-xs"
-                onClick={() => {
-                  if (submittedListingId) {
-                    router.push(listingStopHref(submittedListingId, "availability"));
-                  }
-                }}
-              >
-                <CalendarDays className="h-4 w-4" />
-                <Tx k="host.form.published_calendar_cta" source="Dates & prices" />
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="h-auto flex-col gap-1.5 py-3 text-xs"
-                onClick={() => {
-                  if (submittedListingId) {
-                    router.push(`/host/listings/${submittedListingId}/edit`);
-                  }
-                }}
-              >
-                <Pencil className="h-4 w-4" />
-                <Tx k="host.form.continue_editing" source="Keep editing" />
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="h-auto flex-col gap-1.5 py-3 text-xs"
-                onClick={() => router.push("/host/listings")}
-              >
-                <ListChecks className="h-4 w-4" />
-                <Tx k="host.form.go_to_listings" source="My listings" />
-              </Button>
-            </div>
-
-            <p className="text-center text-xs text-muted-foreground">
-              <Tx
-                k="host.form.published_footnote"
-                source="Our team still reviews new listings, so keep the details accurate. Questions?"
-              />{" "}
-              <a
-                href="mailto:hello@lingerhomes.com"
-                className="notranslate underline underline-offset-2"
-                translate="no"
-              >
-                hello@lingerhomes.com
-              </a>
-            </p>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {submittedListing && (
+        <ListingPublishedScreen
+          listingId={submittedListing.id}
+          slug={submittedListing.slug}
+        />
+      )}
     </form>
   );
 }
@@ -4017,6 +3935,83 @@ function DescriptionPreviewSplit({ description }: { description: string }) {
   );
 }
 
+function exactPrice(amount: number, currency: string, locale = "en") {
+  const digits = currencyDecimals(currency);
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(amount);
+}
+
+function ImportedPriceProposal({
+  quote,
+  locale,
+  onChoose,
+}: {
+  quote: ImportedPriceQuote;
+  locale: string;
+  onChoose: (rate: number) => void;
+}) {
+  const recommended = quote.originalNightlyRate ?? quote.currentNightlyRate;
+  return (
+    <div className="border-b border-border/70 bg-primary/5 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-semibold"><Tx k="host.import.price_proposal" source="Imported price proposal" /></p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            <Tx k="host.import.price_proposal_hint" source="The original rate is recommended because Airbnb offers can be temporary." />
+          </p>
+        </div>
+        <PriceQuoteDetails quote={quote} locale={locale} />
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        <Button type="button" variant="outline" onClick={() => onChoose(recommended)}>
+          <Tx k="host.import.use_original_price" source="Use original" /> · {formatPrice(Math.round(recommended), quote.currency, locale)}
+        </Button>
+        {quote.originalNightlyRate && (
+          <Button type="button" variant="outline" onClick={() => onChoose(quote.currentNightlyRate)}>
+            <Tx k="host.import.use_airbnb_offer" source="Use Airbnb offer" /> · {formatPrice(Math.round(quote.currentNightlyRate), quote.currency, locale)}
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PriceQuoteDetails({ quote, locale }: { quote: ImportedPriceQuote; locale: string }) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button type="button" variant="ghost" size="sm" className="shrink-0 underline">
+          <Tx k="host.import.price_details" source="Price details" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-80 p-4">
+        <p className="font-semibold"><Tx k="host.import.airbnb_price_details" source="Airbnb price details" /></p>
+        {quote.checkIn && quote.checkOut && (
+          <p className="text-xs text-muted-foreground">{quote.checkIn} – {quote.checkOut}</p>
+        )}
+        <dl className="mt-2 space-y-2 text-sm">
+          {quote.originalNightlyRate && (
+            <div className="flex justify-between gap-4"><dt><Tx k="host.import.original_nightly_rate" source="Original nightly rate" /></dt><dd>{exactPrice(quote.originalNightlyRate, quote.currency, locale)}</dd></div>
+          )}
+          <div className="flex justify-between gap-4"><dt><Tx k="host.import.current_airbnb_rate" source="Current Airbnb rate" /></dt><dd>{exactPrice(quote.currentNightlyRate, quote.currency, locale)}</dd></div>
+          {quote.originalTotal && (
+            <div className="flex justify-between gap-4"><dt><Tx k="host.import.original_total" source="Original total" /></dt><dd>{exactPrice(quote.originalTotal, quote.currency, locale)}</dd></div>
+          )}
+          {quote.currentTotal && (
+            <div className="flex justify-between gap-4"><dt>{quote.nights ? `${quote.nights} ` : null}<Tx k="host.import.nights_total" source="nights total" /></dt><dd>{exactPrice(quote.currentTotal, quote.currency, locale)}</dd></div>
+          )}
+        </dl>
+        {quote.explanation && <p className="mt-3 border-t pt-3 text-xs text-muted-foreground">{quote.explanation}</p>}
+        <p className="mt-3 text-xs text-muted-foreground"><Tx k="host.import.quote_disclaimer" source="Imported quote only. The host confirms the Linger Homes base rate." /></p>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function ListingGuestPreview({
   title,
   description,
@@ -4030,6 +4025,7 @@ function ListingGuestPreview({
   bathrooms,
   nightlyRate,
   currency,
+  importedPriceQuote,
   amenities,
 }: {
   title: string;
@@ -4044,6 +4040,7 @@ function ListingGuestPreview({
   bathrooms: number;
   nightlyRate: number;
   currency: string;
+  importedPriceQuote?: ImportedPriceQuote;
   amenities: { id: string; name: string; category: string; icon?: string | null }[];
 }) {
   const { resolve } = useI18n();
@@ -4192,9 +4189,29 @@ function ListingGuestPreview({
           >
             <div className="px-6 pb-2 pt-6">
               <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-semibold">
-                  {nightlyRate > 0 ? formatPrice(nightlyRate, currency) : currency}
-                </span>
+                {nightlyRate > 0 ? (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button type="button" className="text-2xl font-semibold underline decoration-dotted underline-offset-4">
+                        {formatPrice(Math.round(nightlyRate), currency)}
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent align="start" className="w-80 p-4">
+                      <p className="font-semibold"><Tx k="host.import.price_details" source="Price details" /></p>
+                      <div className="mt-3 flex justify-between gap-4 text-sm">
+                        <span><Tx k="host.import.base_nightly_rate" source="Base nightly rate" /></span>
+                        <span>{exactPrice(nightlyRate, currency)}</span>
+                      </div>
+                      {importedPriceQuote && (
+                        <div className="mt-3 border-t pt-3">
+                          <PriceQuoteDetails quote={importedPriceQuote} locale="en" />
+                        </div>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                ) : (
+                  <span className="text-2xl font-semibold">{currency}</span>
+                )}
                 <span className="text-base text-muted-foreground">
                   <Tx k="host.preview.per_night" source="/ night" />
                 </span>

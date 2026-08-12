@@ -3,16 +3,39 @@ import { parseListingHtml } from "@/lib/listing-import/importer";
 import { providerForUrl } from "@/lib/listing-import/provider";
 
 describe("listing link providers", () => {
-  it("accepts supported provider hosts and rejects lookalikes", () => {
+  it("specializes known hosts and safely classifies other public HTTPS links", () => {
     expect(providerForUrl("https://www.airbnb.com/rooms/123")).toBe("AIRBNB");
     expect(providerForUrl("https://secure.booking.com/hotel/mk/example.html")).toBe("BOOKING");
     expect(providerForUrl("https://www.vrbo.co.uk/p123")).toBe("VRBO");
-    expect(providerForUrl("https://airbnb.com.example.test/rooms/123")).toBeNull();
+    expect(providerForUrl("https://airbnb.com.example.test/rooms/123")).toBe("GENERIC");
+    expect(providerForUrl("https://independent-hotel.example/rooms/sea-view")).toBe("GENERIC");
     expect(providerForUrl("http://www.airbnb.com/rooms/123")).toBeNull();
+    expect(providerForUrl("https://localhost/property/123")).toBeNull();
+    expect(providerForUrl("https://user:secret@example.com/property/123")).toBeNull();
   });
 });
 
 describe("public listing metadata parser", () => {
+  it("conservatively imports Open Graph data from an unknown public website", () => {
+    const result = parseListingHtml(
+      `<html><head>
+        <meta property="og:title" content="Harbour guest room">
+        <meta property="og:description" content="A private room near the harbour.">
+        <meta property="og:image" content="https://images.example/harbour.jpg">
+      </head></html>`,
+      "https://independent-host.example/harbour-room",
+      "GENERIC",
+    );
+    expect(result).toMatchObject({
+      provider: "GENERIC",
+      title: "Harbour guest room",
+      description: "A private room near the harbour.",
+      amenities: [],
+      imageUrls: ["https://images.example/harbour.jpg"],
+    });
+    expect(result.nightlyRate).toBeUndefined();
+  });
+
   it("combines structured listing data with Open Graph photos", () => {
     const html = `
       <html><head>
@@ -117,6 +140,10 @@ describe("public listing metadata parser", () => {
           "Room in Roskilde, Denmark",
           "Check-in after 3:00 PM",
           "Checkout before 11:00 AM",
+          "2 nights x €85.56",
+          "€200.58",
+          "€171.12",
+          "The host recently lowered the price for these dates.",
         ],
       })}</script>`;
 
@@ -142,6 +169,16 @@ describe("public listing metadata parser", () => {
       checkInTime: "15:00",
       checkOutTime: "11:00",
       amenities: ["Wifi", "Free parking on premises"],
+      priceQuote: {
+        checkIn: undefined,
+        checkOut: undefined,
+        nights: 2,
+        currency: "EUR",
+        originalNightlyRate: 100.29,
+        currentNightlyRate: 85.56,
+        originalTotal: 200.58,
+        currentTotal: 171.12,
+      },
     });
     expect(result.imageUrls).toHaveLength(2);
   });

@@ -225,6 +225,11 @@ export async function POST(request: Request) {
         baseNightlyRate: imported.nightlyRate && imported.nightlyRate > 0
           ? String(imported.nightlyRate)
           : "",
+        importedPriceQuote: imported.priceQuote
+          ? Object.fromEntries(
+              Object.entries(imported.priceQuote).filter(([, value]) => value !== undefined),
+            )
+          : undefined,
         cleaningFee: "0",
         minNights: "1",
         checkInTime: imported.checkInTime ?? "",

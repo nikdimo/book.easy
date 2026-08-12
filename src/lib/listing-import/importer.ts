@@ -3,9 +3,11 @@ import "server-only";
 import { lookup } from "node:dns/promises";
 import { randomUUID } from "node:crypto";
 import { isIP } from "node:net";
+import { Agent, fetch as guardedFetch } from "undici";
 import { getStorageAdapter } from "@/lib/storage";
 import type {
   ImportedListingData,
+  ImportedPriceQuote,
   ListingImportProvider,
 } from "@/lib/listing-import/types";
 import { providerForUrl } from "@/lib/listing-import/provider";
@@ -17,6 +19,31 @@ const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 const MAX_IMAGES = 100;
 const FETCH_TIMEOUT_MS = 15_000;
 const MAX_REDIRECTS = 5;
+
+// The lookup used for the actual socket connection validates the exact address it
+// returns. This closes the DNS-rebinding gap that would exist if arbitrary generic
+// hosts were checked once and then resolved a second time by fetch.
+const PUBLIC_HTTPS_AGENT = new Agent({
+  connect: {
+    lookup(hostname, options, callback) {
+      lookup(hostname, { all: true, verbatim: true })
+        .then((addresses) => {
+          const publicAddresses = addresses.filter(({ address }) => !isPrivateIp(address));
+          if (publicAddresses.length !== addresses.length || publicAddresses.length === 0) {
+            const error = new Error("Private network URLs cannot be imported.") as NodeJS.ErrnoException;
+            error.code = "ENOTFOUND";
+            callback(error, "", 4);
+            return;
+          }
+          const requestedFamily = Number(options?.family);
+          const selected = publicAddresses.find(({ family }) => !requestedFamily || family === requestedFamily)
+            ?? publicAddresses[0];
+          callback(null, selected.address, selected.family);
+        })
+        .catch((error: NodeJS.ErrnoException) => callback(error, "", 4));
+    },
+  },
+});
 
 const IMAGE_TYPES: Record<string, { extension: string; magic: (bytes: Buffer) => boolean }> = {
   "image/jpeg": {
@@ -82,10 +109,15 @@ async function safeFetch(
 ): Promise<Response> {
   let url = await assertPublicHttpsUrl(value);
   for (let redirect = 0; redirect <= MAX_REDIRECTS; redirect += 1) {
-    if (options.providerOnly && providerForUrl(url.href) !== options.providerOnly) {
+    if (
+      options.providerOnly &&
+      options.providerOnly !== "GENERIC" &&
+      providerForUrl(url.href) !== options.providerOnly
+    ) {
       throw new Error("The provider redirected to an unsupported website.");
     }
-    const response = await fetch(url, {
+    const response = await guardedFetch(url, {
+      dispatcher: PUBLIC_HTTPS_AGENT,
       redirect: "manual",
       cache: "no-store",
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
@@ -96,7 +128,9 @@ async function safeFetch(
         "User-Agent": "BookEasy-Listing-Importer/1.0",
       },
     });
-    if (![301, 302, 303, 307, 308].includes(response.status)) return response;
+    if (![301, 302, 303, 307, 308].includes(response.status)) {
+      return response as unknown as Response;
+    }
     const location = response.headers.get("location");
     if (!location) throw new Error("The provider returned an invalid redirect.");
     url = await assertPublicHttpsUrl(new URL(location, url).href);
@@ -270,6 +304,61 @@ interface AirbnbPageSignals {
   checkInTime?: string;
   checkOutTime?: string;
   currency?: string;
+  priceQuote?: ImportedPriceQuote;
+}
+
+function decimalFromPriceText(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value) && value >= 0) return value;
+  if (typeof value !== "string") return undefined;
+  const match = value.replace(/[\u00a0\u202f]/g, " ").match(/\d[\d.,]*/);
+  if (!match) return undefined;
+  const raw = match[0];
+  const decimal = raw.lastIndexOf(".") > raw.lastIndexOf(",") ? "." : ",";
+  const normalized = raw.includes(".") && raw.includes(",")
+    ? raw.replace(decimal === "." ? /,/g : /\./g, "").replace(decimal, ".")
+    : raw.replace(decimal, ".");
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function airbnbPriceQuote(
+  strings: string[],
+  sourceUrl: string,
+  currency: string | undefined,
+): ImportedPriceQuote | undefined {
+  if (!currency) return undefined;
+  const url = new URL(sourceUrl);
+  const checkIn = url.searchParams.get("check_in") ?? undefined;
+  const checkOut = url.searchParams.get("check_out") ?? undefined;
+  const nightLine = strings.find((value) => /\b\d+\s+nights?\s*[x×]\s*[^\d]*\d/i.test(value));
+  if (!nightLine) return undefined;
+  const match = nightLine.replace(/[\u00a0\u202f]/g, " ").match(/\b(\d+)\s+nights?\s*[x×]\s*([^\s]+(?:\s*[A-Z]{3})?)/i);
+  const nights = match ? Number(match[1]) : undefined;
+  const currentNightlyRate = match ? decimalFromPriceText(match[2]) : undefined;
+  if (!nights || !currentNightlyRate || currentNightlyRate <= 0) return undefined;
+  const quoteCurrency = nightLine.includes("€") ? "EUR"
+    : nightLine.includes("£") ? "GBP"
+      : nightLine.match(/\b[A-Z]{3}\b/)?.[0] ?? currency;
+  const monetary = strings
+    .filter((value) => /[€$£¥]|\b(?:DKK|EUR|USD|GBP|NOK|SEK)\b/i.test(value))
+    .map(decimalFromPriceText)
+    .filter((value): value is number => value !== undefined && value > 0);
+  const currentTotal = monetary.find((value) => Math.abs(value - currentNightlyRate * nights) < 0.02);
+  const originalTotal = monetary.find((value) => value > (currentTotal ?? currentNightlyRate * nights) + 0.01);
+  const originalNightlyRate = originalTotal ? originalTotal / nights : undefined;
+  const explanation = strings.find((value) => /lowered|discount|average rate|promotion|special offer/i.test(value));
+  return {
+    checkIn,
+    checkOut,
+    nights,
+    currency: quoteCurrency,
+    originalNightlyRate,
+    currentNightlyRate,
+    originalTotal,
+    currentTotal: currentTotal ?? currentNightlyRate * nights,
+    explanation: explanation?.slice(0, 500),
+    capturedAt: new Date().toISOString(),
+  };
 }
 
 function clockTime(value: string, meridiem: string | undefined): string | undefined {
@@ -303,6 +392,7 @@ function parseAirbnbSignals(
   html: string,
   meta: Map<string, string[]>,
   knownCity?: string,
+  sourceUrl = "https://www.airbnb.com/",
 ): AirbnbPageSignals {
   const result: AirbnbPageSignals = { amenities: [] };
   const amenityNames: string[] = [];
@@ -420,6 +510,7 @@ function parseAirbnbSignals(
     result.checkInTime ??= timeFromText(description, "check-in");
     result.checkOutTime ??= timeFromText(description, "checkout");
   }
+  result.priceQuote = airbnbPriceQuote(strings, sourceUrl, result.currency);
   return result;
 }
 
@@ -526,7 +617,7 @@ export function parseListingHtml(
   };
 
   if (provider !== "AIRBNB") return generic;
-  const airbnb = parseAirbnbSignals(html, meta, generic.city);
+  const airbnb = parseAirbnbSignals(html, meta, generic.city, sourceUrl);
   return {
     ...generic,
     propertyType: airbnb.propertyType ?? generic.propertyType,
@@ -540,6 +631,7 @@ export function parseListingHtml(
     beds: airbnb.beds ?? generic.beds,
     bathrooms: airbnb.bathrooms ?? generic.bathrooms,
     currency: airbnb.currency ?? generic.currency,
+    priceQuote: airbnb.priceQuote,
     amenities: uniqueStrings([...airbnb.amenities, ...generic.amenities], 250),
     checkInTime: airbnb.checkInTime,
     checkOutTime: airbnb.checkOutTime,
@@ -550,7 +642,7 @@ export function parseListingHtml(
 export async function importListingUrl(value: string): Promise<ImportedListingData> {
   const provider = providerForUrl(value);
   if (!provider) {
-    throw new Error("Paste a valid Airbnb, Booking.com, or Vrbo HTTPS listing link.");
+    throw new Error("Paste a valid public HTTPS property or accommodation link.");
   }
   const response = await safeFetch(value, { providerOnly: provider });
   if (!response.ok) {

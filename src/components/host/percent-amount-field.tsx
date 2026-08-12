@@ -130,6 +130,9 @@ export function PercentAmountField({
             : "grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]",
         )}
       >
+        {/* The `md:pr-*` on both fields is not a duplicate: the Input base carries a
+            `md:px-2.5`, and a responsive variant outranks the plain `pr-*` from here, so
+            without it the right-aligned number runs under the suffix on wide screens. */}
         {hidePercent ? null : (
           <div className="relative min-w-0">
             <Input
@@ -154,7 +157,7 @@ export function PercentAmountField({
                 onPercentChange(value);
               }}
               onBlur={() => setPercentText(null)}
-              className="h-12 pr-8 text-right text-lg font-semibold tabular-nums"
+              className="h-12 pr-8 text-right text-lg font-semibold tabular-nums md:pr-8"
             />
             <span
               aria-hidden="true"
@@ -191,7 +194,7 @@ export function PercentAmountField({
                 onAmountChange(parsed);
               }}
               onBlur={() => setAmountText(null)}
-              className="h-12 pr-14 text-right text-lg font-semibold tabular-nums"
+              className="h-12 pr-14 text-right text-lg font-semibold tabular-nums md:pr-14"
             />
             <span
               aria-hidden="true"

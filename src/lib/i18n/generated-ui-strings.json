@@ -2045,6 +2045,76 @@
     "filePath": "src/components/public/home-listings-view.tsx"
   },
   {
+    "key": "host.action.all_caught_up",
+    "sourceText": "You're all caught up — nothing needs your attention right now.",
+    "filePath": "src/components/host/host-booking-action-rail.tsx"
+  },
+  {
+    "key": "host.action.checking_in",
+    "sourceText": "Checking in soon",
+    "filePath": "src/components/host/host-booking-action-rail.tsx"
+  },
+  {
+    "key": "host.action.chip.check_in",
+    "sourceText": "Arriving soon",
+    "filePath": "src/components/host/host-booking-action-rail.tsx"
+  },
+  {
+    "key": "host.action.chip.message",
+    "sourceText": "Unread message",
+    "filePath": "src/components/host/host-booking-action-rail.tsx"
+  },
+  {
+    "key": "host.action.chip.rate",
+    "sourceText": "Rating open",
+    "filePath": "src/components/host/host-booking-action-rail.tsx"
+  },
+  {
+    "key": "host.action.chip.respond",
+    "sourceText": "Awaiting your reply",
+    "filePath": "src/components/host/host-booking-action-rail.tsx"
+  },
+  {
+    "key": "host.action.expires_in",
+    "sourceText": "Request expires in",
+    "filePath": "src/components/host/host-booking-action-rail.tsx"
+  },
+  {
+    "key": "host.action.heading",
+    "sourceText": "Needs your action",
+    "filePath": "src/components/host/host-booking-action-rail.tsx"
+  },
+  {
+    "key": "host.action.leave_rating",
+    "sourceText": "Leave rating",
+    "filePath": "src/components/host/host-booking-action-rail.tsx"
+  },
+  {
+    "key": "host.action.open_conversation",
+    "sourceText": "Open conversation",
+    "filePath": "src/components/host/host-booking-action-rail.tsx"
+  },
+  {
+    "key": "host.action.rate_open",
+    "sourceText": "Rate your guest",
+    "filePath": "src/components/host/host-booking-action-rail.tsx"
+  },
+  {
+    "key": "host.action.review_arrival",
+    "sourceText": "Review arrival",
+    "filePath": "src/components/host/host-booking-action-rail.tsx"
+  },
+  {
+    "key": "host.action.sorted_by",
+    "sourceText": "sorted by deadline",
+    "filePath": "src/components/host/host-booking-action-rail.tsx"
+  },
+  {
+    "key": "host.action.unread",
+    "sourceText": "Guest is waiting for a reply",
+    "filePath": "src/components/host/host-booking-action-rail.tsx"
+  },
+  {
     "key": "host.booking_detail.accommodation",
     "sourceText": "Accommodation · {nights} nights",
     "filePath": "src/app/(host)/host/bookings/[id]/page.tsx"
@@ -2135,8 +2205,28 @@
     "filePath": "src/components/host/host-booking-actions.tsx"
   },
   {
-    "key": "host.bookings.dates_label",
-    "sourceText": "Dates:",
+    "key": "host.bookings.all_heading",
+    "sourceText": "All bookings",
+    "filePath": "src/app/(host)/host/bookings/page.tsx"
+  },
+  {
+    "key": "host.bookings.checkin_in",
+    "sourceText": "Check-in in",
+    "filePath": "src/app/(host)/host/bookings/page.tsx"
+  },
+  {
+    "key": "host.bookings.checkin_today",
+    "sourceText": "Check-in today",
+    "filePath": "src/app/(host)/host/bookings/page.tsx"
+  },
+  {
+    "key": "host.bookings.count_suffix",
+    "sourceText": "bookings",
+    "filePath": "src/app/(host)/host/bookings/page.tsx"
+  },
+  {
+    "key": "host.bookings.days_short",
+    "sourceText": "d",
     "filePath": "src/app/(host)/host/bookings/page.tsx"
   },
   {
@@ -2150,24 +2240,24 @@
     "filePath": "src/app/(host)/host/bookings/page.tsx"
   },
   {
-    "key": "host.bookings.guest_label",
-    "sourceText": "Guest:",
-    "filePath": "src/app/(host)/host/bookings/page.tsx"
-  },
-  {
-    "key": "host.bookings.guests_label",
-    "sourceText": "Guests:",
-    "filePath": "src/app/(host)/host/bookings/page.tsx"
-  },
-  {
     "key": "host.bookings.heading",
-    "sourceText": "Booking Requests",
+    "sourceText": "Bookings",
     "filePath": "src/app/(host)/host/bookings/page.tsx"
   },
   {
     "key": "host.bookings.message_guest",
     "sourceText": "Message guest",
     "filePath": "src/app/(host)/host/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "host.bookings.needs_you_today",
+    "sourceText": "things need you today",
+    "filePath": "src/app/(host)/host/bookings/page.tsx"
+  },
+  {
+    "key": "host.bookings.nothing_today",
+    "sourceText": "Nothing needs you today",
+    "filePath": "src/app/(host)/host/bookings/page.tsx"
   },
   {
     "key": "host.bookings.rate_guest",
@@ -2180,14 +2270,14 @@
     "filePath": "src/app/(host)/host/bookings/[id]/page.tsx"
   },
   {
-    "key": "host.bookings.total_label",
-    "sourceText": "Total:",
+    "key": "host.bookings.upcoming_suffix",
+    "sourceText": "upcoming",
     "filePath": "src/app/(host)/host/bookings/page.tsx"
   },
   {
     "key": "host.bookings.view_details",
     "sourceText": "View details",
-    "filePath": "src/app/(host)/host/bookings/page.tsx"
+    "filePath": "src/components/host/host-booking-action-rail.tsx"
   },
   {
     "key": "host.calendar.additional_defaults",
@@ -2667,7 +2757,7 @@
   {
     "key": "host.form.continue_editing",
     "sourceText": "Keep editing",
-    "filePath": "src/components/host/listing-form.tsx"
+    "filePath": "src/components/host/listing-published-screen.tsx"
   },
   {
     "key": "host.form.continue_without_offer",
@@ -2692,7 +2782,7 @@
   {
     "key": "host.form.go_to_listings",
     "sourceText": "My listings",
-    "filePath": "src/components/host/listing-form.tsx"
+    "filePath": "src/components/host/listing-published-screen.tsx"
   },
   {
     "key": "host.form.location_done",
@@ -2972,27 +3062,22 @@
   {
     "key": "host.form.published_body",
     "sourceText": "Nice work — guests can find and book it right now.",
-    "filePath": "src/components/host/listing-form.tsx"
-  },
-  {
-    "key": "host.form.published_calendar_cta",
-    "sourceText": "Dates & prices",
-    "filePath": "src/components/host/listing-form.tsx"
+    "filePath": "src/components/host/listing-published-screen.tsx"
   },
   {
     "key": "host.form.published_footnote",
     "sourceText": "Our team still reviews new listings, so keep the details accurate. Questions?",
-    "filePath": "src/components/host/listing-form.tsx"
+    "filePath": "src/components/host/listing-published-screen.tsx"
   },
   {
     "key": "host.form.published_preview_cta",
     "sourceText": "Preview your listing",
-    "filePath": "src/components/host/listing-form.tsx"
+    "filePath": "src/components/host/listing-published-screen.tsx"
   },
   {
     "key": "host.form.published_title",
     "sourceText": "Your listing is published!",
-    "filePath": "src/components/host/listing-form.tsx"
+    "filePath": "src/components/host/listing-published-screen.tsx"
   },
   {
     "key": "host.form.retry",
@@ -3090,8 +3175,23 @@
     "filePath": "src/components/host/listing-import-panel.tsx"
   },
   {
+    "key": "host.import.airbnb_price_details",
+    "sourceText": "Airbnb price details",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.import.base_nightly_rate",
+    "sourceText": "Base nightly rate",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.import.current_airbnb_rate",
+    "sourceText": "Current Airbnb rate",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
     "key": "host.import.description",
-    "sourceText": "Paste an Airbnb, Booking.com, or Vrbo link to prefill photos, description, location, price, property details, and amenities.",
+    "sourceText": "Paste any public property or accommodation link. Recognized platforms receive deeper extraction; other websites use their public metadata.",
     "filePath": "src/components/host/listing-import-panel.tsx"
   },
   {
@@ -3100,9 +3200,44 @@
     "filePath": "src/components/host/listing-import-panel.tsx"
   },
   {
+    "key": "host.import.nights_total",
+    "sourceText": "nights total",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
     "key": "host.import.note",
-    "sourceText": "Availability and date-specific prices are not imported. Some providers may limit what can be read from a public page.",
+    "sourceText": "Only publicly exposed information is imported. Generic websites may provide fewer details, and every imported field must be reviewed before publishing.",
     "filePath": "src/components/host/listing-import-panel.tsx"
+  },
+  {
+    "key": "host.import.original_nightly_rate",
+    "sourceText": "Original nightly rate",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.import.original_total",
+    "sourceText": "Original total",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.import.price_details",
+    "sourceText": "Price details",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.import.price_proposal",
+    "sourceText": "Imported price proposal",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.import.price_proposal_hint",
+    "sourceText": "The original rate is recommended because Airbnb offers can be temporary.",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.import.quote_disclaimer",
+    "sourceText": "Imported quote only. The host confirms the Linger Homes base rate.",
+    "filePath": "src/components/host/listing-form.tsx"
   },
   {
     "key": "host.import.rights_body",
@@ -3118,6 +3253,16 @@
     "key": "host.import.title",
     "sourceText": "Import an existing listing",
     "filePath": "src/components/host/listing-import-panel.tsx"
+  },
+  {
+    "key": "host.import.use_airbnb_offer",
+    "sourceText": "Use Airbnb offer",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.import.use_original_price",
+    "sourceText": "Use original",
+    "filePath": "src/components/host/listing-form.tsx"
   },
   {
     "key": "host.inbox.heading",

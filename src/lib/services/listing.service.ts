@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
-import { ListingStatus } from "@prisma/client";
+import { ListingStatus, ReviewDirection } from "@prisma/client";
 import slugify from "slugify";
 import {
   completePastBookings,
@@ -71,10 +71,33 @@ export async function getHostBookings(hostId: string) {
         },
       },
       guest: { select: { id: true, name: true } },
+      // The three fields below feed the "needs your action" queue on the host
+      // bookings screen: an unanswered guest message, and an outstanding invitation
+      // to rate the guest. Scoped to this host so the counts are never another
+      // participant's.
+      conversation: {
+        select: {
+          id: true,
+          participants: {
+            where: { userId: hostId },
+            select: { unreadCount: true },
+          },
+        },
+      },
+      reviewInvitations: {
+        where: { direction: ReviewDirection.HOST_TO_GUEST, recipientId: hostId },
+        select: { deadline: true },
+      },
+      reviews: {
+        where: { direction: ReviewDirection.HOST_TO_GUEST },
+        select: { id: true },
+      },
     },
     orderBy: { createdAt: "desc" },
   });
 }
+
+export type HostBooking = Awaited<ReturnType<typeof getHostBookings>>[number];
 
 export async function generateUniqueSlug(title: string): Promise<string> {
   const base = slugify(title, { lower: true, strict: true });

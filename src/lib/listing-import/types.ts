@@ -1,4 +1,17 @@
-export type ListingImportProvider = "AIRBNB" | "BOOKING" | "VRBO";
+export type ListingImportProvider = "AIRBNB" | "BOOKING" | "VRBO" | "GENERIC";
+
+export interface ImportedPriceQuote {
+  checkIn?: string;
+  checkOut?: string;
+  nights?: number;
+  currency: string;
+  originalNightlyRate?: number;
+  currentNightlyRate: number;
+  originalTotal?: number;
+  currentTotal?: number;
+  explanation?: string;
+  capturedAt: string;
+}
 
 export interface ImportedListingData {
   provider: ListingImportProvider;
@@ -22,6 +35,7 @@ export interface ImportedListingData {
   bathrooms?: number;
   currency?: string;
   nightlyRate?: number;
+  priceQuote?: ImportedPriceQuote;
   checkInTime?: string;
   checkOutTime?: string;
   locationApproximate?: boolean;

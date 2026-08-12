@@ -52,12 +52,24 @@ export function HostBookingActions({ bookingId }: { bookingId: string }) {
 
   return (
     <>
-      <div className="flex flex-wrap gap-2">
-        <Button onClick={() => setDecision("accept")}>
+      {/* Accept is the only green control in the host app, and declining is the only
+          thing here that destroys a booking — so they are deliberately unequal. A
+          filled red "Decline" sitting beside a filled green "Accept" would make the
+          destructive half of an irreversible pair just as easy to hit as the safe
+          half. */}
+      <div className="flex flex-wrap items-center gap-1">
+        <Button
+          onClick={() => setDecision("accept")}
+          className="bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+        >
           <Check className="mr-1 h-4 w-4" />
           <Tx k="host.booking.accept" source="Accept request" />
         </Button>
-        <Button variant="outline" onClick={() => setDecision("decline")}>
+        <Button
+          variant="ghost"
+          onClick={() => setDecision("decline")}
+          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+        >
           <X className="mr-1 h-4 w-4" />
           <Tx k="host.booking.decline" source="Decline" />
         </Button>
@@ -73,7 +85,7 @@ export function HostBookingActions({ bookingId }: { bookingId: string }) {
               className={`mb-1 grid size-10 place-items-center rounded-full ${
                 decision === "decline"
                   ? "bg-destructive/10 text-destructive"
-                  : "bg-primary/10 text-primary"
+                  : "bg-emerald-600/10 text-emerald-700 dark:text-emerald-400"
               }`}
             >
               {decision === "decline" ? (
@@ -139,7 +151,11 @@ export function HostBookingActions({ bookingId }: { bookingId: string }) {
               variant={decision === "decline" ? "destructive" : "default"}
               disabled={isPending || (decision === "decline" && !reason.trim())}
               onClick={submit}
-              className="sm:w-auto"
+              className={
+                decision === "decline"
+                  ? "sm:w-auto"
+                  : "bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto dark:bg-emerald-600 dark:hover:bg-emerald-500"
+              }
             >
               {isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

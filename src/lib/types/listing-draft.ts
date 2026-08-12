@@ -1,5 +1,6 @@
 import type { ListingMediaItem } from "@/lib/types/listing-media";
 import type { PrePublishPlan } from "@/lib/types/listing-prepublish-plan";
+import type { ImportedPriceQuote } from "@/lib/listing-import/types";
 
 /** Shape of ListingDraft.data — a new listing's in-progress form state, autosaved on
  * blur before it's complete enough to become a real Listing/Property row. Every field
@@ -33,6 +34,7 @@ export interface ListingDraftData {
   bathrooms?: string;
   currency?: string;
   baseNightlyRate?: string;
+  importedPriceQuote?: ImportedPriceQuote;
   cleaningFee?: string;
   minNights?: string;
   checkInTime?: string;
@@ -51,7 +53,7 @@ export interface ListingDraftData {
   amenityIds?: string[];
   /** Set when the host used the provider-link importer. Kept on the private draft for
    * troubleshooting and provenance; never rendered on the public listing. */
-  importProvider?: "AIRBNB" | "BOOKING" | "VRBO";
+  importProvider?: "AIRBNB" | "BOOKING" | "VRBO" | "GENERIC";
   importSpaceType?: string;
   importLocationApproximate?: boolean;
   importSourceUrl?: string;

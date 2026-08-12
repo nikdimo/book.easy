@@ -33,11 +33,11 @@ export function ListingImportPanel() {
 
   function runImport() {
     if (!url.trim()) {
-      toast.error("Paste an Airbnb, Booking.com, or Vrbo listing link.");
+      toast.error("Paste a public property or accommodation link.");
       return;
     }
     if (!detectedProvider) {
-      toast.error("Paste a supported Airbnb, Booking.com, or Vrbo HTTPS listing link.");
+      toast.error("Paste a valid public HTTPS link.");
       return;
     }
     if (!rightsConfirmed) {
@@ -82,7 +82,7 @@ export function ListingImportPanel() {
           <p className="mt-0.5 text-sm text-muted-foreground">
             <Tx
               k="host.import.description"
-              source="Paste an Airbnb, Booking.com, or Vrbo link to prefill photos, description, location, price, property details, and amenities."
+              source="Paste any public property or accommodation link. Recognized platforms receive deeper extraction; other websites use their public metadata."
             />
           </p>
         </div>
@@ -106,7 +106,7 @@ export function ListingImportPanel() {
                 runImport();
               }
             }}
-            placeholder={resolve("host.import.url_placeholder", "https://www.airbnb.com/rooms/...").text}
+            placeholder={resolve("host.import.url_placeholder", "https://example.com/property/...").text}
             className="pl-9"
           />
         </div>
@@ -129,7 +129,7 @@ export function ListingImportPanel() {
               ).text
             : resolve(
                 "host.import.provider_unsupported",
-                "This is not a supported Airbnb, Booking.com, or Vrbo link",
+                "Enter a valid public HTTPS link",
               ).text}
         </p>
       )}
@@ -156,7 +156,7 @@ export function ListingImportPanel() {
       <p className="mt-2 text-xs text-muted-foreground">
         <Tx
           k="host.import.note"
-          source="Availability and date-specific prices are not imported. Some providers may limit what can be read from a public page."
+          source="Only publicly exposed information is imported. Generic websites may provide fewer details, and every imported field must be reviewed before publishing."
         />
       </p>
     </section>
