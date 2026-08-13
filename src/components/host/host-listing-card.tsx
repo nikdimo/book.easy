@@ -21,6 +21,7 @@ import {
 import { Tx, interpolate, useI18n } from "@/lib/i18n/client";
 import { formatPrice } from "@/lib/utils/format";
 import { LISTING_STATUSES } from "@/lib/constants";
+import { resolveListingStatus } from "@/lib/i18n/status-labels";
 
 interface HostListingCardProps {
   listing: {
@@ -40,7 +41,7 @@ export function HostListingCard({ listing }: HostListingCardProps) {
   const { resolve } = useI18n();
   const statusConfig = LISTING_STATUSES.find((s) => s.value === listing.status);
   const editHref = `/host/listings/${listing.id}/edit`;
-  const statusLabel = statusConfig?.label || listing.status;
+  const statusLabel = resolveListingStatus({ resolve }, listing.status);
   const isArchived = listing.status === "ARCHIVED";
   const canToggleVisibility =
     !isArchived && isHostVisibilityToggleable(listing.status);
@@ -77,20 +78,21 @@ export function HostListingCard({ listing }: HostListingCardProps) {
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-semibold truncate">{listing.title}</h3>
+            <h3 className="font-semibold truncate" data-user-generated-content translate="yes">{listing.title}</h3>
             <Badge
               variant={listing.status === "APPROVED" ? "default" : "secondary"}
             >
-              <span className="notranslate" translate="no">
-                {statusLabel}
+              <span className={statusLabel.translated ? "notranslate" : undefined} translate={statusLabel.translated ? "no" : undefined}>
+                {statusLabel.text}
               </span>
             </Badge>
           </div>
           <p className="text-sm text-muted-foreground">
-            {listing.property.city}
-            {listing.pricingRule &&
-              ` · ${formatPrice(Number(listing.pricingRule.baseNightlyRate), listing.pricingRule.currency)}/night`}
-            {` · ${listing._count.bookings} booking${listing._count.bookings !== 1 ? "s" : ""}`}
+            <span data-user-generated-content translate="yes">{listing.property.city}</span>
+            {listing.pricingRule ? (
+              <> · <span translate="no">{formatPrice(Number(listing.pricingRule.baseNightlyRate), listing.pricingRule.currency)}</span>/<Tx k="host.listing_card.night" source="night" /></>
+            ) : null}
+            <> · {listing._count.bookings} {listing._count.bookings === 1 ? <Tx k="host.listing_card.booking" source="booking" /> : <Tx k="host.listing_card.bookings" source="bookings" />}</>
           </p>
         </div>
         <div

@@ -11,6 +11,7 @@ import {
   type ListingLocationValue,
 } from "@/components/host/listing-location-field";
 import { EXACT_LOCATION_UNLOCK_DAYS } from "@/lib/utils/street-view-access";
+import { Tx, useI18n } from "@/lib/i18n/client";
 
 /** Step 3 of 3 for location, and the only optional one — plenty of addresses have no
  *  panorama within range, so this must never block publishing. */
@@ -23,6 +24,7 @@ export function ListingStreetViewField({
   onChange: (patch: Partial<ListingLocationValue>) => void;
   heading?: boolean;
 }) {
+  const { resolve } = useI18n();
   const latitude = finiteCoordinate(value.latitude, -90, 90);
   const longitude = finiteCoordinate(value.longitude, -180, 180);
   const hasPin = latitude !== null && longitude !== null;
@@ -52,22 +54,19 @@ export function ListingStreetViewField({
   );
 
   return (
-    <div className="notranslate space-y-3 md:space-y-4">
+    <div className="space-y-3 md:space-y-4">
       {heading && (
         <div>
-          <h2 className="text-lg font-semibold tracking-tight md:text-2xl">Street View</h2>
+          <h2 className="text-lg font-semibold tracking-tight md:text-2xl"><Tx k="host.street_view.title" source="Street View" /></h2>
           <p className="mt-1 text-xs text-muted-foreground md:text-sm">
-            Turn the camera to what guests see when they arrive. Optional.
+            <Tx k="host.street_view.hint" source="Turn the camera to what guests see when they arrive. Optional." />
           </p>
         </div>
       )}
 
       <p className="flex items-start gap-2 text-sm md:text-xs text-muted-foreground">
         <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-        <span>
-          Never public — guests see this only once you confirm their booking,{" "}
-          {EXACT_LOCATION_UNLOCK_DAYS} days before check-in.
-        </span>
+        <span>{resolve("host.street_view.privacy", "Never public — guests see this only once you confirm their booking, {days} days before check-in.").text.replace("{days}", String(EXACT_LOCATION_UNLOCK_DAYS))}</span>
       </p>
 
       {hasPin ? (
@@ -83,13 +82,13 @@ export function ListingStreetViewField({
           {selection && (
             <p className="flex items-center gap-2 text-sm md:text-xs text-muted-foreground">
               <Check className="h-4 w-4 shrink-0 text-primary" />
-              View saved automatically.
+              <Tx k="host.street_view.saved" source="View saved automatically." />
             </p>
           )}
         </>
       ) : (
         <p className="text-sm text-destructive">
-          Place the pin on the map first, then pick the view guests should see.
+          <Tx k="host.street_view.pin_first" source="Place the pin on the map first, then pick the view guests should see." />
         </p>
       )}
 

@@ -4,7 +4,7 @@ const PLACEHOLDER_RE = /\{[A-Za-z][A-Za-z0-9_]*\}/g;
 const URL_RE = /https?:\/\/[^\s]+/gi;
 const CYRILLIC_LOCALES = new Set(["mk", "sr", "bg"]);
 const ALLOWED_LATIN =
-  /lingerhomes\.com|Linger Homes|Airbnb|Booking\.com|Vrbo|Google|Maps|Street View|API|HTTPS?|EUR|Alt\+T|SMS|URL|Wi-?Fi/gi;
+  /lingerhomes\.com|Linger Homes|Airbnb|Booking\.com|Vrbo|Google|Maps|Street View|API|HTTPS?|EUR|Alt\+T|SMS|URL|Wi-?Fi|JPEG|JPG|PNG|WebP|HEIC|PDF|JSON|MP4|MOV|WebM|MB|push|X{1,3}/gi;
 
 async function main() {
   const rows = await db.uiTranslation.findMany({

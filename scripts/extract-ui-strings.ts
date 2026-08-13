@@ -15,6 +15,7 @@ const checkOnly = process.argv.includes("--check");
 const rawUiErrors: string[] = [];
 const UI_SCOPES = [
   "src/app/(public)/",
+  "src/app/(account)/",
   "src/components/marketplace/",
   "src/components/public/",
   // The host panel is catalog-covered so hosts get server-rendered copy rather than
@@ -22,6 +23,11 @@ const UI_SCOPES = [
   // its legacy operational screens contain a large body of hard-coded copy.
   "src/app/(host)/",
   "src/components/host/",
+  "src/components/communication/",
+  "src/components/account/",
+  "src/components/booking/",
+  "src/components/reviews/",
+  "src/components/support/",
 ];
 const UI_FILES = new Set([
   "src/lib/i18n/mobile-ui-catalog.ts",

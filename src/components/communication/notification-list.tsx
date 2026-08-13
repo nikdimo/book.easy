@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { Tx, useI18n } from "@/lib/i18n/client";
 
 interface NotificationItem {
   id: string;
@@ -18,6 +19,7 @@ export function NotificationList({
 }: {
   initial: NotificationItem[];
 }) {
+  const { requestedLocale } = useI18n();
   const [items, setItems] = useState(initial);
   useEffect(() => {
     if (!initial.some((item) => !item.readAt)) return;
@@ -36,7 +38,7 @@ export function NotificationList({
   if (!items.length) {
     return (
       <p className="rounded-xl border px-4 py-12 text-center text-muted-foreground">
-        You are all caught up.
+        <Tx k="notifications.caught_up" source="You are all caught up." />
       </p>
     );
   }
@@ -58,12 +60,12 @@ export function NotificationList({
             )}
           />
           <span>
-            <span className="block font-medium">{item.title}</span>
+            <span className="block font-medium" data-user-generated-content translate="yes">{item.title}</span>
             <span className="mt-1 block text-sm text-muted-foreground">
-              {item.body}
+              <span data-user-generated-content translate="yes">{item.body}</span>
             </span>
             <span className="mt-2 block text-xs text-muted-foreground">
-              {new Intl.DateTimeFormat("en", {
+              {new Intl.DateTimeFormat(requestedLocale, {
                 dateStyle: "medium",
                 timeStyle: "short",
               }).format(new Date(item.createdAt))}

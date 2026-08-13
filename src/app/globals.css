@@ -194,11 +194,22 @@ body:has(.app-zoom-90) {
   min-height: calc(100dvh / 0.9);
 }
 
+/* What "the height of the screen" means inside a zoomed route. Viewport units are not
+   scaled by zoom but the elements sized with them are, so a plain 100dvh box renders at
+   only 80%/90% of the screen. Anything that wants to fill the viewport should size off
+   this variable rather than repeating the division — it is the same compensation as the
+   minimum heights below, exposed so component classes can use it. */
+:root {
+  --app-viewport-height: 100dvh;
+}
+
 .app-zoom-80 {
+  --app-viewport-height: calc(100dvh / 0.8);
   min-height: calc(100dvh / 0.8);
 }
 
 .app-zoom-90 {
+  --app-viewport-height: calc(100dvh / 0.9);
   min-height: calc(100dvh / 0.9);
 }
 

@@ -489,7 +489,15 @@ function install(locale: string): () => void {
   syncBrowserLanguageCookies(locale);
 
   const container = ensureContainer();
-  const languageObserver = new MutationObserver(() => collectLanguages(locale));
+  const languageObserver = new MutationObserver(() => {
+    collectLanguages(locale);
+    // Google creates the select first and populates its options asynchronously. The
+    // initial `retranslate()` can therefore run before the requested target exists and
+    // leave host-authored content in its source language for the whole page. Retry when
+    // the option list arrives; the offered-text gate keeps this from causing extra
+    // document passes once the target is active.
+    schedulePass(locale, 0);
+  });
   languageObserver.observe(container, { childList: true, subtree: true });
 
   const initialize = () => {

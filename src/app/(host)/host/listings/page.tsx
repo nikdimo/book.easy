@@ -21,6 +21,7 @@ import {
 import { getT, T, TWithValues } from "@/lib/i18n/t";
 import { ListControls } from "@/components/shared/list-controls";
 import { LISTING_STATUSES } from "@/lib/constants";
+import { resolveListingStatus } from "@/lib/i18n/status-labels";
 
 export const metadata = { title: "My Listings" };
 
@@ -197,18 +198,18 @@ export default async function HostListingsPage({
         </EmptyState>
       ) : (
         <ListControls
-          searchPlaceholder="Search properties by title, city, status or price…"
-          filters={[{ key: "status", label: "Status", options: LISTING_STATUSES.map((status) => ({ value: status.value, label: status.label })) }]}
+          searchPlaceholder={t.resolve("host.listings.search_placeholder", "Search properties by title, city, status or price…").text}
+          filters={[{ key: "status", label: t.resolve("common.status", "Status").text, allLabel: t.resolve("list_controls.all_statuses", "All statuses").text, options: LISTING_STATUSES.map((status) => ({ value: status.value, label: resolveListingStatus(t, status.value).text })) }]}
           sorts={[
-            { value: "updated", label: "Recently updated", direction: "desc" },
-            { value: "created", label: "Newest created", direction: "desc" },
-            { value: "title", label: "Title: A–Z" },
-            { value: "price", label: "Price: highest", direction: "desc" },
-            { value: "bookings", label: "Most bookings", direction: "desc" },
+            { value: "updated", label: t.resolve("host.listings.sort_recently_updated", "Recently updated").text, direction: "desc" },
+            { value: "created", label: t.resolve("host.listings.sort_newest_created", "Newest created").text, direction: "desc" },
+            { value: "title", label: t.resolve("host.listings.sort_title", "Title: A–Z").text },
+            { value: "price", label: t.resolve("host.listings.sort_price_highest", "Price: highest").text, direction: "desc" },
+            { value: "bookings", label: t.resolve("host.listings.sort_most_bookings", "Most bookings").text, direction: "desc" },
           ]}
           items={listings.map((listing) => ({
             id: listing.id,
-            searchText: [listing.title, listing.property.city, listing.status, LISTING_STATUSES.find((status) => status.value === listing.status)?.label, listing.pricingRule?.baseNightlyRate, listing._count.bookings].filter((value) => value !== null && value !== undefined).join(" "),
+            searchText: [listing.title, listing.property.city, listing.status, resolveListingStatus(t, listing.status).text, listing.pricingRule?.baseNightlyRate, listing._count.bookings].filter((value) => value !== null && value !== undefined).join(" "),
             filters: { status: listing.status },
             sortValues: { updated: listing.updatedAt.getTime(), created: listing.createdAt.getTime(), title: listing.title, price: Number(listing.pricingRule?.baseNightlyRate ?? 0), bookings: listing._count.bookings },
             content: <HostListingCard

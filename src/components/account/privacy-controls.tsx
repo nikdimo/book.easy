@@ -7,6 +7,7 @@ import { PrivacySettingsModal } from "@/components/shared/privacy-settings-modal
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { requestAccountDeletionAction } from "@/lib/actions/account-deletion.actions";
+import { Tx, useI18n } from "@/lib/i18n/client";
 
 function Row({
   title,
@@ -36,6 +37,7 @@ function Row({
 }
 
 export function PrivacyControls() {
+  const { resolve } = useI18n();
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [deletionRequested, setDeletionRequested] = useState(false);
@@ -45,7 +47,7 @@ export function PrivacyControls() {
     setIsExporting(true);
     try {
       const response = await fetch("/api/gdpr/export");
-      if (!response.ok) throw new Error("Export failed");
+      if (!response.ok) throw new Error(resolve("account.privacy.export_failed_short", "Export failed").text);
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -57,9 +59,9 @@ export function PrivacyControls() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      toast.success("Your personal data has been downloaded");
+      toast.success(resolve("account.privacy.export_success", "Your personal data has been downloaded").text);
     } catch {
-      toast.error("Failed to export data. Please try again.");
+      toast.error(resolve("account.privacy.export_failed", "Failed to export data. Please try again.").text);
     } finally {
       setIsExporting(false);
     }
@@ -73,7 +75,7 @@ export function PrivacyControls() {
         return;
       }
       setDeletionRequested(true);
-      toast.success("Check your email to confirm deletion");
+      toast.success(resolve("account.privacy.confirm_email", "Check your email to confirm deletion").text);
     });
   };
 
@@ -81,18 +83,18 @@ export function PrivacyControls() {
     <Card>
       <CardContent className="divide-y p-5 sm:p-6">
         <Row
-          title="Cookies and consent"
-          description="Choose which optional cookies we may use. You can change this at any time."
+          title={resolve("account.privacy.cookies_title", "Cookies and consent").text}
+          description={resolve("account.privacy.cookies_description", "Choose which optional cookies we may use. You can change this at any time.").text}
           icon={<Cookie className="size-4" aria-hidden="true" />}
         >
           <Button type="button" variant="outline" onClick={() => setShowPrivacyModal(true)}>
-            Manage preferences
+            <Tx k="account.privacy.manage_preferences" source="Manage preferences" />
           </Button>
         </Row>
 
         <Row
-          title="Download your data"
-          description="Download your profile, bookings, listings and favourites as JSON, a standard machine-readable format."
+          title={resolve("account.privacy.download_title", "Download your data").text}
+          description={resolve("account.privacy.download_description", "Download your profile, bookings, listings and favourites as JSON, a standard machine-readable format.").text}
           icon={<Download className="size-4" aria-hidden="true" />}
         >
           <Button
@@ -101,18 +103,20 @@ export function PrivacyControls() {
             onClick={handleExportData}
             disabled={isExporting}
           >
-            {isExporting ? "Preparing…" : "Download"}
+            {isExporting
+              ? resolve("account.privacy.preparing", "Preparing…").text
+              : resolve("account.privacy.download", "Download").text}
           </Button>
         </Row>
 
         <Row
-          title="Delete your account"
-          description="Pending bookings are cancelled and your listings are archived. Booking records are kept anonymously for 7 years to meet tax and legal obligations. This can't be undone."
+          title={resolve("account.privacy.delete_title", "Delete your account").text}
+          description={resolve("account.privacy.delete_description", "Pending bookings are cancelled and your listings are archived. Booking records are kept anonymously for 7 years to meet tax and legal obligations. This can't be undone.").text}
           icon={<ShieldAlert className="size-4" aria-hidden="true" />}
         >
           {deletionRequested ? (
             <div className="space-y-2 text-muted-foreground sm:text-right">
-              <p>Confirmation email sent. The link expires in an hour.</p>
+              <p><Tx k="account.privacy.email_sent" source="Confirmation email sent. The link expires in an hour." /></p>
               <Button
                 type="button"
                 variant="outline"
@@ -120,7 +124,7 @@ export function PrivacyControls() {
                 onClick={handleRequestDeletion}
                 disabled={isRequesting}
               >
-                Resend
+                <Tx k="account.privacy.resend" source="Resend" />
               </Button>
             </div>
           ) : (
@@ -131,7 +135,9 @@ export function PrivacyControls() {
               disabled={isRequesting}
               className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
             >
-              {isRequesting ? "Sending…" : "Request deletion"}
+              {isRequesting
+                ? resolve("common.sending", "Sending...").text
+                : resolve("account.privacy.request_deletion", "Request deletion").text}
             </Button>
           )}
         </Row>

@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { COMMUNICATION_BRAND } from "@/lib/communication-brand";
+import { getT, T } from "@/lib/i18n/t";
 
 export interface ConversationListItem {
   id: string;
@@ -17,16 +18,17 @@ export interface ConversationListItem {
   lastMessageAt: Date | string | null;
 }
 
-export function ConversationList({
+export async function ConversationList({
   conversations,
 }: {
   conversations: ConversationListItem[];
 }) {
+  const t = await getT();
   if (!conversations.length) {
     return (
       <EmptyState
-        title="No conversations yet"
-        description="Messages about listings and bookings will appear here."
+        title={t.resolve("conversation.list.empty_title", "No conversations yet")}
+        description={t.resolve("conversation.list.empty_description", "Messages about listings and bookings will appear here.")}
       />
     );
   }
@@ -51,24 +53,24 @@ export function ConversationList({
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="truncate font-semibold">
-                    {conversation.otherUser.name || `${COMMUNICATION_BRAND.name} member`}
+                    {conversation.otherUser.id ? conversation.otherUser.name : <T t={t} k="conversation.deleted_user" source="Deleted user" />}
                   </p>
                   <Badge variant="secondary">
-                    {conversation.kind === "INQUIRY" ? "Inquiry" : "Booking"}
+                    {conversation.kind === "INQUIRY" ? <T t={t} k="conversation.kind.inquiry" source="Inquiry" /> : <T t={t} k="conversation.kind.booking" source="Booking" />}
                   </Badge>
-                  {conversation.hasSupport ? <Badge>Support joined</Badge> : null}
+                  {conversation.hasSupport ? <Badge><T t={t} k="conversation.support_joined" source="Support joined" /></Badge> : null}
                 </div>
                 <p className="mt-1 truncate text-sm text-primary">
-                  {conversation.listing.title}
+                  <span data-user-generated-content translate="yes">{conversation.listing.title}</span>
                 </p>
                 <p className="mt-1 truncate text-sm text-muted-foreground">
-                  {conversation.lastMessagePreview || "Start the conversation"}
+                  {conversation.lastMessagePreview ? <span data-user-generated-content translate="yes">{conversation.lastMessagePreview}</span> : <T t={t} k="conversation.start" source="Start the conversation" />}
                 </p>
               </div>
               <div className="shrink-0 text-right">
                 {conversation.lastMessageAt ? (
                   <p className="text-xs text-muted-foreground">
-                    {new Intl.DateTimeFormat("en", {
+                    {new Intl.DateTimeFormat(t.locale, {
                       month: "short",
                       day: "numeric",
                     }).format(new Date(conversation.lastMessageAt))}

@@ -16,7 +16,7 @@ import { ListingCarousel } from "@/components/public/listing-carousel";
 import { HomeListingsView } from "@/components/public/home-listings-view";
 import { OwnerServicesDialog } from "@/components/public/owner-services-dialog";
 import { FloatingHomeSearch } from "@/components/public/floating-home-search";
-import { HomeHeroShell } from "@/components/public/home-hero-shell";
+import { HiddenInMapView } from "@/components/public/hidden-in-map-view";
 import { CompactHomeSearch } from "@/components/public/compact-home-search";
 import { MarketplaceSearchBar } from "@/components/marketplace/marketplace-search-bar";
 import type { MapPin } from "@/components/marketplace/properties-map";
@@ -271,10 +271,10 @@ export default async function HomePage() {
 
       <h1 className="sr-only"><T t={t} k="home.page_title" source="Find places to stay around the world" /></h1>
 
-      {/* The shell steps the hero aside in map view so the map starts at the fold. */}
-      <HomeHeroShell>
+      {/* Steps aside in map view so the map starts directly under the header. */}
+      <HiddenInMapView>
         <OwnerGrowthHero t={t} {...heroSearchData} />
-      </HomeHeroShell>
+      </HiddenInMapView>
       <FloatingHomeSearch {...heroSearchData} />
 
       {isLowInventory && (
@@ -292,31 +292,35 @@ export default async function HomePage() {
         </section>
       )}
 
+      {/* Steps aside too: it sits above the listings section, so leaving it in would
+          push the map down by its own height and break the fit. */}
       {!isLowInventory && showPopular && (
-        <section className="max-w-[1760px] mx-auto px-4 md:px-8 pt-4 pb-2">
-          <div className="flex items-center justify-between gap-4 mb-3">
-            <div className="min-w-0">
-              <h2 className="text-base md:text-lg font-semibold tracking-tight">
-                <T t={t} k="home.popular_homes" source="Popular homes" />
-              </h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                <T
-                  t={t}
-                  k="home.popular_homes_subtitle"
-                  source="Most viewed and booked in the last few weeks"
-                />
-              </p>
+        <HiddenInMapView>
+          <section className="max-w-[1760px] mx-auto px-4 md:px-8 pt-4 pb-2">
+            <div className="flex items-center justify-between gap-4 mb-3">
+              <div className="min-w-0">
+                <h2 className="text-base md:text-lg font-semibold tracking-tight">
+                  <T t={t} k="home.popular_homes" source="Popular homes" />
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  <T
+                    t={t}
+                    k="home.popular_homes_subtitle"
+                    source="Most viewed and booked in the last few weeks"
+                  />
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                className="rounded-full shrink-0 hidden sm:inline-flex text-xs h-7 px-4"
+                asChild
+              >
+                <Link href="/properties"><T t={t} k="home.show_all" source="Show all" /></Link>
+              </Button>
             </div>
-            <Button
-              variant="outline"
-              className="rounded-full shrink-0 hidden sm:inline-flex text-xs h-7 px-4"
-              asChild
-            >
-              <Link href="/properties"><T t={t} k="home.show_all" source="Show all" /></Link>
-            </Button>
-          </div>
-          <ListingCarousel listings={popularListings} />
-        </section>
+            <ListingCarousel listings={popularListings} />
+          </section>
+        </HiddenInMapView>
       )}
 
       {!isLowInventory && listings.length > 0 && (

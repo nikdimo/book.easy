@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Tx, useI18n } from "@/lib/i18n/client";
 
 export function ClaimResponseControls({
   caseId,
@@ -18,6 +19,7 @@ export function ClaimResponseControls({
   amount: number;
   currency: string;
 }) {
+  const { resolve } = useI18n();
   const router = useRouter();
   const [mode, setMode] = useState<"ACCEPT" | "REJECT" | "COUNTER" | null>(null);
   const [note, setNote] = useState("");
@@ -35,7 +37,7 @@ export function ClaimResponseControls({
     });
     setPending(false);
     if (result.error) return toast.error(result.error);
-    toast.success("Your response was sent");
+    toast.success(resolve("support.response_sent", "Your response was sent").text);
     router.refresh();
   }
 
@@ -43,20 +45,20 @@ export function ClaimResponseControls({
     return (
       <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
         <div>
-          <h2 className="font-semibold">Your response is required</h2>
+          <h2 className="font-semibold"><Tx k="support.response_required" source="Your response is required" /></h2>
           <p className="text-sm text-muted-foreground">
-            Review the evidence before accepting, countering, or rejecting this request.
+            <Tx k="support.response_required_description" source="Review the evidence before accepting, countering, or rejecting this request." />
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button onClick={() => setMode("ACCEPT")}>
-            Accept {amount.toFixed(2)} {currency}
+            {resolve("support.accept_amount", "Accept {amount} {currency}").text.replace("{amount}", amount.toFixed(2)).replace("{currency}", currency)}
           </Button>
           <Button variant="outline" onClick={() => setMode("COUNTER")}>
-            Make counteroffer
+            <Tx k="support.make_counteroffer" source="Make counteroffer" />
           </Button>
           <Button variant="destructive" onClick={() => setMode("REJECT")}>
-            Reject
+            <Tx k="support.reject" source="Reject" />
           </Button>
         </div>
       </div>
@@ -67,14 +69,14 @@ export function ClaimResponseControls({
     <div className="space-y-4 rounded-xl border p-4">
       <h2 className="font-semibold">
         {mode === "ACCEPT"
-          ? "Accept payment request"
+          ? resolve("support.accept_request", "Accept payment request").text
           : mode === "COUNTER"
-            ? "Make a counteroffer"
-            : "Reject payment request"}
+            ? resolve("support.counteroffer", "Make a counteroffer").text
+            : resolve("support.reject_request", "Reject payment request").text}
       </h2>
       {mode === "COUNTER" ? (
         <div className="space-y-2">
-          <Label htmlFor="counter-amount">Counteroffer ({currency})</Label>
+          <Label htmlFor="counter-amount">{resolve("support.counteroffer_currency", "Counteroffer ({currency})").text.replace("{currency}", currency)}</Label>
           <Input
             id="counter-amount"
             type="number"
@@ -88,18 +90,17 @@ export function ClaimResponseControls({
       ) : null}
       {mode !== "ACCEPT" ? (
         <div className="space-y-2">
-          <Label htmlFor="claim-response-note">Explanation</Label>
+          <Label htmlFor="claim-response-note"><Tx k="support.explanation" source="Explanation" /></Label>
           <Textarea
             id="claim-response-note"
             value={note}
             onChange={(event) => setNote(event.target.value)}
-            placeholder="Explain your response for the other party and the admin."
+            placeholder={resolve("support.explanation_placeholder", "Explain your response for the other party and the administrator.").text}
           />
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">
-          Acceptance is recorded immediately. BookEasy will confirm the secure payment
-          step separately; this button does not silently charge your card.
+          <Tx k="support.acceptance_notice" source="Acceptance is recorded immediately. Linger Homes will confirm the secure payment step separately; this button does not silently charge your card." />
         </p>
       )}
       <div className="flex gap-2">
@@ -111,10 +112,12 @@ export function ClaimResponseControls({
           }
           onClick={() => void respond()}
         >
-          {pending ? "Sending..." : "Confirm response"}
+          {pending
+            ? resolve("common.sending", "Sending...").text
+            : resolve("support.confirm_response", "Confirm response").text}
         </Button>
         <Button variant="ghost" disabled={pending} onClick={() => setMode(null)}>
-          Back
+          <Tx k="common.back" source="Back" />
         </Button>
       </div>
     </div>

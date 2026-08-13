@@ -14,6 +14,30 @@ export function resolveAmenityLabel(
   name: string,
 ): Resolved {
   switch (name) {
+    case "Baking sheet":
+      return translator.resolve("amenities.items.baking_sheet", "Baking sheet");
+    case "Blender":
+      return translator.resolve("amenities.items.blender", "Blender");
+    case "Books and reading material":
+      return translator.resolve("amenities.items.books_reading_material", "Books and reading material");
+    case "Cleaning products":
+      return translator.resolve("amenities.items.cleaning_products", "Cleaning products");
+    case "Clothing storage":
+      return translator.resolve("amenities.items.clothing_storage", "Clothing storage");
+    case "Cooking basics":
+      return translator.resolve("amenities.items.cooking_basics", "Cooking basics");
+    case "Dishes and silverware":
+      return translator.resolve("amenities.items.dishes_silverware", "Dishes and silverware");
+    case "Extra pillows and blankets":
+      return translator.resolve("amenities.items.extra_pillows_blankets", "Extra pillows and blankets");
+    case "Freezer":
+      return translator.resolve("amenities.items.freezer", "Freezer");
+    case "Hangers":
+      return translator.resolve("amenities.items.hangers", "Hangers");
+    case "Hot water":
+      return translator.resolve("amenities.items.hot_water", "Hot water");
+    case "Hot water kettle":
+      return translator.resolve("amenities.items.hot_water_kettle", "Hot water kettle");
     case "Hair dryer":
       return translator.resolve("amenities.items.hair_dryer", "Hair dryer");
     case "TV":

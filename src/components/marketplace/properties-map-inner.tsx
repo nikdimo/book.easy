@@ -678,6 +678,7 @@ export default function PropertiesMapInner({
   hoveredPinId,
   initialBounds,
   onBoundsChange,
+  expandable = true,
 }: {
   pins: MapPin[];
   className?: string;
@@ -685,6 +686,9 @@ export default function PropertiesMapInner({
   /** Viewport carried in the URL on first load; ignored on later renders. */
   initialBounds?: MapBounds | null;
   onBoundsChange?: (bounds: MapBounds) => void;
+  /** Off where the map is already sized to the screen and the corner is wanted for
+   *  something else — full screen would be a no-op there anyway. */
+  expandable?: boolean;
 }) {
   const i18n = useI18n();
   const [expanded, setExpanded] = React.useState(false);
@@ -747,18 +751,20 @@ export default function PropertiesMapInner({
           "fixed inset-0 z-[100] m-0 h-[100dvh] min-h-0 w-screen max-w-none rounded-none border-0"
       )}
     >
-      <button
-        type="button"
-        onClick={() => setExpanded((e) => !e)}
-        className="absolute right-3 top-3 z-[1000] flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background shadow-md transition-colors hover:bg-muted"
-        aria-label={expanded ? i18n.resolve("map.exit_fullscreen", "Exit full screen map").text : i18n.resolve("map.expand", "Expand map").text}
-      >
-        {expanded ? (
-          <Minimize2 className="h-4 w-4" />
-        ) : (
-          <Maximize2 className="h-4 w-4" />
-        )}
-      </button>
+      {expandable && (
+        <button
+          type="button"
+          onClick={() => setExpanded((e) => !e)}
+          className="absolute right-3 top-3 z-[1000] flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background shadow-md transition-colors hover:bg-muted"
+          aria-label={expanded ? i18n.resolve("map.exit_fullscreen", "Exit full screen map").text : i18n.resolve("map.expand", "Expand map").text}
+        >
+          {expanded ? (
+            <Minimize2 className="h-4 w-4" />
+          ) : (
+            <Maximize2 className="h-4 w-4" />
+          )}
+        </button>
+      )}
 
       <MapContainer
         center={center}

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUserPage } from "@/lib/auth-helpers";
 import type { ClaimKind } from "@prisma/client";
+import { getT, T, t } from "@/lib/i18n/t";
 
 const targetTypes = ["USER", "HOST", "LISTING", "BOOKING", "MESSAGE"] as const;
 
@@ -15,6 +16,7 @@ export default async function NewSafetyCasePage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const translator = await getT();
   await requireUserPage("/account/support/new");
   const query = await searchParams;
   const type = query.type === "CLAIM" ? "CLAIM" : "REPORT";
@@ -33,13 +35,13 @@ export default async function NewSafetyCasePage({
   return (
     <div className="mx-auto max-w-2xl">
       <Button variant="ghost" size="sm" asChild className="mb-4">
-        <Link href="/account/support"><ArrowLeft className="mr-1 h-4 w-4" /> Support cases</Link>
+        <Link href="/account/support"><ArrowLeft className="mr-1 h-4 w-4" /> <T t={translator} k="support.cases" source="Support cases" /></Link>
       </Button>
       <Card>
         <CardHeader>
-          <CardTitle>{type === "CLAIM" ? "Submit a booking claim" : "Submit a report"}</CardTitle>
+          <CardTitle>{type === "CLAIM" ? t(translator, "support.submit_claim", "Submit a booking claim") : t(translator, "support.submit_report", "Submit a report")}</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Your reference and every update will be kept in your account.
+            <T t={translator} k="support.reference_note" source="Your reference and every update will be kept in your account." />
           </p>
         </CardHeader>
         <CardContent>

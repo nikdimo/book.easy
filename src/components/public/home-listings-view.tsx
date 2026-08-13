@@ -117,7 +117,13 @@ export function HomeListingsView({
         >
           <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           <span
-            className={cn("hidden sm:inline", label.translated && "notranslate")}
+            className={cn(
+              // Over the map the labels have to clear the centred search, and they are
+              // far wider in some languages than in English ("Компактен Детален Мапа").
+              // Icons only until there is room for both.
+              isMap ? "hidden lg:inline" : "hidden sm:inline",
+              label.translated && "notranslate",
+            )}
           >
             {label.text}
           </span>
@@ -129,19 +135,33 @@ export function HomeListingsView({
   if (isMap) {
     return (
       <div className="relative">
-        {/* Roughly the height the hero gives up, so the map reads as the page rather
-            than as a panel on it. A stated height, not `70vh`: viewport units inside
-            the layout's `zoom: 0.9` resolve against the unzoomed viewport and then
-            render at 90%, which makes them lie about how tall the map looks. */}
-        <PropertiesMap pins={pins} className="h-[32rem] md:h-[50rem]" />
+        {/* Fills the screen under the header, less a sliver of footer so the page
+            still reads as scrollable. `--app-viewport-height` is 100dvh already
+            divided by the route's zoom factor — plain viewport units are not scaled by
+            `zoom` but the box sized with them is, so 100dvh renders short. The 13.5rem
+            is the header (5), this section's padding (1.5 + 2), and the footer sliver
+            (5). The floor keeps a very short window from producing a letterbox. */}
+        <PropertiesMap
+          pins={pins}
+          expandable={false}
+          className="h-[calc(var(--app-viewport-height)_-_13.5rem)] min-h-[24rem]"
+        />
 
-        {/* Above the map's own controls (z-1000) and its markers. Transparent to the
-            pointer except on the controls themselves, so the map still drags. */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-[1001] flex flex-col gap-3 p-3 md:p-4">
-          {/* Clears the map's expand button, which sits at the top right, on the
-              narrow screens where the search would otherwise run under it. */}
-          <div className="flex justify-center pr-11 md:pr-0">{mapSearch}</div>
-          <div className="flex justify-end">{switcher}</div>
+        {/* Both overlays sit above the map's markers (z-600) and controls (z-1000), and
+            are transparent to the pointer except on the controls themselves, so the map
+            still drags everywhere else. */}
+
+        {/* Centred on the map, independent of the switcher — its width swings a lot
+            between languages and must not drag the search off centre. */}
+        <div className="pointer-events-none absolute inset-x-0 top-3 z-[1001] flex justify-center px-3 md:top-4 md:px-4">
+          {mapSearch}
+        </div>
+
+        {/* Same line as the search on desktop, where `h-14` matches the collapsed
+            search pill so the two line up; a bottom-centre pill on phones, where there
+            is no room beside it. Expanding the search simply covers this. */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-4 z-[1001] flex justify-center px-3 md:bottom-auto md:top-4 md:h-14 md:items-center md:justify-end md:px-4">
+          {switcher}
         </div>
       </div>
     );

@@ -10,6 +10,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { CountBadge } from "@/components/communication/attention-indicator";
+import { Tx, useI18n } from "@/lib/i18n/client";
 
 interface NotificationItem {
   id: string;
@@ -21,6 +22,7 @@ interface NotificationItem {
 }
 
 export function NotificationBell({ enabled }: { enabled: boolean }) {
+  const { resolve } = useI18n();
   const router = useRouter();
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -70,19 +72,19 @@ export function NotificationBell({ enabled }: { enabled: boolean }) {
           variant="ghost"
           size="icon"
           className="relative rounded-full"
-          aria-label={`Notifications, ${unreadCount} unread`}
+          aria-label={resolve("notifications.unread_count", "Notifications, {count} unread").text.replace("{count}", String(unreadCount))}
         >
           <Bell className="size-[18px]" />
           <CountBadge
             value={unreadCount}
-            label="unread notifications"
+            label={resolve("notifications.unread_label", "unread notifications").text}
             className="absolute -right-1 -top-1"
           />
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-[min(92vw,380px)] p-0">
         <div className="flex items-center justify-between border-b px-4 py-3">
-          <p className="font-semibold">Notifications</p>
+          <p className="font-semibold"><Tx k="notifications.title" source="Notifications" /></p>
           {unreadCount > 0 ? (
             <button
               className="text-xs text-primary hover:underline"
@@ -97,7 +99,7 @@ export function NotificationBell({ enabled }: { enabled: boolean }) {
                 );
               }}
             >
-              Mark all read
+              <Tx k="notifications.mark_all_read" source="Mark all read" />
             </button>
           ) : null}
         </div>
@@ -117,9 +119,9 @@ export function NotificationBell({ enabled }: { enabled: boolean }) {
                     <span className="w-2 shrink-0" />
                   )}
                   <span className="min-w-0">
-                    <span className="block text-sm font-medium">{item.title}</span>
+                    <span className="block text-sm font-medium" data-user-generated-content translate="yes">{item.title}</span>
                     <span className="mt-0.5 block text-xs text-muted-foreground">
-                      {item.body}
+                      <span data-user-generated-content translate="yes">{item.body}</span>
                     </span>
                   </span>
                 </span>
@@ -127,7 +129,7 @@ export function NotificationBell({ enabled }: { enabled: boolean }) {
             ))
           ) : (
             <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-              You are all caught up.
+              <Tx k="notifications.caught_up" source="You are all caught up." />
             </p>
           )}
         </div>
@@ -136,7 +138,7 @@ export function NotificationBell({ enabled }: { enabled: boolean }) {
           className="w-full rounded-none"
           onClick={() => router.push("/account/notifications")}
         >
-          View all notifications
+          <Tx k="notifications.view_all" source="View all notifications" />
         </Button>
       </PopoverContent>
     </Popover>

@@ -14,6 +14,8 @@ import { BOOKING_STATUSES } from "@/lib/constants";
 import { StartConversationButton } from "@/components/communication/start-conversation-button";
 import { BookingStatusHero } from "@/components/booking/booking-status-hero";
 import { BookingArrivalDetails } from "@/components/booking/booking-arrival-details";
+import { getT, T, t, ti } from "@/lib/i18n/t";
+import { resolveBookingStatus } from "@/lib/i18n/status-labels";
 
 interface BookingDetailProps {
   params: Promise<{ id: string }>;
@@ -22,6 +24,7 @@ interface BookingDetailProps {
 export const metadata = { title: "Booking Details" };
 
 export default async function BookingDetailPage({ params }: BookingDetailProps) {
+  const translator = await getT();
   const session = await auth();
   if (!session?.user) redirect("/login");
 
@@ -44,7 +47,7 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
       <Button variant="ghost" size="sm" asChild className="mb-4">
         <Link href="/account/bookings">
           <ArrowLeft className="h-4 w-4 mr-1" />
-          Back to bookings
+          <T t={translator} k="account.booking.back" source="Back to bookings" />
         </Link>
       </Button>
 
@@ -69,13 +72,13 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
         ) : null}
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <CardTitle>Booking Details</CardTitle>
+            <CardTitle><T t={translator} k="account.booking.details" source="Booking Details" /></CardTitle>
             <Badge variant={booking.status === "CONFIRMED" ? "default" : "secondary"}>
-              {statusConfig?.label || booking.status}
+              {resolveBookingStatus(translator, statusConfig?.value || booking.status).text}
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground">
-            Ref: {booking.reference}
+            <T t={translator} k="account.booking.reference_short" source="Ref:" /> {booking.reference}
           </p>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -84,7 +87,7 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
               href={`/properties/${booking.listing.slug}`}
               className="text-lg font-semibold underline-offset-4 hover:underline"
             >
-              {booking.listing.title}
+              <span data-user-generated-content translate="yes">{booking.listing.title}</span>
             </Link>
             <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
               <MapPin className="h-3 w-3" />
@@ -92,7 +95,7 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
               {booking.listing.property.city}
             </p>
             <p className="text-sm text-muted-foreground mt-1">
-              Hosted by {booking.listing.host.profile?.hostDisplayName || booking.listing.host.name}
+              {ti(translator, "account.booking.hosted_by", "Hosted by {name}", { name: booking.listing.host.profile?.hostDisplayName || booking.listing.host.name }).text}
             </p>
           </div>
 
@@ -100,19 +103,19 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
 
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <p className="text-muted-foreground">Check-in</p>
+              <p className="text-muted-foreground"><T t={translator} k="account.booking.check_in" source="Check-in" /></p>
               <p className="font-medium flex items-center gap-1"><Calendar className="h-3 w-3" />{formatDate(booking.checkIn)}</p>
             </div>
             <div>
-              <p className="text-muted-foreground">Check-out</p>
+              <p className="text-muted-foreground"><T t={translator} k="account.booking.check_out" source="Check-out" /></p>
               <p className="font-medium flex items-center gap-1"><Calendar className="h-3 w-3" />{formatDate(booking.checkOut)}</p>
             </div>
             <div>
-              <p className="text-muted-foreground">Guests</p>
+              <p className="text-muted-foreground"><T t={translator} k="account.booking.guests" source="Guests" /></p>
               <p className="font-medium flex items-center gap-1"><Users className="h-3 w-3" />{formatGuestCount(booking.guestCount)}</p>
             </div>
             <div>
-              <p className="text-muted-foreground">Nights</p>
+              <p className="text-muted-foreground"><T t={translator} k="account.booking.nights" source="Nights" /></p>
               <p className="font-medium">{booking.numberOfNights}</p>
             </div>
           </div>
@@ -121,24 +124,24 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
 
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
-              <span>Accommodation · {booking.numberOfNights} nights</span>
+              <span>{ti(translator, "account.booking.accommodation_nights", "Accommodation · {count} nights", { count: booking.numberOfNights }).text}</span>
               <span>{formatPrice(accommodationSubtotal, booking.currency)}</span>
             </div>
             {Number(booking.cleaningFee) > 0 && (
               <div className="flex justify-between">
-                <span>Cleaning fee</span>
+                <span><T t={translator} k="account.booking.cleaning_fee" source="Cleaning fee" /></span>
                 <span>{formatPrice(Number(booking.cleaningFee), booking.currency)}</span>
               </div>
             )}
             {Number(booking.discountAmount) > 0 && (
               <div className="flex justify-between text-green-700">
-                <span>{booking.promotionType === "FREE_CLEANING" ? "Free cleaning" : "Special offer"}</span>
+                <span>{booking.promotionType === "FREE_CLEANING" ? t(translator, "account.booking.free_cleaning", "Free cleaning") : t(translator, "account.booking.special_offer", "Special offer")}</span>
                 <span>−{formatPrice(Number(booking.discountAmount), booking.currency)}</span>
               </div>
             )}
             <Separator />
             <div className="flex justify-between font-semibold text-base">
-              <span>Total</span>
+              <span><T t={translator} k="account.booking.total" source="Total" /></span>
               <span className="flex items-baseline gap-2">
                 {booking.originalTotal && Number(booking.discountAmount) > 0 ? (
                   <span className="text-sm font-normal text-muted-foreground line-through">
@@ -154,8 +157,8 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
             <>
               <Separator />
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Your message</p>
-                <p className="text-sm">{booking.guestNote}</p>
+                <p className="text-sm text-muted-foreground mb-1"><T t={translator} k="account.booking.your_message" source="Your message" /></p>
+                <p className="text-sm" data-user-generated-content translate="yes">{booking.guestNote}</p>
               </div>
             </>
           )}
@@ -164,26 +167,26 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
             <>
               <Separator />
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Cancellation reason</p>
-                <p className="text-sm">{booking.cancellationReason}</p>
+                <p className="text-sm text-muted-foreground mb-1"><T t={translator} k="account.booking.cancellation_reason" source="Cancellation reason" /></p>
+                <p className="text-sm" data-user-generated-content translate="yes">{booking.cancellationReason}</p>
               </div>
             </>
           )}
 
           <Separator />
           <div className="flex flex-wrap gap-2">
-            <StartConversationButton bookingId={booking.id} label="Message host" />
+            <StartConversationButton bookingId={booking.id} label={t(translator, "account.booking.message_host", "Message host")} />
             {booking.status === "COMPLETED" ? (
               <Button asChild>
                 <Link href={`/account/bookings/${booking.id}/after-stay`}>
                   <Star className="mr-1 h-4 w-4" />
-                  Rate your stay
+                  <T t={translator} k="account.booking.rate_stay" source="Rate your stay" />
                 </Link>
               </Button>
             ) : null}
             <Button variant="outline" asChild>
               <Link href={`/account/support/new?type=CLAIM&targetType=BOOKING&bookingId=${booking.id}`}>
-                Report a problem
+                <T t={translator} k="account.booking.report_problem" source="Report a problem" />
               </Link>
             </Button>
           </div>

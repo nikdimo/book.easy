@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/tooltip";
 import { unpublishListing, submitForReview } from "@/lib/actions/listing.actions";
 import { toast } from "sonner";
+import { interpolate, translatedClass, useI18n } from "@/lib/i18n/client";
 
 /** Statuses a host can put back on the site themselves. Anything else (SUSPENDED,
  * ARCHIVED, PENDING_REVIEW) is an admin/queue state the host must not flip. */
@@ -32,21 +33,20 @@ export function ListingVisibilityToggle({
   status: string;
 }) {
   const [isPending, startTransition] = useTransition();
+  const { resolve } = useI18n();
   const isPublished = status === "APPROVED";
 
   function handleToggle() {
     if (isPublished) {
       if (
-        !confirm(
-          `Hide "${title}" from the site?\n\nIt will no longer be bookable until you publish it again.`
-        )
+        !confirm(interpolate(resolve("host.visibility.confirm_hide", "Hide {title} from the site?\n\nIt will no longer be bookable until you publish it again."), { title }).text)
       )
         return;
 
       startTransition(async () => {
         const result = await unpublishListing(listingId);
         if (result?.error) toast.error(result.error);
-        else toast.success("Listing hidden from the site");
+        else toast.success(resolve("host.visibility.hidden_success", "Listing hidden from the site").text);
       });
       return;
     }
@@ -54,14 +54,16 @@ export function ListingVisibilityToggle({
     startTransition(async () => {
       const result = await submitForReview(listingId);
       if (result?.error) toast.error(result.error);
-      else toast.success("Listing is live on the site");
+      else toast.success(resolve("host.visibility.live_success", "Listing is live on the site").text);
     });
   }
 
-  const label = isPublished ? "Hide" : "Unhide";
+  const label = isPublished
+    ? resolve("host.visibility.hide", "Hide")
+    : resolve("host.visibility.unhide", "Unhide");
   const explanation = isPublished
-    ? "Take this listing off the site — guests can't find it or request it until you unhide it. Your dates, prices and bookings stay as they are."
-    : "Put this listing back on the site so guests can find it and send booking requests again.";
+    ? resolve("host.visibility.hide_tooltip", "Take this listing off the site — guests can't find it or request it until you unhide it. Your dates, prices and bookings stay as they are.")
+    : resolve("host.visibility.unhide_tooltip", "Put this listing back on the site so guests can find it and send booking requests again.");
   const Icon = isPublished ? EyeOff : Eye;
 
   return (
@@ -81,13 +83,13 @@ export function ListingVisibilityToggle({
           {/* Bare text here would be a raw text node that Google Translate swaps out,
            * leaving React to reconcile a child the DOM no longer owns (insertBefore
            * NotFoundError) the moment the label flips Hide <-> Unhide. */}
-          <span className="notranslate" translate="no">
-            {label}
+          <span className={translatedClass(label)} translate={label.translated ? "no" : undefined}>
+            {label.text}
           </span>
         </Button>
       </TooltipTrigger>
-      <TooltipContent className="notranslate max-w-64" translate="no">
-        {explanation}
+      <TooltipContent className={translatedClass(explanation)} translate={explanation.translated ? "no" : undefined}>
+        {explanation.text}
       </TooltipContent>
     </Tooltip>
   );

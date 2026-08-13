@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useState } from "react";
+import { Tx, useI18n } from "@/lib/i18n/client";
 
 interface BecomeHostFormProps {
   existingPhone: string;
@@ -19,6 +20,7 @@ interface BecomeHostFormProps {
 }
 
 export function BecomeHostForm({ existingPhone, userName }: BecomeHostFormProps) {
+  const { resolve } = useI18n();
   const { update } = useSession();
   const router = useRouter();
   const [agreed, setAgreed] = useState(false);
@@ -27,7 +29,7 @@ export function BecomeHostForm({ existingPhone, userName }: BecomeHostFormProps)
     async (_prev: { error?: string; success?: boolean } | undefined, formData: FormData) => {
       const result = await becomeHost(formData);
       if (result?.success) {
-        toast.success("Welcome! You are now a host.");
+        toast.success(resolve("account.become_host.success", "Welcome! You are now a host.").text);
         await update({ isHost: true });
         router.push("/host/listings/new");
       }
@@ -39,8 +41,8 @@ export function BecomeHostForm({ existingPhone, userName }: BecomeHostFormProps)
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Host Information</CardTitle>
-        <CardDescription>Tell us a bit about yourself so guests know who they are booking with.</CardDescription>
+        <CardTitle><Tx k="account.become_host.form_title" source="Host Information" /></CardTitle>
+        <CardDescription><Tx k="account.become_host.form_description" source="Tell us a bit about yourself so guests know who they are booking with." /></CardDescription>
       </CardHeader>
       <CardContent>
         <form action={formAction} className="space-y-4">
@@ -48,32 +50,32 @@ export function BecomeHostForm({ existingPhone, userName }: BecomeHostFormProps)
             <p className="text-sm text-destructive">{state.error}</p>
           )}
           <div className="space-y-2">
-            <Label htmlFor="hostDisplayName">Display name</Label>
+            <Label htmlFor="hostDisplayName"><Tx k="account.become_host.display_name" source="Display name" /></Label>
             <Input
               id="hostDisplayName"
               name="hostDisplayName"
               defaultValue={userName.split(" ")[0]}
-              placeholder="How guests will see your name"
+              placeholder={resolve("account.become_host.display_name_placeholder", "How guests will see your name").text}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone number *</Label>
+            <Label htmlFor="phone"><Tx k="account.become_host.phone" source="Phone number *" /></Label>
             <Input
               id="phone"
               name="phone"
               type="tel"
               defaultValue={existingPhone}
               required
-              placeholder="+389 7X XXX XXX"
+              placeholder={resolve("account.become_host.phone_placeholder", "+389 7X XXX XXX").text}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="hostBio">Host bio</Label>
+            <Label htmlFor="hostBio"><Tx k="account.become_host.bio" source="Host bio" /></Label>
             <Textarea
               id="hostBio"
               name="hostBio"
               rows={4}
-              placeholder="Tell potential guests about yourself, your hosting style, and what makes your properties special..."
+              placeholder={resolve("account.become_host.bio_placeholder", "Tell potential guests about yourself, your hosting style, and what makes your properties special...").text}
             />
           </div>
           <label className="flex items-start gap-2 cursor-pointer">
@@ -83,12 +85,13 @@ export function BecomeHostForm({ existingPhone, userName }: BecomeHostFormProps)
               className="mt-0.5"
             />
             <span className="text-sm text-muted-foreground">
-              I agree to the Linger Homes host terms of service and understand that my listings
-              are subject to platform review and approval.
+              <Tx k="account.become_host.terms" source="I agree to the Linger Homes host terms of service and understand that my listings are subject to platform review and approval." />
             </span>
           </label>
           <Button type="submit" disabled={isPending || !agreed} className="w-full">
-            {isPending ? "Setting up..." : "Activate Host Account"}
+            {isPending
+              ? resolve("account.become_host.setting_up", "Setting up...").text
+              : resolve("account.become_host.activate", "Activate Host Account").text}
           </Button>
         </form>
       </CardContent>

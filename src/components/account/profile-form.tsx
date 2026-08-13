@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { Tx, useI18n } from "@/lib/i18n/client";
 
 interface ProfileFormProps {
   user: { name: string; email: string };
@@ -15,10 +16,11 @@ interface ProfileFormProps {
 }
 
 export function ProfileForm({ user, profile }: ProfileFormProps) {
+  const { resolve } = useI18n();
   const [state, formAction, isPending] = useActionState(
     async (_prev: { error?: string; success?: boolean } | undefined, formData: FormData) => {
       const result = await updateProfile(formData);
-      if (result?.success) toast.success("Profile updated");
+      if (result?.success) toast.success(resolve("account.profile.updated", "Profile updated").text);
       return result;
     },
     undefined
@@ -27,7 +29,7 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Personal Information</CardTitle>
+        <CardTitle><Tx k="account.profile.personal_information" source="Personal Information" /></CardTitle>
       </CardHeader>
       <CardContent>
         <form action={formAction} className="space-y-4">
@@ -35,27 +37,29 @@ export function ProfileForm({ user, profile }: ProfileFormProps) {
             <p className="text-sm text-destructive">{state.error}</p>
           )}
           <div className="space-y-2">
-            <Label htmlFor="name">Full name</Label>
+            <Label htmlFor="name"><Tx k="account.profile.full_name" source="Full name" /></Label>
             <Input id="name" name="name" defaultValue={user.name} required />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email"><Tx k="account.profile.email" source="Email" /></Label>
             <Input id="email" value={user.email} disabled />
-            <p className="text-xs text-muted-foreground">Email changes are not supported yet</p>
+            <p className="text-xs text-muted-foreground"><Tx k="account.profile.email_locked" source="Email changes are not supported yet" /></p>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone</Label>
+            <Label htmlFor="phone"><Tx k="account.profile.phone" source="Phone" /></Label>
             <Input id="phone" name="phone" type="tel" defaultValue={profile.phone} />
           </div>
           <div className="space-y-2">
             {/* "Bio" alone is ambiguous to machine translation — Google Translate
                 reads it as the verb and renders Macedonian "Беше" ("was"). The
                 fuller phrase translates correctly. */}
-            <Label htmlFor="bio">About you</Label>
+            <Label htmlFor="bio"><Tx k="account.profile.about" source="About you" /></Label>
             <Textarea id="bio" name="bio" defaultValue={profile.bio} rows={3} />
           </div>
           <Button type="submit" disabled={isPending}>
-            {isPending ? "Saving..." : "Save Changes"}
+            {isPending
+              ? resolve("common.saving", "Saving...").text
+              : resolve("account.profile.save", "Save Changes").text}
           </Button>
         </form>
       </CardContent>

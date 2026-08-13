@@ -26,6 +26,7 @@ import { COMMUNICATION_BRAND } from "@/lib/communication-brand";
 import { DamageReportDialog } from "@/components/communication/damage-report-dialog";
 import { Tx, useI18n } from "@/lib/i18n/client";
 import { normalizeLocaleCode } from "@/lib/i18n/locale-preference";
+import { resolveBookingStatus } from "@/lib/i18n/status-labels";
 
 type DeliveryState = "sending" | "failed" | "sent";
 
@@ -92,16 +93,37 @@ interface ThreadPayload {
   }>;
 }
 
-const BOOKING_EVENT_COPY: Record<string, string> = {
-  REQUESTED: "Booking requested",
-  CONFIRMED: "Booking confirmed",
-  REJECTED: "Booking request declined",
-  EXPIRED: "Booking request expired",
-  CANCELLED_BY_GUEST: "Booking cancelled by the guest",
-  CANCELLED_BY_HOST: "Booking cancelled by the host",
-  CANCELLED_BY_ADMIN: "Booking cancelled by support",
-  COMPLETED: "Stay completed",
-};
+function bookingEventCopy(resolve: ReturnType<typeof useI18n>["resolve"], type: string) {
+  switch (type) {
+    case "REQUESTED": return resolve("conversation.event.requested", "Booking requested");
+    case "CONFIRMED": return resolve("conversation.event.confirmed", "Booking confirmed");
+    case "REJECTED": return resolve("conversation.event.rejected", "Booking request declined");
+    case "EXPIRED": return resolve("conversation.event.expired", "Booking request expired");
+    case "CANCELLED_BY_GUEST": return resolve("conversation.event.cancelled_guest", "Booking cancelled by the guest");
+    case "CANCELLED_BY_HOST": return resolve("conversation.event.cancelled_host", "Booking cancelled by the host");
+    case "CANCELLED_BY_ADMIN": return resolve("conversation.event.cancelled_support", "Booking cancelled by support");
+    case "COMPLETED": return resolve("conversation.event.completed", "Stay completed");
+    default: return { text: type.replaceAll("_", " "), translated: false };
+  }
+}
+
+function damageStatusCopy(resolve: ReturnType<typeof useI18n>["resolve"], status: string) {
+  switch (status) {
+    case "REPORTED": return resolve("conversation.damage.status.reported", "Reported");
+    case "ACKNOWLEDGED": return resolve("conversation.damage.status.acknowledged", "Acknowledged");
+    case "ESCALATED": return resolve("conversation.damage.status.escalated", "Support requested");
+    case "RESOLVED": return resolve("conversation.damage.status.resolved", "Resolved");
+    default: return { text: status.replaceAll("_", " "), translated: false };
+  }
+}
+
+function conversationStatusCopy(resolve: ReturnType<typeof useI18n>["resolve"], status: string) {
+  switch (status) {
+    case "FROZEN": return resolve("conversation.status.frozen", "frozen");
+    case "CLOSED": return resolve("conversation.status.closed", "closed");
+    default: return resolve("conversation.status.open", "open");
+  }
+}
 
 function mergeMessages(
   current: ThreadMessage[],
@@ -140,7 +162,7 @@ export function ConversationThread({
   initial: ThreadPayload;
   currentUserId: string;
 }) {
-  const { requestedLocale } = useI18n();
+  const { requestedLocale, locale, resolve } = useI18n();
   const [thread, setThread] = useState(initial);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -377,16 +399,16 @@ export function ConversationThread({
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <h1 className="truncate font-semibold">
-              {other?.user.name || `${COMMUNICATION_BRAND.name} conversation`}
+              {other?.user.name || resolve("conversation.title", `${COMMUNICATION_BRAND.name} conversation`).text}
             </h1>
             <p className="truncate text-sm text-muted-foreground">
-              {thread.conversation.listing.title}
+              <span data-user-generated-content translate="yes">{thread.conversation.listing.title}</span>
             </p>
           </div>
           <div className="flex items-center gap-2">
             {supportJoined ? (
               <Badge>
-                <Headphones className="mr-1 h-3 w-3" /> Support
+                <Headphones className="mr-1 h-3 w-3" /> <Tx k="conversation.support" source="Support" />
               </Badge>
             ) : null}
             {booking ? (
@@ -417,34 +439,34 @@ export function ConversationThread({
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="truncate font-semibold">
-                  {thread.conversation.listing.title}
+                  <span data-user-generated-content translate="yes">{thread.conversation.listing.title}</span>
                 </p>
-                <Badge variant="secondary">{booking.status.replaceAll("_", " ")}</Badge>
+                <Badge variant="secondary">{resolveBookingStatus({ resolve }, booking.status).text}</Badge>
               </div>
               <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
                 <CalendarDays className="h-3.5 w-3.5" />
-                {new Intl.DateTimeFormat("en", {
+                {new Intl.DateTimeFormat(locale, {
                   month: "short",
                   day: "numeric",
                 }).format(new Date(booking.checkIn))}
                 {" – "}
-                {new Intl.DateTimeFormat("en", {
+                {new Intl.DateTimeFormat(locale, {
                   month: "short",
                   day: "numeric",
                   year: "numeric",
                 }).format(new Date(booking.checkOut))}
               </p>
               <p className="mt-1 text-sm">
-                {booking.numberOfNights} nights · {booking.guestCount} guests ·{" "}
+                {booking.numberOfNights} <Tx k="conversation.nights" source="nights" /> · {booking.guestCount} <Tx k="conversation.guests" source="guests" /> ·{" "}
                 <strong>
-                  {new Intl.NumberFormat("en", {
+                  {new Intl.NumberFormat(locale, {
                     style: "currency",
                     currency: booking.currency,
                   }).format(booking.totalPrice)}
                 </strong>
               </p>
               <p className="mt-1 text-xs text-primary">
-                Booking {booking.reference} · View details
+                <Tx k="conversation.booking" source="Booking" /> {booking.reference} · <Tx k="conversation.view_details" source="View details" />
               </p>
             </div>
           </Link>
@@ -454,8 +476,7 @@ export function ConversationThread({
       {thread.conversation.kind === "INQUIRY" ? (
         <div className="flex shrink-0 gap-2 border-b bg-amber-50 px-4 py-3 text-sm text-amber-950">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          Keep payment and contact details inside {COMMUNICATION_BRAND.name} until
-          the booking is confirmed.
+          <Tx k="conversation.safety_notice" source="Keep payment and contact details inside Linger Homes until the booking is confirmed." />
         </div>
       ) : null}
 
@@ -476,13 +497,13 @@ export function ConversationThread({
               disabled={loadingOlder}
               onClick={() => void loadOlder()}
             >
-              {loadingOlder ? "Loading..." : "Load earlier messages"}
+              {loadingOlder ? <Tx k="common.loading" source="Loading..." /> : <Tx k="conversation.load_earlier" source="Load earlier messages" />}
             </Button>
           </div>
         ) : null}
         {!timeline.length ? (
           <div className="mx-auto max-w-md py-12 text-center text-sm text-muted-foreground">
-            Start the conversation. Messages and booking activity will appear here.
+            <Tx k="conversation.empty_timeline" source="Start the conversation. Messages and booking activity will appear here." />
           </div>
         ) : null}
         {timeline.map((item, index) => {
@@ -493,7 +514,7 @@ export function ConversationThread({
             <div key={`${item.kind}-${item.id}`}>
               {showDay ? (
                 <p className="mb-4 text-center text-xs font-medium text-muted-foreground">
-                  {new Intl.DateTimeFormat("en", {
+                  {new Intl.DateTimeFormat(locale, {
                     dateStyle: "medium",
                   }).format(new Date(item.createdAt))}
                 </p>
@@ -503,11 +524,10 @@ export function ConversationThread({
                 <div className="mx-auto max-w-md rounded-xl border bg-background px-4 py-3 text-center shadow-sm">
                   <Check className="mx-auto mb-1 h-5 w-5 text-primary" />
                   <p className="font-medium">
-                    {BOOKING_EVENT_COPY[item.value.type] ??
-                      item.value.type.replaceAll("_", " ")}
+                    {bookingEventCopy(resolve, item.value.type).text}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {new Intl.DateTimeFormat("en", {
+                    {new Intl.DateTimeFormat(locale, {
                       timeStyle: "short",
                     }).format(new Date(item.createdAt))}
                   </p>
@@ -526,12 +546,14 @@ export function ConversationThread({
                   <div className="max-w-[88%] overflow-hidden rounded-2xl border bg-background shadow-sm sm:max-w-md">
                     <div className="flex items-center justify-between gap-3 px-4 py-3">
                       <div>
-                        <p className="font-semibold">Damage reported</p>
+                        <p className="font-semibold">
+                          <Tx k="conversation.damage.reported" source="Damage reported" />
+                        </p>
                         <p className="text-xs text-muted-foreground">
-                          {item.value.reporter?.name ?? "Member"}
+                          {item.value.reporter?.name ?? resolve("conversation.member", "Member").text}
                         </p>
                       </div>
-                      <Badge variant="secondary">{item.value.status}</Badge>
+                      <Badge variant="secondary">{damageStatusCopy(resolve, item.value.status).text}</Badge>
                     </div>
                     <div className="grid grid-cols-2 gap-1 px-3">
                       {item.value.evidence.map((photo) => (
@@ -561,7 +583,7 @@ export function ConversationThread({
                               )
                             }
                           >
-                            Acknowledge
+                            <Tx k="conversation.damage.acknowledge" source="Acknowledge" />
                           </Button>
                         ) : null}
                         {item.value.status !== "ESCALATED" ? (
@@ -575,7 +597,7 @@ export function ConversationThread({
                               )
                             }
                           >
-                            Ask support
+                            <Tx k="conversation.damage.ask_support" source="Ask support" />
                           </Button>
                         ) : null}
                         <Button
@@ -584,7 +606,7 @@ export function ConversationThread({
                             void updateDamageReport(item.value.id, "RESOLVE")
                           }
                         >
-                          Mark resolved
+                          <Tx k="conversation.damage.mark_resolved" source="Mark resolved" />
                         </Button>
                       </div>
                     ) : null}
@@ -626,26 +648,29 @@ export function ConversationThread({
                 }}
                 maxLength={2000}
                 rows={2}
-                placeholder="Write a message..."
-                aria-label="Write a message"
+                placeholder={resolve("conversation.write_placeholder", "Write a message...").text}
+                aria-label={resolve("conversation.write_label", "Write a message").text}
               />
               <Button
                 size="icon"
                 className="h-10 w-10 shrink-0 rounded-full"
                 disabled={sending || !draft.trim()}
                 onClick={() => void send()}
-                aria-label="Send message"
+                aria-label={resolve("conversation.send", "Send message").text}
               >
                 <Send className="h-4 w-4" />
               </Button>
             </div>
             <p className="mt-1 text-right text-[11px] text-muted-foreground">
-              {2000 - draft.length} characters remaining
+              {resolve("conversation.characters_remaining", "{count} characters remaining").text.replace("{count}", String(2000 - draft.length))}
             </p>
           </>
         ) : (
           <p className="text-center text-sm text-muted-foreground">
-            This conversation is {thread.conversation.status.toLowerCase()}.
+            {resolve("conversation.closed_state", "This conversation is {status}.").text.replace(
+              "{status}",
+              conversationStatusCopy(resolve, thread.conversation.status).text,
+            )}
           </p>
         )}
       </div>
@@ -685,7 +710,7 @@ function MessageBubble({
           <p className="mb-1 px-1 text-xs text-muted-foreground">
             {message.senderRole === "SUPPORT"
               ? COMMUNICATION_BRAND.supportName
-              : message.sender.name || "Member"}
+              : message.sender.name || resolve("conversation.member", "Member").text}
           </p>
         ) : null}
         <div
@@ -699,7 +724,7 @@ function MessageBubble({
             message.deliveryState === "failed" && "border-destructive"
           )}
         >
-          <span data-user-generated-content>{message.body}</span>
+          <span data-user-generated-content translate="yes">{message.body}</span>
         </div>
         {translatedForReader ? (
           <p className="mt-1 px-1 text-[11px] text-muted-foreground">{translationNotice}</p>
@@ -714,7 +739,7 @@ function MessageBubble({
             {message.deliveryState === "sending" ? (
               <Clock3 className="h-3 w-3" />
             ) : null}
-            {new Intl.DateTimeFormat("en", {
+            {new Intl.DateTimeFormat(requestedLocale, {
               hour: "2-digit",
               minute: "2-digit",
             }).format(new Date(message.createdAt))}
@@ -726,7 +751,7 @@ function MessageBubble({
               onClick={() => onRetry(message)}
             >
               <RefreshCw className="h-3 w-3" />
-              Retry
+              <Tx k="conversation.retry" source="Retry" />
             </button>
           ) : null}
           {!mine && message.senderRole !== "SUPPORT" ? (
@@ -734,7 +759,7 @@ function MessageBubble({
               className="text-[11px] text-muted-foreground underline hover:text-foreground"
               href={`/account/support/new?type=REPORT&targetType=MESSAGE&messageId=${message.id}`}
             >
-              Report
+              <Tx k="conversation.report" source="Report" />
             </Link>
           ) : null}
         </div>

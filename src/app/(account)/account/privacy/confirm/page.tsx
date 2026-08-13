@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireUserPage } from "@/lib/auth-helpers";
 import { checkDeletionToken } from "@/lib/services/account-deletion.service";
 import { ConfirmDeletion } from "@/components/account/confirm-deletion";
+import { getT, T, t } from "@/lib/i18n/t";
 
 export const metadata = { title: "Confirm account deletion" };
 
@@ -10,6 +11,7 @@ export default async function ConfirmDeletionPage({
 }: {
   searchParams: Promise<{ token?: string }>;
 }) {
+  const translator = await getT();
   const { token } = await searchParams;
   const user = await requireUserPage(
     `/account/privacy/confirm${token ? `?token=${token}` : ""}`
@@ -22,7 +24,7 @@ export default async function ConfirmDeletionPage({
 
   return (
     <div className="max-w-lg space-y-6">
-      <h1 className="text-2xl font-bold">Confirm account deletion</h1>
+      <h1 className="text-2xl font-bold"><T t={translator} k="account.deletion.heading" source="Confirm account deletion" /></h1>
 
       {check.valid && belongsToViewer ? (
         <ConfirmDeletion token={token!} email={check.email} />
@@ -30,19 +32,19 @@ export default async function ConfirmDeletionPage({
         <div className="space-y-4 text-sm">
           <p className="text-muted-foreground">
             {!check.valid && check.reason === "expired"
-              ? "This confirmation link has expired."
+              ? t(translator, "account.deletion.expired", "This confirmation link has expired.")
               : !check.valid && check.reason === "used"
-                ? "This confirmation link has already been used."
+                ? t(translator, "account.deletion.used", "This confirmation link has already been used.")
                 : !check.valid
-                  ? "This confirmation link is not valid."
-                  : "This confirmation link belongs to a different account."}
+                  ? t(translator, "account.deletion.invalid", "This confirmation link is not valid.")
+                  : t(translator, "account.deletion.different_account", "This confirmation link belongs to a different account.")}
           </p>
           <p>
             <Link
               href="/account/privacy"
               className="underline underline-offset-4 hover:text-foreground"
             >
-              Back to Data &amp; Privacy
+              <T t={translator} k="account.deletion.back" source={"Back to Data & Privacy"} />
             </Link>
           </p>
         </div>

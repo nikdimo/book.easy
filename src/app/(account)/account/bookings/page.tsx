@@ -10,10 +10,13 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
 import { formatDate, formatPrice } from "@/lib/utils/format";
 import { BOOKING_STATUSES } from "@/lib/constants";
+import { getT, T, t as text } from "@/lib/i18n/t";
+import { resolveBookingStatus } from "@/lib/i18n/status-labels";
 
 export const metadata = { title: "My Bookings" };
 
 export default async function MyBookingsPage() {
+  const t = await getT();
   const session = await auth();
   if (!session?.user) redirect("/login");
 
@@ -22,13 +25,13 @@ export default async function MyBookingsPage() {
   if (bookings.length === 0) {
     return (
       <div>
-        <h1 className="text-2xl font-bold mb-6">My Bookings</h1>
+        <h1 className="text-2xl font-bold mb-6"><T t={t} k="account.bookings.heading" source="My Bookings" /></h1>
         <EmptyState
-          title="No bookings yet"
-          description="Start exploring and book your first stay!"
+          title={text(t, "account.bookings.empty_title", "No bookings yet")}
+          description={text(t, "account.bookings.empty_description", "Start exploring and book your first stay!")}
         >
           <Button asChild>
-            <Link href="/properties">Browse Properties</Link>
+            <Link href="/properties"><T t={t} k="account.browse_properties" source="Browse Properties" /></Link>
           </Button>
         </EmptyState>
       </div>
@@ -37,7 +40,7 @@ export default async function MyBookingsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">My Bookings</h1>
+      <h1 className="text-2xl font-bold mb-6"><T t={t} k="account.bookings.heading" source="My Bookings" /></h1>
       <div className="space-y-4">
         {bookings.map((booking) => {
           const statusConfig = BOOKING_STATUSES.find((s) => s.value === booking.status);
@@ -58,9 +61,9 @@ export default async function MyBookingsPage() {
                   ) : null}
                   <div className="flex-1">
                     <div className="flex flex-wrap items-start justify-between gap-2 mb-1">
-                      <h3 className="min-w-0 flex-1 font-semibold">{booking.listing.title}</h3>
+                      <h3 className="min-w-0 flex-1 font-semibold" data-user-generated-content translate="yes">{booking.listing.title}</h3>
                       <Badge variant={booking.status === "CONFIRMED" ? "default" : "secondary"}>
-                        {statusConfig?.label || booking.status}
+                        {resolveBookingStatus(t, statusConfig?.value || booking.status).text}
                       </Badge>
                     </div>
                     <p className="text-xs font-medium text-muted-foreground">

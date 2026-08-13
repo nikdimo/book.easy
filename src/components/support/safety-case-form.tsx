@@ -9,8 +9,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { COMMUNICATION_BRAND } from "@/lib/communication-brand";
 import type { ClaimKind } from "@prisma/client";
+import { Tx, useI18n } from "@/lib/i18n/client";
+
+function categoryLabel(resolve: ReturnType<typeof useI18n>["resolve"], category: string) {
+  switch (category) {
+    case "Safety concern": return resolve("support.category.safety", "Safety concern").text;
+    case "Harassment or abusive behavior": return resolve("support.category.harassment", "Harassment or abusive behavior").text;
+    case "Fraud or scam": return resolve("support.category.fraud", "Fraud or scam").text;
+    case "Discrimination": return resolve("support.category.discrimination", "Discrimination").text;
+    case "Property information is misleading": return resolve("support.category.misleading", "Property information is misleading").text;
+    case "Spam": return resolve("support.category.spam", "Spam").text;
+    case "Property not as described": return resolve("support.category.not_described", "Property not as described").text;
+    case "Host cancellation": return resolve("support.category.host_cancellation", "Host cancellation").text;
+    case "Guest damage": return resolve("support.category.guest_damage", "Guest damage").text;
+    case "Payment or refund": return resolve("support.category.payment_refund", "Payment or refund").text;
+    case "Safety incident": return resolve("support.category.safety_incident", "Safety incident").text;
+    case "Missing item": return resolve("support.category.missing_item", "Missing item").text;
+    default: return resolve("support.category.other", "Other").text;
+  }
+}
 
 const reportCategories = [
   "Safety concern",
@@ -55,6 +73,7 @@ export function SafetyCaseForm({
   reportedUserId?: string;
   claimKind?: ClaimKind;
 }) {
+  const { resolve } = useI18n();
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -74,10 +93,10 @@ export function SafetyCaseForm({
         body: data,
       });
       const result = (await response.json()) as Evidence & { error?: string };
-      if (!response.ok) throw new Error(result.error || "Upload failed");
+      if (!response.ok) throw new Error(resolve("support.upload_failed", "Upload failed").text);
       setEvidence((current) => [...current, result]);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Upload failed");
+      toast.error(error instanceof Error ? error.message : resolve("support.upload_failed", "Upload failed").text);
     } finally {
       setUploading(false);
     }
@@ -101,7 +120,9 @@ export function SafetyCaseForm({
       toast.error(result.error);
       return;
     }
-    toast.success(`${type === "CLAIM" ? "Claim" : "Report"} submitted`);
+    toast.success(type === "CLAIM"
+      ? resolve("support.claim_submitted", "Claim submitted").text
+      : resolve("support.report_submitted", "Report submitted").text);
     router.push(`/account/support/${result.caseId}`);
   }
 
@@ -110,7 +131,7 @@ export function SafetyCaseForm({
       {type === "CLAIM" ? (
         <>
           <div className="space-y-2">
-            <Label htmlFor="claimKind">Request type</Label>
+            <Label htmlFor="claimKind"><Tx k="support.request_type" source="Request type" /></Label>
             <select
               id="claimKind"
               name="claimKind"
@@ -118,15 +139,15 @@ export function SafetyCaseForm({
               defaultValue={claimKind || ""}
               className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
             >
-              <option value="" disabled>Choose a request type</option>
-              <option value="EXPENSE">Extra expense</option>
-              <option value="DAMAGE">Property damage or missing item</option>
-              <option value="REFUND">Guest refund request</option>
+              <option value="" disabled>{resolve("support.choose_request_type", "Choose a request type").text}</option>
+              <option value="EXPENSE">{resolve("support.claim.expense", "Extra expense").text}</option>
+              <option value="DAMAGE">{resolve("support.claim.damage", "Property damage or missing item").text}</option>
+              <option value="REFUND">{resolve("support.claim.refund", "Guest refund request").text}</option>
             </select>
           </div>
           <div className="grid gap-4 sm:grid-cols-[1fr_9rem]">
             <div className="space-y-2">
-              <Label htmlFor="requestedAmount">Requested amount</Label>
+              <Label htmlFor="requestedAmount"><Tx k="support.requested_amount" source="Requested amount" /></Label>
               <Input
                 id="requestedAmount"
                 name="requestedAmount"
@@ -140,24 +161,24 @@ export function SafetyCaseForm({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="currency">Currency</Label>
+              <Label htmlFor="currency"><Tx k="support.currency" source="Currency" /></Label>
               <select
                 id="currency"
                 name="currency"
                 defaultValue="EUR"
                 className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
               >
-                <option value="EUR">EUR</option>
-                <option value="MKD">MKD</option>
-                <option value="DKK">DKK</option>
-                <option value="USD">USD</option>
+                <option value="EUR" translate="no">EUR</option>
+                <option value="MKD" translate="no">MKD</option>
+                <option value="DKK" translate="no">DKK</option>
+                <option value="USD" translate="no">USD</option>
               </select>
             </div>
           </div>
         </>
       ) : null}
       <div className="space-y-2">
-        <Label htmlFor="category">Category</Label>
+        <Label htmlFor="category"><Tx k="support.category" source="Category" /></Label>
         <select
           id="category"
           name="category"
@@ -165,18 +186,18 @@ export function SafetyCaseForm({
           defaultValue=""
           className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
         >
-          <option value="" disabled>Choose a category</option>
+          <option value="" disabled>{resolve("support.choose_category", "Choose a category").text}</option>
           {categories.map((category) => (
-            <option key={category} value={category}>{category}</option>
+            <option key={category} value={category}>{categoryLabel(resolve, category)}</option>
           ))}
         </select>
       </div>
       <div className="space-y-2">
-        <Label htmlFor="subject">Short summary</Label>
+        <Label htmlFor="subject"><Tx k="support.short_summary" source="Short summary" /></Label>
         <Input id="subject" name="subject" minLength={5} maxLength={120} required />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="description">What happened?</Label>
+        <Label htmlFor="description"><Tx k="support.what_happened" source="What happened?" /></Label>
         <Textarea
           id="description"
           name="description"
@@ -184,13 +205,13 @@ export function SafetyCaseForm({
           maxLength={5000}
           rows={7}
           required
-          placeholder="Include the important facts, dates, and what outcome you need."
+          placeholder={resolve("support.description_placeholder", "Include the important facts, dates, and what outcome you need.").text}
         />
       </div>
       <div className="space-y-2">
-        <Label>Evidence (optional)</Label>
+        <Label><Tx k="support.evidence_optional" source="Evidence (optional)" /></Label>
         <p className="text-xs text-muted-foreground">
-          Up to 5 JPG, PNG, WebP, or PDF files, 10 MB each.
+          <Tx k="support.evidence_limits" source="Up to 5 JPG, PNG, WebP, or PDF files, 10 MB each." />
         </p>
         {evidence.map((item, index) => (
           <div key={`${item.url}-${index}`} className="flex items-center gap-2 rounded-lg border p-2 text-sm">
@@ -200,7 +221,7 @@ export function SafetyCaseForm({
               variant="ghost"
               size="icon"
               onClick={() => setEvidence((current) => current.filter((_, i) => i !== index))}
-              aria-label={`Remove ${item.fileName}`}
+              aria-label={resolve("support.remove_file", "Remove {fileName}").text.replace("{fileName}", item.fileName)}
             >
               <X className="h-4 w-4" />
             </Button>
@@ -209,7 +230,9 @@ export function SafetyCaseForm({
         {evidence.length < 5 ? (
           <label className="inline-flex cursor-pointer items-center rounded-lg border px-3 py-2 text-sm font-medium hover:bg-muted">
             <FileUp className="mr-2 h-4 w-4" />
-            {uploading ? "Uploading..." : "Add evidence"}
+            {uploading
+              ? resolve("common.uploading", "Uploading...").text
+              : resolve("support.add_evidence", "Add evidence").text}
             <input
               type="file"
               accept=".jpg,.jpeg,.png,.webp,.pdf"
@@ -221,11 +244,14 @@ export function SafetyCaseForm({
         ) : null}
       </div>
       <div className="rounded-xl bg-muted p-4 text-sm text-muted-foreground">
-        We send confirmation by email and in the app. {COMMUNICATION_BRAND.name} administrators can
-        review the related booking, listing, user, and reported message.
+        <Tx k="support.confirmation_notice" source="We send confirmation by email and in the app. Linger Homes administrators can review the related booking, listing, user, and reported message." />
       </div>
       <Button type="submit" disabled={pending || uploading}>
-        {pending ? "Submitting..." : `Submit ${type === "CLAIM" ? "claim" : "report"}`}
+        {pending
+          ? resolve("common.submitting", "Submitting...").text
+          : type === "CLAIM"
+            ? resolve("support.submit_claim_short", "Submit claim").text
+            : resolve("support.submit_report_short", "Submit report").text}
       </Button>
     </form>
   );

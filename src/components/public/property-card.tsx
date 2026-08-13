@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatDateShort } from "@/lib/utils/format";
 import { getPriceFormatter } from "@/lib/currency/price";
 import { getPropertyTypeLabel } from "@/lib/services/property-type.service";
+import { resolveListingSpaceTypeLabel, resolvePropertyTypeLabel } from "@/lib/i18n/property-type-labels";
 import { parseISO, isValid } from "date-fns";
 import { PropertyCardGallery } from "@/components/public/property-card-gallery";
 import { LocalizedPrice } from "@/components/shared/localized-price";
@@ -15,7 +16,6 @@ import {
   parseLocalYmd,
   type StayPromotion,
 } from "@/lib/utils/stay-pricing";
-import { listingSpaceTypeLabel } from "@/lib/types/listing-space-type";
 
 interface PropertyCardProps {
   listing: {
@@ -69,10 +69,14 @@ export async function PropertyCard({
     listing;
   const displayImages = images.filter((img) => img.url?.trim());
   const city = localizePlaceName(property.city, t.locale);
-  const typeLabel = await getPropertyTypeLabel(property.propertyType);
+  const typeLabel = resolvePropertyTypeLabel(
+    t,
+    property.propertyType,
+    await getPropertyTypeLabel(property.propertyType),
+  ).text;
   const displayTypeLabel =
     listing.spaceType && listing.spaceType !== "ENTIRE_PLACE"
-      ? listingSpaceTypeLabel(listing.spaceType)
+      ? resolveListingSpaceTypeLabel(t, listing.spaceType).text
       : typeLabel;
   const href = `/properties/${slug}${searchQuery ? `?${searchQuery}` : ""}`;
 
@@ -237,7 +241,7 @@ export async function PropertyCard({
         </div>
 
         <p
-          data-user-generated-content
+          data-user-generated-content translate="yes"
           className="truncate text-[0.9rem] leading-5 text-muted-foreground"
         >
           {title}

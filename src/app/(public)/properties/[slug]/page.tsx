@@ -255,7 +255,7 @@ export default async function ListingDetailPage({
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between gap-y-4 mb-6">
         <div className="min-w-0 flex-1">
           <h1
-            data-user-generated-content
+            data-user-generated-content translate="yes"
             className="text-xl md:text-[26px] font-semibold tracking-tight text-foreground leading-tight"
           >
             <PreservedPlaceText
@@ -498,7 +498,7 @@ export default async function ListingDetailPage({
                             ) : null}
                           </div>
                           <p
-                            data-user-generated-content
+                            data-user-generated-content translate="yes"
                             className="mt-3 whitespace-pre-wrap text-sm text-muted-foreground"
                           >
                             {review.publicComment}

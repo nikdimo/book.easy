@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { resolveMapsLink } from "@/lib/actions/listing.actions";
 import { parseCoordsFromMapsText } from "@/lib/utils/parse-maps-link";
+import { Tx, useI18n } from "@/lib/i18n/client";
 
 const ListingLocationPickerInner = dynamic(
   () => import("./listing-location-picker-inner"),
@@ -126,6 +127,7 @@ export function ListingLocationMapField({
   active?: boolean;
   heading?: boolean;
 }) {
+  const { resolve } = useI18n();
   const initialLat = finiteCoordinate(value.latitude, -90, 90);
   const initialLng = finiteCoordinate(value.longitude, -180, 180);
   const hasPin = initialLat !== null && initialLng !== null;
@@ -517,11 +519,11 @@ export function ListingLocationMapField({
     // next update to that same subtree can then throw ("insertBefore: not a child of
     // this node"). This whole form is host-only, plain-English UI with no i18n
     // integration already, so nothing is lost by keeping Translate out of it.
-    <div className="notranslate flex min-h-0 flex-1 flex-col gap-3">
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
       {heading && (
         <div className="shrink-0">
           <h2 className="text-lg font-semibold tracking-tight md:text-2xl">
-            Pin your property location
+            <Tx k="host.location.pin_title" source="Pin your property location" />
           </h2>
         </div>
       )}
@@ -560,7 +562,7 @@ export function ListingLocationMapField({
               }
               autoComplete="off"
               className="h-12 border-0 bg-transparent pl-4 pr-12 text-base shadow-none focus-visible:ring-0"
-              placeholder="Search Google for an address or place"
+              placeholder={resolve("host.location.search_placeholder", "Search Google for an address or place").text}
               value={query}
               onChange={(event) => {
                 const nextQuery = event.target.value;
@@ -649,7 +651,7 @@ export function ListingLocationMapField({
           {linkOpen && (
             <div className="flex gap-2 rounded-xl bg-background p-2 shadow-lg">
               <Input
-                placeholder="Paste a Google Maps link"
+                placeholder={resolve("host.location.maps_link_placeholder", "Paste a Google Maps link").text}
                 value={linkValue}
                 autoFocus
                 disabled={resolving}
@@ -666,7 +668,7 @@ export function ListingLocationMapField({
                 onClick={() => void applyLink()}
                 disabled={resolving || !linkValue.trim()}
               >
-                Use link
+                <Tx k="host.location.use_link" source="Use link" />
               </Button>
             </div>
           )}
@@ -691,7 +693,7 @@ export function ListingLocationMapField({
                 className={cn("absolute inset-0 h-4 w-4", locating && "invisible")}
               />
             </span>
-            My location
+            <Tx k="host.location.my_location" source="My location" />
           </Button>
           {!linkOpen && (
             <Button
@@ -702,7 +704,7 @@ export function ListingLocationMapField({
               onClick={() => setLinkOpen(true)}
             >
               <Link2 className="h-4 w-4" />
-              Maps link
+              <Tx k="host.location.maps_link" source="Maps link" />
             </Button>
           )}
         </div>
@@ -716,13 +718,10 @@ export function ListingLocationMapField({
         <DialogContent variant="sheet" className="min-w-0 overflow-x-hidden overflow-y-auto md:max-h-[calc(100dvh-2rem)] md:w-[calc(100vw-2rem)] md:max-w-lg">
           <DialogHeader>
             <DialogTitle className="pr-8 leading-snug">
-              Are you at the property now?
+              <Tx k="host.location.at_property_title" source="Are you at the property now?" />
             </DialogTitle>
             <DialogDescription className="break-words leading-relaxed">
-              Choose yes only if you are physically at the property. Your
-              browser will then ask whether Linger Homes may use your current
-              location. You can deny the request and continue by searching or
-              selecting the property on the map.
+              <Tx k="host.location.at_property_description" source="Choose yes only if you are physically at the property. Your browser will then ask whether Linger Homes may use your current location. You can deny the request and continue by searching or selecting the property on the map." />
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-col-reverse gap-2 sm:flex-col-reverse sm:justify-stretch">
@@ -733,7 +732,7 @@ export function ListingLocationMapField({
               onClick={() => setLocationDialogOpen(false)}
             >
               <span className="min-w-0 break-words">
-                No, I&apos;ll choose it
+                <Tx k="host.location.choose_manually" source="No, I'll choose it" />
               </span>
             </Button>
             <Button
@@ -742,7 +741,7 @@ export function ListingLocationMapField({
               onClick={requestCurrentLocation}
             >
               <LocateFixed className="h-4 w-4 shrink-0" />
-              <span className="min-w-0 break-words">Yes, use where I am</span>
+              <span className="min-w-0 break-words"><Tx k="host.location.use_current" source="Yes, use where I am" /></span>
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,5 +1,695 @@
 [
   {
+    "key": "account.after_stay.admin_note",
+    "sourceText": "Admin note",
+    "filePath": "src/app/(account)/account/bookings/[id]/after-stay/page.tsx"
+  },
+  {
+    "key": "account.after_stay.approved_both",
+    "sourceText": "Both sides submitted. The ratings will unlock as soon as moderation is complete.",
+    "filePath": "src/app/(account)/account/bookings/[id]/after-stay/page.tsx"
+  },
+  {
+    "key": "account.after_stay.approved_title",
+    "sourceText": "Your rating was approved",
+    "filePath": "src/app/(account)/account/bookings/[id]/after-stay/page.tsx"
+  },
+  {
+    "key": "account.after_stay.back",
+    "sourceText": "Back to booking",
+    "filePath": "src/app/(account)/account/bookings/[id]/after-stay/page.tsx"
+  },
+  {
+    "key": "account.after_stay.completed",
+    "sourceText": "Stay completed",
+    "filePath": "src/app/(account)/account/bookings/[id]/after-stay/page.tsx"
+  },
+  {
+    "key": "account.after_stay.damage_description",
+    "sourceText": "Report damage with photos and receipts",
+    "filePath": "src/app/(account)/account/bookings/[id]/after-stay/page.tsx"
+  },
+  {
+    "key": "account.after_stay.damage_title",
+    "sourceText": "New damage claim",
+    "filePath": "src/app/(account)/account/bookings/[id]/after-stay/page.tsx"
+  },
+  {
+    "key": "account.after_stay.ended",
+    "sourceText": "The stay has ended",
+    "filePath": "src/app/(account)/account/bookings/[id]/after-stay/page.tsx"
+  },
+  {
+    "key": "account.after_stay.expense_description",
+    "sourceText": "Request extra payment or a partial refund",
+    "filePath": "src/app/(account)/account/bookings/[id]/after-stay/page.tsx"
+  },
+  {
+    "key": "account.after_stay.expense_title",
+    "sourceText": "New expense request",
+    "filePath": "src/app/(account)/account/bookings/[id]/after-stay/page.tsx"
+  },
+  {
+    "key": "account.after_stay.final_total",
+    "sourceText": "Final booking total",
+    "filePath": "src/app/(account)/account/bookings/[id]/after-stay/page.tsx"
+  },
+  {
+    "key": "account.after_stay.hidden_body",
+    "sourceText": "An administrator has removed this rating from public view.",
+    "filePath": "src/app/(account)/account/bookings/[id]/after-stay/page.tsx"
+  },
+  {
+    "key": "account.after_stay.hidden_title",
+    "sourceText": "Your rating is hidden",
+    "filePath": "src/app/(account)/account/bookings/[id]/after-stay/page.tsx"
+  },
+  {
+    "key": "account.after_stay.other_sealed",
+    "sourceText": "The other rating is safely sealed and will appear after admin approval.",
+    "filePath": "src/app/(account)/account/bookings/[id]/after-stay/page.tsx"
+  },
+  {
+    "key": "account.after_stay.pending_both",
+    "sourceText": "Both sides have submitted. The ratings stay sealed until moderation is complete.",
+    "filePath": "src/app/(account)/account/bookings/[id]/after-stay/page.tsx"
+  },
+  {
+    "key": "account.after_stay.pending_other",
+    "sourceText": "Your rating is sealed. We have invited the other party to submit theirs.",
+    "filePath": "src/app/(account)/account/bookings/[id]/after-stay/page.tsx"
+  },
+  {
+    "key": "account.after_stay.pending_title",
+    "sourceText": "Your rating is awaiting admin approval",
+    "filePath": "src/app/(account)/account/bookings/[id]/after-stay/page.tsx"
+  },
+  {
+    "key": "account.after_stay.publish_deadline",
+    "sourceText": "It will publish when the other party submits or after {date}.",
+    "filePath": "src/app/(account)/account/bookings/[id]/after-stay/page.tsx"
+  },
+  {
+    "key": "account.after_stay.rating_from",
+    "sourceText": "Rating from {name}",
+    "filePath": "src/app/(account)/account/bookings/[id]/after-stay/page.tsx"
+  },
+  {
+    "key": "account.after_stay.reference",
+    "sourceText": "Booking reference {reference}",
+    "filePath": "src/app/(account)/account/bookings/[id]/after-stay/page.tsx"
+  },
+  {
+    "key": "account.after_stay.rejected_body",
+    "sourceText": "Check the moderation explanation below. Your private category feedback remains available to administrators.",
+    "filePath": "src/app/(account)/account/bookings/[id]/after-stay/page.tsx"
+  },
+  {
+    "key": "account.after_stay.rejected_title",
+    "sourceText": "Your review was not approved",
+    "filePath": "src/app/(account)/account/bookings/[id]/after-stay/page.tsx"
+  },
+  {
+    "key": "account.after_stay.total_note",
+    "sourceText": "Extra requests remain separate until accepted and resolved.",
+    "filePath": "src/app/(account)/account/bookings/[id]/after-stay/page.tsx"
+  },
+  {
+    "key": "account.after_stay.your_review",
+    "sourceText": "Your public review",
+    "filePath": "src/app/(account)/account/bookings/[id]/after-stay/page.tsx"
+  },
+  {
+    "key": "account.arrival.address",
+    "sourceText": "Address",
+    "filePath": "src/components/booking/booking-arrival-details.tsx"
+  },
+  {
+    "key": "account.arrival.empty",
+    "sourceText": "The host hasn't added arrival details for this property. Message them to arrange how you'll get in.",
+    "filePath": "src/components/booking/booking-arrival-details.tsx"
+  },
+  {
+    "key": "account.arrival.heading",
+    "sourceText": "Finding the place",
+    "filePath": "src/components/booking/booking-arrival-details.tsx"
+  },
+  {
+    "key": "account.arrival.street_view_hint",
+    "sourceText": "The host picked this view so you can recognise the building.",
+    "filePath": "src/components/booking/booking-arrival-details.tsx"
+  },
+  {
+    "key": "account.arrival.unlock_after_confirmation",
+    "sourceText": "Once the host confirms this booking, the exact address and their Street View of the entrance appear here {days} days before check-in.",
+    "filePath": "src/components/booking/booking-arrival-details.tsx"
+  },
+  {
+    "key": "account.arrival.unlock_date",
+    "sourceText": "The exact address and the host's Street View of the entrance become available on {date}, {days} days before check-in.",
+    "filePath": "src/components/booking/booking-arrival-details.tsx"
+  },
+  {
+    "key": "account.become_host.activate",
+    "sourceText": "Activate Host Account",
+    "filePath": "src/components/account/become-host-form.tsx"
+  },
+  {
+    "key": "account.become_host.bio",
+    "sourceText": "Host bio",
+    "filePath": "src/components/account/become-host-form.tsx"
+  },
+  {
+    "key": "account.become_host.bio_placeholder",
+    "sourceText": "Tell potential guests about yourself, your hosting style, and what makes your properties special...",
+    "filePath": "src/components/account/become-host-form.tsx"
+  },
+  {
+    "key": "account.become_host.display_name",
+    "sourceText": "Display name",
+    "filePath": "src/components/account/become-host-form.tsx"
+  },
+  {
+    "key": "account.become_host.display_name_placeholder",
+    "sourceText": "How guests will see your name",
+    "filePath": "src/components/account/become-host-form.tsx"
+  },
+  {
+    "key": "account.become_host.form_description",
+    "sourceText": "Tell us a bit about yourself so guests know who they are booking with.",
+    "filePath": "src/components/account/become-host-form.tsx"
+  },
+  {
+    "key": "account.become_host.form_title",
+    "sourceText": "Host Information",
+    "filePath": "src/components/account/become-host-form.tsx"
+  },
+  {
+    "key": "account.become_host.heading",
+    "sourceText": "Become a Host",
+    "filePath": "src/app/(account)/account/become-host/page.tsx"
+  },
+  {
+    "key": "account.become_host.phone",
+    "sourceText": "Phone number *",
+    "filePath": "src/components/account/become-host-form.tsx"
+  },
+  {
+    "key": "account.become_host.phone_placeholder",
+    "sourceText": "+389 7X XXX XXX",
+    "filePath": "src/components/account/become-host-form.tsx"
+  },
+  {
+    "key": "account.become_host.setting_up",
+    "sourceText": "Setting up...",
+    "filePath": "src/components/account/become-host-form.tsx"
+  },
+  {
+    "key": "account.become_host.subheading",
+    "sourceText": "Share your property with travelers and earn income with Linger Homes",
+    "filePath": "src/app/(account)/account/become-host/page.tsx"
+  },
+  {
+    "key": "account.become_host.success",
+    "sourceText": "Welcome! You are now a host.",
+    "filePath": "src/components/account/become-host-form.tsx"
+  },
+  {
+    "key": "account.become_host.terms",
+    "sourceText": "I agree to the Linger Homes host terms of service and understand that my listings are subject to platform review and approval.",
+    "filePath": "src/components/account/become-host-form.tsx"
+  },
+  {
+    "key": "account.booking.accommodation_nights",
+    "sourceText": "Accommodation · {count} nights",
+    "filePath": "src/app/(account)/account/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "account.booking.back",
+    "sourceText": "Back to bookings",
+    "filePath": "src/app/(account)/account/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "account.booking.cancel",
+    "sourceText": "Cancel Booking",
+    "filePath": "src/components/account/cancel-booking-button.tsx"
+  },
+  {
+    "key": "account.booking.cancel_confirm",
+    "sourceText": "Are you sure you want to cancel this booking?",
+    "filePath": "src/components/account/cancel-booking-button.tsx"
+  },
+  {
+    "key": "account.booking.cancellation_reason",
+    "sourceText": "Cancellation reason",
+    "filePath": "src/app/(account)/account/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "account.booking.cancelled",
+    "sourceText": "Booking cancelled",
+    "filePath": "src/components/account/cancel-booking-button.tsx"
+  },
+  {
+    "key": "account.booking.cancelling",
+    "sourceText": "Cancelling...",
+    "filePath": "src/components/account/cancel-booking-button.tsx"
+  },
+  {
+    "key": "account.booking.check_in",
+    "sourceText": "Check-in",
+    "filePath": "src/app/(account)/account/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "account.booking.check_out",
+    "sourceText": "Check-out",
+    "filePath": "src/app/(account)/account/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "account.booking.cleaning_fee",
+    "sourceText": "Cleaning fee",
+    "filePath": "src/app/(account)/account/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "account.booking.details",
+    "sourceText": "Booking Details",
+    "filePath": "src/app/(account)/account/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "account.booking.free_cleaning",
+    "sourceText": "Free cleaning",
+    "filePath": "src/app/(account)/account/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "account.booking.guests",
+    "sourceText": "Guests",
+    "filePath": "src/app/(account)/account/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "account.booking.hosted_by",
+    "sourceText": "Hosted by {name}",
+    "filePath": "src/app/(account)/account/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "account.booking.keep",
+    "sourceText": "Keep booking",
+    "filePath": "src/components/account/cancel-booking-button.tsx"
+  },
+  {
+    "key": "account.booking.message_host",
+    "sourceText": "Message host",
+    "filePath": "src/app/(account)/account/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "account.booking.nights",
+    "sourceText": "Nights",
+    "filePath": "src/app/(account)/account/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "account.booking.rate_stay",
+    "sourceText": "Rate your stay",
+    "filePath": "src/app/(account)/account/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "account.booking.reference_short",
+    "sourceText": "Ref:",
+    "filePath": "src/app/(account)/account/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "account.booking.report_problem",
+    "sourceText": "Report a problem",
+    "filePath": "src/app/(account)/account/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "account.booking.special_offer",
+    "sourceText": "Special offer",
+    "filePath": "src/app/(account)/account/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "account.booking.total",
+    "sourceText": "Total",
+    "filePath": "src/app/(account)/account/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "account.booking.yes_cancel",
+    "sourceText": "Yes, cancel",
+    "filePath": "src/components/account/cancel-booking-button.tsx"
+  },
+  {
+    "key": "account.booking.your_message",
+    "sourceText": "Your message",
+    "filePath": "src/app/(account)/account/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "account.bookings.heading",
+    "sourceText": "My Bookings",
+    "filePath": "src/app/(account)/account/bookings/page.tsx"
+  },
+  {
+    "key": "account.browse_properties",
+    "sourceText": "Browse Properties",
+    "filePath": "src/app/(account)/account/bookings/page.tsx"
+  },
+  {
+    "key": "account.communications.consent.email_guest",
+    "sourceText": "I would like to receive travel inspiration, special offers and news from Linger Homes by email. I can unsubscribe at any time.",
+    "filePath": "src/app/(account)/account/communications/page.tsx"
+  },
+  {
+    "key": "account.communications.consent.email_host",
+    "sourceText": "I would like to receive hosting inspiration, product news and special offers from Linger Homes by email. I can unsubscribe at any time.",
+    "filePath": "src/app/(account)/account/communications/page.tsx"
+  },
+  {
+    "key": "account.communications.consent.push_guest",
+    "sourceText": "I would like to receive travel inspiration and special offers from Linger Homes by push notification. I can turn these off at any time.",
+    "filePath": "src/app/(account)/account/communications/page.tsx"
+  },
+  {
+    "key": "account.communications.consent.push_host",
+    "sourceText": "I would like to receive hosting inspiration, product news and special offers from Linger Homes by push notification. I can turn these off at any time.",
+    "filePath": "src/app/(account)/account/communications/page.tsx"
+  },
+  {
+    "key": "account.communications.heading",
+    "sourceText": "Communication preferences",
+    "filePath": "src/app/(account)/account/communications/page.tsx"
+  },
+  {
+    "key": "account.communications.intro",
+    "sourceText": "Promotional communication is optional. Essential security, payment, listing, and active-booking messages cannot be disabled while those services are in use.",
+    "filePath": "src/app/(account)/account/communications/page.tsx"
+  },
+  {
+    "key": "account.communications.marketing",
+    "sourceText": "Optional marketing",
+    "filePath": "src/app/(account)/account/communications/page.tsx"
+  },
+  {
+    "key": "account.communications.marketing_email",
+    "sourceText": "Marketing by email",
+    "filePath": "src/app/(account)/account/communications/page.tsx"
+  },
+  {
+    "key": "account.communications.marketing_note",
+    "sourceText": "Turning email marketing off immediately suppresses all promotional email, for both guest and host content. No login is required to use links in marketing emails.",
+    "filePath": "src/app/(account)/account/communications/page.tsx"
+  },
+  {
+    "key": "account.communications.marketing_push",
+    "sourceText": "Marketing push notifications",
+    "filePath": "src/app/(account)/account/communications/page.tsx"
+  },
+  {
+    "key": "account.communications.message_email",
+    "sourceText": "New message emails",
+    "filePath": "src/app/(account)/account/communications/page.tsx"
+  },
+  {
+    "key": "account.communications.message_email_description",
+    "sourceText": "Email me when a guest, host, or support agent sends a message.",
+    "filePath": "src/app/(account)/account/communications/page.tsx"
+  },
+  {
+    "key": "account.communications.pending",
+    "sourceText": "Confirmation pending. Check your inbox; you are not subscribed until you confirm.",
+    "filePath": "src/app/(account)/account/communications/page.tsx"
+  },
+  {
+    "key": "account.communications.review_email",
+    "sourceText": "Review reminders",
+    "filePath": "src/app/(account)/account/communications/page.tsx"
+  },
+  {
+    "key": "account.communications.review_email_description",
+    "sourceText": "Remind me to review a completed stay.",
+    "filePath": "src/app/(account)/account/communications/page.tsx"
+  },
+  {
+    "key": "account.communications.save",
+    "sourceText": "Save preferences",
+    "filePath": "src/app/(account)/account/communications/page.tsx"
+  },
+  {
+    "key": "account.communications.service",
+    "sourceText": "Service communication",
+    "filePath": "src/app/(account)/account/communications/page.tsx"
+  },
+  {
+    "key": "account.communications.service_push",
+    "sourceText": "Service push notifications",
+    "filePath": "src/app/(account)/account/communications/page.tsx"
+  },
+  {
+    "key": "account.communications.service_push_description",
+    "sourceText": "Booking, message, listing, and account updates on registered devices.",
+    "filePath": "src/app/(account)/account/communications/page.tsx"
+  },
+  {
+    "key": "account.deletion.back",
+    "sourceText": "Back to Data & Privacy",
+    "filePath": "src/app/(account)/account/privacy/confirm/page.tsx"
+  },
+  {
+    "key": "account.deletion.confirm",
+    "sourceText": "Yes, delete my account",
+    "filePath": "src/components/account/confirm-deletion.tsx"
+  },
+  {
+    "key": "account.deletion.deleting",
+    "sourceText": "Deleting…",
+    "filePath": "src/components/account/confirm-deletion.tsx"
+  },
+  {
+    "key": "account.deletion.different_account",
+    "sourceText": "This confirmation link belongs to a different account.",
+    "filePath": "src/app/(account)/account/privacy/confirm/page.tsx"
+  },
+  {
+    "key": "account.deletion.done",
+    "sourceText": "Your account and personal data have been deleted. Taking you back to the homepage…",
+    "filePath": "src/components/account/confirm-deletion.tsx"
+  },
+  {
+    "key": "account.deletion.expired",
+    "sourceText": "This confirmation link has expired.",
+    "filePath": "src/app/(account)/account/privacy/confirm/page.tsx"
+  },
+  {
+    "key": "account.deletion.heading",
+    "sourceText": "Confirm account deletion",
+    "filePath": "src/app/(account)/account/privacy/confirm/page.tsx"
+  },
+  {
+    "key": "account.deletion.invalid",
+    "sourceText": "This confirmation link is not valid.",
+    "filePath": "src/app/(account)/account/privacy/confirm/page.tsx"
+  },
+  {
+    "key": "account.deletion.used",
+    "sourceText": "This confirmation link has already been used.",
+    "filePath": "src/app/(account)/account/privacy/confirm/page.tsx"
+  },
+  {
+    "key": "account.deletion.warning",
+    "sourceText": "This permanently deletes the account for {email}. Pending bookings will be cancelled and your listings archived. Booking records are kept anonymously for 7 years to meet tax and legal obligations. This cannot be undone.",
+    "filePath": "src/components/account/confirm-deletion.tsx"
+  },
+  {
+    "key": "account.favorites.heading",
+    "sourceText": "My Favorites",
+    "filePath": "src/app/(account)/account/favorites/page.tsx"
+  },
+  {
+    "key": "account.messages.heading",
+    "sourceText": "Messages",
+    "filePath": "src/app/(account)/account/messages/page.tsx"
+  },
+  {
+    "key": "account.messages.subheading",
+    "sourceText": "Private conversations with hosts, guests, and Linger Homes Support.",
+    "filePath": "src/app/(account)/account/messages/page.tsx"
+  },
+  {
+    "key": "account.privacy.confirm_email",
+    "sourceText": "Check your email to confirm deletion",
+    "filePath": "src/components/account/privacy-controls.tsx"
+  },
+  {
+    "key": "account.privacy.contact_prefix",
+    "sourceText": "for the detail, or write to",
+    "filePath": "src/app/(account)/account/privacy/page.tsx"
+  },
+  {
+    "key": "account.privacy.cookie_policy",
+    "sourceText": "Cookie Policy",
+    "filePath": "src/app/(account)/account/privacy/page.tsx"
+  },
+  {
+    "key": "account.privacy.cookies_description",
+    "sourceText": "Choose which optional cookies we may use. You can change this at any time.",
+    "filePath": "src/components/account/privacy-controls.tsx"
+  },
+  {
+    "key": "account.privacy.cookies_title",
+    "sourceText": "Cookies and consent",
+    "filePath": "src/components/account/privacy-controls.tsx"
+  },
+  {
+    "key": "account.privacy.delete_description",
+    "sourceText": "Pending bookings are cancelled and your listings are archived. Booking records are kept anonymously for 7 years to meet tax and legal obligations. This can't be undone.",
+    "filePath": "src/components/account/privacy-controls.tsx"
+  },
+  {
+    "key": "account.privacy.delete_title",
+    "sourceText": "Delete your account",
+    "filePath": "src/components/account/privacy-controls.tsx"
+  },
+  {
+    "key": "account.privacy.download",
+    "sourceText": "Download",
+    "filePath": "src/components/account/privacy-controls.tsx"
+  },
+  {
+    "key": "account.privacy.download_description",
+    "sourceText": "Download your profile, bookings, listings and favourites as JSON, a standard machine-readable format.",
+    "filePath": "src/components/account/privacy-controls.tsx"
+  },
+  {
+    "key": "account.privacy.download_title",
+    "sourceText": "Download your data",
+    "filePath": "src/components/account/privacy-controls.tsx"
+  },
+  {
+    "key": "account.privacy.email_sent",
+    "sourceText": "Confirmation email sent. The link expires in an hour.",
+    "filePath": "src/components/account/privacy-controls.tsx"
+  },
+  {
+    "key": "account.privacy.export_failed",
+    "sourceText": "Failed to export data. Please try again.",
+    "filePath": "src/components/account/privacy-controls.tsx"
+  },
+  {
+    "key": "account.privacy.export_failed_short",
+    "sourceText": "Export failed",
+    "filePath": "src/components/account/privacy-controls.tsx"
+  },
+  {
+    "key": "account.privacy.export_success",
+    "sourceText": "Your personal data has been downloaded",
+    "filePath": "src/components/account/privacy-controls.tsx"
+  },
+  {
+    "key": "account.privacy.heading",
+    "sourceText": "Data & Privacy",
+    "filePath": "src/app/(account)/account/privacy/page.tsx"
+  },
+  {
+    "key": "account.privacy.manage_preferences",
+    "sourceText": "Manage preferences",
+    "filePath": "src/components/account/privacy-controls.tsx"
+  },
+  {
+    "key": "account.privacy.policy",
+    "sourceText": "Privacy Policy",
+    "filePath": "src/app/(account)/account/privacy/page.tsx"
+  },
+  {
+    "key": "account.privacy.preparing",
+    "sourceText": "Preparing…",
+    "filePath": "src/components/account/privacy-controls.tsx"
+  },
+  {
+    "key": "account.privacy.request_deletion",
+    "sourceText": "Request deletion",
+    "filePath": "src/components/account/privacy-controls.tsx"
+  },
+  {
+    "key": "account.privacy.resend",
+    "sourceText": "Resend",
+    "filePath": "src/components/account/privacy-controls.tsx"
+  },
+  {
+    "key": "account.privacy.rights",
+    "sourceText": "Your privacy rights",
+    "filePath": "src/app/(account)/account/privacy/page.tsx"
+  },
+  {
+    "key": "account.privacy.rights_middle",
+    "sourceText": "change your cookie choices at any time, and ask us to erase your account. See the",
+    "filePath": "src/app/(account)/account/privacy/page.tsx"
+  },
+  {
+    "key": "account.privacy.rights_prefix",
+    "sourceText": "You can access and download your data, correct it from",
+    "filePath": "src/app/(account)/account/privacy/page.tsx"
+  },
+  {
+    "key": "account.privacy.subheading",
+    "sourceText": "Your cookie choices, a copy of everything we hold about you, and account deletion.",
+    "filePath": "src/app/(account)/account/privacy/page.tsx"
+  },
+  {
+    "key": "account.privacy.your_profile",
+    "sourceText": "your profile",
+    "filePath": "src/app/(account)/account/privacy/page.tsx"
+  },
+  {
+    "key": "account.profile.about",
+    "sourceText": "About you",
+    "filePath": "src/components/account/profile-form.tsx"
+  },
+  {
+    "key": "account.profile.email",
+    "sourceText": "Email",
+    "filePath": "src/components/account/profile-form.tsx"
+  },
+  {
+    "key": "account.profile.email_locked",
+    "sourceText": "Email changes are not supported yet",
+    "filePath": "src/components/account/profile-form.tsx"
+  },
+  {
+    "key": "account.profile.full_name",
+    "sourceText": "Full name",
+    "filePath": "src/components/account/profile-form.tsx"
+  },
+  {
+    "key": "account.profile.heading",
+    "sourceText": "My Profile",
+    "filePath": "src/app/(account)/account/profile/page.tsx"
+  },
+  {
+    "key": "account.profile.personal_information",
+    "sourceText": "Personal Information",
+    "filePath": "src/components/account/profile-form.tsx"
+  },
+  {
+    "key": "account.profile.phone",
+    "sourceText": "Phone",
+    "filePath": "src/components/account/profile-form.tsx"
+  },
+  {
+    "key": "account.profile.privacy_prefix",
+    "sourceText": "Manage your cookie preferences, download your data, or delete your account in",
+    "filePath": "src/app/(account)/account/profile/page.tsx"
+  },
+  {
+    "key": "account.profile.save",
+    "sourceText": "Save Changes",
+    "filePath": "src/components/account/profile-form.tsx"
+  },
+  {
+    "key": "account.profile.subheading",
+    "sourceText": "Keep your personal details accurate and up to date.",
+    "filePath": "src/app/(account)/account/profile/page.tsx"
+  },
+  {
+    "key": "account.profile.updated",
+    "sourceText": "Profile updated",
+    "filePath": "src/components/account/profile-form.tsx"
+  },
+  {
     "key": "admin.sidebar.audit_log",
     "sourceText": "Audit log",
     "filePath": "src/components/admin/admin-sidebar.tsx"
@@ -115,6 +805,11 @@
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
+    "key": "amenities.items.baking_sheet",
+    "sourceText": "Baking sheet",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
     "key": "amenities.items.balcony",
     "sourceText": "Balcony",
     "filePath": "src/lib/i18n/amenity-labels.ts"
@@ -125,8 +820,23 @@
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
+    "key": "amenities.items.blender",
+    "sourceText": "Blender",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.books_reading_material",
+    "sourceText": "Books and reading material",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
     "key": "amenities.items.city_view",
     "sourceText": "City view",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.cleaning_products",
+    "sourceText": "Cleaning products",
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
@@ -140,13 +850,33 @@
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
+    "key": "amenities.items.clothing_storage",
+    "sourceText": "Clothing storage",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
     "key": "amenities.items.coffee_maker",
     "sourceText": "Coffee maker",
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
+    "key": "amenities.items.cooking_basics",
+    "sourceText": "Cooking basics",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.dishes_silverware",
+    "sourceText": "Dishes and silverware",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
     "key": "amenities.items.dishwasher",
     "sourceText": "Dishwasher",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.extra_pillows_blankets",
+    "sourceText": "Extra pillows and blankets",
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
@@ -165,6 +895,11 @@
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
+    "key": "amenities.items.freezer",
+    "sourceText": "Freezer",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
     "key": "amenities.items.garden",
     "sourceText": "Garden",
     "filePath": "src/lib/i18n/amenity-labels.ts"
@@ -175,6 +910,11 @@
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
+    "key": "amenities.items.hangers",
+    "sourceText": "Hangers",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
     "key": "amenities.items.heating",
     "sourceText": "Heating",
     "filePath": "src/lib/i18n/amenity-labels.ts"
@@ -182,6 +922,16 @@
   {
     "key": "amenities.items.hot_tub",
     "sourceText": "Hot tub",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.hot_water",
+    "sourceText": "Hot water",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.hot_water_kettle",
+    "sourceText": "Hot water kettle",
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
@@ -500,6 +1250,86 @@
     "filePath": "src/app/(public)/bookings/confirm/page.tsx"
   },
   {
+    "key": "booking.hero.cancelled",
+    "sourceText": "Booking cancelled",
+    "filePath": "src/components/booking/booking-status-hero.tsx"
+  },
+  {
+    "key": "booking.hero.cancelled_body",
+    "sourceText": "This booking is no longer active.",
+    "filePath": "src/components/booking/booking-status-hero.tsx"
+  },
+  {
+    "key": "booking.hero.completed",
+    "sourceText": "Stay completed",
+    "filePath": "src/components/booking/booking-status-hero.tsx"
+  },
+  {
+    "key": "booking.hero.completed_body",
+    "sourceText": "The stay is complete. You can now leave a review.",
+    "filePath": "src/components/booking/booking-status-hero.tsx"
+  },
+  {
+    "key": "booking.hero.confirmed",
+    "sourceText": "Booking confirmed",
+    "filePath": "src/components/booking/booking-status-hero.tsx"
+  },
+  {
+    "key": "booking.hero.confirmed_guest",
+    "sourceText": "You're all set. Use this page for messages, stay details and support.",
+    "filePath": "src/components/booking/booking-status-hero.tsx"
+  },
+  {
+    "key": "booking.hero.confirmed_host",
+    "sourceText": "The guest has been notified. These dates remain blocked in your calendar.",
+    "filePath": "src/components/booking/booking-status-hero.tsx"
+  },
+  {
+    "key": "booking.hero.declined",
+    "sourceText": "Booking request declined",
+    "filePath": "src/components/booking/booking-status-hero.tsx"
+  },
+  {
+    "key": "booking.hero.declined_body",
+    "sourceText": "This request was not accepted and did not become a reservation.",
+    "filePath": "src/components/booking/booking-status-hero.tsx"
+  },
+  {
+    "key": "booking.hero.expired",
+    "sourceText": "Booking request expired",
+    "filePath": "src/components/booking/booking-status-hero.tsx"
+  },
+  {
+    "key": "booking.hero.expired_body",
+    "sourceText": "The host did not respond before the deadline. This did not become a reservation.",
+    "filePath": "src/components/booking/booking-status-hero.tsx"
+  },
+  {
+    "key": "booking.hero.host_deadline",
+    "sourceText": "The host has until {deadline} to respond. This is not a confirmed reservation yet.",
+    "filePath": "src/components/booking/booking-status-hero.tsx"
+  },
+  {
+    "key": "booking.hero.respond_by",
+    "sourceText": "Accept or decline this request by {deadline}.",
+    "filePath": "src/components/booking/booking-status-hero.tsx"
+  },
+  {
+    "key": "booking.hero.response_required",
+    "sourceText": "Your response is required",
+    "filePath": "src/components/booking/booking-status-hero.tsx"
+  },
+  {
+    "key": "booking.hero.the_host",
+    "sourceText": "the host",
+    "filePath": "src/components/booking/booking-status-hero.tsx"
+  },
+  {
+    "key": "booking.hero.waiting_approval",
+    "sourceText": "Waiting for {hostName}'s approval",
+    "filePath": "src/components/booking/booking-status-hero.tsx"
+  },
+  {
     "key": "booking.infants.few",
     "sourceText": "{n} infants",
     "filePath": "src/components/public/booking-widget.tsx"
@@ -762,12 +1592,57 @@
   {
     "key": "common.and",
     "sourceText": "and",
-    "filePath": "src/components/shared/consent-banner.tsx"
+    "filePath": "src/app/(account)/account/privacy/page.tsx"
+  },
+  {
+    "key": "common.back",
+    "sourceText": "Back",
+    "filePath": "src/components/support/claim-response-controls.tsx"
+  },
+  {
+    "key": "common.cancel",
+    "sourceText": "Cancel",
+    "filePath": "src/components/account/confirm-deletion.tsx"
   },
   {
     "key": "common.close",
     "sourceText": "Close",
     "filePath": "src/components/public/image-gallery.tsx"
+  },
+  {
+    "key": "common.loading",
+    "sourceText": "Loading...",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "common.saving",
+    "sourceText": "Saving...",
+    "filePath": "src/components/account/profile-form.tsx"
+  },
+  {
+    "key": "common.sending",
+    "sourceText": "Sending...",
+    "filePath": "src/components/account/privacy-controls.tsx"
+  },
+  {
+    "key": "common.status",
+    "sourceText": "Status",
+    "filePath": "src/app/(host)/host/bookings/page.tsx"
+  },
+  {
+    "key": "common.submitting",
+    "sourceText": "Submitting...",
+    "filePath": "src/components/communication/damage-report-dialog.tsx"
+  },
+  {
+    "key": "common.uploading",
+    "sourceText": "Uploading...",
+    "filePath": "src/components/communication/damage-report-dialog.tsx"
+  },
+  {
+    "key": "common.you",
+    "sourceText": "You",
+    "filePath": "src/app/(account)/account/support/[id]/page.tsx"
   },
   {
     "key": "consent.accept_all",
@@ -1030,9 +1905,279 @@
     "filePath": "src/app/(public)/contact/page.tsx"
   },
   {
+    "key": "conversation.booking",
+    "sourceText": "Booking",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.characters_remaining",
+    "sourceText": "{count} characters remaining",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.closed_state",
+    "sourceText": "This conversation is {status}.",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.damage.acknowledge",
+    "sourceText": "Acknowledge",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.damage.ask_support",
+    "sourceText": "Ask support",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.damage.mark_resolved",
+    "sourceText": "Mark resolved",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.damage.reported",
+    "sourceText": "Damage reported",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.damage.status.acknowledged",
+    "sourceText": "Acknowledged",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.damage.status.escalated",
+    "sourceText": "Support requested",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.damage.status.reported",
+    "sourceText": "Reported",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.damage.status.resolved",
+    "sourceText": "Resolved",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.deleted_user",
+    "sourceText": "Deleted user",
+    "filePath": "src/components/communication/conversation-list.tsx"
+  },
+  {
+    "key": "conversation.empty_timeline",
+    "sourceText": "Start the conversation. Messages and booking activity will appear here.",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.event.cancelled_guest",
+    "sourceText": "Booking cancelled by the guest",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.event.cancelled_host",
+    "sourceText": "Booking cancelled by the host",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.event.cancelled_support",
+    "sourceText": "Booking cancelled by support",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.event.completed",
+    "sourceText": "Stay completed",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.event.confirmed",
+    "sourceText": "Booking confirmed",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.event.expired",
+    "sourceText": "Booking request expired",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.event.rejected",
+    "sourceText": "Booking request declined",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.event.requested",
+    "sourceText": "Booking requested",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
     "key": "conversation.google_translated_from",
     "sourceText": "Google translated from {language}",
     "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.guests",
+    "sourceText": "guests",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.kind.booking",
+    "sourceText": "Booking",
+    "filePath": "src/components/communication/conversation-list.tsx"
+  },
+  {
+    "key": "conversation.kind.inquiry",
+    "sourceText": "Inquiry",
+    "filePath": "src/components/communication/conversation-list.tsx"
+  },
+  {
+    "key": "conversation.list.empty_description",
+    "sourceText": "Messages about listings and bookings will appear here.",
+    "filePath": "src/components/communication/conversation-list.tsx"
+  },
+  {
+    "key": "conversation.list.empty_title",
+    "sourceText": "No conversations yet",
+    "filePath": "src/components/communication/conversation-list.tsx"
+  },
+  {
+    "key": "conversation.load_earlier",
+    "sourceText": "Load earlier messages",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.member",
+    "sourceText": "Member",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.nights",
+    "sourceText": "nights",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.report",
+    "sourceText": "Report",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.retry",
+    "sourceText": "Retry",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.safety_notice",
+    "sourceText": "Keep payment and contact details inside Linger Homes until the booking is confirmed.",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.send",
+    "sourceText": "Send message",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.start",
+    "sourceText": "Start the conversation",
+    "filePath": "src/components/communication/conversation-list.tsx"
+  },
+  {
+    "key": "conversation.status.closed",
+    "sourceText": "closed",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.status.frozen",
+    "sourceText": "frozen",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.status.open",
+    "sourceText": "open",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.support",
+    "sourceText": "Support",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.support_joined",
+    "sourceText": "Support joined",
+    "filePath": "src/components/communication/conversation-list.tsx"
+  },
+  {
+    "key": "conversation.view_details",
+    "sourceText": "View details",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.write_label",
+    "sourceText": "Write a message",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.write_placeholder",
+    "sourceText": "Write a message...",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "damage_report.add_photo",
+    "sourceText": "Add photo",
+    "filePath": "src/components/communication/damage-report-dialog.tsx"
+  },
+  {
+    "key": "damage_report.add_to_timeline",
+    "sourceText": "Add to timeline",
+    "filePath": "src/components/communication/damage-report-dialog.tsx"
+  },
+  {
+    "key": "damage_report.added",
+    "sourceText": "Damage report added to the booking timeline",
+    "filePath": "src/components/communication/damage-report-dialog.tsx"
+  },
+  {
+    "key": "damage_report.description",
+    "sourceText": "Add clear photos and describe what you found. This becomes part of the booking record visible to both sides and support.",
+    "filePath": "src/components/communication/damage-report-dialog.tsx"
+  },
+  {
+    "key": "damage_report.field_label",
+    "sourceText": "Damage description",
+    "filePath": "src/components/communication/damage-report-dialog.tsx"
+  },
+  {
+    "key": "damage_report.photos_only",
+    "sourceText": "Damage reports currently accept photos only",
+    "filePath": "src/components/communication/damage-report-dialog.tsx"
+  },
+  {
+    "key": "damage_report.placeholder",
+    "sourceText": "Describe the damage and where it is located...",
+    "filePath": "src/components/communication/damage-report-dialog.tsx"
+  },
+  {
+    "key": "damage_report.remove_photo",
+    "sourceText": "Remove {fileName}",
+    "filePath": "src/components/communication/damage-report-dialog.tsx"
+  },
+  {
+    "key": "damage_report.submit_failed",
+    "sourceText": "Could not report damage",
+    "filePath": "src/components/communication/damage-report-dialog.tsx"
+  },
+  {
+    "key": "damage_report.title",
+    "sourceText": "Report property damage",
+    "filePath": "src/components/communication/damage-report-dialog.tsx"
+  },
+  {
+    "key": "damage_report.trigger",
+    "sourceText": "Report damage",
+    "filePath": "src/components/communication/damage-report-dialog.tsx"
+  },
+  {
+    "key": "damage_report.upload_failed",
+    "sourceText": "Photo upload failed",
+    "filePath": "src/components/communication/damage-report-dialog.tsx"
   },
   {
     "key": "description.show_less",
@@ -2360,6 +3505,51 @@
     "filePath": "src/components/host/host-booking-action-rail.tsx"
   },
   {
+    "key": "host.address.address",
+    "sourceText": "Address",
+    "filePath": "src/components/host/listing-address-field.tsx"
+  },
+  {
+    "key": "host.address.area",
+    "sourceText": "Area",
+    "filePath": "src/components/host/listing-address-field.tsx"
+  },
+  {
+    "key": "host.address.city",
+    "sourceText": "City",
+    "filePath": "src/components/host/listing-address-field.tsx"
+  },
+  {
+    "key": "host.address.confirm_hint",
+    "sourceText": "We filled this in from the pin you placed. Correct anything that isn't right — especially the street number.",
+    "filePath": "src/components/host/listing-address-field.tsx"
+  },
+  {
+    "key": "host.address.confirm_title",
+    "sourceText": "Confirm your address",
+    "filePath": "src/components/host/listing-address-field.tsx"
+  },
+  {
+    "key": "host.address.country",
+    "sourceText": "Country",
+    "filePath": "src/components/host/listing-address-field.tsx"
+  },
+  {
+    "key": "host.address.filling",
+    "sourceText": "Filling in the address details…",
+    "filePath": "src/components/host/listing-address-field.tsx"
+  },
+  {
+    "key": "host.address.postal_code",
+    "sourceText": "Postal code",
+    "filePath": "src/components/host/listing-address-field.tsx"
+  },
+  {
+    "key": "host.address.street_placeholder",
+    "sourceText": "Street and building number",
+    "filePath": "src/components/host/listing-address-field.tsx"
+  },
+  {
     "key": "host.archive_listing.archive",
     "sourceText": "Archive",
     "filePath": "src/components/host/listing-archive-button.tsx"
@@ -2578,6 +3768,41 @@
     "key": "host.bookings.report_problem",
     "sourceText": "Report a problem",
     "filePath": "src/app/(host)/host/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "host.bookings.search_placeholder",
+    "sourceText": "Search bookings by property, city, guest, reference, status or note…",
+    "filePath": "src/app/(host)/host/bookings/page.tsx"
+  },
+  {
+    "key": "host.bookings.sort_checkin_newest",
+    "sourceText": "Check-in: newest",
+    "filePath": "src/app/(host)/host/bookings/page.tsx"
+  },
+  {
+    "key": "host.bookings.sort_checkin_oldest",
+    "sourceText": "Check-in: oldest",
+    "filePath": "src/app/(host)/host/bookings/page.tsx"
+  },
+  {
+    "key": "host.bookings.sort_guest",
+    "sourceText": "Guest: A–Z",
+    "filePath": "src/app/(host)/host/bookings/page.tsx"
+  },
+  {
+    "key": "host.bookings.sort_property",
+    "sourceText": "Property: A–Z",
+    "filePath": "src/app/(host)/host/bookings/page.tsx"
+  },
+  {
+    "key": "host.bookings.sort_total_highest",
+    "sourceText": "Total: highest",
+    "filePath": "src/app/(host)/host/bookings/page.tsx"
+  },
+  {
+    "key": "host.bookings.sort_upcoming",
+    "sourceText": "Upcoming first",
+    "filePath": "src/app/(host)/host/bookings/page.tsx"
   },
   {
     "key": "host.bookings.upcoming_suffix",
@@ -3290,9 +4515,24 @@
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
+    "key": "host.form.edit_original",
+    "sourceText": "Edit original text",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.form.editing_original_copy",
+    "sourceText": "Editing the host's original text",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
     "key": "host.form.go_to_listings",
     "sourceText": "My listings",
     "filePath": "src/components/host/listing-published-screen.tsx"
+  },
+  {
+    "key": "host.form.google_translation_preview",
+    "sourceText": "Automatic Google translation of host-written text",
+    "filePath": "src/components/host/listing-form.tsx"
   },
   {
     "key": "host.form.guest_basics",
@@ -3685,6 +4925,11 @@
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
+    "key": "host.form.show_translation",
+    "sourceText": "Show translation",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
     "key": "host.form.space_type_hint",
     "sourceText": "Pick the one that matches how you rent it out.",
     "filePath": "src/components/host/listing-form.tsx"
@@ -3935,6 +5180,16 @@
     "filePath": "src/app/(host)/host/inbox/page.tsx"
   },
   {
+    "key": "host.listing_card.booking",
+    "sourceText": "booking",
+    "filePath": "src/components/host/host-listing-card.tsx"
+  },
+  {
+    "key": "host.listing_card.bookings",
+    "sourceText": "bookings",
+    "filePath": "src/components/host/host-listing-card.tsx"
+  },
+  {
     "key": "host.listing_card.calendar_label",
     "sourceText": "Manage availability, pricing, and promotions for {title}",
     "filePath": "src/components/host/host-listing-card.tsx"
@@ -3947,6 +5202,11 @@
   {
     "key": "host.listing_card.edit_tooltip",
     "sourceText": "Edit listing",
+    "filePath": "src/components/host/host-listing-card.tsx"
+  },
+  {
+    "key": "host.listing_card.night",
+    "sourceText": "night",
     "filePath": "src/components/host/host-listing-card.tsx"
   },
   {
@@ -4025,9 +5285,124 @@
     "filePath": "src/app/(host)/host/listings/page.tsx"
   },
   {
+    "key": "host.listings.search_placeholder",
+    "sourceText": "Search properties by title, city, status or price…",
+    "filePath": "src/app/(host)/host/listings/page.tsx"
+  },
+  {
+    "key": "host.listings.sort_most_bookings",
+    "sourceText": "Most bookings",
+    "filePath": "src/app/(host)/host/listings/page.tsx"
+  },
+  {
+    "key": "host.listings.sort_newest_created",
+    "sourceText": "Newest created",
+    "filePath": "src/app/(host)/host/listings/page.tsx"
+  },
+  {
+    "key": "host.listings.sort_price_highest",
+    "sourceText": "Price: highest",
+    "filePath": "src/app/(host)/host/listings/page.tsx"
+  },
+  {
+    "key": "host.listings.sort_recently_updated",
+    "sourceText": "Recently updated",
+    "filePath": "src/app/(host)/host/listings/page.tsx"
+  },
+  {
+    "key": "host.listings.sort_title",
+    "sourceText": "Title: A–Z",
+    "filePath": "src/app/(host)/host/listings/page.tsx"
+  },
+  {
     "key": "host.listings.untitled_draft",
     "sourceText": "Untitled draft",
     "filePath": "src/app/(host)/host/listings/page.tsx"
+  },
+  {
+    "key": "host.location.at_property_description",
+    "sourceText": "Choose yes only if you are physically at the property. Your browser will then ask whether Linger Homes may use your current location. You can deny the request and continue by searching or selecting the property on the map.",
+    "filePath": "src/components/host/listing-location-field.tsx"
+  },
+  {
+    "key": "host.location.at_property_title",
+    "sourceText": "Are you at the property now?",
+    "filePath": "src/components/host/listing-location-field.tsx"
+  },
+  {
+    "key": "host.location.choose_manually",
+    "sourceText": "No, I'll choose it",
+    "filePath": "src/components/host/listing-location-field.tsx"
+  },
+  {
+    "key": "host.location.edit",
+    "sourceText": "Edit location",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.location.edit_hint",
+    "sourceText": "Opens the map, address and Street View screens, one at a time.",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.location.maps_link",
+    "sourceText": "Maps link",
+    "filePath": "src/components/host/listing-location-field.tsx"
+  },
+  {
+    "key": "host.location.maps_link_placeholder",
+    "sourceText": "Paste a Google Maps link",
+    "filePath": "src/components/host/listing-location-field.tsx"
+  },
+  {
+    "key": "host.location.my_location",
+    "sourceText": "My location",
+    "filePath": "src/components/host/listing-location-field.tsx"
+  },
+  {
+    "key": "host.location.no_address",
+    "sourceText": "No address saved yet",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.location.no_pin",
+    "sourceText": "No pin placed on the map yet",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.location.no_street_view",
+    "sourceText": "No Street View chosen",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.location.pin_at",
+    "sourceText": "Pin at {latitude}, {longitude}",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.location.pin_title",
+    "sourceText": "Pin your property location",
+    "filePath": "src/components/host/listing-location-field.tsx"
+  },
+  {
+    "key": "host.location.search_placeholder",
+    "sourceText": "Search Google for an address or place",
+    "filePath": "src/components/host/listing-location-field.tsx"
+  },
+  {
+    "key": "host.location.street_view_saved",
+    "sourceText": "Street View saved",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.location.use_current",
+    "sourceText": "Yes, use where I am",
+    "filePath": "src/components/host/listing-location-field.tsx"
+  },
+  {
+    "key": "host.location.use_link",
+    "sourceText": "Use link",
+    "filePath": "src/components/host/listing-location-field.tsx"
   },
   {
     "key": "host.map.load_failed",
@@ -4043,6 +5418,46 @@
     "key": "host.map.not_configured",
     "sourceText": "Google Maps isn't configured.",
     "filePath": "src/components/host/listing-location-picker-inner.tsx"
+  },
+  {
+    "key": "host.media.choose_files",
+    "sourceText": "Choose files",
+    "filePath": "src/components/host/listing-images-field.tsx"
+  },
+  {
+    "key": "host.media.cover_required",
+    "sourceText": "At least one photo is required for the cover.",
+    "filePath": "src/components/host/listing-images-field.tsx"
+  },
+  {
+    "key": "host.media.drop_formats",
+    "sourceText": "Drop JPEG, PNG, WebP, HEIC, MP4, MOV, or WebM files here.",
+    "filePath": "src/components/host/listing-images-field.tsx"
+  },
+  {
+    "key": "host.media.empty_gallery",
+    "sourceText": "Add photos and videos to build the guest gallery.",
+    "filePath": "src/components/host/listing-images-field.tsx"
+  },
+  {
+    "key": "host.media.photos_videos",
+    "sourceText": "Photos and videos",
+    "filePath": "src/components/host/listing-images-field.tsx"
+  },
+  {
+    "key": "host.media.required_count",
+    "sourceText": "{count} of 3 required photos added",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.media.upload_progress",
+    "sourceText": "Media upload progress",
+    "filePath": "src/components/host/listing-images-field.tsx"
+  },
+  {
+    "key": "host.media.uploading",
+    "sourceText": "Uploading",
+    "filePath": "src/components/host/listing-images-field.tsx"
   },
   {
     "key": "host.prepublish.add_promotion",
@@ -5165,6 +6580,11 @@
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
+    "key": "host.street_view.hint",
+    "sourceText": "Turn the camera to what guests see when they arrive. Optional.",
+    "filePath": "src/components/host/listing-street-view-field.tsx"
+  },
+  {
     "key": "host.street_view.intro",
     "sourceText": "Turn the view and move along the street until guests can clearly recognize the property. Your selected view is saved automatically.",
     "filePath": "src/components/host/street-view-picker.tsx"
@@ -5183,6 +6603,26 @@
     "key": "host.street_view.not_configured",
     "sourceText": "The interactive Street View picker isn't configured.",
     "filePath": "src/components/host/street-view-picker.tsx"
+  },
+  {
+    "key": "host.street_view.pin_first",
+    "sourceText": "Place the pin on the map first, then pick the view guests should see.",
+    "filePath": "src/components/host/listing-street-view-field.tsx"
+  },
+  {
+    "key": "host.street_view.privacy",
+    "sourceText": "Never public — guests see this only once you confirm their booking, {days} days before check-in.",
+    "filePath": "src/components/host/listing-street-view-field.tsx"
+  },
+  {
+    "key": "host.street_view.saved",
+    "sourceText": "View saved automatically.",
+    "filePath": "src/components/host/listing-street-view-field.tsx"
+  },
+  {
+    "key": "host.street_view.title",
+    "sourceText": "Street View",
+    "filePath": "src/components/host/listing-street-view-field.tsx"
   },
   {
     "key": "host.street_view.unavailable",
@@ -5345,6 +6785,41 @@
     "filePath": "src/components/host/listing-bottom-nav.tsx"
   },
   {
+    "key": "host.visibility.confirm_hide",
+    "sourceText": "Hide {title} from the site?\n\nIt will no longer be bookable until you publish it again.",
+    "filePath": "src/components/host/listing-visibility-toggle.tsx"
+  },
+  {
+    "key": "host.visibility.hidden_success",
+    "sourceText": "Listing hidden from the site",
+    "filePath": "src/components/host/listing-visibility-toggle.tsx"
+  },
+  {
+    "key": "host.visibility.hide",
+    "sourceText": "Hide",
+    "filePath": "src/components/host/listing-visibility-toggle.tsx"
+  },
+  {
+    "key": "host.visibility.hide_tooltip",
+    "sourceText": "Take this listing off the site — guests can't find it or request it until you unhide it. Your dates, prices and bookings stay as they are.",
+    "filePath": "src/components/host/listing-visibility-toggle.tsx"
+  },
+  {
+    "key": "host.visibility.live_success",
+    "sourceText": "Listing is live on the site",
+    "filePath": "src/components/host/listing-visibility-toggle.tsx"
+  },
+  {
+    "key": "host.visibility.unhide",
+    "sourceText": "Unhide",
+    "filePath": "src/components/host/listing-visibility-toggle.tsx"
+  },
+  {
+    "key": "host.visibility.unhide_tooltip",
+    "sourceText": "Put this listing back on the site so guests can find it and send booking requests again.",
+    "filePath": "src/components/host/listing-visibility-toggle.tsx"
+  },
+  {
     "key": "host.workspace.availability",
     "sourceText": "Availability",
     "filePath": "src/components/host/listing-bottom-nav.tsx"
@@ -5388,6 +6863,36 @@
     "key": "languages.search_placeholder",
     "sourceText": "Search languages",
     "filePath": "src/components/shared/google-translate-widget.tsx"
+  },
+  {
+    "key": "list_controls.all_statuses",
+    "sourceText": "All statuses",
+    "filePath": "src/app/(host)/host/bookings/page.tsx"
+  },
+  {
+    "key": "list_controls.clear_filters",
+    "sourceText": "Clear filters",
+    "filePath": "src/components/shared/list-controls.tsx"
+  },
+  {
+    "key": "list_controls.clear_search",
+    "sourceText": "Clear search",
+    "filePath": "src/components/shared/list-controls.tsx"
+  },
+  {
+    "key": "list_controls.results_count",
+    "sourceText": "{visible} of {total} results",
+    "filePath": "src/components/shared/list-controls.tsx"
+  },
+  {
+    "key": "list_controls.sort_by",
+    "sourceText": "Sort by",
+    "filePath": "src/components/shared/list-controls.tsx"
+  },
+  {
+    "key": "list_controls.sort_results",
+    "sourceText": "Sort results",
+    "filePath": "src/components/shared/list-controls.tsx"
   },
   {
     "key": "listing.about",
@@ -6935,6 +8440,41 @@
     "filePath": "src/app/(public)/newsletter/page.tsx"
   },
   {
+    "key": "notifications.caught_up",
+    "sourceText": "You are all caught up.",
+    "filePath": "src/components/communication/notification-bell.tsx"
+  },
+  {
+    "key": "notifications.mark_all_read",
+    "sourceText": "Mark all read",
+    "filePath": "src/components/communication/notification-bell.tsx"
+  },
+  {
+    "key": "notifications.subheading",
+    "sourceText": "Booking activity, messages, reports, and account updates.",
+    "filePath": "src/app/(account)/account/notifications/page.tsx"
+  },
+  {
+    "key": "notifications.title",
+    "sourceText": "Notifications",
+    "filePath": "src/app/(account)/account/notifications/page.tsx"
+  },
+  {
+    "key": "notifications.unread_count",
+    "sourceText": "Notifications, {count} unread",
+    "filePath": "src/components/communication/notification-bell.tsx"
+  },
+  {
+    "key": "notifications.unread_label",
+    "sourceText": "unread notifications",
+    "filePath": "src/components/communication/notification-bell.tsx"
+  },
+  {
+    "key": "notifications.view_all",
+    "sourceText": "View all notifications",
+    "filePath": "src/components/communication/notification-bell.tsx"
+  },
+  {
     "key": "pagination.next",
     "sourceText": "Next",
     "filePath": "src/app/(public)/properties/page.tsx"
@@ -7405,6 +8945,171 @@
     "filePath": "src/components/shared/regional-settings-dialog.tsx"
   },
   {
+    "key": "review.category.accuracy",
+    "sourceText": "Accuracy",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.category.accuracy_hint",
+    "sourceText": "Did the listing match what was promised?",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.category.check_in",
+    "sourceText": "Check-in",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.category.check_in_hint",
+    "sourceText": "Was arrival clear and straightforward?",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.category.cleanliness",
+    "sourceText": "Cleanliness",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.category.communication",
+    "sourceText": "Communication",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.category.guest.cleanliness_hint",
+    "sourceText": "Was the home clean and ready?",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.category.guest.communication_hint",
+    "sourceText": "Was the host responsive and helpful?",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.category.guest.overall",
+    "sourceText": "Overall stay",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.category.guest.overall_hint",
+    "sourceText": "How was the experience as a whole?",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.category.host.cleanliness_hint",
+    "sourceText": "How was the home left after checkout?",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.category.host.communication_hint",
+    "sourceText": "Was the guest clear and responsive?",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.category.host.overall",
+    "sourceText": "Overall experience",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.category.host.overall_hint",
+    "sourceText": "How was hosting this guest?",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.category.house_rules",
+    "sourceText": "House rules",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.category.house_rules_hint",
+    "sourceText": "Did the guest respect the agreed rules?",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.category.location",
+    "sourceText": "Location",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.category.location_hint",
+    "sourceText": "How was the area for your trip?",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.category.value",
+    "sourceText": "Value",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.category.value_hint",
+    "sourceText": "Did the stay feel worth the price?",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.complete_categories",
+    "sourceText": "Choose a star rating for every category",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.heading",
+    "sourceText": "How did it go?",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.private_note",
+    "sourceText": "Private note (optional)",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.private_placeholder",
+    "sourceText": "Only {name} and Linger Homes administrators can read this.",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.public",
+    "sourceText": "Public review",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.public_guest_placeholder",
+    "sourceText": "What should future guests know about this stay?",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.public_host_placeholder",
+    "sourceText": "What should future hosts know about this guest?",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.public_notice",
+    "sourceText": "This appears publicly only after the double-blind window and admin approval.",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.rate_with",
+    "sourceText": "Rate your experience with {name}.",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.score_out_of_five",
+    "sourceText": "{score} out of 5",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.sealed_notice",
+    "sourceText": "Your rating is sealed. Neither side can see the other's stars or comments before submitting, and public content is reviewed by an administrator.",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.submit",
+    "sourceText": "Submit private rating",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "review.submitted",
+    "sourceText": "Your rating was submitted privately",
+    "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
     "key": "search.add_dates",
     "sourceText": "Add dates",
     "filePath": "src/components/marketplace/search-labels.ts"
@@ -7823,5 +9528,500 @@
     "key": "search.whos_coming",
     "sourceText": "Who's coming",
     "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
+    "key": "statuses.booking.cancelled_by_guest",
+    "sourceText": "Cancelled by guest",
+    "filePath": "src/lib/i18n/status-labels.ts"
+  },
+  {
+    "key": "statuses.booking.cancelled_by_host",
+    "sourceText": "Cancelled by host",
+    "filePath": "src/lib/i18n/status-labels.ts"
+  },
+  {
+    "key": "statuses.booking.cancelled_by_support",
+    "sourceText": "Cancelled by support",
+    "filePath": "src/lib/i18n/status-labels.ts"
+  },
+  {
+    "key": "statuses.booking.completed",
+    "sourceText": "Completed",
+    "filePath": "src/lib/i18n/status-labels.ts"
+  },
+  {
+    "key": "statuses.booking.confirmed",
+    "sourceText": "Confirmed",
+    "filePath": "src/lib/i18n/status-labels.ts"
+  },
+  {
+    "key": "statuses.booking.expired",
+    "sourceText": "Expired",
+    "filePath": "src/lib/i18n/status-labels.ts"
+  },
+  {
+    "key": "statuses.booking.pending",
+    "sourceText": "Awaiting host approval",
+    "filePath": "src/lib/i18n/status-labels.ts"
+  },
+  {
+    "key": "statuses.booking.rejected",
+    "sourceText": "Rejected",
+    "filePath": "src/lib/i18n/status-labels.ts"
+  },
+  {
+    "key": "statuses.listing.approved",
+    "sourceText": "Approved",
+    "filePath": "src/lib/i18n/status-labels.ts"
+  },
+  {
+    "key": "statuses.listing.archived",
+    "sourceText": "Archived",
+    "filePath": "src/lib/i18n/status-labels.ts"
+  },
+  {
+    "key": "statuses.listing.draft",
+    "sourceText": "Draft",
+    "filePath": "src/lib/i18n/status-labels.ts"
+  },
+  {
+    "key": "statuses.listing.pending_review",
+    "sourceText": "Pending review",
+    "filePath": "src/lib/i18n/status-labels.ts"
+  },
+  {
+    "key": "statuses.listing.rejected",
+    "sourceText": "Rejected",
+    "filePath": "src/lib/i18n/status-labels.ts"
+  },
+  {
+    "key": "statuses.listing.suspended",
+    "sourceText": "Suspended",
+    "filePath": "src/lib/i18n/status-labels.ts"
+  },
+  {
+    "key": "statuses.listing.unpublished",
+    "sourceText": "Unpublished",
+    "filePath": "src/lib/i18n/status-labels.ts"
+  },
+  {
+    "key": "support.accept_amount",
+    "sourceText": "Accept {amount} {currency}",
+    "filePath": "src/components/support/claim-response-controls.tsx"
+  },
+  {
+    "key": "support.accept_request",
+    "sourceText": "Accept payment request",
+    "filePath": "src/components/support/claim-response-controls.tsx"
+  },
+  {
+    "key": "support.acceptance_notice",
+    "sourceText": "Acceptance is recorded immediately. Linger Homes will confirm the secure payment step separately; this button does not silently charge your card.",
+    "filePath": "src/components/support/claim-response-controls.tsx"
+  },
+  {
+    "key": "support.add_evidence",
+    "sourceText": "Add evidence",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.amount",
+    "sourceText": "Amount",
+    "filePath": "src/app/(account)/account/support/[id]/page.tsx"
+  },
+  {
+    "key": "support.cases",
+    "sourceText": "Support cases",
+    "filePath": "src/app/(account)/account/support/[id]/page.tsx"
+  },
+  {
+    "key": "support.category",
+    "sourceText": "Category",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.category.discrimination",
+    "sourceText": "Discrimination",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.category.fraud",
+    "sourceText": "Fraud or scam",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.category.guest_damage",
+    "sourceText": "Guest damage",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.category.harassment",
+    "sourceText": "Harassment or abusive behavior",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.category.host_cancellation",
+    "sourceText": "Host cancellation",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.category.misleading",
+    "sourceText": "Property information is misleading",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.category.missing_item",
+    "sourceText": "Missing item",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.category.not_described",
+    "sourceText": "Property not as described",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.category.other",
+    "sourceText": "Other",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.category.payment_refund",
+    "sourceText": "Payment or refund",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.category.safety",
+    "sourceText": "Safety concern",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.category.safety_incident",
+    "sourceText": "Safety incident",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.category.spam",
+    "sourceText": "Spam",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.choose_category",
+    "sourceText": "Choose a category",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.choose_request_type",
+    "sourceText": "Choose a request type",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.claim_submitted",
+    "sourceText": "Claim submitted",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.claim.booking",
+    "sourceText": "Booking claim",
+    "filePath": "src/lib/i18n/support-labels.ts"
+  },
+  {
+    "key": "support.claim.damage",
+    "sourceText": "Property damage or missing item",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.claim.expense",
+    "sourceText": "Extra expense",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.claim.refund",
+    "sourceText": "Guest refund request",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.confirm_response",
+    "sourceText": "Confirm response",
+    "filePath": "src/components/support/claim-response-controls.tsx"
+  },
+  {
+    "key": "support.confirmation_notice",
+    "sourceText": "We send confirmation by email and in the app. Linger Homes administrators can review the related booking, listing, user, and reported message.",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.counteroffer",
+    "sourceText": "Make a counteroffer",
+    "filePath": "src/components/support/claim-response-controls.tsx"
+  },
+  {
+    "key": "support.counteroffer_currency",
+    "sourceText": "Counteroffer ({currency})",
+    "filePath": "src/components/support/claim-response-controls.tsx"
+  },
+  {
+    "key": "support.currency",
+    "sourceText": "Currency",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.description_placeholder",
+    "sourceText": "Include the important facts, dates, and what outcome you need.",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.empty",
+    "sourceText": "No support cases",
+    "filePath": "src/app/(account)/account/support/page.tsx"
+  },
+  {
+    "key": "support.empty_description",
+    "sourceText": "Claims and reports you submit will appear here.",
+    "filePath": "src/app/(account)/account/support/page.tsx"
+  },
+  {
+    "key": "support.evidence",
+    "sourceText": "Evidence",
+    "filePath": "src/app/(account)/account/support/[id]/page.tsx"
+  },
+  {
+    "key": "support.evidence_limits",
+    "sourceText": "Up to 5 JPG, PNG, WebP, or PDF files, 10 MB each.",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.evidence_optional",
+    "sourceText": "Evidence (optional)",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.explanation",
+    "sourceText": "Explanation",
+    "filePath": "src/components/support/claim-response-controls.tsx"
+  },
+  {
+    "key": "support.explanation_placeholder",
+    "sourceText": "Explain your response for the other party and the administrator.",
+    "filePath": "src/components/support/claim-response-controls.tsx"
+  },
+  {
+    "key": "support.from",
+    "sourceText": "From",
+    "filePath": "src/app/(account)/account/support/[id]/page.tsx"
+  },
+  {
+    "key": "support.make_counteroffer",
+    "sourceText": "Make counteroffer",
+    "filePath": "src/components/support/claim-response-controls.tsx"
+  },
+  {
+    "key": "support.no_updates",
+    "sourceText": "No updates yet.",
+    "filePath": "src/app/(account)/account/support/[id]/page.tsx"
+  },
+  {
+    "key": "support.not_specified",
+    "sourceText": "Not specified",
+    "filePath": "src/app/(account)/account/support/[id]/page.tsx"
+  },
+  {
+    "key": "support.received",
+    "sourceText": "Received",
+    "filePath": "src/app/(account)/account/support/page.tsx"
+  },
+  {
+    "key": "support.reference_note",
+    "sourceText": "Your reference and every update will be kept in your account.",
+    "filePath": "src/app/(account)/account/support/new/page.tsx"
+  },
+  {
+    "key": "support.reject",
+    "sourceText": "Reject",
+    "filePath": "src/components/support/claim-response-controls.tsx"
+  },
+  {
+    "key": "support.reject_request",
+    "sourceText": "Reject payment request",
+    "filePath": "src/components/support/claim-response-controls.tsx"
+  },
+  {
+    "key": "support.remove_file",
+    "sourceText": "Remove {fileName}",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.reply_placeholder",
+    "sourceText": "Add more information...",
+    "filePath": "src/components/support/safety-case-reply.tsx"
+  },
+  {
+    "key": "support.report_listing",
+    "sourceText": "Report a listing",
+    "filePath": "src/app/(account)/account/support/page.tsx"
+  },
+  {
+    "key": "support.report_submitted",
+    "sourceText": "Report submitted",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.request",
+    "sourceText": "Request",
+    "filePath": "src/app/(account)/account/support/[id]/page.tsx"
+  },
+  {
+    "key": "support.request_type",
+    "sourceText": "Request type",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.requested_amount",
+    "sourceText": "Requested amount",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.resolution",
+    "sourceText": "Resolution",
+    "filePath": "src/app/(account)/account/support/[id]/page.tsx"
+  },
+  {
+    "key": "support.response",
+    "sourceText": "Response",
+    "filePath": "src/app/(account)/account/support/[id]/page.tsx"
+  },
+  {
+    "key": "support.response_required",
+    "sourceText": "Your response is required",
+    "filePath": "src/components/support/claim-response-controls.tsx"
+  },
+  {
+    "key": "support.response_required_description",
+    "sourceText": "Review the evidence before accepting, countering, or rejecting this request.",
+    "filePath": "src/components/support/claim-response-controls.tsx"
+  },
+  {
+    "key": "support.response_sent",
+    "sourceText": "Your response was sent",
+    "filePath": "src/components/support/claim-response-controls.tsx"
+  },
+  {
+    "key": "support.response.accepted",
+    "sourceText": "Accepted",
+    "filePath": "src/lib/i18n/support-labels.ts"
+  },
+  {
+    "key": "support.response.awaiting_admin",
+    "sourceText": "Awaiting admin",
+    "filePath": "src/lib/i18n/support-labels.ts"
+  },
+  {
+    "key": "support.response.awaiting_recipient",
+    "sourceText": "Awaiting recipient",
+    "filePath": "src/lib/i18n/support-labels.ts"
+  },
+  {
+    "key": "support.response.countered",
+    "sourceText": "Countered",
+    "filePath": "src/lib/i18n/support-labels.ts"
+  },
+  {
+    "key": "support.response.escalated",
+    "sourceText": "Escalated",
+    "filePath": "src/lib/i18n/support-labels.ts"
+  },
+  {
+    "key": "support.response.rejected",
+    "sourceText": "Rejected",
+    "filePath": "src/lib/i18n/support-labels.ts"
+  },
+  {
+    "key": "support.send_update",
+    "sourceText": "Send update",
+    "filePath": "src/components/support/safety-case-reply.tsx"
+  },
+  {
+    "key": "support.sent",
+    "sourceText": "Sent",
+    "filePath": "src/app/(account)/account/support/page.tsx"
+  },
+  {
+    "key": "support.short_summary",
+    "sourceText": "Short summary",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.status.awaiting_information",
+    "sourceText": "Awaiting information",
+    "filePath": "src/lib/i18n/support-labels.ts"
+  },
+  {
+    "key": "support.status.rejected",
+    "sourceText": "Rejected",
+    "filePath": "src/lib/i18n/support-labels.ts"
+  },
+  {
+    "key": "support.status.resolved",
+    "sourceText": "Resolved",
+    "filePath": "src/lib/i18n/support-labels.ts"
+  },
+  {
+    "key": "support.status.submitted",
+    "sourceText": "Submitted",
+    "filePath": "src/lib/i18n/support-labels.ts"
+  },
+  {
+    "key": "support.status.under_review",
+    "sourceText": "Under review",
+    "filePath": "src/lib/i18n/support-labels.ts"
+  },
+  {
+    "key": "support.subheading",
+    "sourceText": "Track reports, claims, and support replies.",
+    "filePath": "src/app/(account)/account/support/page.tsx"
+  },
+  {
+    "key": "support.submit_claim",
+    "sourceText": "Submit a booking claim",
+    "filePath": "src/app/(account)/account/support/new/page.tsx"
+  },
+  {
+    "key": "support.submit_claim_short",
+    "sourceText": "Submit claim",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.submit_report",
+    "sourceText": "Submit a report",
+    "filePath": "src/app/(account)/account/support/new/page.tsx"
+  },
+  {
+    "key": "support.submit_report_short",
+    "sourceText": "Submit report",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.type.claim",
+    "sourceText": "Claim",
+    "filePath": "src/lib/i18n/support-labels.ts"
+  },
+  {
+    "key": "support.type.report",
+    "sourceText": "Report",
+    "filePath": "src/lib/i18n/support-labels.ts"
+  },
+  {
+    "key": "support.updates",
+    "sourceText": "Updates",
+    "filePath": "src/app/(account)/account/support/[id]/page.tsx"
+  },
+  {
+    "key": "support.upload_failed",
+    "sourceText": "Upload failed",
+    "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "support.what_happened",
+    "sourceText": "What happened?",
+    "filePath": "src/components/support/safety-case-form.tsx"
   }
 ]

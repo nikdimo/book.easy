@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
+import { getT, t, ti } from "@/lib/i18n/t";
 
 type BookingStatus =
   | "PENDING"
@@ -17,7 +18,7 @@ type BookingStatus =
   | "CANCELLED_BY_ADMIN"
   | "COMPLETED";
 
-export function BookingStatusHero({
+export async function BookingStatusHero({
   status,
   reference,
   responseDueAt,
@@ -34,7 +35,8 @@ export function BookingStatusHero({
   titleOverride?: ReactNode;
   bodyOverride?: ReactNode;
 }) {
-  const deadline = new Intl.DateTimeFormat("en", {
+  const translator = await getT();
+  const deadline = new Intl.DateTimeFormat(translator.locale, {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(responseDueAt);
@@ -44,45 +46,45 @@ export function BookingStatusHero({
           icon: Clock3,
           title:
             audience === "host"
-              ? "Your response is required"
-              : `Waiting for ${hostName || "the host"}’s approval`,
+              ? t(translator, "booking.hero.response_required", "Your response is required")
+              : ti(translator, "booking.hero.waiting_approval", "Waiting for {hostName}'s approval", { hostName: hostName || t(translator, "booking.hero.the_host", "the host") }).text,
           body:
             audience === "host"
-              ? `Accept or decline this request by ${deadline}.`
-              : `The host has until ${deadline} to respond. This is not a confirmed reservation yet.`,
+              ? ti(translator, "booking.hero.respond_by", "Accept or decline this request by {deadline}.", { deadline }).text
+              : ti(translator, "booking.hero.host_deadline", "The host has until {deadline} to respond. This is not a confirmed reservation yet.", { deadline }).text,
           tone: "border-amber-200 bg-amber-50 text-amber-950",
         }
       : status === "CONFIRMED"
         ? {
             icon: CheckCircle2,
-            title: "Booking confirmed",
+            title: t(translator, "booking.hero.confirmed", "Booking confirmed"),
             body:
               audience === "host"
-                ? "The guest has been notified. These dates remain blocked in your calendar."
-                : "You’re all set. Use this page for messages, stay details and support.",
+                ? t(translator, "booking.hero.confirmed_host", "The guest has been notified. These dates remain blocked in your calendar.")
+                : t(translator, "booking.hero.confirmed_guest", "You're all set. Use this page for messages, stay details and support."),
             tone: "border-emerald-200 bg-emerald-50 text-emerald-950",
           }
         : status === "COMPLETED"
           ? {
               icon: CheckCircle2,
-              title: "Stay completed",
-              body: "The stay is complete. You can now leave a review.",
+              title: t(translator, "booking.hero.completed", "Stay completed"),
+              body: t(translator, "booking.hero.completed_body", "The stay is complete. You can now leave a review."),
               tone: "border-emerald-200 bg-emerald-50 text-emerald-950",
             }
           : {
               icon: status === "EXPIRED" ? Clock3 : status === "REJECTED" ? XCircle : CircleAlert,
               title:
                 status === "EXPIRED"
-                  ? "Booking request expired"
+                  ? t(translator, "booking.hero.expired", "Booking request expired")
                   : status === "REJECTED"
-                    ? "Booking request declined"
-                    : "Booking cancelled",
+                    ? t(translator, "booking.hero.declined", "Booking request declined")
+                    : t(translator, "booking.hero.cancelled", "Booking cancelled"),
               body:
                 status === "EXPIRED"
-                  ? "The host did not respond before the deadline. This did not become a reservation."
+                  ? t(translator, "booking.hero.expired_body", "The host did not respond before the deadline. This did not become a reservation.")
                   : status === "REJECTED"
-                    ? "This request was not accepted and did not become a reservation."
-                    : "This booking is no longer active.",
+                    ? t(translator, "booking.hero.declined_body", "This request was not accepted and did not become a reservation.")
+                    : t(translator, "booking.hero.cancelled_body", "This booking is no longer active."),
               tone: "border-stone-200 bg-stone-50 text-stone-950",
             };
   const Icon = copy.icon;

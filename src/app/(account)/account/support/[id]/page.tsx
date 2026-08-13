@@ -8,8 +8,11 @@ import { SafetyCaseReply } from "@/components/support/safety-case-reply";
 import { ClaimResponseControls } from "@/components/support/claim-response-controls";
 import { requireUserPage } from "@/lib/auth-helpers";
 import { getUserSafetyCase } from "@/lib/services/safety-case.service";
+import { getT, T, t } from "@/lib/i18n/t";
+import { resolveClaimKind, resolveClaimResponse, resolveSafetyCaseStatus, resolveSafetyCaseType } from "@/lib/i18n/support-labels";
 
 export default async function SafetyCasePage({ params }: { params: Promise<{ id: string }> }) {
+  const translator = await getT();
   const user = await requireUserPage();
   const { id } = await params;
   const item = await getUserSafetyCase(id, user.id);
@@ -18,40 +21,40 @@ export default async function SafetyCasePage({ params }: { params: Promise<{ id:
   return (
     <div className="mx-auto max-w-3xl">
       <Button variant="ghost" size="sm" asChild className="mb-4">
-        <Link href="/account/support"><ArrowLeft className="mr-1 h-4 w-4" /> Support cases</Link>
+        <Link href="/account/support"><ArrowLeft className="mr-1 h-4 w-4" /> <T t={translator} k="support.cases" source="Support cases" /></Link>
       </Button>
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="secondary">{item.type}</Badge>
-            <Badge>{item.status.replaceAll("_", " ")}</Badge>
+            <Badge variant="secondary">{resolveSafetyCaseType(translator, item.type).text}</Badge>
+            <Badge>{resolveSafetyCaseStatus(translator, item.status).text}</Badge>
             <span className="text-sm text-muted-foreground">{item.reference}</span>
           </div>
-          <CardTitle>{item.subject}</CardTitle>
-          <p className="text-sm text-muted-foreground">{item.category}</p>
+          <CardTitle><span data-user-generated-content translate="yes">{item.subject}</span></CardTitle>
+          <p className="text-sm text-muted-foreground" data-user-generated-content translate="yes">{item.category}</p>
         </CardHeader>
         <CardContent className="space-y-6">
           {item.type === "CLAIM" ? (
             <div className="grid gap-3 rounded-xl bg-muted p-4 text-sm sm:grid-cols-2">
               <div>
-                <span className="text-muted-foreground">Request</span>
-                <p>{item.claimKind?.replaceAll("_", " ") || "Booking claim"}</p>
+                <span className="text-muted-foreground"><T t={translator} k="support.request" source="Request" /></span>
+                <p>{resolveClaimKind(translator, item.claimKind).text}</p>
               </div>
               <div>
-                <span className="text-muted-foreground">Amount</span>
+                <span className="text-muted-foreground"><T t={translator} k="support.amount" source="Amount" /></span>
                 <p className="text-lg font-semibold">
                   {item.requestedAmount
                     ? `${Number(item.requestedAmount).toFixed(2)} ${item.currency || "EUR"}`
-                    : "Not specified"}
+                    : t(translator, "support.not_specified", "Not specified")}
                 </p>
               </div>
               <div>
-                <span className="text-muted-foreground">From</span>
+                <span className="text-muted-foreground"><T t={translator} k="support.from" source="From" /></span>
                 <p>{item.reporter.name}</p>
               </div>
               <div>
-                <span className="text-muted-foreground">Response</span>
-                <p>{item.responseStatus?.replaceAll("_", " ") || "Awaiting admin"}</p>
+                <span className="text-muted-foreground"><T t={translator} k="support.response" source="Response" /></span>
+                <p>{resolveClaimResponse(translator, item.responseStatus).text}</p>
               </div>
             </div>
           ) : null}
@@ -65,10 +68,10 @@ export default async function SafetyCasePage({ params }: { params: Promise<{ id:
               currency={item.currency || "EUR"}
             />
           ) : null}
-          <p className="whitespace-pre-wrap text-sm">{item.description}</p>
+          <p className="whitespace-pre-wrap text-sm" data-user-generated-content translate="yes">{item.description}</p>
           {item.evidence.length ? (
             <div>
-              <h2 className="mb-2 font-semibold">Evidence</h2>
+              <h2 className="mb-2 font-semibold"><T t={translator} k="support.evidence" source="Evidence" /></h2>
               <div className="flex flex-wrap gap-2">
                 {item.evidence.map((file) => (
                   <Button key={file.id} asChild variant="outline" size="sm">
@@ -81,24 +84,24 @@ export default async function SafetyCasePage({ params }: { params: Promise<{ id:
             </div>
           ) : null}
           <div>
-            <h2 className="mb-3 font-semibold">Updates</h2>
+            <h2 className="mb-3 font-semibold"><T t={translator} k="support.updates" source="Updates" /></h2>
             <div className="space-y-3">
               {item.updates.map((update) => (
                 <div key={update.id} className="rounded-xl border p-3 text-sm">
                   <div className="mb-1 flex justify-between gap-2 text-xs text-muted-foreground">
-                    <span>{update.author?.role === "ADMIN" ? "Linger Homes Support" : "You"}</span>
-                    <span>{new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(update.createdAt)}</span>
+                    <span>{update.author?.role === "ADMIN" ? "Linger Homes Support" : t(translator, "common.you", "You")}</span>
+                    <span>{new Intl.DateTimeFormat(translator.locale, { dateStyle: "medium", timeStyle: "short" }).format(update.createdAt)}</span>
                   </div>
-                  <p className="whitespace-pre-wrap">{update.body}</p>
+                  <p className="whitespace-pre-wrap" data-user-generated-content translate="yes">{update.body}</p>
                 </div>
               ))}
-              {!item.updates.length ? <p className="text-sm text-muted-foreground">No updates yet.</p> : null}
+              {!item.updates.length ? <p className="text-sm text-muted-foreground"><T t={translator} k="support.no_updates" source="No updates yet." /></p> : null}
             </div>
           </div>
           {item.resolution ? (
             <div className="rounded-xl bg-muted p-4">
-              <h2 className="font-semibold">Resolution</h2>
-              <p className="mt-1 whitespace-pre-wrap text-sm">{item.resolution}</p>
+              <h2 className="font-semibold"><T t={translator} k="support.resolution" source="Resolution" /></h2>
+              <p className="mt-1 whitespace-pre-wrap text-sm" data-user-generated-content translate="yes">{item.resolution}</p>
             </div>
           ) : null}
           {!closed ? <SafetyCaseReply caseId={item.id} /> : null}

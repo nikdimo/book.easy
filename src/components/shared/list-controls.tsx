@@ -5,6 +5,7 @@ import { Search, SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tx, useI18n } from "@/lib/i18n/client";
 
 export type ListItem = {
   id: string;
@@ -38,6 +39,7 @@ export function ListControls({
   emptyMessage?: string;
   className?: string;
 }) {
+  const { resolve } = useI18n();
   const [query, setQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
   const [sort, setSort] = useState(sorts[0]?.value ?? "");
@@ -74,7 +76,7 @@ export function ListControls({
           <div className="relative min-w-0 flex-1">
             <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={searchPlaceholder} className="pl-3 pr-10" aria-label={searchPlaceholder} />
             {query ? (
-              <button type="button" onClick={() => setQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label="Clear search"><X className="h-4 w-4" /></button>
+              <button type="button" onClick={() => setQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" aria-label={resolve("list_controls.clear_search", "Clear search").text}><X className="h-4 w-4" /></button>
             ) : (
               <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
             )}
@@ -82,17 +84,17 @@ export function ListControls({
           {filters.map((filter) => (
             <Select key={filter.key} value={activeFilters[filter.key] || "all"} onValueChange={(value) => setActiveFilters((current) => ({ ...current, [filter.key]: value === "all" ? "" : value }))}>
               <SelectTrigger className="w-full lg:w-[170px]" aria-label={filter.label}><SlidersHorizontal className="mr-2 h-4 w-4" /><SelectValue placeholder={filter.label} /></SelectTrigger>
-              <SelectContent><SelectItem value="all">{filter.allLabel ?? `All ${filter.label.toLowerCase()}`}</SelectItem>{filter.options.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
+              <SelectContent><SelectItem value="all">{filter.allLabel ?? resolve("list_controls.all_statuses", "All statuses").text}</SelectItem>{filter.options.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
             </Select>
           ))}
           <Select value={sort} onValueChange={setSort}>
-            <SelectTrigger className="w-full lg:w-[190px]" aria-label="Sort results"><SelectValue placeholder="Sort by" /></SelectTrigger>
+            <SelectTrigger className="w-full lg:w-[190px]" aria-label={resolve("list_controls.sort_results", "Sort results").text}><SelectValue placeholder={resolve("list_controls.sort_by", "Sort by").text} /></SelectTrigger>
             <SelectContent>{sorts.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent>
           </Select>
         </div>
         <div className="mt-2 flex items-center justify-between gap-3 text-sm text-muted-foreground" aria-live="polite">
-          <span>{visibleItems.length} of {items.length} results</span>
-          {hasCriteria && <Button type="button" variant="ghost" size="sm" onClick={clear} className="h-7">Clear filters</Button>}
+          <span>{resolve("list_controls.results_count", "{visible} of {total} results").text.replace("{visible}", String(visibleItems.length)).replace("{total}", String(items.length))}</span>
+          {hasCriteria && <Button type="button" variant="ghost" size="sm" onClick={clear} className="h-7"><Tx k="list_controls.clear_filters" source="Clear filters" /></Button>}
         </div>
       </div>
       {visibleItems.length ? <div className={className}>{visibleItems.map((item) => <div key={item.id}>{item.content}</div>)}</div> : <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">{emptyMessage}</div>}

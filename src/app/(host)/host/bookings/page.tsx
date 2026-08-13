@@ -18,6 +18,7 @@ import {
   daysUntil,
   formatCountdown,
 } from "@/lib/host/booking-action-queue";
+import { resolveBookingStatus } from "@/lib/i18n/status-labels";
 
 export const metadata = { title: "Bookings" };
 
@@ -168,28 +169,29 @@ export default async function HostBookingsPage() {
         <T t={t} k="host.bookings.all_heading" source="All bookings" />
       </h2>
       <ListControls
-        searchPlaceholder="Search bookings by property, city, guest, reference, status or note…"
+        searchPlaceholder={t.resolve("host.bookings.search_placeholder", "Search bookings by property, city, guest, reference, status or note…").text}
         filters={[{
           key: "status",
-          label: "Status",
-          options: BOOKING_STATUSES.map((status) => ({ value: status.value, label: status.label })),
+          label: t.resolve("common.status", "Status").text,
+          allLabel: t.resolve("list_controls.all_statuses", "All statuses").text,
+          options: BOOKING_STATUSES.map((status) => ({ value: status.value, label: resolveBookingStatus(t, status.value).text })),
         }]}
         sorts={[
-          { value: "upcomingFirst", label: "Upcoming first" },
-          { value: "checkIn", label: "Check-in: newest", direction: "desc" },
-          { value: "checkInOldest", label: "Check-in: oldest" },
-          { value: "total", label: "Total: highest", direction: "desc" },
-          { value: "guest", label: "Guest: A–Z" },
-          { value: "listing", label: "Property: A–Z" },
+          { value: "upcomingFirst", label: t.resolve("host.bookings.sort_upcoming", "Upcoming first").text },
+          { value: "checkIn", label: t.resolve("host.bookings.sort_checkin_newest", "Check-in: newest").text, direction: "desc" },
+          { value: "checkInOldest", label: t.resolve("host.bookings.sort_checkin_oldest", "Check-in: oldest").text },
+          { value: "total", label: t.resolve("host.bookings.sort_total_highest", "Total: highest").text, direction: "desc" },
+          { value: "guest", label: t.resolve("host.bookings.sort_guest", "Guest: A–Z").text },
+          { value: "listing", label: t.resolve("host.bookings.sort_property", "Property: A–Z").text },
         ]}
         className="space-y-2"
         items={bookings.map((booking) => {
-          const statusConfig = BOOKING_STATUSES.find((s) => s.value === booking.status);
+          const statusConfig = resolveBookingStatus(t, booking.status);
           const isTerminal = TERMINAL_STATUSES.has(booking.status);
           const daysToCheckIn = daysUntil(booking.checkIn, now);
           return {
             id: booking.id,
-            searchText: [booking.listing.title, booking.listing.property.city, booking.guest.name, booking.reference, booking.status, statusConfig?.label, booking.guestNote].filter(Boolean).join(" "),
+            searchText: [booking.listing.title, booking.listing.property.city, booking.guest.name, booking.reference, booking.status, statusConfig.text, booking.guestNote].filter(Boolean).join(" "),
             filters: { status: booking.status },
             sortValues: {
               upcomingFirst: upcomingFirstKey(booking.checkIn, now),
@@ -237,11 +239,11 @@ export default async function HostBookingsPage() {
                     <h3
                       className={`min-w-0 truncate font-medium ${isTerminal ? "line-through decoration-muted-foreground" : ""}`}
                     >
-                      {booking.listing.title}
+                      <span data-user-generated-content translate="yes">{booking.listing.title}</span>
                     </h3>
                   </div>
                   <p className="mt-0.5 truncate pl-3.5 text-sm text-muted-foreground">
-                    {isTerminal ? `${statusConfig?.label} · ` : ""}
+                    {isTerminal ? `${statusConfig.text} · ` : ""}
                     {booking.guest.name} · {booking.guestCount} ·{" "}
                     {formatDate(booking.checkIn)} – {formatDate(booking.checkOut)} ·{" "}
                     {formatPrice(Number(booking.totalPrice), booking.currency)}

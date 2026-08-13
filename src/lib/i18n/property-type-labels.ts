@@ -116,3 +116,19 @@ export function resolvePropertyTypeDescription(
       return { text: fallback, translated: false };
   }
 }
+
+export function resolveListingSpaceTypeLabel(
+  translator: TranslationResolver,
+  value: string,
+): Resolved {
+  switch (value) {
+    case "PRIVATE_ROOM":
+      return translator.resolve("host.space_type.private_room", "Private room");
+    case "SHARED_ROOM":
+      return translator.resolve("host.space_type.shared_room", "Shared room");
+    case "HOTEL_ROOM":
+      return translator.resolve("host.space_type.hotel_room", "Hotel room");
+    default:
+      return translator.resolve("host.space_type.entire_place", "Entire place");
+  }
+}

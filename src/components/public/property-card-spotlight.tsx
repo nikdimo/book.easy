@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { getPropertyTypeLabel } from "@/lib/services/property-type.service";
+import { resolveListingSpaceTypeLabel, resolvePropertyTypeLabel } from "@/lib/i18n/property-type-labels";
 import type { ListingCardSerialized } from "@/lib/serializers/listing-card";
 import { getT, T, TWithValues, ti, tPlural } from "@/lib/i18n/t";
 import { LocalizedPrice } from "@/components/shared/localized-price";
@@ -7,7 +8,6 @@ import { PropertyCardSpotlightMedia } from "@/components/public/property-card-sp
 import { localizePlaceName } from "@/lib/i18n/place-name";
 import { Moon, UserRound } from "lucide-react";
 import { splitDescriptionPreviewTiers } from "@/lib/utils/description-preview";
-import { listingSpaceTypeLabel } from "@/lib/types/listing-space-type";
 
 interface PropertyCardSpotlightProps {
   listing: ListingCardSerialized;
@@ -41,10 +41,14 @@ export async function PropertyCardSpotlight({
   const displayImages = images.filter((img) => img.url?.trim());
   const [main, ...rest] = displayImages;
   const sideImages = rest.slice(0, 2);
-  const typeLabel = await getPropertyTypeLabel(property.propertyType);
+  const typeLabel = resolvePropertyTypeLabel(
+    t,
+    property.propertyType,
+    await getPropertyTypeLabel(property.propertyType),
+  ).text;
   const displayTypeLabel =
     listing.spaceType !== "ENTIRE_PLACE"
-      ? listingSpaceTypeLabel(listing.spaceType)
+      ? resolveListingSpaceTypeLabel(t, listing.spaceType).text
       : typeLabel;
   const guests = tPlural(
     t,
@@ -149,7 +153,7 @@ export async function PropertyCardSpotlight({
           />
         </h3>
         <p
-          data-user-generated-content
+          data-user-generated-content translate="yes"
           className="text-muted-foreground text-sm line-clamp-3"
         >
           {descriptionPreview.landing}

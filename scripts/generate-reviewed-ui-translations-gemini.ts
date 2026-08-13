@@ -10,6 +10,15 @@ const MODEL = process.env.GEMINI_TRANSLATION_MODEL || "gemini-2.5-flash";
 const API_KEY = process.env.GOOGLE_API_KEY;
 const BATCH_SIZE = 30;
 
+function normalizeGeneratedValue(value: string): string {
+  return value
+    .replaceAll("&amp;", "&")
+    .replaceAll("&quot;", '"')
+    .replaceAll("&#39;", "'")
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">");
+}
+
 interface CatalogEntry {
   key: string;
   sourceText: string;
@@ -174,12 +183,12 @@ async function main() {
               create: {
                 locale: language.code,
                 key: entry.key,
-                value: generated[language.code][entry.key].trim(),
+                value: normalizeGeneratedValue(generated[language.code][entry.key].trim()),
                 sourceTextSnapshot: sourceByKey.get(entry.key)!,
                 isManuallyEdited: false,
               },
               update: {
-                value: generated[language.code][entry.key].trim(),
+                value: normalizeGeneratedValue(generated[language.code][entry.key].trim()),
                 sourceTextSnapshot: sourceByKey.get(entry.key)!,
                 isManuallyEdited: false,
               },

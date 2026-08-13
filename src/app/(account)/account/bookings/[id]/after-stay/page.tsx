@@ -18,14 +18,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUserPage } from "@/lib/auth-helpers";
 import { getPostStayReviewContext } from "@/lib/services/review.service";
 import { formatDate, formatPrice } from "@/lib/utils/format";
+import { getT, T, t, ti, type Translator } from "@/lib/i18n/t";
 
 export const metadata = { title: "After your stay" };
 
 function StatusPanel({
+  translator,
   status,
   otherPartySubmitted,
   deadline,
 }: {
+  translator: Translator;
   status: string;
   otherPartySubmitted: boolean;
   deadline: Date;
@@ -33,29 +36,29 @@ function StatusPanel({
   const copy =
     status === "PENDING_ADMIN"
       ? {
-          title: "Your rating is awaiting admin approval",
+          title: t(translator, "account.after_stay.pending_title", "Your rating is awaiting admin approval"),
           body: otherPartySubmitted
-            ? "Both sides have submitted. The ratings stay sealed until moderation is complete."
-            : "Your rating is sealed. We have invited the other party to submit theirs.",
+            ? t(translator, "account.after_stay.pending_both", "Both sides have submitted. The ratings stay sealed until moderation is complete.")
+            : t(translator, "account.after_stay.pending_other", "Your rating is sealed. We have invited the other party to submit theirs."),
           icon: ShieldCheck,
         }
       : status === "APPROVED"
         ? {
-            title: "Your rating was approved",
+            title: t(translator, "account.after_stay.approved_title", "Your rating was approved"),
             body: otherPartySubmitted
-              ? "Both sides submitted. The ratings will unlock as soon as moderation is complete."
-              : `It will publish when the other party submits or after ${formatDate(deadline)}.`,
+              ? t(translator, "account.after_stay.approved_both", "Both sides submitted. The ratings will unlock as soon as moderation is complete.")
+              : ti(translator, "account.after_stay.publish_deadline", "It will publish when the other party submits or after {date}.", { date: formatDate(deadline) }).text,
             icon: CheckCircle2,
           }
         : status === "REJECTED"
           ? {
-              title: "Your review was not approved",
-              body: "Check the moderation explanation below. Your private category feedback remains available to administrators.",
+              title: t(translator, "account.after_stay.rejected_title", "Your review was not approved"),
+              body: t(translator, "account.after_stay.rejected_body", "Check the moderation explanation below. Your private category feedback remains available to administrators."),
               icon: ShieldCheck,
             }
           : {
-              title: "Your rating is hidden",
-              body: "An administrator has removed this rating from public view.",
+              title: t(translator, "account.after_stay.hidden_title", "Your rating is hidden"),
+              body: t(translator, "account.after_stay.hidden_body", "An administrator has removed this rating from public view."),
               icon: LockKeyhole,
             };
   const Icon = copy.icon;
@@ -73,6 +76,7 @@ export default async function AfterStayPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const translator = await getT();
   const user = await requireUserPage();
   const { id } = await params;
   let context;
@@ -102,13 +106,13 @@ export default async function AfterStayPage({
           }
         >
           <ArrowLeft className="mr-1 h-4 w-4" />
-          Back to booking
+          <T t={translator} k="account.after_stay.back" source="Back to booking" />
         </Link>
       </Button>
 
       <div>
-        <Badge variant="secondary">Stay completed</Badge>
-        <h1 className="mt-3 text-3xl font-bold">The stay has ended</h1>
+        <Badge variant="secondary"><T t={translator} k="account.after_stay.completed" source="Stay completed" /></Badge>
+        <h1 className="mt-3 text-3xl font-bold"><T t={translator} k="account.after_stay.ended" source="The stay has ended" /></h1>
         <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
           <span className="flex items-center gap-1.5">
             <CalendarDays className="h-4 w-4" />
@@ -125,30 +129,31 @@ export default async function AfterStayPage({
 
       <Card className="border-primary/20">
         <CardHeader className="border-b">
-          <CardTitle>{booking.listing.title}</CardTitle>
+          <CardTitle><span data-user-generated-content translate="yes">{booking.listing.title}</span></CardTitle>
           <p className="text-xs text-muted-foreground">
-            Booking reference {booking.reference}
+            {ti(translator, "account.after_stay.reference", "Booking reference {reference}", { reference: booking.reference }).text}
           </p>
         </CardHeader>
         <CardContent>
           {ownReview ? (
             <div className="space-y-4">
               <StatusPanel
+                translator={translator}
                 status={ownReview.status}
                 otherPartySubmitted={otherPartySubmitted}
                 deadline={deadline}
               />
               {ownReview.moderationNote ? (
                 <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4">
-                  <p className="font-medium">Admin note</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
+                  <p className="font-medium"><T t={translator} k="account.after_stay.admin_note" source="Admin note" /></p>
+                  <p className="mt-1 text-sm text-muted-foreground" data-user-generated-content translate="yes">
                     {ownReview.moderationNote}
                   </p>
                 </div>
               ) : null}
               <div>
-                <p className="text-sm font-medium">Your public review</p>
-                <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
+                <p className="text-sm font-medium"><T t={translator} k="account.after_stay.your_review" source="Your public review" /></p>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground" data-user-generated-content translate="yes">
                   {ownReview.publicComment}
                 </p>
               </div>
@@ -166,7 +171,7 @@ export default async function AfterStayPage({
       {otherReview ? (
         <Card>
           <CardHeader>
-            <CardTitle>Rating from {otherParty.name}</CardTitle>
+            <CardTitle>{ti(translator, "account.after_stay.rating_from", "Rating from {name}", { name: otherParty.name }).text}</CardTitle>
           </CardHeader>
           <CardContent>
             {overall ? (
@@ -175,13 +180,13 @@ export default async function AfterStayPage({
                 <span className="text-lg font-semibold">{overall}/5</span>
               </div>
             ) : null}
-            <p className="whitespace-pre-wrap">{otherReview.publicComment}</p>
+            <p className="whitespace-pre-wrap" data-user-generated-content translate="yes">{otherReview.publicComment}</p>
           </CardContent>
         </Card>
       ) : ownReview && otherPartySubmitted ? (
         <div className="flex gap-3 rounded-xl border p-4 text-sm text-muted-foreground">
           <LockKeyhole className="h-5 w-5 shrink-0 text-primary" />
-          The other rating is safely sealed and will appear after admin approval.
+          <T t={translator} k="account.after_stay.other_sealed" source="The other rating is safely sealed and will appear after admin approval." />
         </div>
       ) : null}
 
@@ -195,9 +200,9 @@ export default async function AfterStayPage({
           <Link href={`${claimBase}&claimKind=EXPENSE`}>
             <Banknote className="mr-2 h-5 w-5 text-primary" />
             <span className="text-left">
-              <span className="block font-semibold">New expense request</span>
+              <span className="block font-semibold"><T t={translator} k="account.after_stay.expense_title" source="New expense request" /></span>
               <span className="block text-xs font-normal text-muted-foreground">
-                Request extra payment or a partial refund
+                <T t={translator} k="account.after_stay.expense_description" source="Request extra payment or a partial refund" />
               </span>
             </span>
           </Link>
@@ -211,9 +216,9 @@ export default async function AfterStayPage({
           <Link href={`${claimBase}&claimKind=DAMAGE`}>
             <Hammer className="mr-2 h-5 w-5 text-primary" />
             <span className="text-left">
-              <span className="block font-semibold">New damage claim</span>
+              <span className="block font-semibold"><T t={translator} k="account.after_stay.damage_title" source="New damage claim" /></span>
               <span className="block text-xs font-normal text-muted-foreground">
-                Report damage with photos and receipts
+                <T t={translator} k="account.after_stay.damage_description" source="Report damage with photos and receipts" />
               </span>
             </span>
           </Link>
@@ -223,9 +228,9 @@ export default async function AfterStayPage({
       <Card>
         <CardContent className="flex items-center justify-between gap-4 pt-1">
           <div>
-            <p className="font-medium">Final booking total</p>
+            <p className="font-medium"><T t={translator} k="account.after_stay.final_total" source="Final booking total" /></p>
             <p className="text-sm text-muted-foreground">
-              Extra requests remain separate until accepted and resolved.
+              <T t={translator} k="account.after_stay.total_note" source="Extra requests remain separate until accepted and resolved." />
             </p>
           </div>
           <p className="text-xl font-semibold">

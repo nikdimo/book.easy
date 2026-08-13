@@ -7,6 +7,7 @@ import {
   exactLocationUnlocksAt,
 } from "@/lib/utils/street-view-access";
 import { formatDate } from "@/lib/utils/format";
+import { getT, T, ti } from "@/lib/i18n/t";
 
 type ArrivalProperty = {
   address: string | null;
@@ -25,13 +26,14 @@ type ArrivalProperty = {
  *  canSeeExactLocation allows it. Before that the card still renders — a guest who
  *  can't see the address yet should know it exists and when it arrives, rather than
  *  wonder whether the host forgot to add it. */
-export function BookingArrivalDetails({
+export async function BookingArrivalDetails({
   booking,
   property,
 }: {
   booking: { status: string; checkIn: Date };
   property: ArrivalProperty;
 }) {
+  const t = await getT();
   const unlocked = canSeeExactLocation(booking);
   const hasStreetView =
     property.latitude != null &&
@@ -59,7 +61,7 @@ export function BookingArrivalDetails({
           ) : (
             <Lock className="h-4 w-4" />
           )}
-          Finding the place
+          <T t={t} k="account.arrival.heading" source="Finding the place" />
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4 text-sm">
@@ -67,14 +69,14 @@ export function BookingArrivalDetails({
           <>
             {fullAddress && (
               <div>
-                <p className="text-muted-foreground">Address</p>
-                <p className="mt-1 font-medium">{fullAddress}</p>
+                <p className="text-muted-foreground"><T t={t} k="account.arrival.address" source="Address" /></p>
+                <p className="mt-1 font-medium" data-user-generated-content translate="yes">{fullAddress}</p>
               </div>
             )}
             {hasStreetView && (
               <div>
                 <p className="text-muted-foreground">
-                  The host picked this view so you can recognise the building.
+                  <T t={t} k="account.arrival.street_view_hint" source="The host picked this view so you can recognise the building." />
                 </p>
                 <div className="mt-1">
                   <PropertyStreetView
@@ -89,18 +91,20 @@ export function BookingArrivalDetails({
             )}
             {!fullAddress && !hasStreetView && (
               <p className="text-muted-foreground">
-                The host hasn&apos;t added arrival details for this property.
-                Message them to arrange how you&apos;ll get in.
+                <T t={t} k="account.arrival.empty" source="The host hasn't added arrival details for this property. Message them to arrange how you'll get in." />
               </p>
             )}
           </>
         ) : (
           <p className="text-muted-foreground">
             {booking.status === "CONFIRMED"
-              ? `The exact address and the host's Street View of the entrance become available on ${formatDate(
-                  exactLocationUnlocksAt(booking.checkIn)
-                )}, ${EXACT_LOCATION_UNLOCK_DAYS} days before check-in.`
-              : `Once the host confirms this booking, the exact address and their Street View of the entrance appear here ${EXACT_LOCATION_UNLOCK_DAYS} days before check-in.`}
+              ? ti(t, "account.arrival.unlock_date", "The exact address and the host's Street View of the entrance become available on {date}, {days} days before check-in.", {
+                  date: formatDate(exactLocationUnlocksAt(booking.checkIn)),
+                  days: EXACT_LOCATION_UNLOCK_DAYS,
+                }).text
+              : ti(t, "account.arrival.unlock_after_confirmation", "Once the host confirms this booking, the exact address and their Street View of the entrance appear here {days} days before check-in.", {
+                  days: EXACT_LOCATION_UNLOCK_DAYS,
+                }).text}
           </p>
         )}
       </CardContent>

@@ -19,12 +19,14 @@ export function PropertiesMap({
   hoveredPinId,
   initialBounds,
   onBoundsChange,
+  expandable,
 }: {
   pins: MapPin[];
   className?: string;
   hoveredPinId?: string | null;
   initialBounds?: MapBounds | null;
   onBoundsChange?: (bounds: MapBounds) => void;
+  expandable?: boolean;
 }) {
   return (
     <PropertiesMapInner
@@ -33,6 +35,7 @@ export function PropertiesMap({
       hoveredPinId={hoveredPinId}
       initialBounds={initialBounds}
       onBoundsChange={onBoundsChange}
+      expandable={expandable}
     />
   );
 }

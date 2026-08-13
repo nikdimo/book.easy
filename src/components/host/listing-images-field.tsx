@@ -143,6 +143,7 @@ export function ListingImagesField({
   onItemsChange,
   onUploadStateChange,
 }: ListingImagesFieldProps) {
+  const { resolve } = useI18n();
   const [internalItems, setInternalItems] = useState<ListingMediaItem[]>(initialItems);
   const [uploadTasks, setUploadTasks] = useState<UploadTask[]>([]);
   const [dropActive, setDropActive] = useState(false);
@@ -358,7 +359,7 @@ export function ListingImagesField({
   }
 
   return (
-    <div className="notranslate space-y-4" translate="no">
+    <div className="space-y-4">
       <div
         className={cn(
           "relative rounded-lg border border-dashed p-5 transition-colors",
@@ -379,14 +380,14 @@ export function ListingImagesField({
               <ImagePlus className="size-4 text-muted-foreground md:size-5" />
             </div>
             <div>
-              <Label className="text-sm font-medium">Photos and videos</Label>
+              <Label className="text-sm font-medium"><Tx k="host.media.photos_videos" source="Photos and videos" /></Label>
               {/* The full format list is desktop-only detail; on a phone the
                   file picker filters to the same set anyway. */}
               <p className="mt-1 text-xs text-muted-foreground md:text-sm">
                 <span className="hidden md:inline">
-                  Drop JPEG, PNG, WebP, HEIC, MP4, MOV, or WebM files here.{" "}
+                  <Tx k="host.media.drop_formats" source="Drop JPEG, PNG, WebP, HEIC, MP4, MOV, or WebM files here." />{" "}
                 </span>
-                At least one photo is required for the cover.
+                <Tx k="host.media.cover_required" source="At least one photo is required for the cover." />
               </p>
             </div>
           </div>
@@ -411,12 +412,12 @@ export function ListingImagesField({
               {uploading ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Uploading {uploadProgress}%
+                  <Tx k="host.media.uploading" source="Uploading" /> {uploadProgress}%
                 </>
               ) : (
                 <>
                   <Upload className="h-4 w-4" />
-                  Choose files
+                  <Tx k="host.media.choose_files" source="Choose files" />
                 </>
               )}
             </label>
@@ -440,7 +441,7 @@ export function ListingImagesField({
             <div
               className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted"
               role="progressbar"
-              aria-label="Media upload progress"
+              aria-label={resolve("host.media.upload_progress", "Media upload progress").text}
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={uploadProgress}
@@ -496,7 +497,7 @@ export function ListingImagesField({
         </DndContext>
       ) : (
         <div className="flex aspect-[4/3] items-center justify-center rounded-lg border bg-muted/30 text-sm text-muted-foreground sm:aspect-[16/5]">
-          Add photos and videos to build the guest gallery.
+          <Tx k="host.media.empty_gallery" source="Add photos and videos to build the guest gallery." />
         </div>
       )}
 

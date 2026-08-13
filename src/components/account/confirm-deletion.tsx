@@ -4,11 +4,13 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { confirmAccountDeletionAction } from "@/lib/actions/account-deletion.actions";
+import { Tx, useI18n } from "@/lib/i18n/client";
 
 const linkClass =
   "underline underline-offset-4 hover:text-foreground disabled:no-underline disabled:opacity-60";
 
 export function ConfirmDeletion({ token, email }: { token: string; email: string }) {
+  const { resolve } = useI18n();
   const [isPending, startTransition] = useTransition();
   const [done, setDone] = useState(false);
 
@@ -31,7 +33,7 @@ export function ConfirmDeletion({ token, email }: { token: string; email: string
   if (done) {
     return (
       <p className="text-sm text-muted-foreground">
-        Your account and personal data have been deleted. Taking you back to the homepage…
+        <Tx k="account.deletion.done" source="Your account and personal data have been deleted. Taking you back to the homepage…" />
       </p>
     );
   }
@@ -39,9 +41,7 @@ export function ConfirmDeletion({ token, email }: { token: string; email: string
   return (
     <div className="space-y-6 text-sm">
       <p className="text-muted-foreground">
-        This permanently deletes the account for <strong className="text-foreground">{email}</strong>.
-        Pending bookings will be cancelled and your listings archived. Booking records are kept
-        anonymously for 7 years to meet tax and legal obligations. This cannot be undone.
+        {resolve("account.deletion.warning", "This permanently deletes the account for {email}. Pending bookings will be cancelled and your listings archived. Booking records are kept anonymously for 7 years to meet tax and legal obligations. This cannot be undone.").text.replace("{email}", email)}
       </p>
 
       <div className="flex items-center gap-6">
@@ -51,10 +51,12 @@ export function ConfirmDeletion({ token, email }: { token: string; email: string
           disabled={isPending}
           className={`${linkClass} text-destructive`}
         >
-          {isPending ? "Deleting…" : "Yes, delete my account"}
+          {isPending
+            ? resolve("account.deletion.deleting", "Deleting…").text
+            : resolve("account.deletion.confirm", "Yes, delete my account").text}
         </button>
         <Link href="/account/privacy" className={linkClass}>
-          Cancel
+          <Tx k="common.cancel" source="Cancel" />
         </Link>
       </div>
     </div>

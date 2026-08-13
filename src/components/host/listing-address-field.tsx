@@ -10,6 +10,7 @@ import {
   finiteCoordinate,
   type ListingLocationValue,
 } from "@/components/host/listing-location-field";
+import { Tx, useI18n } from "@/lib/i18n/client";
 
 const ListingLocationPickerInner = dynamic(
   () => import("./listing-location-picker-inner"),
@@ -51,6 +52,7 @@ export function ListingAddressField({
    *  somewhere they never asked to be. */
   active?: boolean;
 }) {
+  const { resolve } = useI18n();
   const latitude = finiteCoordinate(value.latitude, -90, 90);
   const longitude = finiteCoordinate(value.longitude, -180, 180);
   const hasPin = latitude !== null && longitude !== null;
@@ -79,15 +81,14 @@ export function ListingAddressField({
   );
 
   return (
-    <div className="notranslate space-y-3 md:space-y-4">
+    <div className="space-y-3 md:space-y-4">
       {heading && (
         <div>
           <h2 className="text-lg font-semibold tracking-tight md:text-2xl">
-            Confirm your address
+            <Tx k="host.address.confirm_title" source="Confirm your address" />
           </h2>
           <p className="mt-1 text-xs text-muted-foreground md:text-sm">
-            We filled this in from the pin you placed. Correct anything that
-            isn&apos;t right — especially the street number.
+            <Tx k="host.address.confirm_hint" source="We filled this in from the pin you placed. Correct anything that isn't right — especially the street number." />
           </p>
         </div>
       )}
@@ -118,16 +119,16 @@ export function ListingAddressField({
           aria-live="polite"
         >
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          <span>Filling in the address details…</span>
+          <Tx k="host.address.filling" source="Filling in the address details…" />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="location-address">Address</Label>
+          <Label htmlFor="location-address"><Tx k="host.address.address" source="Address" /></Label>
           <Input
             id="location-address"
             ref={addressRef}
             value={value.address}
             onChange={(event) => onChange("address", event.target.value)}
-            placeholder="Street and building number"
+            placeholder={resolve("host.address.street_placeholder", "Street and building number").text}
             disabled={resolving}
             // Input already renders aria-invalid as a destructive border and ring, so
             // the empty state is highlighted the same way every other invalid field in
@@ -147,7 +148,7 @@ export function ListingAddressField({
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label htmlFor="location-city">City</Label>
+            <Label htmlFor="location-city"><Tx k="host.address.city" source="City" /></Label>
             <Input
               id="location-city"
               value={value.city}
@@ -160,7 +161,7 @@ export function ListingAddressField({
             )}
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="location-postal">Postal code</Label>
+            <Label htmlFor="location-postal"><Tx k="host.address.postal_code" source="Postal code" /></Label>
             <Input
               id="location-postal"
               value={value.postalCode}
@@ -172,7 +173,7 @@ export function ListingAddressField({
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label htmlFor="location-area">Area</Label>
+            <Label htmlFor="location-area"><Tx k="host.address.area" source="Area" /></Label>
             <Input
               id="location-area"
               value={value.area}
@@ -182,7 +183,7 @@ export function ListingAddressField({
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="location-country">Country</Label>
+            <Label htmlFor="location-country"><Tx k="host.address.country" source="Country" /></Label>
             <Input
               id="location-country"
               value={value.country}

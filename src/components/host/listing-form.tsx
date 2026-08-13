@@ -574,6 +574,7 @@ function LocationSummary({
   error?: string;
   onEdit: () => void;
 }) {
+  const { resolve } = useI18n();
   const latitude = finiteCoordinate(values.latitude, -90, 90);
   const longitude = finiteCoordinate(values.longitude, -180, 180);
   const hasPin = latitude !== null && longitude !== null;
@@ -594,20 +595,20 @@ function LocationSummary({
     // notranslate for the same reason as the location screens themselves: these rows
     // swap between subtrees as the host edits, and React's next update then lands on
     // nodes Google Translate has already replaced.
-    <div className="notranslate space-y-3 rounded-xl border p-3 md:p-4">
+    <div className="space-y-3 rounded-xl border p-3 md:p-4">
       <div className="flex items-start gap-2">
         <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
         <div className="min-w-0 space-y-0.5">
-          <p className="text-sm font-medium">
-            {addressLine || "No address saved yet"}
+          <p className="text-sm font-medium" data-user-generated-content translate="yes">
+            {addressLine || resolve("host.location.no_address", "No address saved yet").text}
           </p>
           <p className="text-xs text-muted-foreground">
             {hasPin
-              ? `Pin at ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
-              : "No pin placed on the map yet"}
+              ? resolve("host.location.pin_at", "Pin at {latitude}, {longitude}").text.replace("{latitude}", latitude.toFixed(6)).replace("{longitude}", longitude.toFixed(6))
+              : resolve("host.location.no_pin", "No pin placed on the map yet").text}
           </p>
           <p className="text-xs text-muted-foreground">
-            {hasStreetView ? "Street View saved" : "No Street View chosen"}
+            {hasStreetView ? resolve("host.location.street_view_saved", "Street View saved").text : resolve("host.location.no_street_view", "No Street View chosen").text}
           </p>
         </div>
       </div>
@@ -620,10 +621,10 @@ function LocationSummary({
           onClick={onEdit}
         >
           <MapPin className="h-4 w-4" />
-          Edit location
+          <Tx k="host.location.edit" source="Edit location" />
         </Button>
         <p className="text-xs text-muted-foreground">
-          Opens the map, address and Street View screens, one at a time.
+          <Tx k="host.location.edit_hint" source="Opens the map, address and Street View screens, one at a time." />
         </p>
       </div>
     </div>
@@ -646,6 +647,10 @@ export function ListingForm({
   const isEditing = !!listing;
   const i18n = useI18n();
   const { resolve } = i18n;
+  const nonEnglishEditor = i18n.requestedLocale.split("-")[0] !== "en";
+  const [editingOriginalCopy, setEditingOriginalCopy] = useState(
+    !isEditing || !nonEnglishEditor,
+  );
   const stepCopy = (step: (typeof STEPS)[number]) => {
     switch (step.id) {
       case "propertyType": return { title: resolve("host.step.property_type.title", "Property type").text, description: resolve("host.step.property_type.description", "What kind of place is it?").text };
@@ -1956,7 +1961,40 @@ export function ListingForm({
                 : resolve("host.form.guest_basics", "Guest-facing basics").text
             }
           >
-            <div className={showEditSections || onCreateStep(LISTING_STEP.description) ? "space-y-2" : "hidden"}>
+            {isEditing && nonEnglishEditor ? (
+              <div className="mb-4 rounded-xl border bg-muted/20 p-4">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    {editingOriginalCopy ? (
+                      <Tx k="host.form.editing_original_copy" source="Editing the host's original text" />
+                    ) : (
+                      <Tx k="host.form.google_translation_preview" source="Automatic Google translation of host-written text" />
+                    )}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditingOriginalCopy((current) => !current)}
+                  >
+                    {editingOriginalCopy ? (
+                      <Tx k="host.form.show_translation" source="Show translation" />
+                    ) : (
+                      <Tx k="host.form.edit_original" source="Edit original text" />
+                    )}
+                  </Button>
+                </div>
+                {!editingOriginalCopy ? (
+                  <div data-user-generated-content translate="yes" className="space-y-3">
+                    <p className="font-semibold">{values.title}</p>
+                    <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                      {values.description}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            <div className={cn(showEditSections || onCreateStep(LISTING_STEP.description) ? "space-y-2" : "hidden", isEditing && nonEnglishEditor && !editingOriginalCopy && "hidden")}>
               <Label htmlFor="title">
                 <Tx k="host.form.title_label" source="Title" />
               </Label>
@@ -1976,7 +2014,7 @@ export function ListingForm({
               />
               <FieldError message={fieldErrors.title} />
             </div>
-            <div id={isEditing ? "edit-section-description" : undefined} className={showEditSections || onCreateStep(LISTING_STEP.description) ? "scroll-mt-32 space-y-2" : "hidden"}>
+            <div id={isEditing ? "edit-section-description" : undefined} className={cn(showEditSections || onCreateStep(LISTING_STEP.description) ? "scroll-mt-32 space-y-2" : "hidden", isEditing && nonEnglishEditor && !editingOriginalCopy && "hidden")}>
               <Label htmlFor="description">
                 <Tx k="host.form.description_label" source="Description" />
               </Label>
@@ -2298,8 +2336,8 @@ export function ListingForm({
             />
             {/* Translate rewrites these text nodes in place, so React's updates land on
                 nodes that are no longer displayed and the count freezes at its first value. */}
-            <p className="notranslate text-xs text-muted-foreground md:text-sm" translate="no">
-              {`${photoCount} of 3 required photos added`}
+            <p className="text-xs text-muted-foreground md:text-sm">
+              {resolve("host.media.required_count", "{count} of 3 required photos added").text.replace("{count}", String(photoCount))}
             </p>
             <FieldError message={fieldErrors.media} />
           </FieldSection>
