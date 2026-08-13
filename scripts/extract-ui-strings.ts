@@ -18,8 +18,8 @@ const UI_SCOPES = [
   "src/components/marketplace/",
   "src/components/public/",
   // The host panel is catalog-covered so hosts get server-rendered copy rather than
-  // Google's post-paint DOM translation. Admin is deliberately still outside: it is
-  // staff-facing and remains on the Google layer until it is migrated too.
+  // Google's post-paint DOM translation. The admin migration is tracked separately:
+  // its legacy operational screens contain a large body of hard-coded copy.
   "src/app/(host)/",
   "src/components/host/",
 ];

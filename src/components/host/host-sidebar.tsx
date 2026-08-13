@@ -36,7 +36,7 @@ import { SITE_DOMAIN } from "@/lib/branding";
 import { BrandLogo } from "@/components/shared/brand-logo";
 import { GoogleTranslateWidget } from "@/components/shared/google-translate-widget";
 import { HOST_HEADER_ACTIONS_ID } from "@/components/host/host-header-portal";
-import { Tx, useI18n } from "@/lib/i18n/client";
+import { Tx, translatedClass, useI18n } from "@/lib/i18n/client";
 import type { getEnabledLanguages } from "@/lib/services/language.service";
 import {
   CountBadge,
@@ -44,13 +44,33 @@ import {
 } from "@/components/communication/attention-indicator";
 
 const hostNav = [
-  { href: "/host", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/host/listings", label: "My Listings", icon: Home },
-  { href: "/host/bookings", label: "Bookings", icon: CalendarDays },
-  { href: "/host/inbox", label: "Inbox", icon: MessageCircle },
-  { href: "/account/notifications", label: "Notifications", icon: Bell },
-  { href: "/host/mobile", label: "Mobile Preview", icon: Smartphone },
-];
+  { href: "/host", id: "dashboard", icon: LayoutDashboard },
+  { href: "/host/listings", id: "listings", icon: Home },
+  { href: "/host/bookings", id: "bookings", icon: CalendarDays },
+  { href: "/host/inbox", id: "inbox", icon: MessageCircle },
+  { href: "/account/notifications", id: "notifications", icon: Bell },
+  { href: "/host/mobile", id: "mobile_preview", icon: Smartphone },
+] as const;
+
+function hostNavigationLabel(
+  resolve: ReturnType<typeof useI18n>["resolve"],
+  id: (typeof hostNav)[number]["id"],
+) {
+  switch (id) {
+    case "dashboard":
+      return resolve("host.sidebar.dashboard", "Dashboard");
+    case "listings":
+      return resolve("host.sidebar.my_listings", "My Listings");
+    case "bookings":
+      return resolve("host.sidebar.bookings", "Bookings");
+    case "inbox":
+      return resolve("host.sidebar.inbox", "Inbox");
+    case "notifications":
+      return resolve("host.sidebar.notifications", "Notifications");
+    case "mobile_preview":
+      return resolve("host.sidebar.mobile_preview", "Mobile Preview");
+  }
+}
 
 function SidebarNavLinks({
   onNavigate,
@@ -61,10 +81,12 @@ function SidebarNavLinks({
 }) {
   const pathname = usePathname();
   const { summary } = useAttentionSummary();
+  const { resolve } = useI18n();
 
   return (
     <nav className={cn("space-y-1", className)}>
       {hostNav.map((item) => {
+        const label = hostNavigationLabel(resolve, item.id);
         const active =
           item.href === "/host"
             ? pathname === "/host" || pathname === "/host/"
@@ -92,10 +114,10 @@ function SidebarNavLinks({
             )}
           >
             <item.icon className="h-4 w-4 shrink-0" />
-            {item.label}
+            <span className={translatedClass(label)}>{label.text}</span>
             <CountBadge
               value={count}
-              label={`${item.label.toLowerCase()} items needing attention`}
+              label={`${label.text.toLowerCase()} items needing attention`}
               className="ml-auto"
             />
           </Link>

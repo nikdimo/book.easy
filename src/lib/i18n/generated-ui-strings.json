@@ -1,5 +1,80 @@
 [
   {
+    "key": "admin.sidebar.audit_log",
+    "sourceText": "Audit log",
+    "filePath": "src/components/admin/admin-sidebar.tsx"
+  },
+  {
+    "key": "admin.sidebar.back_to_site",
+    "sourceText": "Back to site",
+    "filePath": "src/components/admin/admin-sidebar.tsx"
+  },
+  {
+    "key": "admin.sidebar.bookings",
+    "sourceText": "Bookings",
+    "filePath": "src/components/admin/admin-sidebar.tsx"
+  },
+  {
+    "key": "admin.sidebar.cases",
+    "sourceText": "Cases",
+    "filePath": "src/components/admin/admin-sidebar.tsx"
+  },
+  {
+    "key": "admin.sidebar.communications",
+    "sourceText": "Communications",
+    "filePath": "src/components/admin/admin-sidebar.tsx"
+  },
+  {
+    "key": "admin.sidebar.dashboard",
+    "sourceText": "Dashboard",
+    "filePath": "src/components/admin/admin-sidebar.tsx"
+  },
+  {
+    "key": "admin.sidebar.listings",
+    "sourceText": "Listings",
+    "filePath": "src/components/admin/admin-sidebar.tsx"
+  },
+  {
+    "key": "admin.sidebar.marketing",
+    "sourceText": "Marketing consent",
+    "filePath": "src/components/admin/admin-sidebar.tsx"
+  },
+  {
+    "key": "admin.sidebar.menu",
+    "sourceText": "Admin menu",
+    "filePath": "src/components/admin/admin-sidebar.tsx"
+  },
+  {
+    "key": "admin.sidebar.open_menu",
+    "sourceText": "Open admin menu",
+    "filePath": "src/components/admin/admin-sidebar.tsx"
+  },
+  {
+    "key": "admin.sidebar.panel",
+    "sourceText": "Admin Panel",
+    "filePath": "src/components/admin/admin-sidebar.tsx"
+  },
+  {
+    "key": "admin.sidebar.ratings",
+    "sourceText": "Ratings & reviews",
+    "filePath": "src/components/admin/admin-sidebar.tsx"
+  },
+  {
+    "key": "admin.sidebar.reports",
+    "sourceText": "Listing reports",
+    "filePath": "src/components/admin/admin-sidebar.tsx"
+  },
+  {
+    "key": "admin.sidebar.settings",
+    "sourceText": "Settings",
+    "filePath": "src/components/admin/admin-sidebar.tsx"
+  },
+  {
+    "key": "admin.sidebar.users",
+    "sourceText": "Users",
+    "filePath": "src/components/admin/admin-sidebar.tsx"
+  },
+  {
     "key": "amenities.categories.bathroom",
     "sourceText": "Bathroom",
     "filePath": "src/lib/i18n/amenity-labels.ts"
@@ -4860,6 +4935,16 @@
     "filePath": "src/components/host/host-sidebar.tsx"
   },
   {
+    "key": "host.sidebar.bookings",
+    "sourceText": "Bookings",
+    "filePath": "src/components/host/host-sidebar.tsx"
+  },
+  {
+    "key": "host.sidebar.dashboard",
+    "sourceText": "Dashboard",
+    "filePath": "src/components/host/host-sidebar.tsx"
+  },
+  {
     "key": "host.sidebar.guest",
     "sourceText": "Guest",
     "filePath": "src/components/host/host-sidebar.tsx"
@@ -4867,6 +4952,11 @@
   {
     "key": "host.sidebar.home",
     "sourceText": "Home",
+    "filePath": "src/components/host/host-sidebar.tsx"
+  },
+  {
+    "key": "host.sidebar.inbox",
+    "sourceText": "Inbox",
     "filePath": "src/components/host/host-sidebar.tsx"
   },
   {
@@ -4887,6 +4977,21 @@
   {
     "key": "host.sidebar.menu_title",
     "sourceText": "Hosting menu",
+    "filePath": "src/components/host/host-sidebar.tsx"
+  },
+  {
+    "key": "host.sidebar.mobile_preview",
+    "sourceText": "Mobile Preview",
+    "filePath": "src/components/host/host-sidebar.tsx"
+  },
+  {
+    "key": "host.sidebar.my_listings",
+    "sourceText": "My Listings",
+    "filePath": "src/components/host/host-sidebar.tsx"
+  },
+  {
+    "key": "host.sidebar.notifications",
+    "sourceText": "Notifications",
     "filePath": "src/components/host/host-sidebar.tsx"
   },
   {
