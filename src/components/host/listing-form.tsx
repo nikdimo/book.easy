@@ -107,8 +107,10 @@ import { PropertyTypeIcon } from "@/components/shared/property-type-icon";
 import { cn } from "@/lib/utils";
 import { currencyDecimals } from "@/lib/currency/currencies";
 import {
+  LISTING_PHASES,
   LISTING_STEP,
   LISTING_STEPS,
+  listingPhaseAt,
   listingStepId,
   normalizeListingStep,
   resumeListingStep,
@@ -808,6 +810,19 @@ export function ListingForm({
   const [geocodingAddress, setGeocodingAddress] = useState(false);
   const [publishChecklistOpen, setPublishChecklistOpen] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  /** A host who just landed on a step has not done anything wrong yet, but the step's
+   *  requirements are derived state, so "Property type is required" used to be red on
+   *  screen before the first click. An error you earn by existing is an error people
+   *  learn to read past, so requirements stay quiet until the host either edits
+   *  something on the step or asks to continue before it is ready. */
+  const [revealedSteps, setRevealedSteps] = useState<ReadonlySet<number>>(
+    () => new Set<number>(),
+  );
+  function revealStepRequirements(step: number) {
+    setRevealedSteps((current) =>
+      current.has(step) ? current : new Set(current).add(step),
+    );
+  }
   /** Set once the wizard's submit succeeds; the slug rides along so the success
    *  screen can send the host straight to the public page they just created. */
   const [submittedListing, setSubmittedListing] = useState<{
@@ -849,8 +864,13 @@ export function ListingForm({
   const issuesByStep = STEPS.map((_, step) =>
     listingStepIssues(step, values, photoCount, mediaUploadState.active)
   );
+  const currentPhase = listingPhaseAt(currentStep);
   const currentStepIssues = issuesByStep[currentStep] ?? [];
   const currentStepReady = currentStepIssues.length === 0;
+  // Editing is not a wizard — every section is on screen at once and the host chose to
+  // open it, so requirements there behave as before.
+  const showStepIssues = isEditing || revealedSteps.has(currentStep);
+  const visibleStepIssues = showStepIssues ? currentStepIssues : [];
   const listingReady = issuesByStep.every((issues) => issues.length === 0);
   const hasPercentOffer =
     values.promotionType === "PERCENT_DISCOUNT" &&
@@ -928,10 +948,11 @@ export function ListingForm({
   const canPublishNew = listingReady && !availabilityUnconfirmed;
   const canPublishFromReview = canPublishNew && prePublishScreen === "menu";
   // Hold Continue while the geocoder is still running, so the host can't land on
-  // the Address step before it has been filled in.
-  const continueReady =
-    currentStepReady &&
-    !(currentStep === LISTING_STEP.location && geocodingAddress);
+  // the Address step before it has been filled in. This is the only thing that
+  // disables Continue — an unfinished step keeps it pressable so that pressing it can
+  // point at what is missing.
+  const continueBlocked =
+    currentStep === LISTING_STEP.location && geocodingAddress;
   // The location editor gates its Continue on exactly the same requirements as the
   // matching wizard step.
   const locationStepIssues =
@@ -1077,6 +1098,9 @@ export function ListingForm({
 
   function setField(field: keyof ListingFormValues, value: string) {
     if (!isEditing) setSaveStatus("saving");
+    // Once the host has started answering this step, anything still outstanding on it
+    // is genuinely useful rather than premature.
+    revealStepRequirements(currentStep);
     if ((LOCATION_TEXT_FIELDS as readonly string[]).includes(field)) {
       setManuallyEditedLocationFields((current) =>
         current.has(field) ? current : new Set(current).add(field)
@@ -1834,19 +1858,45 @@ export function ListingForm({
                   <span className="notranslate truncate" translate="no">
                     {prePublishScreen === null
                       ? interpolate(
-                          resolve("host.form.step_counter", "Step {current} of {total}: {title}"),
-                          { current: currentStep + 1, total: STEPS.length, title: stepCopy(STEPS[currentStep]).title },
+                          resolve(
+                            "host.form.phase_counter",
+                            "{phase} · {current} of {total}",
+                          ),
+                          {
+                            phase: resolve(
+                              `host.form.phase.${currentPhase.phase.id}`,
+                              currentPhase.phase.title,
+                            ).text,
+                            current: currentPhase.position,
+                            total: currentPhase.total,
+                          },
                         ).text
                       : prePublishHeading}
                   </span>
                 </button>
-                <div className="h-1.5 min-w-16 flex-1 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full bg-primary transition-all"
-                    style={{
-                      width: `${((currentStep + 1) / STEPS.length) * 100}%`,
-                    }}
-                  />
+                {/* One segment per phase rather than one bar across eleven steps: the
+                    phase the host is in fills as they move through it, and the phases
+                    behind them stay full. Four chunks read as four tasks; a single bar
+                    creeping along in elevenths reads as a queue. */}
+                <div className="flex min-w-16 flex-1 items-center gap-1">
+                  {LISTING_PHASES.map((phase, index) => (
+                    <div
+                      key={phase.id}
+                      className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted"
+                    >
+                      <div
+                        className="h-full rounded-full bg-primary transition-all"
+                        style={{
+                          width:
+                            index < currentPhase.phaseIndex
+                              ? "100%"
+                              : index === currentPhase.phaseIndex
+                                ? `${(currentPhase.position / currentPhase.total) * 100}%`
+                                : "0%",
+                        }}
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>}
             </header>
@@ -2054,9 +2104,14 @@ export function ListingForm({
             </div>
             <div className={showEditSections || onCreateStep(LISTING_STEP.propertyType) ? "space-y-3" : "hidden"}>
               {!isEditing && !initialDraftId && <ListingImportPanel />}
+              {/* Create mode already renders "Property type / What kind of place is
+                 it?" as the step header, so showing this Label again on desktop was
+                 the same question asked twice. It stays in the tree for the
+                 radiogroup's aria-labelledby, just not on screen. Editing has no step
+                 header, so there it is the only label. */}
               <Label
                 id="property-type-label"
-                className={isEditing ? undefined : "sr-only md:not-sr-only"}
+                className={isEditing ? undefined : "sr-only"}
               >
                 <Tx k="host.form.property_type_label" source="Property type" />
               </Label>
@@ -2085,7 +2140,7 @@ export function ListingForm({
                 aria-describedby="property-type-hint"
                 aria-required="true"
                 aria-invalid={Boolean(fieldErrors.propertyType)}
-                className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:gap-3"
+                className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:gap-3 lg:grid-cols-4"
                 onBlur={(event) => {
                   if (!event.currentTarget.contains(event.relatedTarget)) {
                     handleBlur("propertyType");
@@ -2111,14 +2166,18 @@ export function ListingForm({
                             // cursor-pointer is not decoration: Tailwind v4's preflight
                             // leaves buttons on the default arrow, so a grid of bordered
                             // cards gives the pointer no reason to look interactive.
-                            "group relative flex min-h-20 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border bg-background px-2 py-2.5 text-center shadow-sm outline-none transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40 md:min-h-28 md:gap-3 md:rounded-2xl md:px-3 md:py-4",
+                            // bg-card, not bg-background: the canvas behind these tiles
+                            // is --background (#f6f7f8), so painting the tile with the
+                            // same token camouflages it against the page and the whole
+                            // grid stops reading as something you can touch. White card
+                            // on tinted canvas is what makes "clickable" legible here.
+                            "group relative flex min-h-20 cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border bg-card px-2 py-2.5 text-center shadow-sm outline-none transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md active:scale-[0.98] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40 md:min-h-28 md:gap-2 md:rounded-2xl md:px-3 md:py-4",
                             // Selected is an outline, not a fill. A solid primary card
                             // leaves its own label and description sitting on top of
                             // the brand colour, which is unreadable — and the one card
                             // that has to demonstrate what "chosen" looks like is the
                             // worst place to lose contrast.
-                            selected &&
-                              "border-primary shadow-[0_10px_30px_-18px_var(--primary)] ring-2 ring-primary"
+                            selected && "border-primary ring-2 ring-primary"
                           )}
                           onClick={() => {
                             setField("propertyType", type.value);
@@ -2159,11 +2218,19 @@ export function ListingForm({
                           >
                             {label.text}
                           </span>
-                          {selected && (
+                          {/* The tooltip below is hover-only, so on a phone these
+                             descriptions did not exist at all — which is exactly where
+                             "House" vs "Row House" needs disambiguating. Render the
+                             text in the card wherever it fits instead. */}
+                          {description.text && (
                             <span
-                              className="absolute right-2.5 top-2.5 size-2 rounded-full bg-primary ring-4 ring-primary/15"
-                              aria-hidden="true"
-                            />
+                              className={cn(
+                                "hidden text-[11px] leading-tight text-muted-foreground lg:line-clamp-2",
+                                translatedClass(description),
+                              )}
+                            >
+                              {description.text}
+                            </span>
                           )}
                         </button>
                       </TooltipTrigger>
@@ -2240,7 +2307,7 @@ export function ListingForm({
                           setTimeout(() => void autosaveDraft(), 0);
                         }}
                         className={cn(
-                          "cursor-pointer rounded-xl border bg-background px-3 py-3 text-left shadow-sm outline-none transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40",
+                          "cursor-pointer rounded-xl border bg-card px-3 py-3 text-left shadow-sm outline-none transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md active:scale-[0.98] focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/40",
                           selected && "border-primary ring-2 ring-primary",
                         )}
                       >
@@ -3055,7 +3122,7 @@ export function ListingForm({
                 )}
                 {prePublishScreen === null && (
                   <StepRequirementStatus
-                    issues={currentStepIssues}
+                    issues={visibleStepIssues}
                     onFocusIssue={focusStepIssue}
                     uploadState={
                       currentStep === LISTING_STEP.photos && mediaUploadState.active
@@ -3138,11 +3205,22 @@ export function ListingForm({
                     type="button"
                     // Hold Continue while the geocoder is still running, so the host
                     // can't land on the Address step before it has been filled in.
-                    disabled={!continueReady}
+                    // An unfinished step no longer disables it: a dead button next to
+                    // hidden requirements is a dead end, so Continue stays pressable
+                    // and answers why it cannot proceed.
+                    disabled={continueBlocked}
                     aria-describedby={
                       currentStepReady ? undefined : "listing-step-requirements"
                     }
-                    onClick={() => goToStep(currentStep + 1)}
+                    onClick={() => {
+                      if (!currentStepReady) {
+                        revealStepRequirements(currentStep);
+                        const first = currentStepIssues[0];
+                        if (first) focusStepIssue(first.field);
+                        return;
+                      }
+                      goToStep(currentStep + 1);
+                    }}
                   >
                     <ContinueLabel searching={wizardSearchingAddress} />
                   </Button>
@@ -3151,11 +3229,19 @@ export function ListingForm({
                   // availability question, and the optional date setup after it.
                   <Button
                     type="button"
-                    disabled={!continueReady}
+                    disabled={continueBlocked}
                     aria-describedby={
                       currentStepReady ? undefined : "listing-step-requirements"
                     }
-                    onClick={openAvailabilityStart}
+                    onClick={() => {
+                      if (!currentStepReady) {
+                        revealStepRequirements(currentStep);
+                        const first = currentStepIssues[0];
+                        if (first) focusStepIssue(first.field);
+                        return;
+                      }
+                      openAvailabilityStart();
+                    }}
                   >
                     <ContinueLabel
                       searching={false}
@@ -3315,11 +3401,11 @@ export function ListingForm({
       {!isEditing && (
         <div className="z-30 shrink-0 border-t bg-background px-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden">
           {prePublishScreen === null &&
-            (currentStepIssues.length > 0 || mediaUploadState.active) && (
+            (visibleStepIssues.length > 0 || mediaUploadState.active) && (
             <div className="mb-1.5 flex justify-end">
               <StepRequirementStatus
                 id="listing-step-requirements-mobile"
-                issues={currentStepIssues}
+                issues={visibleStepIssues}
                 onFocusIssue={focusStepIssue}
                 uploadState={
                   currentStep === LISTING_STEP.photos && mediaUploadState.active
@@ -3473,13 +3559,21 @@ export function ListingForm({
                 type="button"
                 size="lg"
                 className="flex-1"
-                disabled={!continueReady}
+                disabled={continueBlocked}
                 aria-describedby={
                   currentStepReady
                     ? undefined
                     : "listing-step-requirements-mobile"
                 }
-                onClick={() => goToStep(currentStep + 1)}
+                onClick={() => {
+                  if (!currentStepReady) {
+                    revealStepRequirements(currentStep);
+                    const first = currentStepIssues[0];
+                    if (first) focusStepIssue(first.field);
+                    return;
+                  }
+                  goToStep(currentStep + 1);
+                }}
               >
                 <ContinueLabel searching={wizardSearchingAddress} />
               </Button>
@@ -3488,13 +3582,21 @@ export function ListingForm({
                 type="button"
                 size="lg"
                 className="flex-1"
-                disabled={!continueReady}
+                disabled={continueBlocked}
                 aria-describedby={
                   currentStepReady
                     ? undefined
                     : "listing-step-requirements-mobile"
                 }
-                onClick={openAvailabilityStart}
+                onClick={() => {
+                  if (!currentStepReady) {
+                    revealStepRequirements(currentStep);
+                    const first = currentStepIssues[0];
+                    if (first) focusStepIssue(first.field);
+                    return;
+                  }
+                  openAvailabilityStart();
+                }}
               >
                 <ContinueLabel
                   searching={false}
@@ -3985,7 +4087,7 @@ function CapacityCounter({
           <p className="line-clamp-1 text-[0.7rem] text-muted-foreground md:line-clamp-none md:text-sm">{description}</p>
         </div>
       </div>
-      <div className="flex w-36 shrink-0 items-center justify-between gap-1 rounded-xl border border-border/80 bg-background p-1 shadow-sm md:w-44">
+      <div className="flex w-36 shrink-0 items-center justify-between gap-1 rounded-xl border border-border/80 bg-card p-1 shadow-sm md:w-44">
         <Button
           type="button"
           variant="ghost"

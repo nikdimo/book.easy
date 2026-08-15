@@ -19,6 +19,19 @@ import type {
 } from "@/lib/types/search";
 import { dateKey } from "@/lib/utils/stay-pricing";
 import { getNightCount } from "@/lib/utils/format";
+import { getNightlyRateRangesForListings } from "@/lib/services/pricing.service";
+
+/** Listings without a pricing rule have no rate to range over, so they are dropped
+ * rather than defaulted to zero. */
+function rateRangeInputs(
+  listings: { id: string; pricingRule: { baseNightlyRate: Prisma.Decimal } | null }[]
+) {
+  return listings.flatMap((listing) =>
+    listing.pricingRule
+      ? [{ id: listing.id, baseNightlyRate: Number(listing.pricingRule.baseNightlyRate) }]
+      : []
+  );
+}
 
 /** Invalidated on-demand (via revalidateTag) whenever a listing's public visibility
  * changes — see submitNewListing/updateListing in lib/actions/listing.actions.ts and
@@ -200,20 +213,26 @@ export async function searchListings(filters: SearchFilters) {
   ]);
 
   const listingIds = listings.map((l) => l.id);
-  const [videoUrls, datePrices] = await Promise.all([
+  const hasSearchDates = Boolean(filters.checkIn && filters.checkOut);
+  const [videoUrls, datePrices, nightlyRanges] = await Promise.all([
     getFirstVideoUrlsByListingIds(listingIds),
-    filters.checkIn && filters.checkOut && listingIds.length > 0
+    hasSearchDates && listingIds.length > 0
       ? db.listingDatePrice.findMany({
           where: {
             listingId: { in: listingIds },
             date: {
-              gte: new Date(filters.checkIn),
-              lt: new Date(filters.checkOut),
+              gte: new Date(filters.checkIn!),
+              lt: new Date(filters.checkOut!),
             },
           },
           select: { listingId: true, date: true, nightlyRate: true },
         })
       : Promise.resolve([]),
+    // Only the dateless card shows a range — a search that carries dates prices those
+    // exact nights instead, so it would pay for a year of rates it never renders.
+    hasSearchDates
+      ? Promise.resolve(new Map<string, { min: number; max: number }>())
+      : getNightlyRateRangesForListings(rateRangeInputs(listings)),
   ]);
   const pricesByListing = new Map<
     string,
@@ -230,7 +249,8 @@ export async function searchListings(filters: SearchFilters) {
       serializeListingCard(
         l,
         videoUrls.get(l.id),
-        pricesByListing.get(l.id) ?? []
+        pricesByListing.get(l.id) ?? [],
+        nightlyRanges.get(l.id) ?? null
       )
     ),
     total,
@@ -263,8 +283,13 @@ export const getFeaturedListings = unstable_cache(
       orderBy: { createdAt: "desc" },
       take: limit,
     });
-    const videoUrls = await getFirstVideoUrlsByListingIds(rows.map((r) => r.id));
-    return rows.map((r) => serializeListingCard(r, videoUrls.get(r.id)));
+    const [videoUrls, nightlyRanges] = await Promise.all([
+      getFirstVideoUrlsByListingIds(rows.map((r) => r.id)),
+      getNightlyRateRangesForListings(rateRangeInputs(rows)),
+    ]);
+    return rows.map((r) =>
+      serializeListingCard(r, videoUrls.get(r.id), [], nightlyRanges.get(r.id) ?? null)
+    );
   },
   ["featured-listings"],
   { revalidate: HOME_LISTINGS_REVALIDATE_SECONDS, tags: [PUBLIC_HEADER_DATA_TAG] },
@@ -288,8 +313,13 @@ export const getPopularListings = unstable_cache(
       orderBy: [{ popularityScore: "desc" }, { createdAt: "desc" }],
       take: limit,
     });
-    const videoUrls = await getFirstVideoUrlsByListingIds(rows.map((r) => r.id));
-    return rows.map((r) => serializeListingCard(r, videoUrls.get(r.id)));
+    const [videoUrls, nightlyRanges] = await Promise.all([
+      getFirstVideoUrlsByListingIds(rows.map((r) => r.id)),
+      getNightlyRateRangesForListings(rateRangeInputs(rows)),
+    ]);
+    return rows.map((r) =>
+      serializeListingCard(r, videoUrls.get(r.id), [], nightlyRanges.get(r.id) ?? null)
+    );
   },
   ["popular-listings"],
   { revalidate: HOME_LISTINGS_REVALIDATE_SECONDS, tags: [PUBLIC_HEADER_DATA_TAG] },

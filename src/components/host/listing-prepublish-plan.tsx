@@ -1020,7 +1020,7 @@ export function AvailabilityStartScreen({
                     onClick={() => setDatePickerOpen(true)}
                     aria-describedby={dateError ? dateErrorId : undefined}
                     className={cn(
-                      "mt-1.5 flex h-11 w-full max-w-64 items-center gap-2 rounded-md border bg-background px-3 text-left text-sm shadow-xs transition-colors hover:border-primary/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                      "mt-1.5 flex h-11 w-full max-w-64 items-center gap-2 rounded-md border bg-card px-3 text-left text-sm shadow-xs transition-colors hover:border-primary/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                       dateError && "border-destructive",
                     )}
                   >

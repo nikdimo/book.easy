@@ -88,6 +88,64 @@ export function resumeListingStep(
   return normalizeListingStep(legacyIndex);
 }
 
+/** The eleven steps grouped into four named phases, so the wizard header can say
+ *  "Your place · 1 of 2" instead of "Step 1 of 11". Eleven is the honest count, but a
+ *  host reads it before they have invested anything, which is the cheapest possible
+ *  moment for them to decide the whole thing is too long. The screens, their order and
+ *  their contents are unchanged — only how the remaining work is described.
+ *
+ *  Phases must stay contiguous and in step order, and must cover every step exactly
+ *  once; listing-steps.test.ts enforces all three, because a phase that silently skips
+ *  a step would show a host a progress bar that never fills. */
+export const LISTING_PHASES = [
+  { id: "place", title: "Your place", steps: ["propertyType", "spaceType"] },
+  {
+    id: "presentation",
+    title: "Photos & description",
+    steps: ["photos", "description"],
+  },
+  {
+    id: "location",
+    title: "Location",
+    steps: ["location", "address", "streetView"],
+  },
+  {
+    id: "offer",
+    title: "Details & pricing",
+    steps: ["details", "amenities", "pricing", "specialOffer"],
+  },
+] as const satisfies readonly {
+  id: string;
+  title: string;
+  steps: readonly ListingStepId[];
+}[];
+
+export type ListingPhaseId = (typeof LISTING_PHASES)[number]["id"];
+
+/** Step index → phase index, resolved once rather than searched on every render. */
+const PHASE_INDEX_BY_STEP: readonly number[] = LISTING_STEPS.map((step) =>
+  LISTING_PHASES.findIndex((phase) =>
+    (phase.steps as readonly string[]).includes(step.id)
+  )
+);
+
+/** Which phase a step belongs to, and how far into it the host is. `position` and
+ *  `total` are 1-based and phase-local — they are what the header counts. */
+export function listingPhaseAt(stepIndex: number) {
+  const index = normalizeListingStep(stepIndex);
+  const phaseIndex = Math.max(0, PHASE_INDEX_BY_STEP[index] ?? 0);
+  const phase = LISTING_PHASES[phaseIndex];
+  const position =
+    (phase.steps as readonly string[]).indexOf(LISTING_STEPS[index].id) + 1;
+  return {
+    phase,
+    phaseIndex,
+    position: Math.max(1, position),
+    total: phase.steps.length,
+    phaseCount: LISTING_PHASES.length,
+  };
+}
+
 export function normalizeListingStep(value: unknown) {
   const parsed =
     typeof value === "number"

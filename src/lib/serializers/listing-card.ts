@@ -41,6 +41,10 @@ export type ListingCardSerialized = {
     createdAt: string;
   }[];
   priceOverrides: { date: string; rate: number }[];
+  /** Lowest and highest bookable nightly rate over the next year, for the card's
+   * dateless state. Null when the listing has no pricing rule or nothing open to book;
+   * equal min and max mean a listing that charges one rate all year. */
+  nightlyRange: { min: number; max: number } | null;
 };
 
 /** Looks up each listing's first VIDEO media item in one query, keyed by listing id —
@@ -118,6 +122,7 @@ export function serializeListingCard(
   listing: ListingForCard,
   videoUrl?: string | null,
   priceOverrides: { date: string; rate: number }[] = [],
+  nightlyRange: { min: number; max: number } | null = null,
 ): ListingCardSerialized {
   return {
     id: listing.id,
@@ -160,5 +165,6 @@ export function serializeListingCard(
       createdAt: promotion.createdAt.toISOString(),
     })),
     priceOverrides,
+    nightlyRange,
   };
 }

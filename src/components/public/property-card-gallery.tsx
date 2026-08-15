@@ -45,15 +45,20 @@ export function PropertyCardGallery({
   const [hasBrowsedPhotos, setHasBrowsedPhotos] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  // The video is a preview of the *cover*, so browsing photos during a hover retires
+  // it — otherwise it keeps covering the photo layer and the arrows look like they
+  // just replay the video. Cleared on mouse leave, so the next hover previews again.
+  const [videoDismissed, setVideoDismissed] = useState(false);
   const [, startTransition] = useTransition();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const showVideo = Boolean(videoUrl) && isHovering && !videoDismissed;
 
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
 
     let cancelled = false;
-    if (!isHovering) {
+    if (!showVideo) {
       el.pause();
       el.currentTime = 0;
       return;
@@ -74,7 +79,7 @@ export function PropertyCardGallery({
     return () => {
       cancelled = true;
     };
-  }, [isHovering, videoUrl]);
+  }, [showVideo, videoUrl]);
 
   const safeIndex = Math.min(currentImageIndex, Math.max(0, images.length - 1));
   const cover = images[safeIndex];
@@ -82,6 +87,7 @@ export function PropertyCardGallery({
 
   function goToImage(updater: (prev: number) => number) {
     setHasBrowsedPhotos(true);
+    setVideoDismissed(true);
     setCurrentImageIndex(updater);
   }
 
@@ -136,11 +142,13 @@ export function PropertyCardGallery({
       onTouchEnd={hasMultiple ? swipe.onTouchEnd : undefined}
       onMouseEnter={() => {
         setIsVideoPlaying(false);
+        setVideoDismissed(false);
         setIsHovering(true);
       }}
       onMouseLeave={() => {
         setIsHovering(false);
         setIsVideoPlaying(false);
+        setVideoDismissed(false);
       }}
     >
       <a href={href} className="absolute inset-0 z-0">
@@ -164,10 +172,10 @@ export function PropertyCardGallery({
           the upload route can't serve byte ranges, even `preload="metadata"` pulled
           whole files through the server. Touch devices never hover, so they now skip
           video previews entirely rather than downloading one per card. */}
-      {videoUrl && isHovering && (
+      {showVideo && (
         <video
           ref={videoRef}
-          src={videoUrl}
+          src={videoUrl ?? undefined}
           muted
           loop
           playsInline
@@ -177,7 +185,7 @@ export function PropertyCardGallery({
           onError={() => setIsVideoPlaying(false)}
           className={cn(
             "pointer-events-none absolute inset-0 z-[1] h-full w-full object-cover transition-opacity duration-300",
-            isHovering && isVideoPlaying ? "opacity-100" : "opacity-0"
+            isVideoPlaying ? "opacity-100" : "opacity-0"
           )}
         />
       )}

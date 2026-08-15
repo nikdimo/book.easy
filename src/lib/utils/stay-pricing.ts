@@ -1,4 +1,4 @@
-import { format, eachDayOfInterval, addDays } from "date-fns";
+import { format, eachDayOfInterval, addDays, startOfDay } from "date-fns";
 
 export function parseLocalYmd(ymd: string): Date {
   const [y, m, d] = ymd.split("-").map(Number);
@@ -54,6 +54,50 @@ export function computeStayPricing(
     averageNightly: n > 0 ? subtotal / n : 0,
     nightlyBreakdown,
   };
+}
+
+export interface NightlyRateRange {
+  min: number;
+  max: number;
+}
+
+/**
+ * The span of nightly rates a guest could actually book, used wherever a listing is
+ * shown without dates. Only bookable nights count: a blocked night's rate is not on
+ * offer, so including it would advertise a price the calendar refuses to sell. Nights
+ * the host never overrode contribute the base rate, which is what they would be sold
+ * at.
+ */
+export function computeNightlyRateRange({
+  baseNightly,
+  overrides,
+  blockedRanges,
+  from,
+  to,
+}: {
+  baseNightly: number;
+  overrides: Map<string, number>;
+  /** Inclusive day ranges the calendar refuses — same shape the pickers consume. */
+  blockedRanges: { from: Date; to: Date }[];
+  from: Date;
+  to: Date;
+}): NightlyRateRange | null {
+  const blocked = blockedRanges.map((range) => ({
+    from: dateKey(range.from),
+    to: dateKey(range.to),
+  }));
+  let min = Number.POSITIVE_INFINITY;
+  let max = Number.NEGATIVE_INFINITY;
+
+  for (const day of eachDayOfInterval({ start: from, end: to })) {
+    const key = dateKey(day);
+    if (blocked.some((range) => key >= range.from && key <= range.to)) continue;
+    const rate = overrides.get(key) ?? baseNightly;
+    if (rate < min) min = rate;
+    if (rate > max) max = rate;
+  }
+
+  return Number.isFinite(min) ? { min, max } : null;
 }
 
 export type StayPromotion = {
@@ -119,6 +163,66 @@ export function selectApplicablePromotion(
   });
 
   return eligible[0] ?? null;
+}
+
+/**
+ * What a single calendar day costs, and what it would have cost without a promotion.
+ *
+ * Only offers that apply to *any* stay length are reflected here. A "7+ nights" promo
+ * is not a price this day can be booked at on its own, so striking through the rate on
+ * the cell would advertise a discount most selections never qualify for — those stay
+ * with the badge, which states their condition. `computeStayQuote` remains the only
+ * thing that prices an actual stay; this never feeds a total.
+ */
+export function computeDayRate({
+  baseNightly,
+  overrides,
+  day,
+  promotions = [],
+}: {
+  baseNightly: number;
+  overrides: Map<string, number>;
+  day: Date;
+  promotions?: StayPromotion[];
+}): { rate: number; originalRate: number | null } {
+  const original = overrides.get(dateKey(day)) ?? baseNightly;
+  const target = startOfDay(day);
+
+  const percentOff = promotions.reduce((best, promotion) => {
+    const percent = promotion.discountPercent ?? 0;
+    if (percent <= 0) return best;
+    if ((promotion.minimumNights ?? 1) > 1) return best;
+
+    const startDate = promotionDate(promotion.startDate);
+    const endDate = promotionDate(promotion.endDate);
+    // Mirrors selectApplicablePromotion: undated offers always apply, a half-dated
+    // one never does, and a dated one only inside its own window.
+    if (startDate || endDate) {
+      if (!startDate || !endDate) return best;
+      if (target < startOfDay(startDate) || target > startOfDay(endDate)) {
+        return best;
+      }
+    }
+
+    return percent > best.percent
+      ? { percent, roundToWholeUnit: Boolean(promotion.roundToWholeUnit) }
+      : best;
+  }, { percent: 0, roundToWholeUnit: false });
+
+  if (percentOff.percent <= 0) return { rate: original, originalRate: null };
+
+  const originalCents = toCents(original);
+  const discountedCents = Math.round(
+    (originalCents * (100 - percentOff.percent)) / 100,
+  );
+  // Same rounding computeStayQuote bills at, so the cell and the quote agree.
+  const chargedCents = percentOff.roundToWholeUnit
+    ? Math.min(originalCents, Math.round(discountedCents / 100) * 100)
+    : discountedCents;
+
+  return chargedCents < originalCents
+    ? { rate: fromCents(chargedCents), originalRate: original }
+    : { rate: original, originalRate: null };
 }
 
 export function toCents(amount: number): number {

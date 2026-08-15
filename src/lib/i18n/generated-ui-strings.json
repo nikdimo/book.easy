@@ -4680,6 +4680,11 @@
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
+    "key": "host.form.phase_counter",
+    "sourceText": "{phase} · {current} of {total}",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
     "key": "host.form.photos_section",
     "sourceText": "Photos and videos",
     "filePath": "src/components/host/listing-form.tsx"
@@ -4975,11 +4980,6 @@
     "filePath": "src/components/host/listing-stay-times.tsx"
   },
   {
-    "key": "host.form.step_counter",
-    "sourceText": "Step {current} of {total}: {title}",
-    "filePath": "src/components/host/listing-form.tsx"
-  },
-  {
     "key": "host.form.steps_hint",
     "sourceText": "Jump to any part of your listing. Your draft is saved automatically.",
     "filePath": "src/components/host/listing-form.tsx"
@@ -5070,6 +5070,11 @@
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
+    "key": "host.import.collapse",
+    "sourceText": "Close import",
+    "filePath": "src/components/host/listing-import-panel.tsx"
+  },
+  {
     "key": "host.import.current_airbnb_rate",
     "sourceText": "Current Airbnb rate",
     "filePath": "src/components/host/listing-form.tsx"
@@ -5147,6 +5152,11 @@
   {
     "key": "host.import.title",
     "sourceText": "Import an existing listing",
+    "filePath": "src/components/host/listing-import-panel.tsx"
+  },
+  {
+    "key": "host.import.trigger",
+    "sourceText": "Already listed elsewhere? Import it from a link",
     "filePath": "src/components/host/listing-import-panel.tsx"
   },
   {
@@ -8542,22 +8552,52 @@
   {
     "key": "promotion.free_cleaning_min_nights",
     "sourceText": "Free cleaning · {n}+ nights",
-    "filePath": "src/components/public/booking-widget.tsx"
+    "filePath": "src/components/public/promotion-label.ts"
   },
   {
     "key": "promotion.percent_min_nights",
     "sourceText": "{percent}% off · {n}+ nights",
-    "filePath": "src/components/public/booking-widget.tsx"
+    "filePath": "src/components/public/promotion-label.ts"
   },
   {
     "key": "promotion.percent_off",
     "sourceText": "{percent}% off",
-    "filePath": "src/components/public/booking-widget.tsx"
+    "filePath": "src/components/public/promotion-label.ts"
   },
   {
     "key": "promotion.special_offer",
     "sourceText": "Special offer",
     "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+  },
+  {
+    "key": "promotion.special_offers.few",
+    "sourceText": "Special offers",
+    "filePath": "src/components/public/listing-availability-calendar.tsx"
+  },
+  {
+    "key": "promotion.special_offers.many",
+    "sourceText": "Special offers",
+    "filePath": "src/components/public/listing-availability-calendar.tsx"
+  },
+  {
+    "key": "promotion.special_offers.one",
+    "sourceText": "Special offer",
+    "filePath": "src/components/public/listing-availability-calendar.tsx"
+  },
+  {
+    "key": "promotion.special_offers.other",
+    "sourceText": "Special offers",
+    "filePath": "src/components/public/listing-availability-calendar.tsx"
+  },
+  {
+    "key": "promotion.special_offers.two",
+    "sourceText": "Special offers",
+    "filePath": "src/components/public/listing-availability-calendar.tsx"
+  },
+  {
+    "key": "promotion.special_offers.zero",
+    "sourceText": "Special offers",
+    "filePath": "src/components/public/listing-availability-calendar.tsx"
   },
   {
     "key": "properties.add_dates_to_see_more",

@@ -246,6 +246,20 @@ export default async function ListingDetailPage({
       placeName={listing.property.city}
       minNights={listing.pricingRule.minNights}
       disabledDateRanges={disabledDateRanges}
+      baseNightlyRate={Number(listing.pricingRule.baseNightlyRate)}
+      currency={listing.pricingRule.currency}
+      priceOverrides={priceOverrides}
+      promotions={listing.promotions.map((promotion) => ({
+        id: promotion.id,
+        type: promotion.type,
+        discountPercent: promotion.discountPercent,
+        minimumNights: promotion.minimumNights,
+        freeCleaning: promotion.freeCleaning,
+        roundToWholeUnit: promotion.roundToWholeUnit,
+        startDate: promotion.startDate,
+        endDate: promotion.endDate,
+        createdAt: promotion.createdAt,
+      }))}
     />
   ) : null;
 

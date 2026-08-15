@@ -72,7 +72,7 @@ function TimeSelect({
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
           id={id}
-          className="mt-1.5 flex h-11 w-full items-center justify-between rounded-md border border-input bg-background px-3 text-left text-sm shadow-xs transition-colors hover:border-primary/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          className="mt-1.5 flex h-11 w-full items-center justify-between rounded-md border border-input bg-card px-3 text-left text-sm shadow-xs transition-colors hover:border-primary/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         >
           <span className={cn("flex items-center gap-2", value === "" && "text-muted-foreground")}>
             <Clock3 className="size-4 text-primary" aria-hidden="true" />

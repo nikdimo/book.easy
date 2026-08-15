@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { addMonths, startOfDay } from "date-fns";
 import {
+  computeNightlyRateRange,
   computeStayQuote,
   parseLocalYmd,
   type StayPromotion,
@@ -34,7 +36,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { Resolved } from "@/lib/i18n/t";
-import { interpolate, Tx, useI18n } from "@/lib/i18n/client";
+import { Tx, useI18n } from "@/lib/i18n/client";
+import { useListingDayPrices } from "./use-listing-day-prices";
+import { resolvePromotionLabel } from "./promotion-label";
 import { useListingStayRange } from "./listing-stay-context";
 
 interface BookingWidgetProps {
@@ -64,6 +68,9 @@ type GuestDetails = {
   pets: number;
 };
 
+/** Matches the horizon the card grid ranges over (pricing.service.ts), so the same
+ * listing quotes the same span in search results and on its own page. */
+const RATE_RANGE_HORIZON_MONTHS = 12;
 const BOOKINGS_UNAVAILABLE_KEY = "mobile.bookings.unavailable";
 const BOOKINGS_UNAVAILABLE_SOURCE = "Bookings unavailable";
 
@@ -124,6 +131,12 @@ export function BookingWidget({
   reserveTooltip,
 }: BookingWidgetProps) {
   const i18n = useI18n();
+  const dayPrice = useListingDayPrices({
+    baseNightlyRate: nightlyRate,
+    currency,
+    priceOverrides,
+    promotions,
+  });
   const { data: session } = useSession();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -216,6 +229,21 @@ export function BookingWidget({
   // Once dates are picked the headline rate is the stay's own average rather
   // than the base rate, because the nights it covers may each be priced apart.
   const hasStayQuote = nights > 0 && stayPricing !== null;
+  // Before that, the headline spans what the listing actually charges across the year.
+  // Same overrides and blocked days the calendar below is already working from, so no
+  // extra payload — and a flat-rate listing collapses back to one number.
+  const rateRange = useMemo(() => {
+    if (hasStayQuote) return null;
+    const from = startOfDay(new Date());
+    const range = computeNightlyRateRange({
+      baseNightly: nightlyRate,
+      overrides: overrideMap,
+      blockedRanges: disabledDateRanges,
+      from,
+      to: addMonths(from, RATE_RANGE_HORIZON_MONTHS),
+    });
+    return range && range.max > range.min ? range : null;
+  }, [hasStayQuote, nightlyRate, overrideMap, disabledDateRanges]);
 
   const guests = guestDetails.adults + guestDetails.children;
   const guestParts = [
@@ -317,30 +345,7 @@ export function BookingWidget({
   const bookingMessageIsError = Boolean(bookingMessage);
   const appliedPromotion = stayPricing?.appliedPromotion ?? null;
   const promotionLabel = appliedPromotion
-    ? (appliedPromotion.discountPercent ?? 0) > 0
-      ? appliedPromotion.minimumNights
-        ? interpolate(
-            i18n.resolve(
-              "promotion.percent_min_nights",
-              "{percent}% off · {n}+ nights",
-            ),
-            {
-              percent: appliedPromotion.discountPercent ?? 0,
-              n: appliedPromotion.minimumNights,
-            },
-          )
-        : interpolate(i18n.resolve("promotion.percent_off", "{percent}% off"), {
-            percent: appliedPromotion.discountPercent ?? 0,
-          })
-      : appliedPromotion.minimumNights
-        ? interpolate(
-            i18n.resolve(
-              "promotion.free_cleaning_min_nights",
-              "Free cleaning · {n}+ nights",
-            ),
-            { n: appliedPromotion.minimumNights },
-          )
-        : i18n.resolve("promotion.free_cleaning", "Free cleaning")
+    ? resolvePromotionLabel(i18n, appliedPromotion)
     : null;
 
   /**
@@ -674,13 +679,26 @@ export function BookingWidget({
                 </span>
               </button>
             ) : (
-              <div className="flex items-baseline gap-1">
+              <div className="flex flex-wrap items-baseline gap-1">
                 <LocalizedPrice
-                  amount={nightlyRate}
+                  amount={rateRange ? rateRange.min : nightlyRate}
                   currency={currency}
                   locale={i18n.locale}
                   className="text-2xl font-semibold"
                 />
+                {rateRange ? (
+                  <>
+                    <span className="text-2xl font-semibold" aria-hidden="true">
+                      –
+                    </span>
+                    <LocalizedPrice
+                      amount={rateRange.max}
+                      currency={currency}
+                      locale={i18n.locale}
+                      className="text-2xl font-semibold"
+                    />
+                  </>
+                ) : null}
                 <span className="text-base font-normal text-muted-foreground">
                   / <Tx k="property_card.per_night" source="night" />
                 </span>
@@ -730,6 +748,7 @@ export function BookingWidget({
                 dateFlexibility={dateFlexibility}
                 showDateFlexibility
                 onDateFlexibilityChange={setDateFlexibility}
+                dayMeta={dayPrice}
                 initialStep={pickerStep}
                 onStepChange={(step) => {
                   // Reaching the guests step is the confirmation — the counts are
@@ -984,10 +1003,20 @@ export function BookingWidget({
               <>
                 <span className="flex items-baseline gap-1 text-base font-semibold">
                   <LocalizedPrice
-                    amount={nightlyRate}
+                    amount={rateRange ? rateRange.min : nightlyRate}
                     currency={currency}
                     locale={i18n.locale}
                   />
+                  {rateRange ? (
+                    <>
+                      <span aria-hidden="true">–</span>
+                      <LocalizedPrice
+                        amount={rateRange.max}
+                        currency={currency}
+                        locale={i18n.locale}
+                      />
+                    </>
+                  ) : null}
                   <span className="text-xs font-normal text-muted-foreground">
                     / <Tx k="property_card.per_night" source="night" />
                   </span>

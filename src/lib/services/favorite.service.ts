@@ -6,6 +6,7 @@ import {
   serializeListingCard,
   getFirstVideoUrlsByListingIds,
 } from "@/lib/serializers/listing-card";
+import { getNightlyRateRangesForListings } from "@/lib/services/pricing.service";
 
 /** Deduped per-request: many PropertyCards render in one page pass, and they all need
  *  the same user's favorite set — cache() collapses that to a single query per request
@@ -22,6 +23,28 @@ export async function getUserFavoriteListings(userId: string) {
     orderBy: { createdAt: "desc" },
   });
 
-  const videoUrls = await getFirstVideoUrlsByListingIds(favorites.map((f) => f.listing.id));
-  return favorites.map((f) => serializeListingCard(f.listing, videoUrls.get(f.listing.id)));
+  const listings = favorites.map((f) => f.listing);
+  const [videoUrls, nightlyRanges] = await Promise.all([
+    getFirstVideoUrlsByListingIds(listings.map((listing) => listing.id)),
+    getNightlyRateRangesForListings(
+      listings.flatMap((listing) =>
+        listing.pricingRule
+          ? [
+              {
+                id: listing.id,
+                baseNightlyRate: Number(listing.pricingRule.baseNightlyRate),
+              },
+            ]
+          : []
+      )
+    ),
+  ]);
+  return listings.map((listing) =>
+    serializeListingCard(
+      listing,
+      videoUrls.get(listing.id),
+      [],
+      nightlyRanges.get(listing.id) ?? null
+    )
+  );
 }

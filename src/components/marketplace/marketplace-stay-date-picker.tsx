@@ -128,6 +128,9 @@ type MarketplaceDayMeta = {
   // is not always a price. `isCustomPrice` stays as the marketplace-side shorthand
   // for the primary tone.
   sublabelTone?: "muted" | "primary" | "amber";
+  /** The price this night was struck down from, when a promotion applies to it. Set
+   * only where the discount holds for a stay of any length — see computeDayRate. */
+  sublabelOriginal?: string;
 };
 
 type DragCtx = {
@@ -773,6 +776,11 @@ function MarketplaceRangeDayButton({
     );
   }
 
+  // A guest cell shows its nightly price under the number. The host lens above owns
+  // its own sublabel row; this is the same idea sized for the smaller guest cell,
+  // which is why it re-lays the button out instead of sharing that branch.
+  const priceLabel = meta?.sublabel ? meta : undefined;
+
   return withMinimumStayHint(
     <Button
       {...rest}
@@ -786,7 +794,10 @@ function MarketplaceRangeDayButton({
       aria-disabled={block ? true : rest["aria-disabled"]}
       tabIndex={block ? -1 : rest.tabIndex}
       className={cn(
-        "group/date relative z-10 flex aspect-square size-auto w-full min-w-(--cell-size) items-center justify-center border-0 bg-transparent font-normal leading-none shadow-none outline-none",
+        "group/date relative z-10 flex size-auto w-full min-w-(--cell-size) items-center justify-center border-0 bg-transparent font-normal leading-none shadow-none outline-none",
+        priceLabel
+          ? "aspect-auto h-full flex-col justify-center gap-px px-0.5 py-0.5"
+          : "aspect-square",
         "text-foreground hover:bg-transparent hover:text-foreground",
         modifiers.outside &&
           "text-muted-foreground/40 hover:text-muted-foreground/50",
@@ -819,7 +830,11 @@ function MarketplaceRangeDayButton({
           // Sized off the cell height rather than filling the cell, so the circle stays
           // round on non-square cells, stands proud of the band it's centred on, and
           // leaves a gap between neighbouring days.
-          ctx?.paged && "md:size-auto md:aspect-square md:h-[86%]",
+          ctx?.paged && !priceLabel && "md:size-auto md:aspect-square md:h-[86%]",
+          // With a price beneath it the circle can no longer fill the cell, or it would
+          // push the price out of the row.
+          priceLabel &&
+            "size-7 shrink-0 text-sm md:size-8 md:aspect-square md:h-8",
           modifiers.unavailable && "line-through decoration-[1.5px]",
           marksCheckout &&
             !isEndpoint &&
@@ -835,6 +850,37 @@ function MarketplaceRangeDayButton({
       >
         {children}
       </span>
+      {priceLabel ? (
+        <span
+          className={cn(
+            "notranslate flex flex-col items-center leading-none",
+            // Booked and past days keep their price hidden: nothing about them is on
+            // sale, and a struck-through number next to a struck-through day reads as
+            // a discount.
+            (modifiers.disabled || modifiers.unavailable) && "opacity-0",
+          )}
+          translate="no"
+          suppressHydrationWarning
+        >
+          {priceLabel.sublabelOriginal ? (
+            <span className="text-[0.5rem] text-muted-foreground line-through md:text-[0.55rem]">
+              {priceLabel.sublabelOriginal}
+            </span>
+          ) : null}
+          <span
+            className={cn(
+              "text-[0.55rem] md:text-[0.62rem]",
+              priceLabel.sublabelOriginal
+                ? "font-semibold text-green-700"
+                : priceLabel.isCustomPrice
+                  ? "font-semibold text-foreground"
+                  : "text-muted-foreground",
+            )}
+          >
+            {priceLabel.sublabel}
+          </span>
+        </span>
+      ) : null}
     </Button>,
   );
 }
@@ -1492,6 +1538,9 @@ export function DateRangeCalendarStep({
     [beginDrag],
   );
 
+  /** The guest cell only grows for prices; the host lens has its own sublabel row. */
+  const showsDayPrices = dayVariant !== "availability" && Boolean(dayMeta);
+
   const dragCtx = React.useMemo<DragCtx>(
     () => ({
       hasRange,
@@ -1722,9 +1771,13 @@ export function DateRangeCalendarStep({
               "mx-auto bg-transparent p-0",
               dayVariant === "availability"
                 ? "[--cell-size:3rem] md:[--cell-size:3.25rem]"
-                : pagedCalendar
-                  ? "[--cell-size:2.15rem] md:[--cell-size:2.4rem]"
-                  : "[--cell-size:2.15rem] md:[--cell-size:2.8rem]",
+                : // A priced cell stacks a number, a price and sometimes the price it
+                  // was struck down from, so it needs the room the bare day never did.
+                  showsDayPrices
+                  ? "[--cell-size:3.1rem] md:[--cell-size:3.4rem]"
+                  : pagedCalendar
+                    ? "[--cell-size:2.15rem] md:[--cell-size:2.4rem]"
+                    : "[--cell-size:2.15rem] md:[--cell-size:2.8rem]",
             )}
             classNames={{
               root: "mx-auto w-full",
@@ -1779,9 +1832,17 @@ export function DateRangeCalendarStep({
               day: cn(
                 dayVariant === "availability"
                   ? "group/day relative h-[3.2rem] min-w-0 flex-1 p-0 text-center md:h-[3.6rem] md:w-[3.25rem] md:flex-none"
-                  : pagedCalendar
-                    ? "group/day relative h-[2.6rem] min-w-0 flex-1 p-0 text-center md:h-auto md:aspect-[62/64]"
-                    : "group/day relative h-[2.2rem] min-w-0 flex-1 p-0 text-center md:h-11 md:w-11 md:flex-none",
+                  : // Room for three stacked lines — day number, the price, and the
+                    // price it was struck down from — at every width, since the cell
+                    // height here is what actually sizes the row.
+                    showsDayPrices
+                    ? cn(
+                        "group/day relative h-[3.25rem] min-w-0 flex-1 p-0 text-center md:h-[3.75rem]",
+                        !pagedCalendar && "md:w-14 md:flex-none",
+                      )
+                    : pagedCalendar
+                      ? "group/day relative h-[2.6rem] min-w-0 flex-1 p-0 text-center md:h-auto md:aspect-[62/64]"
+                      : "group/day relative h-[2.2rem] min-w-0 flex-1 p-0 text-center md:h-11 md:w-11 md:flex-none",
                 // A range that wraps onto the next week gets a rounded cap at each row
                 // edge, so Saturday closes the band and Sunday reopens it instead of the
                 // whole selection reading as one fused blob.

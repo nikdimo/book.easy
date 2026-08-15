@@ -64,15 +64,31 @@ const PUBLIC_AVAILABILITY_HORIZON_MONTHS = 18;
 export async function getBlockedDateRangesForListing(
   listingId: string
 ): Promise<BlockedDateRange[]> {
+  const byListing = await getBlockedDateRangesForListings([listingId]);
+  return byListing.get(listingId) ?? [];
+}
+
+/**
+ * The same blocked ranges for many listings at once. A card grid needs availability for
+ * every listing on the page, and the per-listing query would make that two round trips
+ * per card.
+ */
+export async function getBlockedDateRangesForListings(
+  listingIds: string[]
+): Promise<Map<string, BlockedDateRange[]>> {
+  const byListing = new Map<string, BlockedDateRange[]>();
+  if (listingIds.length === 0) return byListing;
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const horizon = new Date(today);
   horizon.setMonth(horizon.getMonth() + PUBLIC_AVAILABILITY_HORIZON_MONTHS);
 
-  const [listing, blocks] = await Promise.all([
-    db.listing.findUnique({
-      where: { id: listingId },
+  const [listings, blocks] = await Promise.all([
+    db.listing.findMany({
+      where: { id: { in: listingIds } },
       select: {
+        id: true,
         availabilityMode: true,
         availabilityWindows: {
           where: { startDate: { lt: horizon }, endDate: { gt: today } },
@@ -83,31 +99,43 @@ export async function getBlockedDateRangesForListing(
     }),
     db.availabilityBlock.findMany({
       where: {
-        listingId,
+        listingId: { in: listingIds },
         startDate: { lt: horizon },
         endDate: { gt: today },
       },
-      select: { startDate: true, endDate: true },
+      select: { listingId: true, startDate: true, endDate: true },
       orderBy: { startDate: "asc" },
     }),
   ]);
 
-  const result = blocks.map((block) => ({
-    from: block.startDate < today ? today : block.startDate,
-    to: block.endDate > horizon ? horizon : addDays(block.endDate, -1),
-  }));
+  for (const listing of listings) {
+    const result = blocks
+      .filter((block) => block.listingId === listing.id)
+      .map((block) => ({
+        from: block.startDate < today ? today : block.startDate,
+        to: block.endDate > horizon ? horizon : addDays(block.endDate, -1),
+      }));
 
-  if (listing?.availabilityMode !== "CLOSED") return result;
+    if (listing.availabilityMode !== "CLOSED") {
+      byListing.set(listing.id, result);
+      continue;
+    }
 
-  // The guest calendar consumes blocked ranges, so complement explicit open windows
-  // inside its bounded horizon. Booking enforcement above remains unbounded.
-  let cursor = today;
-  for (const window of listing.availabilityWindows) {
-    const start = window.startDate < today ? today : window.startDate;
-    const end = window.endDate > horizon ? horizon : window.endDate;
-    if (start > cursor) result.push({ from: cursor, to: addDays(start, -1) });
-    if (end > cursor) cursor = end;
+    // The guest calendar consumes blocked ranges, so complement explicit open windows
+    // inside its bounded horizon. Booking enforcement above remains unbounded.
+    let cursor = today;
+    for (const window of listing.availabilityWindows) {
+      const start = window.startDate < today ? today : window.startDate;
+      const end = window.endDate > horizon ? horizon : window.endDate;
+      if (start > cursor) result.push({ from: cursor, to: addDays(start, -1) });
+      if (end > cursor) cursor = end;
+    }
+    if (cursor < horizon) result.push({ from: cursor, to: horizon });
+    byListing.set(
+      listing.id,
+      result.sort((a, b) => a.from.getTime() - b.from.getTime())
+    );
   }
-  if (cursor < horizon) result.push({ from: cursor, to: horizon });
-  return result.sort((a, b) => a.from.getTime() - b.from.getTime());
+
+  return byListing;
 }

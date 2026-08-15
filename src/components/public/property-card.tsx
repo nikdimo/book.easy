@@ -41,6 +41,9 @@ interface PropertyCardProps {
     } | null;
     promotions?: StayPromotion[];
     priceOverrides?: { date: string; rate: number }[];
+    /** Bookable nightly rates over the next year — shown as a span when the guest has
+     * not picked dates yet. */
+    nightlyRange?: { min: number; max: number } | null;
   };
   /** When set with checkOut, card shows trip dates and total price (Airbnb-style). */
   checkIn?: string;
@@ -97,6 +100,12 @@ export async function PropertyCard({
     `${formatDateShort(parseISO(checkIn!), t.locale)} – ${formatDateShort(parseISO(checkOut!), t.locale)}`;
 
   const nightly = pricingRule ? Number(pricingRule.baseNightlyRate) : 0;
+  // A listing that charges one rate all year has nothing to span, so it keeps the
+  // single price rather than printing the same number twice.
+  const rateRange =
+    listing.nightlyRange && listing.nightlyRange.max > listing.nightlyRange.min
+      ? listing.nightlyRange
+      : null;
   const quote =
     showTrip && pricingRule
       ? computeStayQuote({
@@ -148,10 +157,14 @@ export async function PropertyCard({
           price: price.format(tripTotal, pricingRule.currency).text,
         })
       : null;
+  // The stay's own average, not the base rate: the total beside it already reflects
+  // custom nightly rates and any promotion, so quoting the base rate here would print
+  // two numbers that don't multiply out.
   const nightlyPrice =
-    pricingRule && tripTotal != null
+    pricingRule && quote && tripTotal != null
       ? ti(t, "property_card.price_per_night", "{price} per night", {
-          price: price.format(nightly, pricingRule.currency).text,
+          price: price.format(quote.effectiveAverageNightly, pricingRule.currency)
+            .text,
         })
       : null;
   const originalTotalPrice =
@@ -301,11 +314,27 @@ export async function PropertyCard({
             <span aria-hidden="true">·</span>
             <span className="flex shrink-0 items-baseline gap-1">
               <LocalizedPrice
-                amount={nightly}
+                amount={rateRange ? rateRange.min : nightly}
                 currency={pricingRule.currency}
                 locale={t.locale}
                 className="text-[0.95rem] font-semibold text-foreground"
               />
+              {rateRange ? (
+                <>
+                  <span
+                    className="text-[0.95rem] font-semibold text-foreground"
+                    aria-hidden="true"
+                  >
+                    –
+                  </span>
+                  <LocalizedPrice
+                    amount={rateRange.max}
+                    currency={pricingRule.currency}
+                    locale={t.locale}
+                    className="text-[0.95rem] font-semibold text-foreground"
+                  />
+                </>
+              ) : null}
               <span className="text-[0.9rem] text-muted-foreground">
                 <T t={t} k="property_card.per_night" source="night" />
               </span>

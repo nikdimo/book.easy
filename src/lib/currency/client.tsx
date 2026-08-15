@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 import {
+  convertAmount,
   displayPrice,
   formatMoney,
   type ConversionContext,
@@ -18,6 +19,11 @@ interface DisplayCurrencyValue {
   ratesUpdatedAt: string | null;
   stale: boolean;
   format(amount: number | string, officialCurrency: string): DisplayPrice;
+  /** The converted number without any formatting, for the few places that must lay a
+   * price out themselves — a calendar cell drops the symbol to fit seven of them
+   * across a phone. Null where `format` would have fallen back to the official
+   * amount, so callers render that instead. */
+  convert(amount: number, officialCurrency: string): number | null;
 }
 
 /**
@@ -40,6 +46,7 @@ const FALLBACK: DisplayCurrencyValue = {
     currency: officialCurrency,
     converted: false,
   }),
+  convert: () => null,
 };
 
 const DisplayCurrencyContext = createContext<DisplayCurrencyValue>(FALLBACK);
@@ -81,6 +88,10 @@ export function DisplayCurrencyProvider({
           locale,
           context,
         ),
+      convert: (amount, officialCurrency) =>
+        context && context.display !== officialCurrency
+          ? convertAmount(amount, officialCurrency, context)
+          : null,
     }),
     [currency, locale, context, ratesUpdatedAt, stale],
   );
