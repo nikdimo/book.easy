@@ -1,18 +1,16 @@
 "use server";
 
 import {
-  blockAllFutureDates,
-  blockDates,
-  closeAvailabilityWindowRange,
-  makeAllFutureDatesAvailable,
-  openAvailabilityWindowRange,
   removeListingDatePriceRange,
-  unblockDateRange,
   upsertListingDatePriceRange,
   setListingAvailabilityMode,
 } from "@/lib/actions/availability.actions";
 import { submitForReview, unpublishListing } from "@/lib/actions/listing.actions";
-import { db } from "@/lib/db";
+import { auth } from "@/lib/auth";
+import {
+  mutateAvailabilityForManagedListing,
+  verifyAvailabilityManager,
+} from "@/lib/services/availability-mutation.service";
 import { saveListingPricing } from "@/lib/actions/pricing.actions";
 import {
   disableListingPromotion,
@@ -44,6 +42,16 @@ function rangeFormData(
   return formData;
 }
 
+async function managedCalendarListing(listingId: string) {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Not authorized" as const };
+  const listing = await verifyAvailabilityManager(
+    { id: session.user.id, role: session.user.role },
+    listingId,
+  );
+  return listing ? { listing } : { error: "Listing not found" as const };
+}
+
 export async function setCalendarDatePrice(
   listingId: string,
   input: { startDate: string; endDate: string; nightlyRate: number },
@@ -66,46 +74,63 @@ export async function clearCalendarDatePrice(
 
 export async function blockCalendarRange(
   listingId: string,
-  input: { startDate: string; endDate: string; reason?: string },
+  input: { startDate: string; endDate: string; reason?: string | null },
 ) {
-  const formData = rangeFormData(listingId, input);
-  const listing = await db.listing.findUnique({
-    where: { id: listingId },
-    select: { availabilityMode: true },
-  });
-  if (listing?.availabilityMode === "CLOSED") {
-    const result = await closeAvailabilityWindowRange(formData);
-    return normalizedResult(result, "Dates closed.");
-  }
-  if (input.reason) formData.set("reason", input.reason);
-  const result = await blockDates(formData);
-  return normalizedResult(result, "Dates blocked.");
+  const managed = await managedCalendarListing(listingId);
+  if ("error" in managed) return { error: managed.error };
+  const result = await mutateAvailabilityForManagedListing(
+    managed.listing,
+    "BLOCK_RANGE",
+    input,
+  );
+  return normalizedResult(
+    result,
+    managed.listing.availabilityMode === "CLOSED" ? "Dates closed." : "Dates blocked.",
+  );
 }
 
 export async function openCalendarRange(
   listingId: string,
   input: { startDate: string; endDate: string },
 ) {
-  const formData = rangeFormData(listingId, input);
-  const listing = await db.listing.findUnique({
-    where: { id: listingId },
-    select: { availabilityMode: true },
-  });
-  const result =
-    listing?.availabilityMode === "CLOSED"
-      ? await openAvailabilityWindowRange(formData)
-      : await unblockDateRange(formData);
+  const managed = await managedCalendarListing(listingId);
+  if ("error" in managed) return { error: managed.error };
+  const result = await mutateAvailabilityForManagedListing(
+    managed.listing,
+    "OPEN_RANGE",
+    input,
+  );
   return normalizedResult(result, "Dates made available.");
 }
 
 export async function blockCalendarFuture(listingId: string) {
-  const result = await blockAllFutureDates(listingId);
-  return normalizedResult(result, "All future dates blocked.");
+  const managed = await managedCalendarListing(listingId);
+  if ("error" in managed) return { error: managed.error };
+  const result = await mutateAvailabilityForManagedListing(
+    managed.listing,
+    "BLOCK_FUTURE",
+  );
+  return normalizedResult(
+    result,
+    managed.listing.availabilityMode === "CLOSED"
+      ? "All future dates closed."
+      : "All future dates blocked.",
+  );
 }
 
 export async function openCalendarFuture(listingId: string) {
-  const result = await makeAllFutureDatesAvailable(listingId);
-  return normalizedResult(result, "All manual future blocks removed.");
+  const managed = await managedCalendarListing(listingId);
+  if ("error" in managed) return { error: managed.error };
+  const result = await mutateAvailabilityForManagedListing(
+    managed.listing,
+    "OPEN_FUTURE",
+  );
+  return normalizedResult(
+    result,
+    managed.listing.availabilityMode === "CLOSED"
+      ? "Future dates opened; bookings and calendar restrictions remain protected."
+      : "All manual future blocks removed.",
+  );
 }
 
 export async function setCalendarAvailabilityMode(

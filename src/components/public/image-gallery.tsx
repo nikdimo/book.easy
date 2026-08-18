@@ -1,13 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ChevronLeft, ChevronRight, Grid, X } from "lucide-react";
 import type { ListingMediaItem } from "@/lib/types/listing-media";
 import { cn } from "@/lib/utils";
 import { useSwipe } from "@/lib/hooks/use-swipe";
+import { usePhotoGestures } from "@/lib/hooks/use-photo-gestures";
 import { useProgressivePreload } from "@/lib/hooks/use-progressive-preload";
 import { Tx, useI18n } from "@/lib/i18n/client";
 
@@ -39,38 +40,91 @@ export function ImageGallery({ images }: ImageGalleryProps) {
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [heroIndex, setHeroIndex] = useState(0);
+  /** Whether the viewer was reached through the grid overview, so "back" can
+   * return where the visitor actually came from instead of always to the grid. */
+  const [cameFromGrid, setCameFromGrid] = useState(false);
+  /** Top bar and filmstrip, hidden after a moment on touch so the photo owns
+   * the whole screen. Tapping the photo brings them back. */
+  const [chromeVisible, setChromeVisible] = useState(true);
+  const filmstripRef = useRef<HTMLDivElement | null>(null);
+  const photoRef = useRef<HTMLDivElement | null>(null);
 
   const closeAll = () => {
     setGalleryOpen(false);
     setActiveIndex(null);
   };
 
-  // Keyboard navigation while viewing a single photo
+  const gestures = usePhotoGestures({
+    containerRef: photoRef,
+    onNext: () => showPhotoAt((i) => (i + 1) % images.length),
+    onPrev: () => showPhotoAt((i) => (i - 1 + images.length) % images.length),
+    onDismiss: closeAll,
+    onTap: () => setChromeVisible((visible) => !visible),
+  });
+  const { reset: resetZoom } = gestures;
+
+  /** Every photo change starts unzoomed, with the chrome briefly visible so the
+   * position counter and filmstrip are readable before they fade away. */
+  const showPhotoAt = useCallback(
+    (index: number | ((current: number) => number)) => {
+      setActiveIndex((current) =>
+        typeof index === "function" ? (current === null ? current : index(current)) : index
+      );
+      resetZoom();
+      setChromeVisible(true);
+    },
+    [resetZoom]
+  );
+
+  const showPhoto = (index: number, fromGrid: boolean) => {
+    setCameFromGrid(fromGrid);
+    setGalleryOpen(true);
+    showPhotoAt(index);
+  };
+
+  const goBack = () => (cameFromGrid ? setActiveIndex(null) : closeAll());
+
+  const nextPhoto = () => showPhotoAt((i) => (i + 1) % images.length);
+  const prevPhoto = () => showPhotoAt((i) => (i - 1 + images.length) % images.length);
+
+  // Keyboard navigation while viewing a single photo. Escape is left to the
+  // dialog itself, which closes the whole thing.
   useEffect(() => {
     if (activeIndex === null) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowLeft") {
-        setActiveIndex((i) => (i === null ? i : (i - 1 + images.length) % images.length));
+        showPhotoAt((i) => (i - 1 + images.length) % images.length);
       } else if (e.key === "ArrowRight") {
-        setActiveIndex((i) => (i === null ? i : (i + 1) % images.length));
-      } else if (e.key === "Escape") {
-        setActiveIndex(null);
+        showPhotoAt((i) => (i + 1) % images.length);
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activeIndex, images.length]);
+  }, [activeIndex, images.length, showPhotoAt]);
+
+  useEffect(() => {
+    if (activeIndex === null || !chromeVisible) return;
+    const timer = setTimeout(() => setChromeVisible(false), 3000);
+    return () => clearTimeout(timer);
+  }, [activeIndex, chromeVisible]);
+
+  // Keep the active thumbnail centred in the filmstrip as photos change.
+  useEffect(() => {
+    if (activeIndex === null) return;
+    const strip = filmstripRef.current;
+    const thumb = strip?.children[activeIndex] as HTMLElement | undefined;
+    if (!strip || !thumb) return;
+    strip.scrollTo({
+      left: thumb.offsetLeft - (strip.clientWidth - thumb.clientWidth) / 2,
+      behavior: "smooth",
+    });
+  }, [activeIndex]);
 
   const heroSwipe = useSwipe(
     () => setHeroIndex((i) => (i + 1) % Math.max(images.length, 1)),
     () => setHeroIndex((i) => (i - 1 + Math.max(images.length, 1)) % Math.max(images.length, 1))
-  );
-
-  const viewerSwipe = useSwipe(
-    () => setActiveIndex((i) => (i === null ? i : (i + 1) % images.length)),
-    () => setActiveIndex((i) => (i === null ? i : (i - 1 + images.length) % images.length))
   );
 
   // First 3 photos load eagerly up front; the rest stream in first-to-last in
@@ -94,7 +148,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
         {/* Mobile: swipeable single-photo carousel */}
         <div
           className="relative aspect-[4/3] cursor-pointer touch-pan-y md:hidden"
-          onClick={() => { setGalleryOpen(true); setActiveIndex(heroIndex); }}
+          onClick={() => showPhoto(heroIndex, false)}
           onClickCapture={heroSwipe.onClickCapture}
           onTouchStart={heroSwipe.onTouchStart}
           onTouchEnd={heroSwipe.onTouchEnd}
@@ -136,7 +190,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
               "relative cursor-pointer aspect-[4/3]",
               gridImages.length > 0 ? "md:col-span-2 md:row-span-2 md:aspect-auto" : "md:aspect-[16/9]"
             )}
-            onClick={() => { setGalleryOpen(true); setActiveIndex(0); }}
+            onClick={() => showPhoto(0, false)}
           >
             <GalleryMedia
               item={mainImage}
@@ -149,7 +203,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
             <div
               key={img.id}
               className="relative cursor-pointer aspect-[4/3]"
-              onClick={() => { setGalleryOpen(true); setActiveIndex(i + 1); }}
+              onClick={() => showPhoto(i + 1, false)}
             >
               <GalleryMedia item={img} fill sizes="25vw" />
             </div>
@@ -160,7 +214,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
             variant="outline"
             size="sm"
             className="absolute bottom-4 right-4 rounded-lg border border-black/60 bg-white px-3 py-1.5 text-[0.8rem] font-medium text-black shadow-sm hover:bg-white hover:text-black dark:bg-white dark:text-black dark:border-black/60"
-            onClick={() => { setGalleryOpen(true); setActiveIndex(null); }}
+            onClick={() => { setCameFromGrid(false); setGalleryOpen(true); setActiveIndex(null); }}
           >
             <Grid className="h-4 w-4 mr-2" />
             {(() => { const value = i18n.plural("gallery.show_all", images.length, "Show all {n} item", "Show all {n} items"); return <span className={value.translated ? "notranslate" : undefined}>{value.text}</span>; })()}
@@ -198,7 +252,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
                       key={img.id}
                       type="button"
                       className="relative aspect-square overflow-hidden rounded-lg ring-1 ring-black/5 transition hover:opacity-90"
-                      onClick={() => setActiveIndex(i)}
+                      onClick={() => showPhoto(i, true)}
                     >
                       <GalleryMedia item={img} fill sizes="(max-width: 640px) 50vw, 25vw" />
                     </button>
@@ -213,17 +267,54 @@ export function ImageGallery({ images }: ImageGalleryProps) {
               </div>
             </div>
           ) : (
-            /* Single photo viewer */
-            <div className="relative flex h-full min-w-0 w-full flex-col overflow-hidden bg-black">
-              <div className="absolute top-0 right-0 left-0 z-10 flex items-center justify-between bg-gradient-to-b from-black/60 to-transparent p-3 sm:p-4">
+            /* Single photo viewer — the photo owns the whole screen and every
+               control floats over it. */
+            <div className="relative h-full min-w-0 w-full overflow-hidden bg-black">
+              <div
+                ref={photoRef}
+                className="absolute inset-0 touch-none overflow-hidden"
+                onTouchStart={gestures.handlers.onTouchStart}
+                onTouchMove={gestures.handlers.onTouchMove}
+                onTouchEnd={gestures.handlers.onTouchEnd}
+              >
+                <div className="absolute inset-0" style={gestures.style}>
+                  <GalleryMedia
+                    item={images[activeIndex]}
+                    fill
+                    contain
+                    eager
+                    fetchPriority="high"
+                    sizes="100vw"
+                  />
+                </div>
+                <PreloadImages
+                  images={images}
+                  indices={preloadIndicesFor(activeIndex, loadedUpTo, images.length)}
+                  contain
+                />
+              </div>
+
+              <div
+                className={cn(
+                  "absolute top-0 right-0 left-0 z-10 flex items-center justify-between bg-gradient-to-b from-black/60 to-transparent p-3 transition-opacity duration-300 sm:p-4",
+                  chromeVisible ? "opacity-100" : "pointer-events-none opacity-0",
+                  "md:pointer-events-auto md:opacity-100"
+                )}
+              >
                 <Button
                   variant="ghost"
                   size="icon-sm"
                   className="text-white hover:bg-white/20"
-                  onClick={() => setActiveIndex(null)}
+                  onClick={goBack}
                 >
                   <ArrowLeft className="h-5 w-5" />
-                  <span className="sr-only"><Tx k="gallery.back_all" source="Back to all media" /></span>
+                  <span className="sr-only">
+                    {cameFromGrid ? (
+                      <Tx k="gallery.back_all" source="Back to all media" />
+                    ) : (
+                      <Tx k="gallery.back_property" source="Back to property" />
+                    )}
+                  </span>
                 </Button>
                 <span className="text-sm text-white">
                   {activeIndex + 1} / {images.length}
@@ -239,52 +330,40 @@ export function ImageGallery({ images }: ImageGalleryProps) {
                 </Button>
               </div>
 
-              <div
-                className="relative min-w-0 w-full flex-1 touch-pan-y overflow-hidden"
-                onTouchStart={viewerSwipe.onTouchStart}
-                onTouchEnd={viewerSwipe.onTouchEnd}
-              >
-                <GalleryMedia
-                  item={images[activeIndex]}
-                  fill
-                  contain
-                  eager
-                  fetchPriority="high"
-                  sizes="100vw"
-                />
-                <PreloadImages
-                  images={images}
-                  indices={preloadIndicesFor(activeIndex, loadedUpTo, images.length)}
-                  contain
-                />
-
-                {images.length > 1 && (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute top-1/2 left-2 -translate-y-1/2 text-white hover:bg-white/20"
-                      onClick={() => setActiveIndex((i) => (i === null ? i : (i - 1 + images.length) % images.length))}
-                    >
-                      <ChevronLeft className="h-6 w-6" />
-                      <span className="sr-only"><Tx k="gallery.previous" source="Previous photo" /></span>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute top-1/2 right-2 -translate-y-1/2 text-white hover:bg-white/20"
-                      onClick={() => setActiveIndex((i) => (i === null ? i : (i + 1) % images.length))}
-                    >
-                      <ChevronRight className="h-6 w-6" />
-                      <span className="sr-only"><Tx k="gallery.next" source="Next photo" /></span>
-                    </Button>
-                  </>
-                )}
-              </div>
-
-              {/* Filmstrip */}
+              {/* Arrows are pointer affordances only — on touch the photo is swiped. */}
               {images.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto bg-black/80 p-2 sm:p-3">
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-1/2 left-2 z-10 hidden -translate-y-1/2 text-white hover:bg-white/20 md:inline-flex"
+                    onClick={prevPhoto}
+                  >
+                    <ChevronLeft className="h-6 w-6" />
+                    <span className="sr-only"><Tx k="gallery.previous" source="Previous photo" /></span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-1/2 right-2 z-10 hidden -translate-y-1/2 text-white hover:bg-white/20 md:inline-flex"
+                    onClick={nextPhoto}
+                  >
+                    <ChevronRight className="h-6 w-6" />
+                    <span className="sr-only"><Tx k="gallery.next" source="Next photo" /></span>
+                  </Button>
+                </>
+              )}
+
+              {/* Filmstrip, scrolled to follow the photo on screen */}
+              {images.length > 1 && (
+                <div
+                  ref={filmstripRef}
+                  className={cn(
+                    "absolute right-0 bottom-0 left-0 z-10 flex gap-2 overflow-x-auto bg-gradient-to-t from-black/80 to-transparent p-2 transition-opacity duration-300 sm:p-3",
+                    chromeVisible ? "opacity-100" : "pointer-events-none opacity-0",
+                    "md:pointer-events-auto md:opacity-100"
+                  )}
+                >
                   {images.map((img, i) => (
                     <button
                       key={img.id}
@@ -293,7 +372,7 @@ export function ImageGallery({ images }: ImageGalleryProps) {
                         "relative h-14 w-14 shrink-0 overflow-hidden rounded-md ring-2 transition sm:h-16 sm:w-16",
                         i === activeIndex ? "ring-white" : "ring-transparent opacity-60 hover:opacity-100"
                       )}
-                      onClick={() => setActiveIndex(i)}
+                      onClick={() => showPhotoAt(i)}
                     >
                       <GalleryMedia item={img} fill sizes="64px" />
                     </button>

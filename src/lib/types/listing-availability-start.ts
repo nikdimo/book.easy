@@ -14,7 +14,12 @@
  * `{ startDate, endDate }` shapes instead of the plan's own types.
  */
 
-import { addDaysToYmd, compareYmd, todayYmd } from "@/lib/utils/date-only";
+import {
+  addDaysToYmd,
+  compareYmd,
+  dbDateToYmd,
+  todayYmd,
+} from "@/lib/utils/date-only";
 
 /** A calendar day as `YYYY-MM-DD`, matching the plan's civil-date convention: no
  *  timezone, so it cannot drift a day depending on where the host's browser is. */
@@ -32,6 +37,9 @@ export type AvailabilityStart =
  * publishing is refused until the host says which one it is.
  */
 export type AvailabilityStartChoice = AvailabilityStart | null;
+
+export const AVAILABILITY_START_BLOCK_REASON =
+  "Before the listing's availability start date";
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -174,4 +182,52 @@ export function availabilityBlocksPublish({
 }): boolean {
   if (isEditing) return false;
   return !validateAvailabilityStartForPublish(availabilityStart, today).ok;
+}
+
+/**
+ * Existing Listing rows predate the create wizard's persisted availability answer,
+ * so they cannot be passed through `validateAvailabilityStartForPublish` without
+ * inventing an answer the host never gave. This is the fail-closed bridge for those
+ * rows when an old DRAFT/REJECTED publish path is used.
+ *
+ * A previously published listing may be restored with its current calendar intact.
+ * A never-published listing is safe only when it is unavailable by default, or when
+ * it carries the named future-start protection created by the canonical wizard.
+ * Merely having an arbitrary manual block is not evidence that the host intentionally
+ * made every other future date bookable.
+ */
+export function validateStoredListingAvailabilityForPublish(
+  listing: {
+    availabilityMode: "OPEN" | "CLOSED";
+    publishedAt: Date | string | null;
+    availabilityBlocks: readonly {
+      startDate: Date | string;
+      endDate: Date | string;
+      reason: string | null;
+    }[];
+  },
+  now: Date = new Date(),
+):
+  | { ok: true; basis: "previously-published" | "unavailable-by-default" | "future-start" }
+  | { ok: false; reason: "availability-unconfirmed" } {
+  if (listing.publishedAt) return { ok: true, basis: "previously-published" };
+  if (listing.availabilityMode === "CLOSED") {
+    return { ok: true, basis: "unavailable-by-default" };
+  }
+
+  const today = todayYmd(undefined, now);
+  const hasFutureStartProtection = listing.availabilityBlocks.some((block) => {
+    if (block.reason !== AVAILABILITY_START_BLOCK_REASON) return false;
+    try {
+      const start = dbDateToYmd(block.startDate);
+      const endExclusive = dbDateToYmd(block.endDate);
+      return compareYmd(start, today) <= 0 && compareYmd(endExclusive, today) > 0;
+    } catch {
+      return false;
+    }
+  });
+
+  return hasFutureStartProtection
+    ? { ok: true, basis: "future-start" }
+    : { ok: false, reason: "availability-unconfirmed" };
 }

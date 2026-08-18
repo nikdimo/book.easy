@@ -59,7 +59,7 @@ export interface BlockedDateRange {
  * out than this still exist and are still enforced server-side — this only bounds what
  * gets serialized into the guest-facing calendar payload. Matches the horizon used for
  * date-price overrides (see pricing.service.ts getFutureDatePriceRowsForListing). */
-const PUBLIC_AVAILABILITY_HORIZON_MONTHS = 18;
+export const PUBLIC_AVAILABILITY_HORIZON_MONTHS = 18;
 
 export async function getBlockedDateRangesForListing(
   listingId: string

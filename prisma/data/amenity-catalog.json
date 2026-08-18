@@ -1,161 +1,803 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
+  "categories": [
+    {
+      "key": "essentials",
+      "name": "Essentials",
+      "icon": "wifi",
+      "sortOrder": 10,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "bathroom",
+      "name": "Bathroom",
+      "icon": "bath",
+      "sortOrder": 20,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "bedroom",
+      "name": "Bedroom",
+      "icon": "bed-double",
+      "sortOrder": 30,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "kitchen",
+      "name": "Kitchen",
+      "icon": "chef-hat",
+      "sortOrder": 40,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "entertainment",
+      "name": "Entertainment",
+      "icon": "tv",
+      "sortOrder": 50,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "outdoor",
+      "name": "Outdoor",
+      "icon": "trees",
+      "sortOrder": 60,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "views",
+      "name": "Views",
+      "icon": "mountain-snow",
+      "sortOrder": 70,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "parking",
+      "name": "Parking",
+      "icon": "circle-parking",
+      "sortOrder": 80,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "family",
+      "name": "Family",
+      "icon": "baby",
+      "sortOrder": 90,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "accessibility",
+      "name": "Accessibility",
+      "icon": "accessibility",
+      "sortOrder": 100,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "safety",
+      "name": "Safety",
+      "icon": "shield-check",
+      "sortOrder": 110,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "check_in",
+      "name": "Check-in",
+      "icon": "key-round",
+      "sortOrder": 120,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "services",
+      "name": "Services",
+      "icon": "concierge-bell",
+      "sortOrder": 130,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "features",
+      "name": "Features",
+      "icon": "sparkles",
+      "sortOrder": 140,
+      "isActive": true,
+      "translations": {}
+    }
+  ],
   "amenities": [
     {
-      "name": "Hair dryer",
-      "category": "Bathroom",
-      "icon": "wind",
-      "isActive": true
-    },
-    {
-      "name": "TV",
-      "category": "Entertainment",
-      "icon": "tv",
-      "isActive": true
-    },
-    {
+      "key": "air_conditioning",
       "name": "Air conditioning",
-      "category": "Essentials",
-      "icon": "wind",
-      "isActive": true
+      "category": "essentials",
+      "icon": "air-vent",
+      "sortOrder": 30,
+      "isActive": true,
+      "translations": {}
     },
     {
-      "name": "Dryer",
-      "category": "Essentials",
-      "icon": "wind",
-      "isActive": true
-    },
-    {
-      "name": "Heating",
-      "category": "Essentials",
-      "icon": "thermometer",
-      "isActive": true
-    },
-    {
-      "name": "Iron",
-      "category": "Essentials",
-      "icon": "shirt",
-      "isActive": true
-    },
-    {
-      "name": "Washer",
-      "category": "Essentials",
-      "icon": "shirt",
-      "isActive": true
-    },
-    {
-      "name": "Wi-Fi",
-      "category": "Essentials",
-      "icon": "wifi",
-      "isActive": true
-    },
-    {
-      "name": "City view",
-      "category": "Features",
-      "icon": "building",
-      "isActive": true
-    },
-    {
-      "name": "Free parking",
-      "category": "Features",
-      "icon": "car",
-      "isActive": true
-    },
-    {
-      "name": "Hot tub",
-      "category": "Features",
-      "icon": "bath",
-      "isActive": true
-    },
-    {
-      "name": "Lake view",
-      "category": "Features",
-      "icon": "mountain-snow",
-      "isActive": true
-    },
-    {
-      "name": "Pool",
-      "category": "Features",
-      "icon": "waves",
-      "isActive": true
-    },
-    {
-      "name": "Sea view",
-      "category": "Features",
-      "icon": "sailboat",
-      "isActive": true
-    },
-    {
-      "name": "Workspace",
-      "category": "Features",
-      "icon": "laptop",
-      "isActive": true
-    },
-    {
-      "name": "Coffee maker",
-      "category": "Kitchen",
-      "icon": "coffee",
-      "isActive": true
-    },
-    {
-      "name": "Dishwasher",
-      "category": "Kitchen",
-      "icon": "utensils",
-      "isActive": true
-    },
-    {
-      "name": "Kitchen",
-      "category": "Kitchen",
-      "icon": "cooking-pot",
-      "isActive": true
-    },
-    {
-      "name": "Microwave",
-      "category": "Kitchen",
-      "icon": "microwave",
-      "isActive": true
-    },
-    {
-      "name": "Refrigerator",
-      "category": "Kitchen",
-      "icon": "refrigerator",
-      "isActive": true
-    },
-    {
+      "key": "balcony",
       "name": "Balcony",
-      "category": "Outdoor",
+      "category": "outdoor",
       "icon": "sun",
-      "isActive": true
+      "sortOrder": 10,
+      "isActive": true,
+      "translations": {}
     },
     {
+      "key": "bbq_grill",
       "name": "BBQ grill",
-      "category": "Outdoor",
-      "icon": "flame",
-      "isActive": true
+      "category": "outdoor",
+      "icon": "beef",
+      "sortOrder": 40,
+      "isActive": true,
+      "translations": {}
     },
     {
-      "name": "Garden",
-      "category": "Outdoor",
-      "icon": "trees",
-      "isActive": true
+      "key": "bed_linens",
+      "name": "Bed linens",
+      "category": "bedroom",
+      "icon": "bed-double",
+      "sortOrder": 10,
+      "isActive": true,
+      "translations": {}
     },
     {
+      "key": "bike_storage",
+      "name": "Bike storage",
+      "category": "outdoor",
+      "icon": "bike",
+      "sortOrder": 100,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "blender",
+      "name": "Blender",
+      "category": "kitchen",
+      "icon": "blend",
+      "sortOrder": 130,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "board_games",
+      "name": "Board games",
+      "category": "entertainment",
+      "icon": "puzzle",
+      "sortOrder": 40,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "books_reading_material",
+      "name": "Books and reading material",
+      "category": "entertainment",
+      "icon": "book-open",
+      "sortOrder": 20,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "breakfast",
+      "name": "Breakfast",
+      "category": "services",
+      "icon": "croissant",
+      "sortOrder": 30,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "carbon_monoxide_alarm",
+      "name": "Carbon monoxide alarm",
+      "category": "safety",
+      "icon": "circle-alert",
+      "sortOrder": 20,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "childrens_books_toys",
+      "name": "Children's books and toys",
+      "category": "family",
+      "icon": "toy-brick",
+      "sortOrder": 30,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "city_view",
+      "name": "City view",
+      "category": "views",
+      "icon": "building-2",
+      "sortOrder": 40,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "cleaning_during_stay",
+      "name": "Cleaning available during stay",
+      "category": "services",
+      "icon": "brush",
+      "sortOrder": 20,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "cleaning_products",
+      "name": "Cleaning products",
+      "category": "essentials",
+      "icon": "spray-can",
+      "sortOrder": 80,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "clothes_dryer",
+      "name": "Dryer",
+      "category": "essentials",
+      "icon": "wind",
+      "sortOrder": 60,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "clothes_iron",
+      "name": "Iron",
+      "category": "essentials",
+      "icon": "shirt",
+      "sortOrder": 70,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "clothing_storage",
+      "name": "Clothing storage",
+      "category": "bedroom",
+      "icon": "archive",
+      "sortOrder": 40,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "coffee_maker",
+      "name": "Coffee maker",
+      "category": "kitchen",
+      "icon": "coffee",
+      "sortOrder": 110,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "cooking_basics",
+      "name": "Cooking basics",
+      "category": "kitchen",
+      "icon": "cooking-pot",
+      "sortOrder": 20,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "crib",
+      "name": "Crib",
+      "category": "family",
+      "icon": "bed-single",
+      "sortOrder": 10,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "dining_table",
+      "name": "Dining table",
+      "category": "kitchen",
+      "icon": "hand-platter",
+      "sortOrder": 150,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "dishes_silverware",
+      "name": "Dishes and silverware",
+      "category": "kitchen",
+      "icon": "utensils",
+      "sortOrder": 30,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "dishwasher",
+      "name": "Dishwasher",
+      "category": "kitchen",
+      "icon": "utensils-crossed",
+      "sortOrder": 100,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "elevator",
+      "name": "Elevator",
+      "category": "accessibility",
+      "icon": "arrow-up-down",
+      "sortOrder": 10,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "ev_charger",
+      "name": "EV charger",
+      "category": "parking",
+      "icon": "plug-zap",
+      "sortOrder": 40,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "exterior_security_cameras",
+      "name": "Exterior security cameras on property",
+      "category": "safety",
+      "icon": "cctv",
+      "sortOrder": 50,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "extra_pillows_blankets",
+      "name": "Extra pillows and blankets",
+      "category": "bedroom",
+      "icon": "bed",
+      "sortOrder": 20,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "fire_extinguisher",
       "name": "Fire extinguisher",
-      "category": "Safety",
+      "category": "safety",
       "icon": "fire-extinguisher",
-      "isActive": true
+      "sortOrder": 30,
+      "isActive": true,
+      "translations": {}
     },
     {
+      "key": "fire_pit",
+      "name": "Fire pit",
+      "category": "outdoor",
+      "icon": "flame",
+      "sortOrder": 90,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "first_aid_kit",
       "name": "First aid kit",
-      "category": "Safety",
+      "category": "safety",
       "icon": "heart-pulse",
-      "isActive": true
+      "sortOrder": 40,
+      "isActive": true,
+      "translations": {}
     },
     {
+      "key": "free_parking",
+      "name": "Free parking",
+      "category": "parking",
+      "icon": "circle-parking",
+      "sortOrder": 10,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "free_street_parking",
+      "name": "Free street parking",
+      "category": "parking",
+      "icon": "car",
+      "sortOrder": 20,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "freezer",
+      "name": "Freezer",
+      "category": "kitchen",
+      "icon": "snowflake",
+      "sortOrder": 60,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "garden",
+      "name": "Garden",
+      "category": "outdoor",
+      "icon": "trees",
+      "sortOrder": 30,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "ground_floor",
+      "name": "Ground floor",
+      "category": "accessibility",
+      "icon": "house",
+      "sortOrder": 30,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "hair_dryer",
+      "name": "Hair dryer",
+      "category": "bathroom",
+      "icon": "wind",
+      "sortOrder": 10,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "hangers",
+      "name": "Hangers",
+      "category": "bedroom",
+      "icon": "shirt",
+      "sortOrder": 30,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "heating",
+      "name": "Heating",
+      "category": "essentials",
+      "icon": "thermometer",
+      "sortOrder": 40,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "high_chair",
+      "name": "High chair",
+      "category": "family",
+      "icon": "baby",
+      "sortOrder": 20,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "host_greets_you",
+      "name": "Host greets you",
+      "category": "check_in",
+      "icon": "concierge-bell",
+      "sortOrder": 40,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "hot_tub",
+      "name": "Hot tub",
+      "category": "outdoor",
+      "icon": "bath",
+      "sortOrder": 70,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "hot_water",
+      "name": "Hot water",
+      "category": "bathroom",
+      "icon": "droplets",
+      "sortOrder": 30,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "hot_water_kettle",
+      "name": "Hot water kettle",
+      "category": "kitchen",
+      "icon": "cup-soda",
+      "sortOrder": 120,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "kitchen",
+      "name": "Kitchen",
+      "category": "kitchen",
+      "icon": "chef-hat",
+      "sortOrder": 10,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "lake_view",
+      "name": "Lake view",
+      "category": "views",
+      "icon": "ship",
+      "sortOrder": 20,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "lock_on_bedroom_door",
+      "name": "Lock on bedroom door",
+      "category": "safety",
+      "icon": "lock-keyhole",
+      "sortOrder": 60,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "lockbox",
+      "name": "Lockbox",
+      "category": "check_in",
+      "icon": "vault",
+      "sortOrder": 20,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "long_term_stays",
+      "name": "Long-term stays allowed",
+      "category": "services",
+      "icon": "calendar-days",
+      "sortOrder": 10,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "luggage_dropoff",
+      "name": "Luggage drop-off allowed",
+      "category": "check_in",
+      "icon": "luggage",
+      "sortOrder": 50,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "microwave",
+      "name": "Microwave",
+      "category": "kitchen",
+      "icon": "microwave",
+      "sortOrder": 90,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "mountain_view",
+      "name": "Mountain view",
+      "category": "views",
+      "icon": "mountain-snow",
+      "sortOrder": 30,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "outdoor_furniture",
+      "name": "Outdoor furniture",
+      "category": "outdoor",
+      "icon": "armchair",
+      "sortOrder": 50,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "oven",
+      "name": "Oven",
+      "category": "kitchen",
+      "icon": "flame",
+      "sortOrder": 70,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "paid_parking",
+      "name": "Paid parking",
+      "category": "parking",
+      "icon": "parking-meter",
+      "sortOrder": 30,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "pets_allowed",
+      "name": "Pets allowed",
+      "category": "family",
+      "icon": "paw-print",
+      "sortOrder": 40,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "refrigerator",
+      "name": "Refrigerator",
+      "category": "kitchen",
+      "icon": "refrigerator",
+      "sortOrder": 50,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "room_darkening_shades",
+      "name": "Room-darkening shades",
+      "category": "bedroom",
+      "icon": "blinds",
+      "sortOrder": 50,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "sauna",
+      "name": "Sauna",
+      "category": "outdoor",
+      "icon": "heater",
+      "sortOrder": 80,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "sea_view",
+      "name": "Sea view",
+      "category": "views",
+      "icon": "sailboat",
+      "sortOrder": 10,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "self_check_in",
+      "name": "Self check-in",
+      "category": "check_in",
+      "icon": "key-round",
+      "sortOrder": 10,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "shampoo",
+      "name": "Shampoo",
+      "category": "bathroom",
+      "icon": "droplet",
+      "sortOrder": 20,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "smart_lock",
+      "name": "Smart lock",
+      "category": "check_in",
+      "icon": "lock",
+      "sortOrder": 30,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "smoke_detector",
       "name": "Smoke detector",
-      "category": "Safety",
-      "icon": "shield",
-      "isActive": true
+      "category": "safety",
+      "icon": "siren",
+      "sortOrder": 10,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "sound_system",
+      "name": "Sound system",
+      "category": "entertainment",
+      "icon": "speaker",
+      "sortOrder": 30,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "step_free_entrance",
+      "name": "Step-free entrance",
+      "category": "accessibility",
+      "icon": "accessibility",
+      "sortOrder": 20,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "stove",
+      "name": "Stove",
+      "category": "kitchen",
+      "icon": "soup",
+      "sortOrder": 80,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "swimming_pool",
+      "name": "Pool",
+      "category": "outdoor",
+      "icon": "waves",
+      "sortOrder": 60,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "television",
+      "name": "TV",
+      "category": "entertainment",
+      "icon": "tv",
+      "sortOrder": 10,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "terrace",
+      "name": "Terrace",
+      "category": "outdoor",
+      "icon": "umbrella",
+      "sortOrder": 20,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "toaster",
+      "name": "Toaster",
+      "category": "kitchen",
+      "icon": "sandwich",
+      "sortOrder": 140,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "towels_toiletries",
+      "name": "Towels and toiletries",
+      "category": "bathroom",
+      "icon": "sparkles",
+      "sortOrder": 40,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "washing_machine",
+      "name": "Washer",
+      "category": "essentials",
+      "icon": "washing-machine",
+      "sortOrder": 50,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "waterfront_access",
+      "name": "Lake or sea access",
+      "category": "views",
+      "icon": "anchor",
+      "sortOrder": 50,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "wifi",
+      "name": "Wi-Fi",
+      "category": "essentials",
+      "icon": "wifi",
+      "sortOrder": 10,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "wine_glasses",
+      "name": "Wine glasses",
+      "category": "kitchen",
+      "icon": "wine",
+      "sortOrder": 40,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "workspace",
+      "name": "Workspace",
+      "category": "essentials",
+      "icon": "laptop",
+      "sortOrder": 20,
+      "isActive": true,
+      "translations": {}
     }
   ]
 }

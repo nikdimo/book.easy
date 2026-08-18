@@ -10,7 +10,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { reviewSuggestion } from "@/lib/actions/suggestion.actions";
-import { AMENITY_CATEGORIES } from "@/lib/constants";
 import { toast } from "sonner";
 import { Check, X } from "lucide-react";
 
@@ -24,13 +23,20 @@ interface SuggestionReviewCardProps {
     host: { name: string; email: string };
     listing: { id: string; title: string; slug: string } | null;
   };
+  /** Live catalog groups, so a category added in Settings is offered here too. */
+  categories: { id: string; name: string }[];
 }
 
-export function SuggestionReviewCard({ suggestion }: SuggestionReviewCardProps) {
+export function SuggestionReviewCard({
+  suggestion,
+  categories,
+}: SuggestionReviewCardProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [label, setLabel] = useState(suggestion.label);
-  const [category, setCategory] = useState<string>(AMENITY_CATEGORIES[0]);
+  // Empty means "let the label decide", which is the right default for a label an
+  // admin has not looked at yet.
+  const [categoryId, setCategoryId] = useState("");
   const [scope, setScope] = useState<"GLOBAL" | "LISTING_ONLY">(
     suggestion.listing ? "LISTING_ONLY" : "GLOBAL"
   );
@@ -41,7 +47,7 @@ export function SuggestionReviewCard({ suggestion }: SuggestionReviewCardProps) 
       const result = await reviewSuggestion(suggestion.id, {
         decision: "APPROVED",
         label,
-        category: suggestion.kind === "AMENITY" ? category : undefined,
+        categoryId: suggestion.kind === "AMENITY" ? categoryId : undefined,
         scope,
         adminNote,
       });
@@ -114,13 +120,14 @@ export function SuggestionReviewCard({ suggestion }: SuggestionReviewCardProps) 
               <Label htmlFor={`category-${suggestion.id}`}>Category</Label>
               <select
                 id={`category-${suggestion.id}`}
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
                 className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
               >
-                {AMENITY_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
+                <option value="">Decide from the label</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
                   </option>
                 ))}
               </select>

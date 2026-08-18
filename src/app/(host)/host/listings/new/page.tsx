@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
 import { ListingForm } from "@/components/host/listing-form";
+import { getAmenityCatalog } from "@/lib/services/amenity.service";
 import { getActivePropertyTypes } from "@/lib/services/property-type.service";
 import { getHostListingDraft } from "@/lib/services/listing.service";
 import type { ListingDraftData } from "@/lib/types/listing-draft";
@@ -20,10 +20,7 @@ export default async function NewListingPage({ searchParams }: NewListingPagePro
   const { draft: draftIdParam } = await searchParams;
 
   const [amenities, propertyTypes, draft, rates] = await Promise.all([
-    db.amenity.findMany({
-      where: { isActive: true },
-      orderBy: [{ category: "asc" }, { name: "asc" }],
-    }),
+    getAmenityCatalog(),
     getActivePropertyTypes(),
     draftIdParam ? getHostListingDraft(draftIdParam, session.user.id) : null,
     getExchangeRates(),

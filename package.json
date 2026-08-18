@@ -5,6 +5,7 @@
   "scripts": {
     "predev": "npm run i18n:extract",
     "dev": "next dev",
+    "dev:fast": "next dev",
     "prebuild": "npm run i18n:extract",
     "build": "next build",
     "start": "next start --hostname 127.0.0.1",
@@ -42,7 +43,7 @@
     "db:purge-users": "tsx prisma/purge-users-except-elena-admin.ts",
     "db:studio": "prisma studio",
     "db:docker": "docker compose up -d",
-    "db:setup": "prisma generate && prisma migrate deploy && prisma db seed"
+    "db:setup": "prisma generate && prisma migrate deploy && npm run amenities:import && prisma db seed"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.112.3",

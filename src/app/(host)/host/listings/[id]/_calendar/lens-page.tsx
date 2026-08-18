@@ -44,7 +44,7 @@ const LENS_COPY: Record<
     heading: "Pricing",
     hint: "What each night costs.",
     help: [
-      "Every date shows the price a guest would pay for that night.",
+      "Each date shows its nightly rate before discounts and fees.",
       "Dates without a custom price follow the base price in Standard pricing.",
       "Changing a price never changes what an existing booking already paid.",
     ],

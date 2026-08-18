@@ -94,12 +94,16 @@ export async function getListingForAdminReview(id: string) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const [availabilityBlocks, datePrices] = await Promise.all([
+  const [availabilityBlocks, availabilityWindows, datePrices] = await Promise.all([
     db.availabilityBlock.findMany({
       where: { listingId: listing.id, endDate: { gte: today } },
       include: {
         booking: { select: { id: true, guest: { select: { name: true } }, status: true } },
       },
+      orderBy: { startDate: "asc" },
+    }),
+    db.listingAvailabilityWindow.findMany({
+      where: { listingId: listing.id, endDate: { gte: today } },
       orderBy: { startDate: "asc" },
     }),
     db.listingDatePrice.findMany({
@@ -108,7 +112,7 @@ export async function getListingForAdminReview(id: string) {
     }),
   ]);
 
-  return { listing, availabilityBlocks, datePrices };
+  return { listing, availabilityBlocks, availabilityWindows, datePrices };
 }
 
 export async function getSuggestionsForAdmin() {

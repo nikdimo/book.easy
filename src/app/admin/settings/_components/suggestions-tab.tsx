@@ -10,9 +10,14 @@ type Suggestions = Awaited<ReturnType<typeof getSuggestionsForAdmin>>;
 interface SuggestionsTabProps {
   pending: Suggestions["pending"];
   reviewed: Suggestions["reviewed"];
+  amenityCategories: { id: string; name: string }[];
 }
 
-export function SuggestionsTab({ pending, reviewed }: SuggestionsTabProps) {
+export function SuggestionsTab({
+  pending,
+  reviewed,
+  amenityCategories,
+}: SuggestionsTabProps) {
   return (
     <div>
       <p className="text-sm text-muted-foreground mb-6 max-w-2xl">
@@ -29,7 +34,11 @@ export function SuggestionsTab({ pending, reviewed }: SuggestionsTabProps) {
       ) : (
         <div className="space-y-4 mb-10">
           {pending.map((suggestion) => (
-            <SuggestionReviewCard key={suggestion.id} suggestion={suggestion} />
+            <SuggestionReviewCard
+              key={suggestion.id}
+              suggestion={suggestion}
+              categories={amenityCategories}
+            />
           ))}
         </div>
       )}

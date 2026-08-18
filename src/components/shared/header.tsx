@@ -23,6 +23,7 @@ import {
   Heart,
   MessageCircle,
   LifeBuoy,
+  Sparkles,
 } from "lucide-react";
 import {
   MarketplaceSearchBar,
@@ -210,7 +211,10 @@ export function Header({
               className="relative rounded-full font-medium max-sm:w-11 max-sm:px-0"
               asChild
             >
-              <Link href="/host" aria-label={navLabels.switchToHosting.text}>
+              <Link
+                href="/host/panel?version=v2"
+                aria-label={navLabels.switchToHosting.text}
+              >
                 <Home className="size-[18px]" />
                 <span
                   className={cn(
@@ -386,22 +390,23 @@ export function Header({
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link href="/host">
-                        <Home className="mr-2 h-4 w-4" />
-                        <span
-                          className={
-                            navLabels.hostingDashboard.translated
-                              ? "notranslate"
-                              : undefined
-                          }
-                        >
-                          {navLabels.hostingDashboard.text}
+                      <Link href="/host/panel?version=v2">
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        <Tx k="header.new_host_panel" source="New host panel" />
+                        <span className="ml-auto rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#a94420]">
+                          <Tx k="header.preview" source="Preview" />
                         </span>
                         <CountBadge
                           value={summary?.host?.total}
                           label="hosting items needing attention"
-                          className="ml-auto"
+                          className="ml-1"
                         />
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/host/panel?version=current">
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                        <Tx k="header.current_host_panel" source="Current host panel" />
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>

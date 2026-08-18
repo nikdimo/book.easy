@@ -29,6 +29,7 @@ import {
   Smartphone,
   MessageCircle,
   Bell,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { nextHeaderHidden } from "@/lib/host/header-collapse";
@@ -216,6 +217,15 @@ function SidebarContent({
                 <p className="text-sm md:text-xs text-muted-foreground truncate">{user.email}</p>
               </div>
               <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link href="/host/panel?version=v2" onClick={onNavigate}>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  <Tx k="host.sidebar.new_panel" source="New host panel" />
+                  <span className="ml-auto rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#a94420]">
+                    <Tx k="host.sidebar.preview" source="Preview" />
+                  </span>
+                </Link>
+              </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/account/bookings" onClick={onNavigate}>
                   <CalendarDays className="mr-2 h-4 w-4" />

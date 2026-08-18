@@ -84,6 +84,13 @@ export async function POST(request: Request) {
     for (const item of body.mediaItems) formData.append("mediaItems", JSON.stringify(item));
   }
 
+  // Keep the mobile client on the same fail-closed publication path as the web
+  // wizard. submitNewListing parses and validates this value; missing/malformed
+  // availability is never inferred as "available now".
+  if (body.prePublishPlan !== undefined) {
+    formData.set("prePublishPlan", JSON.stringify(body.prePublishPlan));
+  }
+
   const draftId = typeof body.draftId === "string" ? body.draftId : null;
   const result = await submitNewListing(formData, draftId);
 

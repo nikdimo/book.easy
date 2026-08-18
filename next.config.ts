@@ -9,8 +9,8 @@ const isProduction = process.env.NODE_ENV === "production";
 // prevent framing, plugins, unexpected form targets, and unapproved remote resources.
 const contentSecurityPolicy = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isProduction ? "" : " 'unsafe-eval'"} https://www.googletagmanager.com https://maps.googleapis.com https://maps.gstatic.com https://translate.google.com https://translate.googleapis.com`,
-  "style-src 'self' 'unsafe-inline' https://translate.googleapis.com",
+  `script-src 'self' 'unsafe-inline'${isProduction ? "" : " 'unsafe-eval'"} https://www.googletagmanager.com https://maps.googleapis.com https://maps.gstatic.com https://translate.google.com https://translate.googleapis.com https://translate-pa.googleapis.com`,
+  "style-src 'self' 'unsafe-inline' https://translate.googleapis.com https://www.gstatic.com https://fonts.googleapis.com",
   "img-src 'self' blob: data: https://*.google.com https://*.googleapis.com https://*.gstatic.com https://*.googleusercontent.com https://*.tile.openstreetmap.org",
   "font-src 'self' data: https://fonts.gstatic.com",
   `connect-src 'self'${isProduction ? "" : " ws: http://localhost:* http://127.0.0.1:*"} https://www.google-analytics.com https://region1.google-analytics.com https://www.googletagmanager.com https://*.googleapis.com https://*.gstatic.com https://translate.google.com`,

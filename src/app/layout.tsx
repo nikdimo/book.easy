@@ -95,7 +95,13 @@ export default async function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <TranslateDomGuard />
-        <GoogleTranslateController locale={requestedLocale} />
+        <GoogleTranslateController
+          locale={requestedLocale}
+          disabled={
+            process.env.NODE_ENV !== "production" &&
+            process.env.LOCAL_UI_FAST === "1"
+          }
+        />
         <I18nProvider
           locale={translator.locale}
           requestedLocale={requestedLocale}

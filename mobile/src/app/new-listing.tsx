@@ -24,10 +24,12 @@ import {
   ListingDraftResponse,
   ListingEditorResponse,
   ListingMediaItem,
+  ListingPrePublishPlan,
   ListingStep,
   openControlPanel,
 } from "@/lib/api";
 import { colors, radii, shadows, spacing, fonts, type } from "@/theme";
+import { marketplaceTodayYmd } from "@/lib/marketplace-date";
 
 /** Every canonical step is edited natively. A step id this build does not recognise
  *  — one added to the web flow after the app shipped — still appears in the wizard
@@ -63,7 +65,16 @@ interface EditorValues extends LocationValues, StreetViewValues, OfferValues {
   minNights: string;
   amenityIds: string[];
   mediaItems: ListingMediaItem[];
+  prePublishPlan: ListingPrePublishPlan;
 }
+
+const emptyPrePublishPlan = (): ListingPrePublishPlan => ({
+  blocks: [],
+  openDates: [],
+  datePrices: [],
+  offers: [],
+  availabilityStart: null,
+});
 
 const defaultValues: EditorValues = {
   title: "",
@@ -97,6 +108,7 @@ const defaultValues: EditorValues = {
   promotionType: "NONE",
   promotionPercent: "",
   promotionMinimumNights: "",
+  prePublishPlan: emptyPrePublishPlan(),
 };
 
 function valuesFromDraft(data?: ListingDraftData): EditorValues {
@@ -134,7 +146,25 @@ function valuesFromDraft(data?: ListingDraftData): EditorValues {
     promotionType: data?.promotionType || "NONE",
     promotionPercent: data?.promotionPercent ?? "",
     promotionMinimumNights: data?.promotionMinimumNights ?? "",
+    // The server has already normalized this with parsePrePublishPlan. Old drafts
+    // have no answer and therefore resume as null, never as available immediately.
+    prePublishPlan: data?.prePublishPlan ?? emptyPrePublishPlan(),
   };
+}
+
+function isValidYmd(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
+}
+
+function validRange(startDate: string, endDate: string): boolean {
+  return isValidYmd(startDate) && isValidYmd(endDate) && endDate >= startDate;
 }
 
 /** Where to resume a draft, mirroring the server's rule: the stored id wins, and a
@@ -303,7 +333,7 @@ export default function NewListingScreen() {
    *  a checklist rather than discovered one error at a time, and each entry names the
    *  step so the host can jump straight to it. The server re-validates all of it. */
   const publishBlockers = useMemo(() => {
-    const blockers: { stepId: string; message: string }[] = [];
+    const blockers: { stepId?: string; message: string }[] = [];
     if (!values.propertyType)
       blockers.push({ stepId: "propertyType", message: "Choose a property type" });
     if (!values.spaceType)
@@ -330,6 +360,31 @@ export default function NewListingScreen() {
       blockers.push({ stepId: "pricing", message: "Set a nightly rate" });
     for (const problem of offerProblems(values, values.cleaningFee)) {
       blockers.push({ stepId: "specialOffer", message: problem });
+    }
+    const availability = values.prePublishPlan.availabilityStart;
+    if (!availability) {
+      blockers.push({
+        message: "Choose when guests can start booking",
+      });
+    } else if (availability.mode === "from") {
+      if (!isValidYmd(availability.startDate)) {
+        blockers.push({
+          message: "Choose a valid first booking date",
+        });
+      } else if (availability.startDate < marketplaceTodayYmd()) {
+        blockers.push({
+          message: "The first booking date cannot be in the past",
+        });
+      }
+    } else if (
+      availability.mode === "selected" &&
+      !values.prePublishPlan.openDates.some((range) =>
+        validRange(range.startDate, range.endDate)
+      )
+    ) {
+      blockers.push({
+        message: "Choose at least one bookable date range",
+      });
     }
     return blockers;
   }, [values]);
@@ -598,6 +653,13 @@ export default function NewListingScreen() {
           {step.id === "pricing" ? (
             <PricingStep values={values} updateField={updateField} t={t} />
           ) : null}
+          {isLastStep ? (
+            <AvailabilityStartStep
+              plan={values.prePublishPlan}
+              onChange={(plan) => updateField("prePublishPlan", plan)}
+              t={t}
+            />
+          ) : null}
           {/* On the final step, show everything still standing between the host and
               publication, each linking to the step that fixes it. */}
           {isLastStep && publishBlockers.length > 0 ? (
@@ -605,21 +667,37 @@ export default function NewListingScreen() {
               <Text style={styles.checklistTitle}>
                 {t("Before you can publish")}
               </Text>
-              {publishBlockers.map((blocker) => (
-                <Pressable
-                  accessibilityRole="button"
-                  key={`${blocker.stepId}-${blocker.message}`}
-                  onPress={() => goToStep(blocker.stepId)}
-                  style={({ pressed }) => [
-                    styles.checklistRow,
-                    pressed && { opacity: 0.6 },
-                  ]}
-                >
-                  <Icon color={colors.warm} name="alert" size={14} />
-                  <Text style={styles.checklistText}>{t(blocker.message)}</Text>
-                  <Icon color={colors.muted} name="forward" size={14} />
-                </Pressable>
-              ))}
+              {publishBlockers.map((blocker) => {
+                const contents = (
+                  <>
+                    <Icon color={colors.warm} name="alert" size={14} />
+                    <Text style={styles.checklistText}>{t(blocker.message)}</Text>
+                    {blocker.stepId ? (
+                      <Icon color={colors.muted} name="forward" size={14} />
+                    ) : null}
+                  </>
+                );
+                return blocker.stepId ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    key={`${blocker.stepId}-${blocker.message}`}
+                    onPress={() => goToStep(blocker.stepId!)}
+                    style={({ pressed }) => [
+                      styles.checklistRow,
+                      pressed && { opacity: 0.6 },
+                    ]}
+                  >
+                    {contents}
+                  </Pressable>
+                ) : (
+                  // Availability is edited directly above this checklist on the
+                  // launch screen, so presenting it as a fake Special-offer link
+                  // would send the host to the right pixels for the wrong reason.
+                  <View key={`launch-${blocker.message}`} style={styles.checklistRow}>
+                    {contents}
+                  </View>
+                );
+              })}
             </View>
           ) : null}
 
@@ -996,6 +1074,157 @@ function PricingStep({
         </Text>
       </View>
     </>
+  );
+}
+
+function AvailabilityStartStep({
+  plan,
+  onChange,
+  t,
+}: {
+  plan: ListingPrePublishPlan;
+  onChange: (plan: ListingPrePublishPlan) => void;
+  t: Translator;
+}) {
+  const mode = plan.availabilityStart?.mode ?? null;
+  const firstRange = plan.openDates[0] ?? { startDate: "", endDate: "" };
+
+  function selectMode(nextMode: "now" | "from" | "selected") {
+    onChange({
+      ...plan,
+      availabilityStart:
+        nextMode === "from"
+          ? {
+              mode: "from",
+              startDate:
+                plan.availabilityStart?.mode === "from"
+                  ? plan.availabilityStart.startDate
+                  : "",
+            }
+          : { mode: nextMode },
+    });
+  }
+
+  function updateFirstOpenRange(field: "startDate" | "endDate", value: string) {
+    onChange({
+      ...plan,
+      openDates: [{ ...firstRange, [field]: value }, ...plan.openDates.slice(1)],
+    });
+  }
+
+  const choices: {
+    mode: "now" | "from" | "selected";
+    title: string;
+    description: string;
+  }[] = [
+    {
+      mode: "now",
+      title: "Guests can book immediately",
+      description: "Publishing opens future dates except dates you have blocked.",
+    },
+    {
+      mode: "from",
+      title: "Guests can book from a date",
+      description: "Dates before your chosen day stay blocked.",
+    },
+    {
+      mode: "selected",
+      title: "Only on dates I open",
+      description: "All dates stay closed except the range you choose below.",
+    },
+  ];
+
+  return (
+    <View style={styles.availabilitySection}>
+      <View>
+        <Text style={styles.sectionTitle}>{t("When can guests book?")}</Text>
+        <Text style={styles.availabilityIntro}>
+          {t(
+            "Choose before publishing. This determines which nights guests can request right away."
+          )}
+        </Text>
+      </View>
+      <View accessibilityRole="radiogroup" style={styles.availabilityChoices}>
+        {choices.map((choice) => {
+          const selected = mode === choice.mode;
+          return (
+            <Pressable
+              key={choice.mode}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: selected }}
+              onPress={() => selectMode(choice.mode)}
+              style={({ pressed }) => [
+                styles.availabilityChoice,
+                selected && styles.availabilityChoiceSelected,
+                pressed && { opacity: 0.72 },
+              ]}
+            >
+              <View
+                style={[
+                  styles.radioOuter,
+                  selected && styles.radioOuterSelected,
+                ]}
+              >
+                {selected ? <View style={styles.radioInner} /> : null}
+              </View>
+              <View style={styles.availabilityChoiceCopy}>
+                <Text style={styles.availabilityChoiceTitle}>{t(choice.title)}</Text>
+                <Text style={styles.availabilityChoiceText}>
+                  {t(choice.description)}
+                </Text>
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {mode === "from" ? (
+        <LabeledInput
+          label={t("First date guests can check in")}
+          value={plan.availabilityStart?.mode === "from" ? plan.availabilityStart.startDate : ""}
+          placeholder="YYYY-MM-DD"
+          autoCapitalize="none"
+          autoCorrect={false}
+          maxLength={10}
+          onChangeText={(startDate) =>
+            onChange({ ...plan, availabilityStart: { mode: "from", startDate } })
+          }
+        />
+      ) : null}
+
+      {mode === "selected" ? (
+        <View style={styles.selectedDateFields}>
+          <Text style={styles.availabilityRangeHint}>
+            {t("Choose the first bookable range. You can add more ranges from the calendar after publishing.")}
+          </Text>
+          <LabeledInput
+            label={t("First bookable night")}
+            value={firstRange.startDate}
+            placeholder="YYYY-MM-DD"
+            autoCapitalize="none"
+            autoCorrect={false}
+            maxLength={10}
+            onChangeText={(value) => updateFirstOpenRange("startDate", value)}
+          />
+          <LabeledInput
+            label={t("Last bookable night")}
+            value={firstRange.endDate}
+            placeholder="YYYY-MM-DD"
+            autoCapitalize="none"
+            autoCorrect={false}
+            maxLength={10}
+            onChangeText={(value) => updateFirstOpenRange("endDate", value)}
+          />
+          {plan.openDates.length > 1 ? (
+            <Text style={styles.availabilityRangeHint}>
+              {t("Your draft also keeps {count} additional bookable ranges.", {
+                count: plan.openDates.length - 1,
+              })}
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -1378,6 +1607,65 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginTop: spacing.xs,
   },
+  availabilitySection: {
+    gap: spacing.md,
+    paddingTop: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  availabilityIntro: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: spacing.xs,
+  },
+  availabilityChoices: { gap: spacing.sm },
+  availabilityChoice: {
+    minHeight: 72,
+    padding: spacing.md,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radii.lg,
+    backgroundColor: colors.surface,
+  },
+  availabilityChoiceSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primarySoft,
+  },
+  radioOuter: {
+    width: 20,
+    height: 20,
+    marginTop: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: colors.borderStrong,
+    borderRadius: 10,
+  },
+  radioOuterSelected: { borderColor: colors.primary },
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.primary,
+  },
+  availabilityChoiceCopy: { flex: 1 },
+  availabilityChoiceTitle: {
+    color: colors.ink,
+    fontSize: 13,
+    fontFamily: fonts.bold,
+  },
+  availabilityChoiceText: {
+    color: colors.muted,
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: spacing.xs,
+  },
+  selectedDateFields: { gap: spacing.md },
+  availabilityRangeHint: { color: colors.muted, fontSize: 11, lineHeight: 17 },
   footer: {
     minHeight: 72,
     paddingHorizontal: spacing.xl,

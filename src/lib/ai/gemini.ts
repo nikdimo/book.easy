@@ -11,6 +11,7 @@ import {
 const DEFAULT_REQUESTS_PER_MINUTE = 5;
 const MAX_ATTEMPTS = 4;
 const RATE_WINDOW_MS = 60_000;
+const REQUEST_TIMEOUT_MS = 90_000;
 
 function requestsPerMinute(): number {
   const configured = Number.parseInt(
@@ -73,22 +74,34 @@ async function callGemini(prompt: string): Promise<string> {
   let lastError: Error | null = null;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
     await reserveRequestSlot();
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          systemInstruction: { parts: [{ text: TRANSLATION_RULES }] },
-          generationConfig: {
-            temperature: 0.15,
-            responseMimeType: "application/json",
-            maxOutputTokens: 32_768,
-          },
-        }),
-      },
-    );
+    let response: Response;
+    try {
+      response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            systemInstruction: { parts: [{ text: TRANSLATION_RULES }] },
+            generationConfig: {
+              temperature: 0.15,
+              responseMimeType: "application/json",
+              maxOutputTokens: 32_768,
+            },
+          }),
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        },
+      );
+    } catch (error) {
+      lastError = new Error(
+        `Gemini request failed: ${error instanceof Error ? error.message : String(error)}`,
+        { cause: error },
+      );
+      if (attempt === MAX_ATTEMPTS) break;
+      await sleep(attempt * 2_000);
+      continue;
+    }
 
     if (response.ok) {
       const payload = (await response.json()) as {

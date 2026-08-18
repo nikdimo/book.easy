@@ -1,5 +1,5 @@
 import { getAllLanguages } from "@/lib/services/language.service";
-import { getAllAmenitiesForAdmin } from "@/lib/services/amenity.service";
+import { getAmenityCatalogForAdmin } from "@/lib/services/amenity.service";
 import { getAllPropertyTypesForAdmin } from "@/lib/services/property-type.service";
 import { getSuggestionsForAdmin } from "@/lib/services/admin.service";
 import { getTranslationStatus } from "@/lib/services/ui-translation.service";
@@ -34,7 +34,7 @@ export default async function AdminSettingsPage({ searchParams }: AdminSettingsP
 
   const [
     languages,
-    amenities,
+    amenityCatalog,
     propertyTypes,
     suggestions,
     translationStatus,
@@ -43,7 +43,7 @@ export default async function AdminSettingsPage({ searchParams }: AdminSettingsP
   ] =
     await Promise.all([
       getAllLanguages(),
-      getAllAmenitiesForAdmin(),
+      getAmenityCatalogForAdmin(),
       getAllPropertyTypesForAdmin(),
       getSuggestionsForAdmin(),
       getTranslationStatus(),
@@ -81,7 +81,11 @@ export default async function AdminSettingsPage({ searchParams }: AdminSettingsP
           />
         </TabsContent>
         <TabsContent value="amenities" className="mt-6">
-          <AmenitiesTab amenities={amenities} />
+          <AmenitiesTab
+            categories={amenityCatalog.categories}
+            amenities={amenityCatalog.amenities}
+            languages={amenityCatalog.languages}
+          />
         </TabsContent>
         <TabsContent value="property-types" className="mt-6">
           <PropertyTypesTab propertyTypes={propertyTypes} />
@@ -90,7 +94,11 @@ export default async function AdminSettingsPage({ searchParams }: AdminSettingsP
           <MarketplaceTab settings={marketplaceSettings} markets={markets} />
         </TabsContent>
         <TabsContent value="suggestions" className="mt-6">
-          <SuggestionsTab pending={suggestions.pending} reviewed={suggestions.reviewed} />
+          <SuggestionsTab
+            pending={suggestions.pending}
+            reviewed={suggestions.reviewed}
+            amenityCategories={amenityCatalog.categories}
+          />
         </TabsContent>
       </Tabs>
     </div>

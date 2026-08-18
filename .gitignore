@@ -69,3 +69,10 @@ next-env.d.ts
 # Local Replit UI export workspaces (large generated copies, including node_modules)
 /replit/
 /replit-ui-export-*/
+
+# Local screen recordings and their transcripts (design reference, hundreds of MB;
+# GitHub rejects blobs over 100 MB). Keep these on disk, out of git.
+*.mp3
+*.wmv
+*.mp4
+/New admin screen recording transcript.docx

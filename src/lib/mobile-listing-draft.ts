@@ -6,6 +6,7 @@ import {
   resumeListingStep,
 } from "@/lib/constants/listing-steps";
 import type { ListingDraftData } from "@/lib/types/listing-draft";
+import { parsePrePublishPlan } from "@/lib/types/listing-prepublish-plan";
 import { normalizePropertyType } from "@/lib/types/property-type";
 
 const draftString = z.string().max(5000);
@@ -76,6 +77,10 @@ const mobileListingDraftPatchSchema = z
     promotionType: draftString.optional(),
     promotionPercent: draftString.optional(),
     promotionMinimumNights: draftString.optional(),
+    // The shared parser below validates and caps every optional range. Keeping this
+    // field in the native draft contract lets the mandatory availability answer
+    // survive app restarts without creating a second source of truth.
+    prePublishPlan: z.unknown().optional(),
   })
   .strict();
 
@@ -88,7 +93,7 @@ export function parseMobileListingDraftPatch(input: unknown) {
   if (!parsed.success) {
     return { error: "Invalid listing draft data" } as const;
   }
-  const { currentStep, currentStepId, ...fields } = parsed.data;
+  const { currentStep, currentStepId, prePublishPlan, ...fields } = parsed.data;
 
   // The id wins. A bare index from an older client is kept only as a fallback: it
   // was written against that app's own step list, which no longer matches this one,
@@ -103,6 +108,9 @@ export function parseMobileListingDraftPatch(input: unknown) {
   return {
     data: {
       ...fields,
+      ...(prePublishPlan === undefined
+        ? {}
+        : { prePublishPlan: parsePrePublishPlan(prePublishPlan) }),
       // Both are written so the web wizard resumes correctly whichever it reads.
       ...(position === undefined
         ? {}
@@ -134,6 +142,9 @@ export function listingDraftData(value: Prisma.JsonValue): ListingDraftData {
 
   return {
     ...data,
+    ...(data.prePublishPlan === undefined
+      ? {}
+      : { prePublishPlan: parsePrePublishPlan(data.prePublishPlan) }),
     ...(data.propertyType === undefined
       ? {}
       : { propertyType: normalizePropertyType(data.propertyType) }),

@@ -5,7 +5,7 @@ import { ListingStatus, Prisma } from "@prisma/client";
 import { ITEMS_PER_PAGE } from "@/lib/constants";
 import { sortPropertyTypesInDisplayOrder } from "@/lib/property-type-filter";
 import { getActivePropertyTypes } from "@/lib/services/property-type.service";
-import { getActiveAmenities } from "@/lib/services/amenity.service";
+import { getAmenityCatalog } from "@/lib/services/amenity.service";
 import {
   serializeListingCard,
   listingCardSelect,
@@ -336,12 +336,12 @@ export const countApprovedListings = unstable_cache(
   { revalidate: HOME_LISTINGS_REVALIDATE_SECONDS, tags: [PUBLIC_HEADER_DATA_TAG] },
 );
 
-/** Read on every /properties render. Identical to `getActiveAmenities` in
+/** Read on every /properties render. Identical to `getAmenityCatalog` in
  * amenity.service.ts, which was already cached — this one wasn't, so the same catalog
  * was being fetched fresh per search. Delegating keeps a single cached copy rather
  * than adding a second cache entry for the same rows. */
 export async function getAvailableAmenities() {
-  return getActiveAmenities();
+  return getAmenityCatalog();
 }
 
 export async function getAvailableAmenityNames(filters: SearchFilters) {

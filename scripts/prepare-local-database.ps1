@@ -150,7 +150,19 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 
-Write-Host "  Applying local database schema..."
+Write-Host "  Applying pending data-preserving migrations..."
+& npm.cmd run db:migrate:deploy
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "  ERROR - Prisma migrations failed. Check PostgreSQL, DATABASE_URL, and the migration output above."
+    exit $LASTEXITCODE
+}
+
+# Migrations handle structural changes that require a data backfill (for example,
+# assigning every existing amenity a stable key and category before those columns
+# become required). db push remains a useful final development check for schema-only
+# edits that do not yet have a migration, but it must never run first and strand a
+# populated local database on a required-column change.
+Write-Host "  Checking local database schema..."
 & npm.cmd run db:push
 if ($LASTEXITCODE -ne 0) {
     Write-Host "  ERROR - Prisma database push failed. Check PostgreSQL and DATABASE_URL."

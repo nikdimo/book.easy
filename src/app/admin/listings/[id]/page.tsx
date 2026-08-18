@@ -21,7 +21,7 @@ export default async function AdminListingDetailPage({ params }: AdminListingDet
   const result = await getListingForAdminReview(id);
 
   if (!result) notFound();
-  const { listing, availabilityBlocks, datePrices } = result;
+  const { listing, availabilityBlocks, availabilityWindows, datePrices } = result;
 
   const statusConfig = LISTING_STATUSES.find((s) => s.value === listing.status);
   const typeLabel = await getPropertyTypeLabel(listing.property.propertyType);
@@ -125,6 +125,8 @@ export default async function AdminListingDetailPage({ params }: AdminListingDet
           </p>
           <PropertyAvailabilityCalendar
             listingId={listing.id}
+            availabilityMode={listing.availabilityMode}
+            availabilityWindows={availabilityWindows}
             baseNightlyRate={Number(listing.pricingRule.baseNightlyRate)}
             currency={listing.pricingRule.currency}
             datePrices={datePrices.map((row) => ({

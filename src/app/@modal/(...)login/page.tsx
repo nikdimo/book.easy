@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { LoginModal } from "@/components/auth/login-modal";
+import { localDevAuthEnabled } from "@/lib/auth/local-dev-auth";
 
 /** Intercepts client-side navigation to /login (e.g. clicking "Log in" in the header)
  * and renders it as an overlay on top of whatever page triggered it, instead of
@@ -8,7 +9,7 @@ import { LoginModal } from "@/components/auth/login-modal";
 export default function InterceptedLoginPage() {
   return (
     <Suspense>
-      <LoginModal />
+      <LoginModal localDevLogin={localDevAuthEnabled()} />
     </Suspense>
   );
 }

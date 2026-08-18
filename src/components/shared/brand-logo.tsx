@@ -14,7 +14,7 @@ export function BrandLogo({ compact = false, className }: { compact?: boolean; c
     return (
       <span
         aria-label={PRODUCT_NAME}
-        className={cn("notranslate h-12 w-fit shrink-0", className)}
+        className={cn("notranslate inline-flex h-12 w-fit shrink-0", className)}
         translate="no"
       >
         <span className="inline-flex h-full items-center gap-2.5">

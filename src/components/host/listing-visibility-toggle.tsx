@@ -39,7 +39,7 @@ export function ListingVisibilityToggle({
   function handleToggle() {
     if (isPublished) {
       if (
-        !confirm(interpolate(resolve("host.visibility.confirm_hide", "Hide {title} from the site?\n\nIt will no longer be bookable until you publish it again."), { title }).text)
+        !confirm(interpolate(resolve("host.visibility.confirm_hide", "Hide {title} from guests?\n\nNew guests will not be able to view or book it. Existing reservations and calendar connections stay active."), { title }).text)
       )
         return;
 
@@ -62,8 +62,8 @@ export function ListingVisibilityToggle({
     ? resolve("host.visibility.hide", "Hide")
     : resolve("host.visibility.unhide", "Unhide");
   const explanation = isPublished
-    ? resolve("host.visibility.hide_tooltip", "Take this listing off the site — guests can't find it or request it until you unhide it. Your dates, prices and bookings stay as they are.")
-    : resolve("host.visibility.unhide_tooltip", "Put this listing back on the site so guests can find it and send booking requests again.");
+    ? resolve("host.visibility.hide_tooltip", "Hide this listing from new guests. Existing reservations, dates, prices, and calendar connections stay active.")
+    : resolve("host.visibility.unhide_tooltip", "Make this listing live immediately with its current availability, prices, and booking rules. Internal review may continue after publication.");
   const Icon = isPublished ? EyeOff : Eye;
 
   return (

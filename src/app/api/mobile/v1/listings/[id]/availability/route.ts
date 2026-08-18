@@ -1,21 +1,18 @@
-import {
-  blockAllFutureDates,
-  blockDates,
-  makeAllFutureDatesAvailable,
-  removeListingDatePriceRange,
-  unblockDateRange,
-  unblockDates,
-  upsertListingDatePriceRange,
-} from "@/lib/actions/availability.actions";
-import {
-  removeCalendarPromotion,
-  saveCalendarDefaultPricing,
-  saveCalendarPromotion,
-} from "@/lib/actions/calendar.actions";
 import { db } from "@/lib/db";
 import { mobileJson, mobileOptions, requireMobileHost } from "@/lib/mobile-api";
-import { dbDateToYmd, ymdToDbDate } from "@/lib/utils/date-only";
-import { format } from "date-fns";
+import { dbDateToYmd, todayYmd, ymdToDbDate } from "@/lib/utils/date-only";
+import {
+  mutateAvailabilityForManagedListing,
+  removeManualBlockForManagedListing,
+  resetDatePriceRangeForManagedListing,
+  setDatePriceRangeForManagedListing,
+  verifyAvailabilityManager,
+} from "@/lib/services/availability-mutation.service";
+import {
+  removePromotionForManagedListing,
+  saveDefaultPricingForManagedListing,
+  savePromotionForManagedListing,
+} from "@/lib/services/pricing-promotion-mutation.service";
 
 export async function OPTIONS(request: Request) {
   return mobileOptions(request);
@@ -29,6 +26,7 @@ async function managedListing(id: string, userId: string, isAdmin: boolean) {
       slug: true,
       title: true,
       status: true,
+      availabilityMode: true,
       pricingRule: {
         select: {
           baseNightlyRate: true,
@@ -68,8 +66,8 @@ export async function GET(
     return mobileJson(request, { error: "Listing not found" }, { status: 404 });
   }
 
-  const today = ymdToDbDate(format(new Date(), "yyyy-MM-dd"));
-  const [blocks, prices] = await Promise.all([
+  const today = ymdToDbDate(todayYmd());
+  const [blocks, availabilityWindows, prices] = await Promise.all([
     db.availabilityBlock.findMany({
       where: { listingId: id, endDate: { gte: today } },
       orderBy: { startDate: "asc" },
@@ -83,6 +81,10 @@ export async function GET(
         },
       },
     }),
+    db.listingAvailabilityWindow.findMany({
+      where: { listingId: id, endDate: { gte: today } },
+      orderBy: { startDate: "asc" },
+    }),
     db.listingDatePrice.findMany({
       where: { listingId: id, date: { gte: today } },
       orderBy: { date: "asc" },
@@ -95,6 +97,7 @@ export async function GET(
       slug: listing.slug,
       title: listing.title,
       status: listing.status,
+      availabilityMode: listing.availabilityMode,
       baseNightlyRate: listing.pricingRule
         ? Number(listing.pricingRule.baseNightlyRate)
         : null,
@@ -117,6 +120,11 @@ export async function GET(
       startDate: promotion.startDate ? dbDateToYmd(promotion.startDate) : null,
       endDate: promotion.endDate ? dbDateToYmd(promotion.endDate) : null,
     })),
+    availabilityWindows: availabilityWindows.map((window) => ({
+      id: window.id,
+      startDate: window.startDate.toISOString(),
+      endDate: window.endDate.toISOString(),
+    })),
     blocks: blocks.map((block) => ({
       ...block,
       startDate: block.startDate.toISOString(),
@@ -137,6 +145,13 @@ export async function POST(
   const access = await requireMobileHost(request);
   if ("response" in access) return access.response;
   const { id } = await context.params;
+  const verifiedListing = await verifyAvailabilityManager(
+    { id: access.user.id, role: access.user.role },
+    id,
+  );
+  if (!verifiedListing) {
+    return mobileJson(request, { error: "Listing not found" }, { status: 404 });
+  }
 
   let input: {
     action?:
@@ -168,29 +183,37 @@ export async function POST(
     return mobileJson(request, { error: "Invalid JSON body" }, { status: 400 });
   }
 
-  // Pricing and promotions go through calendar.actions, the same entry point the
-  // web workspace uses — so the 50% cap, the free-cleaning fee requirement, the
-  // overlap check and the round-up rule are enforced in exactly one place.
+  // Native bearer requests and cookie-authenticated web actions enter the same
+  // internal cores after their respective ownership checks. Validation therefore
+  // stays canonical without exposing an actor-accepting Server Action.
   if (input.action === "saveDefaultPricing") {
-    const result = await saveCalendarDefaultPricing(id, {
-      baseNightlyRate: Number(input.baseNightlyRate),
-      cleaningFee: Number(input.cleaningFee ?? 0),
-      minNights: Number(input.minNights ?? 1),
-    });
+    const result = await saveDefaultPricingForManagedListing(
+      verifiedListing,
+      access.user.id,
+      {
+        baseNightlyRate: Number(input.baseNightlyRate),
+        cleaningFee: Number(input.cleaningFee ?? 0),
+        minNights: Number(input.minNights ?? 1),
+      },
+    );
     if (result?.error) return mobileJson(request, result, { status: 400 });
     return mobileJson(request, result ?? { success: true });
   }
 
   if (input.action === "savePromotion") {
-    const result = await saveCalendarPromotion(id, {
-      promotionId: input.promotionId,
-      discountPercent: Number(input.discountPercent ?? 0),
-      minimumNights: Number(input.minimumNights ?? 1),
-      freeCleaning: Boolean(input.freeCleaning),
-      roundToWholeUnit: Boolean(input.roundToWholeUnit),
-      startDate: input.startDate || undefined,
-      endDate: input.endDate || undefined,
-    });
+    const result = await savePromotionForManagedListing(
+      verifiedListing,
+      access.user.id,
+      {
+        promotionId: input.promotionId,
+        discountPercent: Number(input.discountPercent ?? 0),
+        minimumNights: Number(input.minimumNights ?? 1),
+        freeCleaning: Boolean(input.freeCleaning),
+        roundToWholeUnit: Boolean(input.roundToWholeUnit),
+        startDate: input.startDate || undefined,
+        endDate: input.endDate || undefined,
+      },
+    );
     if (result?.error) return mobileJson(request, result, { status: 400 });
     return mobileJson(request, result ?? { success: true });
   }
@@ -199,7 +222,11 @@ export async function POST(
     if (!input.promotionId) {
       return mobileJson(request, { error: "Promotion id is required" }, { status: 400 });
     }
-    const result = await removeCalendarPromotion(id, input.promotionId);
+    const result = await removePromotionForManagedListing(
+      verifiedListing,
+      access.user.id,
+      input.promotionId,
+    );
     if (result?.error) return mobileJson(request, result, { status: 400 });
     return mobileJson(request, result ?? { success: true });
   }
@@ -208,27 +235,46 @@ export async function POST(
   // fully covered, so the client can say so rather than claim a no-op worked.
   let result: { success?: boolean | string; error?: string };
   if (input.action === "blockAllFuture") {
-    result = await blockAllFutureDates(id);
+    result = await mutateAvailabilityForManagedListing(
+      verifiedListing,
+      "BLOCK_FUTURE",
+    );
   } else if (input.action === "makeAllFutureAvailable") {
-    result = await makeAllFutureDatesAvailable(id);
+    result = await mutateAvailabilityForManagedListing(
+      verifiedListing,
+      "OPEN_FUTURE",
+    );
   } else {
-    const formData = new FormData();
-    formData.set("listingId", id);
-    formData.set("startDate", input.startDate ?? "");
-    formData.set("endDate", input.endDate ?? "");
-    if (input.reason) formData.set("reason", input.reason);
-    if (input.nightlyRate != null) {
-      formData.set("nightlyRate", String(input.nightlyRate));
-    }
-
     if (input.action === "makeAvailable") {
-      result = await unblockDateRange(formData);
+      result = await mutateAvailabilityForManagedListing(
+        verifiedListing,
+        "OPEN_RANGE",
+        {
+          startDate: input.startDate ?? "",
+          endDate: input.endDate ?? "",
+        },
+      );
     } else if (input.action === "setPrice") {
-      result = await upsertListingDatePriceRange(formData);
+      result = await setDatePriceRangeForManagedListing(verifiedListing, {
+        startDate: input.startDate ?? "",
+        endDate: input.endDate ?? "",
+        nightlyRate: Number(input.nightlyRate),
+      });
     } else if (input.action === "resetPrice") {
-      result = await removeListingDatePriceRange(formData);
+      result = await resetDatePriceRangeForManagedListing(verifiedListing, {
+        startDate: input.startDate ?? "",
+        endDate: input.endDate ?? "",
+      });
     } else {
-      result = await blockDates(formData);
+      result = await mutateAvailabilityForManagedListing(
+        verifiedListing,
+        "BLOCK_RANGE",
+        {
+          startDate: input.startDate ?? "",
+          endDate: input.endDate ?? "",
+          reason: input.reason,
+        },
+      );
     }
   }
 
@@ -244,7 +290,14 @@ export async function DELETE(
 ) {
   const access = await requireMobileHost(request);
   if ("response" in access) return access.response;
-  await context.params;
+  const { id } = await context.params;
+  const verifiedListing = await verifyAvailabilityManager(
+    { id: access.user.id, role: access.user.role },
+    id,
+  );
+  if (!verifiedListing) {
+    return mobileJson(request, { error: "Listing not found" }, { status: 404 });
+  }
 
   let input: { blockId?: string };
   try {
@@ -256,7 +309,10 @@ export async function DELETE(
     return mobileJson(request, { error: "Block id is required" }, { status: 400 });
   }
 
-  const result = await unblockDates(input.blockId);
+  const result = await removeManualBlockForManagedListing(
+    verifiedListing,
+    input.blockId,
+  );
   if ("error" in result) {
     return mobileJson(request, result, { status: 400 });
   }

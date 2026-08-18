@@ -24,8 +24,11 @@ export const getListingBySlug = cache(async (slug: string) => {
         orderBy: { createdAt: "desc" },
       },
       amenities: {
-        include: { amenity: true },
-        orderBy: { amenity: { category: "asc" } },
+        include: { amenity: { include: { category: true } } },
+        orderBy: [
+          { amenity: { category: { sortOrder: "asc" } } },
+          { amenity: { sortOrder: "asc" } },
+        ],
       },
     },
   });

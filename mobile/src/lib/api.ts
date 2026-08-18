@@ -124,6 +124,30 @@ export interface ListingDraftData {
   cleaningFee?: string;
   minNights?: string;
   amenityIds?: string[];
+  /** Date-specific launch setup shared with the web wizard. Missing or malformed
+   * legacy data is returned by the server as an unanswered availability choice. */
+  prePublishPlan?: ListingPrePublishPlan;
+}
+
+export type ListingAvailabilityStart =
+  | { mode: "now" }
+  | { mode: "from"; startDate: string }
+  | { mode: "selected" };
+
+export interface ListingPrePublishRange {
+  startDate: string;
+  endDate: string;
+}
+
+export interface ListingPrePublishPlan {
+  blocks: ListingPrePublishRange[];
+  openDates: ListingPrePublishRange[];
+  datePrices: (ListingPrePublishRange & { nightlyRate: number })[];
+  offers: (ListingPrePublishRange & {
+    discountPercent: number;
+    freeCleaning: boolean;
+  })[];
+  availabilityStart: ListingAvailabilityStart | null;
 }
 
 export interface ListingStep {
@@ -197,6 +221,7 @@ export interface AvailabilityResponse {
     slug: string;
     title: string;
     status: string;
+    availabilityMode: "OPEN" | "CLOSED";
     baseNightlyRate: number | null;
     cleaningFee: number;
     minNights: number;
@@ -204,11 +229,17 @@ export interface AvailabilityResponse {
     currency: string;
   };
   promotions: PromotionSummary[];
+  availabilityWindows: {
+    id: string;
+    startDate: string;
+    endDate: string;
+  }[];
   blocks: {
     id: string;
     startDate: string;
     endDate: string;
     blockType: string;
+    feedId?: string | null;
     reason: string | null;
     booking: {
       id: string;

@@ -8,7 +8,7 @@ import { AuthForm } from "@/components/auth/login-form";
  * page the user was already on (dimmed, not replaced), closed with Escape, a backdrop
  * click, or the form's own close button — all of which go back to that page instead of
  * navigating to "/". */
-export function LoginModal() {
+export function LoginModal({ localDevLogin = false }: { localDevLogin?: boolean }) {
   const router = useRouter();
 
   useEffect(() => {
@@ -35,7 +35,10 @@ export function LoginModal() {
         onClick={() => router.back()}
       />
       <div className="relative w-full max-w-[420px]">
-        <AuthForm onClose={() => router.back()} />
+        <AuthForm
+          onClose={() => router.back()}
+          localDevLogin={localDevLogin}
+        />
       </div>
     </div>
   );

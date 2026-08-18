@@ -1,6 +1,6 @@
 import { redirect, notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { getAmenityCatalogIncluding } from "@/lib/services/amenity.service";
 import { getHostListing } from "@/lib/services/listing.service";
 import { serializeHostListingForForm } from "@/lib/serializers/host-listing-form";
 import { ListingForm } from "@/components/host/listing-form";
@@ -35,17 +35,10 @@ export default async function EditListingPage({
     alt: img.alt,
   }));
 
-  const [activeAmenities, rates] = await Promise.all([db.amenity.findMany({
-    where: { isActive: true },
-    orderBy: [{ category: "asc" }, { name: "asc" }],
-  }), getExchangeRates()]);
-  // A "this listing only" suggestion approval creates an inactive amenity/type that's
-  // not offered to other hosts — but this listing is still using it, so the picker must
-  // include it here or saving the form would silently drop it.
-  const usedInactiveAmenities = listing.amenities
-    .map((a) => a.amenity)
-    .filter((a) => !a.isActive && !activeAmenities.some((active) => active.id === a.id));
-  const amenities = [...activeAmenities, ...usedInactiveAmenities];
+  const [amenities, rates] = await Promise.all([
+    getAmenityCatalogIncluding(listing.amenities.map((a) => a.amenityId)),
+    getExchangeRates(),
+  ]);
 
   const activePropertyTypes = await getActivePropertyTypes();
   const currentPropertyType = listing.property.propertyType;

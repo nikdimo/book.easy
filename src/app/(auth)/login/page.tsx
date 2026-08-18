@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { LoginForm } from "@/components/auth/login-form";
+import { localDevAuthEnabled } from "@/lib/auth/local-dev-auth";
 
 export const metadata = {
   title: "Log In",
@@ -9,7 +10,7 @@ export const metadata = {
 export default function LoginPage() {
   return (
     <Suspense>
-      <LoginForm />
+      <LoginForm localDevLogin={localDevAuthEnabled()} />
     </Suspense>
   );
 }

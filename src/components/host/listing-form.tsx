@@ -1,10 +1,9 @@
 "use client";
 
 import { useActionState, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
-import type { CSSProperties, MouseEvent as ReactMouseEvent, ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Bath, Bed, BedDouble, Building, CalendarDays, CalendarRange, Check, ChevronLeft, ChevronRight, CircleAlert, CircleDollarSign, Coffee, CookingPot, Eye, Flame, GripVertical, HeartPulse, Laptop, ListChecks, Loader2, MapPin, Microwave, Minus, Mountain, Pencil, Plus, Refrigerator, Sailboat, Shirt, Shield, ShieldCheck, Sparkles, Sun, Thermometer, Trees, Tv, Users, Utensils, Waves, Wind, Wifi, Car } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { Bath, Bed, BedDouble, CalendarDays, CalendarRange, Check, ChevronLeft, ChevronRight, CircleAlert, CircleDollarSign, Eye, GripVertical, ListChecks, Loader2, MapPin, Minus, Pencil, Plus, ShieldCheck, Sparkles, Users } from "lucide-react";
 import {
   saveListingDraft,
   submitNewListing,
@@ -43,10 +42,8 @@ import { splitDescriptionPreviewTiers } from "@/lib/utils/description-preview";
 import { toast } from "sonner";
 import { Tx, interpolate, translatedClass, useI18n } from "@/lib/i18n/client";
 import { OfferPreview } from "@/components/host/calendar-editor-ui";
-import {
-  resolveAmenityCategory,
-  resolveAmenityLabel,
-} from "@/lib/i18n/amenity-labels";
+import { amenityIcon } from "@/lib/amenities/icon-registry";
+import type { CatalogAmenity } from "@/lib/types/amenity-catalog";
 import {
   ListingImagesField,
   type ListingMediaUploadState,
@@ -106,6 +103,7 @@ import {
 import { PropertyTypeIcon } from "@/components/shared/property-type-icon";
 import { cn } from "@/lib/utils";
 import { currencyDecimals } from "@/lib/currency/currencies";
+import { useUnsavedNavigationGuard } from "@/lib/host/use-unsaved-navigation-guard";
 import {
   LISTING_PHASES,
   LISTING_STEP,
@@ -118,7 +116,7 @@ import {
 
 interface ListingFormProps {
   currencies: string[];
-  amenities: { id: string; name: string; category: string; icon?: string | null }[];
+  amenities: CatalogAmenity[];
   propertyTypes: PropertyTypeOption[];
   initialMediaItems?: ListingMediaItem[];
   /** Serialized from the server (no Prisma Decimal). */
@@ -845,19 +843,10 @@ export function ListingForm({
   );
   const hasUnpublishedChanges =
     isEditing && currentEditSignature !== lastPublishedSignature;
-
-  function confirmManagementNavigation(
-    event: ReactMouseEvent<HTMLAnchorElement>
-  ) {
-    if (
-      hasUnpublishedChanges &&
-      !window.confirm(
-        "You have unpublished listing changes. Leave this page without publishing them?"
-      )
-    ) {
-      event.preventDefault();
-    }
-  }
+  useUnsavedNavigationGuard(
+    hasUnpublishedChanges,
+    "You have unpublished listing changes. Leave this page without publishing them?",
+  );
   const photoCount = mediaItems.filter(
     (item) => item.mediaType !== "VIDEO"
   ).length;
@@ -1078,18 +1067,22 @@ export function ListingForm({
     return () => window.clearTimeout(timeout);
   }, [isEditing]);
 
-  const groupedAmenities = useMemo(
-    () =>
-      amenities.reduce(
-        (acc, amenity) => {
-          if (!acc[amenity.category]) acc[amenity.category] = [];
-          acc[amenity.category].push(amenity);
-          return acc;
-        },
-        {} as Record<string, typeof amenities>
-      ),
-    [amenities]
-  );
+  // The catalog already arrives in the admin's category and card order, so grouping
+  // only has to preserve the order it was given.
+  const groupedAmenities = useMemo(() => {
+    const groups = new Map<string, { label: string; translated: boolean; items: typeof amenities }>();
+    for (const amenity of amenities) {
+      const group = groups.get(amenity.category.key);
+      if (group) group.items.push(amenity);
+      else
+        groups.set(amenity.category.key, {
+          label: amenity.category.label,
+          translated: amenity.category.translated,
+          items: [amenity],
+        });
+    }
+    return [...groups.entries()];
+  }, [amenities]);
 
   const selectedAmenities = useMemo(
     () => amenities.filter((amenity) => selectedAmenityIds.includes(amenity.id)),
@@ -1746,7 +1739,6 @@ export function ListingForm({
               {listing?.id && (
                 <ListingManagementTabs
                   listingId={listing.id}
-                  onNavigate={confirmManagementNavigation}
                   className="mt-4 hidden md:block"
                 />
               )}
@@ -2925,26 +2917,24 @@ export function ListingForm({
           <div id={isEditing ? "edit-section-amenities" : undefined} className={showEditSections || onCreateStep(LISTING_STEP.amenities) ? "scroll-mt-32 block" : "hidden"}>
           <FieldSection>
             <div className="space-y-4 md:space-y-7">
-              {Object.entries(groupedAmenities).map(([category, items]) => {
-                const categoryLabel = resolveAmenityCategory({ resolve }, category);
+              {groupedAmenities.map(([categoryKey, group]) => {
                 return (
-                  <div key={category}>
+                  <div key={categoryKey}>
                     <p
                       className={cn(
                         "mb-2 text-xs font-semibold text-foreground md:mb-3 md:text-sm",
-                        categoryLabel.translated && "notranslate",
+                        group.translated && "notranslate",
                       )}
                     >
-                      {categoryLabel.text}
+                      {group.label}
                     </p>
                     {/* Sized off the container, not the viewport: the editor is a
                       resizable pane, so viewport breakpoints put one card per row
                       even when there is room for three. */}
                     <div className="grid auto-rows-fr grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-2 md:grid-cols-[repeat(auto-fill,minmax(10.5rem,1fr))] md:gap-2.5">
-                      {items.map((amenity) => {
+                      {group.items.map((amenity) => {
                       const checked = selectedAmenityIds.includes(amenity.id);
-                      const Icon = AMENITY_ICON_MAP[amenity.icon ?? ""] ?? Sparkles;
-                      const amenityLabel = resolveAmenityLabel({ resolve }, amenity.name);
+                      const Icon = amenityIcon(amenity.icon) ?? Sparkles;
                       return (
                         <button
                           type="button"
@@ -2971,10 +2961,10 @@ export function ListingForm({
                           <span
                             className={cn(
                               "min-w-0 flex-1 hyphens-auto break-words text-xs font-medium leading-snug md:text-[0.8125rem]",
-                              amenityLabel.translated && "notranslate",
+                              amenity.translated && "notranslate",
                             )}
                           >
-                            {amenityLabel.text}
+                            {amenity.label}
                           </span>
                           {/* A tick in the corner instead of a dot on the baseline:
                               the dot sat in the text's row, so a wrapped label pushed
@@ -3714,7 +3704,6 @@ export function ListingForm({
             listingId={listing?.id ?? ""}
             active="edit"
             onSelectPane={() => selectMobilePane("edit")}
-            onNavigate={confirmManagementNavigation}
           />
         </div>
       )}
@@ -3827,31 +3816,6 @@ export function ListingForm({
     </form>
   );
 }
-
-const AMENITY_ICON_MAP: Record<string, LucideIcon> = {
-  wifi: Wifi,
-  wind: Wind,
-  thermometer: Thermometer,
-  shirt: Shirt,
-  tv: Tv,
-  "cooking-pot": CookingPot,
-  refrigerator: Refrigerator,
-  microwave: Microwave,
-  coffee: Coffee,
-  sun: Sun,
-  trees: Trees,
-  car: Car,
-  waves: Waves,
-  bath: Bath,
-  flame: Flame,
-  shield: Shield,
-  "heart-pulse": HeartPulse,
-  "mountain-snow": Mountain,
-  building: Building,
-  laptop: Laptop,
-  sailboat: Sailboat,
-  utensils: Utensils,
-};
 
 function StepRequirementStatus({
   issues,
@@ -4290,7 +4254,7 @@ function ListingGuestPreview({
   nightlyRate: number;
   currency: string;
   importedPriceQuote?: ImportedPriceQuote;
-  amenities: { id: string; name: string; category: string; icon?: string | null }[];
+  amenities: CatalogAmenity[];
 }) {
   const { resolve } = useI18n();
   const displayedMedia = mediaItems.slice(0, 5);
@@ -4406,17 +4370,17 @@ function ListingGuestPreview({
               {amenities.length > 0 ? (
                   <div className="grid gap-2 sm:grid-cols-2">
                     {amenities.slice(0, 8).map((amenity) => {
-                      const amenityLabel = resolveAmenityLabel({ resolve }, amenity.name);
+                      const Icon = amenityIcon(amenity.icon) ?? ShieldCheck;
                       return (
                         <div
                           key={amenity.id}
                           className={cn(
                             "flex items-center gap-2 text-sm",
-                            amenityLabel.translated && "notranslate",
+                            amenity.translated && "notranslate",
                           )}
                         >
-                          <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-                          {amenityLabel.text}
+                          <Icon className="h-4 w-4 text-muted-foreground" />
+                          {amenity.label}
                         </div>
                       );
                     })}

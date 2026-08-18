@@ -39,10 +39,7 @@ import { Tx, useI18n } from "@/lib/i18n/client";
 import { useDisplayCurrency } from "@/lib/currency/client";
 import { BASE_CURRENCY } from "@/lib/currency/currency-preference";
 import type { Resolved } from "@/lib/i18n/t";
-import {
-  resolveAmenityCategory,
-  resolveAmenityLabel,
-} from "@/lib/i18n/amenity-labels";
+import type { CatalogAmenity } from "@/lib/types/amenity-catalog";
 import { resolvePropertyTypeLabel } from "@/lib/i18n/property-type-labels";
 
 export type SearchFiltersSection =
@@ -52,7 +49,7 @@ export type SearchFiltersSection =
   | "amenities";
 
 interface SearchFiltersProps {
-  amenities: { id: string; name: string; category: string }[];
+  amenities: CatalogAmenity[];
   /** Catalog of selectable types (admin-managed) — distinct from the currently
    *  *selected* type values, which live in `SearchFiltersState.propertyTypes`. */
   propertyTypeOptions: PropertyTypeOption[];
@@ -288,13 +285,22 @@ function SearchFiltersInner({
     });
   }, [focusSection]);
 
+  // Preserves the admin's category and card order, which the catalog already applied.
   const groupedAmenities = useMemo(() => {
-    const groups = new Map<string, { id: string; name: string; category: string }[]>();
+    const groups = new Map<
+      string,
+      { label: string; translated: boolean; items: CatalogAmenity[] }
+    >();
 
     for (const amenity of amenities) {
-      const existing = groups.get(amenity.category) ?? [];
-      existing.push(amenity);
-      groups.set(amenity.category, existing);
+      const existing = groups.get(amenity.category.key);
+      if (existing) existing.items.push(amenity);
+      else
+        groups.set(amenity.category.key, {
+          label: amenity.category.label,
+          translated: amenity.category.translated,
+          items: [amenity],
+        });
     }
 
     return [...groups.entries()];
@@ -658,24 +664,22 @@ function SearchFiltersInner({
               description={i18n.resolve("filters.amenities_description", "Pick the essentials you want included.")}
             />
             <div className="space-y-6">
-              {groupedAmenities.map(([category, items]) => {
-                const categoryLabel = resolveAmenityCategory(i18n, category);
+              {groupedAmenities.map(([categoryKey, group]) => {
                 return (
-                  <div key={category}>
+                  <div key={categoryKey}>
                     <h4
                       className={cn(
                         "mb-3 text-base font-semibold text-foreground",
-                        categoryLabel.translated && "notranslate",
+                        group.translated && "notranslate",
                       )}
                     >
-                      {categoryLabel.text}
+                      {group.label}
                     </h4>
                     <div className="flex flex-wrap gap-2.5">
-                      {items.map((amenity) => {
+                      {group.items.map((amenity) => {
                         const selected = selectedAmenities.includes(amenity.name);
                         const unavailable =
                           !selected && !availableAmenitySet.has(amenity.name);
-                        const amenityLabel = resolveAmenityLabel(i18n, amenity.name);
                         const button = (
                           <button
                             key={amenity.id}
@@ -693,10 +697,10 @@ function SearchFiltersInner({
                                 : unavailable
                                   ? "cursor-not-allowed border-border/70 bg-muted/15 text-muted-foreground opacity-55"
                                   : "border-border bg-background text-foreground hover:bg-muted/25",
-                              amenityLabel.translated && "notranslate",
+                              amenity.translated && "notranslate",
                             )}
                           >
-                            {amenityLabel.text}
+                            {amenity.label}
                           </button>
                         );
 

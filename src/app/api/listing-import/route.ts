@@ -15,6 +15,7 @@ import { isSupportedCurrency } from "@/lib/currency/currencies";
 import { normalizeListingSpaceType } from "@/lib/types/listing-space-type";
 import { reverseGeocode } from "@/lib/services/location.service";
 import { normalizeAmenityName } from "@/lib/amenities/normalize";
+import { categoryIdForName, uniqueAmenityKey } from "@/lib/amenities/catalog";
 
 export const runtime = "nodejs";
 
@@ -60,17 +61,6 @@ function cleanAmenity(value: string): string | null {
     .slice(0, 80);
   if (cleaned.length < 2 || /^yes|no|true|false$/i.test(cleaned)) return null;
   return AMENITY_ALIASES[amenityKey(cleaned)] ?? cleaned;
-}
-
-function amenityCategory(name: string): string {
-  const value = name.toLowerCase();
-  if (/bath|shower|toilet|hair dryer/.test(value)) return "Bathroom";
-  if (/tv|television|game|cinema|speaker/.test(value)) return "Entertainment";
-  if (/kitchen|coffee|oven|stove|microwave|fridge|refrigerator|dishwasher/.test(value)) return "Kitchen";
-  if (/garden|balcony|terrace|patio|barbecue|bbq|outdoor/.test(value)) return "Outdoor";
-  if (/alarm|detector|extinguisher|first aid|safe|security/.test(value)) return "Safety";
-  if (/wifi|internet|heating|air conditioning|washer|dryer|iron|linen|towel/.test(value)) return "Essentials";
-  return "Features";
 }
 
 function matchPropertyType(
@@ -168,6 +158,8 @@ export async function POST(request: Request) {
 
     const result = await db.$transaction(async (transaction) => {
       const amenityIds: string[] = [];
+      // Keys created inside this transaction aren't visible to the uniqueness read.
+      const keysCreatedHere = new Set<string>();
       let createdAmenities = 0;
       for (const name of names) {
         const savedAlias = aliasesByKey.get(amenityKey(name));
@@ -190,11 +182,18 @@ export async function POST(request: Request) {
           }
           continue;
         }
+        const key = await uniqueAmenityKey(aliasName, keysCreatedHere);
         const created = await transaction.amenity.upsert({
           where: { name: aliasName },
           update: { isActive: true },
-          create: { name: aliasName, category: amenityCategory(aliasName), isActive: true },
+          create: {
+            name: aliasName,
+            key,
+            categoryId: await categoryIdForName(aliasName),
+            isActive: true,
+          },
         });
+        keysCreatedHere.add(key);
         amenityIds.push(created.id);
         existingByKey.set(amenityKey(aliasName), created);
         createdAmenities += 1;

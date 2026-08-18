@@ -24,11 +24,25 @@ describe("searchListings amenity filter", () => {
   });
 
   it("requires ALL selected amenities (US-05.05), not just any one of them", async () => {
+    // Any real category will do — this test is about amenity filtering, not grouping.
+    const category = await db.amenityCategory.findFirstOrThrow({
+      orderBy: { sortOrder: "asc" },
+      select: { id: true },
+    });
+    const stamp = Date.now();
     const wifi = await db.amenity.create({
-      data: { name: `__Test WiFi ${Date.now()}__`, category: "Test" },
+      data: {
+        name: `__Test WiFi ${stamp}__`,
+        key: `__test_wifi_${stamp}__`,
+        categoryId: category.id,
+      },
     });
     const pool = await db.amenity.create({
-      data: { name: `__Test Pool ${Date.now()}__`, category: "Test" },
+      data: {
+        name: `__Test Pool ${stamp}__`,
+        key: `__test_pool_${stamp}__`,
+        categoryId: category.id,
+      },
     });
     amenityIds = [wifi.id, pool.id];
 

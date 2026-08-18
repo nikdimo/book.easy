@@ -3,7 +3,18 @@ import "server-only";
 import { db } from "@/lib/db";
 
 export async function getHostAttentionSummary(hostId: string) {
-  const [pendingBookings, unreadThreads, damageReports, recentNotifications] =
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const [
+    pendingBookings,
+    unreadThreads,
+    damageReports,
+    recentNotifications,
+    firstActiveListing,
+    confirmedBookingCount,
+    upcomingStay,
+  ] =
     await Promise.all([
       db.booking.count({
         where: { listing: { hostId }, status: "PENDING" },
@@ -35,6 +46,26 @@ export async function getHostAttentionSummary(hostId: string) {
         orderBy: { createdAt: "desc" },
         take: 6,
       }),
+      db.listing.findFirst({
+        where: { hostId, status: "APPROVED" },
+        select: { id: true },
+        orderBy: { createdAt: "asc" },
+      }),
+      db.booking.count({
+        where: {
+          listing: { hostId, status: "APPROVED" },
+          status: { in: ["CONFIRMED", "COMPLETED"] },
+        },
+      }),
+      db.booking.findFirst({
+        where: {
+          listing: { hostId },
+          status: "CONFIRMED",
+          checkIn: { gte: today },
+        },
+        select: { checkIn: true, listingId: true },
+        orderBy: { checkIn: "asc" },
+      }),
     ]);
 
   return {
@@ -43,6 +74,9 @@ export async function getHostAttentionSummary(hostId: string) {
     unreadThreads,
     damageReports,
     recentNotifications,
+    firstActiveListing,
+    confirmedBookingCount,
+    upcomingStay,
   };
 }
 

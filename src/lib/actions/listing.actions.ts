@@ -28,8 +28,10 @@ import {
   type InclusiveBlockRange,
 } from "@/lib/types/listing-prepublish-plan";
 import {
+  AVAILABILITY_START_BLOCK_REASON,
   availabilityStartBlock,
   validateAvailabilityStartForPublish,
+  validateStoredListingAvailabilityForPublish,
 } from "@/lib/types/listing-availability-start";
 import { getExchangeRates } from "@/lib/currency/rates";
 
@@ -385,7 +387,7 @@ export async function submitNewListing(
   const startBlock = availabilityStartBlock(availability.value);
   const inclusiveBlockRanges: InclusiveBlockRange[] = [
     ...(startBlock
-      ? [{ ...startBlock, reason: "Before the listing's availability start date" }]
+      ? [{ ...startBlock, reason: AVAILABILITY_START_BLOCK_REASON }]
       : []),
     ...plan.blocks.map((block) => ({ ...block, reason: DEFAULT_BLOCK_REASON })),
   ];
@@ -544,11 +546,14 @@ export async function updateListing(listingId: string, formData: FormData) {
     bedrooms: formData.get("bedrooms"),
     bathrooms: formData.get("bathrooms"),
     beds: formData.get("beds"),
-    currency: formData.get("currency") || listing.pricingRule.currency,
+    // Currency is the unit for every stored price on the listing, including date
+    // overrides and fixed-amount promotions. Changing only this label would silently
+    // re-denominate those amounts, so detail edits must preserve the persisted unit.
+    // A future currency-conversion flow must update every monetary row atomically.
+    currency: listing.pricingRule.currency,
     // Standard pricing belongs to the Pricing workspace once a listing exists.
-    // Validate this detail edit against the persisted values, not values posted by a
-    // potentially stale editor. The write below deliberately updates only currency,
-    // so a calendar pricing save that lands during this request cannot be reverted.
+    // Validate this detail edit against persisted values, not values posted by a
+    // potentially stale editor, so concurrent calendar saves cannot be reverted.
     baseNightlyRate: listing.pricingRule.baseNightlyRate,
     cleaningFee: listing.pricingRule.cleaningFee,
     minNights: listing.pricingRule.minNights,
@@ -563,9 +568,6 @@ export async function updateListing(listingId: string, formData: FormData) {
   }
 
   const data = parsed.data;
-  if (!(await currencyIsCurrentlyQuotable(data.currency))) {
-    return { error: "That currency is not currently available. Choose another currency." };
-  }
   const mediaItems = parseMediaItemsFromForm(formData);
   const primaryImageIndex = firstImageIndex(mediaItems);
 
@@ -613,11 +615,6 @@ export async function updateListing(listingId: string, formData: FormData) {
     revalidatePublicListingCaches();
   }
 
-  await db.pricingRule.update({
-    where: { listingId },
-    data: { currency: data.currency },
-  });
-
   await db.listingAmenity.deleteMany({ where: { listingId } });
   if (data.amenityIds && data.amenityIds.length > 0) {
     await db.listingAmenity.createMany({
@@ -664,7 +661,13 @@ export async function submitForReview(listingId: string) {
 
   const listing = await db.listing.findFirst({
     where: { id: listingId, hostId: session.user.id },
-    include: { images: true, pricingRule: true },
+    include: {
+      images: true,
+      pricingRule: true,
+      availabilityBlocks: {
+        select: { startDate: true, endDate: true, reason: true },
+      },
+    },
   });
 
   if (!listing) return { error: "Listing not found" };
@@ -681,6 +684,14 @@ export async function submitForReview(listingId: string) {
 
   if (listing.images.filter((item) => item.mediaType === "IMAGE").length < 3) {
     return { error: "Add at least 3 photos before publishing" };
+  }
+
+  const availability = validateStoredListingAvailabilityForPublish(listing);
+  if (!availability.ok) {
+    return {
+      error:
+        "Confirm availability before publishing. Choose unavailable by default, or set a future availability start date.",
+    };
   }
 
   await db.listing.update({

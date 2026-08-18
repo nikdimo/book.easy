@@ -2312,7 +2312,7 @@ function PlanEditorDialog({
                   amountLabel={
                     resolve(
                       "host.prepublish.offer_night_label",
-                      "Price a guest pays per night",
+                      "Example discounted night using the base price",
                     ).text
                   }
                 />

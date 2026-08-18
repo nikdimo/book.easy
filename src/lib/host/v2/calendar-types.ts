@@ -1,0 +1,121 @@
+/**
+ * The serialized shape the v2 host calendar workspace runs on.
+ *
+ * Every date here is a civil `YYYY-MM-DD` string rather than a `Date`: the payload
+ * crosses the server/client boundary, and a `Date` would be re-read against the
+ * browser's own midnight instead of the marketplace's — the same reason the rest of
+ * the calendar code normalizes through `date-only`.
+ *
+ * Ranges keep the storage convention used everywhere else in this codebase:
+ * `startDate` is the first covered day, `endDate` is the exclusive checkout boundary.
+ */
+
+import type { CalendarFormats } from "@/lib/host/v2/calendar-format";
+
+export type HostCalendarBlockType =
+  | "MANUAL_BLOCK"
+  | "BOOKING_HOLD"
+  | "EXTERNAL_SYNC";
+
+export interface HostCalendarBlock {
+  id: string;
+  /** Inclusive first blocked day. */
+  startDate: string;
+  /** Exclusive checkout boundary. */
+  endDate: string;
+  blockType: HostCalendarBlockType;
+  reason: string | null;
+  guestName: string | null;
+  bookingStatus: string | null;
+}
+
+export interface HostCalendarDatePrice {
+  date: string;
+  nightlyRate: number;
+}
+
+export interface HostCalendarWindow {
+  id: string;
+  startDate: string;
+  /** Exclusive. */
+  endDate: string;
+}
+
+export interface HostCalendarPromotion {
+  id: string;
+  type: "PERCENT_DISCOUNT" | "FREE_CLEANING";
+  discountPercent: number;
+  minimumNights: number | null;
+  freeCleaning: boolean;
+  roundToWholeUnit: boolean;
+  startDate: string | null;
+  /** Exclusive, matching how promotions are stored and priced. */
+  endDate: string | null;
+  createdAt: string;
+}
+
+export interface HostCalendarReservation {
+  id: string;
+  checkIn: string;
+  /** Exclusive checkout day. */
+  checkOut: string;
+  guestName: string | null;
+  status: string;
+}
+
+export interface HostCalendarPricing {
+  currency: string;
+  baseNightlyRate: number;
+  cleaningFee: number;
+  minNights: number;
+  maxNights: number;
+}
+
+export interface HostCalendarListing {
+  id: string;
+  title: string;
+  slug: string | null;
+  status: string;
+  availabilityMode: "OPEN" | "CLOSED";
+  photoUrl: string | null;
+  photoAlt: string | null;
+  city: string | null;
+  /** Photos of type IMAGE. `submitForReview` refuses to publish below three. */
+  photoCount: number;
+  /** Null until the listing has been live once — the availability check reads it. */
+  publishedAt: string | null;
+  /** Null when the host has not configured pricing yet — nothing can be quoted. */
+  pricing: HostCalendarPricing | null;
+  datePrices: HostCalendarDatePrice[];
+  blocks: HostCalendarBlock[];
+  availabilityWindows: HostCalendarWindow[];
+  promotions: HostCalendarPromotion[];
+  nextReservation: HostCalendarReservation | null;
+}
+
+export interface HostCalendarDateCounts {
+  /** Days inside the analysed window, from today to the horizon. */
+  total: number;
+  /** Open on the calendar *and* sellable — what a guest could actually book. */
+  bookable: number;
+  /**
+   * Open on the calendar but not sellable, because the listing itself is off the site
+   * or has no price. Counted apart from `bookable` so no screen can present an open
+   * date as a date a guest could book.
+   */
+  openNotBookable: number;
+  blocked: number;
+  booked: number;
+}
+
+export interface HostCalendarWorkspaceData {
+  /** Today as a civil date in the marketplace time zone. */
+  today: string;
+  /** Exclusive end of the analysed window — `today` plus `horizonMonths`. */
+  horizonEnd: string;
+  /** Stated in every count so a number is never presented without its window. */
+  horizonMonths: number;
+  /** Resolved on the server so the client never asks `Intl` for locale data. */
+  formats: CalendarFormats;
+  listings: HostCalendarListing[];
+}

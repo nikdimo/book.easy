@@ -9,13 +9,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  blockDates,
-  blockAllFutureDates,
-  makeAllFutureDatesAvailable,
-  unblockDateRange,
   upsertListingDatePriceRange,
   removeListingDatePriceRange,
 } from "@/lib/actions/availability.actions";
+import {
+  blockCalendarFuture,
+  blockCalendarRange,
+  openCalendarFuture,
+  openCalendarRange,
+} from "@/lib/actions/calendar.actions";
 import { dateKey, parseLocalYmd } from "@/lib/utils/stay-pricing";
 import {
   addDaysToYmd,
@@ -51,9 +53,17 @@ interface DatePriceRow {
   nightlyRate: number;
 }
 
+interface AvailabilityWindow {
+  id: string;
+  startDate: Date | string;
+  endDate: Date | string;
+}
+
 interface PropertyAvailabilityCalendarProps {
   mode?: "availability" | "pricing";
   listingId: string;
+  availabilityMode: "OPEN" | "CLOSED";
+  availabilityWindows: AvailabilityWindow[];
   baseNightlyRate: number;
   currency: string;
   datePrices: DatePriceRow[];
@@ -67,7 +77,12 @@ interface GroupedPriceRange {
   days: number;
 }
 
-type ActivityFilter = "ALL" | "MANUAL_BLOCK" | "BOOKING_HOLD" | "CUSTOM_PRICE";
+type ActivityFilter =
+  | "ALL"
+  | "MANUAL_BLOCK"
+  | "BOOKING_HOLD"
+  | "EXTERNAL_SYNC"
+  | "CUSTOM_PRICE";
 
 interface UpcomingException {
   id: string;
@@ -88,6 +103,8 @@ interface PendingAction {
 export function PropertyAvailabilityCalendar({
   mode = "availability",
   listingId,
+  availabilityMode,
+  availabilityWindows,
   baseNightlyRate,
   currency,
   datePrices,
@@ -128,9 +145,11 @@ export function PropertyAvailabilityCalendar({
       : `${rangeParts.startDate} to ${rangeParts.displayEndDate}`
     : "Select a date range";
 
-  const { manualKeys, bookingKeys, priceByKey } = useMemo(() => {
+  const { manualKeys, bookingKeys, importedKeys, openedKeys, priceByKey } = useMemo(() => {
     const manual = new Set<string>();
     const booking = new Set<string>();
+    const imported = new Set<string>();
+    const opened = new Set<string>();
 
     for (const block of existingBlocks) {
       const keys = eachYmdExclusive(
@@ -139,11 +158,18 @@ export function PropertyAvailabilityCalendar({
       );
 
       for (const key of keys) {
-        if (block.blockType === "MANUAL_BLOCK") {
-          manual.add(key);
-        } else {
-          booking.add(key);
-        }
+        if (block.blockType === "MANUAL_BLOCK") manual.add(key);
+        else if (block.blockType === "EXTERNAL_SYNC") imported.add(key);
+        else booking.add(key);
+      }
+    }
+
+    for (const window of availabilityWindows) {
+      for (const key of eachYmdExclusive(
+        dbDateToYmd(window.startDate),
+        dbDateToYmd(window.endDate)
+      )) {
+        opened.add(key);
       }
     }
 
@@ -152,8 +178,14 @@ export function PropertyAvailabilityCalendar({
       prices.set(dbDateToYmd(row.date), Number(row.nightlyRate));
     }
 
-    return { manualKeys: manual, bookingKeys: booking, priceByKey: prices };
-  }, [datePrices, existingBlocks]);
+    return {
+      manualKeys: manual,
+      bookingKeys: booking,
+      importedKeys: imported,
+      openedKeys: opened,
+      priceByKey: prices,
+    };
+  }, [availabilityWindows, datePrices, existingBlocks]);
 
   const selectedRangeKeys = useMemo(() => {
     if (!checkIn) return [];
@@ -175,16 +207,20 @@ export function PropertyAvailabilityCalendar({
   const selectedStats = useMemo(() => {
     const manualDays = selectedRangeKeys.filter((key) => manualKeys.has(key)).length;
     const bookingDays = selectedRangeKeys.filter((key) => bookingKeys.has(key)).length;
+    const importedDays = selectedRangeKeys.filter((key) => importedKeys.has(key)).length;
+    const openDays = selectedRangeKeys.filter((key) => openedKeys.has(key)).length;
     const customPriceDays = selectedRangeKeys.filter((key) => priceByKey.has(key)).length;
 
     return {
       totalDays: selectedRangeKeys.length,
       manualDays,
       bookingDays,
+      importedDays,
+      openDays,
       customPriceDays,
       hasCustomPrice: customPriceDays > 0,
     };
-  }, [bookingKeys, manualKeys, priceByKey, selectedRangeKeys]);
+  }, [bookingKeys, importedKeys, manualKeys, openedKeys, priceByKey, selectedRangeKeys]);
 
   const groupedPriceRanges = useMemo(() => {
     const rows = [...datePrices]
@@ -232,19 +268,30 @@ export function PropertyAvailabilityCalendar({
       const start = dbDateToYmd(block.startDate);
       const end = addDaysToYmd(dbDateToYmd(block.endDate), -1);
       const isManualBlock = block.blockType === "MANUAL_BLOCK";
+      const isImported = block.blockType === "EXTERNAL_SYNC";
 
       return {
         id: block.id,
         start,
         end,
-        kind: isManualBlock ? "MANUAL_BLOCK" : "BOOKING_HOLD",
-        title: isManualBlock ? "Manual block" : "Booking hold",
+        kind: isManualBlock
+          ? "MANUAL_BLOCK"
+          : isImported
+            ? "EXTERNAL_SYNC"
+            : "BOOKING_HOLD",
+        title: isManualBlock
+          ? "Manual block"
+          : isImported
+            ? "Connected calendar"
+            : "Booking hold",
         detail: isManualBlock
           ? block.reason?.trim() || "No reason added"
+          : isImported
+            ? block.reason?.trim() || "Blocked by a connected calendar"
           : block.booking
             ? `${block.booking.guest.name} | ${block.booking.status}`
             : "Reserved dates",
-        badge: isManualBlock ? "Blocked" : "Booked",
+        badge: isManualBlock ? "Blocked" : isImported ? "Imported" : "Booked",
       } satisfies UpcomingException;
     });
 
@@ -308,10 +355,10 @@ export function PropertyAvailabilityCalendar({
     fd.set("nightlyRate", String(baseNightlyRate));
 
     const res = await upsertListingDatePriceRange(fd);
-    if (res?.success) {
+    if (res && "success" in res && res.success) {
       toast.success("Custom price cleared");
       setPriceDialogOpen(false);
-    } else if (res?.error) {
+    } else if (res && "error" in res && res.error) {
       toast.error(res.error);
     }
   }
@@ -319,17 +366,19 @@ export function PropertyAvailabilityCalendar({
   async function runBlockRange() {
     if (!rangeParts) return;
 
-    const fd = new FormData();
-    fd.set("listingId", listingId);
-    fd.set("startDate", rangeParts.startDate);
-    fd.set("endDate", rangeParts.endDate);
-    if (reasonInput.trim()) {
-      fd.set("reason", reasonInput.trim());
-    }
-
-    const res = await blockDates(fd);
+    const res = await blockCalendarRange(listingId, {
+      startDate: rangeParts.startDate,
+      endDate: rangeParts.endDate,
+      reason: reasonInput.trim() || undefined,
+    });
     if (res?.success) {
-      toast.success("Range blocked");
+      toast.success(
+        typeof res.success === "string"
+          ? res.success
+          : availabilityMode === "CLOSED"
+            ? "Dates closed"
+            : "Range blocked"
+      );
     } else if (res?.error) {
       toast.error(res.error);
     }
@@ -338,14 +387,18 @@ export function PropertyAvailabilityCalendar({
   async function runMakeRangeAvailable() {
     if (!rangeParts) return;
 
-    const fd = new FormData();
-    fd.set("listingId", listingId);
-    fd.set("startDate", rangeParts.startDate);
-    fd.set("endDate", rangeParts.endDate);
-
-    const res = await unblockDateRange(fd);
+    const res = await openCalendarRange(listingId, {
+      startDate: rangeParts.startDate,
+      endDate: rangeParts.endDate,
+    });
     if (res?.success) {
-      toast.success("Range marked available");
+      toast.success(
+        typeof res.success === "string"
+          ? res.success
+          : availabilityMode === "CLOSED"
+            ? "Dates opened"
+            : "Range marked available"
+      );
     } else if (res?.error) {
       toast.error(res.error);
     }
@@ -367,10 +420,10 @@ export function PropertyAvailabilityCalendar({
     fd.set("nightlyRate", String(value));
 
     const res = await upsertListingDatePriceRange(fd);
-    if (res?.success) {
+    if (res && "success" in res && res.success) {
       toast.success("Custom price applied");
       setPriceDialogOpen(false);
-    } else if (res?.error) {
+    } else if (res && "error" in res && res.error) {
       toast.error(res.error);
     }
   }
@@ -382,26 +435,26 @@ export function PropertyAvailabilityCalendar({
     fd.set("endDate", end);
 
     const res = await removeListingDatePriceRange(fd);
-    if (res?.success) {
+    if (res && "success" in res && res.success) {
       toast.success("Custom price removed");
-    } else if (res?.error) {
+    } else if (res && "error" in res && res.error) {
       toast.error(res.error);
     }
   }
 
   async function runFutureBlockAll() {
-    const res = await blockAllFutureDates(listingId);
+    const res = await blockCalendarFuture(listingId);
     if (res?.success) {
-      toast.success("All future dates blocked");
+      toast.success(res.success);
     } else if (res?.error) {
       toast.error(res.error);
     }
   }
 
   async function runFutureMakeAvailableAll() {
-    const res = await makeAllFutureDatesAvailable(listingId);
+    const res = await openCalendarFuture(listingId);
     if (res?.success) {
-      toast.success("All future manual blocks removed");
+      toast.success(res.success);
     } else if (res?.error) {
       toast.error(res.error);
     }
@@ -415,19 +468,36 @@ export function PropertyAvailabilityCalendar({
           <p className="text-sm text-muted-foreground">
             {mode === "pricing"
               ? "Select a date range to set or remove a custom nightly price."
-              : "Select a date range to block it or make it available."}
+              : availabilityMode === "CLOSED"
+                ? "Dates stay closed until you open them. Select a range to open or close it."
+                : "Dates start available. Select a range to block it or remove manual blocks."}
           </p>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
             {mode === "availability" ? (
               <>
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="size-3 rounded-sm bg-muted border" /> Manual block
-                </span>
+                {availabilityMode === "CLOSED" ? (
+                  <>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="size-3 rounded-sm bg-emerald-500/20 ring-1 ring-emerald-600/40" /> Open
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="size-3 rounded-sm bg-muted border" /> Closed
+                    </span>
+                  </>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="size-3 rounded-sm bg-muted border" /> Manual block
+                  </span>
+                )}
                 <span className="inline-flex items-center gap-1.5">
                   <span className="size-3 rounded-sm bg-destructive/25 border border-destructive/30" />{" "}
                   Booking
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="size-3 rounded-sm bg-violet-500/20 border border-violet-500/30" />{" "}
+                  Connected calendar
                 </span>
               </>
             ) : (
@@ -453,7 +523,9 @@ export function PropertyAvailabilityCalendar({
                 text:
                   mode === "pricing"
                     ? "Select dates to adjust their nightly price."
-                    : "Select dates to block or reopen.",
+                    : availabilityMode === "CLOSED"
+                      ? "Select dates to open or close."
+                      : "Select dates to block or make available.",
                 translated: false,
               }}
               hideDateSegmentCards
@@ -468,12 +540,34 @@ export function PropertyAvailabilityCalendar({
                       isCustomPrice:
                         priceByKey.has(key) &&
                         !manualKeys.has(key) &&
-                        !bookingKeys.has(key),
+                        !bookingKeys.has(key) &&
+                        !importedKeys.has(key),
                     }
-                  : {};
+                  : {
+                      sublabel: bookingKeys.has(key)
+                        ? "Booked"
+                        : importedKeys.has(key)
+                          ? "Imported"
+                          : manualKeys.has(key)
+                            ? "Blocked"
+                            : availabilityMode === "CLOSED"
+                              ? openedKeys.has(key)
+                                ? "Open"
+                                : "Closed"
+                              : "Available",
+                    };
               }}
               dateModifiers={{
+                closedDefault: (day) =>
+                  mode === "availability" &&
+                  availabilityMode === "CLOSED" &&
+                  !openedKeys.has(dateKey(day)),
+                openWindow: (day) =>
+                  mode === "availability" &&
+                  availabilityMode === "CLOSED" &&
+                  openedKeys.has(dateKey(day)),
                 manualBlock: (day) => manualKeys.has(dateKey(day)),
+                importedBlock: (day) => importedKeys.has(dateKey(day)),
                 bookingHold: (day) => bookingKeys.has(dateKey(day)),
                 customPrice: (day) => {
                   const key = dateKey(day);
@@ -481,14 +575,22 @@ export function PropertyAvailabilityCalendar({
                     mode === "pricing" &&
                     priceByKey.has(key) &&
                     !manualKeys.has(key) &&
-                    !bookingKeys.has(key)
+                    !bookingKeys.has(key) &&
+                    !importedKeys.has(key)
                   );
                 },
               }}
               dateModifiersClassNames={{
+                closedDefault: cn("bg-muted/60 text-muted-foreground"),
+                openWindow: cn(
+                  "bg-emerald-500/15 ring-2 ring-emerald-600/35 ring-inset"
+                ),
                 manualBlock: cn(
                   "bg-muted text-foreground hover:bg-muted",
                   "after:pointer-events-none after:absolute after:inset-0 after:rounded-[inherit] after:bg-[repeating-linear-gradient(-45deg,rgba(15,23,42,0.09)_0,rgba(15,23,42,0.09)_4px,transparent_4px,transparent_8px)]"
+                ),
+                importedBlock: cn(
+                  "bg-violet-500/20 text-foreground hover:bg-violet-500/25"
                 ),
                 bookingHold: cn(
                   "bg-destructive/25 text-foreground hover:bg-destructive/30"
@@ -531,11 +633,23 @@ export function PropertyAvailabilityCalendar({
                                 {selectedStats.bookingDays === 1 ? "" : "s"}
                               </Badge>
                             ) : null}
+                            {mode === "availability" && selectedStats.importedDays > 0 ? (
+                              <Badge variant="outline">
+                                {selectedStats.importedDays} imported blocked day
+                                {selectedStats.importedDays === 1 ? "" : "s"}
+                              </Badge>
+                            ) : null}
+                            {mode === "availability" && availabilityMode === "CLOSED" ? (
+                              <Badge variant="outline">
+                                {selectedStats.openDays} open day
+                                {selectedStats.openDays === 1 ? "" : "s"}
+                              </Badge>
+                            ) : null}
                           </div>
                         ) : null}
                       </div>
 
-                      {mode === "availability" ? (
+                      {mode === "availability" && availabilityMode === "OPEN" ? (
                         <div className="max-w-sm space-y-2">
                           <Label htmlFor="availability-reason" className="text-xs text-muted-foreground">
                             Block reason (optional)
@@ -590,13 +704,17 @@ export function PropertyAvailabilityCalendar({
                             disabled={!rangeParts || pending}
                             onClick={() =>
                               requestConfirm(
-                                "Make selected range available",
-                                `This removes manual blocks in ${selectedLabel}. Booking holds stay untouched.`,
+                                availabilityMode === "CLOSED"
+                                  ? "Open selected dates"
+                                  : "Make selected range available",
+                                availabilityMode === "CLOSED"
+                                  ? `This opens ${selectedLabel}. Bookings and connected-calendar restrictions stay blocked.`
+                                  : `This removes manual blocks in ${selectedLabel}, including any before-launch protection. Bookings and connected-calendar restrictions stay blocked.`,
                                 runMakeRangeAvailable
                               )
                             }
                           >
-                            Make available
+                            {availabilityMode === "CLOSED" ? "Open dates" : "Make available"}
                           </Button>
                           <Button
                             type="button"
@@ -604,13 +722,17 @@ export function PropertyAvailabilityCalendar({
                             disabled={!rangeParts || pending}
                             onClick={() =>
                               requestConfirm(
-                                "Block selected range",
-                                `This will block ${selectedLabel} for booking requests.`,
+                                availabilityMode === "CLOSED"
+                                  ? "Close selected dates"
+                                  : "Block selected range",
+                                availabilityMode === "CLOSED"
+                                  ? `This removes ${selectedLabel} from the open-date windows. Existing bookings stay protected.`
+                                  : `This will block ${selectedLabel} for booking requests.`,
                                 runBlockRange
                               )
                             }
                           >
-                            Block
+                            {availabilityMode === "CLOSED" ? "Close dates" : "Block"}
                           </Button>
                         </>
                       )}
@@ -644,13 +766,17 @@ export function PropertyAvailabilityCalendar({
               disabled={pending}
               onClick={() =>
                 requestConfirm(
-                  "Block all future dates",
-                  "This will block every currently available future date. Existing booking holds remain as-is.",
+                  availabilityMode === "CLOSED"
+                    ? "Close all future dates"
+                    : "Block all future dates",
+                  availabilityMode === "CLOSED"
+                    ? "This closes every future open window. Existing bookings and connected-calendar restrictions stay protected."
+                    : "This blocks every currently available future date. Existing bookings and connected-calendar restrictions remain as-is.",
                   runFutureBlockAll
                 )
               }
             >
-              Block all future
+              {availabilityMode === "CLOSED" ? "Close all future" : "Block all future"}
             </Button>
             <Button
               type="button"
@@ -659,13 +785,17 @@ export function PropertyAvailabilityCalendar({
               disabled={pending}
               onClick={() =>
                 requestConfirm(
-                  "Make all future dates available",
-                  "This will remove all manual future blocks. Confirmed/pending booking holds are kept.",
+                  availabilityMode === "CLOSED"
+                    ? "Open all future dates"
+                    : "Make all future dates available",
+                  availabilityMode === "CLOSED"
+                    ? "This creates an open window for future dates. Existing bookings, manual blocks, and connected-calendar restrictions stay blocked."
+                    : "This removes all manual future blocks, including before-launch protection. Bookings and connected-calendar restrictions stay blocked.",
                   runFutureMakeAvailableAll
                 )
               }
             >
-              Make all future available
+              {availabilityMode === "CLOSED" ? "Open all future" : "Make all future available"}
             </Button>
           </div>
         </CardContent>
@@ -700,6 +830,10 @@ export function PropertyAvailabilityCalendar({
                     {
                       value: "BOOKING_HOLD",
                       label: `Bookings (${visibleUpcomingExceptions.filter((item) => item.kind === "BOOKING_HOLD").length})`,
+                    },
+                    {
+                      value: "EXTERNAL_SYNC",
+                      label: `Imported (${visibleUpcomingExceptions.filter((item) => item.kind === "EXTERNAL_SYNC").length})`,
                     },
                   ]),
             ].map((filterOption) => (
@@ -753,6 +887,8 @@ export function PropertyAvailabilityCalendar({
                         ? "Price override"
                         : item.kind === "BOOKING_HOLD"
                           ? "Booking protection"
+                          : item.kind === "EXTERNAL_SYNC"
+                            ? "Connected-calendar protection"
                           : "Manual availability block"}
                     </div>
                     {item.kind === "CUSTOM_PRICE" ? (

@@ -44,7 +44,7 @@ vi.mock("@/lib/utils/revalidate-public-listing-caches", () => ({
   revalidatePublicListingCaches: mocks.revalidatePublicListingCaches,
 }));
 
-import { updateListing } from "@/lib/actions/listing.actions";
+import { submitForReview, updateListing } from "@/lib/actions/listing.actions";
 
 function validDetailForm() {
   const formData = new FormData();
@@ -101,10 +101,7 @@ describe("updateListing pricing ownership", () => {
       success: true,
     });
 
-    expect(mocks.pricingRuleUpdate).toHaveBeenCalledWith({
-      where: { listingId: "listing-1" },
-      data: { currency: "EUR" },
-    });
+    expect(mocks.pricingRuleUpdate).not.toHaveBeenCalled();
   });
 
   it("ignores stale standard-pricing values submitted by an older editor", async () => {
@@ -117,9 +114,77 @@ describe("updateListing pricing ownership", () => {
       success: true,
     });
 
-    expect(mocks.pricingRuleUpdate).toHaveBeenCalledWith({
-      where: { listingId: "listing-1" },
-      data: { currency: "EUR" },
+    expect(mocks.pricingRuleUpdate).not.toHaveBeenCalled();
+  });
+
+  it("does not re-denominate stored prices from a forged currency field", async () => {
+    const formData = validDetailForm();
+    formData.set("currency", "MKD");
+
+    await expect(updateListing("listing-1", formData)).resolves.toEqual({
+      success: true,
     });
+
+    expect(mocks.pricingRuleUpdate).not.toHaveBeenCalled();
+  });
+});
+
+describe("submitForReview availability safety", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.auth.mockResolvedValue({ user: { id: "host-1", isHost: true } });
+    mocks.listingUpdate.mockResolvedValue({});
+  });
+
+  function publishableListing(overrides: Record<string, unknown> = {}) {
+    return {
+      id: "listing-1",
+      hostId: "host-1",
+      status: "DRAFT",
+      availabilityMode: "OPEN",
+      publishedAt: null,
+      pricingRule: { baseNightlyRate: 120 },
+      images: [
+        { mediaType: "IMAGE" },
+        { mediaType: "IMAGE" },
+        { mediaType: "IMAGE" },
+      ],
+      availabilityBlocks: [],
+      ...overrides,
+    };
+  }
+
+  it("refuses to publish a never-published OPEN legacy row without confirmation", async () => {
+    mocks.listingFindFirst.mockResolvedValue(publishableListing());
+
+    await expect(submitForReview("listing-1")).resolves.toEqual({
+      error:
+        "Confirm availability before publishing. Choose unavailable by default, or set a future availability start date.",
+    });
+    expect(mocks.listingUpdate).not.toHaveBeenCalled();
+  });
+
+  it("publishes a never-published listing that is unavailable by default", async () => {
+    mocks.listingFindFirst.mockResolvedValue(
+      publishableListing({ availabilityMode: "CLOSED" }),
+    );
+
+    await expect(submitForReview("listing-1")).resolves.toEqual({ success: true });
+    expect(mocks.listingUpdate).toHaveBeenCalledWith({
+      where: { id: "listing-1" },
+      data: expect.objectContaining({ status: "APPROVED", needsReview: true }),
+    });
+  });
+
+  it("restores a previously published listing with its existing calendar intact", async () => {
+    mocks.listingFindFirst.mockResolvedValue(
+      publishableListing({
+        status: "UNPUBLISHED",
+        publishedAt: new Date("2026-07-01T10:00:00.000Z"),
+      }),
+    );
+
+    await expect(submitForReview("listing-1")).resolves.toEqual({ success: true });
+    expect(mocks.listingUpdate).toHaveBeenCalledTimes(1);
   });
 });

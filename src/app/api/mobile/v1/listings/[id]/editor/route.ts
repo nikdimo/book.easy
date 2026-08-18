@@ -1,5 +1,5 @@
-import { db } from "@/lib/db";
 import { updateListing } from "@/lib/actions/listing.actions";
+import { getAmenityCatalogIncluding } from "@/lib/services/amenity.service";
 import { getHostListing } from "@/lib/services/listing.service";
 import { serializeHostListingForForm } from "@/lib/serializers/host-listing-form";
 import {
@@ -37,18 +37,11 @@ export async function GET(request: Request, { params }: RouteContext) {
 
   const form = serializeHostListingForForm(listing);
 
-  const activeAmenities = await db.amenity.findMany({
-    where: { isActive: true },
-    orderBy: [{ category: "asc" }, { name: "asc" }],
-  });
-  // Approved "for this listing only": inactive for everyone else, but this listing
-  // uses it, so it must stay selectable here.
-  const usedInactive = listing.amenities
-    .map((entry) => entry.amenity)
-    .filter(
-      (amenity) =>
-        !amenity.isActive && !activeAmenities.some((active) => active.id === amenity.id)
-    );
+  // Includes any "for this listing only" approval: inactive for everyone else, but
+  // this listing uses it, so it must stay selectable here.
+  const amenities = await getAmenityCatalogIncluding(
+    listing.amenities.map((entry) => entry.amenityId)
+  );
 
   const activePropertyTypes = await getActivePropertyTypes();
   const currentType = listing.property.propertyType;
@@ -70,14 +63,16 @@ export async function GET(request: Request, { params }: RouteContext) {
       alt: image.alt,
     })),
     propertyTypes,
-    amenities: [...activeAmenities, ...usedInactive].map(
-      ({ id: amenityId, name, category, icon }) => ({
-        id: amenityId,
-        name,
-        category,
-        icon,
-      })
-    ),
+    // `category` stays the English group name the installed app already groups by;
+    // `label` and `categoryKey` are additive for clients that can use them.
+    amenities: amenities.map((amenity) => ({
+      id: amenity.id,
+      name: amenity.name,
+      label: amenity.label,
+      category: amenity.category.name,
+      categoryKey: amenity.category.key,
+      icon: amenity.icon,
+    })),
   });
 }
 

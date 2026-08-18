@@ -3,6 +3,7 @@ import { createTransport } from "nodemailer";
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import Nodemailer from "next-auth/providers/nodemailer";
+import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import type { Adapter } from "next-auth/adapters";
 import { db } from "@/lib/db";
@@ -13,6 +14,10 @@ import { communicationReplyToAddress } from "@/lib/communication-brand.server";
 import { getEmailT } from "@/lib/email/i18n";
 import { getRequestLocale } from "@/lib/email/i18n/request-locale";
 import { resolveEmailLocale } from "@/lib/email/i18n/locales";
+import {
+  localDevAuthEnabled,
+  localDevHostEmail,
+} from "@/lib/auth/local-dev-auth";
 
 // Magic-link sign-ins only carry an email, but `name` is required on User.
 // Fall back to the local part of the email so the account still gets a display name.
@@ -51,6 +56,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
   },
   providers: [
+    ...(localDevAuthEnabled()
+      ? [
+          Credentials({
+            id: "local-dev-host",
+            name: "Local development host",
+            credentials: {},
+            async authorize() {
+              const user = await db.user.findUnique({
+                where: { email: localDevHostEmail() },
+              });
+              if (!user?.isActive || !user.isHost) return null;
+              return user;
+            },
+          }),
+        ]
+      : []),
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,

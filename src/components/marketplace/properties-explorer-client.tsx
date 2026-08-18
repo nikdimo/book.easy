@@ -22,6 +22,7 @@ import {
   type SearchFiltersSection,
 } from "@/components/public/search-filters";
 import type { SearchFilterPreview } from "@/lib/types/search";
+import type { CatalogAmenity } from "@/lib/types/amenity-catalog";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 import {
   isAllPropertyTypesSelected,
@@ -205,7 +206,7 @@ export function PropertiesExplorerClient({
   mapPins,
   featuredMarket = false,
 }: {
-  amenities: { id: string; name: string; category: string }[];
+  amenities: CatalogAmenity[];
   propertyTypes: PropertyTypeOption[];
   availablePropertyTypes: string[];
   initialFilterPreview: SearchFilterPreview;

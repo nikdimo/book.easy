@@ -667,22 +667,94 @@ model ListingImage {
 
 // ─── Amenities ──────────────────────────────────────────────────────────────────
 
+/**
+ * A group of amenities ("Kitchen", "Safety"), owned by admins rather than by code so
+ * a new group can be created, renamed, reordered and translated from Settings without
+ * a deploy.
+ */
+model AmenityCategory {
+  id   String @id @default(cuid())
+  /** Stable slug used by the release snapshot and by `amenities.categories.<key>`. */
+  key  String @unique
+  /** English label, and the source text every translation is measured against. */
+  name String @unique
+  icon String?
+  /** Admin-defined display order, ascending, for every amenity picker. */
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  amenities    Amenity[]
+  translations AmenityCategoryTranslation[]
+
+  @@index([isActive])
+}
+
 model Amenity {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  category  String
-  icon      String?
+  id         String @id @default(cuid())
+  name       String @unique
+  /** Stable slug: survives renames, and matches `amenities.items.<key>` in the UI
+   *  string catalog so a catalog row and its reviewed translation stay linked. */
+  key        String @unique
+  categoryId String
+  icon       String?
+  /** Admin-defined display order within the category, ascending. */
+  sortOrder  Int     @default(0)
   /**
    * false = not offered in the general amenity picker, but still valid for any
    * listing already using it (e.g. a "this listing only" suggestion approval).
    */
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
-  listings ListingAmenity[]
-  aliases  AmenityAlias[]
+  category     AmenityCategory @relation(fields: [categoryId], references: [id])
+  listings     ListingAmenity[]
+  aliases      AmenityAlias[]
+  translations AmenityTranslation[]
 
   @@index([isActive])
+  @@index([categoryId])
+}
+
+/**
+ * Admin-authored amenity label per language.
+ *
+ * Deliberately separate from UiTranslation: those keys come from the AST scan over
+ * source literals, so a row an admin creates at runtime could never appear there.
+ * Resolution order is this table, then the reviewed source-literal catalog in
+ * lib/i18n/amenity-labels.ts, then the English name.
+ */
+model AmenityTranslation {
+  id        String   @id @default(cuid())
+  amenityId String
+  locale    String
+  label     String
+  /** Typed by an admin rather than filled by the AI pass, so a re-fill leaves it. */
+  isManuallyEdited Boolean  @default(false)
+  updatedAt        DateTime @default(now()) @updatedAt
+
+  amenity  Amenity  @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+  language Language @relation(fields: [locale], references: [code], onDelete: Cascade)
+
+  @@unique([amenityId, locale])
+  @@index([locale])
+}
+
+model AmenityCategoryTranslation {
+  id         String   @id @default(cuid())
+  categoryId String
+  locale     String
+  label      String
+  isManuallyEdited Boolean  @default(false)
+  updatedAt        DateTime @default(now()) @updatedAt
+
+  category AmenityCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  language Language        @relation(fields: [locale], references: [code], onDelete: Cascade)
+
+  @@unique([categoryId, locale])
+  @@index([locale])
 }
 
 /** Provider-specific labels that resolve to one canonical Linger Homes amenity. */
@@ -1382,7 +1454,9 @@ model Language {
   lastSelectedAt   DateTime?
   createdAt        DateTime  @default(now())
 
-  translations UiTranslation[]
+  translations                UiTranslation[]
+  amenityTranslations         AmenityTranslation[]
+  amenityCategoryTranslations AmenityCategoryTranslation[]
 
   @@index([isEnabled])
 }

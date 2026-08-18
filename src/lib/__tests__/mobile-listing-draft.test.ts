@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  listingDraftData,
   mergeMobileListingDraft,
   parseMobileListingDraftPatch,
 } from "@/lib/mobile-listing-draft";
@@ -123,6 +124,73 @@ describe("mobile listing draft patches", () => {
   it("leaves the step untouched when the patch does not mention one", () => {
     expect(parseMobileListingDraftPatch({ title: "Just a title" })).toEqual({
       data: { title: "Just a title" },
+    });
+  });
+
+  it("round-trips a complete native pre-publish plan", () => {
+    const prePublishPlan = {
+      blocks: [{ startDate: "2026-09-10", endDate: "2026-09-12" }],
+      openDates: [{ startDate: "2026-10-01", endDate: "2026-10-05" }],
+      datePrices: [
+        { startDate: "2026-10-01", endDate: "2026-10-02", nightlyRate: 125 },
+      ],
+      offers: [
+        {
+          startDate: "2026-10-01",
+          endDate: "2026-10-05",
+          discountPercent: 10,
+          freeCleaning: false,
+        },
+      ],
+      availabilityStart: { mode: "selected" },
+    };
+
+    expect(parseMobileListingDraftPatch({ prePublishPlan })).toEqual({
+      data: { prePublishPlan },
+    });
+  });
+
+  it("resumes malformed or legacy availability as unanswered, never now", () => {
+    expect(
+      parseMobileListingDraftPatch({
+        prePublishPlan: {
+          blocks: [],
+          openDates: [],
+          datePrices: [],
+          offers: [],
+          availabilityStart: { mode: "from", startDate: "not-a-date" },
+        },
+      })
+    ).toEqual({
+      data: {
+        prePublishPlan: {
+          blocks: [],
+          openDates: [],
+          datePrices: [],
+          offers: [],
+          availabilityStart: null,
+        },
+      },
+    });
+  });
+
+  it("normalizes a malformed web-written plan when native resumes the draft", () => {
+    expect(
+      listingDraftData({
+        title: "Older draft",
+        prePublishPlan: {
+          availabilityStart: { mode: "something-unknown" },
+        },
+      })
+    ).toEqual({
+      title: "Older draft",
+      prePublishPlan: {
+        blocks: [],
+        openDates: [],
+        datePrices: [],
+        offers: [],
+        availabilityStart: null,
+      },
     });
   });
 });

@@ -18,10 +18,19 @@ import {
  * is what stops one opened popover from triggering a full-document translation pass per
  * mounted selector.
  */
-export function GoogleTranslateController({ locale }: { locale: string }) {
+export function GoogleTranslateController({
+  locale,
+  disabled = false,
+}: {
+  locale: string;
+  /** Fast local UI work uses reviewed catalog strings without loading Google's
+   * remote runtime or allowing it to rewrite React's DOM during refreshes. */
+  disabled?: boolean;
+}) {
   const pathname = usePathname();
 
   useEffect(() => {
+    if (disabled) return;
     applyUserContentTranslationPreference();
     const observer = new MutationObserver((records) => {
       if (readAutoTranslateUserContentPreference()) return;
@@ -43,11 +52,12 @@ export function GoogleTranslateController({ locale }: { locale: string }) {
       observer.disconnect();
       stopRuntime?.();
     };
-  }, [locale]);
+  }, [disabled, locale]);
 
   useEffect(() => {
+    if (disabled) return;
     retranslateAfterNavigation(locale);
-  }, [locale, pathname]);
+  }, [disabled, locale, pathname]);
 
   return null;
 }

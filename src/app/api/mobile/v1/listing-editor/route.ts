@@ -1,4 +1,4 @@
-import { getActiveAmenities } from "@/lib/services/amenity.service";
+import { getAmenityCatalog } from "@/lib/services/amenity.service";
 import { getActivePropertyTypes } from "@/lib/services/property-type.service";
 import { mobileJson, mobileOptions, requireMobileHost } from "@/lib/mobile-api";
 import { mobileListingSteps } from "@/lib/mobile-listing-steps";
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
 
   const [propertyTypes, amenities] = await Promise.all([
     getActivePropertyTypes(),
-    getActiveAmenities(),
+    getAmenityCatalog(),
   ]);
 
   return mobileJson(request, {
@@ -22,11 +22,15 @@ export async function GET(request: Request) {
     // mobile drift apart in the first place.
     steps: mobileListingSteps(),
     propertyTypes,
-    amenities: amenities.map(({ id, name, category, icon }) => ({
-      id,
-      name,
-      category,
-      icon,
+    // `category` stays the English group name the installed app already groups by;
+    // `label` and `categoryKey` are additive for clients that can use them.
+    amenities: amenities.map((amenity) => ({
+      id: amenity.id,
+      name: amenity.name,
+      label: amenity.label,
+      category: amenity.category.name,
+      categoryKey: amenity.category.key,
+      icon: amenity.icon,
     })),
   });
 }

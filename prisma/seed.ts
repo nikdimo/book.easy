@@ -13,7 +13,6 @@ async function main() {
   await prisma.pricingRule.deleteMany();
   await prisma.listingImage.deleteMany();
   await prisma.listing.deleteMany();
-  await prisma.amenity.deleteMany();
   await prisma.property.deleteMany();
   await prisma.profile.deleteMany();
   await prisma.user.deleteMany();
@@ -82,34 +81,15 @@ async function main() {
   });
 
   // ─── Amenities ──────────────────────────────────────────────────────────────
-  const amenities = await Promise.all([
-    prisma.amenity.create({ data: { name: "Wi-Fi", category: "Essentials", icon: "wifi" } }),
-    prisma.amenity.create({ data: { name: "Air conditioning", category: "Essentials", icon: "wind" } }),
-    prisma.amenity.create({ data: { name: "Heating", category: "Essentials", icon: "thermometer" } }),
-    prisma.amenity.create({ data: { name: "Washer", category: "Essentials", icon: "shirt" } }),
-    prisma.amenity.create({ data: { name: "Dryer", category: "Essentials", icon: "wind" } }),
-    prisma.amenity.create({ data: { name: "TV", category: "Entertainment", icon: "tv" } }),
-    prisma.amenity.create({ data: { name: "Kitchen", category: "Kitchen", icon: "cooking-pot" } }),
-    prisma.amenity.create({ data: { name: "Refrigerator", category: "Kitchen", icon: "refrigerator" } }),
-    prisma.amenity.create({ data: { name: "Microwave", category: "Kitchen", icon: "microwave" } }),
-    prisma.amenity.create({ data: { name: "Coffee maker", category: "Kitchen", icon: "coffee" } }),
-    prisma.amenity.create({ data: { name: "Dishwasher", category: "Kitchen", icon: "utensils" } }),
-    prisma.amenity.create({ data: { name: "Balcony", category: "Outdoor", icon: "sun" } }),
-    prisma.amenity.create({ data: { name: "Garden", category: "Outdoor", icon: "trees" } }),
-    prisma.amenity.create({ data: { name: "Free parking", category: "Features", icon: "car" } }),
-    prisma.amenity.create({ data: { name: "Pool", category: "Features", icon: "waves" } }),
-    prisma.amenity.create({ data: { name: "Hot tub", category: "Features", icon: "bath" } }),
-    prisma.amenity.create({ data: { name: "BBQ grill", category: "Outdoor", icon: "flame" } }),
-    prisma.amenity.create({ data: { name: "Smoke detector", category: "Safety", icon: "shield" } }),
-    prisma.amenity.create({ data: { name: "First aid kit", category: "Safety", icon: "heart-pulse" } }),
-    prisma.amenity.create({ data: { name: "Fire extinguisher", category: "Safety", icon: "fire-extinguisher" } }),
-    prisma.amenity.create({ data: { name: "Lake view", category: "Features", icon: "mountain-snow" } }),
-    prisma.amenity.create({ data: { name: "City view", category: "Features", icon: "building" } }),
-    prisma.amenity.create({ data: { name: "Sea view", category: "Features", icon: "sailboat" } }),
-    prisma.amenity.create({ data: { name: "Workspace", category: "Features", icon: "laptop" } }),
-    prisma.amenity.create({ data: { name: "Hair dryer", category: "Bathroom", icon: "wind" } }),
-    prisma.amenity.create({ data: { name: "Iron", category: "Essentials", icon: "shirt" } }),
-  ]);
+  // The catalog is release data, not seed data: migrations install it and
+  // `npm run amenities:import` reconciles it. Keeping a second hand-maintained list
+  // here is what let the seeded catalog and the real one drift apart.
+  const amenities = await prisma.amenity.findMany({ select: { id: true, name: true } });
+  if (amenities.length === 0) {
+    throw new Error(
+      "No amenities found. Run `prisma migrate deploy` (or `npm run amenities:import`) before seeding.",
+    );
+  }
 
   const amenityMap = Object.fromEntries(amenities.map((a) => [a.name, a.id]));
 

@@ -7,6 +7,7 @@ import { createAuditLog } from "@/lib/services/audit.service";
 import { PROPERTY_TYPES_TAG } from "@/lib/services/property-type.service";
 import { AMENITIES_TAG } from "@/lib/services/amenity.service";
 import { uniquePropertyTypeValue } from "@/lib/utils/property-type";
+import { categoryIdForName, uniqueAmenityKey } from "@/lib/amenities/catalog";
 import { revalidateTag, revalidatePath } from "next/cache";
 
 export async function createSuggestion(formData: FormData) {
@@ -54,7 +55,7 @@ export async function reviewSuggestion(
   input: {
     decision: "APPROVED" | "REJECTED";
     label?: string;
-    category?: string;
+    categoryId?: string;
     scope?: "GLOBAL" | "LISTING_ONLY";
     adminNote?: string;
   }
@@ -120,11 +121,15 @@ export async function reviewSuggestion(
 
     if (scope === "GLOBAL") revalidateTag(PROPERTY_TYPES_TAG, "max");
   } else {
-    const category = (input.category ?? "Features").trim() || "Features";
+    // An admin can pick the category while approving; otherwise the label itself
+    // decides, which is what stops every approval from piling into Features.
+    const categoryId =
+      input.categoryId?.trim() || (await categoryIdForName(finalLabel));
     const amenity = await db.amenity.create({
       data: {
         name: finalLabel,
-        category,
+        key: await uniqueAmenityKey(finalLabel),
+        categoryId,
         isActive: scope === "GLOBAL",
       },
     });

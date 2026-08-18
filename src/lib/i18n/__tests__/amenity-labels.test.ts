@@ -22,13 +22,19 @@ describe("reviewed amenity translation coverage", () => {
   });
 
   it("covers every category in the release catalog", () => {
-    const categories = new Set(
-      amenityCatalog.amenities.map((amenity) => amenity.category),
-    );
-    for (const category of categories) {
-      const resolved = resolveAmenityCategory(catalogResolver, category);
-      expect(resolved.translated, category).toBe(true);
-      expect(resolved.text, category).toMatch(/^amenities\.categories\./);
+    for (const category of amenityCatalog.categories) {
+      const resolved = resolveAmenityCategory(catalogResolver, category.name);
+      expect(resolved.translated, category.name).toBe(true);
+      expect(resolved.text, category.name).toMatch(/^amenities\.categories\./);
+    }
+  });
+
+  it("points every amenity at a category the catalog defines", () => {
+    const keys = new Set(amenityCatalog.categories.map((category) => category.key));
+    for (const amenity of amenityCatalog.amenities) {
+      expect(keys.has(amenity.category), `${amenity.name} -> ${amenity.category}`).toBe(
+        true,
+      );
     }
   });
 

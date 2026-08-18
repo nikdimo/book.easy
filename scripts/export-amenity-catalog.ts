@@ -9,31 +9,66 @@ const OUTPUT_PATH = path.join(
   "amenity-catalog.json"
 );
 
+/** Writes the local catalog as the release snapshot the deploy reconciles production
+ *  against. Translations travel with it, so a label typed into Settings locally
+ *  reaches production on the next full release. */
 async function main() {
-  const amenities = await db.amenity.findMany({
-    orderBy: [{ category: "asc" }, { name: "asc" }],
-    select: {
-      name: true,
-      category: true,
-      icon: true,
-      isActive: true,
-    },
-  });
+  const [categories, amenities] = await Promise.all([
+    db.amenityCategory.findMany({
+      orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+      include: { translations: { orderBy: { locale: "asc" } } },
+    }),
+    db.amenity.findMany({
+      orderBy: [{ key: "asc" }],
+      include: {
+        category: { select: { key: true } },
+        translations: { orderBy: { locale: "asc" } },
+      },
+    }),
+  ]);
 
   if (!amenities.length) {
     throw new Error(
       "The local amenity catalog is empty. Refusing to replace the release snapshot."
     );
   }
+  if (!categories.length) {
+    throw new Error(
+      "The local amenity catalog has no categories. Refusing to replace the release snapshot."
+    );
+  }
+
+  const snapshot = {
+    schemaVersion: 2,
+    categories: categories.map((category) => ({
+      key: category.key,
+      name: category.name,
+      icon: category.icon,
+      sortOrder: category.sortOrder,
+      isActive: category.isActive,
+      translations: Object.fromEntries(
+        category.translations.map((row) => [row.locale, row.label])
+      ),
+    })),
+    amenities: amenities.map((amenity) => ({
+      key: amenity.key,
+      name: amenity.name,
+      category: amenity.category.key,
+      icon: amenity.icon,
+      sortOrder: amenity.sortOrder,
+      isActive: amenity.isActive,
+      translations: Object.fromEntries(
+        amenity.translations.map((row) => [row.locale, row.label])
+      ),
+    })),
+  };
 
   await mkdir(path.dirname(OUTPUT_PATH), { recursive: true });
-  await writeFile(
-    OUTPUT_PATH,
-    `${JSON.stringify({ schemaVersion: 1, amenities }, null, 2)}\n`,
-    "utf8"
-  );
+  await writeFile(OUTPUT_PATH, `${JSON.stringify(snapshot, null, 2)}\n`, "utf8");
 
-  console.log(`Exported ${amenities.length} local amenities to ${OUTPUT_PATH}.`);
+  console.log(
+    `Exported ${amenities.length} amenities in ${categories.length} categories to ${OUTPUT_PATH}.`
+  );
 }
 
 main()

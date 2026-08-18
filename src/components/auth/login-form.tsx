@@ -17,10 +17,13 @@ const RESEND_COOLDOWN_SECONDS = 30;
 
 export function AuthForm({
   onClose,
+  localDevLogin = false,
 }: {
   /** When set, the close (×) button calls this instead of linking home — used inside
    * the intercepted-route modal to dismiss back to whatever page triggered it. */
   onClose?: () => void;
+  /** Server-provided; true only for an explicitly enabled non-production server. */
+  localDevLogin?: boolean;
 }) {
   const i18n = useI18n();
   const searchParams = useSearchParams();
@@ -30,6 +33,7 @@ export function AuthForm({
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [emailLoading, setEmailLoading] = useState(false);
+  const [localDevLoading, setLocalDevLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
 
   useEffect(() => {
@@ -62,6 +66,21 @@ export function AuthForm({
   async function handleGoogle() {
     setGoogleLoading(true);
     await signIn("google", { callbackUrl });
+  }
+
+  async function handleLocalDevLogin() {
+    setError(null);
+    setLocalDevLoading(true);
+    const result = await signIn("local-dev-host", {
+      redirect: false,
+      callbackUrl,
+    });
+    if (result?.error) {
+      setLocalDevLoading(false);
+      setError("Local host login failed. Run the clean local setup and try again.");
+      return;
+    }
+    window.location.assign(result?.url || callbackUrl);
   }
 
   async function handleEmailSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -165,6 +184,22 @@ export function AuthForm({
           </div>
         ) : (
           <>
+            {localDevLogin ? (
+              <div className="rounded-2xl border border-secondary/30 bg-secondary/10 p-3">
+                <p className="mb-2 text-xs font-medium text-secondary">
+                  Local development only
+                </p>
+                <Button
+                  type="button"
+                  className="h-12 w-full rounded-xl font-medium"
+                  disabled={localDevLoading}
+                  onClick={handleLocalDevLogin}
+                >
+                  {localDevLoading ? "Opening host panel…" : "Continue as local host"}
+                </Button>
+              </div>
+            ) : null}
+
             <Button
               type="button"
               variant="outline"
@@ -244,6 +279,6 @@ function GoogleIcon({ className }: { className?: string }) {
   );
 }
 
-export function LoginForm() {
-  return <AuthForm />;
+export function LoginForm({ localDevLogin = false }: { localDevLogin?: boolean }) {
+  return <AuthForm localDevLogin={localDevLogin} />;
 }

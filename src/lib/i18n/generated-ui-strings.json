@@ -765,8 +765,23 @@
     "filePath": "src/components/admin/admin-sidebar.tsx"
   },
   {
+    "key": "amenities.categories.accessibility",
+    "sourceText": "Accessibility",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
     "key": "amenities.categories.bathroom",
     "sourceText": "Bathroom",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.categories.bedroom",
+    "sourceText": "Bedroom",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.categories.check_in",
+    "sourceText": "Check-in",
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
@@ -777,6 +792,11 @@
   {
     "key": "amenities.categories.essentials",
     "sourceText": "Essentials",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.categories.family",
+    "sourceText": "Family",
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
@@ -795,8 +815,23 @@
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
+    "key": "amenities.categories.parking",
+    "sourceText": "Parking",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
     "key": "amenities.categories.safety",
     "sourceText": "Safety",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.categories.services",
+    "sourceText": "Services",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.categories.views",
+    "sourceText": "Views",
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
@@ -820,8 +855,23 @@
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
+    "key": "amenities.items.bed_linens",
+    "sourceText": "Bed linens",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.bike_storage",
+    "sourceText": "Bike storage",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
     "key": "amenities.items.blender",
     "sourceText": "Blender",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.board_games",
+    "sourceText": "Board games",
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
@@ -830,8 +880,28 @@
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
+    "key": "amenities.items.breakfast",
+    "sourceText": "Breakfast",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.carbon_monoxide_alarm",
+    "sourceText": "Carbon monoxide alarm",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.childrens_books_toys",
+    "sourceText": "Children's books and toys",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
     "key": "amenities.items.city_view",
     "sourceText": "City view",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.cleaning_during_stay",
+    "sourceText": "Cleaning available during stay",
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
@@ -865,6 +935,16 @@
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
+    "key": "amenities.items.crib",
+    "sourceText": "Crib",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.dining_table",
+    "sourceText": "Dining table",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
     "key": "amenities.items.dishes_silverware",
     "sourceText": "Dishes and silverware",
     "filePath": "src/lib/i18n/amenity-labels.ts"
@@ -872,6 +952,21 @@
   {
     "key": "amenities.items.dishwasher",
     "sourceText": "Dishwasher",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.elevator",
+    "sourceText": "Elevator",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.ev_charger",
+    "sourceText": "EV charger",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.exterior_security_cameras",
+    "sourceText": "Exterior security cameras on property",
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
@@ -885,6 +980,11 @@
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
+    "key": "amenities.items.fire_pit",
+    "sourceText": "Fire pit",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
     "key": "amenities.items.first_aid_kit",
     "sourceText": "First aid kit",
     "filePath": "src/lib/i18n/amenity-labels.ts"
@@ -895,6 +995,11 @@
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
+    "key": "amenities.items.free_street_parking",
+    "sourceText": "Free street parking",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
     "key": "amenities.items.freezer",
     "sourceText": "Freezer",
     "filePath": "src/lib/i18n/amenity-labels.ts"
@@ -902,6 +1007,11 @@
   {
     "key": "amenities.items.garden",
     "sourceText": "Garden",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.ground_floor",
+    "sourceText": "Ground floor",
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
@@ -917,6 +1027,16 @@
   {
     "key": "amenities.items.heating",
     "sourceText": "Heating",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.high_chair",
+    "sourceText": "High chair",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.host_greets_you",
+    "sourceText": "Host greets you",
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
@@ -945,8 +1065,53 @@
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
+    "key": "amenities.items.lock_on_bedroom_door",
+    "sourceText": "Lock on bedroom door",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.lockbox",
+    "sourceText": "Lockbox",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.long_term_stays",
+    "sourceText": "Long-term stays allowed",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.luggage_dropoff",
+    "sourceText": "Luggage drop-off allowed",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
     "key": "amenities.items.microwave",
     "sourceText": "Microwave",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.mountain_view",
+    "sourceText": "Mountain view",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.outdoor_furniture",
+    "sourceText": "Outdoor furniture",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.oven",
+    "sourceText": "Oven",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.paid_parking",
+    "sourceText": "Paid parking",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.pets_allowed",
+    "sourceText": "Pets allowed",
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
@@ -955,13 +1120,53 @@
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
+    "key": "amenities.items.room_darkening_shades",
+    "sourceText": "Room-darkening shades",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.sauna",
+    "sourceText": "Sauna",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
     "key": "amenities.items.sea_view",
     "sourceText": "Sea view",
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
+    "key": "amenities.items.self_check_in",
+    "sourceText": "Self check-in",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.shampoo",
+    "sourceText": "Shampoo",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.smart_lock",
+    "sourceText": "Smart lock",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
     "key": "amenities.items.smoke_detector",
     "sourceText": "Smoke detector",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.sound_system",
+    "sourceText": "Sound system",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.step_free_entrance",
+    "sourceText": "Step-free entrance",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.stove",
+    "sourceText": "Stove",
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
@@ -975,13 +1180,38 @@
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
+    "key": "amenities.items.terrace",
+    "sourceText": "Terrace",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.toaster",
+    "sourceText": "Toaster",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.towels_toiletries",
+    "sourceText": "Towels and toiletries",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
     "key": "amenities.items.washing_machine",
     "sourceText": "Washer",
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
+    "key": "amenities.items.waterfront_access",
+    "sourceText": "Lake or sea access",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
     "key": "amenities.items.wifi",
     "sourceText": "Wi-Fi",
+    "filePath": "src/lib/i18n/amenity-labels.ts"
+  },
+  {
+    "key": "amenities.items.wine_glasses",
+    "sourceText": "Wine glasses",
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
@@ -1607,7 +1837,7 @@
   {
     "key": "common.close",
     "sourceText": "Close",
-    "filePath": "src/components/public/image-gallery.tsx"
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
   },
   {
     "key": "common.loading",
@@ -3220,6 +3450,11 @@
     "filePath": "src/app/(public)/layout.tsx"
   },
   {
+    "key": "header.current_host_panel",
+    "sourceText": "Current host panel",
+    "filePath": "src/components/shared/header.tsx"
+  },
+  {
     "key": "header.favorites",
     "sourceText": "Favorites",
     "filePath": "src/app/(public)/layout.tsx"
@@ -3248,6 +3483,16 @@
     "key": "header.log_out",
     "sourceText": "Log out",
     "filePath": "src/app/(public)/layout.tsx"
+  },
+  {
+    "key": "header.new_host_panel",
+    "sourceText": "New host panel",
+    "filePath": "src/components/shared/header.tsx"
+  },
+  {
+    "key": "header.preview",
+    "sourceText": "Preview",
+    "filePath": "src/components/shared/header.tsx"
   },
   {
     "key": "header.stays",
@@ -3815,6 +4060,16 @@
     "filePath": "src/components/host/host-booking-action-rail.tsx"
   },
   {
+    "key": "host.calendar.accommodation_after_discount",
+    "sourceText": "Accommodation after discount",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.accommodation_before_discount",
+    "sourceText": "Accommodation before discount",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
     "key": "host.calendar.additional_defaults",
     "sourceText": "Standard stay settings",
     "filePath": "src/components/host/calendar-workspace.tsx"
@@ -3830,9 +4085,24 @@
     "filePath": "src/components/host/calendar-workspace.tsx"
   },
   {
+    "key": "host.calendar.average_discounted_night",
+    "sourceText": "Average discounted night: {rate}",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
     "key": "host.calendar.back_to_listings",
     "sourceText": "Back to listings",
     "filePath": "src/app/(host)/host/listings/[id]/_calendar/lens-page.tsx"
+  },
+  {
+    "key": "host.calendar.base_example_disclaimer",
+    "sourceText": "This example uses the base nightly price. The actual guest total depends on the dates and stay length.",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.base_price_example",
+    "sourceText": "Base-price example",
+    "filePath": "src/components/host/calendar-workspace.tsx"
   },
   {
     "key": "host.calendar.block_dates",
@@ -3913,11 +4183,6 @@
     "key": "host.calendar.empty_hint_promotions",
     "sourceText": "Tap or drag across dates to discount them.",
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
-  },
-  {
-    "key": "host.calendar.estimated_price",
-    "sourceText": "Estimated base-night price: {rate}",
-    "filePath": "src/components/host/calendar-workspace.tsx"
   },
   {
     "key": "host.calendar.help_label",
@@ -4007,6 +4272,31 @@
   {
     "key": "host.calendar.per_night",
     "sourceText": "per night",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.preview_cleaning_fee",
+    "sourceText": "Cleaning fee",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.preview_guest_total",
+    "sourceText": "Guest total",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.preview_other_offer_priority",
+    "sourceText": "Another existing promotion takes priority for this selected stay.",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.preview_total_savings",
+    "sourceText": "Total savings",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.preview_waived",
+    "sourceText": "Waived",
     "filePath": "src/components/host/calendar-workspace.tsx"
   },
   {
@@ -4145,8 +4435,13 @@
     "filePath": "src/components/host/calendar-workspace.tsx"
   },
   {
-    "key": "host.calendar.rounded_from",
-    "sourceText": " · rounded from {original}",
+    "key": "host.calendar.remove_manual_blocks_confirm",
+    "sourceText": "Make these dates available? This removes your manual blocks in the selected range, including any before-launch protection. Reservations and connected-calendar blocks stay protected.",
+    "filePath": "src/components/host/calendar-workspace.tsx"
+  },
+  {
+    "key": "host.calendar.selected_guest_quote",
+    "sourceText": "Guest quote for selected dates",
     "filePath": "src/components/host/calendar-workspace.tsx"
   },
   {
@@ -4256,7 +4551,7 @@
   },
   {
     "key": "host.calendar.visibility_note",
-    "sourceText": "Existing reservations remain protected. A hidden listing must be submitted for review again before guests can book it.",
+    "sourceText": "Existing reservations and calendar connections remain active while hidden. Publishing again makes the listing live immediately with its current availability, prices, and booking rules.",
     "filePath": "src/components/host/calendar-workspace.tsx"
   },
   {
@@ -5327,7 +5622,7 @@
   {
     "key": "host.listings.untitled_draft",
     "sourceText": "Untitled draft",
-    "filePath": "src/app/(host)/host/listings/page.tsx"
+    "filePath": "src/app/(host-v2)/host/v2/listings/page.tsx"
   },
   {
     "key": "host.location.at_property_description",
@@ -5791,7 +6086,7 @@
   },
   {
     "key": "host.prepublish.offer_night_label",
-    "sourceText": "Price a guest pays per night",
+    "sourceText": "Example discounted night using the base price",
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
   },
   {
@@ -6415,6 +6710,11 @@
     "filePath": "src/components/host/host-sidebar.tsx"
   },
   {
+    "key": "host.sidebar.new_panel",
+    "sourceText": "New host panel",
+    "filePath": "src/components/host/host-sidebar.tsx"
+  },
+  {
     "key": "host.sidebar.notifications",
     "sourceText": "Notifications",
     "filePath": "src/components/host/host-sidebar.tsx"
@@ -6422,6 +6722,11 @@
   {
     "key": "host.sidebar.open_menu",
     "sourceText": "Open menu",
+    "filePath": "src/components/host/host-sidebar.tsx"
+  },
+  {
+    "key": "host.sidebar.preview",
+    "sourceText": "Preview",
     "filePath": "src/components/host/host-sidebar.tsx"
   },
   {
@@ -6795,8 +7100,4193 @@
     "filePath": "src/components/host/listing-bottom-nav.tsx"
   },
   {
+    "key": "host.v2.account",
+    "sourceText": "Account",
+    "filePath": "src/components/host/v2/host-v2-shell.tsx"
+  },
+  {
+    "key": "host.v2.assistant.booking_request",
+    "sourceText": "Good news, {name} — a booking request is ready to review.",
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+  },
+  {
+    "key": "host.v2.assistant.caught_up.copy",
+    "sourceText": "Your guests and listings are in good shape. Enjoy the quiet moment.",
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+  },
+  {
+    "key": "host.v2.assistant.caught_up.title",
+    "sourceText": "You’re all caught up, {name}.",
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+  },
+  {
+    "key": "host.v2.assistant.copy",
+    "sourceText": "A quick update from your homes.",
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+  },
+  {
+    "key": "host.v2.assistant.damage_report",
+    "sourceText": "A guest report is ready for your review.",
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+  },
+  {
+    "key": "host.v2.assistant.heading",
+    "sourceText": "Your host assistant",
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+  },
+  {
+    "key": "host.v2.assistant.promotion.action",
+    "sourceText": "Explore promotions",
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+  },
+  {
+    "key": "host.v2.assistant.promotion.copy",
+    "sourceText": "A promotion can help more guests discover your home.",
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+  },
+  {
+    "key": "host.v2.assistant.promotion.title",
+    "sourceText": "Want to attract your next booking?",
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+  },
+  {
+    "key": "host.v2.assistant.unread_message",
+    "sourceText": "A guest is waiting to hear from you.",
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+  },
+  {
+    "key": "host.v2.assistant.upcoming.action",
+    "sourceText": "View calendar",
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+  },
+  {
+    "key": "host.v2.assistant.upcoming.copy",
+    "sourceText": "Everything is in place. We’ll let you know if anything changes.",
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+  },
+  {
+    "key": "host.v2.assistant.upcoming.title",
+    "sourceText": "Your next guest arrives on {date}.",
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+  },
+  {
+    "key": "host.v2.attention.booking_requests",
+    "sourceText": "Booking requests",
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+  },
+  {
+    "key": "host.v2.attention.damage_reports",
+    "sourceText": "Damage reports",
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+  },
+  {
+    "key": "host.v2.attention.unread_messages",
+    "sourceText": "Unread messages",
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+  },
+  {
+    "key": "host.v2.back_today",
+    "sourceText": "Back to Today",
+    "filePath": "src/components/host/v2/host-v2-placeholder.tsx"
+  },
+  {
+    "key": "host.v2.calendar.all_listings",
+    "sourceText": "All listings",
+    "filePath": "src/components/host/v2/calendar/listing-rail.tsx"
+  },
+  {
+    "key": "host.v2.calendar.back",
+    "sourceText": "Back",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
+    "key": "host.v2.calendar.banner.default_price",
+    "sourceText": "Guests can book every open date at your default price of {price}.",
+    "filePath": "src/components/host/v2/calendar/safety-banner.tsx"
+  },
+  {
+    "key": "host.v2.calendar.banner.label",
+    "sourceText": "Listing status",
+    "filePath": "src/components/host/v2/calendar/safety-banner.tsx"
+  },
+  {
+    "key": "host.v2.calendar.banner.no_bookable_dates",
+    "sourceText": "No dates are currently available to book.",
+    "filePath": "src/components/host/v2/calendar/safety-banner.tsx"
+  },
+  {
+    "key": "host.v2.calendar.banner.no_pricing",
+    "sourceText": "No pricing yet — guests cannot book any date until you set a nightly price.",
+    "filePath": "src/components/host/v2/calendar/safety-banner.tsx"
+  },
+  {
+    "key": "host.v2.calendar.banner.not_live",
+    "sourceText": "{status} — guests cannot find or book this listing right now.",
+    "filePath": "src/components/host/v2/calendar/safety-banner.tsx"
+  },
+  {
+    "key": "host.v2.calendar.block_note_hint",
+    "sourceText": "Only you can see this note.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.block_note_label_short",
+    "sourceText": "Private note",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.block_note_placeholder",
+    "sourceText": "e.g. Maintenance or private stay",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.blocked_dates.few",
+    "sourceText": "{n} blocked dates in the next {months} months",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.blocked_dates.many",
+    "sourceText": "{n} blocked dates in the next {months} months",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.blocked_dates.one",
+    "sourceText": "{n} blocked date in the next {months} months",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.blocked_dates.other",
+    "sourceText": "{n} blocked dates in the next {months} months",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.blocked_dates.two",
+    "sourceText": "{n} blocked dates in the next {months} months",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.blocked_dates.zero",
+    "sourceText": "{n} blocked dates in the next {months} months",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.blocker.both",
+    "sourceText": "These dates stay unbookable until the listing is on the site and has a price.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.blocker.not_live",
+    "sourceText": "These dates stay unbookable until this listing is back on the site.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.blocker.pricing",
+    "sourceText": "These dates stay unbookable until this listing has a nightly price.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.bookable_dates.few",
+    "sourceText": "{n} bookable dates in the next {months} months",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.bookable_dates.many",
+    "sourceText": "{n} bookable dates in the next {months} months",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.bookable_dates.one",
+    "sourceText": "{n} bookable date in the next {months} months",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.bookable_dates.other",
+    "sourceText": "{n} bookable dates in the next {months} months",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.bookable_dates.two",
+    "sourceText": "{n} bookable dates in the next {months} months",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.bookable_dates.zero",
+    "sourceText": "{n} bookable dates in the next {months} months",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.change_property",
+    "sourceText": "Change property: {property}",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.choose_dates_short",
+    "sourceText": "Choose dates to change availability or price.",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.chooser_title",
+    "sourceText": "Choose a property",
+    "filePath": "src/components/host/v2/calendar/listing-rail.tsx"
+  },
+  {
+    "key": "host.v2.calendar.clear_selection",
+    "sourceText": "Clear selection",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.hint",
+    "sourceText": "Manage Airbnb, Booking.com and other calendar connections",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.title",
+    "sourceText": "Connected calendars",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
+    "key": "host.v2.calendar.consequence.base_price",
+    "sourceText": "New bookings on dates without a custom price will start from a base price of {amount} per night, before promotions. Custom date prices and existing bookings do not change.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.block_note_kept.few",
+    "sourceText": "{n} dates in this range are already blocked and keep the note they were saved with.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.block_note_kept.many",
+    "sourceText": "{n} dates in this range are already blocked and keep the note they were saved with.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.block_note_kept.one",
+    "sourceText": "{n} date in this range is already blocked and keeps the note it was saved with.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.block_note_kept.other",
+    "sourceText": "{n} dates in this range are already blocked and keep the note they were saved with.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.block_note_kept.two",
+    "sourceText": "{n} dates in this range are already blocked and keep the note they were saved with.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.block_note_kept.zero",
+    "sourceText": "{n} dates in this range are already blocked and keep the note they were saved with.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.block_note.few",
+    "sourceText": "Your note is saved on {n} dates and stays private — guests never see it.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.block_note.many",
+    "sourceText": "Your note is saved on {n} dates and stays private — guests never see it.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.block_note.one",
+    "sourceText": "Your note is saved on {n} date and stays private — guests never see it.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.block_note.other",
+    "sourceText": "Your note is saved on {n} dates and stays private — guests never see it.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.block_note.two",
+    "sourceText": "Your note is saved on {n} dates and stays private — guests never see it.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.block_note.zero",
+    "sourceText": "Your note is saved on {n} dates and stays private — guests never see it.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.bookable_locked.few",
+    "sourceText": "{n} dates in this range stay unavailable — they are booked or held by a connected calendar.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.bookable_locked.many",
+    "sourceText": "{n} dates in this range stay unavailable — they are booked or held by a connected calendar.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.bookable_locked.one",
+    "sourceText": "{n} date in this range stays unavailable — it is booked or held by a connected calendar.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.bookable_locked.other",
+    "sourceText": "{n} dates in this range stay unavailable — they are booked or held by a connected calendar.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.bookable_locked.two",
+    "sourceText": "{n} dates in this range stay unavailable — they are booked or held by a connected calendar.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.bookable_locked.zero",
+    "sourceText": "{n} dates in this range stay unavailable — they are booked or held by a connected calendar.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.bookable.few",
+    "sourceText": "Guests will be able to book {n} dates immediately after you save.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.bookable.many",
+    "sourceText": "Guests will be able to book {n} dates immediately after you save.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.bookable.one",
+    "sourceText": "Guests will be able to book {n} date immediately after you save.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.bookable.other",
+    "sourceText": "Guests will be able to book {n} dates immediately after you save.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.bookable.two",
+    "sourceText": "Guests will be able to book {n} dates immediately after you save.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.bookable.zero",
+    "sourceText": "Guests will be able to book {n} dates immediately after you save.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.bookings_protected",
+    "sourceText": "Existing reservations in this range are not affected.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.cleaning_fee",
+    "sourceText": "New bookings will include a cleaning fee of {amount}. Existing bookings keep their confirmed total.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.cleaning_fee_removed",
+    "sourceText": "The cleaning fee is removed from new bookings. Existing bookings keep their confirmed total.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.date_promotion_removed",
+    "sourceText": "This offer stops running on these dates and guests pay the full price for them. Existing bookings do not change.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.date_promotion_removed_fallback",
+    "sourceText": "This offer stops running on these dates. An always-active offer applies to them instead, so guests still see a discount. Existing bookings do not change.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.evergreen_create",
+    "sourceText": "This offer becomes active for future eligible bookings on every date. Existing bookings do not change, and date-specific offers can still take priority.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.evergreen_edit",
+    "sourceText": "This always-active offer is updated for future eligible bookings on every date. Existing bookings do not change, and date-specific offers can still take priority.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.evergreen_removed",
+    "sourceText": "This always-active offer stops applying to new bookings. Existing bookings do not change; another eligible offer may still apply.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.free_cleaning_removed.few",
+    "sourceText": "Free cleaning will also be removed from {n} active promotions; any percentage discounts on them keep running.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.free_cleaning_removed.many",
+    "sourceText": "Free cleaning will also be removed from {n} active promotions; any percentage discounts on them keep running.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.free_cleaning_removed.one",
+    "sourceText": "Free cleaning will also be removed from {n} active promotion; any percentage discount on it keeps running.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.free_cleaning_removed.other",
+    "sourceText": "Free cleaning will also be removed from {n} active promotions; any percentage discounts on them keep running.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.free_cleaning_removed.two",
+    "sourceText": "Free cleaning will also be removed from {n} active promotions; any percentage discounts on them keep running.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.free_cleaning_removed.zero",
+    "sourceText": "Free cleaning will also be removed from {n} active promotions; any percentage discounts on them keep running.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.hidden",
+    "sourceText": "The listing comes off the site straight away. Guests can no longer find or book it. Existing reservations stay in place.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.live",
+    "sourceText": "The listing goes back on the site and guests can book its {bookable} open dates in the next {months} months.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.live_none",
+    "sourceText": "The listing goes back on the site, but no date is bookable yet.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.losing_bookable.few",
+    "sourceText": "{n} of them can be booked right now, and will stop being bookable.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.losing_bookable.many",
+    "sourceText": "{n} of them can be booked right now, and will stop being bookable.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.losing_bookable.one",
+    "sourceText": "{n} of them can be booked right now, and will stop being bookable.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.losing_bookable.other",
+    "sourceText": "{n} of them can be booked right now, and will stop being bookable.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.losing_bookable.two",
+    "sourceText": "{n} of them can be booked right now, and will stop being bookable.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.losing_bookable.zero",
+    "sourceText": "{n} of them can be booked right now, and will stop being bookable.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.min_nights",
+    "sourceText": "Every date on this listing will require a stay of at least {nights} nights, not only the dates you were looking at.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.mode_closed_losing.few",
+    "sourceText": "Saving will make {n} currently bookable dates unavailable until you open them again. The listing will also leave undated search.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.mode_closed_losing.many",
+    "sourceText": "Saving will make {n} currently bookable dates unavailable until you open them again. The listing will also leave undated search.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.mode_closed_losing.one",
+    "sourceText": "Saving will make {n} currently bookable date unavailable until you open it again. The listing will also leave undated search.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.mode_closed_losing.other",
+    "sourceText": "Saving will make {n} currently bookable dates unavailable until you open them again. The listing will also leave undated search.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.mode_closed_losing.two",
+    "sourceText": "Saving will make {n} currently bookable dates unavailable until you open them again. The listing will also leave undated search.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.mode_closed_losing.zero",
+    "sourceText": "Saving will make {n} currently bookable dates unavailable until you open them again. The listing will also leave undated search.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.mode_closed_none",
+    "sourceText": "No open dates are affected. The listing will leave undated search.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.mode_closed_open_only.few",
+    "sourceText": "Saving will close {n} open dates until you open them again. None of them can be booked today, so nothing changes for guests right now. The listing will also leave undated search.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.mode_closed_open_only.many",
+    "sourceText": "Saving will close {n} open dates until you open them again. None of them can be booked today, so nothing changes for guests right now. The listing will also leave undated search.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.mode_closed_open_only.one",
+    "sourceText": "Saving will close {n} open date until you open it again. None of them can be booked today, so nothing changes for guests right now. The listing will also leave undated search.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.mode_closed_open_only.other",
+    "sourceText": "Saving will close {n} open dates until you open them again. None of them can be booked today, so nothing changes for guests right now. The listing will also leave undated search.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.mode_closed_open_only.two",
+    "sourceText": "Saving will close {n} open dates until you open them again. None of them can be booked today, so nothing changes for guests right now. The listing will also leave undated search.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.mode_closed_open_only.zero",
+    "sourceText": "Saving will close {n} open dates until you open them again. None of them can be booked today, so nothing changes for guests right now. The listing will also leave undated search.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.mode_closed_windows.few",
+    "sourceText": "{n} dates stay open because you already opened them explicitly.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.mode_closed_windows.many",
+    "sourceText": "{n} dates stay open because you already opened them explicitly.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.mode_closed_windows.one",
+    "sourceText": "{n} date stays open because you already opened it explicitly.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.mode_closed_windows.other",
+    "sourceText": "{n} dates stay open because you already opened them explicitly.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.mode_closed_windows.two",
+    "sourceText": "{n} dates stay open because you already opened them explicitly.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.mode_closed_windows.zero",
+    "sourceText": "{n} dates stay open because you already opened them explicitly.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.mode_open",
+    "sourceText": "Every date becomes open unless you block it. {opened} dates in the next {months} months become open.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.mode_open_bookable",
+    "sourceText": "{bookable} of them become bookable immediately.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.mode_open_none_bookable",
+    "sourceText": "None of them become bookable yet.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.mode_open_still_blocked",
+    "sourceText": "{blocked} dates stay blocked by reservations, your own blocks or a connected calendar.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.not_bookable.few",
+    "sourceText": "{n} dates will be closed on your calendar after you save.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.not_bookable.many",
+    "sourceText": "{n} dates will be closed on your calendar after you save.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.not_bookable.one",
+    "sourceText": "{n} date will be closed on your calendar after you save.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.not_bookable.other",
+    "sourceText": "{n} dates will be closed on your calendar after you save.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.not_bookable.two",
+    "sourceText": "{n} dates will be closed on your calendar after you save.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.not_bookable.zero",
+    "sourceText": "{n} dates will be closed on your calendar after you save.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.opened_only.few",
+    "sourceText": "{n} dates will be open on your calendar, but still not bookable.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.opened_only.many",
+    "sourceText": "{n} dates will be open on your calendar, but still not bookable.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.opened_only.one",
+    "sourceText": "{n} date will be open on your calendar, but still not bookable.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.opened_only.other",
+    "sourceText": "{n} dates will be open on your calendar, but still not bookable.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.opened_only.two",
+    "sourceText": "{n} dates will be open on your calendar, but still not bookable.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.opened_only.zero",
+    "sourceText": "{n} dates will be open on your calendar, but still not bookable.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.price_not_sellable",
+    "sourceText": "No guest can book these dates yet, so the new price is not on offer.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.price_reset.few",
+    "sourceText": "{n} dates go back to your base price.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.price_reset.many",
+    "sourceText": "{n} dates go back to your base price.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.price_reset.one",
+    "sourceText": "{n} date goes back to your base price.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.price_reset.other",
+    "sourceText": "{n} dates go back to your base price.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.price_reset.two",
+    "sourceText": "{n} dates go back to your base price.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.price_reset.zero",
+    "sourceText": "{n} dates go back to your base price.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.price.few",
+    "sourceText": "New bookings for {n} dates will be quoted at the new price. Existing bookings keep what guests already paid.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.price.many",
+    "sourceText": "New bookings for {n} dates will be quoted at the new price. Existing bookings keep what guests already paid.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.price.one",
+    "sourceText": "New bookings for {n} date will be quoted at the new price. Existing bookings keep what guests already paid.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.price.other",
+    "sourceText": "New bookings for {n} dates will be quoted at the new price. Existing bookings keep what guests already paid.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.price.two",
+    "sourceText": "New bookings for {n} dates will be quoted at the new price. Existing bookings keep what guests already paid.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.price.zero",
+    "sourceText": "New bookings for {n} dates will be quoted at the new price. Existing bookings keep what guests already paid.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.promotion_create",
+    "sourceText": "A new offer starts running on these dates.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.promotion_edit",
+    "sourceText": "Your existing offer for these dates is updated.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.promotion_override",
+    "sourceText": "This new date-specific offer takes priority over the one running today, which keeps running on every other date.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.promotion.few",
+    "sourceText": "Guests booking these {n} dates will see the discounted price.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.promotion.many",
+    "sourceText": "Guests booking these {n} dates will see the discounted price.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.promotion.one",
+    "sourceText": "Guests booking {n} date will see the discounted price.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.promotion.other",
+    "sourceText": "Guests booking these {n} dates will see the discounted price.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.promotion.two",
+    "sourceText": "Guests booking these {n} dates will see the discounted price.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.promotion.zero",
+    "sourceText": "Guests booking these {n} dates will see the discounted price.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.cta.availability",
+    "sourceText": "Review availability",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.cta.availability_rule",
+    "sourceText": "Review availability rule",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.cta.default_pricing",
+    "sourceText": "Review default pricing",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.cta.defaults",
+    "sourceText": "Review defaults",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.cta.min_nights",
+    "sourceText": "Review minimum stay",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.cta.ongoing_promotion",
+    "sourceText": "Review ongoing promotion",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.cta.price",
+    "sourceText": "Review price",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.cta.promotion",
+    "sourceText": "Review promotion",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.cta.removal",
+    "sourceText": "Review removal",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.cta.visibility",
+    "sourceText": "Review visibility",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.day.available",
+    "sourceText": "Available",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.day.badge_blocked",
+    "sourceText": "Blocked",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.day.badge_booked",
+    "sourceText": "Booked",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.day.badge_closed",
+    "sourceText": "Closed",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.day.badge_external",
+    "sourceText": "Synced",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.day.badge_not_bookable",
+    "sourceText": "Not bookable",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.day.blocked",
+    "sourceText": "Blocked",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.day.booked",
+    "sourceText": "Booked",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.day.closed_default",
+    "sourceText": "Closed until you open it",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.day.external",
+    "sourceText": "Blocked by a connected calendar",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.day.open_not_bookable",
+    "sourceText": "Open, but not bookable",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.day.past",
+    "sourceText": "Past",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.description",
+    "sourceText": "This will become the full-width operational calendar with a compact editing workbench above the selected dates. The current calendar remains available while we build and compare it.",
+    "filePath": "src/components/host/v2/host-v2-placeholder.tsx"
+  },
+  {
+    "key": "host.v2.calendar.discard_body",
+    "sourceText": "You have an edit here that has not been reviewed or saved. Moving on will throw it away.",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.discard_confirm",
+    "sourceText": "Discard and continue",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.discard_keep",
+    "sourceText": "Keep editing",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.discard_title",
+    "sourceText": "Discard this unsaved change?",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.discoverability.dated_only",
+    "sourceText": "Found only when guests search the dates you opened",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.discoverability.none",
+    "sourceText": "Not shown in search",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.discoverability.search",
+    "sourceText": "Visible in search",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.edit_dates",
+    "sourceText": "Edit dates",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.add_another_offer",
+    "sourceText": "Add another offer on these dates",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.add_note",
+    "sourceText": "Add a private note",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.against_base",
+    "sourceText": "Against base",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.availability_heading.few",
+    "sourceText": "Availability for {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.availability_heading.many",
+    "sourceText": "Availability for {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.availability_heading.one",
+    "sourceText": "Availability for {n} night",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.availability_heading.other",
+    "sourceText": "Availability for {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.availability_heading.two",
+    "sourceText": "Availability for {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.availability_heading.zero",
+    "sourceText": "Availability for {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.band_from",
+    "sourceText": "{from}+ nights",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.band_never",
+    "sourceText": "never applies",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.band_one.few",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.band_one.many",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.band_one.one",
+    "sourceText": "{n} night",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.band_one.other",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.band_one.two",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.band_one.zero",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.band_open",
+    "sourceText": "{from}+ nights",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.band_range",
+    "sourceText": "{from}–{to} nights",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.base_same_short",
+    "sourceText": "same as {amount}",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.beyond_slider",
+    "sourceText": "Past ±{range}% — the slider stops there, the price does not.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.change",
+    "sourceText": "Change",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.cta_block.few",
+    "sourceText": "Block {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.cta_block.many",
+    "sourceText": "Block {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.cta_block.one",
+    "sourceText": "Block {n} night",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.cta_block.other",
+    "sourceText": "Block {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.cta_block.two",
+    "sourceText": "Block {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.cta_block.zero",
+    "sourceText": "Block {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.cta_open.few",
+    "sourceText": "Make {n} nights available",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.cta_open.many",
+    "sourceText": "Make {n} nights available",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.cta_open.one",
+    "sourceText": "Make {n} night available",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.cta_open.other",
+    "sourceText": "Make {n} nights available",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.cta_open.two",
+    "sourceText": "Make {n} nights available",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.cta_open.zero",
+    "sourceText": "Make {n} nights available",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.discount_slider",
+    "sourceText": "Discount percent",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.dismiss",
+    "sourceText": "Dismiss",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_blocked.few",
+    "sourceText": "{n} nights blocked.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_blocked.many",
+    "sourceText": "{n} nights blocked.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_blocked.one",
+    "sourceText": "{n} night blocked.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_blocked.other",
+    "sourceText": "{n} nights blocked.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_blocked.two",
+    "sourceText": "{n} nights blocked.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_blocked.zero",
+    "sourceText": "{n} nights blocked.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_opened.few",
+    "sourceText": "{n} nights are available again.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_opened.many",
+    "sourceText": "{n} nights are available again.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_opened.one",
+    "sourceText": "{n} night is available again.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_opened.other",
+    "sourceText": "{n} nights are available again.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_opened.two",
+    "sourceText": "{n} nights are available again.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_opened.zero",
+    "sourceText": "{n} nights are available again.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_price_base.few",
+    "sourceText": "{n} nights are back on your base price.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_price_base.many",
+    "sourceText": "{n} nights are back on your base price.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_price_base.one",
+    "sourceText": "{n} night is back on your base price.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_price_base.other",
+    "sourceText": "{n} nights are back on your base price.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_price_base.two",
+    "sourceText": "{n} nights are back on your base price.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_price_base.zero",
+    "sourceText": "{n} nights are back on your base price.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_price.few",
+    "sourceText": "{n} nights now cost {amount}.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_price.many",
+    "sourceText": "{n} nights now cost {amount}.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_price.one",
+    "sourceText": "{n} night now costs {amount}.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_price.other",
+    "sourceText": "{n} nights now cost {amount}.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_price.two",
+    "sourceText": "{n} nights now cost {amount}.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_price.zero",
+    "sourceText": "{n} nights now cost {amount}.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.how_offers_work",
+    "sourceText": "How offers work",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.how_this_works",
+    "sourceText": "How this works",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.keep_offer",
+    "sourceText": "Keep this offer",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.locked_booked.few",
+    "sourceText": "{n} nights will not change — a guest has booked them.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.locked_booked.many",
+    "sourceText": "{n} nights will not change — a guest has booked them.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.locked_booked.one",
+    "sourceText": "{n} night will not change — a guest has booked it.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.locked_booked.other",
+    "sourceText": "{n} nights will not change — a guest has booked them.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.locked_booked.two",
+    "sourceText": "{n} nights will not change — a guest has booked them.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.locked_booked.zero",
+    "sourceText": "{n} nights will not change — a guest has booked them.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.locked_external.few",
+    "sourceText": "{n} nights will not change — a connected calendar is holding them.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.locked_external.many",
+    "sourceText": "{n} nights will not change — a connected calendar is holding them.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.locked_external.one",
+    "sourceText": "{n} night will not change — a connected calendar is holding it.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.locked_external.other",
+    "sourceText": "{n} nights will not change — a connected calendar is holding them.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.locked_external.two",
+    "sourceText": "{n} nights will not change — a connected calendar is holding them.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.locked_external.zero",
+    "sourceText": "{n} nights will not change — a connected calendar is holding them.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.locked_mixed",
+    "sourceText": "{booked} booked and {external} held by a connected calendar will not change.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.minimum_stay_info.few",
+    "sourceText": "Minimum stay: {n} nights · Listing-wide setting",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.minimum_stay_info.many",
+    "sourceText": "Minimum stay: {n} nights · Listing-wide setting",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.minimum_stay_info.one",
+    "sourceText": "Minimum stay: {n} night · Listing-wide setting",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.minimum_stay_info.other",
+    "sourceText": "Minimum stay: {n} nights · Listing-wide setting",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.minimum_stay_info.two",
+    "sourceText": "Minimum stay: {n} nights · Listing-wide setting",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.minimum_stay_info.zero",
+    "sourceText": "Minimum stay: {n} nights · Listing-wide setting",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.more_options",
+    "sourceText": "More options",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.offers_on",
+    "sourceText": "Offers on {range}",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.per_night",
+    "sourceText": "per night",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.percent_field",
+    "sourceText": "Percent against base price",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.percent_off",
+    "sourceText": "{percent}% off",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.preset_base",
+    "sourceText": "Base",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.price_breakdown",
+    "sourceText": "View price breakdown",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.price_field",
+    "sourceText": "Price",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.price_heading.few",
+    "sourceText": "Nightly price for {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.price_heading.many",
+    "sourceText": "Nightly price for {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.price_heading.one",
+    "sourceText": "Nightly price for {n} night",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.price_heading.other",
+    "sourceText": "Nightly price for {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.price_heading.two",
+    "sourceText": "Nightly price for {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.price_heading.zero",
+    "sourceText": "Nightly price for {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.price_mixed",
+    "sourceText": "These nights cost between {min} and {max} right now.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.price_slider",
+    "sourceText": "Price against base price",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.price_unchanged",
+    "sourceText": "These nights already cost this",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.promotion_heading.few",
+    "sourceText": "Discount for {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.promotion_heading.many",
+    "sourceText": "Discount for {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.promotion_heading.one",
+    "sourceText": "Discount for {n} night",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.promotion_heading.other",
+    "sourceText": "Discount for {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.promotion_heading.two",
+    "sourceText": "Discount for {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.promotion_heading.zero",
+    "sourceText": "Discount for {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.promotion_minimum_unreachable",
+    "sourceText": "Your minimum is {minimum} nights but you have selected {nights}, so a guest booking exactly these dates will not qualify. A longer stay covering them still can.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.promotion_never_wins",
+    "sourceText": "This offer would never reach a guest. An existing {percent}% offer already covers these dates and wins, because a bigger discount takes priority.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.promotion_no_benefit",
+    "sourceText": "Set a discount, or waive the cleaning fee, to make this an offer.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.remove_saved_offer",
+    "sourceText": "Remove this saved offer",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.removing_saved",
+    "sourceText": "This saved offer will stop running on these dates when you confirm.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.scope_all_dates",
+    "sourceText": "all dates",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.scope_these_dates",
+    "sourceText": "these dates",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.set_price.few",
+    "sourceText": "Set {amount} for {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.set_price.many",
+    "sourceText": "Set {amount} for {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.set_price.one",
+    "sourceText": "Set {amount} for {n} night",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.set_price.other",
+    "sourceText": "Set {amount} for {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.set_price.two",
+    "sourceText": "Set {amount} for {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.set_price.zero",
+    "sourceText": "Set {amount} for {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.start_offer",
+    "sourceText": "Start this offer",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.state_all_blocked.few",
+    "sourceText": "These {n} nights are blocked.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.state_all_blocked.many",
+    "sourceText": "These {n} nights are blocked.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.state_all_blocked.one",
+    "sourceText": "This night is blocked.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.state_all_blocked.other",
+    "sourceText": "These {n} nights are blocked.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.state_all_blocked.two",
+    "sourceText": "These {n} nights are blocked.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.state_all_blocked.zero",
+    "sourceText": "These {n} nights are blocked.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.state_all_locked",
+    "sourceText": "Nothing here can be changed from this panel.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.state_all_open_unsellable.few",
+    "sourceText": "These {n} nights are open, but nothing can be booked yet.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.state_all_open_unsellable.many",
+    "sourceText": "These {n} nights are open, but nothing can be booked yet.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.state_all_open_unsellable.one",
+    "sourceText": "This night is open, but nothing can be booked yet.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.state_all_open_unsellable.other",
+    "sourceText": "These {n} nights are open, but nothing can be booked yet.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.state_all_open_unsellable.two",
+    "sourceText": "These {n} nights are open, but nothing can be booked yet.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.state_all_open_unsellable.zero",
+    "sourceText": "These {n} nights are open, but nothing can be booked yet.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.state_all_open.few",
+    "sourceText": "These {n} nights are open for booking.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.state_all_open.many",
+    "sourceText": "These {n} nights are open for booking.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.state_all_open.one",
+    "sourceText": "This night is open for booking.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.state_all_open.other",
+    "sourceText": "These {n} nights are open for booking.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.state_all_open.two",
+    "sourceText": "These {n} nights are open for booking.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.state_all_open.zero",
+    "sourceText": "These {n} nights are open for booking.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.state_mixed",
+    "sourceText": "{open} open · {blocked} blocked",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.undo",
+    "sourceText": "Undo",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.update_offer",
+    "sourceText": "Update this offer",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.use_base_price",
+    "sourceText": "Use base price: {amount}",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.winner_for_selection.few",
+    "sourceText": "A guest booking these {n} nights gets {percent}% off.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.winner_for_selection.many",
+    "sourceText": "A guest booking these {n} nights gets {percent}% off.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.winner_for_selection.one",
+    "sourceText": "A guest booking this night gets {percent}% off.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.winner_for_selection.other",
+    "sourceText": "A guest booking these {n} nights gets {percent}% off.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.winner_for_selection.two",
+    "sourceText": "A guest booking these {n} nights gets {percent}% off.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.winner_for_selection.zero",
+    "sourceText": "A guest booking these {n} nights gets {percent}% off.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.winner_none.few",
+    "sourceText": "A guest booking these {n} nights gets no discount.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.winner_none.many",
+    "sourceText": "A guest booking these {n} nights gets no discount.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.winner_none.one",
+    "sourceText": "A guest booking this night gets no discount.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.winner_none.other",
+    "sourceText": "A guest booking these {n} nights gets no discount.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.winner_none.two",
+    "sourceText": "A guest booking these {n} nights gets no discount.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.winner_none.zero",
+    "sourceText": "A guest booking these {n} nights gets no discount.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.empty",
+    "sourceText": "You have no properties to schedule yet.",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.error.cannot_hide",
+    "sourceText": "Only a live listing can be hidden.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.error.cannot_publish",
+    "sourceText": "This listing is not ready to go on the site yet:",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.error.cleaning_fee",
+    "sourceText": "Enter a cleaning fee of zero or more.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.error.free_cleaning",
+    "sourceText": "Add a cleaning fee before offering free cleaning.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.error.min_nights",
+    "sourceText": "Enter a minimum stay between 1 and {max} nights.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.error.mode_unchanged",
+    "sourceText": "That is already the current setting.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.error.no_changes",
+    "sourceText": "Nothing has changed yet.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.error.no_pricing",
+    "sourceText": "Set this listing's pricing before changing prices or promotions.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.error.no_selection",
+    "sourceText": "Choose dates first.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.error.nothing_to_block",
+    "sourceText": "None of these dates are open to block.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.error.nothing_to_open",
+    "sourceText": "None of these dates can be opened from here. They are already open, booked, or held by a connected calendar.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.error.past",
+    "sourceText": "Past dates cannot be changed. Choose dates from today onwards.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.error.price",
+    "sourceText": "Enter a nightly price greater than zero.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.error.promotion",
+    "sourceText": "Enter a discount of up to 50%, free cleaning, or both, and a valid minimum stay.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.error.promotion_conflict",
+    "sourceText": "Another always-active offer already uses a minimum stay of {nights} nights. Edit that offer or choose a different minimum stay.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.error.promotion_live",
+    "sourceText": "Put the listing on the site before adding a promotion.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.error.promotion_not_dated",
+    "sourceText": "This offer runs on every date, so it cannot be removed from just these ones. Change it in the all-dates editor.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.error.promotion_not_evergreen",
+    "sourceText": "This offer applies only to specific dates and cannot be changed from the all-dates editor.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.error.promotion_not_found",
+    "sourceText": "This promotion no longer exists. Refresh the calendar and try again.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.field.availability",
+    "sourceText": "Availability",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.field.availability_mode",
+    "sourceText": "Availability rule",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.field.base_price",
+    "sourceText": "Default nightly price",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.field.block_note",
+    "sourceText": "Private note",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.field.cleaning_fee",
+    "sourceText": "Cleaning fee",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.field.min_nights",
+    "sourceText": "Minimum stay",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.field.price",
+    "sourceText": "Nightly price",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.field.promotion",
+    "sourceText": "Promotion",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.field.visibility",
+    "sourceText": "Listing visibility",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.help.dated_fit",
+    "sourceText": "An offer on specific dates only applies when the guest's whole stay fits inside those dates. A stay running one night past the end gets nothing from it.",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.help.ladder",
+    "sourceText": "Give each offer a different minimum stay to build a ladder: 10% from five nights, 20% from twenty. A guest gets the highest minimum they reach.",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.help.minimum_meaning",
+    "sourceText": "The minimum stay here decides who earns the discount. It is not the shortest stay you accept — that is a listing setting.",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.help.one_offer",
+    "sourceText": "Offers never add up. A guest gets exactly one, even when several could apply.",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.help.per_stay",
+    "sourceText": "An offer applies to a whole stay, not to single nights. A guest books a stay and gets one discount on all of it.",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.help.which_wins",
+    "sourceText": "An offer on specific dates beats an all-dates one. After that the longer minimum stay wins, then the bigger discount.",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.horizon_end",
+    "sourceText": "That is as far ahead as your calendar is loaded.",
+    "filePath": "src/components/host/v2/calendar/calendar-month-stream.tsx"
+  },
+  {
+    "key": "host.v2.calendar.legend.available",
+    "sourceText": "Available",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.legend.blocked",
+    "sourceText": "Blocked",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.legend.booked",
+    "sourceText": "Booked",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.legend.external",
+    "sourceText": "From a connected calendar",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.legend.open_not_bookable",
+    "sourceText": "Open, not bookable",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.legend.selected",
+    "sourceText": "Selected",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.add_another_offer",
+    "sourceText": "Add another offer",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.all_dates_follow",
+    "sourceText": "Every date follows this price, unless you give a date its own.",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.any_length",
+    "sourceText": "any length",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.base_price",
+    "sourceText": "Base price",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.base_slider",
+    "sourceText": "Change against your saved base price",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.change",
+    "sourceText": "Change",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.change_percent",
+    "sourceText": "Percent against your saved base price",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.cleaning_fee",
+    "sourceText": "Cleaning fee",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.custom_prices_kept.few",
+    "sourceText": "{n} dates you priced yourself will not change. Every other date follows this price.",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.custom_prices_kept.many",
+    "sourceText": "{n} dates you priced yourself will not change. Every other date follows this price.",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.custom_prices_kept.one",
+    "sourceText": "{n} date you priced yourself will not change. Every other date follows this price.",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.custom_prices_kept.other",
+    "sourceText": "{n} dates you priced yourself will not change. Every other date follows this price.",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.custom_prices_kept.two",
+    "sourceText": "{n} dates you priced yourself will not change. Every other date follows this price.",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.custom_prices_kept.zero",
+    "sourceText": "{n} dates you priced yourself will not change. Every other date follows this price.",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.editing_offer",
+    "sourceText": "Editing {percent}% off",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.example_caption.few",
+    "sourceText": "A {n}-night stay",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.example_caption.many",
+    "sourceText": "A {n}-night stay",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.example_caption.one",
+    "sourceText": "A {n}-night stay",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.example_caption.other",
+    "sourceText": "A {n}-night stay",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.example_caption.two",
+    "sourceText": "A {n}-night stay",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.example_caption.zero",
+    "sourceText": "A {n}-night stay",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.example_offer_caption.few",
+    "sourceText": "A {n}-night stay with this offer",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.example_offer_caption.many",
+    "sourceText": "A {n}-night stay with this offer",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.example_offer_caption.one",
+    "sourceText": "A {n}-night stay with this offer",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.example_offer_caption.other",
+    "sourceText": "A {n}-night stay with this offer",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.example_offer_caption.two",
+    "sourceText": "A {n}-night stay with this offer",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.example_offer_caption.zero",
+    "sourceText": "A {n}-night stay with this offer",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.hidden",
+    "sourceText": "Hidden",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.minimum_taken",
+    "sourceText": "You already have a {percent}% offer starting at {nights} nights. Give this one a different minimum stay.",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.mode_closed",
+    "sourceText": "Closed",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.mode_closed_body",
+    "sourceText": "No date is bookable until you open it.",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.mode_open",
+    "sourceText": "Open",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.mode_open_body",
+    "sourceText": "Every date is bookable unless you block it.",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.mode_question",
+    "sourceText": "How do untouched dates begin?",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.new_offer",
+    "sourceText": "New offer",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.nights_minimum",
+    "sourceText": "nights minimum",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.per_stay",
+    "sourceText": "per stay",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.preset_now",
+    "sourceText": "Now",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.remove_ongoing",
+    "sourceText": "Remove this always-active offer",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.removing_ongoing",
+    "sourceText": "This always-active offer will stop applying to new bookings when you confirm. Existing bookings keep what guests already agreed.",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.term_bookable",
+    "sourceText": "Bookable dates",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.term_search",
+    "sourceText": "Found in search",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.term_search_body",
+    "sourceText": "A closed-by-default listing only appears once a guest searches dates you have opened.",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.term_visible",
+    "sourceText": "Visible",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.term_visible_body",
+    "sourceText": "whether the listing page exists for guests at all.",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.unchanged_from",
+    "sourceText": "of {amount}",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.visibility_hidden_effect",
+    "sourceText": "Guests cannot open or book this listing. Existing reservations still stand.",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.visibility_live_effect",
+    "sourceText": "Guests can open this listing. Search visibility and date bookability still depend on its calendar.",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.visible",
+    "sourceText": "Visible",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.visible_question",
+    "sourceText": "Is this listing visible to guests?",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.was",
+    "sourceText": "was {amount}",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.your_offers",
+    "sourceText": "Your always-active offers",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.manage_prompt",
+    "sourceText": "What would you like to change?",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
+    "key": "host.v2.calendar.manage_title",
+    "sourceText": "Manage calendar",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.menu.listing_defaults",
+    "sourceText": "Default price and stay rules",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.menu.listing_promotions",
+    "sourceText": "Ongoing promotions",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.menu.listing_visibility",
+    "sourceText": "Listing visibility",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.menu.price",
+    "sourceText": "Nightly price",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.menu.promotion",
+    "sourceText": "Promotion",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.next_month",
+    "sourceText": "Next month",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.no_pricing_hint",
+    "sourceText": "Set a base price for this listing before pricing individual dates.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.no_pricing_short",
+    "sourceText": "No pricing set",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
+    "key": "host.v2.calendar.one_change_note",
+    "sourceText": "One change is saved at a time. Nothing is saved until you review and confirm.",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
+    "key": "host.v2.calendar.open_manage",
+    "sourceText": "Manage calendar",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.open_not_bookable_dates.few",
+    "sourceText": "{n} dates open but not bookable in the next {months} months",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.open_not_bookable_dates.many",
+    "sourceText": "{n} dates open but not bookable in the next {months} months",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.open_not_bookable_dates.one",
+    "sourceText": "{n} date open but not bookable in the next {months} months",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.open_not_bookable_dates.other",
+    "sourceText": "{n} dates open but not bookable in the next {months} months",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.open_not_bookable_dates.two",
+    "sourceText": "{n} dates open but not bookable in the next {months} months",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.open_not_bookable_dates.zero",
+    "sourceText": "{n} dates open but not bookable in the next {months} months",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.past_rejected",
+    "sourceText": "Past dates cannot be changed.",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.previous_month",
+    "sourceText": "Previous month",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.promotion_every_stay",
+    "sourceText": "every stay",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.promotion_fewer_nights",
+    "sourceText": "Fewer nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.promotion_free_cleaning",
+    "sourceText": "Also waive the cleaning fee",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.promotion_minimum",
+    "sourceText": "Minimum stay",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.promotion_more_nights",
+    "sourceText": "More nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.promotion_nights_or_more",
+    "sourceText": "nights or more",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.promotion_off",
+    "sourceText": "off",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.promotion_percent",
+    "sourceText": "Discount",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.promotion_round",
+    "sourceText": "Round the discounted nightly price to a whole amount",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.publish_blocker.availability",
+    "sourceText": "Confirm when the property starts taking bookings in the listing editor.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.publish_blocker.photos",
+    "sourceText": "Add at least 3 photos.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.publish_blocker.pricing",
+    "sourceText": "Set a nightly price and cleaning fee for this listing.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.publish_blocker.status",
+    "sourceText": "This listing cannot be put on the site from here.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.quote.accommodation_after",
+    "sourceText": "Accommodation after discount",
+    "filePath": "src/components/host/v2/calendar/guest-quote.tsx"
+  },
+  {
+    "key": "host.v2.calendar.quote.accommodation.few",
+    "sourceText": "Accommodation, {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.quote.accommodation.many",
+    "sourceText": "Accommodation, {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.quote.accommodation.one",
+    "sourceText": "Accommodation, {n} night",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.quote.accommodation.other",
+    "sourceText": "Accommodation, {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.quote.accommodation.two",
+    "sourceText": "Accommodation, {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.quote.accommodation.zero",
+    "sourceText": "Accommodation, {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.quote.average",
+    "sourceText": "Average per night (after discount)",
+    "filePath": "src/components/host/v2/calendar/guest-quote.tsx"
+  },
+  {
+    "key": "host.v2.calendar.quote.cleaning",
+    "sourceText": "Cleaning fee",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.quote.cleaning_waived",
+    "sourceText": "Cleaning fee (waived)",
+    "filePath": "src/components/host/v2/calendar/guest-quote.tsx"
+  },
+  {
+    "key": "host.v2.calendar.quote.example_note",
+    "sourceText": "The figures above are an example only.",
+    "filePath": "src/components/host/v2/calendar/guest-quote.tsx"
+  },
+  {
+    "key": "host.v2.calendar.quote.savings",
+    "sourceText": "Guest saves",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.quote.title",
+    "sourceText": "What a guest would pay",
+    "filePath": "src/components/host/v2/calendar/guest-quote.tsx"
+  },
+  {
+    "key": "host.v2.calendar.quote.title_example",
+    "sourceText": "Example price · these dates cannot be booked",
+    "filePath": "src/components/host/v2/calendar/guest-quote.tsx"
+  },
+  {
+    "key": "host.v2.calendar.quote.total",
+    "sourceText": "Guest total",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.rail_collapse",
+    "sourceText": "Collapse property list",
+    "filePath": "src/components/host/v2/entity-rail.tsx"
+  },
+  {
+    "key": "host.v2.calendar.rail_expand",
+    "sourceText": "Expand property list",
+    "filePath": "src/components/host/v2/entity-rail.tsx"
+  },
+  {
+    "key": "host.v2.calendar.rail_heading",
+    "sourceText": "Properties",
+    "filePath": "src/components/host/v2/calendar/listing-rail.tsx"
+  },
+  {
+    "key": "host.v2.calendar.rail_label",
+    "sourceText": "Your properties",
+    "filePath": "src/components/host/v2/calendar/listing-rail.tsx"
+  },
+  {
+    "key": "host.v2.calendar.read_only",
+    "sourceText": "View only",
+    "filePath": "src/components/host/v2/calendar/all-listings-timeline.tsx"
+  },
+  {
+    "key": "host.v2.calendar.review_action.block",
+    "sourceText": "Review blocking {scope}",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.review_action.default_pricing",
+    "sourceText": "Review default pricing for all dates",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.review_action.evergreen_promotion",
+    "sourceText": "Review this always-active offer",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.review_action.hide",
+    "sourceText": "Review hiding this listing",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.review_action.min_nights",
+    "sourceText": "Review the minimum stay",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.review_action.mode_closed",
+    "sourceText": "Review closing dates by default",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.review_action.mode_open",
+    "sourceText": "Review opening dates by default",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.review_action.open",
+    "sourceText": "Review opening {scope}",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.review_action.price",
+    "sourceText": "Review the new price for {scope}",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.review_action.promotion",
+    "sourceText": "Review this promotion for {scope}",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.review_action.publish",
+    "sourceText": "Review putting this listing on the site",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.review_action.remove_date_promotion",
+    "sourceText": "Review removing this offer from {scope}",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.review_action.remove_evergreen_promotion",
+    "sourceText": "Review removing this always-active offer",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.review.cancel",
+    "sourceText": "Back to editing",
+    "filePath": "src/components/host/v2/calendar/review-dialog.tsx"
+  },
+  {
+    "key": "host.v2.calendar.review.consequence",
+    "sourceText": "What happens when you save",
+    "filePath": "src/components/host/v2/calendar/review-dialog.tsx"
+  },
+  {
+    "key": "host.v2.calendar.review.title",
+    "sourceText": "Review changes",
+    "filePath": "src/components/host/v2/calendar/review-dialog.tsx"
+  },
+  {
+    "key": "host.v2.calendar.save_failed",
+    "sourceText": "Your change could not be saved. Nothing on this screen was cleared; try again.",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.save.block",
+    "sourceText": "Save and block these dates",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.save.default_pricing",
+    "sourceText": "Save default pricing for all dates",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.save.evergreen_promotion",
+    "sourceText": "Save this always-active offer",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.save.hide",
+    "sourceText": "Save and hide this listing from guests",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.save.min_nights",
+    "sourceText": "Save minimum stay for all dates",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.save.mode_closed",
+    "sourceText": "Save and close dates by default",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.save.mode_open",
+    "sourceText": "Save and open dates by default",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.save.open",
+    "sourceText": "Save and open these dates",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.save.price",
+    "sourceText": "Save price changes",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.save.promotion",
+    "sourceText": "Save this promotion",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.save.publish",
+    "sourceText": "Save and put this listing back on the site",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.save.remove_date_promotion",
+    "sourceText": "Remove this offer from these dates",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.save.remove_evergreen_promotion",
+    "sourceText": "Remove this always-active offer",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.saved",
+    "sourceText": "Your change is live.",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.schedule.date_price",
+    "sourceText": "Custom price",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.schedule.edit",
+    "sourceText": "Edit",
+    "filePath": "src/components/host/v2/calendar/scheduled-changes.tsx"
+  },
+  {
+    "key": "host.v2.calendar.schedule.empty_body",
+    "sourceText": "Blocked dates, custom prices, date-specific offers and reservations all show up here once they exist, so you can change them without hunting through the calendar.",
+    "filePath": "src/components/host/v2/calendar/scheduled-changes.tsx"
+  },
+  {
+    "key": "host.v2.calendar.schedule.empty_title",
+    "sourceText": "Nothing scheduled yet",
+    "filePath": "src/components/host/v2/calendar/scheduled-changes.tsx"
+  },
+  {
+    "key": "host.v2.calendar.schedule.external",
+    "sourceText": "From a connected calendar",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.schedule.filter_all",
+    "sourceText": "All",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.schedule.filter_availability",
+    "sourceText": "Availability",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.schedule.filter_pricing",
+    "sourceText": "Pricing",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.schedule.filter_promotions",
+    "sourceText": "Promotions",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.schedule.filter_reservations",
+    "sourceText": "Reservations",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.schedule.filters",
+    "sourceText": "Filter changes",
+    "filePath": "src/components/host/v2/calendar/scheduled-changes.tsx"
+  },
+  {
+    "key": "host.v2.calendar.schedule.guest",
+    "sourceText": "Guest reservation",
+    "filePath": "src/components/host/v2/calendar/scheduled-changes.tsx"
+  },
+  {
+    "key": "host.v2.calendar.schedule.manual_block",
+    "sourceText": "Blocked",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.schedule.nights.few",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
+    "key": "host.v2.calendar.schedule.nights.many",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
+    "key": "host.v2.calendar.schedule.nights.one",
+    "sourceText": "{n} night",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
+    "key": "host.v2.calendar.schedule.nights.other",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
+    "key": "host.v2.calendar.schedule.nights.two",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
+    "key": "host.v2.calendar.schedule.nights.zero",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
+    "key": "host.v2.calendar.schedule.open_window",
+    "sourceText": "Opened",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.schedule.promotion",
+    "sourceText": "Offer",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.schedule.protected_external",
+    "sourceText": "These dates come from a calendar you connected. Change them there and the change syncs back.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.schedule.protected_reservation",
+    "sourceText": "A guest has booked these dates, so they cannot be changed here.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.schedule.remove",
+    "sourceText": "Remove",
+    "filePath": "src/components/host/v2/calendar/scheduled-changes.tsx"
+  },
+  {
+    "key": "host.v2.calendar.schedule.reservation",
+    "sourceText": "Booked",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.schedule.title",
+    "sourceText": "Scheduled changes",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
+    "key": "host.v2.calendar.scope.all_future",
+    "sourceText": "All future dates",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.scope.dates",
+    "sourceText": "Selected dates",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.section.availability",
+    "sourceText": "Availability",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.section.promotion_none",
+    "sourceText": "No promotion on these dates",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.selected_summary.few",
+    "sourceText": "{n} dates selected",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.selected_summary.many",
+    "sourceText": "{n} dates selected",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.selected_summary.one",
+    "sourceText": "{n} date selected",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.selected_summary.other",
+    "sourceText": "{n} dates selected",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.selected_summary.two",
+    "sourceText": "{n} dates selected",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.selected_summary.zero",
+    "sourceText": "{n} dates selected",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.status.attention",
+    "sourceText": "Needs attention",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.status.live_bookable.few",
+    "sourceText": "Live and bookable · {n} bookable dates in the next {months} months",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.status.live_bookable.many",
+    "sourceText": "Live and bookable · {n} bookable dates in the next {months} months",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.status.live_bookable.one",
+    "sourceText": "Live and bookable · {n} bookable date in the next {months} months",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.status.live_bookable.other",
+    "sourceText": "Live and bookable · {n} bookable dates in the next {months} months",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.status.live_bookable.two",
+    "sourceText": "Live and bookable · {n} bookable dates in the next {months} months",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.status.live_bookable.zero",
+    "sourceText": "Live and bookable · {n} bookable dates in the next {months} months",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.status.live_not_bookable",
+    "sourceText": "Live but not bookable · all dates blocked in the next {months} months",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.status.no_bookable_dates",
+    "sourceText": "Guests cannot book any dates",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.status.no_pricing",
+    "sourceText": "Pricing not set — nothing can be booked yet",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.stay.bookable",
+    "sourceText": "Bookable",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.stay.not_bookable",
+    "sourceText": "Not bookable",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.stay.reason_blocked.few",
+    "sourceText": "{n} of these dates are blocked.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.stay.reason_blocked.many",
+    "sourceText": "{n} of these dates are blocked.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.stay.reason_blocked.one",
+    "sourceText": "{n} of these dates is blocked.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.stay.reason_blocked.other",
+    "sourceText": "{n} of these dates are blocked.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.stay.reason_blocked.two",
+    "sourceText": "{n} of these dates are blocked.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.stay.reason_blocked.zero",
+    "sourceText": "{n} of these dates are blocked.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.stay.reason_booked.few",
+    "sourceText": "{n} of these dates are already booked.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.stay.reason_booked.many",
+    "sourceText": "{n} of these dates are already booked.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.stay.reason_booked.one",
+    "sourceText": "{n} of these dates is already booked.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.stay.reason_booked.other",
+    "sourceText": "{n} of these dates are already booked.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.stay.reason_booked.two",
+    "sourceText": "{n} of these dates are already booked.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.stay.reason_booked.zero",
+    "sourceText": "{n} of these dates are already booked.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.stay.reason_maximum.few",
+    "sourceText": "Maximum stay is {n} nights.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.stay.reason_maximum.many",
+    "sourceText": "Maximum stay is {n} nights.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.stay.reason_maximum.one",
+    "sourceText": "Maximum stay is {n} night.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.stay.reason_maximum.other",
+    "sourceText": "Maximum stay is {n} nights.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.stay.reason_maximum.two",
+    "sourceText": "Maximum stay is {n} nights.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.stay.reason_maximum.zero",
+    "sourceText": "Maximum stay is {n} nights.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.stay.reason_minimum.few",
+    "sourceText": "Minimum stay is {n} nights.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.stay.reason_minimum.many",
+    "sourceText": "Minimum stay is {n} nights.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.stay.reason_minimum.one",
+    "sourceText": "Minimum stay is {n} night.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.stay.reason_minimum.other",
+    "sourceText": "Minimum stay is {n} nights.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.stay.reason_minimum.two",
+    "sourceText": "Minimum stay is {n} nights.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.stay.reason_minimum.zero",
+    "sourceText": "Minimum stay is {n} nights.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.stay.reason_mixed",
+    "sourceText": "{blocked} of these dates are blocked and {booked} are booked.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.summary.mixed",
+    "sourceText": "Mixed",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.summary.none",
+    "sourceText": "None",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.summary.open_not_bookable",
+    "sourceText": "Open, not bookable",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.summary.promotion_more",
+    "sourceText": "{benefit} +{count} more",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.timeline_caption",
+    "sourceText": "Availability for each property over the next four weeks. Select a property to make changes.",
+    "filePath": "src/components/host/v2/calendar/all-listings-timeline.tsx"
+  },
+  {
+    "key": "host.v2.calendar.timeline_hint",
+    "sourceText": "This overview cannot be edited. Choose a property to change its dates, prices or promotions.",
+    "filePath": "src/components/host/v2/calendar/all-listings-timeline.tsx"
+  },
+  {
+    "key": "host.v2.calendar.timeline_property",
+    "sourceText": "Property",
+    "filePath": "src/components/host/v2/calendar/all-listings-timeline.tsx"
+  },
+  {
+    "key": "host.v2.calendar.timeline_range",
+    "sourceText": "The next {days} days from {month}",
+    "filePath": "src/components/host/v2/calendar/all-listings-timeline.tsx"
+  },
+  {
+    "key": "host.v2.calendar.timeline_title",
+    "sourceText": "All properties at a glance",
+    "filePath": "src/components/host/v2/calendar/all-listings-timeline.tsx"
+  },
+  {
+    "key": "host.v2.calendar.title",
+    "sourceText": "Calendar workbench",
+    "filePath": "src/components/host/v2/host-v2-placeholder.tsx"
+  },
+  {
+    "key": "host.v2.calendar.today",
+    "sourceText": "Today",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.value.available",
+    "sourceText": "Available",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.value.blocked",
+    "sourceText": "Blocked",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.value.booked",
+    "sourceText": "Booked",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.value.hidden",
+    "sourceText": "Hidden from guests",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.value.live",
+    "sourceText": "Live on the site",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.value.mixed",
+    "sourceText": "Mixed — {available} available, {blocked} blocked, {booked} booked",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.value.mixed_not_bookable",
+    "sourceText": "and {count} open but not bookable",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.value.mode_closed",
+    "sourceText": "Closed unless you open a date",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.value.mode_open",
+    "sourceText": "Open unless you block a date",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.value.nights.few",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.value.nights.many",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.value.nights.one",
+    "sourceText": "{n} night",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.value.nights.other",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.value.nights.two",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.value.nights.zero",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.value.no_promotion",
+    "sourceText": "No promotion",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.value.note_none",
+    "sourceText": "No note",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.value.open_not_bookable",
+    "sourceText": "Open, but not bookable",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.value.price",
+    "sourceText": "{amount} per night",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.value.price_base",
+    "sourceText": "Base price {amount} per night",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.value.price_range",
+    "sourceText": "{min} to {max} per night",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.value.promotion_both",
+    "sourceText": "{percent}% off and free cleaning",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.value.promotion_cleaning",
+    "sourceText": "Free cleaning",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.value.promotion_evergreen",
+    "sourceText": "This offer is always active.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.value.promotion_minimum",
+    "sourceText": "{benefit}, stays of {nights} nights or more",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.value.promotion_percent",
+    "sourceText": "{percent}% off",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.value.promotion_rounding_off",
+    "sourceText": "Discounted nightly prices keep their decimal amounts.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.value.promotion_rounding_on",
+    "sourceText": "Discounted nightly prices are rounded to whole currency units.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.visibility.archived",
+    "sourceText": "Archived",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.visibility.draft",
+    "sourceText": "Draft · not published",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.visibility.hidden",
+    "sourceText": "Hidden from guests",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.visibility.in_review",
+    "sourceText": "In review",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.visibility.live",
+    "sourceText": "Live on the site",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.visibility.rejected",
+    "sourceText": "Rejected",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.visibility.suspended",
+    "sourceText": "Suspended",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.workbench",
+    "sourceText": "Editing panel",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.help",
+    "sourceText": "Help",
+    "filePath": "src/components/host/v2/host-v2-shell.tsx"
+  },
+  {
+    "key": "host.v2.listings.actions_for",
+    "sourceText": "Actions for {title}",
+    "filePath": "src/components/host/v2/listings/listing-actions-menu.tsx"
+  },
+  {
+    "key": "host.v2.listings.archive_body",
+    "sourceText": "It comes off the site and moves out of this list into your archived listings. Bookings and history are kept, and you can bring it back at any time.",
+    "filePath": "src/components/host/v2/listings/listing-actions-menu.tsx"
+  },
+  {
+    "key": "host.v2.listings.archive_title",
+    "sourceText": "Archive {title}?",
+    "filePath": "src/components/host/v2/listings/listing-actions-menu.tsx"
+  },
+  {
+    "key": "host.v2.listings.calendar_for",
+    "sourceText": "Dates and prices for {title}",
+    "filePath": "src/components/host/v2/listings/listing-overview.tsx"
+  },
+  {
+    "key": "host.v2.listings.delete_body",
+    "sourceText": "The listing, its photos, prices and availability are gone for good. If it already has bookings we archive it instead, so your records and your guests' reservations survive.",
+    "filePath": "src/components/host/v2/listings/listing-actions-menu.tsx"
+  },
+  {
+    "key": "host.v2.listings.delete_draft",
+    "sourceText": "Delete draft {title}",
+    "filePath": "src/components/host/v2/listings/delete-draft-control.tsx"
+  },
+  {
+    "key": "host.v2.listings.delete_draft_action",
+    "sourceText": "Delete draft",
+    "filePath": "src/components/host/v2/listings/delete-draft-control.tsx"
+  },
+  {
+    "key": "host.v2.listings.delete_draft_body",
+    "sourceText": "This unfinished listing and everything filled in so far will be gone for good. Nothing that is already on the site is affected.",
+    "filePath": "src/components/host/v2/listings/delete-draft-control.tsx"
+  },
+  {
+    "key": "host.v2.listings.delete_draft_title",
+    "sourceText": "Delete {title}?",
+    "filePath": "src/components/host/v2/listings/delete-draft-control.tsx"
+  },
+  {
+    "key": "host.v2.listings.delete_title",
+    "sourceText": "Delete {title}?",
+    "filePath": "src/components/host/v2/listings/listing-actions-menu.tsx"
+  },
+  {
+    "key": "host.v2.listings.description",
+    "sourceText": "This is the first surface we will redesign: compact listing truth, guided editing, live guest preview, and a final launch review that explains exactly what guests can see and book.",
+    "filePath": "src/components/host/v2/host-v2-placeholder.tsx"
+  },
+  {
+    "key": "host.v2.listings.draft_deleted",
+    "sourceText": "Draft deleted",
+    "filePath": "src/components/host/v2/listings/delete-draft-control.tsx"
+  },
+  {
+    "key": "host.v2.listings.empty_action",
+    "sourceText": "Add listing",
+    "filePath": "src/components/host/v2/listings/listing-overview.tsx"
+  },
+  {
+    "key": "host.v2.listings.empty_copy",
+    "sourceText": "Add your home and we'll walk you through photos, prices, and the dates you want to host.",
+    "filePath": "src/components/host/v2/listings/listing-overview.tsx"
+  },
+  {
+    "key": "host.v2.listings.empty_title",
+    "sourceText": "Start your first listing",
+    "filePath": "src/components/host/v2/listings/listing-overview.tsx"
+  },
+  {
+    "key": "host.v2.listings.heading",
+    "sourceText": "Your listings",
+    "filePath": "src/components/host/v2/listings/listing-overview.tsx"
+  },
+  {
+    "key": "host.v2.listings.hide_archived",
+    "sourceText": "Hide archived listings",
+    "filePath": "src/components/host/v2/listings/listing-overview.tsx"
+  },
+  {
+    "key": "host.v2.listings.hide_confirm_action",
+    "sourceText": "Take it down",
+    "filePath": "src/components/host/v2/listings/listing-visibility-switch.tsx"
+  },
+  {
+    "key": "host.v2.listings.hide_confirm_body",
+    "sourceText": "It comes off search straight away and no one can make a new booking. Bookings you already have, your dates, prices and calendar connections all stay exactly as they are — and you can put it back up whenever you want.",
+    "filePath": "src/components/host/v2/listings/listing-visibility-switch.tsx"
+  },
+  {
+    "key": "host.v2.listings.hide_confirm_title",
+    "sourceText": "Hide {title} from guests?",
+    "filePath": "src/components/host/v2/listings/listing-visibility-switch.tsx"
+  },
+  {
+    "key": "host.v2.listings.listed",
+    "sourceText": "Listed",
+    "filePath": "src/components/host/v2/listings/listing-visibility-switch.tsx"
+  },
+  {
+    "key": "host.v2.listings.new",
+    "sourceText": "New listing",
+    "filePath": "src/components/host/v2/listings/listing-overview.tsx"
+  },
+  {
+    "key": "host.v2.listings.no_matches",
+    "sourceText": "No listings match your search.",
+    "filePath": "src/components/host/v2/listings/listing-overview.tsx"
+  },
+  {
+    "key": "host.v2.listings.search",
+    "sourceText": "Search your listings",
+    "filePath": "src/components/host/v2/listings/listing-overview.tsx"
+  },
+  {
+    "key": "host.v2.listings.show_archived",
+    "sourceText": "Show {count} archived listings",
+    "filePath": "src/components/host/v2/listings/listing-overview.tsx"
+  },
+  {
+    "key": "host.v2.listings.state.archived",
+    "sourceText": "Archived — bookings and history are kept",
+    "filePath": "src/components/host/v2/listings/listing-state-label.ts"
+  },
+  {
+    "key": "host.v2.listings.state.archived_short",
+    "sourceText": "Archived",
+    "filePath": "src/components/host/v2/listings/listing-state-label.ts"
+  },
+  {
+    "key": "host.v2.listings.state.draft_step",
+    "sourceText": "Stopped at step {step} of {total} — {title}",
+    "filePath": "src/components/host/v2/listings/listing-overview.tsx"
+  },
+  {
+    "key": "host.v2.listings.state.few_photos",
+    "sourceText": "Only {count} photos — listings with {target} get more bookings",
+    "filePath": "src/components/host/v2/listings/listing-state-label.ts"
+  },
+  {
+    "key": "host.v2.listings.state.few_photos_short",
+    "sourceText": "Few photos",
+    "filePath": "src/components/host/v2/listings/listing-state-label.ts"
+  },
+  {
+    "key": "host.v2.listings.state.hidden",
+    "sourceText": "Hidden from guests — unhide it when you're ready",
+    "filePath": "src/components/host/v2/listings/listing-state-label.ts"
+  },
+  {
+    "key": "host.v2.listings.state.hidden_short",
+    "sourceText": "Hidden",
+    "filePath": "src/components/host/v2/listings/listing-state-label.ts"
+  },
+  {
+    "key": "host.v2.listings.state.needs_review",
+    "sourceText": "Your edits are waiting for review",
+    "filePath": "src/components/host/v2/listings/listing-state-label.ts"
+  },
+  {
+    "key": "host.v2.listings.state.needs_review_short",
+    "sourceText": "In review",
+    "filePath": "src/components/host/v2/listings/listing-state-label.ts"
+  },
+  {
+    "key": "host.v2.listings.state.next_check_in",
+    "sourceText": "Next guest arrives {date}",
+    "filePath": "src/components/host/v2/listings/listing-state-label.ts"
+  },
+  {
+    "key": "host.v2.listings.state.nights_booked.few",
+    "sourceText": "{n} nights booked this month",
+    "filePath": "src/components/host/v2/listings/listing-state-label.ts"
+  },
+  {
+    "key": "host.v2.listings.state.nights_booked.many",
+    "sourceText": "{n} nights booked this month",
+    "filePath": "src/components/host/v2/listings/listing-state-label.ts"
+  },
+  {
+    "key": "host.v2.listings.state.nights_booked.one",
+    "sourceText": "{n} night booked this month",
+    "filePath": "src/components/host/v2/listings/listing-state-label.ts"
+  },
+  {
+    "key": "host.v2.listings.state.nights_booked.other",
+    "sourceText": "{n} nights booked this month",
+    "filePath": "src/components/host/v2/listings/listing-state-label.ts"
+  },
+  {
+    "key": "host.v2.listings.state.nights_booked.two",
+    "sourceText": "{n} nights booked this month",
+    "filePath": "src/components/host/v2/listings/listing-state-label.ts"
+  },
+  {
+    "key": "host.v2.listings.state.nights_booked.zero",
+    "sourceText": "{n} nights booked this month",
+    "filePath": "src/components/host/v2/listings/listing-state-label.ts"
+  },
+  {
+    "key": "host.v2.listings.state.no_bookings",
+    "sourceText": "No bookings in the next 30 days",
+    "filePath": "src/components/host/v2/listings/listing-state-label.ts"
+  },
+  {
+    "key": "host.v2.listings.state.no_price",
+    "sourceText": "No price set — guests can't book",
+    "filePath": "src/components/host/v2/listings/listing-state-label.ts"
+  },
+  {
+    "key": "host.v2.listings.state.no_price_short",
+    "sourceText": "No price",
+    "filePath": "src/components/host/v2/listings/listing-state-label.ts"
+  },
+  {
+    "key": "host.v2.listings.state.out_of_dates",
+    "sourceText": "No bookable dates left — add availability",
+    "filePath": "src/components/host/v2/listings/listing-state-label.ts"
+  },
+  {
+    "key": "host.v2.listings.state.out_of_dates_short",
+    "sourceText": "No dates",
+    "filePath": "src/components/host/v2/listings/listing-state-label.ts"
+  },
+  {
+    "key": "host.v2.listings.state.rejected",
+    "sourceText": "Changes were rejected — open the listing to see why",
+    "filePath": "src/components/host/v2/listings/listing-state-label.ts"
+  },
+  {
+    "key": "host.v2.listings.state.rejected_short",
+    "sourceText": "Rejected",
+    "filePath": "src/components/host/v2/listings/listing-state-label.ts"
+  },
+  {
+    "key": "host.v2.listings.state.suspended",
+    "sourceText": "Suspended by our team — check your email for details",
+    "filePath": "src/components/host/v2/listings/listing-state-label.ts"
+  },
+  {
+    "key": "host.v2.listings.state.suspended_short",
+    "sourceText": "Suspended",
+    "filePath": "src/components/host/v2/listings/listing-state-label.ts"
+  },
+  {
+    "key": "host.v2.listings.state.sync_failed",
+    "sourceText": "{feed} calendar sync failed — last worked {days} days ago",
+    "filePath": "src/components/host/v2/listings/listing-state-label.ts"
+  },
+  {
+    "key": "host.v2.listings.state.sync_failed_short",
+    "sourceText": "Sync failed",
+    "filePath": "src/components/host/v2/listings/listing-state-label.ts"
+  },
+  {
+    "key": "host.v2.listings.state.sync_never",
+    "sourceText": "{feed} calendar has never synced",
+    "filePath": "src/components/host/v2/listings/listing-state-label.ts"
+  },
+  {
+    "key": "host.v2.listings.title",
+    "sourceText": "Listings and launch review",
+    "filePath": "src/components/host/v2/host-v2-placeholder.tsx"
+  },
+  {
+    "key": "host.v2.listings.unlisted",
+    "sourceText": "Unlisted",
+    "filePath": "src/components/host/v2/listings/listing-visibility-switch.tsx"
+  },
+  {
+    "key": "host.v2.listings.view_as_guest",
+    "sourceText": "View as a guest",
+    "filePath": "src/components/host/v2/listings/listing-actions-menu.tsx"
+  },
+  {
+    "key": "host.v2.listings.view_grid",
+    "sourceText": "Grid view",
+    "filePath": "src/components/host/v2/listings/listing-overview.tsx"
+  },
+  {
+    "key": "host.v2.listings.view_list",
+    "sourceText": "List view",
+    "filePath": "src/components/host/v2/listings/listing-overview.tsx"
+  },
+  {
+    "key": "host.v2.messages.all_reservations",
+    "sourceText": "All reservations",
+    "filePath": "src/components/host/v2/messages/inbox-conversation-list.tsx"
+  },
+  {
+    "key": "host.v2.messages.back",
+    "sourceText": "Back to messages",
+    "filePath": "src/components/host/v2/messages/inbox-thread.tsx"
+  },
+  {
+    "key": "host.v2.messages.booked_on",
+    "sourceText": "Booking date",
+    "filePath": "src/components/host/v2/messages/reservation-rail.tsx"
+  },
+  {
+    "key": "host.v2.messages.check_in",
+    "sourceText": "Check-in",
+    "filePath": "src/components/host/v2/messages/reservation-rail.tsx"
+  },
+  {
+    "key": "host.v2.messages.check_out",
+    "sourceText": "Checkout",
+    "filePath": "src/components/host/v2/messages/reservation-rail.tsx"
+  },
+  {
+    "key": "host.v2.messages.confirmation_code",
+    "sourceText": "Confirmation code",
+    "filePath": "src/components/host/v2/messages/reservation-rail.tsx"
+  },
+  {
+    "key": "host.v2.messages.details",
+    "sourceText": "Details",
+    "filePath": "src/components/host/v2/messages/inbox-thread.tsx"
+  },
+  {
+    "key": "host.v2.messages.empty",
+    "sourceText": "No conversations yet. Guest enquiries and booking messages will appear here.",
+    "filePath": "src/components/host/v2/messages/inbox-conversation-list.tsx"
+  },
+  {
+    "key": "host.v2.messages.enquiry",
+    "sourceText": "Enquiry",
+    "filePath": "src/components/host/v2/messages/inbox-conversation-list.tsx"
+  },
+  {
+    "key": "host.v2.messages.filter.all",
+    "sourceText": "All",
+    "filePath": "src/components/host/v2/messages/inbox-conversation-list.tsx"
+  },
+  {
+    "key": "host.v2.messages.filter.unread",
+    "sourceText": "Unread",
+    "filePath": "src/components/host/v2/messages/inbox-conversation-list.tsx"
+  },
+  {
+    "key": "host.v2.messages.flexible_time",
+    "sourceText": "Flexible",
+    "filePath": "src/components/host/v2/messages/reservation-rail.tsx"
+  },
+  {
+    "key": "host.v2.messages.guest_count",
+    "sourceText": "{count} guests",
+    "filePath": "src/components/host/v2/messages/reservation-rail.tsx"
+  },
+  {
+    "key": "host.v2.messages.guests",
+    "sourceText": "Guests",
+    "filePath": "src/components/host/v2/messages/reservation-rail.tsx"
+  },
+  {
+    "key": "host.v2.messages.manage_reservation",
+    "sourceText": "Manage reservation",
+    "filePath": "src/components/host/v2/messages/reservation-rail.tsx"
+  },
+  {
+    "key": "host.v2.messages.nights",
+    "sourceText": "{count} nights",
+    "filePath": "src/components/host/v2/messages/reservation-rail.tsx"
+  },
+  {
+    "key": "host.v2.messages.no_matches",
+    "sourceText": "No conversations match this filter.",
+    "filePath": "src/components/host/v2/messages/inbox-conversation-list.tsx"
+  },
+  {
+    "key": "host.v2.messages.no_reservation",
+    "sourceText": "No reservation yet — this guest is asking about the listing.",
+    "filePath": "src/components/host/v2/messages/reservation-rail.tsx"
+  },
+  {
+    "key": "host.v2.messages.reservation",
+    "sourceText": "Reservation",
+    "filePath": "src/components/host/v2/messages/inbox-thread.tsx"
+  },
+  {
+    "key": "host.v2.messages.reservation_details",
+    "sourceText": "Reservation details",
+    "filePath": "src/components/host/v2/messages/inbox-thread.tsx"
+  },
+  {
+    "key": "host.v2.messages.search",
+    "sourceText": "Search messages",
+    "filePath": "src/components/host/v2/messages/inbox-conversation-list.tsx"
+  },
+  {
+    "key": "host.v2.messages.search_placeholder",
+    "sourceText": "Search by guest, listing or message",
+    "filePath": "src/components/host/v2/messages/inbox-conversation-list.tsx"
+  },
+  {
+    "key": "host.v2.messages.select_copy",
+    "sourceText": "Pick a guest on the left to read the thread and see their reservation.",
+    "filePath": "src/app/(host-v2)/host/v2/messages/page.tsx"
+  },
+  {
+    "key": "host.v2.messages.select_title",
+    "sourceText": "Choose a conversation",
+    "filePath": "src/app/(host-v2)/host/v2/messages/page.tsx"
+  },
+  {
+    "key": "host.v2.messages.title",
+    "sourceText": "Messages",
+    "filePath": "src/components/host/v2/messages/inbox-conversation-list.tsx"
+  },
+  {
+    "key": "host.v2.messages.total",
+    "sourceText": "Total payout",
+    "filePath": "src/components/host/v2/messages/reservation-rail.tsx"
+  },
+  {
+    "key": "host.v2.messages.unread_count",
+    "sourceText": "{count} unread messages",
+    "filePath": "src/components/host/v2/messages/inbox-conversation-list.tsx"
+  },
+  {
+    "key": "host.v2.messages.view_listing",
+    "sourceText": "View listing",
+    "filePath": "src/components/host/v2/messages/reservation-rail.tsx"
+  },
+  {
+    "key": "host.v2.nav.calendar",
+    "sourceText": "Calendar",
+    "filePath": "src/components/host/v2/host-v2-nav.tsx"
+  },
+  {
+    "key": "host.v2.nav.label",
+    "sourceText": "New host panel",
+    "filePath": "src/components/host/v2/host-v2-nav.tsx"
+  },
+  {
+    "key": "host.v2.nav.listings",
+    "sourceText": "Listings",
+    "filePath": "src/components/host/v2/host-v2-nav.tsx"
+  },
+  {
+    "key": "host.v2.nav.messages",
+    "sourceText": "Messages",
+    "filePath": "src/components/host/v2/host-v2-nav.tsx"
+  },
+  {
+    "key": "host.v2.nav.reservations",
+    "sourceText": "Reservations",
+    "filePath": "src/components/host/v2/host-v2-nav.tsx"
+  },
+  {
+    "key": "host.v2.nav.today",
+    "sourceText": "Today",
+    "filePath": "src/components/host/v2/host-v2-nav.tsx"
+  },
+  {
+    "key": "host.v2.open_current_surface",
+    "sourceText": "Open this in the current panel",
+    "filePath": "src/components/host/v2/host-v2-placeholder.tsx"
+  },
+  {
+    "key": "host.v2.preview_label",
+    "sourceText": "New panel preview",
+    "filePath": "src/components/host/v2/host-v2-placeholder.tsx"
+  },
+  {
+    "key": "host.v2.reservations.accommodation.few",
+    "sourceText": "Accommodation · {n} nights",
+    "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
+  },
+  {
+    "key": "host.v2.reservations.accommodation.many",
+    "sourceText": "Accommodation · {n} nights",
+    "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
+  },
+  {
+    "key": "host.v2.reservations.accommodation.one",
+    "sourceText": "Accommodation · {n} night",
+    "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
+  },
+  {
+    "key": "host.v2.reservations.accommodation.other",
+    "sourceText": "Accommodation · {n} nights",
+    "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
+  },
+  {
+    "key": "host.v2.reservations.accommodation.two",
+    "sourceText": "Accommodation · {n} nights",
+    "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
+  },
+  {
+    "key": "host.v2.reservations.accommodation.zero",
+    "sourceText": "Accommodation · {n} nights",
+    "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
+  },
+  {
+    "key": "host.v2.reservations.action.arrives_today",
+    "sourceText": "Arrives today",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.action.arrives_tomorrow",
+    "sourceText": "Arrives tomorrow",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.action.check_in_consequence",
+    "sourceText": "Send the guest their arrival details before they travel.",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.action.rate",
+    "sourceText": "Rate your guest",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.action.reply",
+    "sourceText": "Guest is waiting for a reply",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.action.reply_consequence",
+    "sourceText": "How fast you reply is shown to guests on your listings.",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.action.respond",
+    "sourceText": "Request expires in",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.action.respond_consequence",
+    "sourceText": "If you do not answer, the request expires on its own and the dates go back on sale.",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.answer_body",
+    "sourceText": "If you do not answer in time the request expires on its own, and these dates go back on sale.",
+    "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
+  },
+  {
+    "key": "host.v2.reservations.answer_within",
+    "sourceText": "Answer within",
+    "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
+  },
+  {
+    "key": "host.v2.reservations.booked_on",
+    "sourceText": "Requested",
+    "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
+  },
+  {
+    "key": "host.v2.reservations.check_in",
+    "sourceText": "Check-in",
+    "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
+  },
+  {
+    "key": "host.v2.reservations.check_out",
+    "sourceText": "Check-out",
+    "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
+  },
+  {
+    "key": "host.v2.reservations.chip.check_in",
+    "sourceText": "Arriving soon",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.chip.rate",
+    "sourceText": "Rating open",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.chip.reply",
+    "sourceText": "Unread message",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.chip.respond",
+    "sourceText": "Awaiting your reply",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.cleaning_fee",
+    "sourceText": "Cleaning fee",
+    "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
+  },
+  {
+    "key": "host.v2.reservations.description",
+    "sourceText": "The new reservations surface will prioritize past, today, and upcoming stays with compact filters and clear actions instead of oversized empty states.",
+    "filePath": "src/components/host/v2/host-v2-placeholder.tsx"
+  },
+  {
+    "key": "host.v2.reservations.discount",
+    "sourceText": "Discount",
+    "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
+  },
+  {
+    "key": "host.v2.reservations.drawer_title",
+    "sourceText": "Reservation",
+    "filePath": "src/components/host/v2/reservations/host-reservations-workspace.tsx"
+  },
+  {
+    "key": "host.v2.reservations.empty_body",
+    "sourceText": "Try a different search, or clear the filter to see every reservation.",
+    "filePath": "src/components/host/v2/reservations/reservation-stream.tsx"
+  },
+  {
+    "key": "host.v2.reservations.empty_title",
+    "sourceText": "Nothing matches what you are looking for.",
+    "filePath": "src/components/host/v2/reservations/reservation-stream.tsx"
+  },
+  {
+    "key": "host.v2.reservations.filter.action",
+    "sourceText": "Needs action",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.filter.all",
+    "sourceText": "All",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.filter.cancelled",
+    "sourceText": "Cancelled",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.filter.completed",
+    "sourceText": "Completed",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.filter.staying",
+    "sourceText": "Staying now",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.filter.upcoming",
+    "sourceText": "Upcoming",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.group.action",
+    "sourceText": "Needs your action",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.group.action_hint",
+    "sourceText": "sorted by deadline",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.group.earlier",
+    "sourceText": "Earlier",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.group.today",
+    "sourceText": "Today",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.group.upcoming",
+    "sourceText": "Upcoming",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.guests.few",
+    "sourceText": "{n} guests",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.guests.many",
+    "sourceText": "{n} guests",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.guests.one",
+    "sourceText": "{n} guest",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.guests.other",
+    "sourceText": "{n} guests",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.guests.two",
+    "sourceText": "{n} guests",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.guests.zero",
+    "sourceText": "{n} guests",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.leave_rating",
+    "sourceText": "Leave rating",
+    "filePath": "src/components/host/v2/reservations/reservation-stream.tsx"
+  },
+  {
+    "key": "host.v2.reservations.message_guest",
+    "sourceText": "Message guest",
+    "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
+  },
+  {
+    "key": "host.v2.reservations.nights.few",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.nights.many",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.nights.one",
+    "sourceText": "{n} night",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.nights.other",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.nights.two",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.nights.zero",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.no_properties",
+    "sourceText": "You have no properties that can take reservations yet.",
+    "filePath": "src/components/host/v2/reservations/host-reservations-workspace.tsx"
+  },
+  {
+    "key": "host.v2.reservations.no_selection",
+    "sourceText": "Choose a reservation to see the guest, the money and what you can do about it.",
+    "filePath": "src/components/host/v2/reservations/host-reservations-workspace.tsx"
+  },
+  {
+    "key": "host.v2.reservations.open_full",
+    "sourceText": "Open full reservation",
+    "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
+  },
+  {
+    "key": "host.v2.reservations.panel_label",
+    "sourceText": "Reservation details",
+    "filePath": "src/components/host/v2/reservations/host-reservations-workspace.tsx"
+  },
+  {
+    "key": "host.v2.reservations.price",
+    "sourceText": "Price",
+    "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
+  },
+  {
+    "key": "host.v2.reservations.rail.all",
+    "sourceText": "All properties",
+    "filePath": "src/components/host/v2/reservations/host-reservations-workspace.tsx"
+  },
+  {
+    "key": "host.v2.reservations.rail.all_detail",
+    "sourceText": "{count} reservations · {value} upcoming",
+    "filePath": "src/components/host/v2/reservations/host-reservations-workspace.tsx"
+  },
+  {
+    "key": "host.v2.reservations.rail.needs_you",
+    "sourceText": "Needs you",
+    "filePath": "src/components/host/v2/reservations/host-reservations-workspace.tsx"
+  },
+  {
+    "key": "host.v2.reservations.rail.needs_you_count.few",
+    "sourceText": "{n} reservations are waiting",
+    "filePath": "src/components/host/v2/reservations/host-reservations-workspace.tsx"
+  },
+  {
+    "key": "host.v2.reservations.rail.needs_you_count.many",
+    "sourceText": "{n} reservations are waiting",
+    "filePath": "src/components/host/v2/reservations/host-reservations-workspace.tsx"
+  },
+  {
+    "key": "host.v2.reservations.rail.needs_you_count.one",
+    "sourceText": "{n} reservation is waiting",
+    "filePath": "src/components/host/v2/reservations/host-reservations-workspace.tsx"
+  },
+  {
+    "key": "host.v2.reservations.rail.needs_you_count.other",
+    "sourceText": "{n} reservations are waiting",
+    "filePath": "src/components/host/v2/reservations/host-reservations-workspace.tsx"
+  },
+  {
+    "key": "host.v2.reservations.rail.needs_you_count.two",
+    "sourceText": "{n} reservations are waiting",
+    "filePath": "src/components/host/v2/reservations/host-reservations-workspace.tsx"
+  },
+  {
+    "key": "host.v2.reservations.rail.needs_you_count.zero",
+    "sourceText": "{n} reservations are waiting",
+    "filePath": "src/components/host/v2/reservations/host-reservations-workspace.tsx"
+  },
+  {
+    "key": "host.v2.reservations.rail.no_reservations",
+    "sourceText": "No reservations yet",
+    "filePath": "src/components/host/v2/reservations/host-reservations-workspace.tsx"
+  },
+  {
+    "key": "host.v2.reservations.rail.nothing_upcoming",
+    "sourceText": "Nothing upcoming",
+    "filePath": "src/components/host/v2/reservations/host-reservations-workspace.tsx"
+  },
+  {
+    "key": "host.v2.reservations.rail.upcoming.few",
+    "sourceText": "{n} upcoming · next {date}",
+    "filePath": "src/components/host/v2/reservations/host-reservations-workspace.tsx"
+  },
+  {
+    "key": "host.v2.reservations.rail.upcoming.many",
+    "sourceText": "{n} upcoming · next {date}",
+    "filePath": "src/components/host/v2/reservations/host-reservations-workspace.tsx"
+  },
+  {
+    "key": "host.v2.reservations.rail.upcoming.one",
+    "sourceText": "{n} upcoming · next {date}",
+    "filePath": "src/components/host/v2/reservations/host-reservations-workspace.tsx"
+  },
+  {
+    "key": "host.v2.reservations.rail.upcoming.other",
+    "sourceText": "{n} upcoming · next {date}",
+    "filePath": "src/components/host/v2/reservations/host-reservations-workspace.tsx"
+  },
+  {
+    "key": "host.v2.reservations.rail.upcoming.two",
+    "sourceText": "{n} upcoming · next {date}",
+    "filePath": "src/components/host/v2/reservations/host-reservations-workspace.tsx"
+  },
+  {
+    "key": "host.v2.reservations.rail.upcoming.zero",
+    "sourceText": "{n} upcoming · next {date}",
+    "filePath": "src/components/host/v2/reservations/host-reservations-workspace.tsx"
+  },
+  {
+    "key": "host.v2.reservations.rate_guest",
+    "sourceText": "Rate guest",
+    "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
+  },
+  {
+    "key": "host.v2.reservations.read_messages.few",
+    "sourceText": "Read {n} messages",
+    "filePath": "src/components/host/v2/reservations/reservation-stream.tsx"
+  },
+  {
+    "key": "host.v2.reservations.read_messages.many",
+    "sourceText": "Read {n} messages",
+    "filePath": "src/components/host/v2/reservations/reservation-stream.tsx"
+  },
+  {
+    "key": "host.v2.reservations.read_messages.one",
+    "sourceText": "Read {n} message",
+    "filePath": "src/components/host/v2/reservations/reservation-stream.tsx"
+  },
+  {
+    "key": "host.v2.reservations.read_messages.other",
+    "sourceText": "Read {n} messages",
+    "filePath": "src/components/host/v2/reservations/reservation-stream.tsx"
+  },
+  {
+    "key": "host.v2.reservations.read_messages.two",
+    "sourceText": "Read {n} messages",
+    "filePath": "src/components/host/v2/reservations/reservation-stream.tsx"
+  },
+  {
+    "key": "host.v2.reservations.read_messages.zero",
+    "sourceText": "Read {n} messages",
+    "filePath": "src/components/host/v2/reservations/reservation-stream.tsx"
+  },
+  {
+    "key": "host.v2.reservations.review_arrival",
+    "sourceText": "Review arrival",
+    "filePath": "src/components/host/v2/reservations/reservation-stream.tsx"
+  },
+  {
+    "key": "host.v2.reservations.search_placeholder",
+    "sourceText": "Search guest, property or reference…",
+    "filePath": "src/components/host/v2/reservations/reservation-stream.tsx"
+  },
+  {
+    "key": "host.v2.reservations.service_fee",
+    "sourceText": "Service fee",
+    "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
+  },
+  {
+    "key": "host.v2.reservations.sort_by",
+    "sourceText": "Sort by",
+    "filePath": "src/components/host/v2/reservations/reservation-stream.tsx"
+  },
+  {
+    "key": "host.v2.reservations.sort_label",
+    "sourceText": "Sort reservations — currently {sort}",
+    "filePath": "src/components/host/v2/reservations/reservation-stream.tsx"
+  },
+  {
+    "key": "host.v2.reservations.sort.highest",
+    "sourceText": "Highest total",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.sort.newest",
+    "sourceText": "Newest request",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.sort.priority",
+    "sourceText": "Needs you first",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.sort.soonest",
+    "sourceText": "Soonest first",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.status.checking_in",
+    "sourceText": "Arrives today",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.status.checking_out",
+    "sourceText": "Leaves today",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.status.completed",
+    "sourceText": "Completed",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.status.confirmed",
+    "sourceText": "Confirmed",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.status.request",
+    "sourceText": "Request",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.status.staying",
+    "sourceText": "Staying now",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.stay",
+    "sourceText": "Stay",
+    "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
+  },
+  {
+    "key": "host.v2.reservations.title",
+    "sourceText": "Reservations",
+    "filePath": "src/components/host/v2/host-v2-placeholder.tsx"
+  },
+  {
+    "key": "host.v2.reservations.total",
+    "sourceText": "Booking total",
+    "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
+  },
+  {
+    "key": "host.v2.reservations.why_closed",
+    "sourceText": "Reason",
+    "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
+  },
+  {
+    "key": "host.v2.today.add_listing",
+    "sourceText": "Add listing",
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+  },
+  {
+    "key": "host.v2.today.greeting",
+    "sourceText": "Welcome back, {name}",
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+  },
+  {
     "key": "host.visibility.confirm_hide",
-    "sourceText": "Hide {title} from the site?\n\nIt will no longer be bookable until you publish it again.",
+    "sourceText": "Hide {title} from guests?\n\nNew guests will not be able to view or book it. Existing reservations and calendar connections stay active.",
     "filePath": "src/components/host/listing-visibility-toggle.tsx"
   },
   {
@@ -6811,7 +11301,7 @@
   },
   {
     "key": "host.visibility.hide_tooltip",
-    "sourceText": "Take this listing off the site — guests can't find it or request it until you unhide it. Your dates, prices and bookings stay as they are.",
+    "sourceText": "Hide this listing from new guests. Existing reservations, dates, prices, and calendar connections stay active.",
     "filePath": "src/components/host/listing-visibility-toggle.tsx"
   },
   {
@@ -6826,7 +11316,7 @@
   },
   {
     "key": "host.visibility.unhide_tooltip",
-    "sourceText": "Put this listing back on the site so guests can find it and send booking requests again.",
+    "sourceText": "Make this listing live immediately with its current availability, prices, and booking rules. Internal review may continue after publication.",
     "filePath": "src/components/host/listing-visibility-toggle.tsx"
   },
   {

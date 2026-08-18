@@ -13,6 +13,10 @@ import {
 import { isAvailabilityOverlapConstraintError } from "@/lib/utils/db-errors";
 import { format } from "date-fns";
 import { revalidatePublicListingCaches } from "@/lib/utils/revalidate-public-listing-caches";
+import {
+  resetDatePriceRangeForManagedListing,
+  setDatePriceRangeForManagedListing,
+} from "@/lib/services/availability-mutation.service";
 
 async function getListingForManager(userId: string, role: string, listingId: string) {
   const listing = await db.listing.findUnique({
@@ -500,42 +504,13 @@ export async function upsertListingDatePriceRange(formData: FormData) {
     return { error: "Missing required fields" };
   }
 
-  const rate = parseFloat(nightlyRateRaw);
-  if (!Number.isFinite(rate) || rate <= 0) {
-    return { error: "Enter a valid nightly price greater than zero" };
-  }
-
   const listingResult = await requireManagedListing(listingId);
   if ("error" in listingResult) return { error: listingResult.error };
-  const listing = listingResult.listing;
-  if (!listing.pricingRule) return { error: "Listing pricing is missing" };
-
-  const range = validateRange(startDate, endDate);
-  if ("error" in range) return { error: range.error };
-  const { startDate: rangeStartYmd, endDate: rangeEndYmd } = range;
-  const nights = eachYmdExclusive(rangeStartYmd, rangeEndYmd);
-  const base = Number(listing.pricingRule.baseNightlyRate);
-
-  await db.$transaction(async (tx) => {
-    for (const nightYmd of nights) {
-      const day = ymdToDbDate(nightYmd);
-
-      if (Math.abs(rate - base) < 0.005) {
-        await tx.listingDatePrice.deleteMany({
-          where: { listingId, date: day },
-        });
-      } else {
-        await tx.listingDatePrice.upsert({
-          where: { listingId_date: { listingId, date: day } },
-          create: { listingId, date: day, nightlyRate: rate },
-          update: { nightlyRate: rate },
-        });
-      }
-    }
+  return setDatePriceRangeForManagedListing(listingResult.listing, {
+    startDate,
+    endDate,
+    nightlyRate: Number(nightlyRateRaw),
   });
-
-  revalidateListingPaths(listingId, listing.slug);
-  return { success: true };
 }
 
 export async function removeListingDatePriceRange(formData: FormData) {
@@ -549,23 +524,10 @@ export async function removeListingDatePriceRange(formData: FormData) {
 
   const listingResult = await requireManagedListing(listingId);
   if ("error" in listingResult) return { error: listingResult.error };
-  const listing = listingResult.listing;
-
-  let start: Date;
-  let end: Date;
-  try {
-    start = ymdToDbDate(startDate);
-    end = ymdToDbDate(endDate);
-  } catch {
-    return { error: "Invalid date range" };
-  }
-
-  await db.listingDatePrice.deleteMany({
-    where: { listingId, date: { gte: start, lte: end } },
+  return resetDatePriceRangeForManagedListing(listingResult.listing, {
+    startDate,
+    endDate,
   });
-
-  revalidateListingPaths(listingId, listing.slug);
-  return { success: true };
 }
 
 export async function removeListingDatePrice(priceId: string) {

@@ -24,10 +24,6 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { DateRange } from "react-day-picker";
 import { toast } from "sonner";
-
-function officialMoney(amount: number | string, currency: string): string {
-  return new Intl.NumberFormat("en", { style: "currency", currency }).format(Number(amount));
-}
 import { DateRangeCalendarStep } from "@/components/marketplace/marketplace-stay-date-picker";
 import { ListingActionBarPortal } from "@/components/host/listing-action-bar-portal";
 import { PercentAmountField } from "@/components/host/percent-amount-field";
@@ -69,12 +65,25 @@ import {
   setCalendarDatePrice,
 } from "@/lib/actions/calendar.actions";
 import { cn } from "@/lib/utils";
+import { formatMoney } from "@/lib/currency/convert";
+import {
+  computeCalendarPromotionPreview,
+  computeEvergreenPromotionBaseExample,
+} from "@/lib/host/calendar-promotion-preview";
 import {
   addDaysToYmd,
   dbDateToYmd,
   eachYmdExclusive,
 } from "@/lib/utils/date-only";
 import { dateKey, parseLocalYmd } from "@/lib/utils/stay-pricing";
+
+function officialMoney(
+  amount: number | string,
+  currency: string,
+  locale = "en",
+): string {
+  return formatMoney(Number(amount), currency, locale);
+}
 
 export interface WorkspaceBlock {
   id: string;
@@ -504,6 +513,8 @@ function EditorDialog({
   minNights,
   currency,
   locale,
+  datePrices,
+  promotions,
   blockedDates,
   bookedDates,
   state,
@@ -517,6 +528,8 @@ function EditorDialog({
   minNights: number;
   currency: string;
   locale: string;
+  datePrices: WorkspaceDatePrice[];
+  promotions: WorkspacePromotion[];
   blockedDates: Set<string>;
   bookedDates: Set<string>;
   state: EditorState;
@@ -786,7 +799,7 @@ function EditorDialog({
     : state.kind === "availability"
       ? "Listing visibility"
       : state.kind === "price"
-        ? `Standard pricing · ${officialMoney(baseNightlyRate, currency)} base price`
+        ? `Standard pricing · ${officialMoney(baseNightlyRate, currency, locale)} base price`
         : "Always active · no end date";
 
   /** The action the footer's primary button would run, for the Enter key. */
@@ -818,11 +831,38 @@ function EditorDialog({
   }
 
   const numericDiscount = Math.min(50, Math.max(0, Number(discount) || 0));
-  const rawGuestRate = baseNightlyRate * (1 - numericDiscount / 100);
-  // Mirrors computeStayQuote: nearest whole currency unit, never above the rate.
-  const guestRate = roundPromotion
-    ? Math.min(baseNightlyRate, Math.round(rawGuestRate))
-    : Number(rawGuestRate.toFixed(2));
+  const previewMinimumNights = isDateScoped
+    ? minNights
+    : Math.max(1, Number(promotionMinimum) || 1);
+  const previewProposal = {
+    promotionId: state.promotion?.id,
+    discountPercent: numericDiscount,
+    minimumNights: previewMinimumNights,
+    freeCleaning: cleaningFee > 0 && freeCleaning,
+    roundToWholeUnit: numericDiscount > 0 && roundPromotion,
+  };
+  const selectedPromotionPreview = selectedInput
+    ? computeCalendarPromotionPreview({
+        baseNightlyRate,
+        cleaningFee,
+        startDate: selectedInput.startDate,
+        endDate: selectedInput.endDate,
+        datePrices,
+        promotions,
+        proposal: previewProposal,
+      })
+    : null;
+  const evergreenBaseExample = selectedInput
+    ? null
+    : computeEvergreenPromotionBaseExample({
+        baseNightlyRate,
+        cleaningFee,
+        nights: previewMinimumNights,
+        proposal: previewProposal,
+      });
+  const previewQuote = selectedPromotionPreview?.quote ?? evergreenBaseExample;
+  const previewOriginalAverage = previewQuote?.averageNightly ?? baseNightlyRate;
+  const previewDiscountedAverage = previewQuote?.effectiveAverageNightly ?? 0;
   // The short verb key, not `block_selected`: its reviewed translations read
   // "Block selected range", which does not fit a half-width button.
   const blockCta = resolveReviewed("mobile.calendar.block", "Block dates");
@@ -946,7 +986,7 @@ function EditorDialog({
                     <p className="text-sm md:text-xs text-muted-foreground">
                       <Tx
                         k="host.calendar.visibility_note"
-                        source="Existing reservations remain protected. A hidden listing must be submitted for review again before guests can book it."
+                        source="Existing reservations and calendar connections remain active while hidden. Publishing again makes the listing live immediately with its current availability, prices, and booking rules."
                       />
                     </p>
                   </div>
@@ -1206,7 +1246,7 @@ function EditorDialog({
                       className="notranslate whitespace-nowrap text-foreground"
                       translate="no"
                     >
-                      {officialMoney(baseNightlyRate, currency)}
+                      {officialMoney(baseNightlyRate, currency, locale)}
                     </strong>
                   </span>
                   <ArrowRight className="size-3.5 text-muted-foreground" />
@@ -1223,7 +1263,7 @@ function EditorDialog({
                       />
                     )}{" "}
                     <strong className="notranslate whitespace-nowrap" translate="no">
-                      {officialMoney(price || "0", currency)}
+                      {officialMoney(price || "0", currency, locale)}
                     </strong>
                   </span>
                 </div>
@@ -1324,16 +1364,18 @@ function EditorDialog({
                   id="calendar-promotion-discount"
                   percent={numericDiscount > 0 ? numericDiscount : null}
                   amount={
-                    numericDiscount > 0 && baseNightlyRate > 0 ? guestRate : null
+                    numericDiscount > 0 && previewOriginalAverage > 0
+                      ? previewDiscountedAverage
+                      : null
                   }
                   onPercentChange={(percent) =>
                     setDiscount(String(Math.round(percent)))
                   }
                   onPercentClear={() => setDiscount("")}
                   onAmountChange={(value) => {
-                    if (baseNightlyRate <= 0) return;
+                    if (previewOriginalAverage <= 0) return;
                     const percent = Math.round(
-                      (1 - value / baseNightlyRate) * 100,
+                      (1 - value / previewOriginalAverage) * 100,
                     );
                     setDiscount(String(Math.min(50, Math.max(5, percent))));
                   }}
@@ -1341,7 +1383,7 @@ function EditorDialog({
                   max={50}
                   stops={PROMOTION_PERCENT_STOPS}
                   currency={currency}
-                  hideAmount={baseNightlyRate <= 0}
+                  hideAmount={previewOriginalAverage <= 0}
                   percentLabel={
                     resolve("host.calendar.discount_label", "Discount percentage")
                       .text
@@ -1403,7 +1445,7 @@ function EditorDialog({
                           "host.calendar.promotion_free_cleaning_hint",
                           "Guests save the {fee} cleaning fee on qualifying stays.",
                         ),
-                        { fee: officialMoney(cleaningFee, currency) },
+                        { fee: officialMoney(cleaningFee, currency, locale) },
                       ).text
                     : i18n.resolve(
                         "host.calendar.promotion_no_cleaning_fee",
@@ -1472,40 +1514,144 @@ function EditorDialog({
                   </>
                 }
               >
-                {numericDiscount > 0 ? (
-                  <p className={OFFER_PREVIEW_NOTE}>
-                    {
-                      interpolate(
-                        resolve(
-                          "host.calendar.estimated_price",
-                          "Estimated base-night price: {rate}",
-                        ),
-                        { rate: officialMoney(guestRate, currency) },
-                      ).text
-                    }
-                    {roundPromotion
-                      ? interpolate(
+                {previewQuote ? (
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold">
+                      {isDateScoped ? (
+                        <Tx
+                          k="host.calendar.selected_guest_quote"
+                          source="Guest quote for selected dates"
+                        />
+                      ) : (
+                        <Tx
+                          k="host.calendar.base_price_example"
+                          source="Base-price example"
+                        />
+                      )}
+                    </p>
+                    <dl className="space-y-1 text-sm md:text-xs">
+                      <div className="flex items-center justify-between gap-4">
+                        <dt className="text-muted-foreground">
+                          <Tx
+                            k="host.calendar.accommodation_before_discount"
+                            source="Accommodation before discount"
+                          />
+                        </dt>
+                        <dd>
+                          {officialMoney(
+                            previewQuote.originalAccommodationSubtotal,
+                            currency,
+                            locale,
+                          )}
+                        </dd>
+                      </div>
+                      <div className="flex items-center justify-between gap-4">
+                        <dt className="text-muted-foreground">
+                          <Tx
+                            k="host.calendar.accommodation_after_discount"
+                            source="Accommodation after discount"
+                          />
+                        </dt>
+                        <dd className="font-medium">
+                          {officialMoney(
+                            previewQuote.accommodationSubtotal,
+                            currency,
+                            locale,
+                          )}
+                        </dd>
+                      </div>
+                      <div className="flex items-center justify-between gap-4">
+                        <dt className="text-muted-foreground">
+                          <Tx
+                            k="host.calendar.preview_cleaning_fee"
+                            source="Cleaning fee"
+                          />
+                        </dt>
+                        <dd>
+                          {previewQuote.cleaningDiscount > 0
+                            ? resolve(
+                                "host.calendar.preview_waived",
+                                "Waived",
+                              ).text
+                            : officialMoney(
+                                previewQuote.cleaningFee,
+                                currency,
+                                locale,
+                              )}
+                        </dd>
+                      </div>
+                      <div className="flex items-center justify-between gap-4 border-t pt-1 font-semibold">
+                        <dt>
+                          <Tx
+                            k="host.calendar.preview_guest_total"
+                            source="Guest total"
+                          />
+                        </dt>
+                        <dd>
+                          {officialMoney(previewQuote.total, currency, locale)}
+                        </dd>
+                      </div>
+                      {previewQuote.discountAmount > 0 ? (
+                        <div className="flex items-center justify-between gap-4 text-primary">
+                          <dt>
+                            <Tx
+                              k="host.calendar.preview_total_savings"
+                              source="Total savings"
+                            />
+                          </dt>
+                          <dd>
+                            {officialMoney(
+                              previewQuote.discountAmount,
+                              currency,
+                              locale,
+                            )}
+                          </dd>
+                        </div>
+                      ) : null}
+                    </dl>
+                    <p className={OFFER_PREVIEW_NOTE}>
+                      {
+                        interpolate(
                           resolve(
-                            "host.calendar.rounded_from",
-                            " · rounded from {original}",
+                            "host.calendar.average_discounted_night",
+                            "Average discounted night: {rate}",
                           ),
                           {
-                            original: officialMoney(
-                              Number(rawGuestRate.toFixed(2)),
+                            rate: officialMoney(
+                              previewQuote.effectiveAverageNightly,
                               currency,
+                              locale,
                             ),
                           },
                         ).text
-                      : ""}
+                      }
+                    </p>
+                  </div>
+                ) : null}
+                {selectedPromotionPreview &&
+                !selectedPromotionPreview.proposedPromotionApplied ? (
+                  <p className={cn(OFFER_PREVIEW_NOTE, "mt-2 text-amber-700")}>
+                    <Tx
+                      k="host.calendar.preview_other_offer_priority"
+                      source="Another existing promotion takes priority for this selected stay."
+                    />
                   </p>
                 ) : null}
                 {!isDateScoped ? (
-                  <p className={cn(OFFER_PREVIEW_NOTE, "mt-1")}>
+                  <div className="mt-2 space-y-1">
+                    <p className={OFFER_PREVIEW_NOTE}>
+                      <Tx
+                        k="host.calendar.base_example_disclaimer"
+                        source="This example uses the base nightly price. The actual guest total depends on the dates and stay length."
+                      />
+                    </p>
+                    <p className={OFFER_PREVIEW_NOTE}>
                     <Tx
                       k="host.calendar.promotion_priority"
                       source="Date-specific offers take priority. Otherwise, the highest qualifying minimum-stay threshold wins."
                     />
-                  </p>
+                    </p>
+                  </div>
                 ) : null}
               </OfferPreview>
               <div className={cn(STICKY_FOOTER, "flex justify-end gap-2")}>
@@ -1728,9 +1874,9 @@ export function CalendarWorkspace({
           kind: "price",
           from: row.date,
           to: row.date,
-          label: `${officialMoney(row.rate, currency)} / night`,
+          label: `${officialMoney(row.rate, currency, locale)} / night`,
           detail: `${currency} ${row.rate}`,
-          source: `Base price ${officialMoney(baseNightlyRate, currency)}`,
+          source: `Base price ${officialMoney(baseNightlyRate, currency, locale)}`,
           nightlyRate: row.rate,
         });
       }
@@ -1767,7 +1913,16 @@ export function CalendarWorkspace({
       (left, right) =>
         (left.from ?? "0000").localeCompare(right.from ?? "0000"),
     );
-  }, [availabilityWindows, baseNightlyRate, blocks, currency, datePrices, minNights, promotions]);
+  }, [
+    availabilityWindows,
+    baseNightlyRate,
+    blocks,
+    currency,
+    datePrices,
+    locale,
+    minNights,
+    promotions,
+  ]);
 
   const selection = range?.from ? calendarRangeToInput(range) : null;
   const publishedBasePriceHint = i18n.resolve(
@@ -1850,6 +2005,17 @@ export function CalendarWorkspace({
 
   function openSelectedRange() {
     if (!selection) return;
+    if (
+      availabilityMode === "OPEN" &&
+      !window.confirm(
+        resolve(
+          "host.calendar.remove_manual_blocks_confirm",
+          "Make these dates available? This removes your manual blocks in the selected range, including any before-launch protection. Reservations and connected-calendar blocks stay protected.",
+        ).text,
+      )
+    ) {
+      return;
+    }
     report(
       () =>
         openCalendarRange(listingId, {
@@ -1961,8 +2127,8 @@ export function CalendarWorkspace({
         {lens === "availability" && selection ? (
           // Blocking and opening are opposite commits, not one "manage" step,
           // so each gets its own button and goes dim when it would be a no-op.
-          // Opening needs no options, so it acts straight away; blocking opens
-          // the sheet because it can carry a reason.
+          // Blocking opens the sheet because it can carry a reason. In OPEN mode,
+          // opening first confirms that manual before-launch protection may be removed.
           <div className="flex items-stretch gap-2">
             <Button
               type="button"
@@ -2456,6 +2622,8 @@ export function CalendarWorkspace({
           minNights={minNights}
           currency={currency}
           locale={locale}
+          datePrices={datePrices}
+          promotions={promotions}
           blockedDates={manualDates}
           bookedDates={bookingDates}
           state={editor}

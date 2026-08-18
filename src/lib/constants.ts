@@ -19,16 +19,6 @@ export const BOOKING_STATUSES = [
   { value: "COMPLETED", label: "Completed", color: "success" },
 ] as const;
 
-export const AMENITY_CATEGORIES = [
-  "Essentials",
-  "Features",
-  "Kitchen",
-  "Outdoor",
-  "Safety",
-  "Bathroom",
-  "Entertainment",
-] as const;
-
 export const DEFAULT_CURRENCY = "EUR";
 
 export const ITEMS_PER_PAGE = 12;

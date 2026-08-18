@@ -23,7 +23,12 @@ import { colors, radii, spacing, type } from "@/theme";
 import { confirmAction } from "@/lib/confirm";
 import { formatLocalizedDate } from "@/lib/date-locale";
 
-type ActivityFilter = "ALL" | "MANUAL_BLOCK" | "BOOKING_HOLD" | "CUSTOM_PRICE";
+type ActivityFilter =
+  | "ALL"
+  | "MANUAL_BLOCK"
+  | "BOOKING_HOLD"
+  | "EXTERNAL_SYNC"
+  | "CUSTOM_PRICE";
 
 function toYmd(date: Date): string {
   return [
@@ -105,20 +110,36 @@ export function AvailabilityCalendar({
   const [filter, setFilter] = useState<ActivityFilter>("ALL");
   const baseRate = data.listing.baseNightlyRate ?? 0;
 
-  const { manualKeys, bookingKeys, priceByKey } = useMemo(() => {
+  const { manualKeys, bookingKeys, importedKeys, openedKeys, priceByKey } = useMemo(() => {
     const manual = new Set<string>();
     const booking = new Set<string>();
+    const imported = new Set<string>();
+    const opened = new Set<string>();
     const prices = new Map<string, number>();
     const horizon = addDays(today, 550);
     for (const block of data.blocks) {
       for (const key of eachDay(isoYmd(block.startDate), isoYmd(block.endDate))) {
         if (key > horizon) break;
-        (block.blockType === "MANUAL_BLOCK" ? manual : booking).add(key);
+        if (block.blockType === "MANUAL_BLOCK") manual.add(key);
+        else if (block.blockType === "EXTERNAL_SYNC") imported.add(key);
+        else booking.add(key);
+      }
+    }
+    for (const window of data.availabilityWindows) {
+      for (const key of eachDay(isoYmd(window.startDate), isoYmd(window.endDate))) {
+        if (key > horizon) break;
+        opened.add(key);
       }
     }
     for (const row of data.prices) prices.set(isoYmd(row.date), row.nightlyRate);
-    return { manualKeys: manual, bookingKeys: booking, priceByKey: prices };
-  }, [data.blocks, data.prices, today]);
+    return {
+      manualKeys: manual,
+      bookingKeys: booking,
+      importedKeys: imported,
+      openedKeys: opened,
+      priceByKey: prices,
+    };
+  }, [data.availabilityWindows, data.blocks, data.prices, today]);
 
   const selectedKeys = useMemo(
     () => (start && end ? eachDay(start, end) : start ? [start] : []),
@@ -130,10 +151,12 @@ export function AvailabilityCalendar({
       totalDays: selectedKeys.length,
       manualDays: selectedKeys.filter((key) => manualKeys.has(key)).length,
       bookingDays: selectedKeys.filter((key) => bookingKeys.has(key)).length,
+      importedDays: selectedKeys.filter((key) => importedKeys.has(key)).length,
+      openDays: selectedKeys.filter((key) => openedKeys.has(key)).length,
       customPriceDays: selectedKeys.filter((key) => priceByKey.has(key)).length,
       uniformRate: rates.size === 1 ? [...rates][0] : null,
     };
-  }, [baseRate, bookingKeys, manualKeys, priceByKey, selectedKeys]);
+  }, [baseRate, bookingKeys, importedKeys, manualKeys, openedKeys, priceByKey, selectedKeys]);
 
   const priceRanges = useMemo(() => {
     const sorted = [...data.prices]
@@ -161,14 +184,26 @@ export function AvailabilityCalendar({
   const exceptions = (() => {
     const blockRows = data.blocks.map((block) => ({
       id: block.id,
-      kind: block.blockType as "MANUAL_BLOCK" | "BOOKING_HOLD",
-      title: block.blockType === "MANUAL_BLOCK" ? "Manual block" : "Booking hold",
-      badge: block.blockType === "MANUAL_BLOCK" ? "Blocked" : "Booked",
+      kind: block.blockType as "MANUAL_BLOCK" | "BOOKING_HOLD" | "EXTERNAL_SYNC",
+      title:
+        block.blockType === "MANUAL_BLOCK"
+          ? "Manual block"
+          : block.blockType === "EXTERNAL_SYNC"
+            ? "Connected calendar"
+            : "Booking hold",
+      badge:
+        block.blockType === "MANUAL_BLOCK"
+          ? "Blocked"
+          : block.blockType === "EXTERNAL_SYNC"
+            ? "Imported"
+            : "Booked",
       start: isoYmd(block.startDate),
       end: addDays(isoYmd(block.endDate), -1),
       detail:
         block.blockType === "MANUAL_BLOCK"
           ? block.reason || "No reason provided"
+          : block.blockType === "EXTERNAL_SYNC"
+            ? block.reason || "Blocked by a connected calendar"
           : block.booking
             ? `${block.booking.guest.name} · ${block.booking.status.replaceAll("_", " ")}`
             : "Reserved dates",
@@ -299,12 +334,24 @@ export function AvailabilityCalendar({
       <View style={styles.card}>
         <Text style={styles.cardTitle}>{t("Calendar")}</Text>
         <Text style={styles.cardDescription}>
-          {t("Select a date range, then apply availability or pricing actions.")}
+          {t(
+            data.listing.availabilityMode === "CLOSED"
+              ? "Dates stay closed until you open them. Select a range to open or close it."
+              : "Dates start available. Select a range to block it or remove manual blocks."
+          )}
         </Text>
 
         <View style={styles.legend}>
-          <Legend swatchStyle={styles.manualSwatch} label={t("Manual block")} />
+          {data.listing.availabilityMode === "CLOSED" ? (
+            <>
+              <Legend swatchStyle={styles.openSwatch} label={t("Open")} />
+              <Legend swatchStyle={styles.closedSwatch} label={t("Closed")} />
+            </>
+          ) : (
+            <Legend swatchStyle={styles.manualSwatch} label={t("Manual block")} />
+          )}
           <Legend swatchStyle={styles.bookingSwatch} label={t("Booking")} />
+          <Legend swatchStyle={styles.importedSwatch} label={t("Connected calendar")} />
           <Legend swatchStyle={styles.priceSwatch} label={t("Custom price")} />
         </View>
 
@@ -344,9 +391,27 @@ export function AvailabilityCalendar({
                 <DayCell
                   accessibilityLabel={`${formatDate(cell.key, locale)}, ${formatMoney(
                     priceByKey.get(cell.key) ?? baseRate
+                  )}, ${t(
+                    bookingKeys.has(cell.key)
+                      ? "Booked"
+                      : importedKeys.has(cell.key)
+                        ? "Blocked by connected calendar"
+                        : manualKeys.has(cell.key)
+                          ? "Blocked"
+                          : data.listing.availabilityMode === "CLOSED"
+                            ? openedKeys.has(cell.key)
+                              ? "Open"
+                              : "Closed"
+                            : "Available"
                   )}`}
                   baseRate={baseRate}
                   booked={bookingKeys.has(cell.key)}
+                  imported={importedKeys.has(cell.key)}
+                  opened={openedKeys.has(cell.key)}
+                  closed={
+                    data.listing.availabilityMode === "CLOSED" &&
+                    !openedKeys.has(cell.key)
+                  }
                   customPrice={priceByKey.has(cell.key)}
                   disabled={cell.key < today}
                   key={cell.key}
@@ -387,6 +452,12 @@ export function AvailabilityCalendar({
               {selectedStats.bookingDays > 0 ? (
                 <SmallBadge label={`${selectedStats.bookingDays} ${t("booked days")}`} />
               ) : null}
+              {selectedStats.importedDays > 0 ? (
+                <SmallBadge label={`${selectedStats.importedDays} ${t("imported blocked days")}`} />
+              ) : null}
+              {data.listing.availabilityMode === "CLOSED" ? (
+                <SmallBadge label={`${selectedStats.openDays} ${t("open days")}`} />
+              ) : null}
             </View>
           ) : null}
 
@@ -394,22 +465,30 @@ export function AvailabilityCalendar({
               change with the lens, so switching never loses the selection. */}
           {lens === "availability" ? (
             <>
-              <Text style={styles.fieldLabel}>{t("Block reason (optional)")}</Text>
-              <TextInput
-                onChangeText={setReason}
-                placeholder={t("e.g. Maintenance, private stay")}
-                placeholderTextColor={colors.muted}
-                style={styles.input}
-                value={reason}
-              />
+              {data.listing.availabilityMode === "OPEN" ? (
+                <>
+                  <Text style={styles.fieldLabel}>{t("Block reason (optional)")}</Text>
+                  <TextInput
+                    onChangeText={setReason}
+                    placeholder={t("e.g. Maintenance, private stay")}
+                    placeholderTextColor={colors.muted}
+                    style={styles.input}
+                    value={reason}
+                  />
+                </>
+              ) : null}
               <View style={styles.actions}>
                 <ActionButton
                   disabled={!start || !end || busy}
-                  label={t("Make available")}
+                  label={t(data.listing.availabilityMode === "CLOSED" ? "Open dates" : "Make available")}
                   onPress={() =>
                     confirm(
-                      "Make selected range available",
-                      "This removes manual blocks in the selected range. Booking holds stay untouched.",
+                      data.listing.availabilityMode === "CLOSED"
+                        ? "Open selected dates"
+                        : "Make selected range available",
+                      data.listing.availabilityMode === "CLOSED"
+                        ? "This opens the selected range. Bookings and connected-calendar restrictions stay blocked."
+                        : "This removes manual blocks in the selected range, including any before-launch protection. Bookings and connected-calendar restrictions stay blocked.",
                       () => void runAction("makeAvailable")
                     )
                   }
@@ -417,11 +496,15 @@ export function AvailabilityCalendar({
                 />
                 <ActionButton
                   disabled={!start || !end || busy}
-                  label={t("Block")}
+                  label={t(data.listing.availabilityMode === "CLOSED" ? "Close dates" : "Block")}
                   onPress={() =>
                     confirm(
-                      "Block selected range",
-                      "This will block the selected range for booking requests.",
+                      data.listing.availabilityMode === "CLOSED"
+                        ? "Close selected dates"
+                        : "Block selected range",
+                      data.listing.availabilityMode === "CLOSED"
+                        ? "This removes the selected range from your open-date windows. Existing bookings stay protected."
+                        : "This will block the selected range for booking requests.",
                       () => void runAction("block")
                     )
                   }
@@ -466,22 +549,30 @@ export function AvailabilityCalendar({
         <View style={styles.bulkActions}>
           <ActionButton
             disabled={busy}
-            label={t("Block all future")}
+            label={t(data.listing.availabilityMode === "CLOSED" ? "Close all future" : "Block all future")}
             onPress={() =>
               confirm(
-                "Block all future dates",
-                "This will block every currently available future date. Existing booking holds remain as-is.",
+                data.listing.availabilityMode === "CLOSED"
+                  ? "Close all future dates"
+                  : "Block all future dates",
+                data.listing.availabilityMode === "CLOSED"
+                  ? "This closes every future open window. Existing bookings and connected-calendar restrictions stay protected."
+                  : "This will block every currently available future date. Existing booking and connected-calendar restrictions remain as-is.",
                 () => void runAction("blockAllFuture")
               )
             }
           />
           <ActionButton
             disabled={busy}
-            label={t("Make all future available")}
+            label={t(data.listing.availabilityMode === "CLOSED" ? "Open all future" : "Make all future available")}
             onPress={() =>
               confirm(
-                "Make all future dates available",
-                "This will remove all manual future blocks. Confirmed and pending booking holds are kept.",
+                data.listing.availabilityMode === "CLOSED"
+                  ? "Open all future dates"
+                  : "Make all future dates available",
+                data.listing.availabilityMode === "CLOSED"
+                  ? "This creates an open window for future dates. Existing bookings, manual blocks, and connected-calendar restrictions stay blocked."
+                  : "This removes all manual future blocks, including before-launch protection. Bookings and connected-calendar restrictions stay blocked.",
                 () => void runAction("makeAllFutureAvailable")
               )
             }
@@ -511,6 +602,10 @@ export function AvailabilityCalendar({
               [
                 "BOOKING_HOLD",
                 `${t("Bookings")} (${exceptions.filter((item) => item.kind === "BOOKING_HOLD").length})`,
+              ],
+              [
+                "EXTERNAL_SYNC",
+                `${t("Imported")} (${exceptions.filter((item) => item.kind === "EXTERNAL_SYNC").length})`,
               ],
               [
                 "CUSTOM_PRICE",
@@ -635,6 +730,9 @@ function DayCell({
   disabled,
   manual,
   booked,
+  imported,
+  opened,
+  closed,
   customPrice,
   price,
   baseRate,
@@ -646,6 +744,9 @@ function DayCell({
   disabled: boolean;
   manual: boolean;
   booked: boolean;
+  imported: boolean;
+  opened: boolean;
+  closed: boolean;
   customPrice: boolean;
   price?: number;
   baseRate: number;
@@ -660,9 +761,12 @@ function DayCell({
         onPress={onPress}
         style={[
           styles.dayButton,
+          closed && styles.dayClosed,
+          opened && styles.dayOpen,
           manual && styles.dayManual,
           booked && styles.dayBooked,
-          customPrice && !manual && !booked && styles.dayCustom,
+          imported && styles.dayImported,
+          customPrice && !manual && !booked && !imported && styles.dayCustom,
           selected && styles.daySelected,
           disabled && styles.dayDisabled,
         ]}
@@ -728,7 +832,10 @@ const styles = StyleSheet.create({
   legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
   swatch: { width: 13, height: 13, borderRadius: 3, borderWidth: 1, borderColor: colors.border },
   manualSwatch: { backgroundColor: colors.surfaceAlt },
+  openSwatch: { backgroundColor: "#DDF4E6", borderColor: "#80B795" },
+  closedSwatch: { backgroundColor: colors.surfaceAlt, borderColor: colors.borderStrong },
   bookingSwatch: { backgroundColor: "#F6D9D9", borderColor: "#E6B6B6" },
+  importedSwatch: { backgroundColor: "#E8E1F5", borderColor: "#B8A8D5" },
   priceSwatch: { backgroundColor: colors.surface, borderWidth: 2, borderColor: colors.primary },
   legendText: { color: colors.muted, ...type.caption },
   calendar: {
@@ -772,7 +879,10 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
   },
   dayManual: { backgroundColor: colors.surfaceAlt, borderColor: colors.borderStrong },
+  dayOpen: { backgroundColor: "#DDF4E6", borderColor: "#80B795" },
+  dayClosed: { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
   dayBooked: { backgroundColor: "#F6D9D9", borderColor: "#E6B6B6" },
+  dayImported: { backgroundColor: "#E8E1F5", borderColor: "#B8A8D5" },
   dayCustom: { borderWidth: 2, borderColor: colors.primary },
   daySelected: { borderWidth: 2, borderColor: colors.primaryDark, backgroundColor: colors.primarySoft },
   dayDisabled: { opacity: 0.32 },

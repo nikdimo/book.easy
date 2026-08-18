@@ -103,6 +103,7 @@ export async function confirmBookingAction(bookingId: string) {
       metadata: { confirmedBy: "host" },
     });
     revalidatePath("/host/bookings");
+    revalidatePath("/host/v2/reservations");
     revalidatePath(`/host/bookings/${bookingId}`);
     revalidatePath(`/account/bookings/${bookingId}`);
     return { success: true };
@@ -131,6 +132,7 @@ export async function rejectBookingAction(bookingId: string, reason?: string) {
       metadata: { rejectedBy: "host", reason },
     });
     revalidatePath("/host/bookings");
+    revalidatePath("/host/v2/reservations");
     revalidatePath(`/host/bookings/${bookingId}`);
     revalidatePath(`/account/bookings/${bookingId}`);
     return { success: true };
@@ -159,6 +161,7 @@ export async function hostCancelBookingAction(bookingId: string, reason: string)
       metadata: { reason },
     });
     revalidatePath("/host/bookings");
+    revalidatePath("/host/v2/reservations");
     return { success: true };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to cancel booking";
