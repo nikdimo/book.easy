@@ -599,21 +599,6 @@ function buildEvergreenPromotionReviewPlan(
 
   const targetCanBeSaved =
     !promotionId || Boolean(existing && !existing.startDate && !existing.endDate);
-  const conflict = pricing && targetCanBeSaved
-    ? listing.promotions.find(
-        (promotion) =>
-          promotion.id !== promotionId &&
-          !promotion.startDate &&
-          !promotion.endDate &&
-          (promotion.minimumNights ?? pricing.minNights) === offer.minimumNights,
-      )
-    : undefined;
-  if (conflict) {
-    errors.push({
-      code: "PROMOTION_CONFLICT",
-      minimumNights: offer.minimumNights,
-    });
-  }
 
   if (
     existing &&

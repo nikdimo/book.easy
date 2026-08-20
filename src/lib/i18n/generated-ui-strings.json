@@ -1630,6 +1630,11 @@
     "filePath": "src/components/public/booking-widget.tsx"
   },
   {
+    "key": "booking.multiple_promotions_applied",
+    "sourceText": "Best promotions applied",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
     "key": "booking.nights_label",
     "sourceText": "Nights",
     "filePath": "src/app/(public)/bookings/confirm/page.tsx"
@@ -4391,7 +4396,7 @@
   },
   {
     "key": "host.calendar.promotion_priority",
-    "sourceText": "Date-specific offers take priority. Otherwise, the highest qualifying minimum-stay threshold wins.",
+    "sourceText": "The promotion that saves the guest most wins on each night. Different nights in one booking can use different promotions.",
     "filePath": "src/components/host/calendar-workspace.tsx"
   },
   {
@@ -4693,6 +4698,916 @@
     "key": "host.delete_listing.tooltip",
     "sourceText": "Delete",
     "filePath": "src/components/host/delete-listing-button.tsx"
+  },
+  {
+    "key": "host.editor.all_listings",
+    "sourceText": "See all listings",
+    "filePath": "src/components/host/v2/editor/editor-header.tsx"
+  },
+  {
+    "key": "host.editor.amenities.hidden_hint",
+    "sourceText": "Not offered to other listings",
+    "filePath": "src/components/host/v2/editor/amenities/amenities-workspace.tsx"
+  },
+  {
+    "key": "host.editor.amenities.intro",
+    "sourceText": "Pick everything guests can actually use. Changes save on their own.",
+    "filePath": "src/components/host/v2/editor/amenities/amenities-workspace.tsx"
+  },
+  {
+    "key": "host.editor.amenities.save_failed",
+    "sourceText": "We couldn't save those amenities. Check your connection and try again.",
+    "filePath": "src/components/host/v2/editor/amenities/amenities-workspace.tsx"
+  },
+  {
+    "key": "host.editor.availability.blocked_empty",
+    "sourceText": "Nothing is blocked. Confirmed reservations are shown in Reservations, not here.",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.feed_count.few",
+    "sourceText": "{n} calendars",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.feed_count.many",
+    "sourceText": "{n} calendars",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.feed_count.one",
+    "sourceText": "{n} calendar",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.feed_count.other",
+    "sourceText": "{n} calendars",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.feed_count.two",
+    "sourceText": "{n} calendars",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.feed_count.zero",
+    "sourceText": "{n} calendars",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.feed_synced",
+    "sourceText": "Synced {when}",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.feeds_failing.few",
+    "sourceText": "{n} are not syncing. Fix them in Calendar.",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.feeds_failing.many",
+    "sourceText": "{n} are not syncing. Fix them in Calendar.",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.feeds_failing.one",
+    "sourceText": "{n} is not syncing. Fix it in Calendar.",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.feeds_failing.other",
+    "sourceText": "{n} are not syncing. Fix them in Calendar.",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.feeds_failing.two",
+    "sourceText": "{n} are not syncing. Fix them in Calendar.",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.feeds_failing.zero",
+    "sourceText": "{n} are not syncing. Fix them in Calendar.",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.horizon",
+    "sourceText": "Next {n} months",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.how_dates",
+    "sourceText": "Select dates in Calendar to open or block them.",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.how_external",
+    "sourceText": "External Airbnb, Booking.com and other calendars are connected and managed from Calendar.",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.how_listing_wide",
+    "sourceText": "Listing-wide availability controls future dates. Dates already booked are never changed by it.",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.lead",
+    "sourceText": "A summary of what is open and what is blocked. Availability itself is set in Calendar.",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.manage_cta",
+    "sourceText": "Manage availability in Calendar",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.more_in_calendar",
+    "sourceText": "{n} more in Calendar",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.nights.few",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.nights.many",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.nights.one",
+    "sourceText": "{n} night",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.nights.other",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.nights.two",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.nights.zero",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.scheduled_count.few",
+    "sourceText": "{n} upcoming ranges",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.scheduled_count.many",
+    "sourceText": "{n} upcoming ranges",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.scheduled_count.one",
+    "sourceText": "{n} upcoming range",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.scheduled_count.other",
+    "sourceText": "{n} upcoming ranges",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.scheduled_count.two",
+    "sourceText": "{n} upcoming ranges",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.scheduled_count.zero",
+    "sourceText": "{n} upcoming ranges",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.windows_empty",
+    "sourceText": "No dates are open, so guests cannot book this listing yet. Open dates in Calendar.",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.back",
+    "sourceText": "Back to listings",
+    "filePath": "src/components/host/v2/editor/editor-header.tsx"
+  },
+  {
+    "key": "host.editor.basics.counter_max",
+    "sourceText": "{count}/{max}",
+    "filePath": "src/components/host/v2/editor/basics/basics-workspace.tsx"
+  },
+  {
+    "key": "host.editor.basics.counter_min",
+    "sourceText": "{count}/{min} minimum",
+    "filePath": "src/components/host/v2/editor/basics/basics-workspace.tsx"
+  },
+  {
+    "key": "host.editor.basics.description_hint",
+    "sourceText": "Describe the stay, the layout, and the neighborhood.",
+    "filePath": "src/components/host/v2/editor/basics/basics-workspace.tsx"
+  },
+  {
+    "key": "host.editor.basics.description_label",
+    "sourceText": "Description",
+    "filePath": "src/components/host/v2/editor/basics/basics-workspace.tsx"
+  },
+  {
+    "key": "host.editor.basics.description_placeholder",
+    "sourceText": "Describe the stay, layout, neighborhood, and what makes it easy to book.",
+    "filePath": "src/components/host/v2/editor/basics/basics-workspace.tsx"
+  },
+  {
+    "key": "host.editor.basics.error_empty",
+    "sourceText": "Guests need this to book.",
+    "filePath": "src/components/host/v2/editor/basics/basics-workspace.tsx"
+  },
+  {
+    "key": "host.editor.basics.error_too_long",
+    "sourceText": "Can be at most {max} characters.",
+    "filePath": "src/components/host/v2/editor/basics/basics-workspace.tsx"
+  },
+  {
+    "key": "host.editor.basics.error_too_short",
+    "sourceText": "Needs at least {min} characters.",
+    "filePath": "src/components/host/v2/editor/basics/basics-workspace.tsx"
+  },
+  {
+    "key": "host.editor.basics.heading",
+    "sourceText": "Title & description",
+    "filePath": "src/components/host/v2/editor/basics/basics-workspace.tsx"
+  },
+  {
+    "key": "host.editor.basics.intro",
+    "sourceText": "This is what guests read first — in search results, and at the top of your listing page.",
+    "filePath": "src/components/host/v2/editor/basics/basics-workspace.tsx"
+  },
+  {
+    "key": "host.editor.basics.preview_heading",
+    "sourceText": "How guests read this in your language",
+    "filePath": "src/components/host/v2/editor/basics/basics-workspace.tsx"
+  },
+  {
+    "key": "host.editor.basics.preview_note",
+    "sourceText": "An automatic translation of your text. Your own words are what gets saved.",
+    "filePath": "src/components/host/v2/editor/basics/basics-workspace.tsx"
+  },
+  {
+    "key": "host.editor.basics.save_failed",
+    "sourceText": "We couldn't save that. Check your connection — your text is still here.",
+    "filePath": "src/components/host/v2/editor/basics/basics-workspace.tsx"
+  },
+  {
+    "key": "host.editor.basics.title_hint",
+    "sourceText": "Name the place and what makes it worth the trip.",
+    "filePath": "src/components/host/v2/editor/basics/basics-workspace.tsx"
+  },
+  {
+    "key": "host.editor.basics.title_label",
+    "sourceText": "Title",
+    "filePath": "src/components/host/v2/editor/basics/basics-workspace.tsx"
+  },
+  {
+    "key": "host.editor.basics.title_placeholder",
+    "sourceText": "Modern apartment near the center",
+    "filePath": "src/components/host/v2/editor/basics/basics-workspace.tsx"
+  },
+  {
+    "key": "host.editor.calendar_settings",
+    "sourceText": "Calendar settings",
+    "filePath": "src/components/host/v2/editor/editor-nav.tsx"
+  },
+  {
+    "key": "host.editor.more",
+    "sourceText": "More actions",
+    "filePath": "src/components/host/v2/editor/editor-header.tsx"
+  },
+  {
+    "key": "host.editor.nav_label",
+    "sourceText": "Listing sections",
+    "filePath": "src/components/host/v2/editor/editor-nav.tsx"
+  },
+  {
+    "key": "host.editor.open_calendar",
+    "sourceText": "Dates and prices",
+    "filePath": "src/components/host/v2/editor/editor-header.tsx"
+  },
+  {
+    "key": "host.editor.open_calendar_cta",
+    "sourceText": "Open Calendar",
+    "filePath": "src/components/host/v2/editor/section-placeholder.tsx"
+  },
+  {
+    "key": "host.editor.open_classic",
+    "sourceText": "Open the classic editor",
+    "filePath": "src/components/host/v2/editor/editor-header.tsx"
+  },
+  {
+    "key": "host.editor.open_classic_cta",
+    "sourceText": "Open the classic editor",
+    "filePath": "src/app/(host-editor)/host/v2/listings/[id]/[section]/page.tsx"
+  },
+  {
+    "key": "host.editor.photos.add_photo",
+    "sourceText": "Add photo",
+    "filePath": "src/components/host/v2/editor/photos/photo-tile.tsx"
+  },
+  {
+    "key": "host.editor.photos.add_room",
+    "sourceText": "Add room or space",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.add_room_help",
+    "sourceText": "Pick a space. We number it for you if you already have one.",
+    "filePath": "src/components/host/v2/editor/photos/add-room-dialog.tsx"
+  },
+  {
+    "key": "host.editor.photos.add_room_short",
+    "sourceText": "Add room",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.add_room_title",
+    "sourceText": "Add a room or space",
+    "filePath": "src/components/host/v2/editor/photos/add-room-dialog.tsx"
+  },
+  {
+    "key": "host.editor.photos.already_have",
+    "sourceText": "You have {count}",
+    "filePath": "src/components/host/v2/editor/photos/add-room-dialog.tsx"
+  },
+  {
+    "key": "host.editor.photos.clear_filter",
+    "sourceText": "Show all photos",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.clear_selection",
+    "sourceText": "Clear selection",
+    "filePath": "src/components/host/v2/editor/photos/selection-bar.tsx"
+  },
+  {
+    "key": "host.editor.photos.confirm_delete",
+    "sourceText": "Delete {count} photos?",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.confirm_delete_room",
+    "sourceText": "Remove {room}? Its {count} photos stay in Other / Unassigned.",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.confirm_remove_room",
+    "sourceText": "Remove {room}?",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.cover",
+    "sourceText": "Cover",
+    "filePath": "src/components/host/v2/editor/photos/photo-tile.tsx"
+  },
+  {
+    "key": "host.editor.photos.cover_updated",
+    "sourceText": "Cover photo updated",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.delete",
+    "sourceText": "Delete",
+    "filePath": "src/components/host/v2/editor/photos/photo-tile.tsx"
+  },
+  {
+    "key": "host.editor.photos.delete_room",
+    "sourceText": "Delete room",
+    "filePath": "src/components/host/v2/editor/photos/room-section.tsx"
+  },
+  {
+    "key": "host.editor.photos.deleted.few",
+    "sourceText": "{n} photos deleted",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.deleted.many",
+    "sourceText": "{n} photos deleted",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.deleted.one",
+    "sourceText": "{n} photo deleted",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.deleted.other",
+    "sourceText": "{n} photos deleted",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.deleted.two",
+    "sourceText": "{n} photos deleted",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.deleted.zero",
+    "sourceText": "{n} photos deleted",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.density_large",
+    "sourceText": "Large thumbnails",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.density_medium",
+    "sourceText": "Medium thumbnails",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.density_small",
+    "sourceText": "Small thumbnails",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.dismiss",
+    "sourceText": "Dismiss",
+    "filePath": "src/components/host/v2/editor/photos/photo-tile.tsx"
+  },
+  {
+    "key": "host.editor.photos.empty_copy",
+    "sourceText": "Help guests understand what they are booking.",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.empty_hint",
+    "sourceText": "You can organise photos by room afterwards.",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.empty_title",
+    "sourceText": "Add photos of your place",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.more_spaces",
+    "sourceText": "More spaces",
+    "filePath": "src/components/host/v2/editor/photos/rooms-panel.tsx"
+  },
+  {
+    "key": "host.editor.photos.move_to",
+    "sourceText": "Move to",
+    "filePath": "src/components/host/v2/editor/photos/photo-tile.tsx"
+  },
+  {
+    "key": "host.editor.photos.move_to_room",
+    "sourceText": "Move to",
+    "filePath": "src/components/host/v2/editor/photos/selection-bar.tsx"
+  },
+  {
+    "key": "host.editor.photos.moved",
+    "sourceText": "{count} moved to {room}",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.need_room.few",
+    "sourceText": "{n} photos need a room",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.need_room.many",
+    "sourceText": "{n} photos need a room",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.need_room.one",
+    "sourceText": "{n} photo needs a room",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.need_room.other",
+    "sourceText": "{n} photos need a room",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.need_room.two",
+    "sourceText": "{n} photos need a room",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.need_room.zero",
+    "sourceText": "{n} photos need a room",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.no_spaces",
+    "sourceText": "No space matches {query}.",
+    "filePath": "src/components/host/v2/editor/photos/add-room-dialog.tsx"
+  },
+  {
+    "key": "host.editor.photos.photo_actions",
+    "sourceText": "Photo actions",
+    "filePath": "src/components/host/v2/editor/photos/photo-tile.tsx"
+  },
+  {
+    "key": "host.editor.photos.photo_count.few",
+    "sourceText": "{n} photos",
+    "filePath": "src/components/host/v2/editor/photos/room-section.tsx"
+  },
+  {
+    "key": "host.editor.photos.photo_count.many",
+    "sourceText": "{n} photos",
+    "filePath": "src/components/host/v2/editor/photos/room-section.tsx"
+  },
+  {
+    "key": "host.editor.photos.photo_count.one",
+    "sourceText": "{n} photo",
+    "filePath": "src/components/host/v2/editor/photos/room-section.tsx"
+  },
+  {
+    "key": "host.editor.photos.photo_count.other",
+    "sourceText": "{n} photos",
+    "filePath": "src/components/host/v2/editor/photos/room-section.tsx"
+  },
+  {
+    "key": "host.editor.photos.photo_count.two",
+    "sourceText": "{n} photos",
+    "filePath": "src/components/host/v2/editor/photos/room-section.tsx"
+  },
+  {
+    "key": "host.editor.photos.photo_count.zero",
+    "sourceText": "{n} photos",
+    "filePath": "src/components/host/v2/editor/photos/room-section.tsx"
+  },
+  {
+    "key": "host.editor.photos.rename_prompt",
+    "sourceText": "What should this space be called?",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.rename_room",
+    "sourceText": "Rename",
+    "filePath": "src/components/host/v2/editor/photos/room-section.tsx"
+  },
+  {
+    "key": "host.editor.photos.retry_failed",
+    "sourceText": "Retry failed uploads",
+    "filePath": "src/components/host/v2/editor/photos/photo-tile.tsx"
+  },
+  {
+    "key": "host.editor.photos.room_actions",
+    "sourceText": "Room actions",
+    "filePath": "src/components/host/v2/editor/photos/room-section.tsx"
+  },
+  {
+    "key": "host.editor.photos.room_cover_updated",
+    "sourceText": "Room cover updated",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.room_created",
+    "sourceText": "{room} created",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.room_empty",
+    "sourceText": "Drag photos here, or use Move to on a photo.",
+    "filePath": "src/components/host/v2/editor/photos/room-section.tsx"
+  },
+  {
+    "key": "host.editor.photos.room_removed",
+    "sourceText": "{room} removed",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.room_renamed",
+    "sourceText": "Room renamed",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.rooms_heading",
+    "sourceText": "Rooms and spaces",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.search_spaces",
+    "sourceText": "Search spaces",
+    "filePath": "src/components/host/v2/editor/photos/add-room-dialog.tsx"
+  },
+  {
+    "key": "host.editor.photos.select_photo",
+    "sourceText": "Select photo",
+    "filePath": "src/components/host/v2/editor/photos/photo-tile.tsx"
+  },
+  {
+    "key": "host.editor.photos.selected",
+    "sourceText": "{count} selected",
+    "filePath": "src/components/host/v2/editor/photos/selection-bar.tsx"
+  },
+  {
+    "key": "host.editor.photos.set_listing_cover",
+    "sourceText": "Set as listing cover",
+    "filePath": "src/components/host/v2/editor/photos/photo-tile.tsx"
+  },
+  {
+    "key": "host.editor.photos.set_room_cover",
+    "sourceText": "Set as room cover",
+    "filePath": "src/components/host/v2/editor/photos/photo-tile.tsx"
+  },
+  {
+    "key": "host.editor.photos.show_only",
+    "sourceText": "Show only this room",
+    "filePath": "src/components/host/v2/editor/photos/rooms-panel.tsx"
+  },
+  {
+    "key": "host.editor.photos.title",
+    "sourceText": "Photos",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.unassigned",
+    "sourceText": "Other / Unassigned",
+    "filePath": "src/components/host/v2/editor/photos/photo-tile.tsx"
+  },
+  {
+    "key": "host.editor.photos.upload",
+    "sourceText": "Upload photos",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.upload_short",
+    "sourceText": "Upload",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.view_all",
+    "sourceText": "All photos",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.view_rooms",
+    "sourceText": "By room",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.preview",
+    "sourceText": "Preview",
+    "filePath": "src/components/host/v2/editor/editor-header.tsx"
+  },
+  {
+    "key": "host.editor.pricing.base_rate",
+    "sourceText": "Base nightly rate",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.cleaning_fee",
+    "sourceText": "Cleaning fee",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.currency",
+    "sourceText": "Currency",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.current_heading",
+    "sourceText": "Current pricing",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.date_prices_label",
+    "sourceText": "Date-specific prices",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.date_prices_none",
+    "sourceText": "No dates are priced differently. Every night is charged at the base rate.",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.date_prices_set",
+    "sourceText": "{count} upcoming nights carry a price of their own, between {from} and {to}.",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.extras_heading",
+    "sourceText": "On top of the base price",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.handoff_base",
+    "sourceText": "The base nightly rate applies to every night unless that date says otherwise.",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.handoff_dates",
+    "sourceText": "To charge more or less for particular nights, select those dates in Calendar and give them their own price.",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.handoff_heading",
+    "sourceText": "Where pricing is changed",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.handoff_promotions",
+    "sourceText": "Promotions are created and ended in Calendar as well, so one screen decides what a guest pays.",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.intro",
+    "sourceText": "What this listing charges today. Prices are set and changed in Calendar.",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.manage_cta",
+    "sourceText": "Manage pricing in Calendar",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.max_stay",
+    "sourceText": "Maximum stay",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.min_stay",
+    "sourceText": "Minimum stay",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.nights.few",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.nights.many",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.nights.one",
+    "sourceText": "{n} night",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.nights.other",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.nights.two",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.nights.zero",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.no_rule",
+    "sourceText": "No prices have been set for this listing yet. Open Calendar to set a nightly rate before you publish.",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.promo.all_dates",
+    "sourceText": "All dates",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.promo.free_cleaning",
+    "sourceText": "Free cleaning",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.promo.from",
+    "sourceText": "From {from}",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.promo.min_nights.few",
+    "sourceText": "stays of {n} nights or more",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.promo.min_nights.many",
+    "sourceText": "stays of {n} nights or more",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.promo.min_nights.one",
+    "sourceText": "stays of {n} night or more",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.promo.min_nights.other",
+    "sourceText": "stays of {n} nights or more",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.promo.min_nights.two",
+    "sourceText": "stays of {n} nights or more",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.promo.min_nights.zero",
+    "sourceText": "stays of {n} nights or more",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.promo.percent_off",
+    "sourceText": "{percent}% off",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.promo.plus_free_cleaning",
+    "sourceText": "free cleaning included",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.promo.running",
+    "sourceText": "Running now",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.promo.scheduled",
+    "sourceText": "Scheduled",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.promo.until",
+    "sourceText": "Until {to}",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.promo.window",
+    "sourceText": "{from} – {to}",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.promotions_count",
+    "sourceText": "{active} running now, {upcoming} scheduled.",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.promotions_label",
+    "sourceText": "Promotions",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.promotions_none",
+    "sourceText": "No promotions are running or scheduled.",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.progress",
+    "sourceText": "{done} of {total} complete",
+    "filePath": "src/components/host/v2/editor/editor-nav.tsx"
+  },
+  {
+    "key": "host.editor.save_failed",
+    "sourceText": "Not saved",
+    "filePath": "src/components/host/v2/editor/editor-header.tsx"
+  },
+  {
+    "key": "host.editor.saved",
+    "sourceText": "Saved",
+    "filePath": "src/components/host/v2/editor/editor-header.tsx"
+  },
+  {
+    "key": "host.editor.saving",
+    "sourceText": "Saving…",
+    "filePath": "src/components/host/v2/editor/editor-header.tsx"
+  },
+  {
+    "key": "host.editor.section_pending",
+    "sourceText": "This section is moving into the new editor. For now you can still edit it in the classic listing editor.",
+    "filePath": "src/app/(host-editor)/host/v2/listings/[id]/[section]/page.tsx"
+  },
+  {
+    "key": "host.editor.section.amenities",
+    "sourceText": "Amenities",
+    "filePath": "src/components/host/v2/editor/amenities/amenities-workspace.tsx"
+  },
+  {
+    "key": "host.editor.section.availability",
+    "sourceText": "Availability",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.section.pricing",
+    "sourceText": "Pricing",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.switch_listing",
+    "sourceText": "Switch listing",
+    "filePath": "src/components/host/v2/editor/editor-header.tsx"
+  },
+  {
+    "key": "host.editor.your_listings",
+    "sourceText": "Your listings",
+    "filePath": "src/components/host/v2/editor/editor-header.tsx"
   },
   {
     "key": "host.form.back",
@@ -7190,6 +8105,41 @@
     "filePath": "src/components/host/v2/host-v2-placeholder.tsx"
   },
   {
+    "key": "host.v2.calendar.all_date_promotions_count.few",
+    "sourceText": "{n} all-date promotions active",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.all_date_promotions_count.many",
+    "sourceText": "{n} all-date promotions active",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.all_date_promotions_count.one",
+    "sourceText": "{n} all-date promotion active",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.all_date_promotions_count.other",
+    "sourceText": "{n} all-date promotions active",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.all_date_promotions_count.two",
+    "sourceText": "{n} all-date promotions active",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.all_date_promotions_count.zero",
+    "sourceText": "{n} all-date promotions active",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.all_date_promotions_hint",
+    "sourceText": "Available when the guest meets the minimum stay",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
     "key": "host.v2.calendar.all_listings",
     "sourceText": "All listings",
     "filePath": "src/components/host/v2/calendar/listing-rail.tsx"
@@ -7225,9 +8175,14 @@
     "filePath": "src/components/host/v2/calendar/safety-banner.tsx"
   },
   {
+    "key": "host.v2.calendar.block_note_cancel",
+    "sourceText": "Cancel",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
     "key": "host.v2.calendar.block_note_hint",
     "sourceText": "Only you can see this note.",
-    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+    "filePath": "src/components/host/v2/calendar/review-dialog.tsx"
   },
   {
     "key": "host.v2.calendar.block_note_label_short",
@@ -7237,6 +8192,11 @@
   {
     "key": "host.v2.calendar.block_note_placeholder",
     "sourceText": "e.g. Maintenance or private stay",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.block_note_prompt",
+    "sourceText": "Add a private note if you want to remember why. Only you can see it, and it is optional.",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
@@ -7315,14 +8275,19 @@
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
+    "key": "host.v2.calendar.cancel",
+    "sourceText": "Cancel",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
     "key": "host.v2.calendar.change_property",
     "sourceText": "Change property: {property}",
     "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
   },
   {
-    "key": "host.v2.calendar.choose_dates_short",
-    "sourceText": "Choose dates to change availability or price.",
-    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+    "key": "host.v2.calendar.choose_change",
+    "sourceText": "Choose what to change",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
   },
   {
     "key": "host.v2.calendar.chooser_title",
@@ -7332,7 +8297,87 @@
   {
     "key": "host.v2.calendar.clear_selection",
     "sourceText": "Clear selection",
-    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.connect",
+    "sourceText": "Connect calendar",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.connected_count.few",
+    "sourceText": "{n} calendars connected",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.connected_count.many",
+    "sourceText": "{n} calendars connected",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.connected_count.one",
+    "sourceText": "{n} calendar connected",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.connected_count.other",
+    "sourceText": "{n} calendars connected",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.connected_count.two",
+    "sourceText": "{n} calendars connected",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.connected_count.zero",
+    "sourceText": "{n} calendars connected",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.copied",
+    "sourceText": "Calendar link copied.",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.copied_short",
+    "sourceText": "Copied",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.copy",
+    "sourceText": "Copy",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.copy_failed",
+    "sourceText": "Could not copy — select the link and copy it manually.",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.detected",
+    "sourceText": "Recognised as {channel} — it will be connected under that name.",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.detected_unknown",
+    "sourceText": "We do not recognise this site, which is fine — the link will still be checked and synced.",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.export_hint",
+    "sourceText": "Paste it wherever another site asks to import a calendar. It publishes only which nights are taken — never guest names or prices.",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.export_title",
+    "sourceText": "This listing's own calendar link",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.frequency_note",
+    "sourceText": "Connected calendars are checked automatically about once an hour, and other sites read yours on their own schedule — so a change can take an hour or two to show on both sides. For a same-day change, block the nights on each site directly.",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
   },
   {
     "key": "host.v2.calendar.connections.hint",
@@ -7340,9 +8385,99 @@
     "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
   },
   {
+    "key": "host.v2.calendar.connections.import_hint",
+    "sourceText": "Copy the calendar link Airbnb, Booking.com or Vrbo gives you and paste it here. Their reservations will block those nights on this listing.",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.import_title",
+    "sourceText": "Add a calendar from another site",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.loading",
+    "sourceText": "Loading your calendar links…",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.never_synced",
+    "sourceText": "not checked yet",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.refresh",
+    "sourceText": "Check now",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.remove",
+    "sourceText": "Disconnect",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.rotate",
+    "sourceText": "Create a new link",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.rotate_disclosure",
+    "sourceText": "Shared this link by mistake?",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.rotate_hint",
+    "sourceText": "Anyone holding this link can see which of your nights are taken. Creating a new one stops the old link working immediately — you will then have to paste the new link into every site you had connected.",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.status_error",
+    "sourceText": "This calendar could not be read. Check the link is still valid on the other site.",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.status_ok.few",
+    "sourceText": "{n} nights blocked · checked {when}",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.status_ok.many",
+    "sourceText": "{n} nights blocked · checked {when}",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.status_ok.one",
+    "sourceText": "{n} night blocked · checked {when}",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.status_ok.other",
+    "sourceText": "{n} nights blocked · checked {when}",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.status_ok.two",
+    "sourceText": "{n} nights blocked · checked {when}",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.status_ok.zero",
+    "sourceText": "{n} nights blocked · checked {when}",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
     "key": "host.v2.calendar.connections.title",
     "sourceText": "Connected calendars",
     "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.url_placeholder",
+    "sourceText": "https://…/calendar.ics",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
+  },
+  {
+    "key": "host.v2.calendar.connections.url_required",
+    "sourceText": "Paste the calendar link first.",
+    "filePath": "src/components/host/v2/calendar/connected-calendars.tsx"
   },
   {
     "key": "host.v2.calendar.consequence.base_price",
@@ -7706,32 +8841,32 @@
   },
   {
     "key": "host.v2.calendar.consequence.not_bookable.few",
-    "sourceText": "{n} dates will be closed on your calendar after you save.",
+    "sourceText": "{n} dates will be blocked after you save.",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
     "key": "host.v2.calendar.consequence.not_bookable.many",
-    "sourceText": "{n} dates will be closed on your calendar after you save.",
+    "sourceText": "{n} dates will be blocked after you save.",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
     "key": "host.v2.calendar.consequence.not_bookable.one",
-    "sourceText": "{n} date will be closed on your calendar after you save.",
+    "sourceText": "{n} date will be blocked after you save.",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
     "key": "host.v2.calendar.consequence.not_bookable.other",
-    "sourceText": "{n} dates will be closed on your calendar after you save.",
+    "sourceText": "{n} dates will be blocked after you save.",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
     "key": "host.v2.calendar.consequence.not_bookable.two",
-    "sourceText": "{n} dates will be closed on your calendar after you save.",
+    "sourceText": "{n} dates will be blocked after you save.",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
     "key": "host.v2.calendar.consequence.not_bookable.zero",
-    "sourceText": "{n} dates will be closed on your calendar after you save.",
+    "sourceText": "{n} dates will be blocked after you save.",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
@@ -7875,6 +9010,11 @@
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
+    "key": "host.v2.calendar.cta.add_promotion",
+    "sourceText": "Add another promotion",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
     "key": "host.v2.calendar.cta.availability",
     "sourceText": "Review availability",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
@@ -7883,6 +9023,11 @@
     "key": "host.v2.calendar.cta.availability_rule",
     "sourceText": "Review availability rule",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.cta.create_promotion",
+    "sourceText": "Create promotion",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
   },
   {
     "key": "host.v2.calendar.cta.default_pricing",
@@ -7920,6 +9065,11 @@
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
+    "key": "host.v2.calendar.cta.save_promotion",
+    "sourceText": "Save changes",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
     "key": "host.v2.calendar.cta.visibility",
     "sourceText": "Review visibility",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
@@ -7942,11 +9092,6 @@
   {
     "key": "host.v2.calendar.day.badge_closed",
     "sourceText": "Closed",
-    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
-  },
-  {
-    "key": "host.v2.calendar.day.badge_external",
-    "sourceText": "Synced",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
@@ -8023,21 +9168,6 @@
     "key": "host.v2.calendar.discoverability.search",
     "sourceText": "Visible in search",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
-  },
-  {
-    "key": "host.v2.calendar.edit_dates",
-    "sourceText": "Edit dates",
-    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
-  },
-  {
-    "key": "host.v2.calendar.editor.add_another_offer",
-    "sourceText": "Add another offer on these dates",
-    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.editor.add_note",
-    "sourceText": "Add a private note",
-    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
     "key": "host.v2.calendar.editor.against_base",
@@ -8330,6 +9460,46 @@
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
+    "key": "host.v2.calendar.editor.edit_promotion",
+    "sourceText": "Edit promotion",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.existing_promotions_count.few",
+    "sourceText": "{n} promotions overlap the selected dates",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.existing_promotions_count.many",
+    "sourceText": "{n} promotions overlap the selected dates",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.existing_promotions_count.one",
+    "sourceText": "{n} promotion overlaps the selected dates",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.existing_promotions_count.other",
+    "sourceText": "{n} promotions overlap the selected dates",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.existing_promotions_count.two",
+    "sourceText": "{n} promotions overlap the selected dates",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.existing_promotions_count.zero",
+    "sourceText": "{n} promotions overlap the selected dates",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.hide_promotions",
+    "sourceText": "Hide",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
     "key": "host.v2.calendar.editor.how_offers_work",
     "sourceText": "How offers work",
     "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
@@ -8343,6 +9513,11 @@
     "key": "host.v2.calendar.editor.keep_offer",
     "sourceText": "Keep this offer",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.keep_promotion",
+    "sourceText": "Keep this promotion",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
   },
   {
     "key": "host.v2.calendar.editor.locked_booked.few",
@@ -8410,6 +9585,11 @@
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
+    "key": "host.v2.calendar.editor.minimum_nights_term",
+    "sourceText": "{n}-night minimum",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
     "key": "host.v2.calendar.editor.minimum_stay_info.few",
     "sourceText": "Minimum stay: {n} nights · Listing-wide setting",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
@@ -8440,14 +9620,9 @@
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
-    "key": "host.v2.calendar.editor.more_options",
-    "sourceText": "More options",
-    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.editor.offers_on",
-    "sourceText": "Offers on {range}",
-    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+    "key": "host.v2.calendar.editor.new_promotion",
+    "sourceText": "New promotion",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
   },
   {
     "key": "host.v2.calendar.editor.per_night",
@@ -8525,49 +9700,59 @@
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
-    "key": "host.v2.calendar.editor.promotion_heading.few",
-    "sourceText": "Discount for {n} nights",
-    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.editor.promotion_heading.many",
-    "sourceText": "Discount for {n} nights",
-    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.editor.promotion_heading.one",
-    "sourceText": "Discount for {n} night",
-    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.editor.promotion_heading.other",
-    "sourceText": "Discount for {n} nights",
-    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.editor.promotion_heading.two",
-    "sourceText": "Discount for {n} nights",
-    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.editor.promotion_heading.zero",
-    "sourceText": "Discount for {n} nights",
-    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
-  },
-  {
     "key": "host.v2.calendar.editor.promotion_minimum_unreachable",
-    "sourceText": "Your minimum is {minimum} nights but you have selected {nights}, so a guest booking exactly these dates will not qualify. A longer stay covering them still can.",
+    "sourceText": "This promotion requires a {minimum}-night stay. Guests staying {minimum} nights or more can receive the discount on the selected nights.",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
     "key": "host.v2.calendar.editor.promotion_never_wins",
-    "sourceText": "This offer would never reach a guest. An existing {percent}% offer already covers these dates and wins, because a bigger discount takes priority.",
+    "sourceText": "This promotion would not apply. An existing {percent}% promotion saves more on every selected night.",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
     "key": "host.v2.calendar.editor.promotion_no_benefit",
     "sourceText": "Set a discount, or waive the cleaning fee, to make this an offer.",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.promotion_not_eligible",
+    "sourceText": "Not eligible",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.promotion_overlapped",
+    "sourceText": "Another promotion saves more",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.promotion_wins_nights.few",
+    "sourceText": "Best on {n} nights",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.promotion_wins_nights.many",
+    "sourceText": "Best on {n} nights",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.promotion_wins_nights.one",
+    "sourceText": "Best on {n} night",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.promotion_wins_nights.other",
+    "sourceText": "Best on {n} nights",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.promotion_wins_nights.two",
+    "sourceText": "Best on {n} nights",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.promotion_wins_nights.zero",
+    "sourceText": "Best on {n} nights",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
   },
   {
     "key": "host.v2.calendar.editor.remove_saved_offer",
@@ -8581,12 +9766,22 @@
   },
   {
     "key": "host.v2.calendar.editor.scope_all_dates",
-    "sourceText": "all dates",
+    "sourceText": "All dates",
     "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
   },
   {
     "key": "host.v2.calendar.editor.scope_these_dates",
     "sourceText": "these dates",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.see_all_promotions",
+    "sourceText": "See all",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.selected_nights_covered",
+    "sourceText": "Covers {covered} of {selected} nights",
     "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
   },
   {
@@ -8621,37 +9816,7 @@
   },
   {
     "key": "host.v2.calendar.editor.start_offer",
-    "sourceText": "Start this offer",
-    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.editor.state_all_blocked.few",
-    "sourceText": "These {n} nights are blocked.",
-    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.editor.state_all_blocked.many",
-    "sourceText": "These {n} nights are blocked.",
-    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.editor.state_all_blocked.one",
-    "sourceText": "This night is blocked.",
-    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.editor.state_all_blocked.other",
-    "sourceText": "These {n} nights are blocked.",
-    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.editor.state_all_blocked.two",
-    "sourceText": "These {n} nights are blocked.",
-    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.editor.state_all_blocked.zero",
-    "sourceText": "These {n} nights are blocked.",
+    "sourceText": "Create promotion",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
@@ -8720,6 +9885,36 @@
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
+    "key": "host.v2.calendar.editor.state_all_unavailable.few",
+    "sourceText": "These {n} nights are not available to guests.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.state_all_unavailable.many",
+    "sourceText": "These {n} nights are not available to guests.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.state_all_unavailable.one",
+    "sourceText": "This night is not available to guests.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.state_all_unavailable.other",
+    "sourceText": "These {n} nights are not available to guests.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.state_all_unavailable.two",
+    "sourceText": "These {n} nights are not available to guests.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.state_all_unavailable.zero",
+    "sourceText": "These {n} nights are not available to guests.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
     "key": "host.v2.calendar.editor.state_mixed",
     "sourceText": "{open} open · {blocked} blocked",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
@@ -8731,7 +9926,7 @@
   },
   {
     "key": "host.v2.calendar.editor.update_offer",
-    "sourceText": "Update this offer",
+    "sourceText": "Save changes",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
@@ -8740,63 +9935,33 @@
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
-    "key": "host.v2.calendar.editor.winner_for_selection.few",
-    "sourceText": "A guest booking these {n} nights gets {percent}% off.",
+    "key": "host.v2.calendar.editor.view_promotions_count.few",
+    "sourceText": "View {n} promotions for these dates",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
-    "key": "host.v2.calendar.editor.winner_for_selection.many",
-    "sourceText": "A guest booking these {n} nights gets {percent}% off.",
+    "key": "host.v2.calendar.editor.view_promotions_count.many",
+    "sourceText": "View {n} promotions for these dates",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
-    "key": "host.v2.calendar.editor.winner_for_selection.one",
-    "sourceText": "A guest booking this night gets {percent}% off.",
+    "key": "host.v2.calendar.editor.view_promotions_count.one",
+    "sourceText": "View {n} promotion for these dates",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
-    "key": "host.v2.calendar.editor.winner_for_selection.other",
-    "sourceText": "A guest booking these {n} nights gets {percent}% off.",
+    "key": "host.v2.calendar.editor.view_promotions_count.other",
+    "sourceText": "View {n} promotions for these dates",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
-    "key": "host.v2.calendar.editor.winner_for_selection.two",
-    "sourceText": "A guest booking these {n} nights gets {percent}% off.",
+    "key": "host.v2.calendar.editor.view_promotions_count.two",
+    "sourceText": "View {n} promotions for these dates",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
-    "key": "host.v2.calendar.editor.winner_for_selection.zero",
-    "sourceText": "A guest booking these {n} nights gets {percent}% off.",
-    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.editor.winner_none.few",
-    "sourceText": "A guest booking these {n} nights gets no discount.",
-    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.editor.winner_none.many",
-    "sourceText": "A guest booking these {n} nights gets no discount.",
-    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.editor.winner_none.one",
-    "sourceText": "A guest booking this night gets no discount.",
-    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.editor.winner_none.other",
-    "sourceText": "A guest booking these {n} nights gets no discount.",
-    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.editor.winner_none.two",
-    "sourceText": "A guest booking these {n} nights gets no discount.",
-    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.editor.winner_none.zero",
-    "sourceText": "A guest booking these {n} nights gets no discount.",
+    "key": "host.v2.calendar.editor.view_promotions_count.zero",
+    "sourceText": "View {n} promotions for these dates",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
@@ -8946,32 +10111,32 @@
   },
   {
     "key": "host.v2.calendar.help.dated_fit",
-    "sourceText": "An offer on specific dates only applies when the guest's whole stay fits inside those dates. A stay running one night past the end gets nothing from it.",
+    "sourceText": "A date-specific promotion discounts only the nights inside its date range. Nights outside it use their own best promotion or the normal price.",
     "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
   },
   {
     "key": "host.v2.calendar.help.ladder",
-    "sourceText": "Give each offer a different minimum stay to build a ladder: 10% from five nights, 20% from twenty. A guest gets the highest minimum they reach.",
+    "sourceText": "You can overlap promotions or use the same minimum stay. On each night, the promotion producing the biggest saving wins.",
     "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
   },
   {
     "key": "host.v2.calendar.help.minimum_meaning",
-    "sourceText": "The minimum stay here decides who earns the discount. It is not the shortest stay you accept — that is a listing setting.",
+    "sourceText": "The promotion minimum checks the guest's whole booking length. It is separate from the listing's normal minimum stay.",
     "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
   },
   {
     "key": "host.v2.calendar.help.one_offer",
-    "sourceText": "Offers never add up. A guest gets exactly one, even when several could apply.",
+    "sourceText": "Promotions never add together on one night. The promotion that saves the guest the most wins that night.",
     "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
   },
   {
     "key": "host.v2.calendar.help.per_stay",
-    "sourceText": "An offer applies to a whole stay, not to single nights. A guest books a stay and gets one discount on all of it.",
+    "sourceText": "Promotions apply night by night. Different nights in one booking can use different promotions.",
     "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
   },
   {
     "key": "host.v2.calendar.help.which_wins",
-    "sourceText": "An offer on specific dates beats an all-dates one. After that the longer minimum stay wins, then the bigger discount.",
+    "sourceText": "A date-specific promotion does not automatically beat an all-dates promotion. The better eligible saving wins.",
     "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
   },
   {
@@ -8995,13 +10160,8 @@
     "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
   },
   {
-    "key": "host.v2.calendar.legend.external",
-    "sourceText": "From a connected calendar",
-    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
-  },
-  {
-    "key": "host.v2.calendar.legend.open_not_bookable",
-    "sourceText": "Open, not bookable",
+    "key": "host.v2.calendar.legend.closed",
+    "sourceText": "Closed",
     "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
   },
   {
@@ -9010,14 +10170,39 @@
     "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
   },
   {
-    "key": "host.v2.calendar.listing.add_another_offer",
-    "sourceText": "Add another offer",
-    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
-  },
-  {
     "key": "host.v2.calendar.listing.all_dates_follow",
     "sourceText": "Every date follows this price, unless you give a date its own.",
     "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.all_promotions_count.few",
+    "sourceText": "{n} active or upcoming promotions",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.all_promotions_count.many",
+    "sourceText": "{n} active or upcoming promotions",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.all_promotions_count.one",
+    "sourceText": "{n} active or upcoming promotion",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.all_promotions_count.other",
+    "sourceText": "{n} active or upcoming promotions",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.all_promotions_count.two",
+    "sourceText": "{n} active or upcoming promotions",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.all_promotions_count.zero",
+    "sourceText": "{n} active or upcoming promotions",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
   },
   {
     "key": "host.v2.calendar.listing.any_length",
@@ -9080,8 +10265,8 @@
     "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
   },
   {
-    "key": "host.v2.calendar.listing.editing_offer",
-    "sourceText": "Editing {percent}% off",
+    "key": "host.v2.calendar.listing.editing_promotion",
+    "sourceText": "Editing {percent}% promotion",
     "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
   },
   {
@@ -9116,32 +10301,32 @@
   },
   {
     "key": "host.v2.calendar.listing.example_offer_caption.few",
-    "sourceText": "A {n}-night stay with this offer",
+    "sourceText": "A {n}-night stay with this promotion",
     "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
   },
   {
     "key": "host.v2.calendar.listing.example_offer_caption.many",
-    "sourceText": "A {n}-night stay with this offer",
+    "sourceText": "A {n}-night stay with this promotion",
     "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
   },
   {
     "key": "host.v2.calendar.listing.example_offer_caption.one",
-    "sourceText": "A {n}-night stay with this offer",
+    "sourceText": "A {n}-night stay with this promotion",
     "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
   },
   {
     "key": "host.v2.calendar.listing.example_offer_caption.other",
-    "sourceText": "A {n}-night stay with this offer",
+    "sourceText": "A {n}-night stay with this promotion",
     "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
   },
   {
     "key": "host.v2.calendar.listing.example_offer_caption.two",
-    "sourceText": "A {n}-night stay with this offer",
+    "sourceText": "A {n}-night stay with this promotion",
     "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
   },
   {
     "key": "host.v2.calendar.listing.example_offer_caption.zero",
-    "sourceText": "A {n}-night stay with this offer",
+    "sourceText": "A {n}-night stay with this promotion",
     "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
   },
   {
@@ -9151,7 +10336,7 @@
   },
   {
     "key": "host.v2.calendar.listing.minimum_taken",
-    "sourceText": "You already have a {percent}% offer starting at {nights} nights. Give this one a different minimum stay.",
+    "sourceText": "Another {percent}% promotion starts at {nights} nights. Both can run; the promotion that saves the guest more will win.",
     "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
   },
   {
@@ -9180,14 +10365,19 @@
     "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
   },
   {
-    "key": "host.v2.calendar.listing.new_offer",
-    "sourceText": "New offer",
-    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+    "key": "host.v2.calendar.listing.new_promotion",
+    "sourceText": "New promotion",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
     "key": "host.v2.calendar.listing.nights_minimum",
     "sourceText": "nights minimum",
     "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.no_active_promotions",
+    "sourceText": "No active or upcoming promotions",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
   },
   {
     "key": "host.v2.calendar.listing.per_stay",
@@ -9201,12 +10391,12 @@
   },
   {
     "key": "host.v2.calendar.listing.remove_ongoing",
-    "sourceText": "Remove this always-active offer",
+    "sourceText": "Remove this promotion",
     "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
   },
   {
     "key": "host.v2.calendar.listing.removing_ongoing",
-    "sourceText": "This always-active offer will stop applying to new bookings when you confirm. Existing bookings keep what guests already agreed.",
+    "sourceText": "This promotion will stop applying to new bookings when you confirm. Existing bookings keep what guests already agreed.",
     "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
   },
   {
@@ -9240,6 +10430,36 @@
     "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
   },
   {
+    "key": "host.v2.calendar.listing.view_promotions_count.few",
+    "sourceText": "View {n} promotions",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.view_promotions_count.many",
+    "sourceText": "View {n} promotions",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.view_promotions_count.one",
+    "sourceText": "View {n} promotion",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.view_promotions_count.other",
+    "sourceText": "View {n} promotions",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.view_promotions_count.two",
+    "sourceText": "View {n} promotions",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.view_promotions_count.zero",
+    "sourceText": "View {n} promotions",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
     "key": "host.v2.calendar.listing.visibility_hidden_effect",
     "sourceText": "Guests cannot open or book this listing. Existing reservations still stand.",
     "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
@@ -9265,14 +10485,49 @@
     "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
   },
   {
-    "key": "host.v2.calendar.listing.your_offers",
-    "sourceText": "Your always-active offers",
-    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+    "key": "host.v2.calendar.manage",
+    "sourceText": "Manage",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.manage_all_dates",
+    "sourceText": "Manage all dates",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
   },
   {
     "key": "host.v2.calendar.manage_prompt",
     "sourceText": "What would you like to change?",
     "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
+    "key": "host.v2.calendar.manage_selected_dates.few",
+    "sourceText": "Manage {range} · {n} nights",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.manage_selected_dates.many",
+    "sourceText": "Manage {range} · {n} nights",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.manage_selected_dates.one",
+    "sourceText": "Manage {range} · {n} night",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.manage_selected_dates.other",
+    "sourceText": "Manage {range} · {n} nights",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.manage_selected_dates.two",
+    "sourceText": "Manage {range} · {n} nights",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.manage_selected_dates.zero",
+    "sourceText": "Manage {range} · {n} nights",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
   },
   {
     "key": "host.v2.calendar.manage_title",
@@ -9286,7 +10541,7 @@
   },
   {
     "key": "host.v2.calendar.menu.listing_promotions",
-    "sourceText": "Ongoing promotions",
+    "sourceText": "Promotions",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
@@ -9303,6 +10558,36 @@
     "key": "host.v2.calendar.menu.promotion",
     "sourceText": "Promotion",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.menu.promotions_count.few",
+    "sourceText": "{n} promotions",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
+    "key": "host.v2.calendar.menu.promotions_count.many",
+    "sourceText": "{n} promotions",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
+    "key": "host.v2.calendar.menu.promotions_count.one",
+    "sourceText": "{n} promotion",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
+    "key": "host.v2.calendar.menu.promotions_count.other",
+    "sourceText": "{n} promotions",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
+    "key": "host.v2.calendar.menu.promotions_count.two",
+    "sourceText": "{n} promotions",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
+    "key": "host.v2.calendar.menu.promotions_count.zero",
+    "sourceText": "{n} promotions",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
   },
   {
     "key": "host.v2.calendar.next_month",
@@ -9323,11 +10608,6 @@
     "key": "host.v2.calendar.one_change_note",
     "sourceText": "One change is saved at a time. Nothing is saved until you review and confirm.",
     "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
-  },
-  {
-    "key": "host.v2.calendar.open_manage",
-    "sourceText": "Manage calendar",
-    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
   },
   {
     "key": "host.v2.calendar.open_not_bookable_dates.few",
@@ -9365,6 +10645,11 @@
     "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
   },
   {
+    "key": "host.v2.calendar.pick_dates_hint",
+    "sourceText": "Pick dates on the calendar",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
     "key": "host.v2.calendar.previous_month",
     "sourceText": "Previous month",
     "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
@@ -9382,6 +10667,11 @@
   {
     "key": "host.v2.calendar.promotion_free_cleaning",
     "sourceText": "Also waive the cleaning fee",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.promotion_free_cleaning_hint",
+    "sourceText": "Guests save a further {amount}",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
@@ -9411,7 +10701,12 @@
   },
   {
     "key": "host.v2.calendar.promotion_round",
-    "sourceText": "Round the discounted nightly price to a whole amount",
+    "sourceText": "Round discounted nightly prices",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.promotion_round_hint",
+    "sourceText": "Round each discounted night to the nearest whole amount",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
@@ -9838,36 +11133,6 @@
     "key": "host.v2.calendar.section.promotion_none",
     "sourceText": "No promotion on these dates",
     "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
-  },
-  {
-    "key": "host.v2.calendar.selected_summary.few",
-    "sourceText": "{n} dates selected",
-    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
-  },
-  {
-    "key": "host.v2.calendar.selected_summary.many",
-    "sourceText": "{n} dates selected",
-    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
-  },
-  {
-    "key": "host.v2.calendar.selected_summary.one",
-    "sourceText": "{n} date selected",
-    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
-  },
-  {
-    "key": "host.v2.calendar.selected_summary.other",
-    "sourceText": "{n} dates selected",
-    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
-  },
-  {
-    "key": "host.v2.calendar.selected_summary.two",
-    "sourceText": "{n} dates selected",
-    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
-  },
-  {
-    "key": "host.v2.calendar.selected_summary.zero",
-    "sourceText": "{n} dates selected",
-    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
   },
   {
     "key": "host.v2.calendar.status.attention",
@@ -11283,6 +12548,46 @@
     "key": "host.v2.today.greeting",
     "sourceText": "Welcome back, {name}",
     "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+  },
+  {
+    "key": "host.v2.welcome.exit",
+    "sourceText": "Exit",
+    "filePath": "src/components/host/v2/listings/new-listing-welcome.tsx"
+  },
+  {
+    "key": "host.v2.welcome.heading",
+    "sourceText": "Welcome to Linger Homes",
+    "filePath": "src/components/host/v2/listings/new-listing-welcome.tsx"
+  },
+  {
+    "key": "host.v2.welcome.import",
+    "sourceText": "Import listing",
+    "filePath": "src/components/host/v2/listings/new-listing-welcome.tsx"
+  },
+  {
+    "key": "host.v2.welcome.import_hint",
+    "sourceText": "Airbnb, Booking, Vrbo or anywhere else",
+    "filePath": "src/components/host/v2/listings/new-listing-welcome.tsx"
+  },
+  {
+    "key": "host.v2.welcome.intro_accent",
+    "sourceText": "0% host commission.",
+    "filePath": "src/components/host/v2/listings/new-listing-welcome.tsx"
+  },
+  {
+    "key": "host.v2.welcome.intro_lead",
+    "sourceText": "Direct bookings.",
+    "filePath": "src/components/host/v2/listings/new-listing-welcome.tsx"
+  },
+  {
+    "key": "host.v2.welcome.intro_rest",
+    "sourceText": "Let's create a listing guests feel confident booking.",
+    "filePath": "src/components/host/v2/listings/new-listing-welcome.tsx"
+  },
+  {
+    "key": "host.v2.welcome.start",
+    "sourceText": "Start a new listing",
+    "filePath": "src/components/host/v2/listings/new-listing-welcome.tsx"
   },
   {
     "key": "host.visibility.confirm_hide",
@@ -13638,6 +14943,171 @@
     "key": "review.submitted",
     "sourceText": "Your rating was submitted privately",
     "filePath": "src/components/reviews/rating-form.tsx"
+  },
+  {
+    "key": "rooms.categories.additional",
+    "sourceText": "Additional spaces",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.categories.interior",
+    "sourceText": "Interior",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.categories.outdoor",
+    "sourceText": "Outdoor",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.balcony",
+    "sourceText": "Balcony",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.bathroom",
+    "sourceText": "Bathroom",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.bedroom",
+    "sourceText": "Bedroom",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.dining_area",
+    "sourceText": "Dining area",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.driveway",
+    "sourceText": "Driveway",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.entrance",
+    "sourceText": "Entrance",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.exterior",
+    "sourceText": "Exterior",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.games_room",
+    "sourceText": "Games room",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.garage",
+    "sourceText": "Garage",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.garden",
+    "sourceText": "Garden",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.gym",
+    "sourceText": "Gym",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.hallway",
+    "sourceText": "Hallway",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.hot_tub",
+    "sourceText": "Hot tub",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.kitchen",
+    "sourceText": "Kitchen",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.laundry_room",
+    "sourceText": "Laundry room",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.living_room",
+    "sourceText": "Living room",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.other",
+    "sourceText": "Other",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.outdoor_dining_area",
+    "sourceText": "Outdoor dining area",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.outdoor_kitchen",
+    "sourceText": "Outdoor kitchen",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.parking",
+    "sourceText": "Parking",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.patio",
+    "sourceText": "Patio",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.playroom",
+    "sourceText": "Playroom",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.pool",
+    "sourceText": "Pool",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.sauna",
+    "sourceText": "Sauna",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.terrace",
+    "sourceText": "Terrace",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.toilet",
+    "sourceText": "Toilet",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.view",
+    "sourceText": "View",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.waterfront",
+    "sourceText": "Waterfront",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.workspace",
+    "sourceText": "Workspace",
+    "filePath": "src/lib/i18n/room-labels.ts"
+  },
+  {
+    "key": "rooms.types.yard",
+    "sourceText": "Yard",
+    "filePath": "src/lib/i18n/room-labels.ts"
   },
   {
     "key": "search.add_dates",

@@ -27,7 +27,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { HostBookingActions } from "@/components/host/host-booking-actions";
 import { StartConversationButton } from "@/components/communication/start-conversation-button";
-import type { HostActionItem, HostActionKind } from "@/lib/host/booking-action-queue";
+import type {
+  HostActionItem,
+  HostActionKind,
+} from "@/lib/host/booking-action-queue";
 import { formatShortDate } from "@/lib/host/v2/calendar-format";
 import {
   RESERVATION_FILTERS,
@@ -36,7 +39,10 @@ import {
   type ReservationSection,
   type ReservationSort,
 } from "@/lib/host/v2/reservation-model";
-import { RESERVATION_ANCHOR, anchorProps } from "@/lib/host/v2/reservation-anchors";
+import {
+  RESERVATION_ANCHOR,
+  anchorProps,
+} from "@/lib/host/v2/reservation-anchors";
 import type {
   HostReservation,
   HostReservationProperty,
@@ -198,18 +204,24 @@ function ActionCard({
   return (
     <article
       className={cn(
-        "rounded-xl border border-l-[3px] p-2.5 transition-colors",
+        // No borders and no ring: attention and selection are both said with a fill,
+        // exactly as the property rail says them. An outline on the selected card gave
+        // the panel two competing ways of marking the same thing.
+        "rounded-xl p-2.5 transition-colors",
         critical
-          ? "border-red-200 border-l-red-600 bg-red-50/40"
-          : "border-amber-200 border-l-amber-500 bg-amber-50/40",
-        active && "ring-1 ring-[#d9774f]",
+          ? active
+            ? "bg-[#ffd9c6]"
+            : "bg-[#ffe9dc] hover:bg-[#ffd9c6]"
+          : active
+            ? "bg-[#ffe9dc]"
+            : "bg-[#fff4ee] hover:bg-[#ffe9dc]",
       )}
     >
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span
           className={cn(
             "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[0.6875rem] font-semibold",
-            critical ? "bg-red-600 text-white" : "bg-amber-100 text-amber-900",
+            critical ? "bg-[#a94b28] text-white" : "bg-white/80 text-[#a3593b]",
             headline.translated && "notranslate",
           )}
         >
@@ -236,39 +248,58 @@ function ActionCard({
             </span>
           );
         })}
-        <span className="ml-auto text-[0.6875rem] text-slate-400" translate="no">
+        <span
+          className="ml-auto text-[0.6875rem] text-slate-400"
+          translate="no"
+        >
           {reservation.reference}
         </span>
       </div>
 
-      <button
-        type="button"
-        onClick={onSelect}
-        className="mt-2 flex w-full items-center gap-2.5 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]"
-      >
-        <PropertyThumb property={property} size={44} />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[0.8125rem] font-semibold text-slate-900">
-            <span data-user-generated-content translate="yes">
-              {property?.title ?? ""}
+      <div className="mt-2 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onSelect}
+          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]"
+        >
+          <PropertyThumb property={property} size={44} />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[0.8125rem] font-semibold text-slate-900">
+              <span data-user-generated-content translate="yes">
+                {property?.title ?? ""}
+              </span>
+            </span>
+            <span className="mt-0.5 block truncate text-[0.75rem] text-slate-600">
+              {reservation.guest.name} · {stay.text} ·{" "}
+              {formatShortDate(reservation.checkIn, data.formats)} –{" "}
+              {formatShortDate(reservation.checkOut, data.formats)} ·{" "}
+              <span className="font-semibold text-slate-800">
+                {money(reservation.total, reservation.currency, data.formats)}
+              </span>
             </span>
           </span>
-          <span className="mt-0.5 block truncate text-[0.75rem] text-slate-600">
-            {reservation.guest.name} · {stay.text} ·{" "}
-            {formatShortDate(reservation.checkIn, data.formats)} –{" "}
-            {formatShortDate(reservation.checkOut, data.formats)} ·{" "}
-            <span className="font-semibold text-slate-800">
-              {money(reservation.total, reservation.currency, data.formats)}
-            </span>
-          </span>
-        </span>
-      </button>
+        </button>
+        {/* Rating rides beside the stay line rather than under it: a whole action row
+            for one quiet, optional task cost the card an extra band of height. */}
+        {item.kind === "RATE_GUEST" ? (
+          <Link
+            href={`/account/bookings/${reservation.id}/after-stay`}
+            className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[0.71875rem] font-semibold text-[#a3593b] transition-colors hover:bg-white/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]"
+          >
+            <Star className="size-3.5" aria-hidden />
+            {
+              i18n.resolve("host.v2.reservations.leave_rating", "Leave rating")
+                .text
+            }
+          </Link>
+        ) : null}
+      </div>
 
       {consequence ? (
         <p
           className={cn(
             "mt-1.5 text-[0.71875rem] leading-4",
-            critical ? "text-red-800" : "text-amber-900",
+            critical ? "text-[#8f3f22]" : "text-slate-600",
             consequence.translated && "notranslate",
           )}
         >
@@ -276,66 +307,65 @@ function ActionCard({
         </p>
       ) : null}
 
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        {item.kind === "RESPOND_TO_REQUEST" ? (
-          <>
-            {/* The same dialogs the rest of the app decides a request with: accepting
+      {item.kind === "RATE_GUEST" ? null : (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {item.kind === "RESPOND_TO_REQUEST" ? (
+            <>
+              {/* The same dialogs the rest of the app decides a request with: accepting
                 and declining are irreversible, so they are never a bare click here. */}
-            <HostBookingActions bookingId={reservation.id} />
+              <HostBookingActions bookingId={reservation.id} />
+              <MessageGuestButton
+                reservation={reservation}
+                variant="ghost"
+                label={
+                  i18n.resolve(
+                    "host.v2.reservations.message_guest",
+                    "Message guest",
+                  ).text
+                }
+              />
+            </>
+          ) : item.kind === "REPLY_TO_GUEST" ? (
             <MessageGuestButton
               reservation={reservation}
-              variant="ghost"
+              variant="default"
               label={
-                i18n.resolve("host.v2.reservations.message_guest", "Message guest")
-                  .text
-              }
-            />
-          </>
-        ) : item.kind === "REPLY_TO_GUEST" ? (
-          <MessageGuestButton
-            reservation={reservation}
-            variant="default"
-            label={
-              interpolate(
-                i18n.plural(
-                  "host.v2.reservations.read_messages",
-                  reservation.unreadCount,
-                  "Read {n} message",
-                  "Read {n} messages",
-                ),
-                {},
-              ).text
-            }
-          />
-        ) : item.kind === "RATE_GUEST" ? (
-          <Button asChild size="sm">
-            <Link href={`/account/bookings/${reservation.id}/after-stay`}>
-              <Star className="size-3.5" aria-hidden />
-              {i18n.resolve("host.v2.reservations.leave_rating", "Leave rating").text}
-            </Link>
-          </Button>
-        ) : (
-          <>
-            <Button type="button" size="sm" onClick={onSelect}>
-              <CalendarCheck className="size-3.5" aria-hidden />
-              {
-                i18n.resolve(
-                  "host.v2.reservations.review_arrival",
-                  "Review arrival",
+                interpolate(
+                  i18n.plural(
+                    "host.v2.reservations.read_messages",
+                    reservation.unreadCount,
+                    "Read {n} message",
+                    "Read {n} messages",
+                  ),
+                  {},
                 ).text
               }
-            </Button>
-            <MessageGuestButton
-              reservation={reservation}
-              variant="ghost"
-              label={
-                i18n.resolve("host.v2.reservations.message_guest", "Message guest")
-                  .text
-              }
             />
-          </>
-        )}
-      </div>
+          ) : (
+            <>
+              <Button type="button" size="sm" onClick={onSelect}>
+                <CalendarCheck className="size-3.5" aria-hidden />
+                {
+                  i18n.resolve(
+                    "host.v2.reservations.review_arrival",
+                    "Review arrival",
+                  ).text
+                }
+              </Button>
+              <MessageGuestButton
+                reservation={reservation}
+                variant="ghost"
+                label={
+                  i18n.resolve(
+                    "host.v2.reservations.message_guest",
+                    "Message guest",
+                  ).text
+                }
+              />
+            </>
+          )}
+        </div>
+      )}
     </article>
   );
 }
@@ -365,11 +395,9 @@ function ReservationRow({
       onClick={onSelect}
       aria-pressed={active}
       className={cn(
-        "flex w-full items-center gap-2.5 rounded-xl border p-2 text-left transition-colors",
+        "flex w-full items-center gap-2.5 rounded-xl p-2 text-left transition-colors",
         "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]",
-        active
-          ? "border-[#d9774f] bg-[#fff4ee]"
-          : "border-transparent hover:bg-slate-50",
+        active ? "bg-[#ffe9dc]" : "hover:bg-slate-50",
         // History recedes rather than competing with work, but never so far that it
         // cannot be read.
         closed && "opacity-70",
@@ -431,7 +459,7 @@ function GroupHeading({
       <h3
         className={cn(
           "text-[0.6875rem] font-bold uppercase tracking-wider",
-          urgent ? "text-amber-700" : "text-slate-400",
+          urgent ? "text-[#a94b28]" : "text-slate-400",
         )}
       >
         {label}
@@ -528,7 +556,9 @@ export function ReservationStream({
               <ArrowDownUp className="size-3.5 text-slate-400" aria-hidden />
               {/* The current order is the useful half of this control, so it is the
                   half that survives a narrow viewport. */}
-              <span className="hidden sm:inline">{sortLabel(i18n, sort).text}</span>
+              <span className="hidden sm:inline">
+                {sortLabel(i18n, sort).text}
+              </span>
               <ChevronDown className="size-3.5 text-slate-400" aria-hidden />
             </Button>
           </DropdownMenuTrigger>
@@ -564,7 +594,8 @@ export function ReservationStream({
         {RESERVATION_FILTERS.map((value) => {
           // A chip for a slice that does not exist is a dead control. "All" always
           // stays so there is a way back from an empty search.
-          if (counts[value] === 0 && value !== "all" && value !== filter) return null;
+          if (counts[value] === 0 && value !== "all" && value !== filter)
+            return null;
           const label = filterLabel(i18n, value);
           const selected = filter === value;
           const urgent = value === "action";
@@ -575,13 +606,13 @@ export function ReservationStream({
               onClick={() => onFilterChange(value)}
               aria-pressed={selected}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[0.75rem] font-semibold transition-colors",
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[0.75rem] font-semibold transition-colors",
                 "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]",
                 selected
-                  ? "border-slate-900 bg-slate-900 text-white"
+                  ? "bg-slate-900 text-white"
                   : urgent
-                    ? "border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
-                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+                    ? "bg-[#ffe9dc] text-[#a94b28] hover:bg-[#f9dcc9]"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200/70",
                 label.translated && "notranslate",
               )}
             >

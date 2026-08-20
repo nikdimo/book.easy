@@ -108,7 +108,7 @@ describe("calendar promotion preview", () => {
     expect(quote.accommodationDiscount).toBe(30);
   });
 
-  it("keeps canonical dated-over-evergreen priority and reports when another offer wins", () => {
+  it("uses the biggest saving instead of automatically preferring a dated offer", () => {
     const { quote, proposedPromotionApplied } = computeCalendarPromotionPreview({
       ...baseInput,
       promotions: [
@@ -131,8 +131,8 @@ describe("calendar promotion preview", () => {
     });
 
     expect(proposedPromotionApplied).toBe(false);
-    expect(quote.appliedPromotion?.id).toBe("existing-dated");
-    expect(quote.accommodationSubtotal).toBe(225);
+    expect(quote.appliedPromotion?.id).toBe("evergreen");
+    expect(quote.accommodationSubtotal).toBe(150);
   });
 
   it("treats the UI end date as the exclusive checkout boundary", () => {

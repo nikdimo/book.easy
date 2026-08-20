@@ -1,3 +1,5 @@
+import type { CalendarPlatform } from "./calendar-feed-platform";
+
 /**
  * The serialized shape the v2 host calendar workspace runs on.
  *
@@ -27,6 +29,15 @@ export interface HostCalendarBlock {
   reason: string | null;
   guestName: string | null;
   bookingStatus: string | null;
+  /**
+   * The connected calendar that put this block here, on `EXTERNAL_SYNC` rows only.
+   *
+   * `feedName` is what the host called it and is shown verbatim. `feedPlatform` is
+   * resolved on the server from the feed's URL, which never crosses to the browser —
+   * it carries the private token that reads the host's real calendar.
+   */
+  feedName: string | null;
+  feedPlatform: CalendarPlatform | null;
 }
 
 export interface HostCalendarDatePrice {

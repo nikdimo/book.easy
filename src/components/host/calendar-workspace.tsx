@@ -1646,10 +1646,10 @@ function EditorDialog({
                       />
                     </p>
                     <p className={OFFER_PREVIEW_NOTE}>
-                    <Tx
-                      k="host.calendar.promotion_priority"
-                      source="Date-specific offers take priority. Otherwise, the highest qualifying minimum-stay threshold wins."
-                    />
+                      <Tx
+                        k="host.calendar.promotion_priority"
+                        source="The promotion that saves the guest most wins on each night. Different nights in one booking can use different promotions."
+                      />
                     </p>
                   </div>
                 ) : null}

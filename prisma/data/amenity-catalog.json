@@ -125,6 +125,15 @@
       "translations": {}
     },
     {
+      "key": "baking_sheet",
+      "name": "Baking sheet",
+      "category": "kitchen",
+      "icon": "chef-hat",
+      "sortOrder": 0,
+      "isActive": true,
+      "translations": {}
+    },
+    {
       "key": "balcony",
       "name": "Balcony",
       "category": "outdoor",
@@ -147,7 +156,7 @@
       "name": "Bed linens",
       "category": "bedroom",
       "icon": "bed-double",
-      "sortOrder": 10,
+      "sortOrder": 0,
       "isActive": true,
       "translations": {}
     },
@@ -236,8 +245,8 @@
       "key": "cleaning_products",
       "name": "Cleaning products",
       "category": "essentials",
-      "icon": "spray-can",
-      "sortOrder": 80,
+      "icon": "wifi",
+      "sortOrder": 0,
       "isActive": true,
       "translations": {}
     },
@@ -281,8 +290,8 @@
       "key": "cooking_basics",
       "name": "Cooking basics",
       "category": "kitchen",
-      "icon": "cooking-pot",
-      "sortOrder": 20,
+      "icon": "chef-hat",
+      "sortOrder": 0,
       "isActive": true,
       "translations": {}
     },
@@ -407,8 +416,8 @@
       "key": "freezer",
       "name": "Freezer",
       "category": "kitchen",
-      "icon": "snowflake",
-      "sortOrder": 60,
+      "icon": "chef-hat",
+      "sortOrder": 0,
       "isActive": true,
       "translations": {}
     },
@@ -443,8 +452,8 @@
       "key": "hangers",
       "name": "Hangers",
       "category": "bedroom",
-      "icon": "shirt",
-      "sortOrder": 30,
+      "icon": "bed-double",
+      "sortOrder": 0,
       "isActive": true,
       "translations": {}
     },
@@ -488,8 +497,8 @@
       "key": "hot_water",
       "name": "Hot water",
       "category": "bathroom",
-      "icon": "droplets",
-      "sortOrder": 30,
+      "icon": "bath",
+      "sortOrder": 0,
       "isActive": true,
       "translations": {}
     },
@@ -497,8 +506,8 @@
       "key": "hot_water_kettle",
       "name": "Hot water kettle",
       "category": "kitchen",
-      "icon": "cup-soda",
-      "sortOrder": 120,
+      "icon": "chef-hat",
+      "sortOrder": 0,
       "isActive": true,
       "translations": {}
     },
@@ -533,8 +542,8 @@
       "key": "lockbox",
       "name": "Lockbox",
       "category": "check_in",
-      "icon": "vault",
-      "sortOrder": 20,
+      "icon": "key-round",
+      "sortOrder": 0,
       "isActive": true,
       "translations": {}
     },
@@ -623,8 +632,8 @@
       "key": "room_darkening_shades",
       "name": "Room-darkening shades",
       "category": "bedroom",
-      "icon": "blinds",
-      "sortOrder": 50,
+      "icon": "bed-double",
+      "sortOrder": 0,
       "isActive": true,
       "translations": {}
     },
@@ -651,7 +660,7 @@
       "name": "Self check-in",
       "category": "check_in",
       "icon": "key-round",
-      "sortOrder": 10,
+      "sortOrder": 0,
       "isActive": true,
       "translations": {}
     },
@@ -785,8 +794,8 @@
       "key": "wine_glasses",
       "name": "Wine glasses",
       "category": "kitchen",
-      "icon": "wine",
-      "sortOrder": 40,
+      "icon": "chef-hat",
+      "sortOrder": 0,
       "isActive": true,
       "translations": {}
     },

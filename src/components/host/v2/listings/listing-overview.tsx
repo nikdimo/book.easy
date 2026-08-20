@@ -354,7 +354,7 @@ function ListingRow({
         {/* The link spans the row via `after:absolute`, so the whole row opens the editor
             while the controls stacked above it keep their own hit areas. */}
         <Link
-          href={`/host/listings/${listing.id}/edit`}
+          href={`/host/v2/listings/${listing.id}`}
           className="after:absolute after:inset-0 focus-visible:outline-none"
         >
           <span
@@ -493,7 +493,7 @@ function ListingTile({
         />
       </div>
       <Link
-        href={`/host/listings/${listing.id}/edit`}
+        href={`/host/v2/listings/${listing.id}`}
         className="mt-3 block after:absolute after:inset-x-0 after:bottom-0 after:top-0 focus-visible:outline-none"
       >
         <span

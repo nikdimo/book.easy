@@ -1,5 +1,7 @@
 import { PrismaClient, ListingStatus, BookingStatus, BlockType } from "@prisma/client";
 
+import { applyCalendarDemo } from "./demo-calendar";
+
 const prisma = new PrismaClient();
 
 async function main() {
@@ -523,6 +525,16 @@ async function main() {
       blockType: BlockType.MANUAL_BLOCK,
       reason: "Maintenance and cleaning",
     },
+  });
+
+  // ─── Calendar demo ──────────────────────────────────────────────────────────
+
+  // The same two months the standalone `npm run demo:calendar` applies, so a fresh
+  // seed and a working database show the calendar in exactly the same state.
+  await applyCalendarDemo(prisma, {
+    closedListingId: listing2.id,
+    openListingId: listing1.id,
+    guestIds: [guest1.id, guest2.id],
   });
 
   // ─── Audit Log ──────────────────────────────────────────────────────────────

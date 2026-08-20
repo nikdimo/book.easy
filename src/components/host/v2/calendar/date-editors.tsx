@@ -3,9 +3,9 @@
 import { useState } from "react";
 import {
   Check,
+  ChevronDown,
   LoaderCircle,
   LockKeyhole,
-  Plus,
   StickyNote,
   UnlockKeyhole,
   Undo2,
@@ -13,12 +13,17 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { interpolate, useI18n } from "@/lib/i18n/client";
-import { Input } from "@/components/ui/input";
-import { CALENDAR_ANCHOR, anchorProps } from "@/lib/host/v2/calendar-anchors";
+import { Button } from "@/components/ui/button";
 import {
-  formatShortDate,
-  type CalendarFormats,
-} from "@/lib/host/v2/calendar-format";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { CALENDAR_ANCHOR, anchorProps } from "@/lib/host/v2/calendar-anchors";
+import type { CalendarFormats } from "@/lib/host/v2/calendar-format";
 import {
   resolveSelectionStayBookability,
   selectionManualBlockNote,
@@ -44,34 +49,36 @@ import {
 } from "@/lib/host/v2/listing-status";
 import {
   selectionDates,
+  selectionRange,
   type CalendarSelection,
 } from "@/lib/host/v2/calendar-selection";
 import {
   computeSelectionQuote,
   promotionSaveMode,
   resolveSelectionPromotion,
+  selectionPromotionSummaries,
   type ProposedPromotion,
 } from "@/lib/host/v2/calendar-quote";
 import {
   promotionDraftProblem,
-  selectionLadder,
-  type PromotionBand,
   type PromotionDraftProblem,
-  type PromotionRow,
 } from "@/lib/host/v2/calendar-promotion-action";
 import type { DateChange } from "@/lib/host/v2/calendar-review";
 import { GuestQuotePanel } from "./guest-quote";
 import { PanelSlider } from "./panel-slider";
-import { HowOffersWork, PromotionBandList } from "./promotion-help";
+import {
+  HowOffersWork,
+  SelectedPromotionsDisclosure,
+} from "./promotion-help";
 import { ListingSafetyExplanation } from "./safety-banner";
 import {
   ColumnPair,
   ConsequenceLine,
   Disclosure,
-  Field,
   InfoRow,
   NumberColumn,
   StepperColumn,
+  ToggleRow,
 } from "./workbench-ui";
 import {
   currencySymbol,
@@ -171,18 +178,36 @@ export function AvailabilityEditor({
   const sellable = saleBlockers.length === 0;
 
   /**
-   * CLOSED mode has no manual block for a note to live on — closing a date there removes
-   * an explicit open window instead — so the field is never offered in that mode.
+   * Blocking asks for confirmation, and carries an optional private note while it does.
+   * The note is offered in both availability modes because blocking now writes a
+   * MANUAL_BLOCK in both — see calendar-v2.actions.ts.
    */
-  const supportsNote = listing.availabilityMode === "OPEN";
-  const [note, setNote] = useState("");
   const [noteOpen, setNoteOpen] = useState(false);
+  /** Lives only for as long as the confirm dialog is open. */
+  const [noteDraft, setNoteDraft] = useState("");
   /**
    * The note already stored against these exact dates. Shown, never edited: the
    * canonical block service writes a note only onto the blocks it creates, so a field
    * offering to rewrite this one would be a promise the save could not keep.
    */
   const storedNote = selectionManualBlockNote(listing, selection);
+
+  const blockLabel = interpolate(
+    i18n.plural(
+      "host.v2.calendar.editor.cta_block",
+      model.blockable.length,
+      "Block {n} night",
+      "Block {n} nights",
+    ),
+    {},
+  ).text;
+
+  /** An empty note is a real answer, so it is sent as null rather than "". */
+  function confirmBlock() {
+    if (pending) return;
+    setNoteOpen(false);
+    onApply("BLOCK", noteDraft.trim() ? noteDraft.trim() : null);
+  }
 
   return (
     <div
@@ -198,7 +223,7 @@ export function AvailabilityEditor({
             // The note went with the block that was just written. Dismissing the
             // result is the host saying they are done with it, so the field starts
             // empty rather than re-offering words already saved somewhere.
-            setNote("");
+            setNoteDraft("");
             setNoteOpen(false);
             onDismissResult();
           }}
@@ -251,10 +276,10 @@ export function AvailabilityEditor({
               : canOpen
                 ? interpolate(
                     i18n.plural(
-                      "host.v2.calendar.editor.state_all_blocked",
+                      "host.v2.calendar.editor.state_all_unavailable",
                       model.openable.length,
-                      "This night is blocked.",
-                      "These {n} nights are blocked.",
+                      "This night is not available to guests.",
+                      "These {n} nights are not available to guests.",
                     ),
                     {},
                   ).text
@@ -274,18 +299,11 @@ export function AvailabilityEditor({
               tone={canOpen ? "quiet" : "strong"}
               icon={LockKeyhole}
               disabled={pending}
-              onClick={() => onApply("BLOCK", supportsNote ? note : null)}
-              label={
-                interpolate(
-                  i18n.plural(
-                    "host.v2.calendar.editor.cta_block",
-                    model.blockable.length,
-                    "Block {n} night",
-                    "Block {n} nights",
-                  ),
-                  {},
-                ).text
-              }
+              onClick={() => {
+                setNoteDraft("");
+                setNoteOpen(true);
+              }}
+              label={blockLabel}
             />
           ) : null}
           {canOpen ? (
@@ -355,57 +373,63 @@ export function AvailabilityEditor({
         </ConsequenceLine>
       ) : null}
 
-      {/* The private note, in the panel rather than behind a dialog. It is written by
-          the block that is about to be created, so it is offered only where blocking is
-          what the host is about to do. */}
-      {supportsNote && canBlock && !result ? (
-        noteOpen ? (
-          <Field
-            label={
-              i18n.resolve("host.v2.calendar.block_note_label_short", "Private note")
-                .text
-            }
-            htmlFor="host-v2-block-note"
-            hint={
-              i18n.resolve(
-                "host.v2.calendar.block_note_hint",
-                "Only you can see this note.",
-              ).text
-            }
-          >
-            <Input
-              id="host-v2-block-note"
-              value={note}
-              maxLength={200}
-              autoFocus
-              // Inset: the panel sits flush against the right edge of the window, so a
-              // ring drawn outside the field was drawn outside the screen.
-              className="min-h-11 border-0 bg-slate-50 shadow-none focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#d9774f]"
-              onChange={(event) => setNote(event.target.value)}
-              placeholder={
+      {/* Blocking asks before it acts, and the note is the one thing worth asking for
+          while it does. Optional throughout: the primary button commits with or without
+          it, so a host who just wants the nights gone is never made to type. */}
+      <Dialog open={noteOpen} onOpenChange={setNoteOpen}>
+        <DialogContent variant="sheet" className="md:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{blockLabel}</DialogTitle>
+            <DialogDescription>
+              {
                 i18n.resolve(
-                  "host.v2.calendar.block_note_placeholder",
-                  "e.g. Maintenance or private stay",
+                  "host.v2.calendar.block_note_prompt",
+                  "Add a private note if you want to remember why. Only you can see it, and it is optional.",
                 ).text
               }
-            />
-          </Field>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setNoteOpen(true)}
-            className="flex min-h-11 items-center gap-1.5 self-start text-[0.8125rem] font-semibold text-[#a94b28] transition-colors duration-150 hover:text-[#8f3d21] motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]"
-          >
-            <StickyNote className="size-4" aria-hidden />
-            {
+            </DialogDescription>
+          </DialogHeader>
+          <input
+            id="host-v2-block-note"
+            type="text"
+            value={noteDraft}
+            maxLength={200}
+            autoFocus
+            aria-label={
               i18n.resolve(
-                "host.v2.calendar.editor.add_note",
-                "Add a private note",
+                "host.v2.calendar.block_note_label_short",
+                "Private note",
               ).text
             }
-          </button>
-        )
-      ) : null}
+            className="min-h-11 w-full rounded-lg border-0 bg-slate-50 px-3 py-1 text-[0.8125rem] text-slate-900 outline-none transition-colors duration-150 placeholder:text-slate-400 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#a94b28]"
+            onChange={(event) => setNoteDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter") return;
+              event.preventDefault();
+              confirmBlock();
+            }}
+            placeholder={
+              i18n.resolve(
+                "host.v2.calendar.block_note_placeholder",
+                "e.g. Maintenance or private stay",
+              ).text
+            }
+          />
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={pending}
+              onClick={() => setNoteOpen(false)}
+            >
+              {i18n.resolve("host.v2.calendar.block_note_cancel", "Cancel").text}
+            </Button>
+            <Button type="button" disabled={pending} onClick={confirmBlock}>
+              {blockLabel}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* A note the host already wrote against exactly these dates. */}
       {storedNote ? (
@@ -1040,12 +1064,9 @@ const MAX_DISCOUNT = 50;
 /**
  * One offer, and an honest account of whether a guest would ever see it.
  *
- * Offers stack — that is the design, and it is what makes "10% for ten nights, 20% for
- * twenty" possible — but only one ever reaches a guest. The panel used to hide that
- * behind a line promising a new dated offer "will take priority", which is untrue
- * against another dated offer with a bigger discount. So the editor now shows the whole
- * ladder underneath it, computed by the rule the booking transaction actually uses, and
- * says out loud when the offer being drafted would never win.
+ * Multiple offers can run together, making "10% for ten nights, 20% for twenty"
+ * possible. One wins per night based on guest savings, and the selected-date summary
+ * explains which saved offers affect the range and where they win.
  *
  * Creating and editing apply immediately, like price and availability. Taking a saved
  * offer away still goes through the review dialog: it is the one act here that removes
@@ -1055,31 +1076,58 @@ export function PromotionEditor({
   listing,
   formats,
   selection,
+  promotionEditorId,
   change,
   onChange,
   pending,
   result,
   onApply,
+  onSelectPromotion,
   onUndo,
   onDismissResult,
 }: {
   listing: HostCalendarListing;
   formats: CalendarFormats;
   selection: CalendarSelection;
+  promotionEditorId: string | null;
   /** Still used for the one reviewed act: removing a saved offer. */
   change: DateChange | null;
   onChange: (change: DateChange | null) => void;
   pending: boolean;
   result: DateActionResult | null;
   onApply: (offer: ProposedPromotion) => void;
+  onSelectPromotion: (
+    promotion: HostCalendarListing["promotions"][number],
+  ) => void;
   onUndo: () => void;
   onDismissResult: () => void;
 }) {
   const i18n = useI18n();
-  const existing = resolveSelectionPromotion(listing, selection);
+  const targetedPromotion = promotionEditorId
+    ? (listing.promotions.find(
+        (promotion) => promotion.id === promotionEditorId,
+      ) ?? null)
+    : null;
+  const existing = targetedPromotion ?? resolveSelectionPromotion(listing, selection);
   const saveMode = promotionSaveMode(existing, selection);
   const currency = listing.pricing?.currency ?? "EUR";
   const nights = selectionDates(selection).length;
+  const existingSummaries = selectionPromotionSummaries(listing, selection);
+  const createdResult =
+    result?.kind === "PROMOTION" && !result.edited ? result : null;
+  const { startDate: selectionStart, endDate: selectionEnd } =
+    selectionRange(selection);
+  const highlightedPromotionId = createdResult
+    ? (listing.promotions
+        .filter(
+          (promotion) =>
+            promotion.startDate === selectionStart &&
+            promotion.endDate === selectionEnd &&
+            promotion.discountPercent === createdResult.discountPercent,
+        )
+        .sort((left, right) => right.createdAt.localeCompare(left.createdAt))[0]?.id ??
+      null)
+    : null;
 
   /**
    * Deliberately writing a second offer on dates that already carry one.
@@ -1088,11 +1136,19 @@ export function PromotionEditor({
    * a ladder could never be built on one range. Set from the list below, and it only
    * changes which offer the save names: an id updates, no id creates.
    */
-  const [addingAnother, setAddingAnother] = useState(false);
+  const [editorMode, setEditorMode] = useState<"list" | "create" | "edit">(
+    () =>
+      targetedPromotion
+        ? "edit"
+        : existingSummaries.length > 0
+          ? "list"
+          : "create",
+  );
 
   // An offer whose own dates are exactly this range is the one being edited; anything
   // else on screen is context, and its numbers must not become this draft's defaults.
-  const editing = saveMode === "EDIT" && !addingAnother ? existing : null;
+  const editing =
+    editorMode === "edit" && saveMode === "EDIT" ? existing : null;
   const [percent, setPercent] = useState(editing?.discountPercent ?? 10);
   const [percentDraft, setPercentDraft] = useState<string | null>(null);
   const [minimumNights, setMinimumNights] = useState(
@@ -1112,17 +1168,46 @@ export function PromotionEditor({
     freeCleaning,
     roundToWholeUnit: percent > 0 && roundToWholeUnit,
   };
-  const rows = selectionLadder({ listing, selection, draft });
-  const bands = rows.flatMap((row) => row.bands);
-  const problem = promotionDraftProblem({ draft, bands, nights });
   const removingSaved = change?.kind === "PROMOTION_REMOVE";
+
+  const beginCreate = () => {
+    onDismissResult();
+    setPercent(10);
+    setPercentDraft(null);
+    setMinimumNights(1);
+    setFreeCleaning(false);
+    setRoundToWholeUnit(true);
+    setEditorMode("create");
+  };
+  const visibleMode = createdResult ? "list" : editorMode;
 
   // The guest total for the offer as drafted, from the same function the booking
   // transaction prices with. Nothing is recomputed here.
+  const hasBenefit = draft.discountPercent > 0 || draft.freeCleaning;
   const quote = computeSelectionQuote({
     listing,
     selection,
-    proposedPromotion: problem?.code === "NO_BENEFIT" ? null : draft,
+    proposedPromotion: hasBenefit ? draft : null,
+  });
+  const draftApplied = Boolean(
+    quote?.appliedPromotions.some((promotion) =>
+      editing?.id
+        ? promotion.id === editing.id
+        : !listing.promotions.some((saved) => saved.id === promotion.id),
+    ),
+  );
+  const winningPromotion = quote?.appliedPromotion ?? null;
+  const problem = promotionDraftProblem({
+    draft,
+    bands: [],
+    nights,
+    draftApplied,
+    winningPromotion: winningPromotion
+      ? {
+          discountPercent: winningPromotion.discountPercent ?? 0,
+          evergreen: !winningPromotion.startDate && !winningPromotion.endDate,
+        }
+      : null,
   });
 
   if (removingSaved) {
@@ -1150,6 +1235,54 @@ export function PromotionEditor({
     );
   }
 
+  if (visibleMode === "list") {
+    return (
+      <div
+        {...anchorProps(CALENDAR_ANCHOR.promotionEditor)}
+        className="flex flex-col gap-4"
+      >
+        {createdResult ? (
+          <ActionResult
+            result={createdResult}
+            pending={pending}
+            onUndo={onUndo}
+            onDismiss={() => {
+              setEditorMode("list");
+              onDismissResult();
+            }}
+          />
+        ) : null}
+        <SelectedPromotionsDisclosure
+          summaries={existingSummaries}
+          selectedNights={nights}
+          formats={formats}
+          defaultOpen
+          highlightedPromotionId={highlightedPromotionId}
+          onSelect={onSelectPromotion}
+        />
+        <button
+          type="button"
+          onClick={beginCreate}
+          className={cn(
+            "flex min-h-12 items-center justify-center rounded-xl px-4 text-[0.875rem] font-semibold",
+            "bg-[#d9774f] text-white transition-colors duration-150 hover:bg-[#c2643e]",
+            "motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]",
+          )}
+        >
+          {
+            i18n.resolve(
+              "host.v2.calendar.cta.add_promotion",
+              "Add another promotion",
+            ).text
+          }
+        </button>
+        <div className="border-t border-slate-100 pt-3">
+          <HowOffersWork />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       {...anchorProps(CALENDAR_ANCHOR.promotionEditor)}
@@ -1164,19 +1297,49 @@ export function PromotionEditor({
         />
       ) : null}
 
-      <h3 className="text-[0.9375rem] font-semibold text-slate-900">
-        {
-          interpolate(
-            i18n.plural(
-              "host.v2.calendar.editor.promotion_heading",
-              nights,
-              "Discount for {n} night",
-              "Discount for {n} nights",
-            ),
-            {},
-          ).text
-        }
-      </h3>
+      {existingSummaries.length > 0 ? (
+        <button
+          type="button"
+          onClick={() => setEditorMode("list")}
+          className="flex min-h-10 w-full items-center justify-between rounded-lg bg-slate-50 px-3 text-left text-[0.8125rem] font-semibold text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#a94b28]"
+        >
+          <span>
+            {interpolate(
+              i18n.plural(
+                "host.v2.calendar.editor.view_promotions_count",
+                existingSummaries.length,
+                "View {n} promotion for these dates",
+                "View {n} promotions for these dates",
+              ),
+              {},
+            ).text}
+          </span>
+          <ChevronDown className="size-4 shrink-0 text-slate-400" aria-hidden />
+        </button>
+      ) : null}
+
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-[0.9375rem] font-semibold text-slate-900">
+          {editing
+            ? i18n.resolve(
+                "host.v2.calendar.editor.edit_promotion",
+                "Edit promotion",
+              ).text
+            : i18n.resolve(
+                "host.v2.calendar.listing.new_promotion",
+                "New promotion",
+              ).text}
+        </h3>
+        {existingSummaries.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => setEditorMode("list")}
+            className="min-h-9 text-[0.75rem] font-semibold text-slate-500 transition-colors hover:text-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]"
+          >
+            {i18n.resolve("host.v2.calendar.cancel", "Cancel").text}
+          </button>
+        ) : null}
+      </div>
 
       {/* The two numbers an offer is made of, in the same two-column shape the price
           editor uses, spaced evenly so each sits under its own label. */}
@@ -1249,9 +1412,62 @@ export function PromotionEditor({
         formatPreset={(value) => `${value}%`}
       />
 
+      {/* Beside the slider, not behind a disclosure: waiving the fee moves what a
+          guest pays by an amount the host is weighing against the percentage, and a
+          choice they cannot see while making the other one is a choice they make
+          twice. */}
+      {listing.pricing && listing.pricing.cleaningFee > 0 ? (
+        <ToggleRow
+          checked={freeCleaning}
+          disabled={pending}
+          onChange={setFreeCleaning}
+          label={
+            i18n.resolve(
+              "host.v2.calendar.promotion_free_cleaning",
+              "Also waive the cleaning fee",
+            ).text
+          }
+          description={
+            interpolate(
+              i18n.resolve(
+                "host.v2.calendar.promotion_free_cleaning_hint",
+                "Guests save a further {amount}",
+              ),
+              {
+                amount: money(
+                  listing.pricing.cleaningFee,
+                  currency,
+                  formats,
+                ),
+              },
+            ).text
+          }
+        />
+      ) : null}
+
+      <ToggleRow
+        checked={percent > 0 && roundToWholeUnit}
+        disabled={percent <= 0 || pending}
+        onChange={setRoundToWholeUnit}
+        label={
+          i18n.resolve(
+            "host.v2.calendar.promotion_round",
+            "Round discounted nightly prices",
+          ).text
+        }
+        description={
+          i18n.resolve(
+            "host.v2.calendar.promotion_round_hint",
+            "Round each discounted night to the nearest whole amount",
+          ).text
+        }
+      />
+
       {problem ? <DraftProblem problem={problem} /> : null}
 
-      {quote && problem?.code !== "NO_BENEFIT" ? (
+      {quote &&
+      problem?.code !== "NO_BENEFIT" &&
+      problem?.code !== "MINIMUM_ABOVE_SELECTION" ? (
         <div className="border-t border-slate-100 pt-3">
           <GuestResult
             quote={quote}
@@ -1276,75 +1492,17 @@ export function PromotionEditor({
         {editing
           ? i18n.resolve(
               "host.v2.calendar.editor.update_offer",
-              "Update this offer",
+              "Save changes",
             ).text
           : i18n.resolve(
               "host.v2.calendar.editor.start_offer",
-              "Start this offer",
+              "Create promotion",
             ).text}
       </button>
 
-      <Disclosure
-        label={i18n.resolve("host.v2.calendar.editor.more_options", "More options").text}
-      >
-        <div className="flex flex-col gap-2 pt-1">
-          {listing.pricing && listing.pricing.cleaningFee > 0 ? (
-            <label className="flex min-h-11 items-center gap-2 text-slate-700">
-              <input
-                type="checkbox"
-                checked={freeCleaning}
-                onChange={(event) => setFreeCleaning(event.target.checked)}
-                className="size-4 rounded border-slate-300 accent-[#d9774f]"
-              />
-              {
-                i18n.resolve(
-                  "host.v2.calendar.promotion_free_cleaning",
-                  "Also waive the cleaning fee",
-                ).text
-              }
-            </label>
-          ) : null}
-          <label className="flex min-h-11 items-start gap-2 py-2 text-slate-700">
-            <input
-              type="checkbox"
-              checked={percent > 0 && roundToWholeUnit}
-              disabled={percent <= 0}
-              onChange={(event) => setRoundToWholeUnit(event.target.checked)}
-              className="mt-0.5 size-4 rounded border-slate-300 accent-[#d9774f] disabled:opacity-50"
-            />
-            <span>
-              {
-                i18n.resolve(
-                  "host.v2.calendar.promotion_round",
-                  "Round the discounted nightly price to a whole amount",
-                ).text
-              }
-            </span>
-          </label>
-        </div>
-      </Disclosure>
-
-      <PromotionLadder
-        rows={rows}
-        bands={bands}
-        nights={nights}
-        rangeLabel={`${formatShortDate(selection.start, formats)} – ${formatShortDate(
-          selection.end,
-          formats,
-        )}`}
-        // Only where saving would otherwise replace what is already here. On any other
-        // range a save already creates, so the control would promise nothing new.
-        onAddAnother={
-          saveMode === "EDIT" && !addingAnother
-            ? () => {
-                setAddingAnother(true);
-                // A new rung on the ladder needs a minimum of its own; starting it on
-                // the one already taken would only produce two offers that collide.
-                setMinimumNights((editing?.minimumNights ?? 1) + 1);
-              }
-            : undefined
-        }
-      />
+      <div className="border-t border-slate-100 pt-3">
+        <HowOffersWork />
+      </div>
 
       {editing ? (
         <button
@@ -1388,7 +1546,7 @@ function DraftProblem({ problem }: { problem: PromotionDraftProblem }) {
           interpolate(
             i18n.resolve(
               "host.v2.calendar.editor.promotion_minimum_unreachable",
-              "Your minimum is {minimum} nights but you have selected {nights}, so a guest booking exactly these dates will not qualify. A longer stay covering them still can.",
+              "This promotion requires a {minimum}-night stay. Guests staying {minimum} nights or more can receive the discount on the selected nights.",
             ),
             { minimum: problem.minimumNights, nights: problem.nights },
           ).text
@@ -1402,100 +1560,11 @@ function DraftProblem({ problem }: { problem: PromotionDraftProblem }) {
         interpolate(
           i18n.resolve(
             "host.v2.calendar.editor.promotion_never_wins",
-            "This offer would never reach a guest. An existing {percent}% offer already covers these dates and wins, because a bigger discount takes priority.",
+            "This promotion would not apply. An existing {percent}% promotion saves more on every selected night.",
           ),
           { percent: problem.discountPercent },
         ).text
       }
     </ConsequenceLine>
-  );
-}
-
-/**
- * Every offer on these dates, and the stay lengths each one actually wins.
- *
- * The bands come from the booking rule itself, so this cannot drift from what a guest is
- * charged. The rules behind it sit in a disclosure: they are the answer to "why is only
- * one applying", which is a question a host asks once and then needs again months later.
- */
-function PromotionLadder({
-  rows,
-  bands,
-  nights,
-  rangeLabel,
-  onAddAnother,
-}: {
-  rows: PromotionRow[];
-  bands: PromotionBand[];
-  nights: number;
-  rangeLabel: string;
-  /**
-   * Start a second offer on the same dates instead of editing the one already there.
-   * Offered only where an offer covers exactly this range — anywhere else, saving
-   * already creates rather than replaces.
-   */
-  onAddAnother?: () => void;
-}) {
-  const i18n = useI18n();
-  const winner = bands.find(
-    (band) => nights >= band.fromNights && nights <= band.toNights,
-  );
-
-  return (
-    <div className="flex flex-col gap-2 border-t border-slate-100 pt-3">
-      <h4 className="text-[0.8125rem] font-semibold text-slate-900">
-        {
-          interpolate(
-            i18n.resolve(
-              "host.v2.calendar.editor.offers_on",
-              "Offers on {range}",
-            ),
-            { range: rangeLabel },
-          ).text
-        }
-      </h4>
-
-      <PromotionBandList rows={rows} showScope />
-
-      <ConsequenceLine tone={winner ? "good" : "neutral"}>
-        {winner
-          ? interpolate(
-              i18n.plural(
-                "host.v2.calendar.editor.winner_for_selection",
-                nights,
-                "A guest booking this night gets {percent}% off.",
-                "A guest booking these {n} nights gets {percent}% off.",
-              ),
-              { percent: winner.discountPercent },
-            ).text
-          : interpolate(
-              i18n.plural(
-                "host.v2.calendar.editor.winner_none",
-                nights,
-                "A guest booking this night gets no discount.",
-                "A guest booking these {n} nights gets no discount.",
-              ),
-              {},
-            ).text}
-      </ConsequenceLine>
-
-      {onAddAnother ? (
-        <button
-          type="button"
-          onClick={onAddAnother}
-          className="flex min-h-11 items-center gap-1.5 self-start text-[0.8125rem] font-semibold text-[#a94b28] transition-colors duration-150 hover:text-[#8f3d21] motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]"
-        >
-          <Plus className="size-4" aria-hidden />
-          {
-            i18n.resolve(
-              "host.v2.calendar.editor.add_another_offer",
-              "Add another offer on these dates",
-            ).text
-          }
-        </button>
-      ) : null}
-
-      <HowOffersWork />
-    </div>
   );
 }

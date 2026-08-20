@@ -38,6 +38,7 @@ PREVIOUS_BUILD_DIR=".next-previous"
 # yet in origin/main. The control panel's full-deploy path clears those with
 # `git clean -fd` after resetting to origin/main.
 FAST_DEPLOY="${FAST_DEPLOY:-0}"
+SKIP_RELEASE_I18N="${SKIP_RELEASE_I18N:-0}"
 LOCKFILE_STAMP="node_modules/.deploy-lockfile-hash"
 
 if [ "$FAST_DEPLOY" = "1" ]; then
@@ -164,10 +165,10 @@ else
 fi
 
 if [ "$FAST_DEPLOY" = "1" ]; then
-  # These three sync content catalogs, not code. Option 5 (full release) is what
+  # These steps sync content catalogs, not code. Option 5 (full release) is what
   # regenerates and validates them, so a code-only fast deploy leaves production's
-  # current amenity and translation data exactly as it is.
-  echo "[deploy] Skipping amenity import and translation import/sync"
+  # current amenity, room-type, and translation data exactly as it is.
+  echo "[deploy] Skipping amenity/room imports and translation import/sync"
 else
   echo "[deploy] Adding amenities that are missing from production"
   # The release snapshot is exported from the local database by Control Panel option 5.
@@ -175,17 +176,26 @@ else
   # settings remain untouched.
   npm run amenities:import
 
-  echo "[deploy] Importing reviewed AI translations"
-  # This imports only the version-controlled fixed-UI translation snapshot. It preserves
-  # current production manual overrides, touches no user/listing/booking data, validates
-  # the snapshot against the exact built catalog, and exits non-zero before restart if
-  # completeness verification fails.
-  npm run i18n:import-reviewed
+  echo "[deploy] Adding room types that are missing from production"
+  # The room taxonomy is also exported from the local database by Control Panel
+  # option 5. Its importer preserves production-only rows and current settings.
+  npm run rooms:import
 
-  echo "[deploy] Syncing new and changed UI translations"
-  # The build's prebuild hook regenerates the AST-validated catalog. Sync after a
-  # successful build so new UI copy is translated before the new process is restarted.
-  npm run i18n:sync
+  if [ "$SKIP_RELEASE_I18N" = "1" ]; then
+    echo "[deploy] Pre-launch release: leaving production translations unchanged"
+  else
+    echo "[deploy] Importing reviewed AI translations"
+    # This imports only the version-controlled fixed-UI translation snapshot. It preserves
+    # current production manual overrides, touches no user/listing/booking data, validates
+    # the snapshot against the exact built catalog, and exits non-zero before restart if
+    # completeness verification fails.
+    npm run i18n:import-reviewed
+
+    echo "[deploy] Syncing new and changed UI translations"
+    # The build's prebuild hook regenerates the AST-validated catalog. Sync after a
+    # successful build so new UI copy is translated before the new process is restarted.
+    npm run i18n:sync
+  fi
 fi
 
 # Deliberately not running `npm test` here: the test suite writes throwaway fixture

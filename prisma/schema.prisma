@@ -578,6 +578,7 @@ model Listing {
   property           Property            @relation(fields: [propertyId], references: [id])
   host               User                @relation(fields: [hostId], references: [id])
   images             ListingImage[]
+  rooms              ListingRoom[]
   amenities          ListingAmenity[]
   pricingRule        PricingRule?
   datePrices         ListingDatePrice[]
@@ -655,14 +656,151 @@ model ListingImage {
   url          String
   mediaType    ListingMediaType @default(IMAGE)
   alt          String?
+  /** Listing-level sequence: the order a guest sees in the gallery, and the order the
+   *  editor's All photos view shows. Independent of `roomOrder`. */
   displayOrder Int              @default(0)
   isPrimary    Boolean          @default(false)
+  /** The space this photo belongs to, or null for Other / Unassigned. Photos are never
+   *  required to have one — a host uploads first and organises later — and deleting a
+   *  room nulls this rather than taking the photos down with it. */
+  roomId       String?
+  /** Sequence within `room`, kept apart from `displayOrder` so reordering a room's
+   *  photo tour cannot silently rewrite the listing's gallery order. */
+  roomOrder    Int              @default(0)
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
 
-  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listing Listing      @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  room    ListingRoom? @relation(fields: [roomId], references: [id], onDelete: SetNull)
 
   @@index([listingId])
+  @@index([roomId])
+}
+
+// ─── Rooms and spaces ───────────────────────────────────────────────────────────
+
+/**
+ * A group of room types ("Interior", "Outdoor"), owned by admins rather than by code so
+ * the taxonomy can grow from Settings without a deploy — the same arrangement
+ * AmenityCategory has, and reconciled onto production by the same kind of release
+ * snapshot.
+ */
+model RoomTypeCategory {
+  id        String   @id @default(cuid())
+  /** Stable slug used by the release snapshot and by `rooms.categories.<key>`. */
+  key       String   @unique
+  /** English label, and the source text every translation is measured against. */
+  name      String   @unique
+  icon      String?
+  /** Admin-defined display order, ascending, in every room picker. */
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  roomTypes    RoomType[]
+  translations RoomTypeCategoryTranslation[]
+
+  @@index([isActive])
+}
+
+/** One kind of space a property can have — "Bedroom", "Terrace", "Sauna". */
+model RoomType {
+  id         String  @id @default(cuid())
+  name       String  @unique
+  /** Stable slug: survives renames, and matches `rooms.types.<key>` in the UI string
+   *  catalog so a catalog row and its reviewed translation stay linked. */
+  key        String  @unique
+  categoryId String
+  icon       String?
+  sortOrder  Int     @default(0)
+  /**
+   * Whether one property can hold several of these. A repeatable type numbers its
+   * instances ("Bedroom 1", "Bedroom 2"); a singular one stays unnumbered, because
+   * "Kitchen 1" reads as a mistake on a property that only has the one.
+   */
+  isRepeatable Boolean  @default(true)
+  /**
+   * Offered up front in a listing's rooms rail before the host has created anything, as
+   * a greyed row holding a zero. It becomes a real ListingRoom the moment a photo lands
+   * on it — which is what saves a host from facing an empty rail and having to invent
+   * the vocabulary of their own flat.
+   */
+  isStandard   Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
+
+  category     RoomTypeCategory @relation(fields: [categoryId], references: [id])
+  rooms        ListingRoom[]
+  translations RoomTypeTranslation[]
+
+  @@index([isActive])
+  @@index([categoryId])
+}
+
+/** Admin-authored room type label per language, resolved ahead of the reviewed source
+ *  catalog — same resolution order, and same reasoning, as AmenityTranslation. */
+model RoomTypeTranslation {
+  id         String @id @default(cuid())
+  roomTypeId String
+  locale     String
+  label      String
+  /** Typed by an admin rather than filled by the AI pass, so a re-fill leaves it. */
+  isManuallyEdited Boolean  @default(false)
+  updatedAt        DateTime @default(now()) @updatedAt
+
+  roomType RoomType @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+  language Language @relation(fields: [locale], references: [code], onDelete: Cascade)
+
+  @@unique([roomTypeId, locale])
+  @@index([locale])
+}
+
+model RoomTypeCategoryTranslation {
+  id         String @id @default(cuid())
+  categoryId String
+  locale     String
+  label      String
+  isManuallyEdited Boolean  @default(false)
+  updatedAt        DateTime @default(now()) @updatedAt
+
+  category RoomTypeCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  language Language         @relation(fields: [locale], references: [code], onDelete: Cascade)
+
+  @@unique([categoryId, locale])
+  @@index([locale])
+}
+
+/**
+ * One space inside one listing — the "Bedroom 2" a host drags photos onto.
+ *
+ * The structured type stays in `roomTypeId` so a room can be grouped, translated and
+ * counted whatever the host calls it; `displayName` is an optional override ("Master
+ * bedroom") that never becomes the only way to tell what kind of room this is.
+ */
+model ListingRoom {
+  id          String   @id @default(cuid())
+  listingId   String
+  roomTypeId  String
+  /** 1-based position among this listing's rooms of the same type, and what the "2" in
+   *  "Bedroom 2" comes from. Always 1 for a type that is not repeatable. */
+  ordinal     Int      @default(1)
+  displayName String?
+  /** Host-defined order of the photo tour, ascending. */
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  listing  Listing        @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  roomType RoomType       @relation(fields: [roomTypeId], references: [id])
+  images   ListingImage[]
+
+  /** One "Bedroom 2" per listing. Also what lets the first-open seeding insert with
+   *  skipDuplicates instead of racing itself when two requests arrive together. */
+  @@unique([listingId, roomTypeId, ordinal])
+  @@index([listingId])
+  @@index([roomTypeId])
 }
 
 // ─── Amenities ──────────────────────────────────────────────────────────────────
@@ -1454,9 +1592,11 @@ model Language {
   lastSelectedAt   DateTime?
   createdAt        DateTime  @default(now())
 
-  translations                UiTranslation[]
-  amenityTranslations         AmenityTranslation[]
-  amenityCategoryTranslations AmenityCategoryTranslation[]
+  translations                 UiTranslation[]
+  amenityTranslations          AmenityTranslation[]
+  amenityCategoryTranslations  AmenityCategoryTranslation[]
+  roomTypeTranslations         RoomTypeTranslation[]
+  roomTypeCategoryTranslations RoomTypeCategoryTranslation[]
 
   @@index([isEnabled])
 }

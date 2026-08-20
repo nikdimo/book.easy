@@ -4,7 +4,7 @@ import {
   ctaForEditor,
   editorScope,
   leavingLosesWork,
-  listingConnectionsHref,
+  CONNECTIONS_VIEW,
   MENU_VIEW,
   MINIMUM_STAY_TARGET,
   openEditor,
@@ -155,12 +155,15 @@ describe("the sticky primary action", () => {
 });
 
 describe("connected calendars", () => {
-  it("points at the existing management surface rather than a second copy", () => {
-    // `/host/listings/[id]/availability` is the route that renders
-    // `CalendarConnections`; the panel links there and owns no sync logic of its own.
-    expect(listingConnectionsHref("listing-1")).toBe(
-      "/host/listings/listing-1/availability",
-    );
+  it("is a view of the panel, so the host never leaves the calendar for it", () => {
+    expect(CONNECTIONS_VIEW).toEqual({ kind: "connections" });
+  });
+
+  it("stages nothing, so leaving it can never prompt about lost work", () => {
+    // Connecting or disconnecting takes effect when asked for; only an editor holds a
+    // draft, and the discard prompt must stay reserved for one.
+    expect(leavingLosesWork(CONNECTIONS_VIEW, true)).toBe(false);
+    expect(backFrom(CONNECTIONS_VIEW)).toEqual(MENU_VIEW);
   });
 });
 

@@ -117,7 +117,7 @@ describe("pricing and promotion mutation service", () => {
     );
   });
 
-  it("rejects invalid and overlapping promotions without writing", async () => {
+  it("rejects invalid promotions but allows intentional date overlaps", async () => {
     await expect(
       savePromotionForManagedListing(listing, "host-1", {
         discountPercent: 51,
@@ -150,11 +150,16 @@ describe("pricing and promotion mutation service", () => {
         startDate: "2026-09-10",
         endDate: "2026-09-25",
       }),
-    ).resolves.toEqual({
-      error:
-        "Another promotion already uses this minimum stay for an overlapping date scope.",
+    ).resolves.toEqual({ success: "Promotion created." });
+    expect(mocks.promotionCreate).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        listingId: "listing-1",
+        discountPercent: 20,
+        minimumNights: 2,
+        startDate: new Date("2026-09-10T00:00:00.000Z"),
+        endDate: new Date("2026-09-25T00:00:00.000Z"),
+      }),
     });
-    expect(mocks.promotionCreate).not.toHaveBeenCalled();
   });
 
   it("creates and removes valid promotions with actor audit attribution", async () => {

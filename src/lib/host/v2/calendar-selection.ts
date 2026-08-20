@@ -8,6 +8,11 @@ import {
 export interface CalendarSelection {
   start: string;
   end: string;
+  /**
+   * Explicit dates selected with Ctrl/⌘-click. Omitted for the normal contiguous
+   * range gesture, which keeps the common path compact.
+   */
+  dates?: string[];
 }
 
 export type SelectionRejection = "past";
@@ -30,6 +35,16 @@ export interface SelectionResult {
 
 function ordered(a: string, b: string): CalendarSelection {
   return compareYmd(a, b) <= 0 ? { start: a, end: b } : { start: b, end: a };
+}
+
+function selectionFromDates(dates: Iterable<string>): CalendarSelection | null {
+  const selected = [...new Set(dates)].sort(compareYmd);
+  if (selected.length === 0) return null;
+  return {
+    start: selected[0],
+    end: selected[selected.length - 1],
+    dates: selected,
+  };
 }
 
 export function isPastDate(date: string, today: string): boolean {
@@ -101,6 +116,26 @@ export function extendSelection(
 }
 
 /**
+ * Ctrl/⌘-click toggles exactly one date while preserving every other selected date.
+ * Unlike a normal click, this may produce a non-contiguous selection.
+ */
+export function toggleDate(
+  current: CalendarSelection | null,
+  date: string,
+  today: string,
+): SelectionResult {
+  if (isPastDate(date, today)) {
+    return { selection: current, anchor: current?.start ?? null, rejected: "past" };
+  }
+  const selected = selectionDates(current);
+  const next = selected.includes(date)
+    ? selected.filter((selectedDate) => selectedDate !== date)
+    : [...selected, date];
+  const selection = selectionFromDates(next);
+  return { selection, anchor: selection ? date : null };
+}
+
+/**
  * A whole run chosen in one gesture — a completed pointer drag.
  *
  * Unlike the click path this never toggles and never starts over: the host has already
@@ -123,6 +158,7 @@ export function selectionDates(
   selection: CalendarSelection | null,
 ): string[] {
   if (!selection) return [];
+  if (selection.dates) return selection.dates;
   return eachYmdInclusive(selection.start, selection.end);
 }
 
@@ -151,6 +187,7 @@ export function isSelected(
   date: string,
 ): boolean {
   if (!selection) return false;
+  if (selection.dates) return selection.dates.includes(date);
   return (
     compareYmd(date, selection.start) >= 0 &&
     compareYmd(date, selection.end) <= 0

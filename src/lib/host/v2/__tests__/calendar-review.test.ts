@@ -855,6 +855,8 @@ describe("listing review — publish readiness", () => {
             reason: "Before the listing's availability start date",
             guestName: null,
             bookingStatus: null,
+            feedName: null,
+            feedPlatform: null,
           },
         ],
       }),
@@ -1250,7 +1252,7 @@ describe("listing review — always-active promotions", () => {
     expect(dated.steps).toEqual([]);
   });
 
-  it("preflights the canonical same-minimum evergreen conflict", () => {
+  it("allows same-minimum evergreen offers so the best benefit can win", () => {
     const listing = makeListing({
       promotions: [promotion({ id: "existing", minimumNights: 3 })],
     });
@@ -1259,11 +1261,10 @@ describe("listing review — always-active promotions", () => {
       action: "UPSERT",
       offer: newOffer,
     });
-    expect(plan.errors).toContainEqual({
-      code: "PROMOTION_CONFLICT",
-      minimumNights: 3,
-    });
-    expect(plan.steps).toEqual([]);
+    expect(plan.errors).not.toContainEqual(
+      expect.objectContaining({ code: "PROMOTION_CONFLICT" }),
+    );
+    expect(plan.steps).toHaveLength(1);
   });
 
   it("fails closed for unchanged, invalid, unpriced, and non-live offers", () => {

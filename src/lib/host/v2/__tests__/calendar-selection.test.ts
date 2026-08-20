@@ -9,6 +9,7 @@ import {
   selectionDates,
   selectionNights,
   selectionRange,
+  toggleDate,
   type CalendarSelection,
 } from "@/lib/host/v2/calendar-selection";
 import { addDaysToYmd } from "@/lib/utils/date-only";
@@ -68,6 +69,22 @@ describe("selectDate", () => {
     const second = selectDate(first, "2026-03-01", TODAY);
     expect(second.rejected).toBe("past");
     expect(selectionContainsPastDate(second.selection, TODAY)).toBe(false);
+  });
+});
+
+describe("toggleDate", () => {
+  it("adds and removes individual dates without filling the gap between them", () => {
+    const first = toggleDate(null, "2026-03-12", TODAY);
+    const second = toggleDate(first.selection, "2026-03-15", TODAY);
+
+    expect(selectionDates(second.selection)).toEqual([
+      "2026-03-12",
+      "2026-03-15",
+    ]);
+    expect(isSelected(second.selection, "2026-03-13")).toBe(false);
+
+    const removed = toggleDate(second.selection, "2026-03-12", TODAY);
+    expect(selectionDates(removed.selection)).toEqual(["2026-03-15"]);
   });
 });
 

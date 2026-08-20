@@ -43,7 +43,9 @@ export type WorkbenchView =
   | { kind: "menu" }
   | { kind: "editor"; editor: WorkbenchEditor }
   /** The scheduled-changes list, which is a destination rather than an editor. */
-  | { kind: "schedule" };
+  | { kind: "schedule" }
+  /** Connected calendars: also a destination, and the one that stages nothing. */
+  | { kind: "connections" };
 
 export const WORKBENCH_MENU: Readonly<Record<WorkbenchScope, readonly WorkbenchEditor[]>> =
   {
@@ -151,17 +153,19 @@ export function leavingLosesWork(
 }
 
 /**
- * The existing calendar-connections management surface for a listing.
+ * Connected calendars, as a view of this panel rather than another page.
  *
- * A link, not a reimplementation. Feeds, sync schedules and their failure states are
- * real business logic that already lives behind this route; a second copy inside the
- * calendar panel would be a second thing to keep correct, and the two would disagree
- * the first time either changed. The panel's job here is only to make the destination
- * findable from where the host noticed they needed it.
+ * It used to be a link out to the old listing pages, which meant the host left the
+ * calendar — and the property they had selected, and the month they were looking at —
+ * to paste a URL, and came back to a different panel in a different shell. The sync
+ * itself is not duplicated: the panel calls the same server actions the old surface
+ * called, so there is still exactly one implementation of feeds and their failures.
+ *
+ * Nothing here is staged or reviewed. Connecting or disconnecting a calendar takes
+ * effect when the host asks for it, so this view can never be holding unsaved work —
+ * which is why `leavingLosesWork` below still answers "no" for it.
  */
-export function listingConnectionsHref(listingId: string): string {
-  return `/host/listings/${listingId}/availability`;
-}
+export const CONNECTIONS_VIEW: WorkbenchView = { kind: "connections" };
 
 /** Where the pricing editor's quiet minimum-stay row sends the host. */
 export const MINIMUM_STAY_TARGET = {

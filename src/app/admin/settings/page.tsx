@@ -1,12 +1,14 @@
 import { getAllLanguages } from "@/lib/services/language.service";
 import { getAmenityCatalogForAdmin } from "@/lib/services/amenity.service";
 import { getAllPropertyTypesForAdmin } from "@/lib/services/property-type.service";
+import { getRoomTypeCatalogForAdmin } from "@/lib/services/room-type.service";
 import { getSuggestionsForAdmin } from "@/lib/services/admin.service";
 import { getTranslationStatus } from "@/lib/services/ui-translation.service";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LanguagesTab } from "./_components/languages-tab";
 import { AmenitiesTab } from "./_components/amenities-tab";
 import { PropertyTypesTab } from "./_components/property-types-tab";
+import { RoomsTab } from "./_components/rooms-tab";
 import { SuggestionsTab } from "./_components/suggestions-tab";
 import { MarketplaceTab } from "./_components/marketplace-tab";
 import { getMarketplaceSettings } from "@/lib/services/marketplace-settings.service";
@@ -17,6 +19,7 @@ export const metadata = { title: "Admin - Settings" };
 const TAB_VALUES = [
   "languages",
   "amenities",
+  "rooms",
   "property-types",
   "marketplace",
   "suggestions",
@@ -35,6 +38,7 @@ export default async function AdminSettingsPage({ searchParams }: AdminSettingsP
   const [
     languages,
     amenityCatalog,
+    roomCatalog,
     propertyTypes,
     suggestions,
     translationStatus,
@@ -44,6 +48,7 @@ export default async function AdminSettingsPage({ searchParams }: AdminSettingsP
     await Promise.all([
       getAllLanguages(),
       getAmenityCatalogForAdmin(),
+      getRoomTypeCatalogForAdmin(),
       getAllPropertyTypesForAdmin(),
       getSuggestionsForAdmin(),
       getTranslationStatus(),
@@ -66,6 +71,7 @@ export default async function AdminSettingsPage({ searchParams }: AdminSettingsP
         <TabsList>
           <TabsTrigger value="languages">Languages</TabsTrigger>
           <TabsTrigger value="amenities">Amenities</TabsTrigger>
+          <TabsTrigger value="rooms">Rooms</TabsTrigger>
           <TabsTrigger value="property-types">Property Types</TabsTrigger>
           <TabsTrigger value="marketplace">Marketplace</TabsTrigger>
           <TabsTrigger value="suggestions">
@@ -85,6 +91,12 @@ export default async function AdminSettingsPage({ searchParams }: AdminSettingsP
             categories={amenityCatalog.categories}
             amenities={amenityCatalog.amenities}
             languages={amenityCatalog.languages}
+          />
+        </TabsContent>
+        <TabsContent value="rooms" className="mt-6">
+          <RoomsTab
+            categories={roomCatalog.categories}
+            roomTypes={roomCatalog.roomTypes}
           />
         </TabsContent>
         <TabsContent value="property-types" className="mt-6">

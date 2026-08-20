@@ -389,10 +389,11 @@ export function dayStateBadge(
     return i18n.resolve("host.v2.calendar.day.badge_booked", "Booked");
   }
   if (day.state === "blocked") {
-    // Only a stored `EXTERNAL_SYNC` block reaches `reason: "external"`, so this word
-    // is never printed over a date whose source the model did not actually record.
+    // An imported hold reads "Booked" too. The grid no longer separates the two, and
+    // the channel mark drawn on the stay's first and last night says which calendar is
+    // holding it — a second word for the same fact only made the host sort them.
     if (day.reason === "external") {
-      return i18n.resolve("host.v2.calendar.day.badge_external", "Synced");
+      return i18n.resolve("host.v2.calendar.day.badge_booked", "Booked");
     }
     if (day.reason === "closed_default") {
       return i18n.resolve("host.v2.calendar.day.badge_closed", "Closed");
@@ -480,7 +481,7 @@ export function workbenchEditorLabel(
     case "listing_promotions":
       return i18n.resolve(
         "host.v2.calendar.menu.listing_promotions",
-        "Ongoing promotions",
+        "Promotions",
       );
   }
 }
@@ -909,8 +910,8 @@ export function consequenceText(
           i18n.plural(
             "host.v2.calendar.consequence.not_bookable",
             consequence.dates,
-            "{n} date will be closed on your calendar after you save.",
-            "{n} dates will be closed on your calendar after you save.",
+            "{n} date will be blocked after you save.",
+            "{n} dates will be blocked after you save.",
           ),
           {},
         ),

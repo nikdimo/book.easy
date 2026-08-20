@@ -344,9 +344,15 @@ export function BookingWidget({
     : blockingProblem;
   const bookingMessageIsError = Boolean(bookingMessage);
   const appliedPromotion = stayPricing?.appliedPromotion ?? null;
-  const promotionLabel = appliedPromotion
-    ? resolvePromotionLabel(i18n, appliedPromotion)
-    : null;
+  const promotionLabel =
+    (stayPricing?.appliedPromotions.length ?? 0) > 1
+      ? i18n.resolve(
+          "booking.multiple_promotions_applied",
+          "Best promotions applied",
+        )
+      : appliedPromotion
+        ? resolvePromotionLabel(i18n, appliedPromotion)
+        : null;
 
   /**
    * The breakdown lives in two places — an inline panel on desktop and a bottom

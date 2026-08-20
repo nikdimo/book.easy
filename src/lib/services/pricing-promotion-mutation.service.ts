@@ -178,20 +178,6 @@ export async function savePromotionForManagedListing(
   }
   const startDate = data.startDate ? ymdToDbDate(data.startDate) : null;
   const endDate = data.endDate ? ymdToDbDate(data.endDate) : null;
-  const conflict = listing.promotions.find((promotion) => {
-    if (promotion.id === data.promotionId) return false;
-    const existingMinimum = promotion.minimumNights ?? pricingRule.minNights;
-    if (existingMinimum !== data.minimumNights) return false;
-    const existingAlways = !promotion.startDate && !promotion.endDate;
-    const incomingAlways = !startDate && !endDate;
-    if (existingAlways || incomingAlways) return existingAlways && incomingAlways;
-    return promotion.startDate! < endDate! && promotion.endDate! > startDate!;
-  });
-  if (conflict) {
-    return {
-      error: "Another promotion already uses this minimum stay for an overlapping date scope.",
-    };
-  }
   const saved = data.promotionId
     ? await db.listingPromotion.update({
         where: { id: data.promotionId, listingId: listing.id },

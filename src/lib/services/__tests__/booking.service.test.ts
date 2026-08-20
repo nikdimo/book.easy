@@ -128,7 +128,7 @@ describe("createBooking promotion snapshot", () => {
     expect(Number(booking.discountAmount)).toBe(30);
     expect(Number(booking.cleaningFee)).toBe(10);
     expect(Number(booking.totalPrice)).toBe(130);
-    expect(booking.priceBreakdownVersion).toBe(1);
+    expect(booking.priceBreakdownVersion).toBe(2);
   });
 });
 

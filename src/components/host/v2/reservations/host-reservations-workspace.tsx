@@ -323,7 +323,7 @@ export function HostReservationsWorkspace({
           trailing:
             summary.action > 0 ? (
               <span
-                className="shrink-0 rounded-full bg-red-600 px-1.5 text-[0.6875rem] font-bold tabular-nums text-white"
+                className="shrink-0 rounded-full bg-[#ffe9dc] px-1.5 text-[0.6875rem] font-bold tabular-nums text-[#a94b28]"
                 translate="no"
               >
                 {summary.action}

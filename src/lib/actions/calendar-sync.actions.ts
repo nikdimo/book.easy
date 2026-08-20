@@ -5,6 +5,11 @@ import { CalendarFeedStatus } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import {
+  defaultFeedName,
+  platformFromFeedUrl,
+  type CalendarPlatform,
+} from "@/lib/host/v2/calendar-feed-platform";
+import {
   calendarFeedUrl,
   ensureCalendarFeedToken,
   MAX_FEEDS_PER_LISTING,
@@ -16,6 +21,9 @@ export interface CalendarFeedView {
   id: string;
   name: string;
   url: string;
+  /** Read from the URL the host pasted, never from the name they typed. `null` means
+   *  the link came from somewhere this does not recognise, which is not a fault. */
+  platform: CalendarPlatform | null;
   lastSyncedAt: string | null;
   lastStatus: CalendarFeedStatus;
   lastError: string | null;
@@ -60,6 +68,7 @@ function view(feed: {
     id: feed.id,
     name: feed.name,
     url: feed.url,
+    platform: platformFromFeedUrl(feed.url),
     lastSyncedAt: feed.lastSyncedAt?.toISOString() ?? null,
     lastStatus: feed.lastStatus,
     lastError: feed.lastError,
@@ -133,7 +142,6 @@ export async function addCalendarFeed(
   const managed = await requireManagedListing(listingId);
   if ("error" in managed) return { error: managed.error };
 
-  const name = input.name.trim().slice(0, 60) || "Connected calendar";
   const url = input.url.trim();
 
   let parsed: URL;
@@ -145,6 +153,10 @@ export async function addCalendarFeed(
   if (parsed.protocol !== "https:") {
     return { error: "A calendar link must start with https://" };
   }
+  // Named after the channel that served it when the host did not name it themselves:
+  // pasting an Airbnb link and then typing "Airbnb" is work the URL already did.
+  const name = input.name.trim().slice(0, 60) || defaultFeedName(parsed.href);
+
   // Deliberately not requiring a .ics suffix: plenty of platforms serve a calendar from
   // a query string. The fetch checks the body actually is one.
 

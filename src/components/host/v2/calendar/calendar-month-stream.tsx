@@ -38,7 +38,7 @@ export interface CalendarMonthStreamProps {
   selection: CalendarSelection | null;
   focusedDate: string;
   onFocusDate: (date: string) => void;
-  onSelectDate: (date: string, extend: boolean) => void;
+  onSelectDate: (date: string, extend: boolean, toggle: boolean) => void;
   /** Shift-arrow: grow the run from its anchor, starting at `from` if there is none. */
   onExtendSelection: (from: string, to: string) => void;
   /** A completed pointer drag, committed once on release. */

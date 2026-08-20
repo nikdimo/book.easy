@@ -3,6 +3,7 @@
 import { useId, useState } from "react";
 import { ChevronDown, ChevronRight, Minus, Plus } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 
 /**
@@ -22,6 +23,7 @@ export function SummaryRow({
   label,
   value,
   attention,
+  highlight,
   onClick,
   anchor,
 }: {
@@ -30,6 +32,8 @@ export function SummaryRow({
   value: string;
   /** Amber value text. Reserved for a state the host has to deal with. */
   attention?: boolean;
+  /** Brief warm acknowledgement that this row is now ready for the selected dates. */
+  highlight?: boolean;
   onClick: () => void;
   anchor?: string;
 }) {
@@ -42,6 +46,7 @@ export function SummaryRow({
         "flex min-h-11 w-full items-center gap-3 rounded-lg px-2 py-2 text-left",
         "transition-colors duration-150 hover:bg-slate-50 motion-reduce:transition-none",
         "focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#a94b28]",
+        highlight && "bg-[#fff7f2]",
       )}
     >
       {/* Both sides truncate. `shrink-0` on the value looked right for the short ones
@@ -465,6 +470,78 @@ export function Field({
       {hint ? (
         <p className="text-[0.75rem] leading-4 text-slate-500">{hint}</p>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * A yes/no that belongs beside the decision rather than behind a disclosure.
+ *
+ * Waiving the cleaning fee is not a preference — it changes what a guest pays, by an
+ * amount comparable to the discount slider directly above it. Filed under "More
+ * options" it was a second offer the host could not see while choosing the first, so
+ * this sits in the flow and states its own consequence, the way the old calendar's
+ * option toggles did.
+ */
+export function ToggleRow({
+  checked,
+  label,
+  description,
+  disabled = false,
+  onChange,
+}: {
+  checked: boolean;
+  label: string;
+  /** What turning it on does, in the guest's terms. */
+  description?: string;
+  disabled?: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  // The knob is the shared Switch — the same control the listings list uses — so a host
+  // never has to learn two on/off shapes. The row around it stays clickable, which on a
+  // phone is most of the target, and hands the click to the switch rather than drawing
+  // a second one.
+  return (
+    <div
+      onClick={() => {
+        if (!disabled) onChange(!checked);
+      }}
+      className={cn(
+        "flex min-h-11 w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left",
+        "transition-colors duration-150 motion-reduce:transition-none",
+        disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
+        checked ? "bg-[#fff1e8]" : "bg-slate-50",
+        !disabled && !checked && "hover:bg-slate-100",
+      )}
+    >
+      <span className="min-w-0">
+        <span
+          className={cn(
+            "block text-[0.8125rem] font-semibold",
+            checked ? "text-[#8f3d21]" : "text-slate-900",
+          )}
+        >
+          {label}
+        </span>
+        {description ? (
+          <span
+            className={cn(
+              "mt-0.5 block text-[0.75rem] leading-4",
+              checked ? "text-[#a94b28]" : "text-slate-500",
+            )}
+          >
+            {description}
+          </span>
+        ) : null}
+      </span>
+      <Switch
+        checked={checked}
+        onCheckedChange={onChange}
+        disabled={disabled}
+        aria-label={label}
+        onClick={(event) => event.stopPropagation()}
+        className="shrink-0"
+      />
     </div>
   );
 }

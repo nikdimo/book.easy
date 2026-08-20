@@ -118,6 +118,74 @@ function promotionDate(value: Date | string | null | undefined): Date | null {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+function promotionHasFreeCleaning(promotion: StayPromotion): boolean {
+  return Boolean(
+    promotion.freeCleaning || promotion.type === "FREE_CLEANING",
+  );
+}
+
+/** Stable ranking after eligibility: the bigger guest benefit wins. */
+function comparePromotionBenefit(
+  left: StayPromotion,
+  right: StayPromotion,
+): number {
+  const percentDifference =
+    (right.discountPercent ?? 0) - (left.discountPercent ?? 0);
+  if (percentDifference !== 0) return percentDifference;
+
+  const cleaningDifference =
+    Number(promotionHasFreeCleaning(right)) -
+    Number(promotionHasFreeCleaning(left));
+  if (cleaningDifference !== 0) return cleaningDifference;
+
+  const minimumDifference =
+    (right.minimumNights ?? 1) - (left.minimumNights ?? 1);
+  if (minimumDifference !== 0) return minimumDifference;
+
+  const leftCreated = promotionDate(left.createdAt)?.getTime() ?? 0;
+  const rightCreated = promotionDate(right.createdAt)?.getTime() ?? 0;
+  if (leftCreated !== rightCreated) return rightCreated - leftCreated;
+
+  return (right.id ?? "").localeCompare(left.id ?? "");
+}
+
+function promotionMeetsStayLength(
+  promotion: StayPromotion,
+  nights: number,
+): boolean {
+  return nights >= (promotion.minimumNights ?? 1);
+}
+
+/** Date ranges are [startDate, endDate), matching booking nights. */
+export function promotionCoversNight(
+  promotion: StayPromotion,
+  night: Date,
+): boolean {
+  const startDate = promotionDate(promotion.startDate);
+  const endDate = promotionDate(promotion.endDate);
+  if (!startDate && !endDate) return true;
+  if (!startDate || !endDate) return false;
+  const target = startOfDay(night);
+  return target >= startOfDay(startDate) && target < startOfDay(endDate);
+}
+
+/** The best eligible offer for one night of a longer booking. */
+export function selectApplicablePromotionForNight(
+  promotions: StayPromotion[],
+  night: Date,
+  stayNights: number,
+): StayPromotion | null {
+  return (
+    promotions
+      .filter(
+        (promotion) =>
+          promotionMeetsStayLength(promotion, stayNights) &&
+          promotionCoversNight(promotion, night),
+      )
+      .sort(comparePromotionBenefit)[0] ?? null
+  );
+}
+
 export function selectApplicablePromotion(
   promotions: StayPromotion[],
   checkIn: Date,
@@ -136,31 +204,7 @@ export function selectApplicablePromotion(
     return checkIn >= startDate && checkOut <= endDate;
   });
 
-  eligible.sort((left, right) => {
-    const leftSpecific = left.startDate && left.endDate ? 1 : 0;
-    const rightSpecific = right.startDate && right.endDate ? 1 : 0;
-    if (leftSpecific !== rightSpecific) return rightSpecific - leftSpecific;
-
-    const minimumDifference =
-      (right.minimumNights ?? 1) - (left.minimumNights ?? 1);
-    if (minimumDifference !== 0) return minimumDifference;
-
-    const percentDifference =
-      (right.discountPercent ?? 0) - (left.discountPercent ?? 0);
-    if (percentDifference !== 0) return percentDifference;
-
-    const leftCleaning =
-      left.freeCleaning || left.type === "FREE_CLEANING" ? 1 : 0;
-    const rightCleaning =
-      right.freeCleaning || right.type === "FREE_CLEANING" ? 1 : 0;
-    if (leftCleaning !== rightCleaning) return rightCleaning - leftCleaning;
-
-    const leftCreated = promotionDate(left.createdAt)?.getTime() ?? 0;
-    const rightCreated = promotionDate(right.createdAt)?.getTime() ?? 0;
-    if (leftCreated !== rightCreated) return rightCreated - leftCreated;
-
-    return (right.id ?? "").localeCompare(left.id ?? "");
-  });
+  eligible.sort(comparePromotionBenefit);
 
   return eligible[0] ?? null;
 }
@@ -193,16 +237,7 @@ export function computeDayRate({
     if (percent <= 0) return best;
     if ((promotion.minimumNights ?? 1) > 1) return best;
 
-    const startDate = promotionDate(promotion.startDate);
-    const endDate = promotionDate(promotion.endDate);
-    // Mirrors selectApplicablePromotion: undated offers always apply, a half-dated
-    // one never does, and a dated one only inside its own window.
-    if (startDate || endDate) {
-      if (!startDate || !endDate) return best;
-      if (target < startOfDay(startDate) || target > startOfDay(endDate)) {
-        return best;
-      }
-    }
+    if (!promotionCoversNight(promotion, target)) return best;
 
     return percent > best.percent
       ? { percent, roundToWholeUnit: Boolean(promotion.roundToWholeUnit) }
@@ -259,54 +294,136 @@ export function computeStayQuote({
   const stay = computeStayPricing(baseNightly, checkIn, checkOut, overrides);
   const accommodationCents = toCents(stay.subtotal);
   const cleaningCents = toCents(cleaningFee);
-  const applicablePromotion =
-    stay.nights > 0
-      ? selectApplicablePromotion(
-          promotions ?? (promotion ? [promotion] : []),
-          checkIn,
-          checkOut,
-          stay.nights,
+  const activePromotions = promotions ?? (promotion ? [promotion] : []);
+
+  function nightDiscountCents(
+    nightlyRate: number,
+    applicable: StayPromotion | null,
+  ): number {
+    const percent = applicable?.discountPercent ?? 0;
+    if (percent <= 0) return 0;
+    const originalNightCents = toCents(nightlyRate);
+    const discountedNightCents = Math.round(
+      (originalNightCents * (100 - percent)) / 100,
+    );
+    const chargedNightCents = applicable?.roundToWholeUnit
+      ? Math.min(
+          originalNightCents,
+          Math.round(discountedNightCents / 100) * 100,
         )
-      : null;
-  const promotionEligible = Boolean(applicablePromotion);
+      : discountedNightCents;
+    return originalNightCents - chargedNightCents;
+  }
 
-  let accommodationDiscountCents = 0;
-  let cleaningDiscountCents = 0;
+  const candidatesByNight = stay.nightlyBreakdown.map((night) => {
+    const date = parseLocalYmd(night.date);
+    return activePromotions.filter(
+      (candidate) =>
+        promotionMeetsStayLength(candidate, stay.nights) &&
+        promotionCoversNight(candidate, date),
+    );
+  });
+  const winners = candidatesByNight.map(
+    (candidates) => [...candidates].sort(comparePromotionBenefit)[0] ?? null,
+  );
 
-  const discountPercent = applicablePromotion?.discountPercent ?? 0;
-  if (promotionEligible && discountPercent > 0) {
-    if (applicablePromotion?.roundToWholeUnit) {
-      accommodationDiscountCents = stay.nightlyBreakdown.reduce(
-        (totalDiscount, night) => {
-          const originalNightCents = toCents(night.rate);
-          const discountedNightCents = Math.round(
-            (originalNightCents * (100 - discountPercent)) / 100,
-          );
-          // Standard rounding to the nearest whole currency unit: below .50
-          // rounds down, .50 and above rounds up. Capped at the original rate so
-          // a discount can never make a night more expensive.
-          const roundedNightCents = Math.min(
-            originalNightCents,
-            Math.round(discountedNightCents / 100) * 100,
-          );
-          return totalDiscount + originalNightCents - roundedNightCents;
-        },
-        0,
-      );
-    } else {
-      accommodationDiscountCents = Math.round(
-        (accommodationCents * discountPercent) / 100,
-      );
+  /**
+   * Free cleaning is a booking-level benefit, while percentages are nightly. Start
+   * with the best percentage on every night, then test whether assigning one eligible
+   * night to a free-cleaning offer saves more overall after the lost nightly discount.
+   * This keeps one offer per night and still makes "best" mean the most money saved.
+   */
+  const baselineDiscounts = stay.nightlyBreakdown.map((night, index) =>
+    nightDiscountCents(night.rate, winners[index]),
+  );
+  let bestTotalSavings =
+    baselineDiscounts.reduce((sum, value) => sum + value, 0) +
+    (winners.some((winner) => winner && promotionHasFreeCleaning(winner))
+      ? cleaningCents
+      : 0);
+  let forcedCleaningWinner: { candidate: StayPromotion; index: number } | null =
+    null;
+
+  if (!winners.some((winner) => winner && promotionHasFreeCleaning(winner))) {
+    for (const candidate of activePromotions) {
+      if (
+        !promotionHasFreeCleaning(candidate) ||
+        !promotionMeetsStayLength(candidate, stay.nights)
+      ) {
+        continue;
+      }
+      let cheapestIndex = -1;
+      let cheapestLoss = Number.POSITIVE_INFINITY;
+      for (let index = 0; index < stay.nightlyBreakdown.length; index += 1) {
+        const night = stay.nightlyBreakdown[index];
+        if (!promotionCoversNight(candidate, parseLocalYmd(night.date))) continue;
+        const candidateDiscount = nightDiscountCents(night.rate, candidate);
+        const loss = baselineDiscounts[index] - candidateDiscount;
+        if (loss < cheapestLoss) {
+          cheapestLoss = loss;
+          cheapestIndex = index;
+        }
+      }
+      if (cheapestIndex < 0) continue;
+      const candidateTotal =
+        baselineDiscounts.reduce((sum, value) => sum + value, 0) -
+        cheapestLoss +
+        cleaningCents;
+      if (candidateTotal > bestTotalSavings) {
+        forcedCleaningWinner = { candidate, index: cheapestIndex };
+        bestTotalSavings = candidateTotal;
+      }
     }
   }
-
-  if (
-    promotionEligible &&
-    (applicablePromotion?.freeCleaning ||
-      applicablePromotion?.type === "FREE_CLEANING")
-  ) {
-    cleaningDiscountCents = cleaningCents;
+  if (forcedCleaningWinner) {
+    winners[forcedCleaningWinner.index] = forcedCleaningWinner.candidate;
   }
+
+  const nightlyBreakdown = stay.nightlyBreakdown.map((night, index) => {
+    const winner = winners[index];
+    const discountCents = nightDiscountCents(night.rate, winner);
+    return {
+      ...night,
+      originalRate: night.rate,
+      discountedRate: fromCents(toCents(night.rate) - discountCents),
+      discountAmount: fromCents(discountCents),
+      promotionId: winner?.id ?? null,
+    };
+  });
+  const accommodationDiscountCents = nightlyBreakdown.reduce(
+    (sum, night) => sum + toCents(night.discountAmount),
+    0,
+  );
+  const appliedPromotions = winners.filter(
+    (winner, index): winner is StayPromotion =>
+      Boolean(winner) && winners.indexOf(winner) === index,
+  );
+  const cleaningPromotion = appliedPromotions.find(promotionHasFreeCleaning) ?? null;
+  const cleaningDiscountCents = cleaningPromotion ? cleaningCents : 0;
+  const promotionEligible = appliedPromotions.length > 0;
+
+  const contributionByPromotion = new Map<StayPromotion, number>();
+  winners.forEach((winner, index) => {
+    if (!winner) return;
+    contributionByPromotion.set(
+      winner,
+      (contributionByPromotion.get(winner) ?? 0) +
+        toCents(nightlyBreakdown[index].discountAmount),
+    );
+  });
+  if (cleaningPromotion) {
+    contributionByPromotion.set(
+      cleaningPromotion,
+      (contributionByPromotion.get(cleaningPromotion) ?? 0) + cleaningCents,
+    );
+  }
+  const applicablePromotion =
+    [...appliedPromotions].sort(
+      (left, right) =>
+        (contributionByPromotion.get(right) ?? 0) -
+          (contributionByPromotion.get(left) ?? 0) ||
+        comparePromotionBenefit(left, right),
+    )[0] ?? null;
 
   const discountCents = accommodationDiscountCents + cleaningDiscountCents;
   const originalTotalCents = accommodationCents + cleaningCents;
@@ -316,6 +433,7 @@ export function computeStayQuote({
 
   return {
     ...stay,
+    nightlyBreakdown,
     originalAccommodationSubtotal: fromCents(accommodationCents),
     accommodationSubtotal: fromCents(discountedAccommodationCents),
     accommodationDiscount: fromCents(accommodationDiscountCents),
@@ -331,5 +449,6 @@ export function computeStayQuote({
         : 0,
     promotionEligible,
     appliedPromotion: applicablePromotion,
+    appliedPromotions,
   };
 }

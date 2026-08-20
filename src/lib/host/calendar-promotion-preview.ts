@@ -82,7 +82,9 @@ export function computeCalendarPromotionPreview({
   return {
     quote,
     proposedPromotionApplied:
-      quote.appliedPromotion?.id === previewPromotionId,
+      quote.appliedPromotions.some(
+        (promotion) => promotion.id === previewPromotionId,
+      ),
   };
 }
 

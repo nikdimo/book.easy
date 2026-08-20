@@ -63,6 +63,7 @@ next-env.d.ts
 # local tooling scratch (not part of the app)
 /.codex-backups/
 /.tmp.driveupload/
+/.tmp.drivedownload/
 /Listing-Explorer/
 /.claude/
 

@@ -1,3 +1,4 @@
+import type { CalendarPlatform } from "@/lib/host/v2/calendar-feed-platform";
 import type {
   HostCalendarBlock,
   HostCalendarListing,
@@ -53,6 +54,8 @@ export function manualBlock(
     reason: null,
     guestName: null,
     bookingStatus: null,
+    feedName: null,
+    feedPlatform: null,
   };
 }
 
@@ -69,12 +72,18 @@ export function bookingBlock(
     reason: null,
     guestName,
     bookingStatus: "CONFIRMED",
+    feedName: null,
+    feedPlatform: null,
   };
 }
 
 export function externalBlock(
   startDate: string,
   endDate: string,
+  feed: { name: string; platform: CalendarPlatform | null } = {
+    name: "Airbnb",
+    platform: "AIRBNB",
+  },
 ): HostCalendarBlock {
   return {
     id: `external-${startDate}`,
@@ -84,6 +93,8 @@ export function externalBlock(
     reason: null,
     guestName: null,
     bookingStatus: null,
+    feedName: feed.name,
+    feedPlatform: feed.platform,
   };
 }
 

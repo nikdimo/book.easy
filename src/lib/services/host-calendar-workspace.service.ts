@@ -1,4 +1,5 @@
 import "server-only";
+import { platformFromFeedUrl } from "@/lib/host/v2/calendar-feed-platform";
 
 import { db } from "@/lib/db";
 import { PUBLIC_AVAILABILITY_HORIZON_MONTHS } from "@/lib/services/availability.service";
@@ -86,6 +87,9 @@ export async function getHostCalendarWorkspace(
           booking: {
             select: { status: true, guest: { select: { name: true } } },
           },
+          // The URL is read here and resolved to a channel below; it is never put in
+          // the payload, because it is the private token that reads the host's calendar.
+          feed: { select: { name: true, url: true } },
         },
       },
       availabilityWindows: {
@@ -148,6 +152,8 @@ export async function getHostCalendarWorkspace(
         reason: block.reason,
         guestName: block.booking?.guest?.name ?? null,
         bookingStatus: block.booking?.status ?? null,
+        feedName: block.feed?.name ?? null,
+        feedPlatform: platformFromFeedUrl(block.feed?.url ?? null),
       })),
       availabilityWindows: listing.availabilityWindows.map((window) => ({
         id: window.id,

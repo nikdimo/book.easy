@@ -63,7 +63,7 @@ function toneDotClass(tone: RailItem["tone"]): string {
   return tone === "positive"
     ? "bg-teal-500"
     : tone === "warning"
-      ? "bg-amber-500"
+      ? "bg-[#d9774f]"
       : "bg-slate-300";
 }
 
@@ -136,7 +136,7 @@ export function RailCard({
           selected
             ? "bg-[#ffe9dc]"
             : attention
-              ? "bg-amber-50"
+              ? "bg-[#fff4ee]"
               : "hover:bg-slate-100/70",
         )}
         {...anchorProps}
@@ -170,7 +170,7 @@ export function RailCard({
         selected
           ? "bg-[#ffe9dc]"
           : attention
-            ? "bg-amber-50 hover:bg-amber-100/70"
+            ? "bg-[#fff4ee] hover:bg-[#ffe9dc]"
             : "hover:bg-slate-100/70",
       )}
       {...anchorProps}
@@ -193,7 +193,7 @@ export function RailCard({
           <>
             <span
               className={cn(
-                "mt-0.5 flex items-center gap-1 text-[0.6875rem] font-semibold leading-4 text-amber-800",
+                "mt-0.5 flex items-center gap-1 text-[0.6875rem] font-semibold leading-4 text-[#a94b28]",
                 attention.label.translated && "notranslate",
               )}
             >
@@ -202,7 +202,7 @@ export function RailCard({
             </span>
             <span
               className={cn(
-                "block truncate text-[0.6875rem] leading-4 text-amber-700",
+                "block truncate text-[0.6875rem] leading-4 text-slate-500",
                 attention.detail.translated && "notranslate",
               )}
             >

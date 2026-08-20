@@ -65,7 +65,7 @@ describe("computeStayQuote promotions", () => {
     expect(quote.total).toBe(240);
   });
 
-  it("rounds a percentage discount once to the nearest cent", () => {
+  it("rounds each discounted night to the nearest cent", () => {
     const quote = computeStayQuote({
       baseNightly: 99.99,
       cleaningFee: 0,
@@ -79,8 +79,8 @@ describe("computeStayQuote promotions", () => {
     });
 
     expect(quote.originalAccommodationSubtotal).toBe(299.97);
-    expect(quote.accommodationDiscount).toBe(50.99);
-    expect(quote.total).toBe(248.98);
+    expect(quote.accommodationDiscount).toBe(51);
+    expect(quote.total).toBe(248.97);
   });
 
   it("uses the highest qualifying minimum-stay threshold", () => {
@@ -113,7 +113,7 @@ describe("computeStayQuote promotions", () => {
     expect(quote.total).toBe(935);
   });
 
-  it("prefers a date-specific promotion over an always-active promotion", () => {
+  it("uses the higher discount instead of automatically preferring a dated offer", () => {
     const quote = computeStayQuote({
       baseNightly: 100,
       cleaningFee: 0,
@@ -138,11 +138,11 @@ describe("computeStayQuote promotions", () => {
       ],
     });
 
-    expect(quote.appliedPromotion?.id).toBe("summer");
-    expect(quote.total).toBe(270);
+    expect(quote.appliedPromotion?.id).toBe("always");
+    expect(quote.total).toBe(240);
   });
 
-  it("does not use a dated promotion unless the whole stay fits its scope", () => {
+  it("can use different promotions on different nights of one stay", () => {
     const quote = computeStayQuote({
       baseNightly: 100,
       cleaningFee: 0,
@@ -167,8 +167,93 @@ describe("computeStayQuote promotions", () => {
       ],
     });
 
-    expect(quote.appliedPromotion?.id).toBe("always");
-    expect(quote.total).toBe(270);
+    expect(quote.appliedPromotion?.id).toBe("partial");
+    expect(quote.appliedPromotions.map((promotion) => promotion.id)).toEqual([
+      "always",
+      "partial",
+    ]);
+    expect(quote.nightlyBreakdown.map((night) => night.promotionId)).toEqual([
+      "always",
+      "partial",
+      "partial",
+    ]);
+    expect(quote.total).toBe(230);
+  });
+
+  it("uses the higher overlapping promotion only on the nights it covers", () => {
+    const quote = computeStayQuote({
+      baseNightly: 100,
+      cleaningFee: 0,
+      checkIn: new Date(2030, 7, 3),
+      checkOut: new Date(2030, 7, 13),
+      overrides: new Map(),
+      promotions: [
+        {
+          id: "early-august",
+          type: "PERCENT_DISCOUNT",
+          discountPercent: 10,
+          minimumNights: 1,
+          startDate: new Date(2030, 7, 1),
+          endDate: new Date(2030, 7, 11),
+        },
+        {
+          id: "mid-august",
+          type: "PERCENT_DISCOUNT",
+          discountPercent: 20,
+          minimumNights: 1,
+          startDate: new Date(2030, 7, 5),
+          endDate: new Date(2030, 7, 16),
+        },
+      ],
+    });
+
+    expect(quote.nightlyBreakdown.map((night) => night.promotionId)).toEqual([
+      "early-august",
+      "early-august",
+      "mid-august",
+      "mid-august",
+      "mid-august",
+      "mid-august",
+      "mid-august",
+      "mid-august",
+      "mid-august",
+      "mid-august",
+    ]);
+    expect(quote.accommodationDiscount).toBe(180);
+    expect(quote.total).toBe(820);
+  });
+
+  it("chooses free cleaning when it saves more overall without stacking a night", () => {
+    const quote = computeStayQuote({
+      baseNightly: 100,
+      cleaningFee: 100,
+      checkIn: new Date(2030, 7, 1),
+      checkOut: new Date(2030, 7, 3),
+      overrides: new Map(),
+      promotions: [
+        {
+          id: "twenty-percent",
+          type: "PERCENT_DISCOUNT",
+          discountPercent: 20,
+          minimumNights: 1,
+        },
+        {
+          id: "cleaning",
+          type: "PERCENT_DISCOUNT",
+          discountPercent: 5,
+          minimumNights: 1,
+          freeCleaning: true,
+        },
+      ],
+    });
+
+    expect(quote.nightlyBreakdown.map((night) => night.promotionId)).toEqual([
+      "cleaning",
+      "twenty-percent",
+    ]);
+    expect(quote.accommodationDiscount).toBe(25);
+    expect(quote.cleaningDiscount).toBe(100);
+    expect(quote.total).toBe(175);
   });
 
   it("supports free cleaning as the only benefit", () => {

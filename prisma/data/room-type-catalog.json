@@ -1,0 +1,361 @@
+{
+  "schemaVersion": 1,
+  "categories": [
+    {
+      "key": "interior",
+      "name": "Interior",
+      "icon": "house",
+      "sortOrder": 10,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "outdoor",
+      "name": "Outdoor",
+      "icon": "trees",
+      "sortOrder": 20,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "additional",
+      "name": "Additional spaces",
+      "icon": "warehouse",
+      "sortOrder": 30,
+      "isActive": true,
+      "translations": {}
+    }
+  ],
+  "roomTypes": [
+    {
+      "key": "balcony",
+      "name": "Balcony",
+      "category": "outdoor",
+      "icon": "building",
+      "sortOrder": 10,
+      "isRepeatable": true,
+      "isStandard": false,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "bathroom",
+      "name": "Bathroom",
+      "category": "interior",
+      "icon": "bath",
+      "sortOrder": 50,
+      "isRepeatable": true,
+      "isStandard": true,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "bedroom",
+      "name": "Bedroom",
+      "category": "interior",
+      "icon": "bed",
+      "sortOrder": 40,
+      "isRepeatable": true,
+      "isStandard": true,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "dining_area",
+      "name": "Dining area",
+      "category": "interior",
+      "icon": "utensils",
+      "sortOrder": 30,
+      "isRepeatable": true,
+      "isStandard": true,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "driveway",
+      "name": "Driveway",
+      "category": "outdoor",
+      "icon": "car-front",
+      "sortOrder": 110,
+      "isRepeatable": true,
+      "isStandard": false,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "entrance",
+      "name": "Entrance",
+      "category": "interior",
+      "icon": "door-closed",
+      "sortOrder": 80,
+      "isRepeatable": true,
+      "isStandard": false,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "exterior",
+      "name": "Exterior",
+      "category": "outdoor",
+      "icon": "building-2",
+      "sortOrder": 100,
+      "isRepeatable": false,
+      "isStandard": true,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "games_room",
+      "name": "Games room",
+      "category": "additional",
+      "icon": "gamepad-2",
+      "sortOrder": 40,
+      "isRepeatable": true,
+      "isStandard": false,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "garage",
+      "name": "Garage",
+      "category": "additional",
+      "icon": "warehouse",
+      "sortOrder": 10,
+      "isRepeatable": true,
+      "isStandard": false,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "garden",
+      "name": "Garden",
+      "category": "outdoor",
+      "icon": "flower",
+      "sortOrder": 40,
+      "isRepeatable": true,
+      "isStandard": false,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "gym",
+      "name": "Gym",
+      "category": "additional",
+      "icon": "dumbbell",
+      "sortOrder": 20,
+      "isRepeatable": true,
+      "isStandard": false,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "hallway",
+      "name": "Hallway",
+      "category": "interior",
+      "icon": "door-open",
+      "sortOrder": 70,
+      "isRepeatable": true,
+      "isStandard": false,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "hot_tub",
+      "name": "Hot tub",
+      "category": "outdoor",
+      "icon": "droplets",
+      "sortOrder": 80,
+      "isRepeatable": true,
+      "isStandard": false,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "kitchen",
+      "name": "Kitchen",
+      "category": "interior",
+      "icon": "cooking-pot",
+      "sortOrder": 20,
+      "isRepeatable": true,
+      "isStandard": true,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "laundry_room",
+      "name": "Laundry room",
+      "category": "interior",
+      "icon": "washing-machine",
+      "sortOrder": 100,
+      "isRepeatable": true,
+      "isStandard": false,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "living_room",
+      "name": "Living room",
+      "category": "interior",
+      "icon": "sofa",
+      "sortOrder": 10,
+      "isRepeatable": true,
+      "isStandard": true,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "other",
+      "name": "Other",
+      "category": "additional",
+      "icon": "sparkles",
+      "sortOrder": 80,
+      "isRepeatable": false,
+      "isStandard": false,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "outdoor_dining_area",
+      "name": "Outdoor dining area",
+      "category": "outdoor",
+      "icon": "utensils-crossed",
+      "sortOrder": 60,
+      "isRepeatable": true,
+      "isStandard": false,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "outdoor_kitchen",
+      "name": "Outdoor kitchen",
+      "category": "outdoor",
+      "icon": "flame",
+      "sortOrder": 90,
+      "isRepeatable": true,
+      "isStandard": false,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "parking",
+      "name": "Parking",
+      "category": "outdoor",
+      "icon": "circle-parking",
+      "sortOrder": 120,
+      "isRepeatable": true,
+      "isStandard": false,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "patio",
+      "name": "Patio",
+      "category": "outdoor",
+      "icon": "armchair",
+      "sortOrder": 30,
+      "isRepeatable": true,
+      "isStandard": false,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "playroom",
+      "name": "Playroom",
+      "category": "additional",
+      "icon": "baby",
+      "sortOrder": 50,
+      "isRepeatable": true,
+      "isStandard": false,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "pool",
+      "name": "Pool",
+      "category": "outdoor",
+      "icon": "waves",
+      "sortOrder": 70,
+      "isRepeatable": true,
+      "isStandard": false,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "sauna",
+      "name": "Sauna",
+      "category": "additional",
+      "icon": "thermometer-sun",
+      "sortOrder": 30,
+      "isRepeatable": true,
+      "isStandard": false,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "terrace",
+      "name": "Terrace",
+      "category": "outdoor",
+      "icon": "umbrella",
+      "sortOrder": 20,
+      "isRepeatable": true,
+      "isStandard": true,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "toilet",
+      "name": "Toilet",
+      "category": "interior",
+      "icon": "toilet",
+      "sortOrder": 60,
+      "isRepeatable": true,
+      "isStandard": false,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "view",
+      "name": "View",
+      "category": "additional",
+      "icon": "mountain",
+      "sortOrder": 60,
+      "isRepeatable": false,
+      "isStandard": false,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "waterfront",
+      "name": "Waterfront",
+      "category": "additional",
+      "icon": "sun",
+      "sortOrder": 70,
+      "isRepeatable": true,
+      "isStandard": false,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "workspace",
+      "name": "Workspace",
+      "category": "interior",
+      "icon": "briefcase-business",
+      "sortOrder": 90,
+      "isRepeatable": true,
+      "isStandard": false,
+      "isActive": true,
+      "translations": {}
+    },
+    {
+      "key": "yard",
+      "name": "Yard",
+      "category": "outdoor",
+      "icon": "trees",
+      "sortOrder": 50,
+      "isRepeatable": true,
+      "isStandard": false,
+      "isActive": true,
+      "translations": {}
+    }
+  ]
+}

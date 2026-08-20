@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Eye, EyeOff, LockKeyhole, Plus, UnlockKeyhole } from "lucide-react";
+import { ChevronDown, Eye, EyeOff, LockKeyhole, UnlockKeyhole } from "lucide-react";
 import { interpolate, useI18n } from "@/lib/i18n/client";
 import { CALENDAR_ANCHOR, anchorProps } from "@/lib/host/v2/calendar-anchors";
 import type { CalendarFormats } from "@/lib/host/v2/calendar-format";
@@ -18,7 +18,6 @@ import {
   type ProposedPromotion,
 } from "@/lib/host/v2/calendar-quote";
 import {
-  evergreenLadder,
   evergreenMinimumClash,
   evergreenPromotions,
 } from "@/lib/host/v2/calendar-promotion-action";
@@ -30,7 +29,7 @@ import {
   type OngoingPromotionForm,
   type VisibilityDecision,
 } from "@/lib/host/v2/calendar-listing-draft";
-import { addDaysToYmd } from "@/lib/utils/date-only";
+import { addDaysToYmd, compareYmd } from "@/lib/utils/date-only";
 import {
   ColumnPair,
   ConsequenceLine,
@@ -38,9 +37,10 @@ import {
   NumberColumn,
   SegmentedChoice,
   StepperColumn,
+  ToggleRow,
 } from "./workbench-ui";
 import { PanelSlider } from "./panel-slider";
-import { HowOffersWork, PromotionBandList } from "./promotion-help";
+import { AllPromotionsOverview, HowOffersWork } from "./promotion-help";
 import {
   percentFromPrice,
   priceFromPercent,
@@ -708,9 +708,8 @@ export function DefaultPricingEditor({
  * Every always-active offer, and one form pointed at whichever the host picked.
  *
  * It used to be one form pointed at whichever offer happened to be stored first, which
- * meant a second offer could not be created — saving always overwrote that one. The
- * engine has ranked several offers by minimum stay all along, and the save path even
- * refuses two at the same minimum, so a ladder was supported everywhere except here.
+ * meant a second offer could not be created — saving always overwrote that one. This
+ * view now exposes every current or upcoming offer and lets the host choose one to edit.
  *
  * The list states outcomes rather than settings: a row reads "10% off · 5–19 nights",
  * which is what a guest gets, not "10% off · 5 nights or more", which is what was typed.
@@ -720,18 +719,33 @@ export function OngoingPromotionEditor({
   listing,
   formats,
   today,
+  promotionEditorId,
+  mode,
+  onModeChange,
   onDraftChange,
+  onSelectDatePromotion,
 }: {
   listing: HostCalendarListing;
   formats: CalendarFormats;
   today: string;
+  promotionEditorId: string | null;
+  mode: OngoingPromotionMode;
+  onModeChange: (mode: OngoingPromotionMode) => void;
   onDraftChange: (change: ListingChange | null) => void;
+  onSelectDatePromotion: (
+    promotion: HostCalendarListing["promotions"][number],
+  ) => void;
 }) {
   const i18n = useI18n();
-  // Seeded from the first saved offer, `roundToWholeUnit` included exactly as stored.
-  const [form, setForm] = useState<OngoingPromotionForm>(() =>
-    ongoingPromotionFormOf(listing),
-  );
+  // Seeded from the first saved promotion, including its rounding choice.
+  const [form, setForm] = useState<OngoingPromotionForm>(() => {
+    const target = promotionEditorId
+      ? (listing.promotions.find(
+          (promotion) => promotion.id === promotionEditorId,
+        ) ?? null)
+      : null;
+    return ongoingPromotionFormOf(listing, target);
+  });
   const currency = listing.pricing?.currency ?? "EUR";
 
   const saved = form.promotionId
@@ -744,7 +758,30 @@ export function OngoingPromotionEditor({
     () => ongoingPromotionDraft(form, listing),
     [form, listing],
   );
-  useListingDraft(draft, onDraftChange);
+  useListingDraft(mode === "list" ? null : draft, onDraftChange);
+
+  // The shell owns the main CTA. When it changes list mode into create mode, prepare
+  // a fresh form here; selecting an existing row prepares edit mode directly below.
+  const previousMode = useRef(mode);
+  useEffect(() => {
+    if (mode === "create" && previousMode.current !== "create") {
+      const taken = new Set(
+        evergreenPromotions(listing).map(
+          (promotion) => promotion.minimumNights ?? 1,
+        ),
+      );
+      let next = 2;
+      while (taken.has(next)) next += 1;
+      setForm({
+        discountPercent: "15",
+        minimumNights: String(next),
+        freeCleaning: false,
+        roundToWholeUnit: true,
+        removing: false,
+      });
+    }
+    previousMode.current = mode;
+  }, [listing, mode]);
 
   const percent = Number(form.discountPercent);
   const minimumNights = Number(form.minimumNights) || 1;
@@ -759,11 +796,6 @@ export function OngoingPromotionEditor({
     freeCleaning: form.freeCleaning,
     roundToWholeUnit: percent > 0 && form.roundToWholeUnit,
   };
-  const rows = evergreenLadder({
-    listing,
-    draft: form.removing ? null : proposed,
-    today,
-  });
   const clash = form.removing
     ? null
     : evergreenMinimumClash({ listing, draft: proposed });
@@ -816,7 +848,7 @@ export function OngoingPromotionEditor({
           {
             i18n.resolve(
               "host.v2.calendar.listing.removing_ongoing",
-              "This always-active offer will stop applying to new bookings when you confirm. Existing bookings keep what guests already agreed.",
+              "This promotion will stop applying to new bookings when you confirm. Existing bookings keep what guests already agreed.",
             ).text
           }
         </ConsequenceLine>
@@ -825,80 +857,96 @@ export function OngoingPromotionEditor({
           onClick={() => setForm({ ...form, removing: false })}
           className="min-h-11 self-start rounded-lg bg-slate-50 px-3 text-[0.8125rem] font-semibold text-slate-700 transition-colors duration-150 hover:bg-slate-100 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]"
         >
-          {i18n.resolve("host.v2.calendar.editor.keep_offer", "Keep this offer").text}
+          {
+            i18n.resolve(
+              "host.v2.calendar.editor.keep_promotion",
+              "Keep this promotion",
+            ).text
+          }
         </button>
       </div>
     );
   }
 
-  /** Point the form at a saved offer, or at a blank one that will be created. */
-  const editOffer = (promotionId: string | null) => {
-    if (promotionId === null) {
-      // A new rung needs a minimum nobody else has taken, or the save is refused.
-      const taken = new Set(
-        evergreenPromotions(listing).map(
-          (promotion) => promotion.minimumNights ?? 1,
-        ),
-      );
-      let next = 2;
-      while (taken.has(next)) next += 1;
-      setForm({
-        discountPercent: "15",
-        minimumNights: String(next),
-        freeCleaning: false,
-        roundToWholeUnit: true,
-        removing: false,
-      });
-      return;
-    }
+  /** Point the form at the saved promotion the host selected. */
+  const editOffer = (promotionId: string) => {
     const target =
       listing.promotions.find((promotion) => promotion.id === promotionId) ??
       null;
     setForm(ongoingPromotionFormOf(listing, target));
+    onModeChange("edit");
   };
+  const visiblePromotionCount = listing.promotions.filter(
+    (promotion) =>
+      !promotion.endDate || compareYmd(promotion.endDate, today) > 0,
+  ).length;
 
   return (
     <div
       {...anchorProps(CALENDAR_ANCHOR.promotionEditor)}
       className="flex flex-col gap-4"
     >
-      <div className="flex flex-col gap-2">
-        <h3 className="text-[0.9375rem] font-semibold text-slate-900">
-          {
-            i18n.resolve(
-              "host.v2.calendar.listing.your_offers",
-              "Your always-active offers",
-            ).text
-          }
-        </h3>
-        <PromotionBandList rows={rows} onSelect={(id) => editOffer(id)} />
+      {mode === "list" ? (
+        <AllPromotionsOverview
+          promotions={listing.promotions}
+          today={today}
+          formats={formats}
+          onSelect={(promotion) => {
+            if (promotion.startDate && promotion.endDate) {
+              onSelectDatePromotion(promotion);
+            } else {
+              editOffer(promotion.id);
+            }
+          }}
+        />
+      ) : (
         <button
           type="button"
-          onClick={() => editOffer(null)}
-          className="flex min-h-11 items-center gap-1.5 self-start text-[0.8125rem] font-semibold text-[#a94b28] transition-colors duration-150 hover:text-[#8f3d21] motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]"
+          onClick={() => onModeChange("list")}
+          className="flex min-h-10 w-full items-center justify-between rounded-lg bg-slate-50 px-3 text-left text-[0.8125rem] font-semibold text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#a94b28]"
         >
-          <Plus className="size-4" aria-hidden />
-          {
-            i18n.resolve(
-              "host.v2.calendar.listing.add_another_offer",
-              "Add another offer",
-            ).text
-          }
-        </button>
-      </div>
-
-      <div className="flex flex-col gap-4 border-t border-slate-100 pt-4">
-        <h4 className="text-[0.8125rem] font-semibold text-slate-900">
-          {saved
-            ? interpolate(
-                i18n.resolve(
-                  "host.v2.calendar.listing.editing_offer",
-                  "Editing {percent}% off",
+          <span>
+            {
+              interpolate(
+                i18n.plural(
+                  "host.v2.calendar.listing.view_promotions_count",
+                  visiblePromotionCount,
+                  "View {n} promotion",
+                  "View {n} promotions",
                 ),
-                { percent: saved.discountPercent },
+                {},
               ).text
-            : i18n.resolve("host.v2.calendar.listing.new_offer", "New offer").text}
-        </h4>
+            }
+          </span>
+          <ChevronDown className="size-4 shrink-0 text-slate-400" aria-hidden />
+        </button>
+      )}
+
+      {mode !== "list" ? (
+        <div className="flex flex-col gap-4 border-t border-slate-100 pt-4">
+          <div className="flex items-center justify-between gap-3">
+            <h4 className="text-[0.8125rem] font-semibold text-slate-900">
+              {saved
+                ? interpolate(
+                    i18n.resolve(
+                      "host.v2.calendar.listing.editing_promotion",
+                      "Editing {percent}% promotion",
+                    ),
+                    { percent: saved.discountPercent },
+                  ).text
+                : i18n.resolve(
+                    "host.v2.calendar.listing.new_promotion",
+                    "New promotion",
+                  ).text}
+            </h4>
+            <button
+              type="button"
+              onClick={() => onModeChange("list")}
+              className="min-h-9 text-[0.75rem] font-semibold text-slate-500 transition-colors hover:text-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]"
+            >
+              {i18n.resolve("host.v2.calendar.cancel", "Cancel").text}
+            </button>
+          </div>
 
         <ColumnPair>
           <NumberColumn
@@ -973,16 +1021,66 @@ export function OngoingPromotionEditor({
           formatPreset={(value) => `${value}%`}
         />
 
-        {/* The rule the save action enforces, said before the save rather than after.
-            Two offers on every date starting at the same stay length have nothing to
-            tell them apart, so one could only ever shadow the other. */}
+        {/* Beside the slider, not behind a disclosure: waiving the fee moves what a
+            guest pays by an amount the host is weighing against the percentage, and a
+            choice they cannot see while making the other one is a choice they make
+            twice. */}
+        {listing.pricing.cleaningFee > 0 ? (
+          <ToggleRow
+            checked={form.freeCleaning}
+            onChange={(next) => setForm({ ...form, freeCleaning: next })}
+            label={
+              i18n.resolve(
+                "host.v2.calendar.promotion_free_cleaning",
+                "Also waive the cleaning fee",
+              ).text
+            }
+            description={
+              interpolate(
+                i18n.resolve(
+                  "host.v2.calendar.promotion_free_cleaning_hint",
+                  "Guests save a further {amount}",
+                ),
+                {
+                  amount: money(
+                    listing.pricing.cleaningFee,
+                    currency,
+                    formats,
+                  ),
+                },
+              ).text
+            }
+          />
+        ) : null}
+
+        <ToggleRow
+          checked={
+            Number.isFinite(percent) && percent > 0 && form.roundToWholeUnit
+          }
+          disabled={!Number.isFinite(percent) || percent <= 0}
+          onChange={(next) => setForm({ ...form, roundToWholeUnit: next })}
+          label={
+            i18n.resolve(
+              "host.v2.calendar.promotion_round",
+              "Round discounted nightly prices",
+            ).text
+          }
+          description={
+            i18n.resolve(
+              "host.v2.calendar.promotion_round_hint",
+              "Round each discounted night to the nearest whole amount",
+            ).text
+          }
+        />
+
+        {/* Overlap is valid, but worth making visible before the host saves. */}
         {clash ? (
           <ConsequenceLine tone="warning">
             {
               interpolate(
                 i18n.resolve(
                   "host.v2.calendar.listing.minimum_taken",
-                  "You already have a {percent}% offer starting at {nights} nights. Give this one a different minimum stay.",
+                  "Another {percent}% promotion starts at {nights} nights. Both can run; the promotion that saves the guest more will win.",
                 ),
                 {
                   percent: clash.discountPercent,
@@ -1004,62 +1102,14 @@ export function OngoingPromotionEditor({
                 i18n.plural(
                   "host.v2.calendar.listing.example_offer_caption",
                   minimumNights,
-                  "A {n}-night stay with this offer",
-                  "A {n}-night stay with this offer",
+                  "A {n}-night stay with this promotion",
+                  "A {n}-night stay with this promotion",
                 ),
                 {},
               ).text
             }
           />
         ) : null}
-
-        <Disclosure
-          label={
-            i18n.resolve("host.v2.calendar.editor.more_options", "More options").text
-          }
-        >
-          <div className="flex flex-col gap-2 pt-1">
-            {listing.pricing.cleaningFee > 0 ? (
-              <label className="flex min-h-11 items-center gap-2 text-slate-700">
-                <input
-                  type="checkbox"
-                  checked={form.freeCleaning}
-                  onChange={(event) =>
-                    setForm({ ...form, freeCleaning: event.target.checked })
-                  }
-                  className="size-4 rounded border-slate-300 accent-[#d9774f]"
-                />
-                {
-                  i18n.resolve(
-                    "host.v2.calendar.promotion_free_cleaning",
-                    "Also waive the cleaning fee",
-                  ).text
-                }
-              </label>
-            ) : null}
-            <label className="flex min-h-11 items-start gap-2 py-2 text-slate-700">
-              <input
-                type="checkbox"
-                checked={
-                  Number.isFinite(percent) && percent > 0 && form.roundToWholeUnit
-                }
-                disabled={!Number.isFinite(percent) || percent <= 0}
-                onChange={(event) =>
-                  setForm({ ...form, roundToWholeUnit: event.target.checked })
-                }
-                className="mt-0.5 size-4 rounded border-slate-300 accent-[#d9774f] disabled:opacity-50"
-              />
-              <span>
-                {
-                  i18n.resolve(
-                    "host.v2.calendar.promotion_round",
-                    "Round the discounted nightly price to a whole amount",
-                  ).text
-                }
-              </span>
-            </label>
-          </div>
-        </Disclosure>
 
         {/* Removal is its own decision, staged rather than done — the shell's action
             becomes "Review removal" and the confirmation names what it will end. */}
@@ -1072,12 +1122,13 @@ export function OngoingPromotionEditor({
             {
               i18n.resolve(
                 "host.v2.calendar.listing.remove_ongoing",
-                "Remove this always-active offer",
+                "Remove this promotion",
               ).text
             }
           </button>
         ) : null}
-      </div>
+        </div>
+      ) : null}
 
       <div className="border-t border-slate-100 pt-3">
         <HowOffersWork />
@@ -1085,3 +1136,5 @@ export function OngoingPromotionEditor({
     </div>
   );
 }
+
+export type OngoingPromotionMode = "list" | "create" | "edit";

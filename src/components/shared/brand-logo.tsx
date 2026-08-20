@@ -21,8 +21,8 @@ export function BrandLogo({ compact = false, className }: { compact?: boolean; c
           <Image
             src="/branding/linger-homes-symbol.svg"
             alt=""
-            width={120}
-            height={150}
+            width={128}
+            height={128}
             unoptimized
             className="h-full w-auto shrink-0"
           />
@@ -45,8 +45,8 @@ export function BrandLogo({ compact = false, className }: { compact?: boolean; c
     <Image
       src="/branding/linger-homes-symbol.svg"
       alt={PRODUCT_NAME}
-      width={120}
-      height={150}
+      width={128}
+      height={128}
       unoptimized
       className={cn("notranslate h-auto w-auto", className)}
       translate="no"

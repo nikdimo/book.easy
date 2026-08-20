@@ -1,9 +1,11 @@
+import type { CalendarPlatform } from "./calendar-feed-platform";
 import {
   addDaysToYmd,
   compareYmd,
   eachYmdExclusive,
 } from "@/lib/utils/date-only";
 import type {
+  HostCalendarBlock,
   HostCalendarDateCounts,
   HostCalendarListing,
   HostCalendarWorkspaceData,
@@ -62,16 +64,80 @@ export interface HostCalendarDay {
   guestName: string | null;
 }
 
+/**
+ * One occupied date's place in the stay it belongs to.
+ *
+ * The grid draws a stay as separate cells, so the only continuity left is the shape of
+ * its two ends — which means the ends have to be the stay's own, not the week row's. A
+ * stay that crosses Sunday keeps one arrival and one departure; the Monday it resumes
+ * on is neither, and marking it as an arrival would tell the host a guest checks in on
+ * a day nobody does.
+ *
+ * `platform` names the connected calendar holding the date; `direct` marks a booking
+ * taken here. Both are drawn the same weight — the colour answers "can I sell this
+ * date", and only the mark says where it came from.
+ */
+export interface CalendarStayEdge {
+  platform: CalendarPlatform | null;
+  direct: boolean;
+  arrival: boolean;
+  departure: boolean;
+}
+
 export interface ListingCalendarIndex {
   reservationDates: Map<string, { guestName: string | null; status: string }>;
   externalDates: Set<string>;
   manualBlockDates: Set<string>;
   openWindowDates: Set<string>;
   priceByDate: Map<string, number>;
+  /** Enabled date-specific promotions covering each night. */
+  promotionCountByDate: Map<string, number>;
+  /**
+   * Which connected calendar is holding each imported date, so the grid can name it
+   * without walking the block list per cell.
+   */
+  externalSourceByDate: Map<
+    string,
+    { name: string | null; platform: CalendarPlatform | null }
+  >;
+  /**
+   * The host's own note on each manually blocked date, where one was written. Absent
+   * rather than empty when there is none — the calendar draws a label only when there
+   * are words to read, and a padlock already says who closed the date.
+   */
+  manualNoteByDate: Map<string, string>;
+  /**
+   * Where each occupied date sits inside its stay. Built from the stored blocks rather
+   * than by walking the grid, so the two ends are the real check-in and checkout even
+   * when the stay is drawn across two week rows or two months.
+   */
+  stayByDate: Map<string, CalendarStayEdge>;
 }
 
 function addRange(target: Set<string>, startDate: string, endDate: string) {
   for (const day of eachYmdExclusive(startDate, endDate)) target.add(day);
+}
+
+/**
+ * Marks every night of one stay, with the first and last flagged.
+ *
+ * `endDate` is the exclusive checkout boundary, so the last covered day is the last
+ * night — the day the guest leaves in the morning, and the day the host has to turn the
+ * place around.
+ */
+function addStay(
+  target: Map<string, CalendarStayEdge>,
+  block: { startDate: string; endDate: string },
+  edge: Pick<CalendarStayEdge, "platform" | "direct">,
+) {
+  const nights = [...eachYmdExclusive(block.startDate, block.endDate)];
+  nights.forEach((day, position) => {
+    target.set(day, {
+      ...edge,
+      arrival: position === 0,
+      departure: position === nights.length - 1,
+    });
+  });
 }
 
 export function buildListingCalendarIndex(
@@ -85,9 +151,21 @@ export function buildListingCalendarIndex(
   const manualBlockDates = new Set<string>();
   const openWindowDates = new Set<string>();
   const priceByDate = new Map<string, number>();
+  const promotionCountByDate = new Map<string, number>();
+  const externalSourceByDate = new Map<
+    string,
+    { name: string | null; platform: CalendarPlatform | null }
+  >();
+  const manualNoteByDate = new Map<string, string>();
+  const stayByDate = new Map<string, CalendarStayEdge>();
+  // Held for a second pass. A reservation outranks an imported hold on the same night
+  // — the same precedence `resolveDay` applies — so bookings taken here are written
+  // last and win the cell.
+  const bookingHolds: HostCalendarBlock[] = [];
 
   for (const block of listing.blocks) {
     if (block.blockType === "BOOKING_HOLD") {
+      bookingHolds.push(block);
       for (const day of eachYmdExclusive(block.startDate, block.endDate)) {
         reservationDates.set(day, {
           guestName: block.guestName,
@@ -96,11 +174,31 @@ export function buildListingCalendarIndex(
       }
       continue;
     }
-    addRange(
-      block.blockType === "EXTERNAL_SYNC" ? externalDates : manualBlockDates,
-      block.startDate,
-      block.endDate,
-    );
+    if (block.blockType === "EXTERNAL_SYNC") {
+      addRange(externalDates, block.startDate, block.endDate);
+      addStay(stayByDate, block, {
+        platform: block.feedPlatform,
+        direct: false,
+      });
+      for (const day of eachYmdExclusive(block.startDate, block.endDate)) {
+        externalSourceByDate.set(day, {
+          name: block.feedName,
+          platform: block.feedPlatform,
+        });
+      }
+      continue;
+    }
+    addRange(manualBlockDates, block.startDate, block.endDate);
+    const note = block.reason?.trim();
+    if (note) {
+      for (const day of eachYmdExclusive(block.startDate, block.endDate)) {
+        manualNoteByDate.set(day, note);
+      }
+    }
+  }
+
+  for (const block of bookingHolds) {
+    addStay(stayByDate, block, { platform: null, direct: true });
   }
 
   for (const window of listing.availabilityWindows) {
@@ -111,12 +209,29 @@ export function buildListingCalendarIndex(
     priceByDate.set(row.date, row.nightlyRate);
   }
 
+  for (const promotion of listing.promotions) {
+    if (!promotion.startDate || !promotion.endDate) continue;
+    for (const day of eachYmdExclusive(
+      promotion.startDate,
+      promotion.endDate,
+    )) {
+      promotionCountByDate.set(
+        day,
+        (promotionCountByDate.get(day) ?? 0) + 1,
+      );
+    }
+  }
+
   return {
     reservationDates,
     externalDates,
     manualBlockDates,
+    externalSourceByDate,
+    manualNoteByDate,
+    stayByDate,
     openWindowDates,
     priceByDate,
+    promotionCountByDate,
   };
 }
 

@@ -176,6 +176,32 @@ export function resolveAmenityLabel(
   }
 }
 
+/** Whether a catalog row belongs to the reviewed global marketplace taxonomy.
+ * Provider-specific and listing-only labels deliberately fall back to their own
+ * English text and must not be promoted into the release seed catalog. */
+export function hasReviewedAmenityLabel(name: string): boolean {
+  return reviewedAmenityCatalogKey(name) !== null;
+}
+
+/** Stable release-catalog key captured from the same explicit mapping the UI uses. */
+export function reviewedAmenityCatalogKey(name: string): string | null {
+  let resolvedKey: string | null = null;
+  const result = resolveAmenityLabel(
+    {
+      resolve: (key, source) => {
+        resolvedKey = key;
+        return { text: source, translated: true };
+      },
+    },
+    name,
+  );
+  // The resolver is invoked synchronously, but TypeScript does not model assignment
+  // through a callback when it narrows the outer variable.
+  const key = resolvedKey as string | null;
+  if (!result.translated || !key?.startsWith("amenities.items.")) return null;
+  return key.slice("amenities.items.".length);
+}
+
 export function resolveAmenityCategory(
   translator: TranslationResolver,
   category: string,

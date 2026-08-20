@@ -368,8 +368,22 @@ export async function createBooking(input: CreateBookingInput) {
       const serviceFee = 0; // Placeholder for future platform fee
       const totalPrice = quote.total + Number(serviceFee);
       const appliedPromotion = quote.appliedPromotion;
+      const serializedPromotion = (promotion: NonNullable<typeof appliedPromotion>) => ({
+        id: promotion.id,
+        type: promotion.type,
+        discountPercent: promotion.discountPercent ?? null,
+        minimumNights: promotion.minimumNights ?? null,
+        freeCleaning: promotion.freeCleaning ?? false,
+        roundToWholeUnit: promotion.roundToWholeUnit ?? false,
+        startDate: promotion.startDate
+          ? new Date(promotion.startDate).toISOString()
+          : null,
+        endDate: promotion.endDate
+          ? new Date(promotion.endDate).toISOString()
+          : null,
+      });
       const priceBreakdown = {
-        version: 1,
+        version: 2,
         currency: listing.pricingRule.currency,
         nights: quote.nightlyBreakdown.map((night) => ({
           ...night,
@@ -385,22 +399,9 @@ export async function createBooking(input: CreateBookingInput) {
         totalSavings: quote.discountAmount,
         finalTotal: totalPrice,
         appliedPromotion: appliedPromotion
-          ? {
-              id: appliedPromotion.id,
-              type: appliedPromotion.type,
-              discountPercent: appliedPromotion.discountPercent ?? null,
-              minimumNights: appliedPromotion.minimumNights ?? null,
-              freeCleaning: appliedPromotion.freeCleaning ?? false,
-              roundToWholeUnit:
-                appliedPromotion.roundToWholeUnit ?? false,
-              startDate: appliedPromotion.startDate
-                ? new Date(appliedPromotion.startDate).toISOString()
-                : null,
-              endDate: appliedPromotion.endDate
-                ? new Date(appliedPromotion.endDate).toISOString()
-                : null,
-            }
+          ? serializedPromotion(appliedPromotion)
           : null,
+        appliedPromotions: quote.appliedPromotions.map(serializedPromotion),
       } satisfies Prisma.InputJsonObject;
 
       // Computed only after the official currency is known, and applied to nothing
@@ -430,7 +431,7 @@ export async function createBooking(input: CreateBookingInput) {
           promotionId: appliedPromotion?.id ?? null,
           promotionType: appliedPromotion?.type ?? null,
           priceBreakdown,
-          priceBreakdownVersion: 1,
+          priceBreakdownVersion: 2,
           // A snapshot of what the guest saw, never a second source of truth for
           // what they owe. `totalPrice` above remains the payable amount. Null all
           // round when the guest was already browsing in the official currency.

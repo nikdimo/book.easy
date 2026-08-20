@@ -17,8 +17,31 @@ import {
   HORIZON_END,
   makeListing,
   manualBlock,
+  promotion,
   TODAY,
 } from "./fixtures";
+
+describe("promotion calendar markers", () => {
+  it("counts enabled dated promotions on each covered night", () => {
+    const listing = makeListing({
+      promotions: [
+        promotion({ startDate: "2026-03-12", endDate: "2026-03-15" }),
+        promotion({
+          id: "second",
+          startDate: "2026-03-13",
+          endDate: "2026-03-14",
+        }),
+        promotion({ id: "ongoing", startDate: null, endDate: null }),
+      ],
+    });
+    const index = buildListingCalendarIndex(listing);
+
+    expect(index.promotionCountByDate.get("2026-03-12")).toBe(1);
+    expect(index.promotionCountByDate.get("2026-03-13")).toBe(2);
+    expect(index.promotionCountByDate.get("2026-03-14")).toBe(1);
+    expect(index.promotionCountByDate.has("2026-03-15")).toBe(false);
+  });
+});
 
 describe("resolveDay", () => {
   it("marks dates before today as past and not editable", () => {

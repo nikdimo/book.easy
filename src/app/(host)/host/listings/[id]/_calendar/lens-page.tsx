@@ -55,7 +55,7 @@ const LENS_COPY: Record<
     help: [
       "Shaded dates are covered by a date-specific promotion.",
       "Always-active promotions apply to every date and are listed below.",
-      "Date-specific promotions take priority over always-active ones.",
+      "The promotion that saves the guest most wins on each night.",
     ],
   },
 };

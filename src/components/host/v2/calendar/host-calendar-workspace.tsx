@@ -15,6 +15,7 @@ import {
   ChevronRight,
   House,
   Lock,
+  Percent,
   SlidersHorizontal,
   X,
 } from "lucide-react";
@@ -43,6 +44,7 @@ import {
   extendSelection,
   selectDate,
   selectRange,
+  toggleDate,
   selectionAfterListingSwitch,
   selectionDates,
   selectionNights,
@@ -74,7 +76,7 @@ import {
 import {
   backFrom,
   leavingLosesWork,
-  listingConnectionsHref,
+  CONNECTIONS_VIEW,
   MENU_VIEW,
   MINIMUM_STAY_TARGET,
   openEditor as openWorkbenchEditor,
@@ -91,7 +93,7 @@ import {
   monthsInWindow,
   shiftMonth,
 } from "@/lib/host/v2/calendar-months";
-import { compareYmd } from "@/lib/utils/date-only";
+import { addDaysToYmd, compareYmd } from "@/lib/utils/date-only";
 import {
   CalendarMonthStream,
   scrollStreamToMonth,
@@ -102,6 +104,7 @@ import type { DateActionResult } from "./date-editors";
 import { AllListingsTimeline } from "./all-listings-timeline";
 import { ReviewDialog } from "./review-dialog";
 import { runMutationSteps } from "./calendar-actions";
+import { ChannelChip } from "./channel-chip";
 import { bookabilityLine, money } from "./calendar-labels";
 
 const RAIL_PREFERENCE_KEY = "bookeasy.host.v2.calendar.rail";
@@ -138,6 +141,7 @@ export function HostCalendarWorkspace({
     return requested ?? defaultListingId(data) ?? ALL_LISTINGS;
   });
   const [selection, setSelection] = useState<CalendarSelection | null>(null);
+  const [promotionEditorId, setPromotionEditorId] = useState<string | null>(null);
   /** The month the stream is showing. Reported by scrolling, not by paging. */
   const [month, setMonth] = useState(() => monthOf(data.today));
   const [focusedDate, setFocusedDate] = useState(data.today);
@@ -280,7 +284,14 @@ export function HostCalendarWorkspace({
     [data],
   );
 
-  const active = entries.find((entry) => entry.listing.id === selectedId) ?? null;
+  const active = useMemo(
+    () => entries.find((entry) => entry.listing.id === selectedId) ?? null,
+    [entries, selectedId],
+  );
+  const allDatePromotionCount =
+    active?.listing.promotions.filter(
+      (promotion) => !promotion.startDate && !promotion.endDate,
+    ).length ?? 0;
   const months = useMemo(
     () => monthsInWindow(data.today, data.horizonEnd),
     [data.today, data.horizonEnd],
@@ -357,6 +368,7 @@ export function HostCalendarWorkspace({
         );
         anchorRef.current = null;
         setChange(null);
+        setPromotionEditorId(null);
         setReviewTarget(null);
         // A different property means different dates, different prices and different
         // offers. Whatever editor was open was about the old one, so the panel goes
@@ -378,6 +390,7 @@ export function HostCalendarWorkspace({
       setSelection(null);
       anchorRef.current = null;
       setChange(null);
+      setPromotionEditorId(null);
     });
   }, [guard, reviewBusy]);
 
@@ -402,6 +415,15 @@ export function HostCalendarWorkspace({
     guard(() => {
       setChange(null);
       setView({ kind: "schedule" });
+    });
+  }, [guard]);
+
+  /** Connected calendars, in this panel. Guarded like any other departure from an
+   *  editor, so a half-typed price is not lost to a detour into sync. */
+  const openConnections = useCallback(() => {
+    guard(() => {
+      setChange(null);
+      setView(CONNECTIONS_VIEW);
     });
   }, [guard]);
 
@@ -437,6 +459,7 @@ export function HostCalendarWorkspace({
       if (!next) return;
       guard(() => {
         setFocusMinimumStay(false);
+        setPromotionEditorId(null);
         setView(next);
       });
     },
@@ -485,16 +508,19 @@ export function HostCalendarWorkspace({
         anchorRef.current = result.anchor;
         // A new question about different dates should not inherit half an answer.
         setChange(null);
+        setPromotionEditorId(null);
       });
     },
     [i18n, guard],
   );
 
   const handleSelectDate = useCallback(
-    (date: string, extend: boolean) => {
+    (date: string, extend: boolean, toggle: boolean) => {
       const current = selectionRef.current;
       applySelection(
-        extend
+        toggle
+          ? toggleDate(current, date, data.today)
+          : extend
           ? extendSelection(current, date, data.today, anchorRef.current)
           : selectDate(current, date, data.today),
       );
@@ -530,6 +556,7 @@ export function HostCalendarWorkspace({
         setChange(null);
         setSelection(entry.target.selection);
         anchorRef.current = entry.target.selection.start;
+        setPromotionEditorId(entry.promotion?.id ?? null);
         setView({ kind: "editor", editor: entry.target.editor });
       });
     },
@@ -545,11 +572,50 @@ export function HostCalendarWorkspace({
         setSelection(entry.target.selection);
         anchorRef.current = entry.target.selection.start;
         setChange({ kind: "PROMOTION_REMOVE", promotionId });
+        setPromotionEditorId(promotionId);
         setView({ kind: "editor", editor: "promotions" });
       });
     },
     [guard],
   );
+
+  /** Open either promotion type in the editor that owns its scope. */
+  const openPromotion = useCallback(
+    (promotion: HostCalendarWorkspaceData["listings"][number]["promotions"][number]) => {
+      guard(() => {
+        if (!promotion.startDate || !promotion.endDate) {
+          setChange(null);
+          setListingDraft(null);
+          setSelection(null);
+          anchorRef.current = null;
+          setPromotionEditorId(promotion.id);
+          setView({ kind: "editor", editor: "listing_promotions" });
+          return;
+        }
+        const nextSelection = {
+          start: promotion.startDate!,
+          end: addDaysToYmd(promotion.endDate!, -1),
+        };
+        setChange(null);
+        setPromotionEditorId(promotion.id);
+        setSelection(nextSelection);
+        anchorRef.current = nextSelection.start;
+        setView({ kind: "editor", editor: "promotions" });
+      });
+    },
+    [guard],
+  );
+
+  const openAllDatePromotions = useCallback(() => {
+    guard(() => {
+      setChange(null);
+      setListingDraft(null);
+      setSelection(null);
+      anchorRef.current = null;
+      setPromotionEditorId(null);
+      setView({ kind: "editor", editor: "listing_promotions" });
+    });
+  }, [guard]);
 
   /** A completed pointer drag. Committed once, on release, never during the gesture. */
   const handleSelectRange = useCallback(
@@ -883,6 +949,7 @@ export function HostCalendarWorkspace({
       selection={selection}
       rangeLabel={rangeLabel}
       change={change}
+      promotionEditorId={promotionEditorId}
       onChange={setChange}
       onClearSelection={clearSelection}
       onReviewDate={() => setReviewTarget({ kind: "date" })}
@@ -910,8 +977,9 @@ export function HostCalendarWorkspace({
       onBack={backToMenu}
       onOpenScheduledEntry={openScheduledEntry}
       onRemoveScheduledPromotion={removeScheduledPromotion}
-      // The existing connections surface, not a second copy of it.
-      connectionsHref={listingConnectionsHref(active.listing.id)}
+      onSelectDatePromotion={openPromotion}
+      onClearPromotionTarget={() => setPromotionEditorId(null)}
+      onOpenConnections={openConnections}
     />
   ) : null;
 
@@ -1053,6 +1121,42 @@ export function HostCalendarWorkspace({
               </div>
             </header>
 
+            {allDatePromotionCount > 0 ? (
+              <button
+                type="button"
+                onClick={openAllDatePromotions}
+                className="mb-2 flex min-h-11 shrink-0 items-center justify-between gap-3 rounded-xl bg-[#fff1e8] px-3 py-2 text-left text-[#8f3d21] transition-colors hover:bg-[#fde7dc] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]"
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  <Percent className="size-4 shrink-0" aria-hidden />
+                  <span className="min-w-0">
+                    <span className="block text-[0.8125rem] font-semibold">
+                      {interpolate(
+                        i18n.plural(
+                          "host.v2.calendar.all_date_promotions_count",
+                          allDatePromotionCount,
+                          "{n} all-date promotion active",
+                          "{n} all-date promotions active",
+                        ),
+                        {},
+                      ).text}
+                    </span>
+                    <span className="block truncate text-[0.6875rem] text-[#a94b28]">
+                      {
+                        i18n.resolve(
+                          "host.v2.calendar.all_date_promotions_hint",
+                          "Available when the guest meets the minimum stay",
+                        ).text
+                      }
+                    </span>
+                  </span>
+                </span>
+                <span className="shrink-0 text-[0.75rem] font-semibold">
+                  {i18n.resolve("host.v2.calendar.manage", "Manage").text}
+                </span>
+              </button>
+            ) : null}
+
             <CalendarMonthStream
               listing={active.listing}
               index={active.index}
@@ -1086,65 +1190,41 @@ export function HostCalendarWorkspace({
                 />
                 {i18n.resolve("host.v2.calendar.legend.selected", "Selected").text}
               </li>
-              {/* The exact fill and edge the `open_not_bookable` cells use, so the key
-                  matches what is actually on the grid. */}
+              {/* One entry, not two. A booking taken here and a date a connected
+                  calendar is holding are the same answer to the only question this grid
+                  is scanned for — the night is gone — and the marks beside it say where
+                  a stay came from. The chips are shown only where imported blocks
+                  exist, so a host with no connections is not taught marks their grid
+                  never draws. */}
               <li className="flex items-center gap-1.5">
                 <span
                   aria-hidden
-                  className="size-2.5 rounded-[3px] border border-[#f0e0b6] bg-[#fdf8ec]"
+                  className="size-2.5 rounded-[3px] border border-[#b5d4f4] bg-[#e6f1fb]"
                 />
-                {
-                  i18n.resolve(
-                    "host.v2.calendar.legend.open_not_bookable",
-                    "Open, not bookable",
-                  ).text
-                }
+                {i18n.resolve("host.v2.calendar.legend.booked", "Booked").text}
+                {hasExternalBlocks ? (
+                  <span className="flex items-center gap-0.5">
+                    <ChannelChip platform="AIRBNB" className="size-3" />
+                    <ChannelChip platform="BOOKING" className="size-3" />
+                    <ChannelChip platform="VRBO" className="size-3" />
+                  </span>
+                ) : null}
               </li>
               <li className="flex items-center gap-1.5">
                 <Lock className="size-3 text-slate-400" aria-hidden />
                 {i18n.resolve("host.v2.calendar.legend.blocked", "Blocked").text}
               </li>
               {/* Only a listing that starts closed has dates in this state, and on one
-                  that starts open the key would explain a colour the grid never shows.
-                  Same rule as the imported-block texture below. */}
+                  that starts open the key would explain a colour the grid never shows. */}
               {active.listing.availabilityMode === "CLOSED" ? (
                 <li className="flex items-center gap-1.5">
                   <span
                     aria-hidden
                     className="size-2.5 rounded-[3px] border border-[#eef1f4] bg-[#fafbfc]"
                   />
-                  {
-                    i18n.resolve(
-                      "host.v2.calendar.legend.closed_default",
-                      "Closed until you open it",
-                    ).text
-                  }
+                  {i18n.resolve("host.v2.calendar.legend.closed", "Closed").text}
                 </li>
               ) : null}
-              {/* Only shown when this listing genuinely has imported blocks, so the
-                  texture is never explained on a calendar that cannot contain it. */}
-              {hasExternalBlocks ? (
-                <li className="flex items-center gap-1.5">
-                  <span
-                    aria-hidden
-                    className="size-2.5 rounded-[2px] bg-slate-100"
-                    style={{
-                      backgroundImage:
-                        "repeating-linear-gradient(135deg, rgb(71 85 105 / 0.35) 0 1.5px, transparent 1.5px 4px)",
-                    }}
-                  />
-                  {
-                    i18n.resolve(
-                      "host.v2.calendar.legend.external",
-                      "From a connected calendar",
-                    ).text
-                  }
-                </li>
-              ) : null}
-              <li className="flex items-center gap-1.5">
-                <span aria-hidden className="size-2.5 rounded-[2px] bg-[#16304a]" />
-                {i18n.resolve("host.v2.calendar.legend.booked", "Booked").text}
-              </li>
             </ul>
           </section>
         ) : (

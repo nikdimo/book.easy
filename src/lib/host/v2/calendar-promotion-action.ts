@@ -14,20 +14,16 @@ import type {
 /**
  * Which offer a guest actually gets, at every stay length.
  *
- * Offers stack. A listing can carry an always-active 10% for stays of ten nights, a 20%
- * for twenty, and a dated offer on one week in August, and only ever *one* of them
- * reaches the guest. Which one is decided by rules the host cannot see, and the panel
- * used to guess at them — it told hosts a new dated offer "will take priority", which is
- * simply untrue against another dated offer with a bigger discount.
+ * A listing can carry an always-active 10% for stays of ten nights, a 20% for twenty,
+ * and a dated offer on one week in August. One promotion wins per night, and different
+ * nights in the same booking may have different winners.
  *
  * So nothing here reimplements the rules. It asks `selectApplicablePromotion` — the same
  * function the booking transaction prices with — once per stay length, and groups the
  * answers into bands. If the rules ever change, this follows them.
  *
- * Splitting an offer to make room for another was considered and rejected. A dated offer
- * only applies when the guest's whole stay fits inside it, so cutting a month-long offer
- * in two to fit a three-night one would silently kill every long stay that spans the gap
- * — the exact stays a long-stay discount exists for.
+ * The ladder remains a compact explanation of which minimum-stay offer wins as the stay
+ * length changes. Date-range behavior is shown separately in the selected-date preview.
  */
 
 /**
@@ -304,12 +300,10 @@ export function evergreenLadder({
 
 
 /**
- * The saved always-active offer this draft would collide with.
+ * A saved always-active offer with the same minimum as this draft.
  *
- * `saveEvergreenPromotionForManagedListing` refuses two offers that run on every date
- * and start at the same stay length — with nothing to tell them apart, one could only
- * ever shadow the other. Found here so the editor can say so before the host saves,
- * rather than letting the server refuse afterwards.
+ * Both offers are allowed. The editor uses this to warn that they overlap and explain
+ * that the one producing the best guest savings will win.
  */
 export function evergreenMinimumClash({
   listing,
@@ -344,11 +338,16 @@ export function promotionDraftProblem({
   draft,
   bands,
   nights,
+  draftApplied,
+  winningPromotion,
 }: {
   draft: ProposedPromotion | null;
   bands: PromotionBand[];
   /** Nights in the selection. */
   nights: number;
+  /** Exact result from the per-night quote engine when available. */
+  draftApplied?: boolean;
+  winningPromotion?: { discountPercent: number; evergreen: boolean } | null;
 }): PromotionDraftProblem | null {
   if (!draft) return null;
   if (draft.discountPercent <= 0 && !draft.freeCleaning) {
@@ -361,14 +360,18 @@ export function promotionDraftProblem({
       nights,
     };
   }
-  if (!bands.some((band) => band.draft)) {
-    const winner = bands.find(
+  const applies =
+    draftApplied ?? bands.some((band) => band.draft);
+  if (!applies) {
+    const bandWinner = bands.find(
       (band) => nights >= band.fromNights && nights <= band.toNights,
     );
     return {
       code: "NEVER_WINS",
-      discountPercent: winner?.discountPercent ?? 0,
-      winnerIsEvergreen: winner?.evergreen ?? false,
+      discountPercent:
+        winningPromotion?.discountPercent ?? bandWinner?.discountPercent ?? 0,
+      winnerIsEvergreen:
+        winningPromotion?.evergreen ?? bandWinner?.evergreen ?? false,
     };
   }
   return null;

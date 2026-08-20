@@ -1,10 +1,8 @@
 "use client";
 
 import {
-  blockCalendarRange,
   clearCalendarDatePrice,
   hideListingFromCalendar,
-  openCalendarRange,
   publishListingFromCalendar,
   removeCalendarPromotion,
   saveCalendarDefaultPricing,
@@ -12,6 +10,10 @@ import {
   setCalendarAvailabilityMode,
   setCalendarDatePrice,
 } from "@/lib/actions/calendar.actions";
+import {
+  blockCalendarDatesForV2,
+  openCalendarDatesForV2,
+} from "@/lib/actions/calendar-v2.actions";
 import type { MutationStep } from "@/lib/host/v2/calendar-review";
 
 /**
@@ -31,16 +33,18 @@ export async function runMutationStep(
 ): Promise<{ error?: string; success?: string }> {
   switch (step.type) {
     case "OPEN_RANGE":
-      return openCalendarRange(listingId, {
+      // The v2 pair, not the shared one: on a closed-by-default listing the shared
+      // actions redefine blocking as "delete the availability window", which is the
+      // behaviour v2 deliberately no longer has. See calendar-v2.actions.ts.
+      return openCalendarDatesForV2(listingId, {
         startDate: step.startDate,
         endDate: step.endDate,
       });
     case "BLOCK_RANGE":
-      return blockCalendarRange(listingId, {
+      return blockCalendarDatesForV2(listingId, {
         startDate: step.startDate,
         endDate: step.endDate,
-        // The canonical action already takes a `reason` and stores it on the
-        // MANUAL_BLOCK rows it creates. Nothing new is written here, and nothing
+        // Stored on the MANUAL_BLOCK rows the canonical service creates. Nothing
         // guest-facing reads that column.
         reason: step.note,
       });

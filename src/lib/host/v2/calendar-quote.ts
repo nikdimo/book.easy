@@ -8,7 +8,7 @@ import { computeCalendarPromotionPreview } from "@/lib/host/calendar-promotion-p
 import {
   computeStayQuote,
   parseLocalYmd,
-  selectApplicablePromotion,
+  promotionCoversNight,
   type StayPromotion,
 } from "@/lib/utils/stay-pricing";
 
@@ -68,27 +68,65 @@ export function overridesAfterProposal(
 
 export type SelectionQuote = ReturnType<typeof computeStayQuote>;
 
+export interface SelectionPromotionSummary {
+  promotion: HostCalendarPromotion;
+  /** Selected nights inside this promotion's date scope, before stay eligibility. */
+  coveredNights: number;
+  /** Selected nights where this promotion produces the best guest price. */
+  winningNights: number;
+}
+
+/** Existing promotions touching a selection, with the nights each one actually wins. */
+export function selectionPromotionSummaries(
+  listing: HostCalendarListing,
+  selection: CalendarSelection,
+): SelectionPromotionSummary[] {
+  const dates = selectionDates(selection);
+  if (dates.length === 0) return [];
+  const quote = computeSelectionQuote({ listing, selection });
+  const winningById = new Map<string, number>();
+  for (const night of quote?.nightlyBreakdown ?? []) {
+    if (!night.promotionId) continue;
+    winningById.set(
+      night.promotionId,
+      (winningById.get(night.promotionId) ?? 0) + 1,
+    );
+  }
+
+  return listing.promotions
+    .map((promotion) => {
+      const stayPromotion = toStayPromotions([promotion])[0];
+      const coveredNights = dates.filter((date) =>
+        promotionCoversNight(stayPromotion, parseLocalYmd(date)),
+      ).length;
+      return {
+        promotion,
+        coveredNights,
+        winningNights: winningById.get(promotion.id) ?? 0,
+      };
+    })
+    .filter((summary) => summary.coveredNights > 0)
+    .sort(
+      (left, right) =>
+        right.winningNights - left.winningNights ||
+        right.promotion.discountPercent - left.promotion.discountPercent ||
+        left.promotion.id.localeCompare(right.promotion.id),
+    );
+}
+
 /**
- * Which promotion a guest booking exactly these dates would actually get.
- *
- * Uses `selectApplicablePromotion` — the same priority rules the booking transaction
- * applies — rather than asking whether a promotion happens to overlap. Without this the
- * editor claimed "No promotion" on dates covered by an always-active offer, and would
- * then have presented a new offer as if it were the first one.
+ * The promotion contributing the most savings to a booking of exactly these dates.
+ * Other promotions may win different nights; this singular helper is retained for
+ * edit defaults and compact summaries that have room for one result.
  */
 export function resolveSelectionPromotion(
   listing: HostCalendarListing,
   selection: CalendarSelection,
 ): HostCalendarPromotion | null {
-  const dates = selectionDates(selection);
-  if (dates.length === 0 || listing.promotions.length === 0) return null;
-  const { startDate, endDate } = selectionRange(selection);
-  const applicable = selectApplicablePromotion(
-    toStayPromotions(listing.promotions),
-    parseLocalYmd(startDate),
-    parseLocalYmd(endDate),
-    dates.length,
-  );
+  if (selectionDates(selection).length === 0 || listing.promotions.length === 0) {
+    return null;
+  }
+  const applicable = computeSelectionQuote({ listing, selection })?.appliedPromotion;
   if (!applicable?.id) return null;
   return (
     listing.promotions.find((promotion) => promotion.id === applicable.id) ??
@@ -101,9 +139,9 @@ export function resolveSelectionPromotion(
  *
  * - `CREATE` — nothing applies today.
  * - `EDIT` — a dated promotion covers exactly this range, so it is updated in place.
- * - `OVERRIDE` — an offer applies but is not this range's own (an always-active one, or
- *   a dated one with different bounds). A date-specific promotion takes priority over
- *   it for these dates; it keeps running everywhere else.
+ * - `OVERRIDE` — an offer affects the selection but does not exactly match its range.
+ *   Saving creates a separate dated promotion; both remain available and the pricing
+ *   engine chooses the best guest savings on each night.
  */
 export type PromotionSaveMode = "CREATE" | "EDIT" | "OVERRIDE";
 

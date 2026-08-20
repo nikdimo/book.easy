@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildListingCalendarIndex } from "@/lib/host/v2/calendar-model";
+import { buildListingCalendarIndex, resolveDay } from "@/lib/host/v2/calendar-model";
 import {
   buildAvailabilityAction,
   contiguousRuns,
@@ -66,6 +66,69 @@ describe("buildAvailabilityAction", () => {
 
     expect(model.openable).toEqual(["2026-03-11"]);
     expect(model.blockable).toEqual(["2026-03-12"]);
+  });
+
+  /**
+   * Blocking means one thing in both availability modes.
+   *
+   * v2 no longer routes "block" on a closed-by-default listing into deleting the
+   * availability window: a host who blocks an open date is making a decision, and it is
+   * recorded as a MANUAL_BLOCK with an optional note like anywhere else. "Closed" is
+   * then reserved for a date nobody ever opened. See calendar-v2.actions.ts.
+   */
+  it("produces the same block step on a closed-by-default listing", () => {
+    const closed = makeListing({
+      availabilityMode: "CLOSED",
+      availabilityWindows: [
+        { id: "window-1", startDate: "2026-03-12", endDate: "2026-03-14" },
+      ],
+    });
+    const open = makeListing();
+    const dates = datesFrom("2026-03-12", "2026-03-13");
+
+    expect(stepsForDates(dates, "BLOCK")).toEqual([
+      {
+        type: "BLOCK_RANGE",
+        startDate: "2026-03-12",
+        endDate: "2026-03-14",
+        note: undefined,
+      },
+    ]);
+    // The model reaches the same conclusion either way: these nights are open, so the
+    // Block button is what the panel offers.
+    for (const listing of [closed, open]) {
+      const model = buildAvailabilityAction({
+        listing,
+        index: buildListingCalendarIndex(listing),
+        dates,
+        today: TODAY,
+      });
+      expect(model.blockable).toEqual(dates);
+      expect(model.openable).toEqual([]);
+    }
+  });
+
+  it("reports a manual block on a closed-by-default listing as blocked, not closed", () => {
+    const listing = makeListing({
+      availabilityMode: "CLOSED",
+      availabilityWindows: [
+        { id: "window-1", startDate: "2026-03-12", endDate: "2026-03-14" },
+      ],
+      blocks: [manualBlock("2026-03-12", "2026-03-13")],
+    });
+    const index = buildListingCalendarIndex(listing);
+
+    // The host's own decision keeps its own word...
+    expect(resolveDay(listing, index, "2026-03-12", TODAY)).toMatchObject({
+      state: "blocked",
+      reason: "manual",
+      editable: true,
+    });
+    // ...and a date nobody ever opened keeps the other one.
+    expect(resolveDay(listing, index, "2026-03-20", TODAY)).toMatchObject({
+      state: "blocked",
+      reason: "closed_default",
+    });
   });
 });
 

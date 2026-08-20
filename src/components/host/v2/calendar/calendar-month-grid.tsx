@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/client";
 import {
   resolveDay,
+  type CalendarStayEdge,
   type HostCalendarDay,
   type ListingCalendarIndex,
 } from "@/lib/host/v2/calendar-model";
@@ -20,28 +21,36 @@ import {
   type CalendarSelection,
 } from "@/lib/host/v2/calendar-selection";
 import { compareYmd, ymdToLocalDate } from "@/lib/utils/date-only";
+import { ChannelChip, DirectBookingChip } from "./channel-chip";
 import { dayStateBadge, dayStateLabel, money } from "./calendar-labels";
 
 /**
- * Rounded on all four corners, with a hairline edge — the shape every host has already
- * learned from every other booking calendar.
+ * A hairline edge — the shape every host has already learned from every other booking
+ * calendar. The radius is set per cell, in `cellRadius`, because an occupied date's
+ * corners depend on where it falls inside its stay.
  *
  * It replaces a cut corner drawn with `clip-path`, which needed its own background layer
  * (a clip on the button would have taken the focus ring with it) and, once the edge was
  * removed, left blocked and open dates separated by two shades of nearly the same grey.
  * A border and a radius on the button itself do the job with no extra layer.
  */
-const CELL_SHAPE = "rounded-xl border";
+const CELL_SHAPE = "border";
 
 /**
- * Reserved for one state and one state only: a date held by a calendar the host
- * connected elsewhere. It is the single case where the block did not come from this
- * panel and cannot be undone from it, so it is the single case that earns a texture.
- * `reason: "external"` is set from a stored `EXTERNAL_SYNC` block — it is never guessed
- * from a date merely being unavailable.
+ * A date somebody is already on, in one colour.
+ *
+ * It used to be two: navy for a booking taken here, slate for a date a connected
+ * calendar was holding. The distinction is real, but it is not the question this grid
+ * answers. A host scanning a month is asking "what is free and what is not", and making
+ * the eye sort two dark greys before it can answer that was work for a fact that lives
+ * one panel away in Reservations.
+ *
+ * So the fill says occupied and nothing else, and the channel mark on the two ends of
+ * the stay carries where it came from — visible when it is wanted, silent when it is
+ * not.
  */
-const EXTERNAL_HATCH =
-  "repeating-linear-gradient(135deg, rgb(71 85 105 / 0.16) 0 1.5px, transparent 1.5px 6px)";
+const OCCUPIED_FILL = "#e6f1fb";
+const OCCUPIED_EDGE = "#b5d4f4";
 
 /**
  * Fill and edge per state.
@@ -60,8 +69,8 @@ function cellStyle(
   selected: boolean,
 ): { background: string; borderColor: string } {
   const borderColor =
-    day.state === "booked"
-      ? "#16304a"
+    day.state === "booked" || day.reason === "external"
+      ? OCCUPIED_EDGE
       : day.state === "open_not_bookable"
         ? "#f0e0b6"
         : day.state === "past"
@@ -72,7 +81,9 @@ function cellStyle(
               : "#e6e9ec"
             : "#e2e6ea";
 
-  if (day.state === "booked") return { background: "#16304a", borderColor };
+  if (day.state === "booked" || day.reason === "external") {
+    return { background: OCCUPIED_FILL, borderColor };
+  }
   // Warmed rather than replaced. A blocked night in the middle of a selected run has to
   // go on looking blocked — it is the case the two-button editor beside the grid is for
   // — so the peach is laid over the grey instead of erasing it, and the struck-through
@@ -94,6 +105,26 @@ function cellStyle(
   }
   if (day.state === "past") return { background: "#fbfcfc", borderColor };
   return { background: selected ? "#ffe2cd" : "#ffffff", borderColor };
+}
+
+/**
+ * The corners, which are the only trace of a stay left once the bar is gone.
+ *
+ * A stay used to be drawn as one pill laid across its nights. Removing it made the grid
+ * quieter but also flattened a week of separate one-night bookings into something that
+ * looked identical to a single week-long one. Rounding only the outer two corners puts
+ * that back: the eye reads the run without a line drawn through it, and the host can
+ * still count nights.
+ */
+const RADIUS_OUTER = "0.75rem";
+const RADIUS_JOINED = "0.1875rem";
+
+function cellRadius(stay: CalendarStayEdge | undefined): string {
+  if (!stay) return RADIUS_OUTER;
+  const left = stay.arrival ? RADIUS_OUTER : RADIUS_JOINED;
+  const right = stay.departure ? RADIUS_OUTER : RADIUS_JOINED;
+  // top-left, top-right, bottom-right, bottom-left
+  return `${left} ${right} ${right} ${left}`;
 }
 
 /** How many days each arrow moves the focus. A row is a week, hence seven. */
@@ -121,7 +152,7 @@ export interface CalendarMonthGridProps {
   /** The roving-tabindex date, or null when the focused date is in another month. */
   focusedDate: string | null;
   onFocusDate: (date: string) => void;
-  onSelectDate: (date: string, extend: boolean) => void;
+  onSelectDate: (date: string, extend: boolean, toggle: boolean) => void;
   onClearSelection: () => void;
   /**
    * Moving focus can cross a month boundary, so the stream owns it. `extend` is a
@@ -167,9 +198,47 @@ function CalendarMonthGridImpl({
     return days;
   }, [month]);
 
+  /**
+   * The weeks, and the runs drawn across them.
+   *
+   * A run is consecutive days that belong to the same thing — one guest's stay, one
+   * imported hold, one note — so its name is written once across the whole stretch
+   * rather than repeated in every cell. Runs are cut at the week boundary because that
+   * is where the grid wraps; a stay crossing Sunday is drawn as two bars, which is what
+   * every calendar does and what the eye already expects.
+   */
+  const weeks = useMemo(() => {
+    const resolved = cells.map((cell) => ({
+      ...cell,
+      day: cell.inMonth ? resolveDay(listing, index, cell.date, today) : null,
+    }));
+    const rows: Array<{
+      days: typeof resolved;
+      runs: Array<{ from: number; span: number; run: DayRun }>;
+    }> = [];
+    for (let start = 0; start < resolved.length; start += 7) {
+      const days = resolved.slice(start, start + 7);
+      const runs: Array<{ from: number; span: number; run: DayRun }> = [];
+      days.forEach((entry, column) => {
+        const run = entry.day ? runOf(entry.day, index, entry.date) : null;
+        const previous = runs[runs.length - 1];
+        if (run && previous && previous.run.key === run.key) {
+          previous.span += 1;
+          return;
+        }
+        if (run) runs.push({ from: column, span: 1, run });
+      });
+      rows.push({ days, runs });
+    }
+    return rows;
+  }, [cells, listing, index, today]);
+
   return (
-    <div className="grid grid-cols-7 gap-1">
-      {cells.map((cell, position) => {
+    <div className="flex flex-col gap-1">
+      {weeks.map((week, weekIndex) => (
+        <div key={weekIndex} className="relative">
+          <div className="grid grid-cols-7 gap-1">
+      {week.days.map((cell, position) => {
         if (!cell.inMonth) {
           return (
             <div key={`empty-${position}`} aria-hidden className="min-h-14" />
@@ -180,16 +249,38 @@ function CalendarMonthGridImpl({
         const beyondHorizon = compareYmd(date, horizonEnd) >= 0;
         const selected = isSelected(selection, date);
         const disabled = day.state === "past" || beyondHorizon;
-        const badge = dayStateBadge(i18n, day);
+        /**
+         * A run's label takes the badge's place rather than sitting beside it. A note
+         * written across a block and the word "Blocked" under it are the same fact
+         * twice, and the cell is fifty-six pixels tall — there is room for one line,
+         * not two.
+         */
+        const run = runOf(day, index, date);
+        const badge = run ? null : dayStateBadge(i18n, day);
         const stateLabel = dayStateLabel(i18n, day);
         const priceText =
           day.price !== null ? money(day.price, currency, formats) : null;
+        const promotionCount = index.promotionCountByDate.get(date) ?? 0;
         const { background, borderColor } = cellStyle(day, selected);
-        const onDark = day.state === "booked";
-        // Struck through for exactly the states a guest could not book into: the same
-        // signal every booking calendar uses, and the one that separates a blocked date
-        // from an open one without the host reading the badge under it.
-        const unbookable = day.state === "blocked" || day.state === "past";
+        const occupied = day.state === "booked" || day.reason === "external";
+        /**
+         * Drawn on the first and last night only. Repeating it down a two-week stay
+         * would say the same thing fourteen times; on the ends it reads as check-in and
+         * checkout, which is the part of a stay a host actually plans around.
+         */
+        const stay = occupied ? index.stayByDate.get(date) : undefined;
+        const showMark = Boolean(stay && (stay.arrival || stay.departure));
+        // Struck through for blocked and past dates: the same signal every booking
+        // calendar uses, and the one that separates a blocked date from an open one
+        // without the host reading the badge under it.
+        //
+        // Occupied dates are left alone. An imported hold is stored as a block, so the
+        // strike used to land on channel stays and not on bookings taken here — the
+        // distinction the fill just stopped drawing, showing through somewhere else. The
+        // blue already says the night is gone; a line through the number as well says it
+        // twice, and only on half of them.
+        const unbookable =
+          !occupied && (day.state === "blocked" || day.state === "past");
 
         return (
           <button
@@ -205,13 +296,20 @@ function CalendarMonthGridImpl({
               formatLongDate(date, formats),
               stateLabel.text,
               priceText,
+              promotionCount > 0
+                ? promotionCount === 1
+                  ? "1 promotion"
+                  : `${promotionCount} promotions`
+                : null,
               day.guestName,
             ]
               .filter(Boolean)
               .join(", ")}
             tabIndex={date === focusedDate ? 0 : -1}
             onFocus={() => onFocusDate(date)}
-            onClick={(event) => onSelectDate(date, event.shiftKey)}
+            onClick={(event) =>
+              onSelectDate(date, event.shiftKey, event.ctrlKey || event.metaKey)
+            }
             onKeyDown={(event) => {
               // Shift turns each arrow into an extension of the existing run rather
               // than a bare move, in all four directions and across month boundaries
@@ -233,23 +331,16 @@ function CalendarMonthGridImpl({
             // Selection is a fill and nothing else. It was briefly a coral edge as well,
             // which put a second, louder line around a handful of cells on a grid whose
             // whole edge treatment is one quiet hairline.
-            style={{ background, borderColor }}
+            style={{ background, borderColor, borderRadius: cellRadius(stay) }}
           >
-            {day.reason === "external" ? (
-              <span
-                aria-hidden
-                className="absolute inset-0 rounded-[inherit]"
-                style={{ backgroundImage: EXTERNAL_HATCH }}
-              />
-            ) : null}
 
             <span className="relative flex w-full items-start justify-between gap-1">
               <span
                 className={cn(
                   "text-[0.8125rem] font-semibold tabular-nums md:text-sm",
                   unbookable && "line-through decoration-1",
-                  onDark
-                    ? "text-white"
+                  occupied
+                    ? "text-[#042c53]"
                     : day.state === "past"
                       ? "text-slate-300"
                       : day.state === "blocked"
@@ -261,6 +352,18 @@ function CalendarMonthGridImpl({
               >
                 {ymdToLocalDate(date).getDate()}
               </span>
+              <span className="flex shrink-0 items-center gap-1">
+              {promotionCount > 0 && day.state !== "past" ? (
+                <span
+                  aria-hidden
+                  className={cn(
+                    "rounded-full px-1 py-0.5 text-[0.5625rem] font-semibold leading-none tabular-nums",
+                    "bg-[#fde7dc] text-[#8f3d21]",
+                  )}
+                >
+                  {promotionCount === 1 ? "%" : `% ${promotionCount}`}
+                </span>
+              ) : null}
               {day.state === "available" && !disabled ? (
                 <span
                   aria-hidden
@@ -279,29 +382,37 @@ function CalendarMonthGridImpl({
                    has no author to point at. */
                 <Lock className="mt-0.5 size-3 shrink-0 text-slate-400" aria-hidden />
               ) : null}
+              {showMark ? (
+                stay?.platform ? (
+                  <ChannelChip platform={stay.platform} />
+                ) : stay?.direct ? (
+                  <DirectBookingChip />
+                ) : null
+              ) : null}
+              </span>
             </span>
 
             <span className="relative flex w-full flex-col items-start gap-px">
               {badge ? (
                 <span
                   className={cn(
-                    "max-w-full truncate text-[0.625rem] font-medium leading-4",
-                    onDark
-                      ? "text-white/75"
+                    "flex max-w-full items-center gap-1 text-[0.625rem] font-medium leading-4",
+                    occupied
+                      ? "text-[#0c447c]"
                       : day.state === "open_not_bookable"
                         ? "text-amber-700"
                         : "text-slate-500",
                   )}
                 >
-                  {badge.text}
+                  <span className="truncate">{badge.text}</span>
                 </span>
               ) : null}
               {priceText && day.state !== "past" ? (
                 <span
                   className={cn(
                     "truncate text-[0.6875rem] tabular-nums md:text-xs",
-                    onDark
-                      ? "text-white/70"
+                    occupied
+                      ? "text-[#185fa5]"
                       : day.state === "blocked"
                         ? "text-slate-300"
                         : day.customPrice
@@ -316,8 +427,66 @@ function CalendarMonthGridImpl({
           </button>
         );
       })}
+          </div>
+
+          {/* A second grid laid over the first, so a bar spanning three days lines up
+              with those three columns exactly rather than by arithmetic. It never takes
+              a pointer: the cells underneath are the drag target. */}
+          {week.runs.length > 0 ? (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 grid grid-cols-7 gap-1"
+            >
+              {week.runs.map(({ from, span, run }) => (
+                <span
+                  key={run.key}
+                  style={{ gridColumn: `${from + 1} / span ${span}` }}
+                  className="flex h-4 items-center gap-1 self-center truncate rounded-full bg-slate-200 px-1.5 text-[0.625rem] font-medium text-slate-600 md:h-[1.125rem]"
+                >
+                  <span className="truncate">{run.label}</span>
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ))}
     </div>
   );
+}
+
+/** One stretch of days the calendar can name, and how to draw its label. */
+interface DayRun {
+  /** Identity, so consecutive days of the same thing merge and different ones do not. */
+  key: string;
+  label: string;
+}
+
+/**
+ * What, if anything, to write across this day.
+ *
+ * One thing earns a bar now: the host's own note on a manual block, and only when they
+ * wrote one — a padlock already says who closed the date, and a bar saying nothing is a
+ * bar in the way.
+ *
+ * Occupied dates used to take one too, carrying the guest's name or the feed's. They
+ * label themselves in-cell instead. A name is the wrong thing to put in front of
+ * someone scanning a month for free nights, and it is a click away in Reservations for
+ * the moment they do want it.
+ */
+function runOf(
+  day: HostCalendarDay,
+  index: ListingCalendarIndex,
+  date: string,
+): DayRun | null {
+  if (day.reason === "manual") {
+    const note = index.manualNoteByDate.get(date);
+    if (!note) return null;
+    return {
+      key: `note:${note}`,
+      label: note,
+    };
+  }
+  return null;
 }
 
 /**

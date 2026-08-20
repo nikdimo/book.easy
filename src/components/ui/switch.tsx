@@ -14,11 +14,10 @@ function Switch({
       data-slot="switch"
       className={cn(
         "peer inline-flex h-6 w-10 shrink-0 cursor-pointer items-center rounded-full border border-transparent transition-colors outline-none",
-        // A saturated green reads as an alert rather than a resting state, and "on" is
-        // the ordinary case for a listing. The pastel still separates from the grey by
-        // hue, which is what the control needs, without shouting for attention it does
-        // not deserve.
-        "data-[state=checked]:bg-emerald-300 data-[state=unchecked]:bg-slate-300",
+        // The Listings add button established peach as the quiet active surface. The
+        // orange thumb carries the state, so "on" is clear without turning every row
+        // into a saturated orange alert.
+        "data-[state=checked]:bg-[#fde7dc] data-[state=unchecked]:bg-slate-300",
         "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d9774f]",
         "disabled:cursor-not-allowed disabled:opacity-50",
         className
@@ -28,7 +27,8 @@ function Switch({
       <SwitchPrimitive.Thumb
         data-slot="switch-thumb"
         className={cn(
-          "pointer-events-none block size-5 rounded-full bg-white shadow-sm ring-0 transition-transform",
+          "pointer-events-none block size-5 rounded-full shadow-sm ring-0 transition-[transform,background-color]",
+          "data-[state=checked]:bg-[#d9774f] data-[state=unchecked]:bg-white",
           "data-[state=checked]:translate-x-[1.125rem] data-[state=unchecked]:translate-x-0.5"
         )}
       />

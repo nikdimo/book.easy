@@ -5,6 +5,7 @@ import {
   overridesAfterProposal,
   promotionSaveMode,
   resolveSelectionPromotion,
+  selectionPromotionSummaries,
 } from "@/lib/host/v2/calendar-quote";
 import { computeStayQuote, parseLocalYmd } from "@/lib/utils/stay-pricing";
 import { makeListing, promotion } from "./fixtures";
@@ -148,7 +149,7 @@ describe("resolveSelectionPromotion", () => {
     expect(resolveSelectionPromotion(listing, selection)).toBeNull();
   });
 
-  it("prefers the dated offer over the always-active one, as booking does", () => {
+  it("prefers the higher saving over date-specific scope", () => {
     const listing = makeListing({
       promotions: [
         promotion({ id: "evergreen", discountPercent: 30, minimumNights: 1 }),
@@ -161,7 +162,37 @@ describe("resolveSelectionPromotion", () => {
         }),
       ],
     });
-    expect(resolveSelectionPromotion(listing, selection)?.id).toBe("dated");
+    expect(resolveSelectionPromotion(listing, selection)?.id).toBe("evergreen");
+  });
+});
+
+describe("selectionPromotionSummaries", () => {
+  it("counts every overlapping promotion and marks each nightly winner", () => {
+    const listing = makeListing({
+      promotions: [
+        promotion({ id: "always", discountPercent: 10, minimumNights: 1 }),
+        promotion({
+          id: "dated",
+          discountPercent: 20,
+          minimumNights: 1,
+          startDate: "2026-03-13",
+          endDate: "2026-03-15",
+        }),
+      ],
+    });
+
+    expect(selectionPromotionSummaries(listing, selection)).toEqual([
+      expect.objectContaining({
+        promotion: expect.objectContaining({ id: "dated" }),
+        coveredNights: 2,
+        winningNights: 2,
+      }),
+      expect.objectContaining({
+        promotion: expect.objectContaining({ id: "always" }),
+        coveredNights: 3,
+        winningNights: 1,
+      }),
+    ]);
   });
 });
 
