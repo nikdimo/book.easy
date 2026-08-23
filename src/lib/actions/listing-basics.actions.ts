@@ -12,11 +12,11 @@ import {
 } from "@/lib/host/v2/listing-basics";
 
 function refresh(listingId: string, slug: string, status: string) {
-  revalidatePath(`/host/v2/listings/${listingId}/basics`);
-  revalidatePath(`/host/v2/listings/${listingId}`);
+  revalidatePath(`/host/listings/${listingId}/basics`);
+  revalidatePath(`/host/listings/${listingId}`);
   revalidatePath(`/host/listings/${listingId}/edit`);
   // The overview shows the title, so it is stale the moment this saves — on any status.
-  revalidatePath("/host/v2/listings");
+  revalidatePath("/host/listings");
   revalidatePath("/host/listings");
   // Only a live listing has public pages worth rebuilding; a draft's copy is not on any
   // guest-facing surface yet.

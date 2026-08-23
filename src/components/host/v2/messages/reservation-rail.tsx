@@ -5,6 +5,8 @@ import Image from "next/image";
 import { ArrowRight, ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tx, interpolate, useI18n } from "@/lib/i18n/client";
+import { useDisplayCurrency } from "@/lib/currency/client";
+import { formatMoney } from "@/lib/currency/convert";
 import { resolveBookingStatus } from "@/lib/i18n/status-labels";
 import { DamageReportDialog } from "@/components/communication/damage-report-dialog";
 import type { HostInboxReservation } from "@/lib/services/host-inbox.service";
@@ -28,7 +30,11 @@ export function ReservationRail({
   onChanged: () => Promise<void>;
 }) {
   const { locale, resolve } = useI18n();
+  const display = useDisplayCurrency();
   const { booking, listing, guest } = reservation;
+  const payout = booking
+    ? display.format(booking.totalPrice, booking.currency)
+    : null;
 
   const dayMonth = new Intl.DateTimeFormat(locale, {
     weekday: "short",
@@ -61,7 +67,7 @@ export function ReservationRail({
               {resolveBookingStatus({ resolve }, booking.status).text}
             </span>
           ) : (
-            <span className="inline-flex rounded-full bg-[#fde7dc] px-2.5 py-1 text-xs font-medium text-[#8f3d21]">
+            <span className="inline-flex rounded-full bg-[#f1f5f9] px-2.5 py-1 text-xs font-medium text-[#0f172a]">
               <Tx k="conversation.kind.inquiry" source="Inquiry" />
             </span>
           )}
@@ -155,12 +161,36 @@ export function ReservationRail({
           </div>
 
           <dl className={cn("divide-y divide-slate-100 px-4", CARD)}>
+            {/*
+             * Through the shared display-currency formatter rather than a bare `Intl`
+             * call: this was the one price in the host panel that ignored the chosen
+             * display currency entirely, so a host reading the site in DKK saw every
+             * other figure in DKK and this one in the booking's currency.
+             *
+             * The payout is still stated in the currency it is actually paid in — a
+             * converted figure is today's approximation, and this row is money the
+             * host will receive.
+             */}
             <Row
               label={<Tx k="host.v2.messages.total" source="Total payout" />}
-              value={new Intl.NumberFormat(locale, {
-                style: "currency",
-                currency: booking.currency,
-              }).format(booking.totalPrice)}
+              value={payout?.text ?? ""}
+              note={
+                payout?.converted
+                  ? interpolate(
+                      resolve(
+                        "host.v2.messages.official_total",
+                        "Paid out as {amount}",
+                      ),
+                      {
+                        amount: formatMoney(
+                          booking.totalPrice,
+                          booking.currency,
+                          locale,
+                        ),
+                      },
+                    ).text
+                  : undefined
+              }
               strong
             />
             <Row
@@ -221,10 +251,14 @@ export function ReservationRail({
 function Row({
   label,
   value,
+  note,
   strong,
 }: {
   label: React.ReactNode;
   value: string;
+  /** A quieter second line under the value — used for the official amount behind a
+   *  converted one, which must be readable but must not compete with it. */
+  note?: string;
   strong?: boolean;
 }) {
   return (
@@ -236,7 +270,14 @@ function Row({
           strong ? "font-semibold" : "font-medium"
         )}
       >
-        {value}
+        <span className="notranslate" translate="no">
+          {value}
+        </span>
+        {note ? (
+          <span className="notranslate mt-0.5 block text-xs font-normal text-slate-500" translate="no">
+            {note}
+          </span>
+        ) : null}
       </dd>
     </div>
   );

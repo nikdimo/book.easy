@@ -7,8 +7,39 @@ import {
   stepsForBasePrice,
   stepsForPrice,
   undoStepsForPrices,
+  wholeAmountFromInput,
 } from "@/lib/host/v2/calendar-price-action";
 import { makeListing } from "./fixtures";
+
+/**
+ * The guard on a silent hundredfold. Stripping non-digits read "141.45" as 14145 and
+ * set a price two orders of magnitude too high with nothing on screen to show for it.
+ */
+describe("wholeAmountFromInput", () => {
+  it("drops a typed fraction rather than absorbing its digits", () => {
+    expect(wholeAmountFromInput("141.45")).toBe(141);
+    expect(wholeAmountFromInput("141,45")).toBe(141);
+    expect(wholeAmountFromInput("141.5")).toBe(141);
+    expect(wholeAmountFromInput("141,5")).toBe(141);
+  });
+
+  it("keeps thousands separators, which are not fractions", () => {
+    expect(wholeAmountFromInput("1,200")).toBe(1200);
+    expect(wholeAmountFromInput("1.200")).toBe(1200);
+    expect(wholeAmountFromInput("1.200,50")).toBe(1200);
+  });
+
+  it("ignores currency symbols and stray characters", () => {
+    expect(wholeAmountFromInput("€ 141")).toBe(141);
+    expect(wholeAmountFromInput("141 EUR")).toBe(141);
+  });
+
+  it("tells a half-typed field apart from a real zero", () => {
+    expect(wholeAmountFromInput("")).toBeNull();
+    expect(wholeAmountFromInput("€")).toBeNull();
+    expect(wholeAmountFromInput("0")).toBe(0);
+  });
+});
 
 describe("priceFromPercent", () => {
   it("rounds to whole currency units", () => {

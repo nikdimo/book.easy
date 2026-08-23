@@ -6,8 +6,7 @@ import {
   completePastBookings,
   expirePendingBookings,
 } from "@/lib/services/booking.service";
-import { getStorageAdapter } from "@/lib/storage";
-import { isLocalUploadUrl } from "@/lib/utils/upload-url";
+import { enqueueUploadDeletions, sweepUploads } from "@/lib/storage/upload-cleanup";
 
 export async function getHostListings(hostId: string) {
   return db.listing.findMany({
@@ -155,15 +154,20 @@ export async function archiveOrDeleteListing(
   }
 
   const propertyId = listing.propertyId;
-  const localImageUrls = listing.images
-    .map((img) => img.url)
-    .filter(isLocalUploadUrl);
-  if (localImageUrls.length > 0) {
-    const storage = getStorageAdapter();
-    await Promise.all(localImageUrls.map((url) => storage.delete(url)));
-  }
 
-  await db.listing.delete({ where: { id: listingId } });
+  // The row goes first and its files are queued in the same transaction. Unlinking before
+  // the delete — which is what this used to do — destroyed the photos of a listing the
+  // database then refused to remove, and did it without ever asking whether a draft or
+  // another listing still pointed at them. Both questions are now the sweep's.
+  const queued = await db.$transaction(async (tx) => {
+    await tx.listing.delete({ where: { id: listingId } });
+    return enqueueUploadDeletions(
+      tx,
+      listing.images.map((image) => image.url),
+      "listing-deleted",
+    );
+  });
+  await sweepUploads(queued, `listing-deleted:${listingId}`);
 
   const siblingCount = await db.listing.count({ where: { propertyId } });
   if (siblingCount === 0) {

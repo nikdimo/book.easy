@@ -44,7 +44,7 @@ export function SelectedPromotionsDisclosure({
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((current) => !current)}
-        className="flex min-h-8 w-full items-center justify-between gap-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#a94b28]"
+        className="flex min-h-8 w-full items-center justify-between gap-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0f172a]"
       >
         <span className="text-[0.8125rem] font-semibold text-slate-900">
           {
@@ -59,7 +59,7 @@ export function SelectedPromotionsDisclosure({
             ).text
           }
         </span>
-        <span className="flex shrink-0 items-center gap-1 text-[0.75rem] font-semibold text-[#a94b28]">
+        <span className="flex shrink-0 items-center gap-1 text-[0.75rem] font-semibold text-[#0f172a]">
           {open
             ? i18n.resolve("host.v2.calendar.editor.hide_promotions", "Hide").text
             : i18n.resolve("host.v2.calendar.editor.see_all_promotions", "See all")
@@ -114,7 +114,7 @@ export function SelectedPromotionsDisclosure({
                 className={cn(
                   "rounded-lg text-[0.8125rem]",
                   winningNights > 0 || promotion.id === highlightedPromotionId
-                    ? "bg-[#fff1e8]"
+                    ? "bg-[#f8fafc]"
                     : "bg-white",
                 )}
               >
@@ -122,7 +122,7 @@ export function SelectedPromotionsDisclosure({
                   type="button"
                   onClick={() => onSelect?.(promotion)}
                   disabled={!onSelect}
-                  className="flex min-h-12 w-full items-center justify-between gap-3 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-slate-50 disabled:cursor-default disabled:hover:bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#a94b28]"
+                  className="flex min-h-12 w-full items-center justify-between gap-3 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-slate-50 disabled:cursor-default disabled:hover:bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0f172a]"
                 >
                   <span className="min-w-0">
                   <span className="block font-semibold text-slate-900">
@@ -159,7 +159,7 @@ export function SelectedPromotionsDisclosure({
                     className={cn(
                       "shrink-0 text-[0.6875rem] font-semibold",
                       winningNights > 0 || promotion.id === highlightedPromotionId
-                        ? "text-[#a94b28]"
+                        ? "text-[#0f172a]"
                         : "text-slate-500",
                     )}
                   >
@@ -247,7 +247,7 @@ export function AllPromotionsOverview({
                 <button
                   type="button"
                   onClick={() => onSelect(promotion)}
-                  className="grid min-h-11 w-full grid-cols-[5rem_minmax(0,1fr)_5.5rem_1rem] items-center gap-2 rounded-lg bg-slate-50 px-2.5 py-2 text-left text-[0.8125rem] transition-colors duration-150 hover:bg-slate-100 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#a94b28]"
+                  className="grid min-h-11 w-full grid-cols-[5rem_minmax(0,1fr)_5.5rem_1rem] items-center gap-2 rounded-lg bg-slate-50 px-2.5 py-2 text-left text-[0.8125rem] transition-colors duration-150 hover:bg-slate-100 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0f172a]"
                 >
                   <span className="truncate font-semibold tabular-nums text-slate-900">
                     {promotion.discountPercent > 0
@@ -357,7 +357,7 @@ export function PromotionBandList({
             <span
               className={cn(
                 "min-w-14 shrink-0 font-semibold tabular-nums",
-                row.draft ? "text-[#8f3d21]" : "text-slate-900",
+                row.draft ? "text-[#0f172a]" : "text-slate-900",
               )}
             >
               {
@@ -401,7 +401,7 @@ export function PromotionBandList({
               <span
                 className={cn(
                   "shrink-0 text-[0.6875rem]",
-                  row.draft ? "text-[#8f3d21]" : "text-slate-400",
+                  row.draft ? "text-[#0f172a]" : "text-slate-400",
                 )}
               >
                 {row.evergreen
@@ -416,7 +416,7 @@ export function PromotionBandList({
               </span>
             ) : null}
             {row.draft ? (
-              <Pencil className="size-3.5 shrink-0 text-[#8f3d21]" aria-hidden />
+              <Pencil className="size-3.5 shrink-0 text-[#0f172a]" aria-hidden />
             ) : selectable ? (
               <ChevronRight className="size-4 shrink-0 text-slate-300" aria-hidden />
             ) : null}
@@ -424,9 +424,9 @@ export function PromotionBandList({
         );
         const className = cn(
           "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-[0.8125rem]",
-          row.draft ? "bg-[#fff1e8]" : "bg-slate-50",
+          row.draft ? "bg-[#f8fafc]" : "bg-slate-50",
           selectable &&
-            "min-h-11 transition-colors duration-150 hover:bg-slate-100 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#a94b28]",
+            "min-h-11 transition-colors duration-150 hover:bg-slate-100 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0f172a]",
         );
 
         return (

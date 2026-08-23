@@ -21,6 +21,8 @@ import {
   enqueueBookingEmails,
   kickBookingEmailDelivery,
 } from "@/lib/services/booking-email-outbox.service";
+import { houseRulesSnapshot } from "@/lib/host/v2/listing-house-rules";
+import { houseRulesVersion } from "@/lib/host/v2/house-rules-version.server";
 
 export const BOOKING_RESPONSE_WINDOW_HOURS = 24;
 
@@ -243,11 +245,34 @@ interface CreateBookingInput {
    * listing's official currency once it has loaded it.
    */
   display?: ConversionContext | null;
+  /**
+   * When the guest accepted the listing's house rules, or null for a caller that does
+   * not collect an acceptance.
+   *
+   * Only the *moment* comes from the caller. The rules themselves are read from the
+   * listing row this function loads inside its own transaction, never from anything the
+   * request carried: a snapshot the client could choose would record what the guest
+   * wanted to agree to rather than what the listing said.
+   */
+  houseRulesAcceptedAt?: Date | null;
+  /** Fingerprint of the rules the guest actually saw. Required whenever acceptance is
+   * recorded and compared with the current listing inside the booking transaction. */
+  expectedHouseRulesVersion?: string | null;
 }
 
 export async function createBooking(input: CreateBookingInput) {
-  const { listingId, guestId, checkIn, checkOut, guestCount, guestNote, guestLocale, display } =
-    input;
+  const {
+    listingId,
+    guestId,
+    checkIn,
+    checkOut,
+    guestCount,
+    guestNote,
+    guestLocale,
+    display,
+    houseRulesAcceptedAt,
+    expectedHouseRulesVersion,
+  } = input;
 
   const createdAt = new Date();
   const responseDueAt = new Date(
@@ -288,6 +313,18 @@ export async function createBooking(input: CreateBookingInput) {
 
       if (!listing.pricingRule) {
         throw new Error("Listing pricing not configured");
+      }
+
+      const currentHouseRules = houseRulesSnapshot(listing);
+      if (houseRulesAcceptedAt) {
+        if (
+          !expectedHouseRulesVersion ||
+          expectedHouseRulesVersion !== houseRulesVersion(currentHouseRules)
+        ) {
+          throw new Error(
+            "The house rules changed while you were booking. Reload the page, review them, and try again.",
+          );
+        }
       }
 
       if (
@@ -446,6 +483,24 @@ export async function createBooking(input: CreateBookingInput) {
           status: BookingStatus.PENDING,
           responseDueAt,
           guestNote,
+          // Frozen here and never written again. `confirmBooking`, `cancelBooking` and
+          // every host edit to the listing leave this row alone, so what this guest
+          // agreed to stays readable exactly as it stood — a host who changes their
+          // rules tomorrow changes them for the next guest, not for this one.
+          //
+          // Null all round for a caller that collected no acceptance, which is also what
+          // every booking taken before this existed holds. That is a real distinction:
+          // "no record" is not "agreed to nothing".
+          ...(houseRulesAcceptedAt
+            ? {
+                // Cast because a Prisma JSON column takes an index-signature type and
+                // the snapshot is a named interface — the shape written is exactly
+                // `HouseRulesSnapshot`, which `parseHouseRulesSnapshot` reads back.
+                houseRulesSnapshot:
+                  currentHouseRules as unknown as Prisma.InputJsonObject,
+                houseRulesAcceptedAt,
+              }
+            : {}),
         },
       });
 

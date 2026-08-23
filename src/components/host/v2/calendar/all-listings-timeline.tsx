@@ -128,7 +128,7 @@ export function AllListingsTimeline({
                     <button
                       type="button"
                       onClick={() => onSelectListing(listing.id)}
-                      className="block max-w-full text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]"
+                      className="block max-w-full text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]"
                     >
                       <span className="block truncate text-[0.8125rem] font-semibold text-slate-900 underline-offset-2 hover:underline">
                         {listing.title}

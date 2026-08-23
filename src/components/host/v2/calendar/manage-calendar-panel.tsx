@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, CalendarSync, ListChecks, X } from "lucide-react";
+import { BASE_CURRENCY } from "@/lib/currency/currency-preference";
+import { ArrowLeft, CalendarSync, ListChecks, SlidersHorizontal, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { interpolate, useI18n } from "@/lib/i18n/client";
 import { Button } from "@/components/ui/button";
@@ -61,6 +62,36 @@ import {
 } from "./calendar-labels";
 
 /**
+ * The band that states which dates the panel is acting on. Shared shape, so the menu
+ * and every editor under it put the same box in the same place and only the words
+ * inside change.
+ */
+const BAND_CLASS =
+  "mx-1 mb-2 flex items-center gap-2 rounded-[0.625rem] border px-3 py-2.5";
+
+/**
+ * Letting go of the dates.
+ *
+ * It was a small underlined word in the header, sat among grey supporting text, and
+ * hosts did not find it. A bordered chip with its own × reads as a control at a
+ * glance, and it lives inside the band so the thing it removes is the thing beside
+ * it. There is one per screen and no second copy anywhere else.
+ */
+function ClearDatesChip({ onClick }: { onClick: () => void }) {
+  const i18n = useI18n();
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex shrink-0 items-center gap-1 rounded-full border border-[#94a3b8] bg-white/70 py-1 pl-2 pr-2.5 text-[0.75rem] font-medium text-slate-700 transition-colors duration-150 hover:border-slate-500 hover:bg-white hover:text-slate-900 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#0f172a]"
+    >
+      <X className="size-3.5" aria-hidden />
+      {i18n.resolve("host.v2.calendar.clear_dates", "Clear dates").text}
+    </button>
+  );
+}
+
+/**
  * The right-hand editor: a summary menu that transforms into one focused editor.
  *
  * The panel this replaces stacked three accordions in a column. Opening one left the
@@ -88,6 +119,7 @@ export function ManageCalendarPanel({
   promotionEditorId,
   onChange,
   onClearSelection,
+  onCloseDrawer,
   onReviewDate,
   actionPending,
   actionResult,
@@ -100,6 +132,7 @@ export function ManageCalendarPanel({
   onListingDraftChange,
   onReviewListing,
   onEditListingWideStayRules,
+  onOpenListingDefaults,
   focusMinimumStay,
   view,
   onOpenEditor,
@@ -124,6 +157,9 @@ export function ManageCalendarPanel({
   promotionEditorId: string | null;
   onChange: (change: DateChange | null) => void;
   onClearSelection: () => void;
+  /** Closes the compact-width drawer. The panel owns the only header there is now, so
+   *  the way out has to live in it; desktop has no drawer and hides the control. */
+  onCloseDrawer?: () => void;
   onReviewDate: () => void;
   /**
    * Availability and price act rather than stage: both write through these instead of
@@ -147,6 +183,9 @@ export function ManageCalendarPanel({
   onListingDraftChange: (change: ListingChange | null) => void;
   onReviewListing: () => void;
   onEditListingWideStayRules: () => void;
+  /** Opens the listing-wide defaults from the dates menu. Without it the only route
+   *  there is clearing the selection, which reads as cancelling, not as navigating. */
+  onOpenListingDefaults: () => void;
   focusMinimumStay: boolean;
   view: WorkbenchView;
   /** Guarded by the caller, so leaving an editor with a draft still prompts. */
@@ -163,13 +202,14 @@ export function ManageCalendarPanel({
 }) {
   const i18n = useI18n();
   const scope = scopeOfSelection(selection);
-  const currency = listing.pricing?.currency ?? "EUR";
+  const currency = listing.pricing?.currency ?? BASE_CURRENCY;
   const selectedDateCount = selectionDates(selection).length;
   const hasSelection = selectedDateCount > 0;
 
   /**
-   * The first selected date activates the panel once. More Ctrl/⌘-clicks only animate
-   * the count in the header, so building a selection never turns into repeated flashes.
+   * The first selected date plays the menu's arrival once. More Ctrl/⌘-clicks only
+   * animate the count on the band, so building a selection never turns into repeated
+   * flashes. The flag is held a little past the animation so the last row finishes.
    */
   const previouslyHadSelection = useRef(hasSelection);
   const [selectionAttention, setSelectionAttention] = useState(false);
@@ -182,7 +222,7 @@ export function ManageCalendarPanel({
       timers.push(window.setTimeout(() => setSelectionAttention(false), 0));
     } else if (!hadSelection) {
       timers.push(window.setTimeout(() => setSelectionAttention(true), 0));
-      timers.push(window.setTimeout(() => setSelectionAttention(false), 1_200));
+      timers.push(window.setTimeout(() => setSelectionAttention(false), 800));
     }
 
     return () => timers.forEach((timer) => window.clearTimeout(timer));
@@ -345,20 +385,16 @@ export function ManageCalendarPanel({
       {...anchorProps(CALENDAR_ANCHOR.managePanel)}
       className="relative flex min-h-0 flex-1 flex-col"
     >
-      {selectionAttention ? (
-        <span
-          aria-hidden
-          className="calendar-panel-attention-rail pointer-events-none absolute -left-3 top-0 z-10 h-40 w-1 rounded-full bg-[#d9774f]"
-        />
-      ) : null}
       {/* Header: one scope statement, a way back, and a way out. Stays put while the
-          body scrolls, on desktop and inside the drawer alike. */}
-      <header
-        className={cn(
-          "flex shrink-0 items-start gap-2 rounded-t-lg border-b border-slate-100 pb-3 transition-colors duration-500 motion-reduce:transition-none",
-          selectionAttention && "bg-[#fff7f2]",
-        )}
-      >
+          body scrolls, on desktop and inside the drawer alike.
+
+          On a phone this is the drawer's header too — there is no second bar above it.
+          A fixed "Manage calendar" said less than this one does ("Promotion", the
+          listing name) and stacked a second × beside this one, one closing the sheet
+          and one clearing the dates, with nothing to tell them apart. Now the × means
+          close, the way it does in every other sheet, and clearing lives on the band
+          below, against the dates it removes. */}
+      <header className="flex shrink-0 items-start gap-2 rounded-t-lg border-b border-slate-100 pb-3">
         {view.kind !== "menu" ? (
           <button
             type="button"
@@ -366,7 +402,7 @@ export function ManageCalendarPanel({
               setOngoingPromotionMode("list");
               onBack();
             }}
-            className="-ml-1 grid size-11 shrink-0 place-items-center rounded-lg text-slate-500 transition-colors duration-150 hover:bg-slate-50 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#a94b28]"
+            className="-ml-1 grid size-11 shrink-0 place-items-center rounded-lg text-slate-500 transition-colors duration-150 hover:bg-slate-50 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0f172a]"
             aria-label={i18n.resolve("host.v2.calendar.back", "Back").text}
           >
             <ArrowLeft className="size-4" aria-hidden />
@@ -375,6 +411,7 @@ export function ManageCalendarPanel({
         <div className="min-w-0 flex-1 pt-1.5">
           <p
             {...anchorProps(CALENDAR_ANCHOR.manageScope)}
+            id="host-v2-manage-drawer-title"
             className="truncate text-[0.9375rem] font-semibold text-slate-900"
           >
             {view.kind === "menu" ? (
@@ -400,18 +437,20 @@ export function ManageCalendarPanel({
               headline
             )}
           </p>
-          <p className="mt-0.5 truncate text-[0.75rem] text-slate-500">
-            {view.kind === "menu" ? scopeText : `${scopeText} · ${headline}`}
+          {/* One line of context under the title. On the menu that is the scope; on
+              every screen below it that is the property, because the dates moved to
+              the band and the name is the thing that would otherwise leave the
+              screen. */}
+          <p className="mt-0.5 min-w-0 truncate text-[0.75rem] text-slate-500">
+            {view.kind === "menu" ? scopeText : listing.title}
           </p>
         </div>
-        {selection ? (
+        {onCloseDrawer ? (
           <button
             type="button"
-            onClick={onClearSelection}
-            className="-mr-1 grid size-11 shrink-0 place-items-center rounded-lg text-slate-400 transition-colors duration-150 hover:bg-slate-50 hover:text-slate-600 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#a94b28]"
-            aria-label={
-              i18n.resolve("host.v2.calendar.clear_selection", "Clear selection").text
-            }
+            onClick={onCloseDrawer}
+            className="-mr-1 grid size-11 shrink-0 place-items-center rounded-lg text-slate-500 transition-colors duration-150 hover:bg-slate-50 hover:text-slate-900 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0f172a] lg:hidden"
+            aria-label={i18n.resolve("common.close", "Close").text}
           >
             <X className="size-4" aria-hidden />
           </button>
@@ -422,7 +461,7 @@ export function ManageCalendarPanel({
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-3">
         {view.kind === "menu" ? (
           <div className="flex flex-col gap-1">
-            {/* The selected cell's own treatment, moved into the panel: the same peach
+            {/* The selected cell's own treatment, moved into the panel: the same tint
                 fill, warm hairline and rounding the grid draws around a picked date. The
                 shape is there in both states so nothing resizes when a date is clicked —
                 only the colour changes, and the panel visibly belongs to the run the host
@@ -433,70 +472,97 @@ export function ManageCalendarPanel({
                 on it. */}
             <div
               className={cn(
-                "mx-1 mb-2 rounded-[0.625rem] border px-3 py-2.5 transition-colors duration-300 motion-reduce:transition-none",
+                BAND_CLASS,
+                "transition-colors duration-300 motion-reduce:transition-none",
                 selection
-                  ? "border-[#eec7ae] bg-[#ffe2cd]"
+                  ? "border-[#cbd5e1] bg-[#e2e8f0]"
                   : "border-slate-200 bg-slate-50",
               )}
             >
-              <h3
-                className={cn(
-                  "text-[0.75rem] font-semibold transition-colors duration-300 motion-reduce:transition-none",
-                  selection ? "text-[#8f3d21]" : "text-slate-600",
-                )}
-              >
-                {
-                  selection
-                    ? i18n.resolve(
-                        "host.v2.calendar.choose_change",
-                        "Choose what to change",
-                      ).text
-                    : i18n.resolve(
-                        "host.v2.calendar.manage_prompt",
-                        "What would you like to change?",
-                      ).text
-                }
-              </h3>
-              {selection ? (
-                <p
-                  key={selectedDateCount}
-                  className="calendar-selection-count-change mt-0.5 truncate text-[0.8125rem] font-semibold text-[#a94b28]"
+              <div className="min-w-0 flex-1">
+                <h3
+                  className={cn(
+                    "text-[0.75rem] font-semibold transition-colors duration-300 motion-reduce:transition-none",
+                    selection ? "text-[#0f172a]" : "text-slate-600",
+                  )}
                 >
-                  {rangeLabel} · {selectionCountText}
-                </p>
-              ) : (
-                /* An empty panel used to say only what it was for. Saying how to fill it
-                   is the part a host opening the calendar for the first time is missing. */
-                <p className="mt-0.5 truncate text-[0.6875rem] text-slate-400">
                   {
+                    selection
+                      ? i18n.resolve(
+                          "host.v2.calendar.choose_change",
+                          "Choose what to change",
+                        ).text
+                      : i18n.resolve(
+                          "host.v2.calendar.manage_prompt",
+                          "What would you like to change?",
+                        ).text
+                  }
+                </h3>
+                {selection ? (
+                  <p
+                    key={selectedDateCount}
+                    className="calendar-selection-count-change mt-0.5 truncate text-[0.8125rem] font-semibold text-[#0f172a]"
+                  >
+                    {rangeLabel} · {selectionCountText}
+                  </p>
+                ) : (
+                  /* An empty panel used to say only what it was for. Saying how to fill it
+                     is the part a host opening the calendar for the first time is missing. */
+                  <p className="mt-0.5 truncate text-[0.6875rem] text-slate-400">
+                    {
+                      i18n.resolve(
+                        "host.v2.calendar.pick_dates_hint",
+                        "Pick dates on the calendar",
+                      ).text
+                    }
+                  </p>
+                )}
+              </div>
+              {selection ? <ClearDatesChip onClick={onClearSelection} /> : null}
+            </div>
+            {/* Hairlines, not cards: they group the three into one list of
+                destinations and give each row an edge at rest, which is the thing a
+                hover-only affordance could never do on a phone. */}
+            <div className="divide-y divide-slate-100">
+              {WORKBENCH_MENU[scope].map((candidate, rowIndex) => {
+                const value = menuValue(candidate);
+                return (
+                  <SummaryRow
+                    key={candidate}
+                    label={workbenchEditorLabel(i18n, candidate).text}
+                    value={value.text}
+                    attention={value.attention}
+                    reveal={selectionAttention}
+                    revealIndex={rowIndex}
+                    onClick={() => {
+                      if (candidate === "listing_promotions") {
+                        setOngoingPromotionMode("list");
+                      }
+                      onOpenEditor(candidate);
+                    }}
+                  />
+                );
+              })}
+            </div>
+
+            <div className="mt-2 flex flex-col divide-y divide-slate-100 border-t border-slate-100 pt-2">
+              {/* Only while dates are selected: without it the listing-wide editor is
+                  reachable solely by clearing the selection, and a host who wants the
+                  cleaning fee has no reason to think discarding their dates is the way
+                  to it. With no selection the menu above already lists it. */}
+              {scope === "DATES" ? (
+                <QuietRow
+                  icon={SlidersHorizontal}
+                  label={workbenchEditorLabel(i18n, "listing_defaults").text}
+                  hint={
                     i18n.resolve(
-                      "host.v2.calendar.pick_dates_hint",
-                      "Pick dates on the calendar",
+                      "host.v2.calendar.listing_defaults_hint",
+                      "Base price, cleaning fee and minimum stay for every date",
                     ).text
                   }
-                </p>
-              )}
-            </div>
-            {WORKBENCH_MENU[scope].map((candidate) => {
-              const value = menuValue(candidate);
-              return (
-                <SummaryRow
-                  key={candidate}
-                  label={workbenchEditorLabel(i18n, candidate).text}
-                  value={value.text}
-                  attention={value.attention}
-                  highlight={selectionAttention}
-                  onClick={() => {
-                    if (candidate === "listing_promotions") {
-                      setOngoingPromotionMode("list");
-                    }
-                    onOpenEditor(candidate);
-                  }}
+                  onClick={onOpenListingDefaults}
                 />
-              );
-            })}
-
-            <div className="mt-2 flex flex-col gap-1 border-t border-slate-100 pt-2">
+              ) : null}
               <QuietRow
                 icon={ListChecks}
                 label={
@@ -543,9 +609,34 @@ export function ManageCalendarPanel({
           // property while this is open must not show the previous one's calendars.
           <ConnectedCalendars key={listing.id} listingId={listing.id} />
         ) : editor && scope === "DATES" && selection ? (
-          <div
-            key={`${listing.id}:${selection.start}:${selection.end}:${editor}:${promotionEditorId ?? ""}`}
-          >
+          <>
+            {/* The same band as the menu, on every screen the menu leads to. A host
+                deep in a promotion should never have to go back a screen to find out
+                which nights they are pricing, and the way out of the selection is on
+                the band that names it rather than up in a header that changes shape
+                from screen to screen. */}
+            <div className={cn(BAND_CLASS, "border-[#cbd5e1] bg-[#e2e8f0]")}>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-[0.75rem] font-semibold text-[#0f172a]">
+                  {
+                    i18n.resolve(
+                      "host.v2.calendar.editing_dates",
+                      "Editing these dates",
+                    ).text
+                  }
+                </h3>
+                <p
+                  key={selectedDateCount}
+                  className="calendar-selection-count-change mt-0.5 truncate text-[0.8125rem] font-semibold text-[#0f172a]"
+                >
+                  {rangeLabel} · {selectionCountText}
+                </p>
+              </div>
+              <ClearDatesChip onClick={onClearSelection} />
+            </div>
+            <div
+              key={`${listing.id}:${selection.start}:${selection.end}:${editor}:${promotionEditorId ?? ""}`}
+            >
             {editor === "availability" ? (
               <AvailabilityEditor
                 listing={listing}
@@ -590,7 +681,8 @@ export function ManageCalendarPanel({
                 onDismissResult={onDismissActionResult}
               />
             )}
-          </div>
+            </div>
+          </>
         ) : editor ? (
           // Keyed on the listing, so switching property starts each editor from the
           // values that property actually has rather than the last one's.
@@ -645,7 +737,7 @@ export function ManageCalendarPanel({
                   : onReviewListing
             }
             className={cn(
-              "min-h-11 w-full bg-[#d9774f] text-white hover:bg-[#c2643e]",
+              "min-h-11 w-full bg-[#0f172a] text-white hover:bg-[#1e293b]",
               "disabled:bg-slate-100 disabled:text-slate-400",
             )}
             {...anchorProps(CALENDAR_ANCHOR.reviewChanges)}

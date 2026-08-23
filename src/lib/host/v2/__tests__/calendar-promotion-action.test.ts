@@ -7,6 +7,7 @@ import {
   selectionLadder,
   promotionBands,
   promotionDraftProblem,
+  selectionDraftCanWin,
 } from "@/lib/host/v2/calendar-promotion-action";
 import { makeListing, promotion, TODAY } from "./fixtures";
 
@@ -151,18 +152,45 @@ describe("promotionDraftProblem", () => {
     ).toEqual({ code: "NO_BENEFIT" });
   });
 
-  it("names a minimum the selected dates can never reach", () => {
+  it("allows a minimum longer than the selected range when a longer booking can earn it", () => {
+    const longerStayDraft = { ...draft, minimumNights: 5, discountPercent: 25 };
+    const listing = makeListing();
     expect(
       promotionDraftProblem({
-        draft: { ...draft, minimumNights: 5 },
+        draft: longerStayDraft,
         bands: [],
         nights: NIGHTS,
+        draftApplied: selectionDraftCanWin({
+          listing,
+          selection: SELECTION,
+          draft: longerStayDraft,
+        }),
       }),
-    ).toEqual({
-      code: "MINIMUM_ABOVE_SELECTION",
-      minimumNights: 5,
-      nights: 3,
-    });
+    ).toBeNull();
+  });
+
+  it("recognizes a short dated offer inside a longer qualifying booking", () => {
+    expect(
+      selectionDraftCanWin({
+        listing: makeListing(),
+        selection: { start: "2026-09-29", end: "2026-09-30" },
+        draft: { ...draft, discountPercent: 5, minimumNights: 5 },
+      }),
+    ).toBe(true);
+  });
+
+  it("recognizes when a better all-dates offer shadows every qualifying stay", () => {
+    expect(
+      selectionDraftCanWin({
+        listing: makeListing({
+          promotions: [
+            promotion({ id: "global", discountPercent: 15, minimumNights: 1 }),
+          ],
+        }),
+        selection: { start: "2026-09-29", end: "2026-09-30" },
+        draft: { ...draft, discountPercent: 5, minimumNights: 5 },
+      }),
+    ).toBe(false);
   });
 
   it("names an offer that is valid but always loses", () => {

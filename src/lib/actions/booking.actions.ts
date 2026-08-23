@@ -33,6 +33,8 @@ export async function createBookingAction(formData: FormData) {
     checkOut: formData.get("checkOut") as string,
     guestCount: formData.get("guestCount") as string,
     guestNote: (formData.get("guestNote") as string) || undefined,
+    houseRulesAccepted: formData.get("houseRulesAccepted") as string,
+    houseRulesVersion: formData.get("houseRulesVersion") as string,
   };
 
   const parsed = createBookingSchema.safeParse(raw);
@@ -54,6 +56,11 @@ export async function createBookingAction(formData: FormData) {
       guestCount: parsed.data.guestCount,
       guestNote: parsed.data.guestNote,
       guestLocale,
+      // The schema has already refused anything but an explicit "true", so reaching
+      // this line *is* the acceptance. `createBooking` records the moment and takes the
+      // rules snapshot itself, from the listing row it loads inside its transaction.
+      houseRulesAcceptedAt: new Date(),
+      expectedHouseRulesVersion: parsed.data.houseRulesVersion,
       // Recorded against the booking so the confirmation keeps showing the figure
       // this guest was actually looking at, whatever rates do afterwards.
       display: formatter.context,
@@ -103,8 +110,9 @@ export async function confirmBookingAction(bookingId: string) {
       metadata: { confirmedBy: "host" },
     });
     revalidatePath("/host/bookings");
-    revalidatePath("/host/v2/reservations");
+    revalidatePath("/host/reservations");
     revalidatePath(`/host/bookings/${bookingId}`);
+    revalidatePath(`/host/reservations/${bookingId}`);
     revalidatePath(`/account/bookings/${bookingId}`);
     return { success: true };
   } catch (error: unknown) {
@@ -132,8 +140,9 @@ export async function rejectBookingAction(bookingId: string, reason?: string) {
       metadata: { rejectedBy: "host", reason },
     });
     revalidatePath("/host/bookings");
-    revalidatePath("/host/v2/reservations");
+    revalidatePath("/host/reservations");
     revalidatePath(`/host/bookings/${bookingId}`);
+    revalidatePath(`/host/reservations/${bookingId}`);
     revalidatePath(`/account/bookings/${bookingId}`);
     return { success: true };
   } catch (error: unknown) {
@@ -161,7 +170,10 @@ export async function hostCancelBookingAction(bookingId: string, reason: string)
       metadata: { reason },
     });
     revalidatePath("/host/bookings");
-    revalidatePath("/host/v2/reservations");
+    revalidatePath("/host/reservations");
+    revalidatePath(`/host/bookings/${bookingId}`);
+    revalidatePath(`/host/reservations/${bookingId}`);
+    revalidatePath(`/account/bookings/${bookingId}`);
     return { success: true };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to cancel booking";

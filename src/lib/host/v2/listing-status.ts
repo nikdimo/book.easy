@@ -97,6 +97,17 @@ export function listingVisibility(status: string): HostListingVisibility {
   }
 }
 
+/**
+ * Whether the public listing page exists for this status.
+ *
+ * `getListingBySlug` serves `APPROVED` listings and nothing else, so a "Preview" link
+ * on a draft or an unpublished listing opens a 404. One helper rather than a status
+ * comparison at each call site, so the editor's three preview controls agree.
+ */
+export function listingPreviewable(status: string): boolean {
+  return listingVisibility(status) === "LIVE";
+}
+
 export function summarizeListingStatus({
   listing,
   counts,

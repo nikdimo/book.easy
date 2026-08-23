@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SpaceIcon } from "@/components/shared/space-icon";
+import { EditorSideRail } from "@/components/host/v2/editor/editor-side-rail";
 import type { CatalogRoomType, ListingRoomSummary } from "@/lib/types/room-catalog";
 import { Tx, useI18n } from "@/lib/i18n/client";
 
@@ -55,10 +56,22 @@ export function RoomsPanel({
   const [showMore, setShowMore] = useState(false);
   const standardSuggestions = suggestions.filter((roomType) => roomType.isStandard);
   const moreSuggestions = suggestions.filter((roomType) => !roomType.isStandard);
+  const addRoom = (
+    <button
+      type="button"
+      onClick={onAddRoom}
+      className="mt-2 flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-[#0f172a] transition-colors hover:bg-[#f1f5f9] focus-visible:outline-none"
+    >
+      <Plus className="size-4" aria-hidden />
+      {resolve("host.editor.photos.add_room", "Add room or space").text}
+    </button>
+  );
 
   return (
-    <aside className="sticky top-[3.75rem] hidden max-h-[calc(100dvh-9rem)] w-60 shrink-0 self-start border-l border-slate-100 pl-4 xl:flex xl:flex-col">
-        <ul className="min-h-0 flex-1 space-y-0.5 overflow-y-auto pr-1">
+    <EditorSideRail
+      label={resolve("host.editor.photos.rooms_heading", "Rooms and spaces").text}
+      footer={addRoom}
+    >
           <UnassignedRow
             count={unassignedCount}
             active={activeRoomFilter === null}
@@ -116,17 +129,7 @@ export function RoomsPanel({
               )}
             </li>
           )}
-        </ul>
-
-        <button
-          type="button"
-          onClick={onAddRoom}
-          className="mt-2 flex w-full items-center gap-2 rounded-lg px-2 py-2 text-sm font-medium text-[#8f3d21] transition-colors hover:bg-[#fde7dc] focus-visible:outline-none"
-        >
-          <Plus className="size-4" aria-hidden />
-          {resolve("host.editor.photos.add_room", "Add room or space").text}
-        </button>
-    </aside>
+    </EditorSideRail>
   );
 }
 

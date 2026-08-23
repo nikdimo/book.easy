@@ -1,18 +1,24 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, Minus, Plus } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
+import { StepperButton } from "@/components/host/v2/stepper-button";
 import { cn } from "@/lib/utils";
 
 /**
  * The small vocabulary the redesigned panel is built from.
  *
  * The old panel drew a border around everything: an outlined card inside an outlined
- * aside, each with its own orange edge when open, so nothing on screen looked more
+ * aside, each with its own accent edge when open, so nothing on screen looked more
  * important than anything else. These primitives use separators and weight instead, and
  * keep the one strong colour for the thing the host is actually about to do.
+ *
+ * What says "tap me" here is the chevron and the separator, never elevation: the panel
+ * is itself a drawer on a phone, and raised cards inside it would be a third layer of
+ * depth saying nothing. The rows carry a press state as well as a hover one, because
+ * the surface where these are hardest to read as buttons is the one with no pointer.
  *
  * Touch targets are at least 44px throughout. That is not a style choice — the panel
  * becomes a full-height drawer on a phone, where every row here is thumb-operated.
@@ -23,7 +29,8 @@ export function SummaryRow({
   label,
   value,
   attention,
-  highlight,
+  reveal,
+  revealIndex = 0,
   onClick,
   anchor,
 }: {
@@ -32,8 +39,17 @@ export function SummaryRow({
   value: string;
   /** Amber value text. Reserved for a state the host has to deal with. */
   attention?: boolean;
-  /** Brief warm acknowledgement that this row is now ready for the selected dates. */
-  highlight?: boolean;
+  /**
+   * Play the arrival: the row settles in from the right as the dates become live.
+   *
+   * The three rows together are the answer to "I picked dates, now what?", and the
+   * eye follows the stagger down the list — which is the path the host has to take.
+   * The panel used to say this with a one-pixel rail down its outer edge, which was
+   * both outside the thing it pointed at and too thin to see.
+   */
+  reveal?: boolean;
+  /** Position in the list. Each row starts a beat after the one above it. */
+  revealIndex?: number;
   onClick: () => void;
   anchor?: string;
 }) {
@@ -42,11 +58,12 @@ export function SummaryRow({
       type="button"
       onClick={onClick}
       {...(anchor ? { id: anchor, "data-linger-anchor": anchor } : {})}
+      style={reveal ? { animationDelay: `${revealIndex * 70}ms` } : undefined}
       className={cn(
         "flex min-h-11 w-full items-center gap-3 rounded-lg px-2 py-2 text-left",
-        "transition-colors duration-150 hover:bg-slate-50 motion-reduce:transition-none",
-        "focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#a94b28]",
-        highlight && "bg-[#fff7f2]",
+        "transition-colors duration-150 hover:bg-slate-50 active:bg-slate-100 motion-reduce:transition-none",
+        "focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0f172a]",
+        reveal && "calendar-menu-row-reveal",
       )}
     >
       {/* Both sides truncate. `shrink-0` on the value looked right for the short ones
@@ -65,7 +82,7 @@ export function SummaryRow({
       >
         {value}
       </span>
-      <ChevronRight className="size-4 shrink-0 text-slate-300" aria-hidden />
+      <ChevronRight className="size-4 shrink-0 text-slate-400" aria-hidden />
     </button>
   );
 }
@@ -100,13 +117,13 @@ export function QuietRow({
           </span>
         ) : null}
       </span>
-      <ChevronRight className="size-4 shrink-0 text-slate-300" aria-hidden />
+      <ChevronRight className="size-4 shrink-0 text-slate-400" aria-hidden />
     </>
   );
   const className = cn(
     "flex min-h-11 w-full items-center gap-3 rounded-lg px-2 py-2 text-left",
-    "transition-colors duration-150 hover:bg-slate-50 motion-reduce:transition-none",
-    "focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#a94b28]",
+    "transition-colors duration-150 hover:bg-slate-50 active:bg-slate-100 motion-reduce:transition-none",
+    "focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0f172a]",
   );
   const anchorProps = anchor
     ? { id: anchor, "data-linger-anchor": anchor }
@@ -158,10 +175,10 @@ export function SegmentedChoice<T extends string>({
             className={cn(
               "flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl px-3 text-[0.875rem] font-semibold",
               "transition-colors duration-150 motion-reduce:transition-none",
-              "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]",
+              "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]",
               "disabled:cursor-not-allowed disabled:opacity-40",
               selected
-                ? "bg-[#fff1e8] text-[#8f3d21] ring-1 ring-inset ring-[#d9774f]"
+                ? "bg-[#f8fafc] text-[#0f172a] ring-1 ring-inset ring-[#0f172a]"
                 : "bg-slate-50 text-slate-700 hover:bg-slate-100",
             )}
           >
@@ -202,8 +219,8 @@ export function Disclosure({
         aria-controls={id}
         className={cn(
           "flex min-h-11 w-full items-center gap-1.5 text-left text-[0.8125rem] font-medium",
-          "text-[#a94b28] transition-colors duration-150 hover:text-[#8f3d21] motion-reduce:transition-none",
-          "focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#a94b28]",
+          "text-[#0f172a] transition-colors duration-150 hover:text-[#0f172a] motion-reduce:transition-none",
+          "focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0f172a]",
         )}
       >
         <ChevronDown
@@ -270,7 +287,7 @@ export function InfoRow({
         <button
           type="button"
           onClick={onAction}
-          className="min-h-11 font-semibold text-[#a94b28] underline underline-offset-2 transition-colors duration-150 hover:text-[#8f3d21] motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]"
+          className="min-h-11 font-semibold text-[#0f172a] underline underline-offset-2 transition-colors duration-150 hover:text-[#0f172a] motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]"
         >
           {action}
         </button>
@@ -318,9 +335,20 @@ export function NumberColumn({
   onChange: (value: string) => void;
   onBlur?: () => void;
 }) {
+  /**
+   * Whether this click is the one that focused the field.
+   *
+   * Focusing selects the whole amount, so a host who wants €150 instead of €138 types
+   * three characters rather than clearing two first — these fields hold a number to
+   * replace, never a sentence to edit. The browser's own mouseup would collapse that
+   * selection to a caret again, so it is suppressed for the click that arrived from
+   * outside the field. A second click inside still places the caret, which is the one
+   * case where a host does want to keep most of what is there.
+   */
+  const focusedByThisClick = useRef(false);
   const unitClass = cn(
     "text-[1.125rem] font-semibold",
-    accent ? "text-[#a94b28]" : "text-slate-500",
+    accent ? "text-[#0f172a]" : "text-slate-500",
   );
   return (
     <div className="text-center">
@@ -330,7 +358,7 @@ export function NumberColumn({
       >
         {label}
       </label>
-      <span className="mt-0.5 inline-flex items-baseline gap-0.5 border-b-2 border-slate-200 px-0.5 pb-0.5 focus-within:border-[#d9774f]">
+      <span className="mt-0.5 inline-flex items-baseline gap-0.5 border-b-2 border-slate-200 px-0.5 pb-0.5 focus-within:border-[#0f172a]">
         {prefix ? <span className={unitClass}>{prefix}</span> : null}
         <input
           id={id}
@@ -341,10 +369,19 @@ export function NumberColumn({
           disabled={disabled}
           style={{ width: `${Math.max(1, value.length)}ch` }}
           onChange={(event) => onChange(event.target.value)}
+          onMouseDown={(event) => {
+            focusedByThisClick.current =
+              document.activeElement !== event.currentTarget;
+          }}
+          onFocus={(event) => event.currentTarget.select()}
+          onMouseUp={(event) => {
+            if (focusedByThisClick.current) event.preventDefault();
+            focusedByThisClick.current = false;
+          }}
           onBlur={onBlur}
           className={cn(
             "border-0 bg-transparent p-0 text-center text-[1.5rem] font-semibold tabular-nums outline-none disabled:opacity-50",
-            accent ? "text-[#a94b28]" : "text-slate-900",
+            accent ? "text-[#0f172a]" : "text-slate-900",
           )}
         />
         {suffix ? <span className={unitClass}>{suffix}</span> : null}
@@ -383,7 +420,7 @@ export function StepperColumn({
   return (
     <div className="text-center">
       <span className="block text-[0.75rem] text-slate-500">{label}</span>
-      <div className="mt-0.5 flex items-center gap-1">
+      <div className="mt-0.5 flex items-center justify-center gap-2">
         <StepperButton
           label={decrementLabel}
           disabled={disabled || value <= min}
@@ -407,35 +444,6 @@ export function StepperColumn({
       </div>
       <span className="mt-1 block text-[0.75rem] text-slate-400">{caption}</span>
     </div>
-  );
-}
-
-function StepperButton({
-  children,
-  label,
-  disabled,
-  onClick,
-}: {
-  children: React.ReactNode;
-  label: string;
-  disabled?: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      disabled={disabled}
-      onClick={onClick}
-      className={cn(
-        "grid size-9 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-700",
-        "transition-colors duration-150 hover:bg-slate-200 motion-reduce:transition-none",
-        "disabled:cursor-not-allowed disabled:opacity-40",
-        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]",
-      )}
-    >
-      {children}
-    </button>
   );
 }
 
@@ -510,7 +518,7 @@ export function ToggleRow({
         "flex min-h-11 w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left",
         "transition-colors duration-150 motion-reduce:transition-none",
         disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
-        checked ? "bg-[#fff1e8]" : "bg-slate-50",
+        checked ? "bg-[#f8fafc]" : "bg-slate-50",
         !disabled && !checked && "hover:bg-slate-100",
       )}
     >
@@ -518,7 +526,7 @@ export function ToggleRow({
         <span
           className={cn(
             "block text-[0.8125rem] font-semibold",
-            checked ? "text-[#8f3d21]" : "text-slate-900",
+            checked ? "text-[#0f172a]" : "text-slate-900",
           )}
         >
           {label}
@@ -527,7 +535,7 @@ export function ToggleRow({
           <span
             className={cn(
               "mt-0.5 block text-[0.75rem] leading-4",
-              checked ? "text-[#a94b28]" : "text-slate-500",
+              checked ? "text-[#0f172a]" : "text-slate-500",
             )}
           >
             {description}

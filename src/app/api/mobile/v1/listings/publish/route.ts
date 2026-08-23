@@ -1,6 +1,7 @@
 import { submitNewListing } from "@/lib/actions/listing.actions";
 import { mobileJson, mobileOptions, requireMobileHost } from "@/lib/mobile-api";
 import { normalizePropertyType } from "@/lib/types/property-type";
+import { HOUSE_RULES_DRAFT_FIELDS } from "@/lib/host/v2/listing-house-rules-draft";
 
 /** Publishes a draft as a real listing.
  *
@@ -35,7 +36,6 @@ const TEXT_FIELDS = [
   "streetViewHeading",
   "streetViewPitch",
   "streetViewPanoId",
-  "maxGuests",
   "bedrooms",
   "bathrooms",
   "beds",
@@ -46,6 +46,12 @@ const TEXT_FIELDS = [
   "promotionType",
   "promotionPercent",
   "promotionMinimumNights",
+  // Every house-rules field, taken from the list the draft module owns rather than
+  // spelled out again. This list previously omitted checkInTime and checkOutTime
+  // altogether, so a mobile publish silently dropped the arrival times the host had
+  // already stored on the draft; sourcing the names from one place is what stops the
+  // next rule from being lost the same way.
+  ...HOUSE_RULES_DRAFT_FIELDS,
 ] as const;
 
 export async function OPTIONS(request: Request) {

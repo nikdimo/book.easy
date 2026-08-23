@@ -102,7 +102,7 @@ export default async function AfterStayPage({
           href={
             direction === "GUEST_TO_HOST"
               ? `/account/bookings/${booking.id}`
-              : "/host/bookings"
+              : "/host/reservations"
           }
         >
           <ArrowLeft className="mr-1 h-4 w-4" />

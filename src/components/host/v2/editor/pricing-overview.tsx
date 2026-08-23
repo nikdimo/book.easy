@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { BASE_CURRENCY } from "@/lib/currency/currency-preference";
 import { ArrowRight, CalendarRange, Tag } from "lucide-react";
 import { formatMoney } from "@/lib/currency/convert";
+import { hostCalendarHref } from "@/lib/host/v2/calendar-href";
 import { T, ti, tPlural, type Resolved, type Translator } from "@/lib/i18n/t";
 import type {
   ListingPricingSummary,
@@ -18,10 +20,11 @@ import { addDaysToYmd, ymdToDbDate } from "@/lib/utils/date-only";
  * beyond the link to the screen that does the work.
  */
 
-/** Builds the Calendar deep link, so it opens on this listing rather than on whichever
- *  one the workspace happened to have selected last. */
+/** The Calendar deep link, so it opens on this listing rather than on whichever one the
+ *  workspace happened to have selected last. An alias for the shared builder rather
+ *  than a second copy of the path. */
 export function calendarPricingHref(listingId: string): string {
-  return `/host/v2/calendar?listing=${encodeURIComponent(listingId)}`;
+  return hostCalendarHref(listingId);
 }
 
 function formatYmd(ymd: string, locale: string): string {
@@ -130,15 +133,17 @@ export function PricingOverview({
   const { rule, promotions } = summary;
   const locale = t.locale;
   const money = (amount: number) =>
-    formatMoney(amount, rule?.currency ?? "EUR", locale);
+    formatMoney(amount, rule?.currency ?? BASE_CURRENCY, locale);
 
   return (
-    <div className="w-full max-w-2xl py-6">
+    <div className="mx-auto w-full max-w-2xl py-6 md:py-10">
+      {/* Named by the rail, the browser tab and the active chip on a phone. Kept in the
+          outline for screen readers, which have no rail to read. */}
       <header>
-        <h2 className="text-xl font-semibold text-slate-900">
+        <h2 className="sr-only">
           <T t={t} k="host.editor.section.pricing" source="Pricing" />
         </h2>
-        <p className="mt-2 text-sm leading-6 text-slate-600">
+        <p className="text-sm leading-6 text-slate-600">
           <T
             t={t}
             k="host.editor.pricing.intro"
@@ -360,7 +365,7 @@ export function PricingOverview({
         </ul>
         <Link
           href={calendarPricingHref(summary.listingId)}
-          className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-[#fde7dc] px-5 text-sm font-semibold text-[#8f3d21] transition-colors hover:bg-[#f9d7c6] focus-visible:bg-[#f9d7c6] focus-visible:outline-none"
+          className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-[#f1f5f9] px-5 text-sm font-semibold text-[#0f172a] transition-colors hover:bg-[#e2e8f0] focus-visible:bg-[#e2e8f0] focus-visible:outline-none"
         >
           <T
             t={t}

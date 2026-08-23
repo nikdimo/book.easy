@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getAllUsersForAdmin } from "@/lib/services/admin.service";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { AdminUserActions } from "@/components/admin/admin-user-actions";
 import { formatDate } from "@/lib/utils/format";
 import { ListControls } from "@/components/shared/list-controls";
@@ -52,9 +52,8 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
           searchText: [user.name, user.email, user.role, user.isHost ? "host" : "guest", user.isActive ? "active" : "inactive", user._count.listings, user._count.bookings, formatDate(user.createdAt)].join(" "),
           filters: { role: user.role, host: user.isHost ? "yes" : "no", active: user.isActive ? "yes" : "no" },
           sortValues: { created: user.createdAt.getTime(), oldest: user.createdAt.getTime(), name: user.name, listings: user._count.listings, bookings: user._count.bookings },
-          content: <>
-      <div className="md:hidden">
-          <article key={user.id} className="rounded-xl border bg-card p-4 shadow-sm">
+          content: (
+          <article className="rounded-xl border bg-card p-4 shadow-sm">
             <div className="flex min-w-0 items-start justify-between gap-3">
               <div className="min-w-0">
                 <h2 className="truncate font-semibold">{user.name}</h2>
@@ -75,24 +74,9 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
               <div className="mt-4 border-t pt-3"><AdminUserActions userId={user.id} isActive={user.isActive} /></div>
             )}
           </article>
-      </div>
-      <div className="hidden border rounded-lg md:block">
-        <Table className="table-stacked">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Host</TableHead>
-              <TableHead>Active</TableHead>
-              <TableHead>Listings</TableHead>
-              <TableHead>Bookings</TableHead>
-              <TableHead>Joined</TableHead>
-              <TableHead></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-              <TableRow key={user.id}>
+          ),
+          row: (
+              <TableRow>
                 <TableCell className="font-medium" data-label="Name">{user.name}</TableCell>
                 <TableCell className="text-sm" data-label="Email">{user.email}</TableCell>
                 <TableCell data-label="Role">
@@ -113,11 +97,21 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                   )}
                 </TableCell>
               </TableRow>
-          </TableBody>
-        </Table>
-      </div>
-          </>,
+          ),
         }))}
+        tableHead={
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Email</TableHead>
+            <TableHead>Role</TableHead>
+            <TableHead>Host</TableHead>
+            <TableHead>Active</TableHead>
+            <TableHead>Listings</TableHead>
+            <TableHead>Bookings</TableHead>
+            <TableHead>Joined</TableHead>
+            <TableHead></TableHead>
+          </TableRow>
+        }
       />
     </div>
   );

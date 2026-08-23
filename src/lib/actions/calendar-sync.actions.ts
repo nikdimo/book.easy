@@ -103,6 +103,9 @@ async function connectionsFor(listingId: string): Promise<CalendarConnectionsVie
 function revalidateCalendar(listingId: string) {
   revalidatePath(`/host/listings/${listingId}/availability`);
   revalidatePath(`/host/listings/${listingId}/pricing`);
+  revalidatePath(`/host/listings/${listingId}/availability`);
+  revalidatePath(`/host/listings/${listingId}/pricing`);
+  revalidatePath("/host/calendar");
 }
 
 /**

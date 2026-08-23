@@ -15,6 +15,7 @@ import {
 } from "@/components/host/v2/entity-rail";
 import { formatCountdown } from "@/lib/host/booking-action-queue";
 import { formatShortDate } from "@/lib/host/v2/calendar-format";
+import { BASE_CURRENCY } from "@/lib/currency/currency-preference";
 import {
   buildActionQueue,
   countsByFilter,
@@ -28,7 +29,7 @@ import { RESERVATION_ANCHOR, anchorProps } from "@/lib/host/v2/reservation-ancho
 import type { HostReservationsData } from "@/lib/host/v2/reservation-types";
 import { ReservationPanel } from "./reservation-panel";
 import { ReservationStream, type ActionCardModel } from "./reservation-stream";
-import { money, rowStatusLabel, rowStatusOf } from "./reservation-labels";
+import { rowStatusLabel, rowStatusOf, sumMoney } from "./reservation-labels";
 
 const RAIL_PREFERENCE_KEY = "bookeasy.host.v2.reservations.rail";
 
@@ -323,7 +324,7 @@ export function HostReservationsWorkspace({
           trailing:
             summary.action > 0 ? (
               <span
-                className="shrink-0 rounded-full bg-[#ffe9dc] px-1.5 text-[0.6875rem] font-bold tabular-nums text-[#a94b28]"
+                className="shrink-0 rounded-full bg-[#f1f5f9] px-1.5 text-[0.6875rem] font-bold tabular-nums text-[#0f172a]"
                 translate="no"
               >
                 {summary.action}
@@ -335,14 +336,21 @@ export function HostReservationsWorkspace({
   );
 
   const portfolio = useMemo(() => {
-    const upcomingValue = data.reservations
+    // Converted before being added, not after: this line spans every property a host
+    // owns, and those can be priced in different currencies. Adding them raw and
+    // labelling the result with the first booking's currency produced a number that
+    // was simply wrong for any host with a listing abroad.
+    const upcoming = data.reservations
       .filter(
         (reservation) =>
           reservation.status === "CONFIRMED" &&
           reservation.checkIn > data.today,
       )
-      .reduce((sum, reservation) => sum + reservation.total, 0);
-    const currency = data.reservations[0]?.currency ?? "EUR";
+      .map((reservation) => ({
+        amount: reservation.total,
+        currency: reservation.currency,
+      }));
+    const currency = data.reservations[0]?.currency ?? BASE_CURRENCY;
     return interpolate(
       i18n.resolve(
         "host.v2.reservations.rail.all_detail",
@@ -350,7 +358,7 @@ export function HostReservationsWorkspace({
       ),
       {
         count: data.reservations.length,
-        value: money(upcomingValue, currency, data.formats),
+        value: sumMoney(upcoming, currency, data.formats),
       },
     );
   }, [data.reservations, data.today, data.formats, i18n]);
@@ -452,6 +460,7 @@ export function HostReservationsWorkspace({
         <ReservationStream
           data={data}
           properties={properties}
+          showProperty={propertyId === ALL_ENTITIES}
           sections={sections}
           actionCards={actionCards}
           counts={counts}

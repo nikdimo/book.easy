@@ -20,7 +20,9 @@ import type {
 import { ReservationCountdown } from "./reservation-countdown";
 import {
   ROW_STATUS_PILL,
+  isConvertedMoney,
   money,
+  officialMoney,
   rowStatusLabel,
   rowStatusOf,
   stayLine,
@@ -102,6 +104,7 @@ export function ReservationPanel({
   data,
   action,
   initialCountdown,
+  showOpenFull = true,
 }: {
   reservation: HostReservation;
   property: HostReservationProperty | undefined;
@@ -109,6 +112,11 @@ export function ReservationPanel({
   /** This reservation's queue entry, when it has one. */
   action: HostActionItem | null;
   initialCountdown: string | null;
+  /**
+   * The link out to the reservation's own page. Suppressed on that page itself, where
+   * it would only point back at the screen the host is already reading.
+   */
+  showOpenFull?: boolean;
 }) {
   const i18n = useI18n();
   const code = rowStatusOf(reservation, data.today);
@@ -267,12 +275,12 @@ export function ReservationPanel({
           </span>
           {reservation.conversationId ? (
             <Button asChild variant="outline" size="sm">
-              <Link href={`/host/v2/messages/${reservation.conversationId}`}>
+              <Link href={`/host/messages/${reservation.conversationId}`}>
                 <MessageCircle className="size-3.5" aria-hidden />
                 {messageLabel}
                 {reservation.unreadCount > 0 ? (
                   <span
-                    className="rounded-full bg-[#d9774f] px-1.5 text-[0.625rem] font-bold text-white"
+                    className="rounded-full bg-[#0f172a] px-1.5 text-[0.625rem] font-bold text-white"
                     translate="no"
                   >
                     {reservation.unreadCount}
@@ -343,6 +351,28 @@ export function ReservationPanel({
             value={money(reservation.total, currency, data.formats)}
             total
           />
+          {/*
+           * The figures above are converted into the currency the host reads prices
+           * in, which makes them an approximation of today's rate. This line is the
+           * amount that is actually charged and settled, in the booking's own
+           * currency — it is what the host is paid, and it must be on the screen
+           * whenever the total above is not it.
+           */}
+          {isConvertedMoney(currency, data.formats) ? (
+            <p className="pt-1 text-[0.75rem] leading-5 text-slate-500">
+              {
+                interpolate(
+                  i18n.resolve(
+                    "host.v2.reservations.official_total",
+                    "Charged and paid out as {amount}.",
+                  ),
+                  {
+                    amount: officialMoney(reservation.total, currency, data.formats),
+                  },
+                ).text
+              }
+            </p>
+          ) : null}
         </div>
       </Section>
 
@@ -367,17 +397,19 @@ export function ReservationPanel({
       ) : null}
 
       <div className="flex flex-wrap items-center gap-1.5 pb-1">
-        <Button asChild variant="outline" size="sm">
-          <Link href={`/host/bookings/${reservation.id}`}>
-            <ExternalLink className="size-3.5" aria-hidden />
-            {
-              i18n.resolve(
-                "host.v2.reservations.open_full",
-                "Open full reservation",
-              ).text
-            }
-          </Link>
-        </Button>
+        {showOpenFull ? (
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/host/reservations/${reservation.id}`}>
+              <ExternalLink className="size-3.5" aria-hidden />
+              {
+                i18n.resolve(
+                  "host.v2.reservations.open_full",
+                  "Open full reservation",
+                ).text
+              }
+            </Link>
+          </Button>
+        ) : null}
         {/* Only while the invitation is genuinely open — an expired or already-used
             rating window must not offer a button that goes nowhere. */}
         {reservation.ratingDueAt ? (

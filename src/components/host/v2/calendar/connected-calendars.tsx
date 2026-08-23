@@ -276,7 +276,7 @@ export function ConnectedCalendars({ listingId }: { listingId: string }) {
           type="button"
           disabled={pending}
           onClick={connect}
-          className="min-h-11 w-full bg-[#d9774f] text-white hover:bg-[#c2643e] disabled:bg-slate-100 disabled:text-slate-400"
+          className="min-h-11 w-full bg-[#0f172a] text-white hover:bg-[#1e293b] disabled:bg-slate-100 disabled:text-slate-400"
         >
           {pending && !busyFeedId ? (
             <Loader2 className="size-4 animate-spin" aria-hidden />

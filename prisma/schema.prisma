@@ -539,6 +539,41 @@ model Listing {
    */
   checkInTime    String?
   checkOutTime   String?
+  /**
+   * Structured house rules the guest agrees to when they book.
+   *
+   * Every policy is nullable and NULL means "the host has not answered" — deliberately
+   * distinct from an explicit NOT_ALLOWED. Defaulting these to a refusal would tell
+   * guests that thousands of listings ban smoking, pets and parties on the strength of
+   * a migration nobody's host ever ran. The public page prints only the answered ones,
+   * exactly the way it already treats a null `checkInTime`.
+   *
+   * The multi-choice enums exist because a boolean cannot express the two policies
+   * hosts most often actually have: smoking outdoors only, and pets on request.
+   */
+  petPolicy      ListingPetPolicy?
+  smokingPolicy  ListingSmokingPolicy?
+  eventPolicy    ListingEventPolicy?
+  /** NONE is an explicit "no quiet hours"; SET means both times below are present.
+   *  NULL is unanswered, the same as every policy above. */
+  quietHoursPolicy ListingQuietHoursPolicy?
+  /** Wall-clock "HH:MM", same convention and reasoning as checkInTime. Both set or
+   *  both NULL, and 22:00–08:00 crosses midnight legitimately, so there is no
+   *  start-before-end rule to enforce. */
+  quietHoursStart String?
+  quietHoursEnd   String?
+  /** The host's own rules, in their own words. Guest-facing copy, so it gets the same
+   *  treatment as `description`: stored exactly as written, flagged for re-review on
+   *  edit, and never overwritten with a machine translation. */
+  additionalRules String?  @db.Text
+  /**
+   * When the host last saved the House rules section.
+   *
+   * The completion marker the editor needs. Every field this section edits already has
+   * a value the moment a listing exists, so "has values" cannot distinguish a host who
+   * reviewed the page from one who never opened it — only a recorded visit can.
+   */
+  houseRulesReviewedAt DateTime?
   moderationNote String?
   /**
    * True whenever the live content was created/edited since an admin last looked at
@@ -599,6 +634,37 @@ model Listing {
   @@index([status])
   @@index([slug])
   @@index([status, popularityScore])
+  /** Guest search filters on the pet policy directly now that it is a column rather
+   *  than an amenity join. */
+  @@index([petPolicy])
+}
+
+/** Pets need three answers, not two: "on request" is a real and common policy, and
+ *  collapsing it into either boolean tells the guest something the host did not say. */
+enum ListingPetPolicy {
+  ALLOWED
+  NOT_ALLOWED
+  ASK_HOST
+}
+
+/** Outdoors-only is the single most common real smoking rule, and it is neither
+ *  "allowed" nor "not allowed". */
+enum ListingSmokingPolicy {
+  NOT_ALLOWED
+  OUTDOORS_ONLY
+  ALLOWED
+}
+
+enum ListingEventPolicy {
+  ALLOWED
+  NOT_ALLOWED
+}
+
+/** Whether quiet hours apply at all, kept separate from the two times so that "the
+ *  host says there are none" and "the host has not answered" stay different facts. */
+enum ListingQuietHoursPolicy {
+  NONE
+  SET
 }
 
 enum ListingSpaceType {
@@ -648,6 +714,33 @@ model ListingDraft {
   host User @relation(fields: [hostId], references: [id], onDelete: Cascade)
 
   @@index([hostId])
+}
+
+/**
+ * A managed upload whose owning row is gone and whose file still has to be unlinked.
+ *
+ * The queue exists because a file and a database row cannot be changed atomically. The
+ * row is written in the *same transaction* as the deletion that orphaned the file, so a
+ * crash between the commit and the unlink loses the file's bytes, never the knowledge
+ * that they need removing — the sweep picks it up on the next run.
+ *
+ * `url` is unique, which makes enqueueing idempotent: the same file queued twice is one
+ * row, and processing it twice is a no-op the second time.
+ */
+model PendingUploadDeletion {
+  id String @id @default(cuid())
+  /// Always a server-generated `/uploads/...` path — remote and unsafe values are
+  /// rejected before they ever reach this table.
+  url String @unique
+  /// What orphaned it ("listing-draft", "account-deletion", …). Diagnostics only; never
+  /// shown to a user.
+  reason      String
+  attempts    Int       @default(0)
+  lastError   String?
+  lastTriedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([createdAt])
 }
 
 model ListingImage {
@@ -1162,6 +1255,14 @@ model Booking {
   responseDueAt         DateTime       @default(dbgenerated("(CURRENT_TIMESTAMP + INTERVAL '24 hours')"))
   respondedAt           DateTime?
   hostReminderSentAt    DateTime?
+  /// The listing's house rules exactly as they stood when this guest accepted them,
+  /// plus the moment they did. Built on the server from the listing row — never from
+  /// anything the client posted — and never rewritten afterwards: a host editing their
+  /// rules changes what future guests agree to, not what this one already did. Null on
+  /// every booking taken before acceptance was recorded, which is why it is nullable
+  /// rather than defaulted. Same JSON-snapshot pattern as `priceBreakdown` above.
+  houseRulesSnapshot    Json?
+  houseRulesAcceptedAt  DateTime?
   guestNote             String?
   hostNote              String?
   cancellationReason    String?

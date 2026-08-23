@@ -3,7 +3,13 @@ import { platformFromFeedUrl } from "@/lib/host/v2/calendar-feed-platform";
 
 import { db } from "@/lib/db";
 import { PUBLIC_AVAILABILITY_HORIZON_MONTHS } from "@/lib/services/availability.service";
-import { buildCalendarFormats } from "@/lib/host/v2/calendar-format";
+import {
+  buildCalendarFormats,
+  type DisplayMoneyContext,
+} from "@/lib/host/v2/calendar-format";
+import { getDisplayCurrency } from "@/lib/currency/server";
+import { getExchangeRates } from "@/lib/currency/rates";
+import { BASE_CURRENCY } from "@/lib/currency/currency-preference";
 import type {
   HostCalendarBlockType,
   HostCalendarListing,
@@ -195,8 +201,19 @@ export async function getHostCalendarWorkspace(
     // and date differ between the two renders.
     formats: buildCalendarFormats(
       locale,
-      mapped.map((listing) => listing.pricing?.currency ?? "EUR"),
+      mapped.map((listing) => listing.pricing?.currency ?? BASE_CURRENCY),
+      await displayMoneyContext(),
     ),
     listings: mapped,
   };
+}
+
+/**
+ * The host's display currency plus the rates that reach it, or null when the provider
+ * is unavailable. Display-only: it never touches what a listing is priced in, what a
+ * guest is charged, or what a host is paid — see `formatDisplayMoney`.
+ */
+async function displayMoneyContext(): Promise<DisplayMoneyContext | null> {
+  const [currency, table] = await Promise.all([getDisplayCurrency(), getExchangeRates()]);
+  return table ? { currency, rates: table.rates } : null;
 }

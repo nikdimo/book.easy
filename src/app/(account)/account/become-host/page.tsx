@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { hostPanelDestination } from "@/lib/host/host-panel-preference";
 import { db } from "@/lib/db";
 import { BecomeHostForm } from "@/components/account/become-host-form";
 import { getT, T } from "@/lib/i18n/t";
@@ -9,9 +10,18 @@ export const metadata = { title: "Become a Host" };
 export default async function BecomeHostPage() {
   const t = await getT();
   const session = await auth();
-  if (!session?.user) redirect("/login");
+  // Keep the destination through the login round trip, or signing in drops you on the
+  // booking home page instead of the page you were trying to open.
+  if (!session?.user) {
+    redirect(`/login?callbackUrl=${encodeURIComponent("/account/become-host")}`);
+  }
 
-  if (session.user.isHost) redirect("/host");
+  if (session.user.isHost) {
+    // One panel, so nothing to look up: an existing host goes to Host V2. Reading a
+    // remembered version here is what used to drop hosts who had never switched into
+    // the classic panel, which no longer receives work.
+    redirect(hostPanelDestination());
+  }
 
   const profile = await db.profile.findUnique({
     where: { userId: session.user.id },

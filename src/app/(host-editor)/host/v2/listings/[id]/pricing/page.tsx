@@ -29,6 +29,8 @@ export default async function PricingPage({
       listingId={id}
       section="pricing"
       complete={listing.completeSections}
+      previewSlug={listing.slug}
+      previewStatus={listing.status}
     >
       <PricingOverview summary={summary} t={t} />
     </EditorFrame>

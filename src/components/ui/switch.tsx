@@ -14,11 +14,15 @@ function Switch({
       data-slot="switch"
       className={cn(
         "peer inline-flex h-6 w-10 shrink-0 cursor-pointer items-center rounded-full border border-transparent transition-colors outline-none",
-        // The Listings add button established peach as the quiet active surface. The
-        // orange thumb carries the state, so "on" is clear without turning every row
-        // into a saturated orange alert.
-        "data-[state=checked]:bg-[#fde7dc] data-[state=unchecked]:bg-slate-300",
-        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d9774f]",
+        // "On" is the darker track, which is the one reading the panel already uses
+        // for ink. A tinted track with a dark thumb was the old peach pairing; with
+        // the tint gone it left "on" lighter than "off", which reads backwards.
+        //
+        // Dark grey rather than the near-black used for primary buttons: a switch is
+        // a state, not an action, and a row of full-ink tracks pulled harder than the
+        // one thing on the page that is actually asking to be pressed.
+        "data-[state=checked]:bg-slate-700 data-[state=unchecked]:bg-slate-300",
+        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]",
         "disabled:cursor-not-allowed disabled:opacity-50",
         className
       )}
@@ -28,7 +32,7 @@ function Switch({
         data-slot="switch-thumb"
         className={cn(
           "pointer-events-none block size-5 rounded-full shadow-sm ring-0 transition-[transform,background-color]",
-          "data-[state=checked]:bg-[#d9774f] data-[state=unchecked]:bg-white",
+          "bg-white",
           "data-[state=checked]:translate-x-[1.125rem] data-[state=unchecked]:translate-x-0.5"
         )}
       />

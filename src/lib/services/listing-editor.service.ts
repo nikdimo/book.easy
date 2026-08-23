@@ -5,6 +5,8 @@ import { resolveRoomTypeLabel } from "@/lib/i18n/room-labels";
 import { getRoomTypeCatalogIncluding } from "@/lib/services/room-type.service";
 import { roomDisplayName } from "@/lib/rooms/room-name";
 import { listingBasicsComplete } from "@/lib/host/v2/listing-basics";
+import { listingLocationComplete } from "@/lib/host/v2/listing-location";
+import { listingPropertyDetailsComplete } from "@/lib/host/v2/listing-property-details";
 import { editorCompletedSections } from "@/lib/host/v2/editor-sections";
 import type { CatalogRoomType, ListingRoomSummary } from "@/lib/types/room-catalog";
 import type { ListingMediaTypeValue } from "@/lib/types/listing-media";
@@ -52,6 +54,21 @@ export async function getListingEditorData(
       description: true,
       status: true,
       slug: true,
+      spaceType: true,
+      bedrooms: true,
+      beds: true,
+      bathrooms: true,
+      houseRulesReviewedAt: true,
+      property: {
+        select: {
+          propertyType: true,
+          address: true,
+          city: true,
+          country: true,
+          latitude: true,
+          longitude: true,
+        },
+      },
       images: {
         select: {
           id: true,
@@ -75,6 +92,9 @@ export async function getListingEditorData(
           roomType: { select: { key: true, name: true, icon: true } },
         },
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+      },
+      _count: {
+        select: { images: { where: { mediaType: "IMAGE" } } },
       },
     },
   });
@@ -148,11 +168,20 @@ export async function getListingEditorData(
       slug: listing.slug,
       coverUrl: photos.find((photo) => photo.isPrimary)?.url ?? photos[0]?.url ?? null,
       completeSections: editorCompletedSections({
-        photoCount: photos.length,
+        photoCount: listing._count.images,
         basicsComplete: listingBasicsComplete({
           title: listing.title,
           description: listing.description,
         }),
+        propertyDetailsComplete: listingPropertyDetailsComplete({
+          propertyType: listing.property.propertyType,
+          spaceType: listing.spaceType,
+          bedrooms: listing.bedrooms,
+          beds: listing.beds,
+          bathrooms: listing.bathrooms,
+        }),
+        locationComplete: listingLocationComplete(listing.property),
+        houseRulesReviewed: listing.houseRulesReviewedAt !== null,
       }),
     },
     photos,
@@ -208,13 +237,30 @@ export async function getListingEditorHeader(listingId: string, hostId: string) 
       description: true,
       status: true,
       slug: true,
+      spaceType: true,
+      bedrooms: true,
+      beds: true,
+      bathrooms: true,
+      houseRulesReviewedAt: true,
+      property: {
+        select: {
+          propertyType: true,
+          address: true,
+          city: true,
+          country: true,
+          latitude: true,
+          longitude: true,
+        },
+      },
       images: {
         where: { mediaType: "IMAGE" },
         select: { url: true },
         orderBy: [{ isPrimary: "desc" }, { displayOrder: "asc" }],
         take: 1,
       },
-      _count: { select: { images: true } },
+      _count: {
+        select: { images: { where: { mediaType: "IMAGE" } } },
+      },
     },
   });
   if (!listing) return null;
@@ -231,6 +277,137 @@ export async function getListingEditorHeader(listingId: string, hostId: string) 
         title: listing.title,
         description: listing.description,
       }),
+      propertyDetailsComplete: listingPropertyDetailsComplete({
+        propertyType: listing.property.propertyType,
+        spaceType: listing.spaceType,
+        bedrooms: listing.bedrooms,
+        beds: listing.beds,
+        bathrooms: listing.bathrooms,
+      }),
+      locationComplete: listingLocationComplete(listing.property),
+      houseRulesReviewed: listing.houseRulesReviewedAt !== null,
+    }),
+  };
+}
+
+export interface ListingEditorOverview {
+  id: string;
+  title: string;
+  status: string;
+  slug: string;
+  coverUrl: string | null;
+  /** "Area, City, Country" as far as the listing has it, or null when the address has
+   *  not been filled in at all. */
+  locationLabel: string | null;
+  photoCount: number;
+  roomCount: number;
+  amenityCount: number;
+  /** Null when the listing has no pricing rule — the state that blocks every booking. */
+  nightlyRate: { amount: number; currency: string } | null;
+  availabilityMode: "OPEN" | "CLOSED";
+  /** Whether the host has ever saved the House rules section. */
+  houseRulesReviewed: boolean;
+  completeSections: string[];
+}
+
+/**
+ * Everything the Listing overview renders from, in one query.
+ *
+ * Scoped to `hostId` inside the `where` exactly like the rest of the editor's reads, so
+ * a listing that is not this host's comes back as `null` — "not found" — instead of
+ * leaking that it exists. It is a read and authorizes nothing: every section it links
+ * to re-checks ownership when it loads, and every mutation behind those sections checks
+ * again in its own action.
+ *
+ * The counts are `_count` aggregates rather than loaded rows: the overview prints "12
+ * photos", never the photos themselves, and pulling a hundred image rows to render a
+ * number would make the editor's index its most expensive page.
+ */
+export async function getListingEditorOverview(
+  listingId: string,
+  hostId: string,
+): Promise<ListingEditorOverview | null> {
+  const listing = await db.listing.findFirst({
+    where: { id: listingId, hostId },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      status: true,
+      slug: true,
+      spaceType: true,
+      bedrooms: true,
+      beds: true,
+      bathrooms: true,
+      availabilityMode: true,
+      houseRulesReviewedAt: true,
+      property: {
+        select: {
+          propertyType: true,
+          address: true,
+          area: true,
+          city: true,
+          country: true,
+          latitude: true,
+          longitude: true,
+        },
+      },
+      images: {
+        where: { mediaType: "IMAGE" },
+        select: { url: true },
+        orderBy: [{ isPrimary: "desc" }, { displayOrder: "asc" }],
+        take: 1,
+      },
+      pricingRule: { select: { currency: true, baseNightlyRate: true } },
+      _count: {
+        select: {
+          images: { where: { mediaType: "IMAGE" } },
+          rooms: true,
+          amenities: true,
+        },
+      },
+    },
+  });
+  if (!listing) return null;
+
+  const place = [listing.property.area, listing.property.city, listing.property.country]
+    .map((part) => part?.trim())
+    .filter((part): part is string => Boolean(part));
+
+  return {
+    id: listing.id,
+    title: listing.title,
+    status: listing.status,
+    slug: listing.slug,
+    coverUrl: listing.images[0]?.url ?? null,
+    locationLabel: place.length > 0 ? place.join(", ") : null,
+    photoCount: listing._count.images,
+    roomCount: listing._count.rooms,
+    amenityCount: listing._count.amenities,
+    nightlyRate: listing.pricingRule
+      ? {
+          // Prisma hands Decimal back as its own object; the overview prints a number.
+          amount: Number(listing.pricingRule.baseNightlyRate),
+          currency: listing.pricingRule.currency,
+        }
+      : null,
+    availabilityMode: listing.availabilityMode === "CLOSED" ? "CLOSED" : "OPEN",
+    houseRulesReviewed: listing.houseRulesReviewedAt !== null,
+    completeSections: editorCompletedSections({
+      photoCount: listing._count.images,
+      basicsComplete: listingBasicsComplete({
+        title: listing.title,
+        description: listing.description,
+      }),
+      propertyDetailsComplete: listingPropertyDetailsComplete({
+        propertyType: listing.property.propertyType,
+        spaceType: listing.spaceType,
+        bedrooms: listing.bedrooms,
+        beds: listing.beds,
+        bathrooms: listing.bathrooms,
+      }),
+      locationComplete: listingLocationComplete(listing.property),
+      houseRulesReviewed: listing.houseRulesReviewedAt !== null,
     }),
   };
 }

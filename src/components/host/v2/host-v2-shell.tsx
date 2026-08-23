@@ -1,17 +1,25 @@
 import Link from "next/link";
-import { CircleHelp } from "lucide-react";
 import { BrandLogo } from "@/components/shared/brand-logo";
 import { HostV2Nav } from "@/components/host/v2/host-v2-nav";
+import { HostV2AccountMenu } from "@/components/host/v2/host-v2-account-menu";
 import { type getT } from "@/lib/i18n/t";
 import { SITE_DOMAIN } from "@/lib/branding";
 
 export function HostV2Shell({
   children,
   userName,
+  userEmail,
+  isAdmin,
+  regionalSettings,
   t,
 }: {
   children: React.ReactNode;
   userName?: string | null;
+  userEmail?: string | null;
+  isAdmin?: boolean;
+  /** The language/currency dialog, built by the layout because it reads cookies and
+   *  rates. Rendered triggerless — the account menu opens it. */
+  regionalSettings?: React.ReactNode;
   t: Awaited<ReturnType<typeof getT>>;
 }) {
   const initials = (userName || "Host")
@@ -66,21 +74,17 @@ export function HostV2Shell({
             <HostV2Nav />
           </div>
 
-          <div className="flex min-w-0 flex-1 items-center justify-end gap-1">
-            <Link
-              href="/account/support"
-              aria-label={t.resolve("host.v2.help", "Help").text}
-              className="grid size-9 shrink-0 place-items-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400"
-            >
-              <CircleHelp className="size-5" aria-hidden />
-            </Link>
-            <Link
-              href="/account/profile"
-              aria-label={t.resolve("host.v2.account", "Account").text}
-              className="grid size-9 shrink-0 place-items-center rounded-full bg-slate-100 text-[0.8125rem] font-semibold text-slate-800 transition-colors hover:bg-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400"
-            >
-              {initials}
-            </Link>
+          {/* One control, not four. Help, language, currency and the way back to the
+              booking site were four separate things competing with five centred
+              sections for the same row; they are all one tap into the account screen
+              now, which is where a host looks for them anyway. */}
+          <div className="flex min-w-0 flex-1 items-center justify-end">
+            <HostV2AccountMenu
+              initials={initials}
+              userName={userName}
+              userEmail={userEmail}
+              isAdmin={isAdmin}
+            />
           </div>
         </div>
       </header>
@@ -88,6 +92,19 @@ export function HostV2Shell({
       {/* `overflow-y-auto` rather than `hidden`, so a future page that is simply long
           still scrolls — inside the frame, and with the scrollbar at the viewport edge
           rather than at the 1440px content edge. */}
+      {/* The phone has no header, by design — but it still needs somewhere to reach the
+          account, and the bottom bar's five slots are all sections. A 3rem row with a
+          single right-aligned avatar is the least chrome that does it, and it scrolls
+          away with the page rather than sitting on top of the content. */}
+      <div className="flex shrink-0 items-center justify-end px-5 pt-3 md:hidden">
+        <HostV2AccountMenu
+          initials={initials}
+          userName={userName}
+          userEmail={userEmail}
+          isAdmin={isAdmin}
+        />
+      </div>
+
       <main className="flex flex-1 flex-col md:min-h-0 md:overflow-y-auto">
         {/* No top padding below `md`: with the header gone there is nothing above the
             content to be spaced away from, and 20px of white would be exactly the
@@ -99,6 +116,10 @@ export function HostV2Shell({
       <div className="md:hidden">
         <HostV2Nav />
       </div>
+      {/* Rendered once for the whole panel, at the root rather than inside the account
+          menu: the menu closes the moment an item is chosen, and a dialog nested in it
+          would unmount with it. */}
+      {regionalSettings}
     </div>
   );
 }

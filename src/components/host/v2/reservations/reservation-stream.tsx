@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowDownUp,
@@ -9,7 +8,6 @@ import {
   ChevronRight,
   Clock,
   DoorOpen,
-  House,
   MessageCircle,
   Search,
   Star,
@@ -27,6 +25,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { HostBookingActions } from "@/components/host/host-booking-actions";
 import { StartConversationButton } from "@/components/communication/start-conversation-button";
+import { Avatar } from "@/components/host/v2/messages/inbox-surface";
 import type {
   HostActionItem,
   HostActionKind,
@@ -62,6 +61,7 @@ import {
   rowStatusOf,
   sortLabel,
   stayLine,
+  type Translator,
 } from "./reservation-labels";
 
 /**
@@ -87,38 +87,18 @@ export interface ActionCardModel {
   initialCountdown: string | null;
 }
 
-function PropertyThumb({
-  property,
-  size,
-  className,
-}: {
-  property: HostReservationProperty | undefined;
-  size: number;
-  className?: string;
-}) {
-  if (!property?.photoUrl) {
-    return (
-      <span
-        aria-hidden
-        className={cn(
-          "grid shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-400",
-          className,
-        )}
-        style={{ width: size, height: size }}
-      >
-        <House className="size-4" />
-      </span>
-    );
-  }
+/**
+ * Whose stay this is.
+ *
+ * The guest leads a row because the property no longer can: the rail already says which
+ * property is being looked at, and repeating its name and photo down every row spent the
+ * widest column in the panel on the one fact the host had just chosen. A person's name is
+ * never translated, and never machine-translated either.
+ */
+function guestName(reservation: HostReservation, i18n: Translator): string {
   return (
-    <Image
-      src={property.photoUrl}
-      alt={property.photoAlt || property.title}
-      width={size}
-      height={size}
-      className={cn("shrink-0 rounded-lg object-cover", className)}
-      style={{ width: size, height: size }}
-    />
+    reservation.guest.name ||
+    i18n.resolve("conversation.deleted_user", "Deleted user").text
   );
 }
 
@@ -164,7 +144,7 @@ function MessageGuestButton({
   if (reservation.conversationId) {
     return (
       <Button asChild variant={variant} size="sm">
-        <Link href={`/host/v2/messages/${reservation.conversationId}`}>
+        <Link href={`/host/messages/${reservation.conversationId}`}>
           <MessageCircle className="size-3.5" aria-hidden />
           {label}
         </Link>
@@ -184,12 +164,15 @@ function ActionCard({
   card,
   data,
   property,
+  showProperty,
   active,
   onSelect,
 }: {
   card: ActionCardModel;
   data: HostReservationsData;
   property: HostReservationProperty | undefined;
+  /** False once the rail has been narrowed to one property, which then says it instead. */
+  showProperty: boolean;
   active: boolean;
   onSelect: () => void;
 }) {
@@ -210,18 +193,18 @@ function ActionCard({
         "rounded-xl p-2.5 transition-colors",
         critical
           ? active
-            ? "bg-[#ffd9c6]"
-            : "bg-[#ffe9dc] hover:bg-[#ffd9c6]"
+            ? "bg-[#e2e8f0]"
+            : "bg-[#f1f5f9] hover:bg-[#e2e8f0]"
           : active
-            ? "bg-[#ffe9dc]"
-            : "bg-[#fff4ee] hover:bg-[#ffe9dc]",
+            ? "bg-[#f1f5f9]"
+            : "bg-[#f8fafc] hover:bg-[#f1f5f9]",
       )}
     >
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span
           className={cn(
             "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[0.6875rem] font-semibold",
-            critical ? "bg-[#a94b28] text-white" : "bg-white/80 text-[#a3593b]",
+            critical ? "bg-[#0f172a] text-white" : "bg-white/80 text-[#334155]",
             headline.translated && "notranslate",
           )}
         >
@@ -260,17 +243,30 @@ function ActionCard({
         <button
           type="button"
           onClick={onSelect}
-          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]"
+          className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]"
         >
-          <PropertyThumb property={property} size={44} />
+          <Avatar
+            name={reservation.guest.name}
+            image={reservation.guest.image}
+            className="size-11"
+          />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[0.8125rem] font-semibold text-slate-900">
-              <span data-user-generated-content translate="yes">
-                {property?.title ?? ""}
-              </span>
+            <span
+              className="block truncate text-[0.8125rem] font-semibold text-slate-900 notranslate"
+              translate="no"
+            >
+              {guestName(reservation, i18n)}
             </span>
             <span className="mt-0.5 block truncate text-[0.75rem] text-slate-600">
-              {reservation.guest.name} · {stay.text} ·{" "}
+              {showProperty ? (
+                <>
+                  <span data-user-generated-content translate="yes">
+                    {property?.title ?? ""}
+                  </span>{" "}
+                  ·{" "}
+                </>
+              ) : null}
+              {stay.text} ·{" "}
               {formatShortDate(reservation.checkIn, data.formats)} –{" "}
               {formatShortDate(reservation.checkOut, data.formats)} ·{" "}
               <span className="font-semibold text-slate-800">
@@ -284,7 +280,7 @@ function ActionCard({
         {item.kind === "RATE_GUEST" ? (
           <Link
             href={`/account/bookings/${reservation.id}/after-stay`}
-            className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[0.71875rem] font-semibold text-[#a3593b] transition-colors hover:bg-white/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]"
+            className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-1 text-[0.71875rem] font-semibold text-[#334155] transition-colors hover:bg-white/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]"
           >
             <Star className="size-3.5" aria-hidden />
             {
@@ -299,7 +295,7 @@ function ActionCard({
         <p
           className={cn(
             "mt-1.5 text-[0.71875rem] leading-4",
-            critical ? "text-[#8f3f22]" : "text-slate-600",
+            critical ? "text-[#0f172a]" : "text-slate-600",
             consequence.translated && "notranslate",
           )}
         >
@@ -374,12 +370,15 @@ function ReservationRow({
   reservation,
   data,
   property,
+  showProperty,
   active,
   onSelect,
 }: {
   reservation: HostReservation;
   data: HostReservationsData;
   property: HostReservationProperty | undefined;
+  /** False once the rail has been narrowed to one property, which then says it instead. */
+  showProperty: boolean;
   active: boolean;
   onSelect: () => void;
 }) {
@@ -396,28 +395,41 @@ function ReservationRow({
       aria-pressed={active}
       className={cn(
         "flex w-full items-center gap-2.5 rounded-xl p-2 text-left transition-colors",
-        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]",
-        active ? "bg-[#ffe9dc]" : "hover:bg-slate-50",
+        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]",
+        active ? "bg-[#f1f5f9]" : "hover:bg-slate-50",
         // History recedes rather than competing with work, but never so far that it
         // cannot be read.
         closed && "opacity-70",
       )}
     >
       <DateChip ymd={reservation.checkIn} data={data} muted={closed} />
-      <PropertyThumb property={property} size={38} />
+      <Avatar
+        name={reservation.guest.name}
+        image={reservation.guest.image}
+        className="size-9"
+      />
       <span className="min-w-0 flex-1">
+        {/* Never struck through, whatever became of the booking: a line through a
+            person's name reads as something said about the person. */}
         <span
           className={cn(
-            "block truncate text-[0.8125rem] font-semibold text-slate-900",
-            closed && "font-medium text-slate-500 line-through",
+            "block truncate text-[0.8125rem] font-semibold text-slate-900 notranslate",
+            closed && "font-medium text-slate-500",
           )}
+          translate="no"
         >
-          <span data-user-generated-content translate="yes">
-            {property?.title ?? ""}
-          </span>
+          {guestName(reservation, i18n)}
         </span>
         <span className="mt-0.5 block truncate text-[0.71875rem] text-slate-500">
-          {reservation.guest.name} · {stay.text} ·{" "}
+          {showProperty ? (
+            <>
+              <span data-user-generated-content translate="yes">
+                {property?.title ?? ""}
+              </span>{" "}
+              ·{" "}
+            </>
+          ) : null}
+          {stay.text} ·{" "}
           {formatShortDate(reservation.checkIn, data.formats)} –{" "}
           {formatShortDate(reservation.checkOut, data.formats)}
         </span>
@@ -459,7 +471,7 @@ function GroupHeading({
       <h3
         className={cn(
           "text-[0.6875rem] font-bold uppercase tracking-wider",
-          urgent ? "text-[#a94b28]" : "text-slate-400",
+          urgent ? "text-[#0f172a]" : "text-slate-400",
         )}
       >
         {label}
@@ -475,6 +487,7 @@ function GroupHeading({
 export function ReservationStream({
   data,
   properties,
+  showProperty,
   sections,
   actionCards,
   counts,
@@ -489,6 +502,11 @@ export function ReservationStream({
 }: {
   data: HostReservationsData;
   properties: ReadonlyMap<string, HostReservationProperty>;
+  /**
+   * False once the rail has been narrowed to one property. The rows then drop the
+   * property name entirely rather than repeating the host's own choice back at them.
+   */
+  showProperty: boolean;
   sections: ReservationSection[];
   /** Empty when the queue is not being shown, not merely when there is no work. */
   actionCards: ActionCardModel[];
@@ -517,7 +535,7 @@ export function ReservationStream({
         {/* Exactly the height an outline `size="sm"` button is, on both sides of the
             `md` breakpoint, so the field and the sort button sit on one line without
             either of them looking clipped. */}
-        <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 transition-colors focus-within:border-[#d9774f] md:h-7">
+        <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 transition-colors focus-within:border-[#0f172a] md:h-7">
           <Search className="size-3.5 shrink-0 text-slate-400" aria-hidden />
           <input
             type="search"
@@ -607,11 +625,11 @@ export function ReservationStream({
               aria-pressed={selected}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[0.75rem] font-semibold transition-colors",
-                "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]",
+                "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]",
                 selected
                   ? "bg-slate-900 text-white"
                   : urgent
-                    ? "bg-[#ffe9dc] text-[#a94b28] hover:bg-[#f9dcc9]"
+                    ? "bg-[#f1f5f9] text-[#0f172a] hover:bg-[#e2e8f0]"
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200/70",
                 label.translated && "notranslate",
               )}
@@ -646,6 +664,7 @@ export function ReservationStream({
                   card={card}
                   data={data}
                   property={properties.get(card.reservation.listingId)}
+                  showProperty={showProperty}
                   active={activeId === card.reservation.id}
                   onSelect={() => onSelect(card.reservation.id)}
                 />
@@ -667,6 +686,7 @@ export function ReservationStream({
                   reservation={reservation}
                   data={data}
                   property={properties.get(reservation.listingId)}
+                  showProperty={showProperty}
                   active={activeId === reservation.id}
                   onSelect={() => onSelect(reservation.id)}
                 />

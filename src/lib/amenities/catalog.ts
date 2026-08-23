@@ -16,10 +16,10 @@ export const FALLBACK_CATEGORY_KEY = "features";
  */
 const CATEGORY_RULES: [RegExp, string][] = [
   [/\b(elevator|lift|step[- ]free|wheelchair|accessib\w*|ground floor)\b/, "accessibility"],
-  [/\b(crib|cot|high ?chair|children\w*|kids?|toys?|baby|stroller|pets?|dogs?|cats?)\b/, "family"],
+  [/\b(crib|cot|high ?chair|children\w*|kids?|toys?|baby|stroller|pets?|dogs?|cats?|changing table|outlet covers?|corner guards?|pack .?n play)\b/, "family"],
   [/\b(smoke|carbon monoxide|extinguisher|first aid|security camera\w*|cctv|alarm|lock on|safe\b)\b/, "safety"],
-  [/\b(self check|check[- ]?in|lockbox|keypad|smart lock|keys?|host greets|luggage)\b/, "check_in"],
-  [/\b(long[- ]term|breakfast|cleaning available|concierge|housekeep\w*|airport|shuttle)\b/, "services"],
+  [/\b(self check|check[- ]?in|lockbox|keypad|smart lock|keys?|host greets|luggage|private entrance)\b/, "check_in"],
+  [/\b(long[- ]term|breakfast|cleaning available|concierge|housekeep\w*|airport|shuttle|recycl\w*)\b/, "services"],
   [/\b(parking|garage|carport|ev charger|charging station)\b/, "parking"],
   [/(\bview\b|waterfront|beachfront|lakefront|sea access|lake access)/, "views"],
   [/\b(kitchen|oven|stove|microwave|fridge|refrigerat\w*|freezer|dishwash\w*|dishes|silverware|cutlery|cook\w*|coffee|kettle|toaster|blender|wine glass\w*|dining table|baking)\b/, "kitchen"],
@@ -27,7 +27,7 @@ const CATEGORY_RULES: [RegExp, string][] = [
   [/\b(bed|beds|linens?|sheets?|pillows?|blankets?|hangers?|wardrobe|closet|clothing storage|shades|curtains?|blackout)\b/, "bedroom"],
   [/\b(tv|television|netflix|streaming|games?|console|cinema|projector|speakers?|sound system|stereo|books?|piano)\b/, "entertainment"],
   [/\b(garden|balcony|terrace|patio|yard|barbecue|bbq|grill|outdoor|pool|hot tub|sauna|fire pit|hammock|bikes?|sun lounger\w*|backyard)\b/, "outdoor"],
-  [/\b(wi[- ]?fi|internet|heating|air conditioning|washer|washing machine|dryer|iron|workspace|desk|laptop|cleaning products|essentials)\b/, "essentials"],
+  [/\b(wi[- ]?fi|internet|heating|air conditioning|washer|washing machine|dryer|drying rack|laundromat|iron|workspace|desk|laptop|cleaning products|essentials)\b/, "essentials"],
 ];
 
 export function guessCategoryKey(name: string): string {

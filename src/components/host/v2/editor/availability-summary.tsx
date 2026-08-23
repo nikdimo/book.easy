@@ -247,12 +247,14 @@ export function AvailabilitySummary({
   ).text;
 
   return (
-    <div className="mx-auto w-full max-w-3xl py-6 lg:py-8">
+    <div className="mx-auto w-full max-w-2xl py-6 md:py-10">
+      {/* Named by the rail, the browser tab and the active chip on a phone. Kept in the
+          outline for screen readers, which have no rail to read. */}
       <header>
-        <h2 className="text-xl font-semibold text-slate-900">
+        <h2 className="sr-only">
           <T t={t} k="host.editor.section.availability" source="Availability" />
         </h2>
-        <p className="mt-2 text-sm leading-6 text-slate-600">
+        <p className="text-sm leading-6 text-slate-600">
           <T
             t={t}
             k="host.editor.availability.lead"
@@ -261,7 +263,7 @@ export function AvailabilitySummary({
         </p>
         <Link
           href={calendarHref}
-          className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-[#fde7dc] px-5 text-sm font-semibold text-[#8f3d21] transition-colors hover:bg-[#f9d7c6] focus-visible:bg-[#f9d7c6] focus-visible:outline-none"
+          className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-[#f1f5f9] px-5 text-sm font-semibold text-[#0f172a] transition-colors hover:bg-[#e2e8f0] focus-visible:bg-[#e2e8f0] focus-visible:outline-none"
         >
           <T
             t={t}

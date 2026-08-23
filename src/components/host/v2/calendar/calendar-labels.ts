@@ -3,7 +3,8 @@
 import { interpolate, type useI18n } from "@/lib/i18n/client";
 import type { Resolved } from "@/lib/i18n/t";
 import {
-  formatMoney as formatMoneyFromSnapshot,
+  formatMoney as formatMoneyExactFromSnapshot,
+  formatMoneyRounded as formatMoneyRoundedFromSnapshot,
   type CalendarFormats,
 } from "@/lib/host/v2/calendar-format";
 import type {
@@ -50,12 +51,28 @@ export type Translator = ReturnType<typeof useI18n>;
  * Money always goes through the server's snapshot, never `Intl` on the client — see
  * the note in `calendar-format.ts` for the hydration failure that caused.
  */
+/**
+ * The default: whole units, for every amount a host reads at a glance.
+ *
+ * Decimals belong where a number is computed, never where it is chosen, and almost
+ * nothing here is computed — the slider rounds and promotions round by default. Use
+ * `moneyExact` for the price breakdown, which is the receipt behind these numbers.
+ */
 export function money(
   amount: number,
   currency: string,
   formats: CalendarFormats,
 ): string {
-  return formatMoneyFromSnapshot(amount, currency, formats);
+  return formatMoneyRoundedFromSnapshot(amount, currency, formats);
+}
+
+/** To the cent. For the breakdown, where a rounded line would be a wrong number. */
+export function moneyExact(
+  amount: number,
+  currency: string,
+  formats: CalendarFormats,
+): string {
+  return formatMoneyExactFromSnapshot(amount, currency, formats);
 }
 
 function join(parts: Resolved[]): Resolved {

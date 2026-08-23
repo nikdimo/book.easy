@@ -1,18 +1,23 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 import { Search, SlidersHorizontal, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableHeader } from "@/components/ui/table";
 import { Tx, useI18n } from "@/lib/i18n/client";
+import { cn } from "@/lib/utils";
 
 export type ListItem = {
   id: string;
   searchText: string;
   filters?: Record<string, string>;
   sortValues?: Record<string, string | number>;
+  /** Card shown on phones, and the only rendering when no `tableHead` is given. */
   content: ReactNode;
+  /** The `<TableRow>` for this record. Only read when `tableHead` is supplied. */
+  row?: ReactNode;
 };
 
 export type ListFilter = {
@@ -31,6 +36,7 @@ export function ListControls({
   searchPlaceholder = "Search all fields…",
   emptyMessage = "No results match your search and filters.",
   className = "space-y-3",
+  tableHead,
 }: {
   items: ListItem[];
   filters?: ListFilter[];
@@ -38,6 +44,12 @@ export function ListControls({
   searchPlaceholder?: string;
   emptyMessage?: string;
   className?: string;
+  /*
+   * The `<TableRow>` of `<TableHead>` cells for the desktop table. Supplying it puts
+   * every visible `item.row` inside one shared table so the column headings appear
+   * once above the whole list; without it each item renders only its `content`.
+   */
+  tableHead?: ReactNode;
 }) {
   const { resolve } = useI18n();
   const [query, setQuery] = useState("");
@@ -97,7 +109,25 @@ export function ListControls({
           {hasCriteria && <Button type="button" variant="ghost" size="sm" onClick={clear} className="h-7"><Tx k="list_controls.clear_filters" source="Clear filters" /></Button>}
         </div>
       </div>
-      {visibleItems.length ? <div className={className}>{visibleItems.map((item) => <div key={item.id}>{item.content}</div>)}</div> : <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">{emptyMessage}</div>}
+      {visibleItems.length ? (
+        <>
+          <div className={cn(className, tableHead && "md:hidden")}>
+            {visibleItems.map((item) => <div key={item.id}>{item.content}</div>)}
+          </div>
+          {tableHead && (
+            <div className="hidden rounded-lg border md:block">
+              <Table>
+                <TableHeader>{tableHead}</TableHeader>
+                <TableBody>
+                  {visibleItems.map((item) => <Fragment key={item.id}>{item.row}</Fragment>)}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">{emptyMessage}</div>
+      )}
     </div>
   );
 }

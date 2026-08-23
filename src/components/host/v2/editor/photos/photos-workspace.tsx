@@ -22,6 +22,7 @@ import {
 } from "@dnd-kit/sortable";
 import { ImagePlus, LayoutGrid, Loader2, Plus, Rows3, Square, Upload } from "lucide-react";
 import { toast } from "sonner";
+import { EditorSideRailHeading } from "@/components/host/v2/editor/editor-side-rail";
 import { withSaveState } from "@/components/host/v2/editor/save-state";
 import {
   addListingRoom,
@@ -682,7 +683,7 @@ export function PhotosWorkspace({
           <button
             type="button"
             onClick={openFilePicker}
-            className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-full bg-[#fde7dc] px-5 text-sm font-semibold text-[#8f3d21] transition-colors hover:bg-[#f9d7c6] focus-visible:bg-[#f9d7c6] focus-visible:outline-none"
+            className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-full bg-[#f1f5f9] px-5 text-sm font-semibold text-[#0f172a] transition-colors hover:bg-[#e2e8f0] focus-visible:bg-[#e2e8f0] focus-visible:outline-none"
           >
             <Upload className="size-4" aria-hidden />
             <Tx k="host.editor.photos.upload" source="Upload photos" />
@@ -717,7 +718,7 @@ export function PhotosWorkspace({
     >
       {fileField}
 
-      <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex flex-col">
         {/* The header already says which listing this is and the nav already says Photos,
             so a title and a subtitle here would spend the first band of the workspace
             repeating both. One row: what you are looking at, and what you can do to it. */}
@@ -778,7 +779,7 @@ export function PhotosWorkspace({
               type="button"
               onClick={openFilePicker}
               disabled={upload.uploading}
-              className="ml-1 inline-flex min-h-9 shrink-0 items-center gap-2 rounded-full bg-[#fde7dc] px-4 text-sm font-semibold text-[#8f3d21] transition-colors hover:bg-[#f9d7c6] disabled:opacity-60 focus-visible:outline-none"
+              className="ml-1 inline-flex min-h-9 shrink-0 items-center gap-2 rounded-full bg-[#f1f5f9] px-4 text-sm font-semibold text-[#0f172a] transition-colors hover:bg-[#e2e8f0] disabled:opacity-60 focus-visible:outline-none"
             >
               {upload.uploading ? (
                 <Loader2 className="size-4 animate-spin" aria-hidden />
@@ -797,11 +798,9 @@ export function PhotosWorkspace({
 
           {/* The rail title belongs to its own column, aligned with the actions rather
               than beginning a second header lower down beside the first row of photos. */}
-          <div className="hidden w-60 shrink-0 border-l border-slate-100 pl-4 xl:block">
-            <h2 className="text-sm font-medium text-slate-900">
-              <Tx k="host.editor.photos.rooms_heading" source="Rooms and spaces" />
-            </h2>
-          </div>
+          <EditorSideRailHeading>
+            <Tx k="host.editor.photos.rooms_heading" source="Rooms and spaces" />
+          </EditorSideRailHeading>
         </div>
 
         {/* The unassigned nudge: a quiet line, and only while there is something to do
@@ -833,7 +832,7 @@ export function PhotosWorkspace({
           </button>
         )}
 
-        <div className="flex min-h-0 flex-1 gap-4">
+        <div className="flex gap-4">
           <div className="flex min-w-0 flex-1 flex-col">
             {view === "all" ? (
               <SortableContext

@@ -51,8 +51,11 @@ export class LocalStorageAdapter implements StorageAdapter {
     const filePath = join(this.uploadDir, safeName);
     try {
       await unlink(filePath);
-    } catch {
-      // File may not exist
+    } catch (error) {
+      // Missing is already the desired end state. Every other filesystem failure must
+      // reach the cleanup outbox so it stays queued for retry instead of being reported
+      // as a successful deletion.
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     }
   }
 

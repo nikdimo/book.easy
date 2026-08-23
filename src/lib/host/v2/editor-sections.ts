@@ -1,9 +1,18 @@
+import { hostCalendarHref } from "@/lib/host/v2/calendar-href";
+import { MIN_PUBLISH_PHOTOS } from "@/lib/host/v2/photo-draft";
+
 /**
  * The editor's left navigation.
  *
- * One list, shared by the desktop rail and the phone chip row, so the two can never
- * drift. `built: false` sections are real routes that show a short placeholder — a
- * navigation item that does nothing when clicked is worse than one that explains itself.
+ * One list, shared by the desktop rail, the phone chip row, the section footer and the
+ * Overview screen, so none of them can drift. Sections are grouped the way a host thinks
+ * about the work: what the calendar decides, and what the listing itself says.
+ *
+ * Overview and "Open calendar" are navigation items rather than sections — one is the
+ * editor's own index page, the other leaves the editor entirely — so they are declared
+ * beside the sections instead of inside them. That keeps `EDITOR_SECTIONS` meaning
+ * exactly "a page that edits part of this listing", which is what completion counting
+ * and the section footer both need it to mean.
  */
 export interface EditorSection {
   slug: string;
@@ -11,22 +20,32 @@ export interface EditorSection {
   key: string;
   /** English source text, and the fallback when nothing is translated. */
   source: string;
-  built: boolean;
   completion: boolean;
-  group?: "calendar";
+  group: "calendar" | "details";
 }
 
 export const EDITOR_SECTIONS: EditorSection[] = [
-  { slug: "photos", key: "host.editor.section.photos", source: "Photos", built: true, completion: true },
-  { slug: "basics", key: "host.editor.section.basics", source: "Title & description", built: true, completion: true },
-  { slug: "rooms", key: "host.editor.section.rooms", source: "Property details", built: false, completion: true },
-  { slug: "amenities", key: "host.editor.section.amenities", source: "Amenities", built: true, completion: true },
-  { slug: "location", key: "host.editor.section.location", source: "Location", built: false, completion: true },
-  { slug: "house-rules", key: "host.editor.section.house_rules", source: "House rules", built: false, completion: true },
-  { slug: "arrival-guide", key: "host.editor.section.arrival_guide", source: "Arrival guide", built: false, completion: true },
-  { slug: "pricing", key: "host.editor.section.pricing", source: "Pricing", built: true, completion: false, group: "calendar" },
-  { slug: "availability", key: "host.editor.section.availability", source: "Availability", built: true, completion: false, group: "calendar" },
+  { slug: "availability", key: "host.editor.section.availability", source: "Availability", completion: false, group: "calendar" },
+  { slug: "pricing", key: "host.editor.section.pricing", source: "Pricing", completion: false, group: "calendar" },
+  { slug: "photos", key: "host.editor.section.photos", source: "Photos", completion: true, group: "details" },
+  { slug: "basics", key: "host.editor.section.basics", source: "Title & description", completion: true, group: "details" },
+  { slug: "rooms", key: "host.editor.section.rooms", source: "Property details", completion: true, group: "details" },
+  { slug: "location", key: "host.editor.section.location", source: "Location", completion: true, group: "details" },
+  // Amenities are optional at publish time. Without a persisted "reviewed" marker,
+  // zero selected amenities cannot be distinguished from an unfinished section, so it
+  // must not create a false warning or make 100% completion impossible.
+  { slug: "amenities", key: "host.editor.section.amenities", source: "Amenities", completion: false, group: "details" },
+  // House rules counts because it has a persisted "reviewed" state of its own
+  // (`Listing.houseRulesReviewedAt`): the tick means the host opened the section and
+  // saved it, which is a fact the database holds rather than an inference from fields
+  // that always have values. Arrival guide still has no such column, and counting it
+  // would make 100% completion impossible even when every stored value is valid.
+  { slug: "house-rules", key: "host.editor.section.house_rules", source: "House rules", completion: true, group: "details" },
+  { slug: "arrival-guide", key: "host.editor.section.arrival_guide", source: "Arrival guide", completion: false, group: "details" },
 ];
+
+/** The editor's index page. It lives on the base route, not on a slug of its own. */
+export const EDITOR_OVERVIEW_SLUG = "overview";
 
 export const EDITOR_COMPLETION_SECTIONS = EDITOR_SECTIONS.filter((section) => section.completion);
 
@@ -45,13 +64,110 @@ export function editorCompletionCount(completedSlugs: readonly string[]): number
 export function editorCompletedSections(input: {
   photoCount: number;
   basicsComplete: boolean;
+  propertyDetailsComplete: boolean;
+  locationComplete: boolean;
+  /** Whether the host has saved the House rules section — `houseRulesReviewedAt` is
+   *  not null. Never inferred from the rules having values: they always do. */
+  houseRulesReviewed: boolean;
 }): string[] {
   return [
-    ...(input.photoCount > 0 ? ["photos"] : []),
+    ...(input.photoCount >= MIN_PUBLISH_PHOTOS ? ["photos"] : []),
     ...(input.basicsComplete ? ["basics"] : []),
+    ...(input.propertyDetailsComplete ? ["rooms"] : []),
+    ...(input.locationComplete ? ["location"] : []),
+    ...(input.houseRulesReviewed ? ["house-rules"] : []),
   ];
 }
 
 export function findEditorSection(slug: string): EditorSection | undefined {
   return EDITOR_SECTIONS.find((section) => section.slug === slug);
 }
+
+/** `/host/listings/<id>` for Overview, `/host/listings/<id>/<slug>` otherwise. */
+export function editorSectionHref(listingId: string, slug: string): string {
+  const base = `/host/listings/${listingId}`;
+  return slug === EDITOR_OVERVIEW_SLUG ? base : `${base}/${slug}`;
+}
+
+/**
+ * One navigation entry.
+ *
+ * `slug` is what marks the entry active, and matches the section slug wherever the
+ * entry is a section. `external` entries leave the editor, so nothing in the editor is
+ * ever highlighted for them.
+ */
+export interface EditorNavItem {
+  slug: string;
+  key: string;
+  source: string;
+  href: (listingId: string) => string;
+  /** Leaves the editor — currently only Calendar, which lives in the app shell. */
+  external?: boolean;
+}
+
+export interface EditorNavGroup {
+  id: "overview" | "calendar" | "details";
+  key: string;
+  source: string;
+  items: EditorNavItem[];
+}
+
+function sectionNavItem(section: EditorSection): EditorNavItem {
+  return {
+    slug: section.slug,
+    key: section.key,
+    source: section.source,
+    href: (listingId) => editorSectionHref(listingId, section.slug),
+  };
+}
+
+export const EDITOR_OVERVIEW_ITEM: EditorNavItem = {
+  slug: EDITOR_OVERVIEW_SLUG,
+  key: "host.editor.section.overview",
+  source: "Listing overview",
+  href: (listingId) => editorSectionHref(listingId, EDITOR_OVERVIEW_SLUG),
+};
+
+/** The Host V2 calendar — never the classic one — opened on the listing being edited. */
+export const EDITOR_OPEN_CALENDAR_ITEM: EditorNavItem = {
+  slug: "open-calendar",
+  key: "host.editor.nav.open_calendar",
+  source: "Open calendar",
+  href: (listingId) => hostCalendarHref(listingId),
+  external: true,
+};
+
+/**
+ * The navigation, in the order the rail renders it.
+ *
+ * Derived from `EDITOR_SECTIONS` rather than restated, so adding a section puts it in
+ * the rail, the overview and the footer at once.
+ */
+export const EDITOR_NAV_GROUPS: EditorNavGroup[] = [
+  {
+    id: "overview",
+    key: "host.editor.nav.group_overview",
+    source: "Overview",
+    items: [EDITOR_OVERVIEW_ITEM],
+  },
+  {
+    id: "calendar",
+    key: "host.editor.calendar_settings",
+    source: "Calendar settings",
+    items: [
+      EDITOR_OPEN_CALENDAR_ITEM,
+      ...EDITOR_SECTIONS.filter((section) => section.group === "calendar").map(sectionNavItem),
+    ],
+  },
+  {
+    id: "details",
+    key: "host.editor.nav.group_details",
+    source: "Listing details",
+    items: EDITOR_SECTIONS.filter((section) => section.group === "details").map(sectionNavItem),
+  },
+];
+
+/** Every navigation entry in rail order — what the phone chip row windows over. */
+export const EDITOR_NAV_ITEMS: EditorNavItem[] = EDITOR_NAV_GROUPS.flatMap(
+  (group) => group.items,
+);

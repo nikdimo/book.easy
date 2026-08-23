@@ -161,6 +161,15 @@
   [contenteditable="true"]::selection {
     background: color-mix(in oklab, var(--primary) 22%, white);
   }
+  /* The new-listing flow is neutral end to end — slate ink on white, black CTAs, no
+     accent anywhere. The coral selection highlight above is the one place the brand
+     colour leaked into it, and it reads as a stray orange band while a host types a
+     title or a price. Same rule, the flow's own ink. */
+  .listing-flow input::selection,
+  .listing-flow textarea::selection,
+  .listing-flow [contenteditable="true"]::selection {
+    background: color-mix(in oklab, var(--foreground) 18%, white);
+  }
   html {
     @apply font-sans;
   }
@@ -259,19 +268,17 @@ font.goog-text-highlight,
   animation: desktop-search-content-in 170ms ease-out 100ms both;
 }
 
-@keyframes calendar-panel-attention-rail {
-  0% {
+/* The menu's arrival, played once when a fresh selection is made: each destination
+   settles in from the right a beat after the one above it, so the eye is walked down
+   the three choices the selected dates just unlocked. */
+@keyframes calendar-menu-row-reveal {
+  from {
     opacity: 0;
-    transform: scaleY(0.2);
+    transform: translateX(0.5rem);
   }
-  22%,
-  72% {
+  to {
     opacity: 1;
-    transform: scaleY(1);
-  }
-  100% {
-    opacity: 0;
-    transform: scaleY(1);
+    transform: translateX(0);
   }
 }
 
@@ -286,9 +293,8 @@ font.goog-text-highlight,
   }
 }
 
-.calendar-panel-attention-rail {
-  animation: calendar-panel-attention-rail 1200ms ease-out both;
-  transform-origin: top;
+.calendar-menu-row-reveal {
+  animation: calendar-menu-row-reveal 260ms ease-out both;
 }
 
 .calendar-selection-count-change {
@@ -305,9 +311,10 @@ font.goog-text-highlight,
     animation-delay: 0ms !important;
   }
 
-  .calendar-panel-attention-rail,
+  .calendar-menu-row-reveal,
   .calendar-selection-count-change {
     animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
   }
 }
 

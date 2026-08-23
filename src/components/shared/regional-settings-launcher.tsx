@@ -18,7 +18,12 @@ import { RegionalSettingsDialog } from "@/components/shared/regional-settings-di
  * open even when nothing else on the page works, because it is how someone fixes a
  * language they cannot read.
  */
-export async function RegionalSettingsLauncher() {
+export async function RegionalSettingsLauncher({
+  hideTrigger = false,
+}: {
+  /** For layouts that open the dialog from their own control instead of the chips. */
+  hideTrigger?: boolean;
+} = {}) {
   const [locale, currency, country] = await Promise.all([
     getLocale(),
     getDisplayCurrency(),
@@ -43,6 +48,7 @@ export async function RegionalSettingsLauncher() {
       suggestedLocale={localeFromCountry(country)}
       suggestedCurrency={currencyFromCountry(country)}
       ratesUnavailable={rates === null}
+      hideTrigger={hideTrigger}
     />
   );
 }

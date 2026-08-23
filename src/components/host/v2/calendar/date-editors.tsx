@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { BASE_CURRENCY } from "@/lib/currency/currency-preference";
 import {
   Check,
   ChevronDown,
@@ -41,6 +42,7 @@ import {
   priceFromPercent,
   PRICE_PERCENT_PRESETS,
   PRICE_PERCENT_RANGE,
+  wholeAmountFromInput,
 } from "@/lib/host/v2/calendar-price-action";
 import type { HostCalendarListing } from "@/lib/host/v2/calendar-types";
 import {
@@ -61,6 +63,7 @@ import {
 } from "@/lib/host/v2/calendar-quote";
 import {
   promotionDraftProblem,
+  selectionDraftCanWin,
   type PromotionDraftProblem,
 } from "@/lib/host/v2/calendar-promotion-action";
 import type { DateChange } from "@/lib/host/v2/calendar-review";
@@ -401,7 +404,7 @@ export function AvailabilityEditor({
                 "Private note",
               ).text
             }
-            className="min-h-11 w-full rounded-lg border-0 bg-slate-50 px-3 py-1 text-[0.8125rem] text-slate-900 outline-none transition-colors duration-150 placeholder:text-slate-400 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#a94b28]"
+            className="min-h-11 w-full rounded-lg border-0 bg-slate-50 px-3 py-1 text-[0.8125rem] text-slate-900 outline-none transition-colors duration-150 placeholder:text-slate-400 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0f172a]"
             onChange={(event) => setNoteDraft(event.target.value)}
             onKeyDown={(event) => {
               if (event.key !== "Enter") return;
@@ -475,10 +478,10 @@ function ActionButton({
       className={cn(
         "flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl px-4 text-[0.875rem] font-semibold",
         "transition-colors duration-150 motion-reduce:transition-none",
-        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]",
+        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]",
         "disabled:cursor-not-allowed disabled:opacity-50",
         tone === "strong"
-          ? "bg-[#d9774f] text-white hover:bg-[#c2643e]"
+          ? "bg-[#0f172a] text-white hover:bg-[#1e293b]"
           : "bg-slate-100 text-slate-800 hover:bg-slate-200",
       )}
     >
@@ -755,8 +758,8 @@ export function PricingEditor({
             disabled={pending}
             onChange={(next) => {
               setPriceDraft(next);
-              const parsed = Number(next.replace(/[^0-9]/g, ""));
-              if (Number.isFinite(parsed) && parsed >= 1) setPrice(parsed);
+              const parsed = wholeAmountFromInput(next);
+              if (parsed !== null && parsed >= 1) setPrice(parsed);
             }}
             onBlur={() => setPriceDraft(null)}
           />
@@ -873,9 +876,9 @@ export function PricingEditor({
           onClick={() => onApply(price)}
           className={cn(
             "flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 text-[0.875rem] font-semibold",
-            "bg-[#d9774f] text-white transition-colors duration-150 hover:bg-[#c2643e]",
+            "bg-[#0f172a] text-white transition-colors duration-150 hover:bg-[#1e293b]",
             "motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-50",
-            "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]",
+            "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]",
           )}
         >
           {unchanged
@@ -896,7 +899,12 @@ export function PricingEditor({
 
         {/* Clearing the per-date price is a different act from setting one: these dates
             stop having a price of their own and follow the base price again, including
-            when it changes. */}
+            when it changes.
+
+            Labelled as the release, not as a number. "Use base price: €120.00" on dates
+            that already cost €120.00 reads as a button that does nothing — the whole
+            point is what happens the *next* time the base moves, and only the verb can
+            say that. */}
         {model.customCount > 0 ? (
           <button
             type="button"
@@ -906,14 +914,14 @@ export function PricingEditor({
               "min-h-11 rounded-xl px-4 text-[0.8125rem] font-semibold",
               "bg-slate-100 text-slate-800 transition-colors duration-150 hover:bg-slate-200",
               "motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-50",
-              "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]",
+              "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]",
             )}
           >
             {
               interpolate(
                 i18n.resolve(
-                  "host.v2.calendar.editor.use_base_price",
-                  "Use base price: {amount}",
+                  "host.v2.calendar.editor.follow_base_price",
+                  "Let these dates follow the base price: {amount}",
                 ),
                 { amount: format(model.base) },
               ).text
@@ -951,10 +959,23 @@ export function PricingEditor({
         </div>
       ) : null}
 
-      {/* Listing-wide, and said so. Following this link changes the scope of the whole
-          panel; it never becomes part of the date-price save. */}
+      {/* Every listing-wide number this editor shows, on one line with one way in.
+          The cleaning fee sits in the guest total above and cannot be set per date —
+          it is charged once per stay, and a stay does not have to match the selection —
+          so naming it here beside the minimum stay is the only honest thing to do with
+          it. Following this link changes the scope of the whole panel; neither value
+          ever becomes part of the date-price save. */}
       <InfoRow
-        label={
+        label={[
+          listing.pricing.cleaningFee > 0
+            ? interpolate(
+                i18n.resolve(
+                  "host.v2.calendar.editor.cleaning_fee_info",
+                  "Cleaning fee: {amount}",
+                ),
+                { amount: format(listing.pricing.cleaningFee) },
+              ).text
+            : null,
           interpolate(
             i18n.plural(
               "host.v2.calendar.editor.minimum_stay_info",
@@ -963,8 +984,10 @@ export function PricingEditor({
               "Minimum stay: {n} nights · Listing-wide setting",
             ),
             {},
-          ).text
-        }
+          ).text,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
         action={i18n.resolve("host.v2.calendar.editor.change", "Change").text}
         onAction={onEditListingWide}
       />
@@ -1110,7 +1133,7 @@ export function PromotionEditor({
     : null;
   const existing = targetedPromotion ?? resolveSelectionPromotion(listing, selection);
   const saveMode = promotionSaveMode(existing, selection);
-  const currency = listing.pricing?.currency ?? "EUR";
+  const currency = listing.pricing?.currency ?? BASE_CURRENCY;
   const nights = selectionDates(selection).length;
   const existingSummaries = selectionPromotionSummaries(listing, selection);
   const createdResult =
@@ -1160,6 +1183,7 @@ export function PromotionEditor({
   const [roundToWholeUnit, setRoundToWholeUnit] = useState(
     editing?.roundToWholeUnit ?? true,
   );
+  const [shadowWarningOpen, setShadowWarningOpen] = useState(false);
 
   const draft: ProposedPromotion = {
     promotionId: editing?.id,
@@ -1201,7 +1225,8 @@ export function PromotionEditor({
     draft,
     bands: [],
     nights,
-    draftApplied,
+    draftApplied:
+      draftApplied || selectionDraftCanWin({ listing, selection, draft }),
     winningPromotion: winningPromotion
       ? {
           discountPercent: winningPromotion.discountPercent ?? 0,
@@ -1227,7 +1252,7 @@ export function PromotionEditor({
         <button
           type="button"
           onClick={() => onChange(null)}
-          className="min-h-11 self-start rounded-lg bg-slate-50 px-3 text-[0.8125rem] font-semibold text-slate-700 transition-colors duration-150 hover:bg-slate-100 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]"
+          className="min-h-11 self-start rounded-lg bg-slate-50 px-3 text-[0.8125rem] font-semibold text-slate-700 transition-colors duration-150 hover:bg-slate-100 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]"
         >
           {i18n.resolve("host.v2.calendar.editor.keep_offer", "Keep this offer").text}
         </button>
@@ -1265,8 +1290,8 @@ export function PromotionEditor({
           onClick={beginCreate}
           className={cn(
             "flex min-h-12 items-center justify-center rounded-xl px-4 text-[0.875rem] font-semibold",
-            "bg-[#d9774f] text-white transition-colors duration-150 hover:bg-[#c2643e]",
-            "motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]",
+            "bg-[#0f172a] text-white transition-colors duration-150 hover:bg-[#1e293b]",
+            "motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]",
           )}
         >
           {
@@ -1301,7 +1326,7 @@ export function PromotionEditor({
         <button
           type="button"
           onClick={() => setEditorMode("list")}
-          className="flex min-h-10 w-full items-center justify-between rounded-lg bg-slate-50 px-3 text-left text-[0.8125rem] font-semibold text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#a94b28]"
+          className="flex min-h-10 w-full items-center justify-between rounded-lg bg-slate-50 px-3 text-left text-[0.8125rem] font-semibold text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0f172a]"
         >
           <span>
             {interpolate(
@@ -1334,7 +1359,7 @@ export function PromotionEditor({
           <button
             type="button"
             onClick={() => setEditorMode("list")}
-            className="min-h-9 text-[0.75rem] font-semibold text-slate-500 transition-colors hover:text-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]"
+            className="min-h-9 text-[0.75rem] font-semibold text-slate-500 transition-colors hover:text-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]"
           >
             {i18n.resolve("host.v2.calendar.cancel", "Cancel").text}
           </button>
@@ -1353,8 +1378,8 @@ export function PromotionEditor({
           disabled={pending}
           onChange={(next) => {
             setPercentDraft(next);
-            const parsed = Number(next.replace(/[^0-9]/g, ""));
-            if (/\d/.test(next) && Number.isFinite(parsed)) {
+            const parsed = wholeAmountFromInput(next);
+            if (parsed !== null) {
               setPercent(Math.min(MAX_DISCOUNT, parsed));
             }
           }}
@@ -1465,9 +1490,7 @@ export function PromotionEditor({
 
       {problem ? <DraftProblem problem={problem} /> : null}
 
-      {quote &&
-      problem?.code !== "NO_BENEFIT" &&
-      problem?.code !== "MINIMUM_ABOVE_SELECTION" ? (
+      {quote && problem?.code !== "NO_BENEFIT" ? (
         <div className="border-t border-slate-100 pt-3">
           <GuestResult
             quote={quote}
@@ -1481,12 +1504,18 @@ export function PromotionEditor({
       <button
         type="button"
         disabled={pending || problem?.code === "NO_BENEFIT"}
-        onClick={() => onApply(draft)}
+        onClick={() => {
+          if (problem?.code === "NEVER_WINS") {
+            setShadowWarningOpen(true);
+            return;
+          }
+          onApply(draft);
+        }}
         className={cn(
           "flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 text-[0.875rem] font-semibold",
-          "bg-[#d9774f] text-white transition-colors duration-150 hover:bg-[#c2643e]",
+          "bg-[#0f172a] text-white transition-colors duration-150 hover:bg-[#1e293b]",
           "motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-50",
-          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]",
+          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]",
         )}
       >
         {editing
@@ -1499,6 +1528,56 @@ export function PromotionEditor({
               "Create promotion",
             ).text}
       </button>
+
+      <Dialog open={shadowWarningOpen} onOpenChange={setShadowWarningOpen}>
+        <DialogContent variant="sheet" className="md:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {
+                i18n.resolve(
+                  "host.v2.calendar.editor.shadowed_promotion_title",
+                  "A better promotion already applies",
+                ).text
+              }
+            </DialogTitle>
+            <DialogDescription>
+              {
+                interpolate(
+                  i18n.resolve(
+                    "host.v2.calendar.editor.shadowed_promotion_description",
+                    "An existing {percent}% promotion currently saves guests more on every selected night. This promotion will only be used if the better offer becomes unavailable or the guest is not eligible for it.",
+                  ),
+                  { percent: problem?.code === "NEVER_WINS" ? problem.discountPercent : 0 },
+                ).text
+              }
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShadowWarningOpen(false)}
+            >
+              {i18n.resolve("host.v2.calendar.review.cancel", "Back to editing").text}
+            </Button>
+            <Button
+              type="button"
+              className="bg-[#0f172a] text-white hover:bg-[#1e293b]"
+              onClick={() => {
+                setShadowWarningOpen(false);
+                onApply(draft);
+              }}
+            >
+              {
+                i18n.resolve(
+                  "host.v2.calendar.editor.create_shadowed_promotion",
+                  "Continue anyway",
+                ).text
+              }
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="border-t border-slate-100 pt-3">
         <HowOffersWork />
@@ -1539,28 +1618,13 @@ function DraftProblem({ problem }: { problem: PromotionDraftProblem }) {
       </ConsequenceLine>
     );
   }
-  if (problem.code === "MINIMUM_ABOVE_SELECTION") {
-    return (
-      <ConsequenceLine tone="warning">
-        {
-          interpolate(
-            i18n.resolve(
-              "host.v2.calendar.editor.promotion_minimum_unreachable",
-              "This promotion requires a {minimum}-night stay. Guests staying {minimum} nights or more can receive the discount on the selected nights.",
-            ),
-            { minimum: problem.minimumNights, nights: problem.nights },
-          ).text
-        }
-      </ConsequenceLine>
-    );
-  }
   return (
     <ConsequenceLine tone="warning">
       {
         interpolate(
           i18n.resolve(
             "host.v2.calendar.editor.promotion_never_wins",
-            "This promotion would not apply. An existing {percent}% promotion saves more on every selected night.",
+            "A higher discount currently applies to these dates. This promotion may apply if the better offer becomes unavailable or the guest is not eligible for it.",
           ),
           { percent: problem.discountPercent },
         ).text

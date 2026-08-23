@@ -76,6 +76,10 @@ export async function verifyAvailabilityManager(
 function revalidateListing(listing: ManagedAvailabilityListing) {
   revalidatePath(`/host/listings/${listing.id}/availability`);
   revalidatePath(`/host/listings/${listing.id}/pricing`);
+  revalidatePath(`/host/listings/${listing.id}/availability`);
+  revalidatePath(`/host/listings/${listing.id}/pricing`);
+  revalidatePath(`/host/listings/${listing.id}`);
+  revalidatePath("/host/calendar");
   revalidatePath(`/admin/listings/${listing.id}`);
   if (listing.slug) revalidatePath(`/properties/${listing.slug}`);
 }

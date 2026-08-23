@@ -25,6 +25,7 @@ import {
   type HostListingVisibility,
 } from "@/lib/host/v2/listing-status";
 import { addDaysToYmd, compareYmd, ymdToDbDate } from "@/lib/utils/date-only";
+import { hostCalendarHref } from "@/lib/host/v2/calendar-href";
 
 export type ListingAvailabilityMode = "OPEN" | "CLOSED";
 
@@ -213,9 +214,10 @@ export function summarizeListingAvailability(
 /**
  * Where every availability change is actually made.
  *
- * One helper rather than a template repeated per call site, so the pane's link and the
- * test that guards it cannot drift — and so the id is encoded exactly once.
+ * A named alias for this pane rather than a second implementation: `hostCalendarHref`
+ * is the single source of the path and the parameter, so the pane's link and the
+ * calendar page that reads it cannot drift.
  */
 export function calendarHrefForListing(listingId: string): string {
-  return `/host/v2/calendar?listing=${encodeURIComponent(listingId)}`;
+  return hostCalendarHref(listingId);
 }

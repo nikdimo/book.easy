@@ -1230,18 +1230,13 @@
     "filePath": "src/components/auth/login-form.tsx"
   },
   {
-    "key": "auth.continue_email",
-    "sourceText": "Continue with email",
+    "key": "auth.continue",
+    "sourceText": "Continue",
     "filePath": "src/components/auth/login-form.tsx"
   },
   {
     "key": "auth.continue_google",
     "sourceText": "Continue with Google",
-    "filePath": "src/components/auth/login-form.tsx"
-  },
-  {
-    "key": "auth.description",
-    "sourceText": "Holiday homes and stays",
     "filePath": "src/components/auth/login-form.tsx"
   },
   {
@@ -1560,6 +1555,21 @@
     "filePath": "src/components/booking/booking-status-hero.tsx"
   },
   {
+    "key": "booking.house_rules_accept",
+    "sourceText": "I agree to these house rules.",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.house_rules_required",
+    "sourceText": "Please agree to the house rules before you send your request.",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.house_rules_title",
+    "sourceText": "House rules",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
     "key": "booking.infants.few",
     "sourceText": "{n} infants",
     "filePath": "src/components/public/booking-widget.tsx"
@@ -1842,7 +1852,17 @@
   {
     "key": "common.close",
     "sourceText": "Close",
-    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
+    "key": "common.date_picker.clear",
+    "sourceText": "Clear",
+    "filePath": "src/components/shared/date-picker-field.tsx"
+  },
+  {
+    "key": "common.date_picker.empty",
+    "sourceText": "Select a date",
+    "filePath": "src/components/shared/date-picker-field.tsx"
   },
   {
     "key": "common.loading",
@@ -1868,6 +1888,36 @@
     "key": "common.submitting",
     "sourceText": "Submitting...",
     "filePath": "src/components/communication/damage-report-dialog.tsx"
+  },
+  {
+    "key": "common.time_picker.afternoon",
+    "sourceText": "Afternoon",
+    "filePath": "src/components/shared/time-picker-field.tsx"
+  },
+  {
+    "key": "common.time_picker.all_times",
+    "sourceText": "All times",
+    "filePath": "src/components/shared/time-picker-field.tsx"
+  },
+  {
+    "key": "common.time_picker.evening",
+    "sourceText": "Evening",
+    "filePath": "src/components/shared/time-picker-field.tsx"
+  },
+  {
+    "key": "common.time_picker.morning",
+    "sourceText": "Morning",
+    "filePath": "src/components/shared/time-picker-field.tsx"
+  },
+  {
+    "key": "common.time_picker.night",
+    "sourceText": "Night",
+    "filePath": "src/components/shared/time-picker-field.tsx"
+  },
+  {
+    "key": "common.time_picker.quick",
+    "sourceText": "Common times",
+    "filePath": "src/components/shared/time-picker-field.tsx"
   },
   {
     "key": "common.uploading",
@@ -2353,6 +2403,26 @@
     "key": "conversation.write_placeholder",
     "sourceText": "Write a message...",
     "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "country.dk",
+    "sourceText": "Denmark",
+    "filePath": "src/components/host/v2/listings/address-modal.tsx"
+  },
+  {
+    "key": "country.es",
+    "sourceText": "Spain",
+    "filePath": "src/components/host/v2/listings/address-step.tsx"
+  },
+  {
+    "key": "country.gr",
+    "sourceText": "Greece",
+    "filePath": "src/components/host/v2/listings/address-step.tsx"
+  },
+  {
+    "key": "country.mk",
+    "sourceText": "North Macedonia",
+    "filePath": "src/components/host/v2/listings/address-modal.tsx"
   },
   {
     "key": "damage_report.add_photo",
@@ -3455,11 +3525,6 @@
     "filePath": "src/app/(public)/layout.tsx"
   },
   {
-    "key": "header.current_host_panel",
-    "sourceText": "Current host panel",
-    "filePath": "src/components/shared/header.tsx"
-  },
-  {
     "key": "header.favorites",
     "sourceText": "Favorites",
     "filePath": "src/app/(public)/layout.tsx"
@@ -3488,16 +3553,6 @@
     "key": "header.log_out",
     "sourceText": "Log out",
     "filePath": "src/app/(public)/layout.tsx"
-  },
-  {
-    "key": "header.new_host_panel",
-    "sourceText": "New host panel",
-    "filePath": "src/components/shared/header.tsx"
-  },
-  {
-    "key": "header.preview",
-    "sourceText": "Preview",
-    "filePath": "src/components/shared/header.tsx"
   },
   {
     "key": "header.stays",
@@ -4705,19 +4760,149 @@
     "filePath": "src/components/host/v2/editor/editor-header.tsx"
   },
   {
+    "key": "host.editor.amenities.all_categories",
+    "sourceText": "All categories",
+    "filePath": "src/components/host/v2/editor/amenities/amenities-workspace.tsx"
+  },
+  {
+    "key": "host.editor.amenities.categories",
+    "sourceText": "Categories",
+    "filePath": "src/components/host/v2/editor/amenities/amenities-workspace.tsx"
+  },
+  {
+    "key": "host.editor.amenities.clear_filters",
+    "sourceText": "Clear search and filters",
+    "filePath": "src/components/host/v2/editor/amenities/amenities-workspace.tsx"
+  },
+  {
+    "key": "host.editor.amenities.clear_search",
+    "sourceText": "Clear search",
+    "filePath": "src/components/host/v2/editor/amenities/amenities-workspace.tsx"
+  },
+  {
+    "key": "host.editor.amenities.filter_all",
+    "sourceText": "All",
+    "filePath": "src/components/host/v2/editor/amenities/amenities-workspace.tsx"
+  },
+  {
+    "key": "host.editor.amenities.filter_label",
+    "sourceText": "Filter amenities",
+    "filePath": "src/components/host/v2/editor/amenities/amenities-workspace.tsx"
+  },
+  {
+    "key": "host.editor.amenities.filter_selected",
+    "sourceText": "Selected",
+    "filePath": "src/components/host/v2/editor/amenities/amenities-workspace.tsx"
+  },
+  {
+    "key": "host.editor.amenities.filter_unselected",
+    "sourceText": "Not selected",
+    "filePath": "src/components/host/v2/editor/amenities/amenities-workspace.tsx"
+  },
+  {
     "key": "host.editor.amenities.hidden_hint",
     "sourceText": "Not offered to other listings",
     "filePath": "src/components/host/v2/editor/amenities/amenities-workspace.tsx"
   },
   {
-    "key": "host.editor.amenities.intro",
-    "sourceText": "Pick everything guests can actually use. Changes save on their own.",
+    "key": "host.editor.amenities.no_results",
+    "sourceText": "No amenities found",
     "filePath": "src/components/host/v2/editor/amenities/amenities-workspace.tsx"
   },
   {
     "key": "host.editor.amenities.save_failed",
     "sourceText": "We couldn't save those amenities. Check your connection and try again.",
     "filePath": "src/components/host/v2/editor/amenities/amenities-workspace.tsx"
+  },
+  {
+    "key": "host.editor.amenities.search",
+    "sourceText": "Search amenities",
+    "filePath": "src/components/host/v2/editor/amenities/amenities-workspace.tsx"
+  },
+  {
+    "key": "host.editor.amenities.visible_count.few",
+    "sourceText": "{n} amenities shown",
+    "filePath": "src/components/host/v2/editor/amenities/amenities-workspace.tsx"
+  },
+  {
+    "key": "host.editor.amenities.visible_count.many",
+    "sourceText": "{n} amenities shown",
+    "filePath": "src/components/host/v2/editor/amenities/amenities-workspace.tsx"
+  },
+  {
+    "key": "host.editor.amenities.visible_count.one",
+    "sourceText": "{n} amenity shown",
+    "filePath": "src/components/host/v2/editor/amenities/amenities-workspace.tsx"
+  },
+  {
+    "key": "host.editor.amenities.visible_count.other",
+    "sourceText": "{n} amenities shown",
+    "filePath": "src/components/host/v2/editor/amenities/amenities-workspace.tsx"
+  },
+  {
+    "key": "host.editor.amenities.visible_count.two",
+    "sourceText": "{n} amenities shown",
+    "filePath": "src/components/host/v2/editor/amenities/amenities-workspace.tsx"
+  },
+  {
+    "key": "host.editor.amenities.visible_count.zero",
+    "sourceText": "{n} amenities shown",
+    "filePath": "src/components/host/v2/editor/amenities/amenities-workspace.tsx"
+  },
+  {
+    "key": "host.editor.arrival_guide.check_in_label",
+    "sourceText": "Check-in from",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-workspace.tsx"
+  },
+  {
+    "key": "host.editor.arrival_guide.check_out_label",
+    "sourceText": "Check-out by",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-workspace.tsx"
+  },
+  {
+    "key": "host.editor.arrival_guide.flexible",
+    "sourceText": "Flexible — agree with the guest",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-workspace.tsx"
+  },
+  {
+    "key": "host.editor.arrival_guide.heading",
+    "sourceText": "Arrival guide",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-workspace.tsx"
+  },
+  {
+    "key": "host.editor.arrival_guide.intro",
+    "sourceText": "Help guests understand what they need for arrival. Sensitive access details are shared in booking chat until secure guide storage is available.",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-workspace.tsx"
+  },
+  {
+    "key": "host.editor.arrival_guide.open_house_rules",
+    "sourceText": "Open House rules",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-workspace.tsx"
+  },
+  {
+    "key": "host.editor.arrival_guide.unavailable_advice",
+    "sourceText": "Send door codes, key instructions and Wi-Fi passwords to a confirmed guest in booking chat. Never put them in the public listing description.",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-workspace.tsx"
+  },
+  {
+    "key": "host.editor.arrival_guide.unavailable_heading",
+    "sourceText": "Not stored on your listing yet",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-workspace.tsx"
+  },
+  {
+    "key": "host.editor.arrival_guide.unavailable_intro",
+    "sourceText": "These topics need dedicated storage and guest-access rules before they can be edited here:",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-workspace.tsx"
+  },
+  {
+    "key": "host.editor.arrival_guide.window_heading",
+    "sourceText": "Arrival and departure times",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-workspace.tsx"
+  },
+  {
+    "key": "host.editor.arrival_guide.window_owner",
+    "sourceText": "These times are managed in House rules so there is one place to change them.",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-workspace.tsx"
   },
   {
     "key": "host.editor.availability.blocked_empty",
@@ -4895,6 +5080,11 @@
     "filePath": "src/components/host/v2/editor/editor-header.tsx"
   },
   {
+    "key": "host.editor.back_to_listings",
+    "sourceText": "Back to listings",
+    "filePath": "src/components/host/v2/editor/editor-section-footer.tsx"
+  },
+  {
     "key": "host.editor.basics.counter_max",
     "sourceText": "{count}/{max}",
     "filePath": "src/components/host/v2/editor/basics/basics-workspace.tsx"
@@ -4977,7 +5167,317 @@
   {
     "key": "host.editor.calendar_settings",
     "sourceText": "Calendar settings",
-    "filePath": "src/components/host/v2/editor/editor-nav.tsx"
+    "filePath": "src/lib/i18n/editor-label.ts"
+  },
+  {
+    "key": "host.editor.house_rules.elsewhere_heading",
+    "sourceText": "Rules kept somewhere else",
+    "filePath": "src/components/host/v2/editor/house-rules/house-rules-elsewhere.tsx"
+  },
+  {
+    "key": "host.editor.house_rules.flexible_option",
+    "sourceText": "Flexible — agree with the guest",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "host.editor.house_rules.guest_limit_announcement.few",
+    "sourceText": "Maximum {n} guests",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "host.editor.house_rules.guest_limit_announcement.many",
+    "sourceText": "Maximum {n} guests",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "host.editor.house_rules.guest_limit_announcement.one",
+    "sourceText": "Maximum {n} guest",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "host.editor.house_rules.guest_limit_announcement.other",
+    "sourceText": "Maximum {n} guests",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "host.editor.house_rules.guest_limit_announcement.two",
+    "sourceText": "Maximum {n} guests",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "host.editor.house_rules.guest_limit_announcement.zero",
+    "sourceText": "Maximum {n} guests",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "host.editor.house_rules.intro",
+    "sourceText": "What guests agree to when they book. Everything here appears on your listing page before a guest sends a request.",
+    "filePath": "src/components/host/v2/editor/house-rules/house-rules-workspace.tsx"
+  },
+  {
+    "key": "host.editor.house_rules.max_guests_decrease",
+    "sourceText": "One guest fewer",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "host.editor.house_rules.max_guests_increase",
+    "sourceText": "One guest more",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "host.editor.house_rules.party_warning",
+    "sourceText": "You already have an upcoming request or stay for {party} guests. Lowering the limit does not cancel it — it only stops new requests above {max}.",
+    "filePath": "src/components/host/v2/editor/house-rules/house-rules-workspace.tsx"
+  },
+  {
+    "key": "host.editor.house_rules.save_failed",
+    "sourceText": "We couldn't save that. Check your connection and try again.",
+    "filePath": "src/components/host/v2/editor/house-rules/house-rules-workspace.tsx"
+  },
+  {
+    "key": "host.editor.house_rules.save_rejected",
+    "sourceText": "Those house rules couldn't be saved. Your listing still shows the previous ones.",
+    "filePath": "src/components/host/v2/editor/house-rules/house-rules-workspace.tsx"
+  },
+  {
+    "key": "host.editor.house_rules.status_error",
+    "sourceText": "Not saved — your listing still shows the previous rules.",
+    "filePath": "src/components/host/v2/editor/house-rules/house-rules-workspace.tsx"
+  },
+  {
+    "key": "host.editor.house_rules.status_idle",
+    "sourceText": "Changes save on their own.",
+    "filePath": "src/components/host/v2/editor/house-rules/house-rules-workspace.tsx"
+  },
+  {
+    "key": "host.editor.house_rules.status_saved",
+    "sourceText": "Saved",
+    "filePath": "src/components/host/v2/editor/house-rules/house-rules-workspace.tsx"
+  },
+  {
+    "key": "host.editor.house_rules.status_saving",
+    "sourceText": "Saving…",
+    "filePath": "src/components/host/v2/editor/house-rules/house-rules-workspace.tsx"
+  },
+  {
+    "key": "host.editor.house_rules.times_note",
+    "sourceText": "Check-out is the morning after the last night, so an earlier time than check-in is normal.",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "host.editor.location.address_heading",
+    "sourceText": "Address",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.address_label",
+    "sourceText": "Street address",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.area_label",
+    "sourceText": "Area",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.city_label",
+    "sourceText": "City",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.country_label",
+    "sourceText": "Country",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.discard",
+    "sourceText": "Discard",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.error_empty",
+    "sourceText": "Required.",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.error_no_pin",
+    "sourceText": "Place the pin before saving.",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.error_too_long",
+    "sourceText": "At most {max} characters.",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.error_too_short",
+    "sourceText": "That looks too short.",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.geolocation_added",
+    "sourceText": "Pin moved to where you are. Drag the map if the property is nearby rather than exactly here.",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.geolocation_denied",
+    "sourceText": "Location access wasn't allowed. Search for the address or place the pin yourself.",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.geolocation_invalid",
+    "sourceText": "Your browser returned a location we can't use. Search for the address instead.",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.geolocation_unavailable",
+    "sourceText": "Your browser can't share a location here. Search for the address instead.",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.heading",
+    "sourceText": "Location",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.leave_unsaved",
+    "sourceText": "Leave without saving your location changes?",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.map_heading",
+    "sourceText": "Map",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.no_pin",
+    "sourceText": "Search above to drop the pin.",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.place_failed",
+    "sourceText": "We couldn't look that place up. Try again, or place the pin yourself.",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.place_missing",
+    "sourceText": "We couldn't look that place up. Try another result, or place the pin yourself.",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.postal_label",
+    "sourceText": "Postal code",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.private_rest",
+    "sourceText": "The street address, pin and Street View stay private until you confirm a booking.",
+    "filePath": "src/components/host/v2/editor/location/location-privacy-note.tsx"
+  },
+  {
+    "key": "host.editor.location.public_empty",
+    "sourceText": "Guests see only the area, city and country. Fill those in to see the exact line.",
+    "filePath": "src/components/host/v2/editor/location/location-privacy-note.tsx"
+  },
+  {
+    "key": "host.editor.location.public_prefix",
+    "sourceText": "Guests see",
+    "filePath": "src/components/host/v2/editor/location/location-privacy-note.tsx"
+  },
+  {
+    "key": "host.editor.location.resolving",
+    "sourceText": "Updating…",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.save",
+    "sourceText": "Save",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.save_failed",
+    "sourceText": "We couldn't save that. Check your connection — nothing you typed is lost.",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.saved",
+    "sourceText": "Location saved",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.search_failed",
+    "sourceText": "Search is unavailable. You can still move the pin on the map.",
+    "filePath": "src/components/host/v2/editor/location/location-search.tsx"
+  },
+  {
+    "key": "host.editor.location.search_label",
+    "sourceText": "Search for your address",
+    "filePath": "src/components/host/v2/editor/location/location-search.tsx"
+  },
+  {
+    "key": "host.editor.location.search_placeholder",
+    "sourceText": "Search an address or place",
+    "filePath": "src/components/host/v2/editor/location/location-search.tsx"
+  },
+  {
+    "key": "host.editor.location.search_results",
+    "sourceText": "Address results",
+    "filePath": "src/components/host/v2/editor/location/location-search.tsx"
+  },
+  {
+    "key": "host.editor.location.shown_publicly",
+    "sourceText": "Public",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.street_view_heading",
+    "sourceText": "Street View",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.street_view_no_pin",
+    "sourceText": "Place the pin first, and the street will appear here.",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.street_view_privacy",
+    "sourceText": "Never public. A guest sees it {days} days before check-in, once you have confirmed their booking.",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.street_view_purpose",
+    "sourceText": "Point the camera at what a guest sees walking up. It is the difference between finding your door and circling the block with a suitcase.",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.street_view_set",
+    "sourceText": "Saved",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.street_view_tip_drag",
+    "sourceText": "Drag to turn the camera.",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.street_view_tip_move",
+    "sourceText": "Use the arrows on the street, or the arrow keys, to move along it.",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.street_view_tip_zoom",
+    "sourceText": "Hold ⌘/Ctrl and scroll to zoom.",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.unsaved",
+    "sourceText": "Unsaved changes",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
+  },
+  {
+    "key": "host.editor.location.use_current",
+    "sourceText": "Use my current location",
+    "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
   },
   {
     "key": "host.editor.more",
@@ -4990,24 +5490,189 @@
     "filePath": "src/components/host/v2/editor/editor-nav.tsx"
   },
   {
+    "key": "host.editor.nav_more",
+    "sourceText": "More",
+    "filePath": "src/components/host/v2/editor/editor-nav.tsx"
+  },
+  {
+    "key": "host.editor.nav.group_details",
+    "sourceText": "Listing details",
+    "filePath": "src/lib/i18n/editor-label.ts"
+  },
+  {
+    "key": "host.editor.nav.group_overview",
+    "sourceText": "Overview",
+    "filePath": "src/lib/i18n/editor-label.ts"
+  },
+  {
+    "key": "host.editor.nav.open_calendar",
+    "sourceText": "Open calendar",
+    "filePath": "src/lib/i18n/editor-label.ts"
+  },
+  {
+    "key": "host.editor.next_heading",
+    "sourceText": "What would you like to edit next?",
+    "filePath": "src/components/host/v2/editor/editor-section-footer.tsx"
+  },
+  {
     "key": "host.editor.open_calendar",
     "sourceText": "Dates and prices",
     "filePath": "src/components/host/v2/editor/editor-header.tsx"
   },
   {
-    "key": "host.editor.open_calendar_cta",
-    "sourceText": "Open Calendar",
-    "filePath": "src/components/host/v2/editor/section-placeholder.tsx"
+    "key": "host.editor.overview.attention_none",
+    "sourceText": "Nothing needs attention. Every section of this listing is filled in and it has a price.",
+    "filePath": "src/components/host/v2/editor/overview/editor-overview.tsx"
   },
   {
-    "key": "host.editor.open_classic",
-    "sourceText": "Open the classic editor",
-    "filePath": "src/components/host/v2/editor/editor-header.tsx"
+    "key": "host.editor.overview.attention_title",
+    "sourceText": "Needs your attention",
+    "filePath": "src/components/host/v2/editor/overview/editor-overview.tsx"
   },
   {
-    "key": "host.editor.open_classic_cta",
-    "sourceText": "Open the classic editor",
-    "filePath": "src/app/(host-editor)/host/v2/listings/[id]/[section]/page.tsx"
+    "key": "host.editor.overview.attention.basics",
+    "sourceText": "The title or the description still needs work.",
+    "filePath": "src/lib/i18n/editor-label.ts"
+  },
+  {
+    "key": "host.editor.overview.attention.house_rules",
+    "sourceText": "House rules have not been reviewed.",
+    "filePath": "src/lib/i18n/editor-label.ts"
+  },
+  {
+    "key": "host.editor.overview.attention.location",
+    "sourceText": "The address or the map pin is incomplete.",
+    "filePath": "src/lib/i18n/editor-label.ts"
+  },
+  {
+    "key": "host.editor.overview.attention.photos",
+    "sourceText": "Add at least 3 photos before publishing.",
+    "filePath": "src/lib/i18n/editor-label.ts"
+  },
+  {
+    "key": "host.editor.overview.attention.pricing",
+    "sourceText": "No nightly price is set, so no date can be booked.",
+    "filePath": "src/lib/i18n/editor-label.ts"
+  },
+  {
+    "key": "host.editor.overview.attention.rooms",
+    "sourceText": "Property details are incomplete.",
+    "filePath": "src/lib/i18n/editor-label.ts"
+  },
+  {
+    "key": "host.editor.overview.no_cover",
+    "sourceText": "No cover photo",
+    "filePath": "src/components/host/v2/editor/overview/editor-overview.tsx"
+  },
+  {
+    "key": "host.editor.overview.sections_title",
+    "sourceText": "All sections",
+    "filePath": "src/components/host/v2/editor/overview/editor-overview.tsx"
+  },
+  {
+    "key": "host.editor.overview.summary.amenities.few",
+    "sourceText": "{n} amenities",
+    "filePath": "src/components/host/v2/editor/overview/editor-overview.tsx"
+  },
+  {
+    "key": "host.editor.overview.summary.amenities.many",
+    "sourceText": "{n} amenities",
+    "filePath": "src/components/host/v2/editor/overview/editor-overview.tsx"
+  },
+  {
+    "key": "host.editor.overview.summary.amenities.one",
+    "sourceText": "{n} amenity",
+    "filePath": "src/components/host/v2/editor/overview/editor-overview.tsx"
+  },
+  {
+    "key": "host.editor.overview.summary.amenities.other",
+    "sourceText": "{n} amenities",
+    "filePath": "src/components/host/v2/editor/overview/editor-overview.tsx"
+  },
+  {
+    "key": "host.editor.overview.summary.amenities.two",
+    "sourceText": "{n} amenities",
+    "filePath": "src/components/host/v2/editor/overview/editor-overview.tsx"
+  },
+  {
+    "key": "host.editor.overview.summary.amenities.zero",
+    "sourceText": "{n} amenities",
+    "filePath": "src/components/host/v2/editor/overview/editor-overview.tsx"
+  },
+  {
+    "key": "host.editor.overview.summary.nightly",
+    "sourceText": "{price} per night",
+    "filePath": "src/components/host/v2/editor/overview/editor-overview.tsx"
+  },
+  {
+    "key": "host.editor.overview.summary.no_location",
+    "sourceText": "No address yet",
+    "filePath": "src/components/host/v2/editor/overview/editor-overview.tsx"
+  },
+  {
+    "key": "host.editor.overview.summary.photos.few",
+    "sourceText": "{n} photos",
+    "filePath": "src/components/host/v2/editor/overview/editor-overview.tsx"
+  },
+  {
+    "key": "host.editor.overview.summary.photos.many",
+    "sourceText": "{n} photos",
+    "filePath": "src/components/host/v2/editor/overview/editor-overview.tsx"
+  },
+  {
+    "key": "host.editor.overview.summary.photos.one",
+    "sourceText": "{n} photo",
+    "filePath": "src/components/host/v2/editor/overview/editor-overview.tsx"
+  },
+  {
+    "key": "host.editor.overview.summary.photos.other",
+    "sourceText": "{n} photos",
+    "filePath": "src/components/host/v2/editor/overview/editor-overview.tsx"
+  },
+  {
+    "key": "host.editor.overview.summary.photos.two",
+    "sourceText": "{n} photos",
+    "filePath": "src/components/host/v2/editor/overview/editor-overview.tsx"
+  },
+  {
+    "key": "host.editor.overview.summary.photos.zero",
+    "sourceText": "{n} photos",
+    "filePath": "src/components/host/v2/editor/overview/editor-overview.tsx"
+  },
+  {
+    "key": "host.editor.overview.summary.rooms.few",
+    "sourceText": "{n} rooms and spaces",
+    "filePath": "src/components/host/v2/editor/overview/editor-overview.tsx"
+  },
+  {
+    "key": "host.editor.overview.summary.rooms.many",
+    "sourceText": "{n} rooms and spaces",
+    "filePath": "src/components/host/v2/editor/overview/editor-overview.tsx"
+  },
+  {
+    "key": "host.editor.overview.summary.rooms.one",
+    "sourceText": "{n} room or space",
+    "filePath": "src/components/host/v2/editor/overview/editor-overview.tsx"
+  },
+  {
+    "key": "host.editor.overview.summary.rooms.other",
+    "sourceText": "{n} rooms and spaces",
+    "filePath": "src/components/host/v2/editor/overview/editor-overview.tsx"
+  },
+  {
+    "key": "host.editor.overview.summary.rooms.two",
+    "sourceText": "{n} rooms and spaces",
+    "filePath": "src/components/host/v2/editor/overview/editor-overview.tsx"
+  },
+  {
+    "key": "host.editor.overview.summary.rooms.zero",
+    "sourceText": "{n} rooms and spaces",
+    "filePath": "src/components/host/v2/editor/overview/editor-overview.tsx"
+  },
+  {
+    "key": "host.editor.overview.view_as_guest",
+    "sourceText": "View as guest",
+    "filePath": "src/components/host/v2/editor/overview/editor-overview.tsx"
   },
   {
     "key": "host.editor.photos.add_photo",
@@ -5565,6 +6230,46 @@
     "filePath": "src/components/host/v2/editor/editor-nav.tsx"
   },
   {
+    "key": "host.editor.rooms.add",
+    "sourceText": "Add room or space",
+    "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
+  },
+  {
+    "key": "host.editor.rooms.configuration",
+    "sourceText": "Room configuration",
+    "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
+  },
+  {
+    "key": "host.editor.rooms.counts",
+    "sourceText": "Rooms and beds",
+    "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
+  },
+  {
+    "key": "host.editor.rooms.empty",
+    "sourceText": "No rooms configured yet.",
+    "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
+  },
+  {
+    "key": "host.editor.rooms.heading",
+    "sourceText": "Property details",
+    "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
+  },
+  {
+    "key": "host.editor.rooms.property_type",
+    "sourceText": "Property type",
+    "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
+  },
+  {
+    "key": "host.editor.rooms.property_type_error",
+    "sourceText": "Choose a property type.",
+    "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
+  },
+  {
+    "key": "host.editor.rooms.space_type",
+    "sourceText": "What guests book",
+    "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
+  },
+  {
     "key": "host.editor.save_failed",
     "sourceText": "Not saved",
     "filePath": "src/components/host/v2/editor/editor-header.tsx"
@@ -5580,14 +6285,14 @@
     "filePath": "src/components/host/v2/editor/editor-header.tsx"
   },
   {
-    "key": "host.editor.section_pending",
-    "sourceText": "This section is moving into the new editor. For now you can still edit it in the classic listing editor.",
-    "filePath": "src/app/(host-editor)/host/v2/listings/[id]/[section]/page.tsx"
-  },
-  {
     "key": "host.editor.section.amenities",
     "sourceText": "Amenities",
     "filePath": "src/components/host/v2/editor/amenities/amenities-workspace.tsx"
+  },
+  {
+    "key": "host.editor.section.arrival_guide",
+    "sourceText": "Arrival guide",
+    "filePath": "src/lib/i18n/editor-label.ts"
   },
   {
     "key": "host.editor.section.availability",
@@ -5595,9 +6300,39 @@
     "filePath": "src/components/host/v2/editor/availability-summary.tsx"
   },
   {
+    "key": "host.editor.section.basics",
+    "sourceText": "Title & description",
+    "filePath": "src/lib/i18n/editor-label.ts"
+  },
+  {
+    "key": "host.editor.section.house_rules",
+    "sourceText": "House rules",
+    "filePath": "src/lib/i18n/editor-label.ts"
+  },
+  {
+    "key": "host.editor.section.location",
+    "sourceText": "Location",
+    "filePath": "src/lib/i18n/editor-label.ts"
+  },
+  {
+    "key": "host.editor.section.overview",
+    "sourceText": "Listing overview",
+    "filePath": "src/components/host/v2/editor/overview/editor-overview.tsx"
+  },
+  {
+    "key": "host.editor.section.photos",
+    "sourceText": "Photos",
+    "filePath": "src/lib/i18n/editor-label.ts"
+  },
+  {
     "key": "host.editor.section.pricing",
     "sourceText": "Pricing",
     "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.section.rooms",
+    "sourceText": "Property details",
+    "filePath": "src/lib/i18n/editor-label.ts"
   },
   {
     "key": "host.editor.switch_listing",
@@ -8015,33 +8750,213 @@
     "filePath": "src/components/host/listing-bottom-nav.tsx"
   },
   {
-    "key": "host.v2.account",
-    "sourceText": "Account",
-    "filePath": "src/components/host/v2/host-v2-shell.tsx"
+    "key": "host.v2.address_modal.address_label",
+    "sourceText": "Address",
+    "filePath": "src/components/host/v2/listings/address-modal.tsx"
   },
   {
-    "key": "host.v2.assistant.booking_request",
-    "sourceText": "Good news, {name} — a booking request is ready to review.",
-    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+    "key": "host.v2.address_modal.back",
+    "sourceText": "Back to search",
+    "filePath": "src/components/host/v2/listings/address-modal.tsx"
+  },
+  {
+    "key": "host.v2.address_modal.close",
+    "sourceText": "Close",
+    "filePath": "src/components/host/v2/listings/address-modal.tsx"
+  },
+  {
+    "key": "host.v2.address_modal.confirm_heading",
+    "sourceText": "Confirm your address",
+    "filePath": "src/components/host/v2/listings/address-modal.tsx"
+  },
+  {
+    "key": "host.v2.address_modal.continue_for_now",
+    "sourceText": "Find this address",
+    "filePath": "src/components/host/v2/listings/address-modal.tsx"
+  },
+  {
+    "key": "host.v2.address_modal.current_location",
+    "sourceText": "Use my current location",
+    "filePath": "src/components/host/v2/listings/address-modal.tsx"
+  },
+  {
+    "key": "host.v2.address_modal.enter_heading",
+    "sourceText": "Enter your address",
+    "filePath": "src/components/host/v2/listings/address-modal.tsx"
+  },
+  {
+    "key": "host.v2.address_modal.location_denied",
+    "sourceText": "We couldn’t access your location. You can enter it manually or continue for now.",
+    "filePath": "src/components/host/v2/listings/address-modal.tsx"
+  },
+  {
+    "key": "host.v2.address_modal.location_failed",
+    "sourceText": "We found your position but couldn't read its address. Search for the address instead.",
+    "filePath": "src/components/host/v2/listings/address-modal.tsx"
+  },
+  {
+    "key": "host.v2.address_modal.location_unavailable",
+    "sourceText": "Current location is unavailable. You can continue without it.",
+    "filePath": "src/components/host/v2/listings/address-modal.tsx"
+  },
+  {
+    "key": "host.v2.address_modal.lookup_failed",
+    "sourceText": "We couldn't look up that address. Check it and try again.",
+    "filePath": "src/components/host/v2/listings/address-modal.tsx"
+  },
+  {
+    "key": "host.v2.address_modal.not_found",
+    "sourceText": "Choose a recognised address so we can place it accurately on the map.",
+    "filePath": "src/components/host/v2/listings/address-modal.tsx"
+  },
+  {
+    "key": "host.v2.address.city",
+    "sourceText": "City / town",
+    "filePath": "src/components/host/v2/listings/address-modal.tsx"
+  },
+  {
+    "key": "host.v2.address.country",
+    "sourceText": "Country / region",
+    "filePath": "src/components/host/v2/listings/address-modal.tsx"
+  },
+  {
+    "key": "host.v2.address.error_city",
+    "sourceText": "Add the city or town.",
+    "filePath": "src/components/host/v2/listings/address-modal.tsx"
+  },
+  {
+    "key": "host.v2.address.error_country",
+    "sourceText": "Choose the country or region.",
+    "filePath": "src/components/host/v2/listings/address-modal.tsx"
+  },
+  {
+    "key": "host.v2.address.error_street",
+    "sourceText": "Add the street address so we can place your listing.",
+    "filePath": "src/components/host/v2/listings/address-modal.tsx"
+  },
+  {
+    "key": "host.v2.address.error_too_long",
+    "sourceText": "That is longer than we can store.",
+    "filePath": "src/components/host/v2/listings/address-modal.tsx"
+  },
+  {
+    "key": "host.v2.address.heading",
+    "sourceText": "Confirm your address",
+    "filePath": "src/components/host/v2/listings/address-step.tsx"
+  },
+  {
+    "key": "host.v2.address.hint",
+    "sourceText": "Guests only see the street address after they book, but we need it to place your listing.",
+    "filePath": "src/components/host/v2/listings/address-step.tsx"
+  },
+  {
+    "key": "host.v2.address.postcode",
+    "sourceText": "Postcode",
+    "filePath": "src/components/host/v2/listings/address-modal.tsx"
+  },
+  {
+    "key": "host.v2.address.street",
+    "sourceText": "Street address",
+    "filePath": "src/components/host/v2/listings/address-modal.tsx"
+  },
+  {
+    "key": "host.v2.address.unit",
+    "sourceText": "Apt, suite or unit (optional)",
+    "filePath": "src/components/host/v2/listings/address-modal.tsx"
+  },
+  {
+    "key": "host.v2.amenities.chip_all",
+    "sourceText": "All",
+    "filePath": "src/components/host/v2/listings/amenities-step.tsx"
+  },
+  {
+    "key": "host.v2.amenities.chip_selected",
+    "sourceText": "Selected",
+    "filePath": "src/components/host/v2/listings/amenities-step.tsx"
+  },
+  {
+    "key": "host.v2.amenities.clear_filters",
+    "sourceText": "Clear search and filters",
+    "filePath": "src/components/host/v2/listings/amenities-step.tsx"
+  },
+  {
+    "key": "host.v2.amenities.clear_search",
+    "sourceText": "Clear search",
+    "filePath": "src/components/host/v2/listings/amenities-step.tsx"
+  },
+  {
+    "key": "host.v2.amenities.filter_label",
+    "sourceText": "Filter amenities",
+    "filePath": "src/components/host/v2/listings/amenities-step.tsx"
+  },
+  {
+    "key": "host.v2.amenities.heading",
+    "sourceText": "Tell guests which amenities they’ll find at your place",
+    "filePath": "src/components/host/v2/listings/amenities-step.tsx"
+  },
+  {
+    "key": "host.v2.amenities.hint",
+    "sourceText": "You can add more amenities after you publish your listing.",
+    "filePath": "src/components/host/v2/listings/amenities-step.tsx"
+  },
+  {
+    "key": "host.v2.amenities.no_results",
+    "sourceText": "No amenities found",
+    "filePath": "src/components/host/v2/listings/amenities-step.tsx"
+  },
+  {
+    "key": "host.v2.amenities.popular_heading",
+    "sourceText": "Popular amenities",
+    "filePath": "src/components/host/v2/listings/amenities-step.tsx"
+  },
+  {
+    "key": "host.v2.amenities.search",
+    "sourceText": "Search amenities",
+    "filePath": "src/components/host/v2/listings/amenities-step.tsx"
+  },
+  {
+    "key": "host.v2.amenities.selected_count.few",
+    "sourceText": "{n} amenities selected",
+    "filePath": "src/components/host/v2/listings/amenities-step.tsx"
+  },
+  {
+    "key": "host.v2.amenities.selected_count.many",
+    "sourceText": "{n} amenities selected",
+    "filePath": "src/components/host/v2/listings/amenities-step.tsx"
+  },
+  {
+    "key": "host.v2.amenities.selected_count.one",
+    "sourceText": "{n} amenity selected",
+    "filePath": "src/components/host/v2/listings/amenities-step.tsx"
+  },
+  {
+    "key": "host.v2.amenities.selected_count.other",
+    "sourceText": "{n} amenities selected",
+    "filePath": "src/components/host/v2/listings/amenities-step.tsx"
+  },
+  {
+    "key": "host.v2.amenities.selected_count.two",
+    "sourceText": "{n} amenities selected",
+    "filePath": "src/components/host/v2/listings/amenities-step.tsx"
+  },
+  {
+    "key": "host.v2.amenities.selected_count.zero",
+    "sourceText": "{n} amenities selected",
+    "filePath": "src/components/host/v2/listings/amenities-step.tsx"
+  },
+  {
+    "key": "host.v2.amenities.show_popular",
+    "sourceText": "Show popular only",
+    "filePath": "src/components/host/v2/listings/amenities-step.tsx"
+  },
+  {
+    "key": "host.v2.amenities.view_all",
+    "sourceText": "View all amenities",
+    "filePath": "src/components/host/v2/listings/amenities-step.tsx"
   },
   {
     "key": "host.v2.assistant.caught_up.copy",
     "sourceText": "Your guests and listings are in good shape. Enjoy the quiet moment.",
-    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
-  },
-  {
-    "key": "host.v2.assistant.caught_up.title",
-    "sourceText": "You’re all caught up, {name}.",
-    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
-  },
-  {
-    "key": "host.v2.assistant.copy",
-    "sourceText": "A quick update from your homes.",
-    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
-  },
-  {
-    "key": "host.v2.assistant.damage_report",
-    "sourceText": "A guest report is ready for your review.",
     "filePath": "src/app/(host-v2)/host/v2/page.tsx"
   },
   {
@@ -8062,11 +8977,6 @@
   {
     "key": "host.v2.assistant.promotion.title",
     "sourceText": "Want to attract your next booking?",
-    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
-  },
-  {
-    "key": "host.v2.assistant.unread_message",
-    "sourceText": "A guest is waiting to hear from you.",
     "filePath": "src/app/(host-v2)/host/v2/page.tsx"
   },
   {
@@ -8100,9 +9010,24 @@
     "filePath": "src/app/(host-v2)/host/v2/page.tsx"
   },
   {
-    "key": "host.v2.back_today",
-    "sourceText": "Back to Today",
-    "filePath": "src/components/host/v2/host-v2-placeholder.tsx"
+    "key": "host.v2.availability.min_nights_hint",
+    "sourceText": "Applies to every date. You can set different minimums per date later.",
+    "filePath": "src/components/host/v2/listings/availability-step.tsx"
+  },
+  {
+    "key": "host.v2.availability.selected_hint",
+    "sourceText": "Everything stays closed until you open dates in your calendar later.",
+    "filePath": "src/components/host/v2/listings/availability-step.tsx"
+  },
+  {
+    "key": "host.v2.basics.heading",
+    "sourceText": "Share some basics about your place",
+    "filePath": "src/components/host/v2/listings/basics-step.tsx"
+  },
+  {
+    "key": "host.v2.basics.hint",
+    "sourceText": "You’ll add more details later, like bed types.",
+    "filePath": "src/components/host/v2/listings/basics-step.tsx"
   },
   {
     "key": "host.v2.calendar.all_date_promotions_count.few",
@@ -8293,6 +9218,11 @@
     "key": "host.v2.calendar.chooser_title",
     "sourceText": "Choose a property",
     "filePath": "src/components/host/v2/calendar/listing-rail.tsx"
+  },
+  {
+    "key": "host.v2.calendar.clear_dates",
+    "sourceText": "Clear dates",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
   },
   {
     "key": "host.v2.calendar.clear_selection",
@@ -9130,11 +10060,6 @@
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
-    "key": "host.v2.calendar.description",
-    "sourceText": "This will become the full-width operational calendar with a compact editing workbench above the selected dates. The current calendar remains available while we build and compare it.",
-    "filePath": "src/components/host/v2/host-v2-placeholder.tsx"
-  },
-  {
     "key": "host.v2.calendar.discard_body",
     "sourceText": "You have an edit here that has not been reviewed or saved. Moving on will throw it away.",
     "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
@@ -9168,6 +10093,11 @@
     "key": "host.v2.calendar.discoverability.search",
     "sourceText": "Visible in search",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.editing_dates",
+    "sourceText": "Editing these dates",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
   },
   {
     "key": "host.v2.calendar.editor.against_base",
@@ -9267,6 +10197,16 @@
   {
     "key": "host.v2.calendar.editor.change",
     "sourceText": "Change",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.cleaning_fee_info",
+    "sourceText": "Cleaning fee: {amount}",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.create_shadowed_promotion",
+    "sourceText": "Continue anyway",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
@@ -9495,6 +10435,11 @@
     "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
   },
   {
+    "key": "host.v2.calendar.editor.follow_base_price",
+    "sourceText": "Let these dates follow the base price: {amount}",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
     "key": "host.v2.calendar.editor.hide_promotions",
     "sourceText": "Hide",
     "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
@@ -9700,13 +10645,8 @@
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
-    "key": "host.v2.calendar.editor.promotion_minimum_unreachable",
-    "sourceText": "This promotion requires a {minimum}-night stay. Guests staying {minimum} nights or more can receive the discount on the selected nights.",
-    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
-  },
-  {
     "key": "host.v2.calendar.editor.promotion_never_wins",
-    "sourceText": "This promotion would not apply. An existing {percent}% promotion saves more on every selected night.",
+    "sourceText": "A higher discount currently applies to these dates. This promotion may apply if the better offer becomes unavailable or the guest is not eligible for it.",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
@@ -9812,6 +10752,16 @@
   {
     "key": "host.v2.calendar.editor.set_price.zero",
     "sourceText": "Set {amount} for {n} nights",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.shadowed_promotion_description",
+    "sourceText": "An existing {percent}% promotion currently saves guests more on every selected night. This promotion will only be used if the better offer becomes unavailable or the guest is not eligible for it.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.shadowed_promotion_title",
+    "sourceText": "A better promotion already applies",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
@@ -9927,11 +10877,6 @@
   {
     "key": "host.v2.calendar.editor.update_offer",
     "sourceText": "Save changes",
-    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.editor.use_base_price",
-    "sourceText": "Use base price: {amount}",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
@@ -10168,6 +11113,11 @@
     "key": "host.v2.calendar.legend.selected",
     "sourceText": "Selected",
     "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing_defaults_hint",
+    "sourceText": "Base price, cleaning fee and minimum stay for every date",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
   },
   {
     "key": "host.v2.calendar.listing.all_dates_follow",
@@ -10527,11 +11477,6 @@
   {
     "key": "host.v2.calendar.manage_selected_dates.zero",
     "sourceText": "Manage {range} · {n} nights",
-    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
-  },
-  {
-    "key": "host.v2.calendar.manage_title",
-    "sourceText": "Manage calendar",
     "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
   },
   {
@@ -10897,7 +11842,7 @@
   {
     "key": "host.v2.calendar.review.cancel",
     "sourceText": "Back to editing",
-    "filePath": "src/components/host/v2/calendar/review-dialog.tsx"
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
     "key": "host.v2.calendar.review.consequence",
@@ -11365,11 +12310,6 @@
     "filePath": "src/components/host/v2/calendar/all-listings-timeline.tsx"
   },
   {
-    "key": "host.v2.calendar.title",
-    "sourceText": "Calendar workbench",
-    "filePath": "src/components/host/v2/host-v2-placeholder.tsx"
-  },
-  {
     "key": "host.v2.calendar.today",
     "sourceText": "Today",
     "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
@@ -11555,14 +12495,84 @@
     "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
   },
   {
-    "key": "host.v2.help",
-    "sourceText": "Help",
-    "filePath": "src/components/host/v2/host-v2-shell.tsx"
+    "key": "host.v2.description.description_heading",
+    "sourceText": "Create your description",
+    "filePath": "src/components/host/v2/listings/description-step.tsx"
+  },
+  {
+    "key": "host.v2.description.description_hint",
+    "sourceText": "Share what makes your place special.",
+    "filePath": "src/components/host/v2/listings/description-step.tsx"
+  },
+  {
+    "key": "host.v2.description.title_heading",
+    "sourceText": "Give your place a title",
+    "filePath": "src/components/host/v2/listings/description-step.tsx"
+  },
+  {
+    "key": "host.v2.description.title_hint",
+    "sourceText": "Short titles work best. You can change it anytime.",
+    "filePath": "src/components/host/v2/listings/description-step.tsx"
+  },
+  {
+    "key": "host.v2.flow.back",
+    "sourceText": "Back",
+    "filePath": "src/components/host/v2/listings/listing-flow-footer.tsx"
+  },
+  {
+    "key": "host.v2.flow.continue",
+    "sourceText": "Continue",
+    "filePath": "src/components/host/v2/listings/listing-flow-footer.tsx"
+  },
+  {
+    "key": "host.v2.flow.next",
+    "sourceText": "Next",
+    "filePath": "src/components/host/v2/listings/address-modal.tsx"
+  },
+  {
+    "key": "host.v2.import.back",
+    "sourceText": "Back",
+    "filePath": "src/components/host/v2/listings/new-listing-import.tsx"
+  },
+  {
+    "key": "host.v2.import.heading",
+    "sourceText": "Import your listing",
+    "filePath": "src/components/host/v2/listings/new-listing-import.tsx"
+  },
+  {
+    "key": "host.v2.import.intro",
+    "sourceText": "Paste the link and we'll bring over the photos, description and amenities. You can edit everything before it goes live.",
+    "filePath": "src/components/host/v2/listings/new-listing-import.tsx"
+  },
+  {
+    "key": "host.v2.import.note",
+    "sourceText": "Only publicly available information is imported. Review every detail before publishing.",
+    "filePath": "src/components/host/v2/listings/import-listing-form.tsx"
+  },
+  {
+    "key": "host.v2.import.url_label",
+    "sourceText": "Listing link",
+    "filePath": "src/components/host/v2/listings/import-listing-form.tsx"
+  },
+  {
+    "key": "host.v2.info_sheet.close",
+    "sourceText": "Close",
+    "filePath": "src/components/host/v2/sheet-panel.tsx"
+  },
+  {
+    "key": "host.v2.info_sheet.got_it",
+    "sourceText": "Got it",
+    "filePath": "src/components/host/v2/listings/info-sheet.tsx"
   },
   {
     "key": "host.v2.listings.actions_for",
     "sourceText": "Actions for {title}",
     "filePath": "src/components/host/v2/listings/listing-actions-menu.tsx"
+  },
+  {
+    "key": "host.v2.listings.add",
+    "sourceText": "Add a listing",
+    "filePath": "src/components/host/v2/listings/add-listing-menu.tsx"
   },
   {
     "key": "host.v2.listings.archive_body",
@@ -11610,18 +12620,13 @@
     "filePath": "src/components/host/v2/listings/listing-actions-menu.tsx"
   },
   {
-    "key": "host.v2.listings.description",
-    "sourceText": "This is the first surface we will redesign: compact listing truth, guided editing, live guest preview, and a final launch review that explains exactly what guests can see and book.",
-    "filePath": "src/components/host/v2/host-v2-placeholder.tsx"
-  },
-  {
     "key": "host.v2.listings.draft_deleted",
     "sourceText": "Draft deleted",
     "filePath": "src/components/host/v2/listings/delete-draft-control.tsx"
   },
   {
-    "key": "host.v2.listings.empty_action",
-    "sourceText": "Add listing",
+    "key": "host.v2.listings.drafts_in_list",
+    "sourceText": "Your unfinished drafts appear in list view.",
     "filePath": "src/components/host/v2/listings/listing-overview.tsx"
   },
   {
@@ -11665,9 +12670,19 @@
     "filePath": "src/components/host/v2/listings/listing-visibility-switch.tsx"
   },
   {
-    "key": "host.v2.listings.new",
-    "sourceText": "New listing",
-    "filePath": "src/components/host/v2/listings/listing-overview.tsx"
+    "key": "host.v2.listings.moderation.no_note",
+    "sourceText": "No reason was given. Contact support and we'll explain what needs to change.",
+    "filePath": "src/components/host/v2/listings/listing-moderation-notice.tsx"
+  },
+  {
+    "key": "host.v2.listings.moderation.rejected_title",
+    "sourceText": "Rejected by our team",
+    "filePath": "src/components/host/v2/listings/listing-moderation-notice.tsx"
+  },
+  {
+    "key": "host.v2.listings.moderation.suspended_title",
+    "sourceText": "Suspended by our team",
+    "filePath": "src/components/host/v2/listings/listing-moderation-notice.tsx"
   },
   {
     "key": "host.v2.listings.no_matches",
@@ -11825,11 +12840,6 @@
     "filePath": "src/components/host/v2/listings/listing-state-label.ts"
   },
   {
-    "key": "host.v2.listings.title",
-    "sourceText": "Listings and launch review",
-    "filePath": "src/components/host/v2/host-v2-placeholder.tsx"
-  },
-  {
     "key": "host.v2.listings.unlisted",
     "sourceText": "Unlisted",
     "filePath": "src/components/host/v2/listings/listing-visibility-switch.tsx"
@@ -11848,6 +12858,41 @@
     "key": "host.v2.listings.view_list",
     "sourceText": "List view",
     "filePath": "src/components/host/v2/listings/listing-overview.tsx"
+  },
+  {
+    "key": "host.v2.location.address_label",
+    "sourceText": "Property address",
+    "filePath": "src/components/host/v2/listings/location-step.tsx"
+  },
+  {
+    "key": "host.v2.location.address_placeholder",
+    "sourceText": "Enter your address",
+    "filePath": "src/components/host/v2/listings/address-modal.tsx"
+  },
+  {
+    "key": "host.v2.location.close",
+    "sourceText": "Close",
+    "filePath": "src/components/host/v2/listings/location-step.tsx"
+  },
+  {
+    "key": "host.v2.location.heading",
+    "sourceText": "Set up your listing",
+    "filePath": "src/components/host/v2/listings/location-step.tsx"
+  },
+  {
+    "key": "host.v2.location.hint",
+    "sourceText": "It’s easy to create a great listing—let’s start with your address.",
+    "filePath": "src/components/host/v2/listings/location-step.tsx"
+  },
+  {
+    "key": "host.v2.location.preview_label",
+    "sourceText": "Listing preview animation",
+    "filePath": "src/components/host/v2/listings/location-step.tsx"
+  },
+  {
+    "key": "host.v2.location.privacy",
+    "sourceText": "You can confirm the exact map position before your listing goes live.",
+    "filePath": "src/components/host/v2/listings/location-step.tsx"
   },
   {
     "key": "host.v2.messages.all_reservations",
@@ -11940,6 +12985,11 @@
     "filePath": "src/components/host/v2/messages/reservation-rail.tsx"
   },
   {
+    "key": "host.v2.messages.official_total",
+    "sourceText": "Paid out as {amount}",
+    "filePath": "src/components/host/v2/messages/reservation-rail.tsx"
+  },
+  {
     "key": "host.v2.messages.reservation",
     "sourceText": "Reservation",
     "filePath": "src/components/host/v2/messages/inbox-thread.tsx"
@@ -12020,14 +13070,269 @@
     "filePath": "src/components/host/v2/host-v2-nav.tsx"
   },
   {
-    "key": "host.v2.open_current_surface",
-    "sourceText": "Open this in the current panel",
-    "filePath": "src/components/host/v2/host-v2-placeholder.tsx"
+    "key": "host.v2.phase_one_complete.eyebrow",
+    "sourceText": "Phase 1 complete",
+    "filePath": "src/components/host/v2/listings/phase-one-complete.tsx"
   },
   {
-    "key": "host.v2.preview_label",
-    "sourceText": "New panel preview",
-    "filePath": "src/components/host/v2/host-v2-placeholder.tsx"
+    "key": "host.v2.phase_one_complete.heading",
+    "sourceText": "Your place has a foundation",
+    "filePath": "src/components/host/v2/listings/phase-one-complete.tsx"
+  },
+  {
+    "key": "host.v2.phase_one_complete.hint",
+    "sourceText": "Next, you’ll make it stand out with amenities, photos, a title and a description.",
+    "filePath": "src/components/host/v2/listings/phase-one-complete.tsx"
+  },
+  {
+    "key": "host.v2.phase_two_complete.eyebrow",
+    "sourceText": "Phase 2 complete",
+    "filePath": "src/components/host/v2/listings/phase-two-complete.tsx"
+  },
+  {
+    "key": "host.v2.phase_two_complete.heading",
+    "sourceText": "Your place stands out",
+    "filePath": "src/components/host/v2/listings/phase-two-complete.tsx"
+  },
+  {
+    "key": "host.v2.phase_two_complete.hint",
+    "sourceText": "Amenities, photos and your description are in place. Next, you’ll set your price, your availability and your house rules — then publish.",
+    "filePath": "src/components/host/v2/listings/phase-two-complete.tsx"
+  },
+  {
+    "key": "host.v2.photos.add_more",
+    "sourceText": "Add more",
+    "filePath": "src/components/host/v2/listings/photos-step.tsx"
+  },
+  {
+    "key": "host.v2.photos.counter",
+    "sourceText": "{added} of {required} photos added",
+    "filePath": "src/components/host/v2/listings/photos-step.tsx"
+  },
+  {
+    "key": "host.v2.photos.counter_added",
+    "sourceText": "{added} photos added",
+    "filePath": "src/components/host/v2/listings/photos-step.tsx"
+  },
+  {
+    "key": "host.v2.photos.cover_badge",
+    "sourceText": "Cover photo",
+    "filePath": "src/components/host/v2/listings/photos-step.tsx"
+  },
+  {
+    "key": "host.v2.photos.empty_hint",
+    "sourceText": "You can add more or reorder them at any time.",
+    "filePath": "src/components/host/v2/listings/photos-step.tsx"
+  },
+  {
+    "key": "host.v2.photos.empty_title",
+    "sourceText": "Drag your photos here",
+    "filePath": "src/components/host/v2/listings/photos-step.tsx"
+  },
+  {
+    "key": "host.v2.photos.error_minimum",
+    "sourceText": "Add at least {required} photos before continuing.",
+    "filePath": "src/components/host/v2/listings/photos-step.tsx"
+  },
+  {
+    "key": "host.v2.photos.eyebrow",
+    "sourceText": "Photos",
+    "filePath": "src/components/host/v2/listings/photos-step.tsx"
+  },
+  {
+    "key": "host.v2.photos.great_set",
+    "sourceText": "Great set",
+    "filePath": "src/components/host/v2/listings/photos-step.tsx"
+  },
+  {
+    "key": "host.v2.photos.heading",
+    "sourceText": "Add some photos of your place",
+    "filePath": "src/components/host/v2/listings/photos-step.tsx"
+  },
+  {
+    "key": "host.v2.photos.hint",
+    "sourceText": "Add at least 3 photos — listings with 5 or more get more bookings. Put your best photo first; you can reorder them at any time.",
+    "filePath": "src/components/host/v2/listings/photos-step.tsx"
+  },
+  {
+    "key": "host.v2.photos.minimum_met",
+    "sourceText": "Minimum reached",
+    "filePath": "src/components/host/v2/listings/photos-step.tsx"
+  },
+  {
+    "key": "host.v2.photos.recommendation",
+    "sourceText": "Listings with {recommended} or more photos get more bookings.",
+    "filePath": "src/components/host/v2/listings/photos-step.tsx"
+  },
+  {
+    "key": "host.v2.photos.remove",
+    "sourceText": "Remove photo",
+    "filePath": "src/components/host/v2/listings/photos-step.tsx"
+  },
+  {
+    "key": "host.v2.photos.reorder",
+    "sourceText": "Drag to reorder photo",
+    "filePath": "src/components/host/v2/listings/photos-step.tsx"
+  },
+  {
+    "key": "host.v2.photos.upload",
+    "sourceText": "Upload from your device",
+    "filePath": "src/components/host/v2/listings/photos-step.tsx"
+  },
+  {
+    "key": "host.v2.price.charge_cleaning_fee",
+    "sourceText": "Charge a cleaning fee",
+    "filePath": "src/components/host/v2/listings/price-step.tsx"
+  },
+  {
+    "key": "host.v2.price.cleaning_fee_label",
+    "sourceText": "Cleaning fee",
+    "filePath": "src/components/host/v2/listings/price-step.tsx"
+  },
+  {
+    "key": "host.v2.price.cleaning_fee_note",
+    "sourceText": "Charged once per stay, not per night.",
+    "filePath": "src/components/host/v2/listings/price-step.tsx"
+  },
+  {
+    "key": "host.v2.price.currency_clear",
+    "sourceText": "Clear and switch to {currency}",
+    "filePath": "src/components/host/v2/listings/price-step.tsx"
+  },
+  {
+    "key": "host.v2.price.currency_clear_confirm",
+    "sourceText": "Yes, clear my price",
+    "filePath": "src/components/host/v2/listings/price-step.tsx"
+  },
+  {
+    "key": "host.v2.price.currency_cleared",
+    "sourceText": "Your price was cleared. Enter a new price in {currency}.",
+    "filePath": "src/components/host/v2/listings/price-step.tsx"
+  },
+  {
+    "key": "host.v2.price.currency_convert",
+    "sourceText": "Convert to {currency}",
+    "filePath": "src/components/host/v2/listings/price-step.tsx"
+  },
+  {
+    "key": "host.v2.price.currency_converted",
+    "sourceText": "Your price is now {price} in {currency}.",
+    "filePath": "src/components/host/v2/listings/price-step.tsx"
+  },
+  {
+    "key": "host.v2.price.currency_keep",
+    "sourceText": "Keep {currency}",
+    "filePath": "src/components/host/v2/listings/price-step.tsx"
+  },
+  {
+    "key": "host.v2.price.currency_kept",
+    "sourceText": "This listing stays priced in {currency}.",
+    "filePath": "src/components/host/v2/listings/price-step.tsx"
+  },
+  {
+    "key": "host.v2.price.currency_mismatch_clear_hint",
+    "sourceText": "These amounts cannot be converted safely into the selected currency. You can keep this listing's currency, or clear the amounts and enter them again.",
+    "filePath": "src/components/host/v2/listings/price-step.tsx"
+  },
+  {
+    "key": "host.v2.price.currency_mismatch_convert_hint",
+    "sourceText": "Your listing keeps its own currency unless you change it here. Converting moves the amounts too — it never just renames them.",
+    "filePath": "src/components/host/v2/listings/price-step.tsx"
+  },
+  {
+    "key": "host.v2.price.currency_mismatch_heading",
+    "sourceText": "This listing is priced in {listing}, but you are browsing in {display}.",
+    "filePath": "src/components/host/v2/listings/price-step.tsx"
+  },
+  {
+    "key": "host.v2.price.error_empty",
+    "sourceText": "Guests need a nightly price to book.",
+    "filePath": "src/components/host/v2/listings/price-step.tsx"
+  },
+  {
+    "key": "host.v2.price.error_fee_empty",
+    "sourceText": "Enter a cleaning fee, or turn it off.",
+    "filePath": "src/components/host/v2/listings/price-step.tsx"
+  },
+  {
+    "key": "host.v2.price.error_fee_too_high",
+    "sourceText": "Your cleaning fee can be at most {max}.",
+    "filePath": "src/components/host/v2/listings/price-step.tsx"
+  },
+  {
+    "key": "host.v2.price.error_too_high",
+    "sourceText": "Your price can be at most {max}.",
+    "filePath": "src/components/host/v2/listings/price-step.tsx"
+  },
+  {
+    "key": "host.v2.price.error_too_low",
+    "sourceText": "Your price must be at least {min}.",
+    "filePath": "src/components/host/v2/listings/price-step.tsx"
+  },
+  {
+    "key": "host.v2.price.heading",
+    "sourceText": "Now, set your price",
+    "filePath": "src/components/host/v2/listings/price-step.tsx"
+  },
+  {
+    "key": "host.v2.price.hint",
+    "sourceText": "You can change it anytime.",
+    "filePath": "src/components/host/v2/listings/price-step.tsx"
+  },
+  {
+    "key": "host.v2.price.how_pricing_works",
+    "sourceText": "How pricing works",
+    "filePath": "src/components/host/v2/listings/price-step.tsx"
+  },
+  {
+    "key": "host.v2.price.info_base",
+    "sourceText": "This is your base price — what guests pay on any night you haven't given a price of its own.",
+    "filePath": "src/components/host/v2/listings/price-step.tsx"
+  },
+  {
+    "key": "host.v2.price.info_calendar",
+    "sourceText": "Once your listing is live, your calendar is where the rest happens: set prices for specific dates or seasons, block the nights you need, and add weekly, monthly or last-minute discounts.",
+    "filePath": "src/components/host/v2/listings/price-step.tsx"
+  },
+  {
+    "key": "host.v2.price.info_fee",
+    "sourceText": "A cleaning fee is added once to every booking, however long the stay. Switch it off if you don't charge one.",
+    "filePath": "src/components/host/v2/listings/price-step.tsx"
+  },
+  {
+    "key": "host.v2.price.per_night_label",
+    "sourceText": "Price per night",
+    "filePath": "src/components/host/v2/listings/price-step.tsx"
+  },
+  {
+    "key": "host.v2.price.stay_example",
+    "sourceText": "A {nights}-night stay costs {total}.",
+    "filePath": "src/components/host/v2/listings/price-step.tsx"
+  },
+  {
+    "key": "host.v2.property_type.empty",
+    "sourceText": "Property types are not available right now. Please try again later.",
+    "filePath": "src/components/host/v2/listings/property-type-step.tsx"
+  },
+  {
+    "key": "host.v2.property_type.error_required",
+    "sourceText": "Choose the kind of place you are listing.",
+    "filePath": "src/components/host/v2/listings/property-type-step.tsx"
+  },
+  {
+    "key": "host.v2.property_type.eyebrow",
+    "sourceText": "Your property",
+    "filePath": "src/components/host/v2/listings/property-type-step.tsx"
+  },
+  {
+    "key": "host.v2.property_type.heading",
+    "sourceText": "What kind of place are you listing?",
+    "filePath": "src/components/host/v2/listings/property-type-step.tsx"
+  },
+  {
+    "key": "host.v2.property_type.hint",
+    "sourceText": "Choose the closest match. You can change this later.",
+    "filePath": "src/components/host/v2/listings/property-type-step.tsx"
   },
   {
     "key": "host.v2.reservations.accommodation.few",
@@ -12110,6 +13415,11 @@
     "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
   },
   {
+    "key": "host.v2.reservations.back_to_all",
+    "sourceText": "All reservations",
+    "filePath": "src/components/host/v2/reservations/reservation-detail.tsx"
+  },
+  {
     "key": "host.v2.reservations.booked_on",
     "sourceText": "Requested",
     "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
@@ -12148,11 +13458,6 @@
     "key": "host.v2.reservations.cleaning_fee",
     "sourceText": "Cleaning fee",
     "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
-  },
-  {
-    "key": "host.v2.reservations.description",
-    "sourceText": "The new reservations surface will prioritize past, today, and upcoming stays with compact filters and clear actions instead of oversized empty states.",
-    "filePath": "src/components/host/v2/host-v2-placeholder.tsx"
   },
   {
     "key": "host.v2.reservations.discount",
@@ -12308,6 +13613,11 @@
     "key": "host.v2.reservations.no_selection",
     "sourceText": "Choose a reservation to see the guest, the money and what you can do about it.",
     "filePath": "src/components/host/v2/reservations/host-reservations-workspace.tsx"
+  },
+  {
+    "key": "host.v2.reservations.official_total",
+    "sourceText": "Charged and paid out as {amount}.",
+    "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
   },
   {
     "key": "host.v2.reservations.open_full",
@@ -12525,14 +13835,14 @@
     "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
   },
   {
-    "key": "host.v2.reservations.title",
-    "sourceText": "Reservations",
-    "filePath": "src/components/host/v2/host-v2-placeholder.tsx"
-  },
-  {
     "key": "host.v2.reservations.total",
     "sourceText": "Booking total",
     "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
+  },
+  {
+    "key": "host.v2.reservations.view_listing",
+    "sourceText": "View listing",
+    "filePath": "src/components/host/v2/reservations/reservation-detail.tsx"
   },
   {
     "key": "host.v2.reservations.why_closed",
@@ -12540,9 +13850,219 @@
     "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
   },
   {
-    "key": "host.v2.today.add_listing",
-    "sourceText": "Add listing",
-    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+    "key": "host.v2.review.amenities_value",
+    "sourceText": "{count} amenities",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.review.availability_from",
+    "sourceText": "Available from {date}",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.review.availability_now",
+    "sourceText": "Available now",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.review.availability_selected",
+    "sourceText": "Only on dates you open",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.review.blocked",
+    "sourceText": "Finish the items listed above before publishing.",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.review.blocker_fix",
+    "sourceText": "Fix this",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.review.blockers_heading",
+    "sourceText": "Finish these before you publish",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.review.capacity_value",
+    "sourceText": "{guests} guests · {bedrooms} bedrooms · {beds} beds",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.review.done_body",
+    "sourceText": "Guests can now find your listing and request available stays.",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.review.done_cta",
+    "sourceText": "Back to listings",
+    "filePath": "src/components/host/v2/listings/listing-flow-footer.tsx"
+  },
+  {
+    "key": "host.v2.review.done_eyebrow",
+    "sourceText": "Listing published",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.review.done_heading",
+    "sourceText": "Your place is live",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.review.done_next",
+    "sourceText": "You can update photos, pricing, availability, and every other detail from your listings dashboard.",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.review.edit",
+    "sourceText": "Edit",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.review.heading",
+    "sourceText": "Review your listing",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.review.hint",
+    "sourceText": "Here's what you've told us so far. You can change any of it before or after you publish.",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.review.photos_value",
+    "sourceText": "{count} photos",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.review.price_per_night",
+    "sourceText": "{price} per night",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.review.prototype_note",
+    "sourceText": "Publishing makes this listing live. You can edit every detail later from your listings dashboard.",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.review.publish",
+    "sourceText": "Publish listing",
+    "filePath": "src/components/host/v2/listings/listing-flow-footer.tsx"
+  },
+  {
+    "key": "host.v2.review.publish_failed",
+    "sourceText": "Your listing could not be published. Check your connection and try again.",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.review.row_amenities",
+    "sourceText": "Amenities",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.review.row_availability",
+    "sourceText": "Availability",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.review.row_capacity",
+    "sourceText": "Guests, bedrooms and beds",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.review.row_description",
+    "sourceText": "Title and description",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.review.row_house_rules",
+    "sourceText": "House rules",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.review.row_location",
+    "sourceText": "Location",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.review.row_photos",
+    "sourceText": "Photos",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.review.row_price",
+    "sourceText": "Price",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.review.row_property",
+    "sourceText": "Property and guest space",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.review.value_pending",
+    "sourceText": "Not provided",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.space_type.error_required",
+    "sourceText": "Choose what guests will book.",
+    "filePath": "src/components/host/v2/listings/space-type-step.tsx"
+  },
+  {
+    "key": "host.v2.space_type.eyebrow",
+    "sourceText": "Guest access",
+    "filePath": "src/components/host/v2/listings/space-type-step.tsx"
+  },
+  {
+    "key": "host.v2.space_type.heading",
+    "sourceText": "What will guests book?",
+    "filePath": "src/components/host/v2/listings/space-type-step.tsx"
+  },
+  {
+    "key": "host.v2.space_type.hint",
+    "sourceText": "Choose the option that matches how you rent out your place.",
+    "filePath": "src/components/host/v2/listings/space-type-step.tsx"
+  },
+  {
+    "key": "host.v2.start_dashboard.create_existing",
+    "sourceText": "Create from an existing listing",
+    "filePath": "src/components/host/v2/listings/listing-start-dashboard.tsx"
+  },
+  {
+    "key": "host.v2.start_dashboard.create_existing_hint",
+    "sourceText": "Paste a link from Airbnb, Booking.com, Facebook and more",
+    "filePath": "src/components/host/v2/listings/listing-start-dashboard.tsx"
+  },
+  {
+    "key": "host.v2.start_dashboard.create_new",
+    "sourceText": "Create a new listing",
+    "filePath": "src/components/host/v2/listings/listing-start-dashboard.tsx"
+  },
+  {
+    "key": "host.v2.start_dashboard.finish_heading",
+    "sourceText": "Finish your listing",
+    "filePath": "src/components/host/v2/listings/listing-start-dashboard.tsx"
+  },
+  {
+    "key": "host.v2.start_dashboard.greeting",
+    "sourceText": "Welcome back, {name}",
+    "filePath": "src/components/host/v2/listings/listing-start-dashboard.tsx"
+  },
+  {
+    "key": "host.v2.start_dashboard.preview_first_time",
+    "sourceText": "Preview first-time welcome",
+    "filePath": "src/components/host/v2/listings/listing-start-dashboard.tsx"
+  },
+  {
+    "key": "host.v2.start_dashboard.start_heading",
+    "sourceText": "Start a new listing",
+    "filePath": "src/components/host/v2/listings/listing-start-dashboard.tsx"
+  },
+  {
+    "key": "host.v2.switch_to_booking",
+    "sourceText": "Switch to booking",
+    "filePath": "src/components/host/v2/host-v2-account-menu.tsx"
   },
   {
     "key": "host.v2.today.greeting",
@@ -12550,9 +14070,19 @@
     "filePath": "src/app/(host-v2)/host/v2/page.tsx"
   },
   {
+    "key": "host.v2.welcome.drafts_link",
+    "sourceText": "Go to listings",
+    "filePath": "src/components/host/v2/listings/new-listing-welcome.tsx"
+  },
+  {
+    "key": "host.v2.welcome.drafts_prompt",
+    "sourceText": "Already started one?",
+    "filePath": "src/components/host/v2/listings/new-listing-welcome.tsx"
+  },
+  {
     "key": "host.v2.welcome.exit",
     "sourceText": "Exit",
-    "filePath": "src/components/host/v2/listings/new-listing-welcome.tsx"
+    "filePath": "src/components/host/v2/listings/new-listing-header.tsx"
   },
   {
     "key": "host.v2.welcome.heading",
@@ -12903,6 +14433,271 @@
     "key": "listing.hosted_by",
     "sourceText": "Hosted by {name}",
     "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.house_rules.additional_rules_count",
+    "sourceText": "{used} of {max} characters",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "listing.house_rules.additional_rules_empty",
+    "sourceText": "Add any other rules guests should know",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "listing.house_rules.additional_rules_hint",
+    "sourceText": "Anything else guests should agree to — the bins, the neighbours, the parking space. Guests read this before they book.",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "listing.house_rules.error_additional_rules",
+    "sourceText": "Your additional rules are too long. Shorten them and save again.",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "listing.house_rules.error_quiet_hours",
+    "sourceText": "Set both a start and an end time for quiet hours.",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "listing.house_rules.error_required",
+    "sourceText": "Choose an answer so guests know where they stand.",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "listing.house_rules.error_stay_time",
+    "sourceText": "That is not a valid time of day.",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "listing.house_rules.events.allowed",
+    "sourceText": "Allowed",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.events.allowed_hint",
+    "sourceText": "Guests may host a party or event, within your other rules.",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.events.not_allowed",
+    "sourceText": "Not allowed",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.events.not_allowed_hint",
+    "sourceText": "Only the guests on the booking may stay or gather at the property.",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.flexible_time",
+    "sourceText": "Flexible",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.heading",
+    "sourceText": "House rules",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.house_rules.info_agreement",
+    "sourceText": "Guests must agree to them at the time of booking, and what they agreed to is kept with their reservation.",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "listing.house_rules.info_editable",
+    "sourceText": "You can update your house rules anytime. Changes apply to new bookings, never to stays a guest has already booked.",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "listing.house_rules.info_expectations",
+    "sourceText": "These rules help guests know what to expect before they book.",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "listing.house_rules.info_title",
+    "sourceText": "About house rules",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "listing.house_rules.intro",
+    "sourceText": "Set expectations for guests staying at your place.",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "listing.house_rules.more_info",
+    "sourceText": "More info",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "listing.house_rules.pets.allowed",
+    "sourceText": "Allowed",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.pets.allowed_hint",
+    "sourceText": "Guests can bring pets without asking first.",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.pets.ask_host",
+    "sourceText": "Ask the host",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.pets.ask_host_hint",
+    "sourceText": "Guests message you before booking, and you decide case by case.",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.pets.not_allowed",
+    "sourceText": "Not allowed",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.pets.not_allowed_hint",
+    "sourceText": "Service animals are usually exempt by law, wherever you host.",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.quiet_hours.end",
+    "sourceText": "Until",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "listing.house_rules.quiet_hours.incomplete",
+    "sourceText": "Add times",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "listing.house_rules.quiet_hours.none",
+    "sourceText": "No quiet hours",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.quiet_hours.none_hint",
+    "sourceText": "Your listing shows no quiet-hours rule.",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.quiet_hours.overnight_note",
+    "sourceText": "Quiet hours usually run overnight, so an end time earlier than the start is normal.",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "listing.house_rules.quiet_hours.set",
+    "sourceText": "Set quiet hours",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.quiet_hours.set_hint",
+    "sourceText": "Choose the hours guests should keep noise down. These normally run overnight.",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.quiet_hours.start",
+    "sourceText": "From",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "listing.house_rules.row.additional_rules",
+    "sourceText": "Additional rules",
+    "filePath": "src/components/public/house-rules-list.tsx"
+  },
+  {
+    "key": "listing.house_rules.row.check_in",
+    "sourceText": "Check-in",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.row.check_out",
+    "sourceText": "Check-out",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.row.events",
+    "sourceText": "Parties and events",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.row.max_guests",
+    "sourceText": "Maximum guests",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.row.pets",
+    "sourceText": "Pets",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.row.quiet_hours",
+    "sourceText": "Quiet hours",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.row.smoking",
+    "sourceText": "Smoking",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.section.additional",
+    "sourceText": "Additional rules",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.section.arrival",
+    "sourceText": "Arrival",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.section.guests",
+    "sourceText": "Guests",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.section.rules",
+    "sourceText": "House rules",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.sheet_save",
+    "sourceText": "Save",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "listing.house_rules.smoking.allowed",
+    "sourceText": "Allowed",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.smoking.allowed_hint",
+    "sourceText": "Allowed indoors as well as outside.",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.smoking.not_allowed",
+    "sourceText": "Not allowed",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.smoking.not_allowed_hint",
+    "sourceText": "No smoking or vaping anywhere on the property.",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.smoking.outdoors_only",
+    "sourceText": "Outdoors only",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.smoking.outdoors_only_hint",
+    "sourceText": "Allowed on the balcony, terrace or garden, but not indoors.",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.unanswered",
+    "sourceText": "Not set",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
   },
   {
     "key": "listing.link_copied",
@@ -14172,12 +15967,12 @@
   {
     "key": "nav.messages",
     "sourceText": "Messages",
-    "filePath": "src/components/shared/header.tsx"
+    "filePath": "src/components/host/v2/host-v2-account-menu.tsx"
   },
   {
     "key": "nav.support_cases",
     "sourceText": "Support cases",
-    "filePath": "src/components/shared/header.tsx"
+    "filePath": "src/components/host/v2/host-v2-account-menu.tsx"
   },
   {
     "key": "newsletter.consent",
@@ -14705,6 +16500,11 @@
     "filePath": "src/components/shared/regional-settings-dialog.tsx"
   },
   {
+    "key": "regional.currency_failed",
+    "sourceText": "That currency could not be applied. Please try another one.",
+    "filePath": "src/components/shared/regional-settings-dialog.tsx"
+  },
+  {
     "key": "regional.dialog_description",
     "sourceText": "Choose the language you read the site in and the currency prices are shown in. They are separate settings.",
     "filePath": "src/components/shared/regional-settings-dialog.tsx"
@@ -14757,12 +16557,12 @@
   {
     "key": "regional.tab_currency",
     "sourceText": "Currency",
-    "filePath": "src/components/shared/regional-settings-dialog.tsx"
+    "filePath": "src/components/host/v2/host-v2-account-menu.tsx"
   },
   {
     "key": "regional.tab_language",
     "sourceText": "Language and region",
-    "filePath": "src/components/shared/regional-settings-dialog.tsx"
+    "filePath": "src/components/host/v2/host-v2-account-menu.tsx"
   },
   {
     "key": "regional.translation_title",

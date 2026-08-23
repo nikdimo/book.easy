@@ -173,6 +173,8 @@ export async function reviewSuggestion(
   revalidatePath("/admin/settings");
   if (suggestion.listingId) {
     revalidatePath(`/host/listings/${suggestion.listingId}/edit`);
+    revalidatePath(`/host/listings/${suggestion.listingId}`);
+    revalidatePath(`/host/listings/${suggestion.listingId}/amenities`);
   }
   return { success: true };
 }

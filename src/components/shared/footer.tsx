@@ -119,7 +119,7 @@ export async function Footer() {
               </li>
               <li>
                 <Link
-                  href="/host"
+                  href="/host/panel"
                   className={cn(
                     "hover:text-foreground transition-colors",
                     hostDashboard.translated && "notranslate"

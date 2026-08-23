@@ -193,10 +193,10 @@ describe("summarizeListingAvailability", () => {
 
 describe("calendarHrefForListing", () => {
   it("points at Calendar, opened on this listing", () => {
-    expect(calendarHrefForListing("listing-1")).toBe("/host/v2/calendar?listing=listing-1");
+    expect(calendarHrefForListing("listing-1")).toBe("/host/calendar?listing=listing-1");
   });
 
   it("encodes the id so it cannot escape the query parameter", () => {
-    expect(calendarHrefForListing("a&b=c")).toBe("/host/v2/calendar?listing=a%26b%3Dc");
+    expect(calendarHrefForListing("a&b=c")).toBe("/host/calendar?listing=a%26b%3Dc");
   });
 });

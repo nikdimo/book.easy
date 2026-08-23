@@ -217,7 +217,7 @@ export async function getHostInboxReservation(
           totalPrice: Number(row.booking.totalPrice),
           createdAt: row.booking.createdAt.toISOString(),
           guestNote: row.booking.guestNote,
-          detailsUrl: `/host/bookings/${row.booking.id}`,
+          detailsUrl: `/host/reservations/${row.booking.id}`,
         }
       : null,
   };

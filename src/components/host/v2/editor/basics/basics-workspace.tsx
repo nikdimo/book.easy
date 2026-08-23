@@ -159,11 +159,13 @@ export function BasicsWorkspace({
 
   return (
     <div className="mx-auto w-full max-w-2xl py-6 md:py-10">
+      {/* Named by the rail, the browser tab and the active chip on a phone. Kept in the
+          outline for screen readers, which have no rail to read. */}
       <header>
-        <h1 className="text-xl font-semibold text-slate-900 md:text-2xl">
+        <h1 className="sr-only">
           <Tx k="host.editor.basics.heading" source="Title & description" />
         </h1>
-        <p className="mt-1.5 text-sm leading-6 text-slate-600">
+        <p className="text-sm leading-6 text-slate-600">
           <Tx
             k="host.editor.basics.intro"
             source="This is what guests read first — in search results, and at the top of your listing page."

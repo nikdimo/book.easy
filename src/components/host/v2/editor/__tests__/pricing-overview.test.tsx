@@ -54,11 +54,11 @@ const summary: ListingPricingSummary = {
 
 describe("calendarPricingHref", () => {
   it("opens Calendar on the listing being edited", () => {
-    expect(calendarPricingHref("listing-1")).toBe("/host/v2/calendar?listing=listing-1");
+    expect(calendarPricingHref("listing-1")).toBe("/host/calendar?listing=listing-1");
   });
 
   it("escapes an id that would otherwise break the query string", () => {
-    expect(calendarPricingHref("a b&c")).toBe("/host/v2/calendar?listing=a%20b%26c");
+    expect(calendarPricingHref("a b&c")).toBe("/host/calendar?listing=a%20b%26c");
   });
 });
 
@@ -95,7 +95,7 @@ describe("PricingOverview", () => {
     expect(html).toContain("select those dates in Calendar");
     expect(html).toContain("Promotions are created and ended in Calendar");
     expect(html).toContain("Manage pricing in Calendar");
-    expect(html).toContain('href="/host/v2/calendar?listing=listing-1"');
+    expect(html).toContain('href="/host/calendar?listing=listing-1"');
   });
 
   it("stays read-only: no inputs, no form, no submit control", () => {
@@ -127,7 +127,7 @@ describe("PricingOverview", () => {
     expect(html).toContain("No prices have been set for this listing yet.");
     expect(html).toContain("No promotions are running or scheduled.");
     expect(html).toContain("No dates are priced differently.");
-    expect(html).toContain('href="/host/v2/calendar?listing=listing-2"');
+    expect(html).toContain('href="/host/calendar?listing=listing-2"');
     expect(html).not.toContain("Base nightly rate");
   });
 });

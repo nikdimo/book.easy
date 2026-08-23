@@ -5,6 +5,7 @@ import { requireHost } from "@/lib/auth-helpers";
 import { revalidatePath } from "next/cache";
 import { revalidatePublicListingCaches } from "@/lib/utils/revalidate-public-listing-caches";
 import { nextOrdinal } from "@/lib/rooms/room-name";
+import { enqueueUploadDeletions, sweepUploads } from "@/lib/storage/upload-cleanup";
 import type { ListingMediaTypeValue } from "@/lib/types/listing-media";
 
 const ORDER_STEP = 1;
@@ -31,13 +32,23 @@ async function ownedListing(listingId: string) {
 }
 
 function refresh(listingId: string, slug: string, status: string) {
-  revalidatePath(`/host/v2/listings/${listingId}/photos`);
-  revalidatePath(`/host/v2/listings/${listingId}`);
+  revalidatePath(`/host/listings/${listingId}/photos`);
+  revalidatePath(`/host/listings/${listingId}/rooms`);
+  revalidatePath(`/host/listings/${listingId}`);
+  revalidatePath(`/host/listings/${listingId}/edit`);
+  revalidatePath("/host/listings");
+  revalidatePath("/host/listings");
   // Only a live listing has public pages worth rebuilding; a draft's photos are not on
   // any guest-facing surface yet.
   if (status === "APPROVED") {
     revalidatePath(`/properties/${slug}`);
     revalidatePublicListingCaches();
+  }
+}
+
+async function flagRoomChangeForReview(listing: { id: string; status: string }) {
+  if (listing.status === "APPROVED") {
+    await db.listing.update({ where: { id: listing.id }, data: { needsReview: true } });
   }
 }
 
@@ -292,14 +303,22 @@ export async function deleteListingPhotos(
 
   const doomed = await db.listingImage.findMany({
     where: { id: { in: photoIds }, listingId },
-    select: { id: true, isPrimary: true },
+    select: { id: true, isPrimary: true, url: true },
   });
   if (doomed.length === 0) return { error: "Those photos are no longer on this listing." };
 
   const losingCover = doomed.some((photo) => photo.isPrimary);
-  await db.listingImage.deleteMany({
-    where: { id: { in: doomed.map((photo) => photo.id) }, listingId },
+  // The rows and the intent to unlink their files commit together. Deleting the rows
+  // alone — which is what this did — left every removed photo on disk forever, and
+  // unlinking them here instead would skip the question of whether a draft or another
+  // listing still shows them. The sweep answers that, after the commit.
+  const queued = await db.$transaction(async (tx) => {
+    await tx.listingImage.deleteMany({
+      where: { id: { in: doomed.map((photo) => photo.id) }, listingId },
+    });
+    return enqueueUploadDeletions(tx, doomed.map((photo) => photo.url), "listing-photo-deleted");
   });
+  await sweepUploads(queued, `listing-photo-deleted:${listingId}`);
 
   if (losingCover) {
     const replacement = await db.listingImage.findFirst({
@@ -364,6 +383,7 @@ export async function addListingRoom(
     select: { id: true },
   });
 
+  await flagRoomChangeForReview(listing);
   refresh(listingId, listing.slug, listing.status);
   return { roomId: room.id };
 }
@@ -392,6 +412,7 @@ export async function renameListingRoom(
     data: { displayName: value || null },
   });
 
+  await flagRoomChangeForReview(listing);
   refresh(listingId, listing.slug, listing.status);
   return { success: true };
 }
@@ -418,6 +439,7 @@ export async function reorderListingRooms(
     ),
   );
 
+  await flagRoomChangeForReview(listing);
   refresh(listingId, listing.slug, listing.status);
   return { success: true };
 }
@@ -444,6 +466,7 @@ export async function deleteListingRoom(
 
   await db.listingRoom.delete({ where: { id: roomId } });
 
+  await flagRoomChangeForReview(listing);
   refresh(listingId, listing.slug, listing.status);
   return { releasedPhotos: room._count.images };
 }

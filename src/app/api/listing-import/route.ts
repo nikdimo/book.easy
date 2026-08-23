@@ -9,13 +9,14 @@ import {
   copyImportedImages,
   importListingUrl,
 } from "@/lib/listing-import/importer";
-import { getStorageAdapter } from "@/lib/storage";
+import { deleteStoredFile } from "@/lib/storage/store-upload";
 import { AMENITIES_TAG } from "@/lib/services/amenity.service";
 import { isSupportedCurrency } from "@/lib/currency/currencies";
 import { normalizeListingSpaceType } from "@/lib/types/listing-space-type";
 import { reverseGeocode } from "@/lib/services/location.service";
 import { normalizeAmenityName } from "@/lib/amenities/normalize";
 import { categoryIdForName, uniqueAmenityKey } from "@/lib/amenities/catalog";
+import { splitImportedPetLabels } from "@/lib/amenities/pets";
 
 export const runtime = "nodejs";
 
@@ -59,7 +60,11 @@ function cleanAmenity(value: string): string | null {
     .replace(/^(amenity|feature):\s*/i, "")
     .trim()
     .slice(0, 80);
-  if (cleaned.length < 2 || /^yes|no|true|false$/i.test(cleaned)) return null;
+  // Anchored as a whole alternation, not `^yes|no|true|false$` — that form anchors only
+  // the first and last branches, so the bare `no` matched anywhere in the string and
+  // quietly discarded every label containing it: "No pets", but also "Nordic sauna" and
+  // "Snorkelling gear". A provider's own yes/no artefacts are still dropped.
+  if (cleaned.length < 2 || /^(yes|no|true|false)$/i.test(cleaned)) return null;
   return AMENITY_ALIASES[amenityKey(cleaned)] ?? cleaned;
 }
 
@@ -137,7 +142,6 @@ export async function POST(request: Request) {
     : null;
 
   const mediaItems = await copyImportedImages(imported.imageUrls);
-  const storage = getStorageAdapter();
   try {
     const [existingAmenities, savedAliases, propertyTypes] = await Promise.all([
       db.amenity.findMany(),
@@ -154,7 +158,13 @@ export async function POST(request: Request) {
     const aliasesByKey = new Map(
       savedAliases.map((alias) => [alias.normalizedName, alias.amenity]),
     );
-    const names = [...new Set(imported.amenities.map(cleanAmenity).filter((name): name is string => Boolean(name)))];
+    // Pet labels never become amenities. Providers publish "Pets allowed" and "No pets"
+    // as ordinary amenity text, and creating rows for them would hand the project back
+    // the second source of truth the pet-policy migration removed — on every import,
+    // for every imported listing. They populate the draft's pet policy instead, which
+    // the host then confirms on the House rules step like every other rule.
+    const cleaned = [...new Set(imported.amenities.map(cleanAmenity).filter((name): name is string => Boolean(name)))];
+    const { petPolicy: importedPetPolicy, amenities: names } = splitImportedPetLabels(cleaned);
 
     const result = await db.$transaction(async (transaction) => {
       const amenityIds: string[] = [];
@@ -237,6 +247,10 @@ export async function POST(request: Request) {
         minNights: "1",
         checkInTime: imported.checkInTime ?? "",
         checkOutTime: imported.checkOutTime ?? "",
+        // The one house rule a provider reliably states. Everything else stays
+        // unanswered — "" rather than a guess — and the House rules step asks for it
+        // before the draft can be published.
+        petPolicy: importedPetPolicy ?? "",
         mediaItems,
         amenityIds,
         importProvider: imported.provider,
@@ -262,7 +276,12 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    await Promise.all(mediaItems.map((item) => storage.delete(item.url)));
+    // Rolls back the copies this request made — they exist only because the draft was
+    // about to reference them, and nothing else can be pointing at them yet.
+    // `deleteStoredFile` re-checks that each path is one this app's storage produced and
+    // swallows adapter failures, so a stuck file cannot turn this handled error into an
+    // unhandled rejection with no response at all.
+    await Promise.all(mediaItems.map((item) => deleteStoredFile(item.url)));
     console.error("Unable to create imported listing draft", error);
     return NextResponse.json(
       { error: "The details were read, but the draft could not be saved. Please try again." },

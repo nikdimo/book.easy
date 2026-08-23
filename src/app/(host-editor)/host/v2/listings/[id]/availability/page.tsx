@@ -34,6 +34,8 @@ export default async function AvailabilityPage({
       listingId={id}
       section="availability"
       complete={listing.completeSections}
+      previewSlug={listing.slug}
+      previewStatus={listing.status}
     >
       <AvailabilitySummary overview={overview} t={t} />
     </EditorFrame>

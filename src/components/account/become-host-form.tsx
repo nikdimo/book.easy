@@ -31,7 +31,11 @@ export function BecomeHostForm({ existingPhone, userName }: BecomeHostFormProps)
       if (result?.success) {
         toast.success(resolve("account.become_host.success", "Welcome! You are now a host.").text);
         await update({ isHost: true });
-        router.push("/host/listings/new");
+        // Through the panel route rather than straight to a page: it records the
+        // panel choice in a cookie, so the next "Switch to hosting" lands here too.
+        // A brand-new host has no preference to honour, and v2 is the panel we want
+        // them to start in.
+        router.push("/host/panel");
       }
       return result;
     },

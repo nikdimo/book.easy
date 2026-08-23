@@ -14,6 +14,10 @@ const mocks = vi.hoisted(() => ({
   getExchangeRates: vi.fn(),
   revalidatePath: vi.fn(),
   revalidatePublicListingCaches: vi.fn(),
+  generateUniqueSlug: vi.fn(),
+  archiveOrDeleteListing: vi.fn(),
+  enqueueUploadDeletions: vi.fn(async () => [] as string[]),
+  sweepUploads: vi.fn(async () => ({ scanned: 0, deleted: 0, kept: 0, failed: 0 })),
 }));
 
 vi.mock("@/lib/auth", () => ({ auth: mocks.auth }));
@@ -34,7 +38,21 @@ vi.mock("@/lib/db", () => ({
       deleteMany: mocks.imageDeleteMany,
       createMany: mocks.imageCreateMany,
     },
+    // The gallery rewrite and the cleanup queue commit together, so the action now runs
+    // inside a transaction. Running the callback against the same delegates keeps these
+    // tests about pricing ownership rather than about Prisma.
+    $transaction: async (callback: (tx: unknown) => unknown) =>
+      callback({
+        listingImage: {
+          deleteMany: mocks.imageDeleteMany,
+          createMany: mocks.imageCreateMany,
+        },
+      }),
   },
+}));
+vi.mock("@/lib/storage/upload-cleanup", () => ({
+  enqueueUploadDeletions: mocks.enqueueUploadDeletions,
+  sweepUploads: mocks.sweepUploads,
 }));
 vi.mock("@/lib/currency/rates", () => ({
   getExchangeRates: mocks.getExchangeRates,
@@ -43,8 +61,19 @@ vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
 vi.mock("@/lib/utils/revalidate-public-listing-caches", () => ({
   revalidatePublicListingCaches: mocks.revalidatePublicListingCaches,
 }));
+vi.mock("@/lib/services/listing.service", () => ({
+  generateUniqueSlug: mocks.generateUniqueSlug,
+  archiveOrDeleteListing: mocks.archiveOrDeleteListing,
+}));
 
-import { submitForReview, updateListing } from "@/lib/actions/listing.actions";
+import {
+  archiveListing,
+  deleteListing,
+  submitForReview,
+  unarchiveListing,
+  unpublishListing,
+  updateListing,
+} from "@/lib/actions/listing.actions";
 
 function validDetailForm() {
   const formData = new FormData();
@@ -186,5 +215,74 @@ describe("submitForReview availability safety", () => {
 
     await expect(submitForReview("listing-1")).resolves.toEqual({ success: true });
     expect(mocks.listingUpdate).toHaveBeenCalledTimes(1);
+  });
+});
+
+// G2: the v2 listings overview stopped reflecting archive/unarchive/delete/publish/
+// unpublish immediately because these actions only revalidated the v1 "/host/listings"
+// path. Each one must now revalidate both paths so `router.refresh()` on the v2 overview
+// page (see listing-actions-menu.tsx / listing-visibility-switch.tsx) picks up fresh data.
+describe("overview revalidation targets both /host/listings and /host/listings", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.auth.mockResolvedValue({ user: { id: "host-1", isHost: true } });
+    mocks.listingUpdate.mockResolvedValue({});
+  });
+
+  it("submitForReview revalidates both listings routes", async () => {
+    mocks.listingFindFirst.mockResolvedValue({
+      id: "listing-1",
+      hostId: "host-1",
+      status: "DRAFT",
+      availabilityMode: "CLOSED",
+      publishedAt: null,
+      pricingRule: { baseNightlyRate: 120 },
+      images: [{ mediaType: "IMAGE" }, { mediaType: "IMAGE" }, { mediaType: "IMAGE" }],
+      availabilityBlocks: [],
+    });
+
+    await expect(submitForReview("listing-1")).resolves.toEqual({ success: true });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/host/listings");
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/host/listings");
+  });
+
+  it("unpublishListing revalidates both listings routes", async () => {
+    mocks.listingFindFirst.mockResolvedValue({ id: "listing-1", hostId: "host-1", status: "APPROVED" });
+
+    await expect(unpublishListing("listing-1")).resolves.toEqual({ success: true });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/host/listings");
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/host/listings");
+  });
+
+  it("archiveListing revalidates both listings routes", async () => {
+    mocks.listingFindFirst.mockResolvedValue({
+      id: "listing-1",
+      hostId: "host-1",
+      status: "APPROVED",
+      bookings: [],
+    });
+
+    await expect(archiveListing("listing-1")).resolves.toEqual({ success: true });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/host/listings");
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/host/listings");
+  });
+
+  it("unarchiveListing revalidates both listings routes", async () => {
+    mocks.listingFindFirst.mockResolvedValue({ id: "listing-1", hostId: "host-1", status: "ARCHIVED" });
+
+    await expect(unarchiveListing("listing-1")).resolves.toEqual({ success: true });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/host/listings");
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/host/listings");
+  });
+
+  it("deleteListing revalidates both listings routes", async () => {
+    mocks.archiveOrDeleteListing.mockResolvedValue({ outcome: "deleted" });
+
+    await expect(deleteListing("listing-1")).resolves.toEqual({
+      success: true,
+      outcome: "deleted",
+    });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/host/listings");
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/host/listings");
   });
 });

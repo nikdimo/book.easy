@@ -31,6 +31,8 @@ export async function submitReviewAction(formData: FormData) {
     revalidatePath(`/account/bookings/${bookingId}/after-stay`);
     revalidatePath(`/account/bookings/${bookingId}`);
     revalidatePath("/host/bookings");
+    revalidatePath("/host/reservations");
+    revalidatePath(`/host/reservations/${bookingId}`);
     revalidatePath("/admin/ratings");
     return { success: true, reviewId: review.id };
   } catch (error) {

@@ -59,6 +59,18 @@ interface BookingWidgetProps {
   initialGuestDetails?: GuestDetails;
   hasExplicitSearchSelection?: boolean;
   reserveTooltip: Resolved;
+  /**
+   * The listing's house rules, already rendered by the server.
+   *
+   * A node rather than the rules themselves, on purpose: this widget must not be able to
+   * decide what the rules say. It shows what the page showed, collects the guest's
+   * acceptance of it, and sends nothing but that yes — the booking's stored snapshot is
+   * built on the server from the listing row, where a client cannot reach it.
+   */
+  houseRules?: React.ReactNode;
+  /** Fingerprint of the rules rendered above. The server rejects the request if the
+   * host changed them before booking, so the guest can review the new version. */
+  houseRulesVersion: string;
 }
 
 type GuestDetails = {
@@ -129,6 +141,8 @@ export function BookingWidget({
   initialGuests,
   initialGuestDetails = { adults: 0, children: 0, infants: 0, pets: 0 },
   reserveTooltip,
+  houseRules,
+  houseRulesVersion,
 }: BookingWidgetProps) {
   const i18n = useI18n();
   const dayPrice = useListingDayPrices({
@@ -175,6 +189,9 @@ export function BookingWidget({
         0,
   );
   const [note, setNote] = useState("");
+  /** Unticked every time. An agreement the guest did not actively give is not an
+   *  agreement, so this is never seeded from a previous visit or a query parameter. */
+  const [rulesAccepted, setRulesAccepted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [priceDetailsOpen, setPriceDetailsOpen] = useState(false);
   const [desktopPriceDetailsOpen, setDesktopPriceDetailsOpen] = useState(false);
@@ -414,6 +431,19 @@ export function BookingWidget({
       return;
     }
 
+    // Checked here as well as on the server. The server is the one that decides — it
+    // refuses a request that does not carry the acceptance — and this exists so the
+    // guest is told which control they missed instead of watching a request fail.
+    if (!rulesAccepted) {
+      const message = i18n.resolve(
+        "booking.house_rules_required",
+        "Please agree to the house rules before you send your request.",
+      ).text;
+      setError(message);
+      toast.error(message);
+      return;
+    }
+
     if (!session) {
       const returnUrl = new URL(window.location.href);
       returnUrl.searchParams.set("checkIn", checkInStr);
@@ -434,6 +464,8 @@ export function BookingWidget({
       formData.set("checkIn", checkInStr);
       formData.set("checkOut", checkOutStr);
       formData.set("guestCount", String(guests));
+      formData.set("houseRulesAccepted", "true");
+      formData.set("houseRulesVersion", houseRulesVersion);
       if (note) formData.set("guestNote", note);
 
       const result = await createBookingAction(formData);
@@ -450,6 +482,7 @@ export function BookingWidget({
     setGuestDetails({ adults: 1, children: 0, infants: 0, pets: 0 });
     setGuestsConfirmed(false);
     setNote("");
+    setRulesAccepted(false);
     setError(null);
     setPriceDetailsOpen(false);
     setDesktopPriceDetailsOpen(false);
@@ -812,6 +845,33 @@ export function BookingWidget({
               )}
           </div>
 
+          {houseRules ? (
+            <div className="space-y-3 rounded-xl border border-border/70 bg-muted/20 p-4">
+              <p className="text-sm font-medium">
+                <Tx k="booking.house_rules_title" source="House rules" />
+              </p>
+              {/* The listing's own rules, rendered by the server and shown here in full
+                  rather than linked. A guest agreeing to rules they would have to scroll
+                  away to read has not been shown them. */}
+              {houseRules}
+              <label className="flex cursor-pointer items-start gap-2.5 pt-1 text-sm">
+                <input
+                  type="checkbox"
+                  name="houseRulesAccepted"
+                  checked={rulesAccepted}
+                  onChange={(event) => setRulesAccepted(event.target.checked)}
+                  className="mt-0.5 size-4 shrink-0 rounded border-input accent-primary"
+                />
+                <span className="text-muted-foreground">
+                  <Tx
+                    k="booking.house_rules_accept"
+                    source="I agree to these house rules."
+                  />
+                </span>
+              </label>
+            </div>
+          ) : null}
+
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-3">
               <Label>
@@ -823,6 +883,7 @@ export function BookingWidget({
               {(checkInStr ||
                 checkOutStr ||
                 note ||
+                rulesAccepted ||
                 guests !== 1 ||
                 guestDetails.infants > 0 ||
                 guestDetails.pets > 0) && (

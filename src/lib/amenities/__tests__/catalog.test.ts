@@ -59,6 +59,13 @@ describe("categorising an unmapped provider label", () => {
     ["Pool", "outdoor"],
     ["Books and reading material", "entertainment"],
     ["Long-term stays allowed", "services"],
+    ["Recycling", "services"],
+    ["Private entrance", "check_in"],
+    ["Changing table - available upon request", "family"],
+    ["Outlet covers", "family"],
+    ["Table corner guards", "family"],
+    ["Drying rack for clothing", "essentials"],
+    ["Laundromat nearby", "essentials"],
     ["Wi-Fi", "essentials"],
   ])("routes %s to %s", (label, expected) => {
     expect(guessCategoryKey(label)).toBe(expected);

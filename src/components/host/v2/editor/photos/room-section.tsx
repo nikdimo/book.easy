@@ -83,7 +83,7 @@ export function RoomSection({
       // Fill only while a photo is over it — no outline. Same language the rail speaks,
       // so a drag means one thing wherever it lands.
       className={`-mx-2 rounded-xl px-2 py-1 transition-colors ${
-        isOver ? "bg-[#fde7dc]" : ""
+        isOver ? "bg-[#f1f5f9]" : ""
       }`}
     >
       <div className="flex items-center gap-2 border-b border-slate-100 pb-2">

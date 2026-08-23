@@ -61,7 +61,7 @@ export function DeleteDraftControl({
           event.preventDefault();
           setConfirming(true);
         }}
-        className={`relative z-10 grid size-9 shrink-0 place-items-center rounded-full text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d9774f] disabled:opacity-50 ${className ?? ""}`}
+        className={`relative z-10 grid size-9 shrink-0 place-items-center rounded-full text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a] disabled:opacity-50 ${className ?? ""}`}
       >
         <Trash2 className="size-4" aria-hidden />
       </button>

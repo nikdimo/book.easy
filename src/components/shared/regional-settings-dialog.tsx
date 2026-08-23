@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Check, CircleDollarSign, Globe, Languages, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { Tx, useI18n } from "@/lib/i18n/client";
 import { recordLanguageSelection } from "@/lib/actions/language.actions";
 import { setDisplayCurrency } from "@/lib/actions/currency.actions";
+import { REGIONAL_SETTINGS_OPEN_EVENT } from "@/components/shared/regional-settings-event";
 import { DEFAULT_LOCALE, normalizeLocaleCode } from "@/lib/i18n/locale-preference";
 import {
   getActiveLocale,
@@ -212,6 +214,11 @@ function PickerPanel({
  * components with the new cookie while leaving client state alone, so the map
  * viewport, the open search sheet and a half-finished booking form all survive it.
  */
+/** Dispatch this on `window` to open the dialog from outside its own trigger. Defined
+ *  in its own dependency-free module and re-exported here for the existing callers —
+ *  see the note there on why an opener must not import this file. */
+export { REGIONAL_SETTINGS_OPEN_EVENT };
+
 export function RegionalSettingsDialog({
   languages,
   currentLocale,
@@ -220,6 +227,7 @@ export function RegionalSettingsDialog({
   suggestedLocale,
   suggestedCurrency,
   ratesUnavailable = false,
+  hideTrigger = false,
 }: {
   languages: LanguageOption[];
   currentLocale?: string;
@@ -231,9 +239,13 @@ export function RegionalSettingsDialog({
   suggestedCurrency?: string | null;
   /** True when conversion is down and everything is showing official prices. */
   ratesUnavailable?: boolean;
+  /** Render the dialog without its chip pair, for callers that open it from somewhere
+   *  else — see the `regional-settings:open` event below. */
+  hideTrigger?: boolean;
 }) {
   const i18n = useI18n();
   const router = useRouter();
+  const { update } = useSession();
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"language" | "currency">("language");
   const [announcement, setAnnouncement] = useState("");
@@ -243,6 +255,21 @@ export function RegionalSettingsDialog({
     setActiveTab(tab);
     setOpen(true);
   }
+
+  /*
+   * A window event rather than a prop, because the one caller that needs it — the host
+   * panel's account menu — is a dropdown that closes on click and would unmount a
+   * dialog nested inside it. This lets the dialog live outside the menu entirely while
+   * a menu item still opens it, with no state threaded between two subtrees.
+   */
+  useEffect(() => {
+    function onOpenRequest(event: Event) {
+      const tab = (event as CustomEvent<{ tab?: "language" | "currency" }>).detail?.tab;
+      openSettings(tab === "currency" ? "currency" : "language");
+    }
+    window.addEventListener(REGIONAL_SETTINGS_OPEN_EVENT, onOpenRequest);
+    return () => window.removeEventListener(REGIONAL_SETTINGS_OPEN_EVENT, onOpenRequest);
+  }, []);
 
   function handleOpenChange(nextOpen: boolean) {
     if (nextOpen) {
@@ -282,6 +309,28 @@ export function RegionalSettingsDialog({
     normalizeLocaleCode(i18n.requestedLocale) ??
     DEFAULT_LOCALE;
 
+  /**
+   * Pushes the freshly stored preference onto the session token.
+   *
+   * `recordLanguageSelection` and `setDisplayCurrency` write the account row, but the
+   * proxy reads the *token*, never Prisma — it runs at the edge. Without this the row
+   * and the token disagree for the life of the session, and the stale token wins on
+   * every device that has no explicit cookie yet: a currency chosen on a laptop would
+   * never reach a phone that was already signed in. Best-effort by design — a signed
+   * out visitor has no token to update, and a failed refresh must not undo a
+   * preference that is already saved.
+   */
+  async function syncSessionPreference(patch: {
+    displayCurrency?: string;
+    locale?: string;
+  }) {
+    try {
+      await update(patch);
+    } catch {
+      // The cookie still carries the choice for this browser.
+    }
+  }
+
   async function selectLanguage(code: string) {
     const next = normalizeLocaleCode(code);
     if (!next) return;
@@ -291,6 +340,9 @@ export function RegionalSettingsDialog({
     } catch {
       // Selection tracking is best-effort; never block switching the language.
     }
+    // Before the reload, not after: the reload throws this component away, and the
+    // token has to carry the new language into the very next request.
+    await syncSessionPreference({ locale: next });
     window.location.reload();
   }
 
@@ -299,12 +351,30 @@ export function RegionalSettingsDialog({
       `${currencyDisplayName(code, i18n.locale)} (${code})`,
     );
     try {
-      await setDisplayCurrency(code);
+      const result = await setDisplayCurrency(code);
+      if (result && "error" in result) {
+        // Say so rather than leaving the announcement claiming a change that did not
+        // happen. The list still shows the previous currency as selected.
+        setAnnouncement(
+          i18n.resolve(
+            "regional.currency_failed",
+            "That currency could not be applied. Please try another one.",
+          ).text,
+        );
+        return;
+      }
     } catch {
       // A failed write leaves the previous currency in place; the next render will
       // show it still selected rather than pretending the change took.
+      setAnnouncement(
+        i18n.resolve(
+          "regional.currency_failed",
+          "That currency could not be applied. Please try another one.",
+        ).text,
+      );
       return;
     }
+    await syncSessionPreference({ displayCurrency: code });
     // Not a reload: prices re-render from the server while client state survives.
     router.refresh();
   }
@@ -388,7 +458,12 @@ export function RegionalSettingsDialog({
       {/* Two halves of one control. The language shows its code rather than its
           full name — "Македонски" beside a currency code made the header read as
           loose text, and the name is one hover (or one tap) away either way. */}
-      <div className="notranslate flex shrink-0 items-center gap-0.5">
+      <div
+        className={cn(
+          "notranslate shrink-0 items-center gap-0.5",
+          hideTrigger ? "hidden" : "flex",
+        )}
+      >
         <Tooltip>
           <TooltipTrigger asChild>
             <Button

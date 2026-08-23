@@ -99,7 +99,7 @@ export function AuthForm({
   }
 
   return (
-    <div className="relative rounded-3xl bg-card p-6 sm:p-8 shadow-2xl shadow-black/10 ring-1 ring-border/60">
+    <div className="relative rounded-3xl bg-card p-6 shadow-[0_18px_60px_-20px_rgba(15,23,42,0.45)] ring-1 ring-black/5 sm:p-10">
       {onClose ? (
         <button
           type="button"
@@ -119,16 +119,13 @@ export function AuthForm({
         </Link>
       )}
 
-      <div className="flex flex-col items-center gap-3 pb-6 text-center">
-        <BrandLogo compact className="h-10 w-auto" />
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold tracking-tight">
-            <Tx k="auth.heading" source="Log in or sign up" />
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            <Tx k="auth.description" source="Holiday homes and stays" />
-          </p>
-        </div>
+      {/* Mark, then heading, then the form — the card is one centred column with the
+          brand at the top of it, not a header band above a body. */}
+      <div className="flex flex-col items-center gap-5 pb-7 text-center">
+        <BrandLogo compact className="h-9 w-auto" />
+        <h1 className="text-[1.6rem] font-semibold leading-tight tracking-[-0.02em] sm:text-[1.75rem]">
+          <Tx k="auth.heading" source="Log in or sign up" />
+        </h1>
       </div>
 
       <div className="space-y-4">
@@ -200,32 +197,10 @@ export function AuthForm({
               </div>
             ) : null}
 
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full h-12 rounded-xl gap-2 font-medium"
-              disabled={googleLoading}
-              onClick={handleGoogle}
-            >
-              <GoogleIcon className="size-4 shrink-0" />
-              {googleLoading
-                ? i18n.resolve("auth.redirecting", "Redirecting…").text
-                : i18n.resolve("auth.continue_google", "Continue with Google").text}
-            </Button>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">
-                  <Tx k="auth.or" source="or" />
-                </span>
-              </div>
-            </div>
-
-            <form onSubmit={handleEmailSubmit} className="space-y-3">
-              <div className="space-y-2">
+            {/* The field leads. Someone arriving here already knows their email; a
+                provider button first makes them read past the thing they came to do. */}
+            <form onSubmit={handleEmailSubmit} className="space-y-4">
+              <div>
                 <Label htmlFor="email" className="sr-only">
                   <Tx k="auth.email_label" source="Email" />
                 </Label>
@@ -236,19 +211,45 @@ export function AuthForm({
                   placeholder={i18n.resolve("auth.email_address", "Email address").text}
                   required
                   autoComplete="email"
-                  className="h-12 rounded-xl px-4"
+                  className="h-14 rounded-xl px-4 text-base"
                 />
               </div>
               <Button
                 type="submit"
-                className="w-full h-12 rounded-xl font-medium"
+                className="h-14 w-full rounded-xl text-base font-semibold"
                 disabled={emailLoading}
               >
                 {emailLoading
                   ? i18n.resolve("auth.sending", "Sending…").text
-                  : i18n.resolve("auth.continue_email", "Continue with email").text}
+                  : i18n.resolve("auth.continue", "Continue").text}
               </Button>
             </form>
+
+            <div className="relative py-1">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="bg-card px-3 text-muted-foreground">
+                  <Tx k="auth.or" source="or" />
+                </span>
+              </div>
+            </div>
+
+            {/* Google is the only provider wired up, so it stays a full-width button
+                rather than the row of square tiles a second provider would earn. */}
+            <Button
+              type="button"
+              variant="outline"
+              className="h-14 w-full gap-2 rounded-xl text-base font-medium"
+              disabled={googleLoading}
+              onClick={handleGoogle}
+            >
+              <GoogleIcon className="size-5 shrink-0" />
+              {googleLoading
+                ? i18n.resolve("auth.redirecting", "Redirecting…").text
+                : i18n.resolve("auth.continue_google", "Continue with Google").text}
+            </Button>
           </>
         )}
       </div>

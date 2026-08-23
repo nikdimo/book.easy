@@ -130,9 +130,9 @@ describe("updateListingBasics success", () => {
     await updateListingBasics("listing-1", VALID);
 
     const paths = mocks.revalidatePath.mock.calls.map(([path]) => path);
-    expect(paths).toContain("/host/v2/listings/listing-1/basics");
-    expect(paths).toContain("/host/v2/listings/listing-1");
-    expect(paths).toContain("/host/v2/listings");
+    expect(paths).toContain("/host/listings/listing-1/basics");
+    expect(paths).toContain("/host/listings/listing-1");
+    expect(paths).toContain("/host/listings");
     expect(paths).not.toContain("/properties/seaside-apartment");
     expect(mocks.revalidatePublicListingCaches).not.toHaveBeenCalled();
   });

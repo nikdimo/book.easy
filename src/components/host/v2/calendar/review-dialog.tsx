@@ -237,7 +237,7 @@ export function ReviewDialog({
             disabled={!plan.savable || pending}
             onClick={onConfirm}
             className={cn(
-              "bg-[#d9774f] text-white hover:bg-[#c2643e]",
+              "bg-[#0f172a] text-white hover:bg-[#1e293b]",
               save.translated && "notranslate",
             )}
             {...anchorProps(CALENDAR_ANCHOR.finalSave)}

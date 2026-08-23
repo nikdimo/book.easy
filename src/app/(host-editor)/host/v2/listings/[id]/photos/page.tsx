@@ -21,6 +21,8 @@ export default async function ListingPhotosPage({
       listingId={id}
       section="photos"
       complete={data.listing.completeSections}
+      previewSlug={data.listing.slug}
+      previewStatus={data.listing.status}
     >
       <PhotosWorkspace
         listingId={id}

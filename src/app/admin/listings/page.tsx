@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getAllListingsForAdmin } from "@/lib/services/admin.service";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { LISTING_STATUSES } from "@/lib/constants";
 import { formatDate } from "@/lib/utils/format";
 import { ListControls } from "@/components/shared/list-controls";
@@ -88,9 +88,8 @@ function ListingsTable({ listings }: { listings: AdminListing[] }) {
             searchText: [listing.title, listing.property.city, listing.host.name, listing.host.email, listing.status, statusConfig?.label, listing.needsReview ? "needs review" : "reviewed", formatDate(listing.createdAt)].join(" "),
             filters: { status: listing.status, review: listing.needsReview ? "yes" : "no" },
             sortValues: { created: listing.createdAt.getTime(), oldest: listing.createdAt.getTime(), title: listing.title, host: listing.host.name, bookings: listing._count.bookings },
-            content: <>
-      <div className="md:hidden">
-            <article key={listing.id} className="rounded-xl border bg-card p-4 shadow-sm">
+            content: (
+            <article className="rounded-xl border bg-card p-4 shadow-sm">
               <div className="flex min-w-0 items-start justify-between gap-3">
                 <div className="min-w-0">
                   <h3 className="line-clamp-2 font-semibold">{listing.title}</h3>
@@ -116,22 +115,9 @@ function ListingsTable({ listings }: { listings: AdminListing[] }) {
                 <Link href={`/admin/listings/${listing.id}`}>Review listing</Link>
               </Button>
             </article>
-      </div>
-      <div className="hidden border rounded-lg md:block">
-        <Table className="table-stacked">
-        <TableHeader>
-          <TableRow>
-            <TableHead>Title</TableHead>
-            <TableHead>Host</TableHead>
-            <TableHead>City</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Bookings</TableHead>
-            <TableHead>Created</TableHead>
-            <TableHead></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-              <TableRow key={listing.id}>
+            ),
+            row: (
+              <TableRow>
                 <TableCell className="font-medium max-w-[200px] truncate" data-label="Title">{listing.title}</TableCell>
                 <TableCell data-label="Host">
                   <div className="text-sm">{listing.host.name}</div>
@@ -158,12 +144,20 @@ function ListingsTable({ listings }: { listings: AdminListing[] }) {
                   </Button>
                 </TableCell>
               </TableRow>
-        </TableBody>
-        </Table>
-      </div>
-            </>,
+            ),
           };
         })}
+      tableHead={
+        <TableRow>
+          <TableHead>Title</TableHead>
+          <TableHead>Host</TableHead>
+          <TableHead>City</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead>Bookings</TableHead>
+          <TableHead>Created</TableHead>
+          <TableHead></TableHead>
+        </TableRow>
+      }
     />
   );
 }

@@ -1,19 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  HOST_PANEL_PATH,
   hostPanelDestination,
-  parseHostPanelVersion,
 } from "@/lib/host/host-panel-preference";
 
 describe("host panel preference", () => {
-  it("accepts only the two supported panel versions", () => {
-    expect(parseHostPanelVersion("current")).toBe("current");
-    expect(parseHostPanelVersion("v2")).toBe("v2");
-    expect(parseHostPanelVersion("old")).toBeNull();
-    expect(parseHostPanelVersion(undefined)).toBeNull();
+  it("has one destination, which is Host V2", () => {
+    expect(hostPanelDestination()).toBe("/host");
+    expect(HOST_PANEL_PATH).toBe("/host");
   });
 
-  it("keeps current and preview panels on isolated routes", () => {
-    expect(hostPanelDestination("current")).toBe("/host");
-    expect(hostPanelDestination("v2")).toBe("/host/v2");
+  it("does not expose the implementation-version URL", () => {
+    expect(hostPanelDestination()).not.toBe("/host/v2");
   });
 });

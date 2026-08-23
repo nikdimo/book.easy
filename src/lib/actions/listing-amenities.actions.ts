@@ -17,8 +17,8 @@ export interface SetListingAmenitiesResult {
 }
 
 function refresh(listingId: string, slug: string, status: string) {
-  revalidatePath(`/host/v2/listings/${listingId}/amenities`);
-  revalidatePath(`/host/v2/listings/${listingId}`);
+  revalidatePath(`/host/listings/${listingId}/amenities`);
+  revalidatePath(`/host/listings/${listingId}`);
   revalidatePath(`/host/listings/${listingId}/edit`);
   // Only a live listing has public pages worth rebuilding; a draft's amenities are not
   // on any guest-facing surface yet.

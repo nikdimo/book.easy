@@ -111,7 +111,7 @@ export function InboxConversationList({
             )}
           </button>
           <Link
-            href="/host/v2/reservations"
+            href="/host/reservations"
             aria-label={
               resolve("host.v2.messages.all_reservations", "All reservations").text
             }
@@ -190,7 +190,7 @@ export function InboxConversationList({
             return (
               <li key={conversation.id}>
                 <Link
-                  href={`/host/v2/messages/${conversation.id}`}
+                  href={`/host/messages/${conversation.id}`}
                   aria-current={active ? "page" : undefined}
                   className={cn(
                     "flex gap-3 rounded-2xl px-3 py-3 transition-colors",
@@ -271,7 +271,7 @@ export function InboxConversationList({
                       </span>
                     ) : null}
                     {conversation.hasSupport ? (
-                      <span className="ml-1.5 mt-1.5 inline-flex rounded-full bg-[#fde7dc] px-2.5 py-0.5 text-xs font-medium text-[#8f3d21]">
+                      <span className="ml-1.5 mt-1.5 inline-flex rounded-full bg-[#f1f5f9] px-2.5 py-0.5 text-xs font-medium text-[#0f172a]">
                         <Tx k="conversation.support_joined" source="Support joined" />
                       </span>
                     ) : null}
@@ -280,7 +280,7 @@ export function InboxConversationList({
                   {unread ? (
                     <span
                       role="img"
-                      className="mt-2 size-2.5 shrink-0 rounded-full bg-[#d9774f]"
+                      className="mt-2 size-2.5 shrink-0 rounded-full bg-[#0f172a]"
                       aria-label={
                         interpolate(
                           resolve(

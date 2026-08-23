@@ -67,8 +67,13 @@ export async function requireUserPage(callbackUrl?: string): Promise<SessionUser
   return user;
 }
 
-export async function requireHostPage(): Promise<SessionUser> {
-  const user = await requireUserPage();
+/**
+ * @param callbackUrl Where to return after signing in. Without it a signed-out visitor
+ *   who clicks "Switch to hosting" logs in and lands on the booking home page, having
+ *   lost the thing they were trying to reach.
+ */
+export async function requireHostPage(callbackUrl?: string): Promise<SessionUser> {
+  const user = await requireUserPage(callbackUrl);
   if (!user.isHost && user.role !== "ADMIN") {
     redirect("/account/become-host");
   }

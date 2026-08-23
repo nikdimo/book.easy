@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getAllBookingsForAdmin } from "@/lib/services/admin.service";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TableCell, TableHead, TableRow } from "@/components/ui/table";
 import { AdminCancelBookingButton } from "@/components/admin/admin-cancel-booking-button";
 import { formatDate, formatPrice } from "@/lib/utils/format";
 import { BOOKING_STATUSES } from "@/lib/constants";
@@ -58,9 +58,8 @@ export default async function AdminBookingsPage({
             searchText: [booking.listing.title, booking.listing.property.city, booking.guest.name, booking.guest.email, booking.reference, booking.status, statusConfig?.label, formatDate(booking.checkIn), formatDate(booking.checkOut)].filter(Boolean).join(" "),
             filters: { status: booking.status },
             sortValues: { checkIn: booking.checkIn.getTime(), oldest: booking.checkIn.getTime(), total: Number(booking.totalPrice), guest: booking.guest.name, listing: booking.listing.title },
-            content: <>
-      <div className="md:hidden">
-            <article key={booking.id} className="rounded-xl border bg-card p-4 shadow-sm">
+            content: (
+            <article className="rounded-xl border bg-card p-4 shadow-sm">
               <div className="flex min-w-0 items-start justify-between gap-3">
                 <div className="min-w-0">
                   <h2 className="line-clamp-2 font-semibold">{booking.listing.title}</h2>
@@ -77,21 +76,9 @@ export default async function AdminBookingsPage({
               </dl>
               {canCancel && <div className="mt-4 border-t pt-3"><AdminCancelBookingButton bookingId={booking.id} /></div>}
             </article>
-      </div>
-      <div className="hidden border rounded-lg md:block">
-        <Table className="table-stacked">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Listing</TableHead>
-              <TableHead>Guest</TableHead>
-              <TableHead>Dates</TableHead>
-              <TableHead>Total</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-                <TableRow key={booking.id}>
+            ),
+            row: (
+                <TableRow>
                   <TableCell data-label="Listing">
                     <div className="text-sm font-medium max-w-[200px] truncate">{booking.listing.title}</div>
                     <div className="text-xs text-muted-foreground">{booking.listing.property.city}</div>
@@ -113,12 +100,19 @@ export default async function AdminBookingsPage({
                     {canCancel && <AdminCancelBookingButton bookingId={booking.id} />}
                   </TableCell>
                 </TableRow>
-          </TableBody>
-        </Table>
-      </div>
-            </>,
+            ),
           };
         })}
+        tableHead={
+          <TableRow>
+            <TableHead>Listing</TableHead>
+            <TableHead>Guest</TableHead>
+            <TableHead>Dates</TableHead>
+            <TableHead>Total</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead></TableHead>
+          </TableRow>
+        }
       />
     </div>
   );

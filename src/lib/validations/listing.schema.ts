@@ -1,12 +1,37 @@
 import { z } from "zod";
+import {
+  ADDITIONAL_RULES_MAX,
+  EVENT_POLICIES,
+  PET_POLICIES,
+  QUIET_HOURS_POLICIES,
+  SMOKING_POLICIES,
+} from "@/lib/host/v2/listing-house-rules";
 
-/** A half-hour slot on a 24-hour clock, or "" / absent for "flexible". Anything else
- *  is normalised away rather than rejected — a stale draft or an older mobile client
- *  sending a value this build no longer offers should still be able to publish. */
+/** Any wall-clock minute, or "" / absent for "flexible". Anything that is not a time at
+ *  all is normalised away rather than rejected — a stale draft or an older mobile client
+ *  sending a value this build no longer offers should still be able to publish.
+ *
+ *  Deliberately every minute rather than the picker's half hours: a listing imported
+ *  from Airbnb can arrive holding "14:15", the editor and the create flow both keep that
+ *  value selectable, and rounding it to "" at publish would drop an arrival time the
+ *  host was shown and agreed to on the screen before. Same pattern the host-side rules
+ *  module uses. */
 const stayTime = z
   .string()
   .optional()
-  .transform((value) => (value && /^([01]\d|2[0-3]):(00|30)$/.test(value) ? value : ""));
+  .transform((value) => (value && /^([01]\d|2[0-3]):[0-5]\d$/.test(value) ? value : ""));
+
+/** One house-rules policy on the way in from a form. Absent, "" and anything outside
+ *  the set all mean the same thing — the host has not answered — and publish stores
+ *  NULL for it rather than inventing a refusal. */
+function policy<T extends string>(choices: readonly T[]) {
+  return z
+    .string()
+    .optional()
+    .transform((value) =>
+      value && (choices as readonly string[]).includes(value) ? (value as T) : null,
+    );
+}
 
 export const listingFormSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters").max(100),
@@ -56,6 +81,21 @@ export const listingFormSchema = z.object({
   // an unfinished field, and publishing must not stall on it.
   checkInTime: stayTime,
   checkOutTime: stayTime,
+  // The structured house rules. Never required: a listing created by the mobile app or
+  // by an older draft has never been asked these, and publishing must not stall on a
+  // question that was not on the screen. The create flow requires them at the step that
+  // asks, which is where the host can actually answer.
+  petPolicy: policy(PET_POLICIES),
+  smokingPolicy: policy(SMOKING_POLICIES),
+  eventPolicy: policy(EVENT_POLICIES),
+  quietHoursPolicy: policy(QUIET_HOURS_POLICIES),
+  quietHoursStart: stayTime,
+  quietHoursEnd: stayTime,
+  additionalRules: z
+    .string()
+    .max(ADDITIONAL_RULES_MAX, "Your additional house rules are too long")
+    .optional()
+    .transform((value) => (value ? value.trim() : "")),
   amenityIds: z.array(z.string()).optional(),
 });
 

@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { deleteOwnedListingDraftWithCleanup } from "@/lib/listing-draft-cleanup";
 import {
   listingDraftData,
   mergeMobileListingDraft,
@@ -75,11 +76,14 @@ export async function DELETE(
   const access = await requireMobileHost(request);
   if ("response" in access) return access.response;
   const { id } = await context.params;
-  const result = await db.listingDraft.deleteMany({
-    where: { id, hostId: access.user.id },
+  // The same operation the web paths use: still scoped to this host's own draft, and now
+  // the photos it was holding go with it instead of staying on disk unreferenced.
+  const result = await deleteOwnedListingDraftWithCleanup({
+    hostId: access.user.id,
+    draftId: id,
   });
-  if (result.count === 0) {
-    return mobileJson(request, { error: "Draft not found" }, { status: 404 });
+  if (!result.ok) {
+    return mobileJson(request, { error: result.error }, { status: result.status });
   }
   return mobileJson(request, { success: true });
 }

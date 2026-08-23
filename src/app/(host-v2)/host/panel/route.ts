@@ -2,23 +2,23 @@ import { NextResponse, type NextRequest } from "next/server";
 import {
   HOST_PANEL_COOKIE,
   hostPanelDestination,
-  parseHostPanelVersion,
 } from "@/lib/host/host-panel-preference";
 
+/**
+ * The host panel's stable entry URL.
+ *
+ * It used to read `?version=` and remember the answer. There is one panel now, so the
+ * parameter is ignored rather than rejected — a bookmarked `?version=current` from the
+ * days of the switch has to land in the panel, not on a 400 — and the visit is also
+ * what expires the leftover cookie.
+ */
 export function GET(request: NextRequest) {
-  const version = parseHostPanelVersion(
-    request.nextUrl.searchParams.get("version"),
-  );
-  if (!version) {
-    return NextResponse.json({ error: "Unknown host panel version" }, { status: 400 });
-  }
-
   const response = NextResponse.redirect(
-    new URL(hostPanelDestination(version), request.nextUrl),
+    new URL(hostPanelDestination(), request.nextUrl),
   );
-  response.cookies.set(HOST_PANEL_COOKIE, version, {
+  response.cookies.set(HOST_PANEL_COOKIE, "", {
     httpOnly: true,
-    maxAge: 60 * 60 * 24 * 365,
+    maxAge: 0,
     path: "/",
     sameSite: "lax",
     secure: request.nextUrl.protocol === "https:",

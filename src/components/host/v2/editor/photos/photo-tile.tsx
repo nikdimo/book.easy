@@ -111,7 +111,7 @@ export function PhotoTile({
 
       {selected && (
         <span
-          className="pointer-events-none absolute inset-0 rounded-lg ring-2 ring-inset ring-[#d9774f]"
+          className="pointer-events-none absolute inset-0 rounded-lg ring-2 ring-inset ring-[#0f172a]"
           aria-hidden
         />
       )}
@@ -120,7 +120,7 @@ export function PhotoTile({
       <span
         className={`pointer-events-none absolute left-1.5 top-1.5 grid size-5 place-items-center rounded-full border transition-opacity ${
           selected
-            ? "border-[#d9774f] bg-[#d9774f] text-white opacity-100"
+            ? "border-[#0f172a] bg-[#0f172a] text-white opacity-100"
             : "border-white/80 bg-black/25 text-transparent"
         } ${selecting || selected ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"}`}
       >

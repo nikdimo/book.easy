@@ -119,7 +119,7 @@ export function PanelSlider({
         }}
         className={cn(
           "relative h-7 touch-none",
-          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]",
+          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]",
           disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
         )}
       >
@@ -129,7 +129,7 @@ export function PanelSlider({
         />
         <span
           aria-hidden
-          className="absolute top-[0.6875rem] h-1.5 rounded-full bg-[#d9774f]"
+          className="absolute top-[0.6875rem] h-1.5 rounded-full bg-[#0f172a]"
           style={{ left: `${low}%`, width: `${high - low}%` }}
         />
         {/* The anchor itself, marked on the track so the middle is a place rather than
@@ -145,7 +145,7 @@ export function PanelSlider({
             handle outside the panel — which is exactly where a clamped value parks it. */}
         <span
           aria-hidden
-          className="absolute top-0.5 size-6 -translate-x-1/2 rounded-full border-2 border-[#d9774f] bg-white shadow-sm"
+          className="absolute top-0.5 size-6 -translate-x-1/2 rounded-full border-2 border-[#0f172a] bg-white shadow-sm"
           style={{
             left: `calc(${ratio}% + ${THUMB - (ratio / 100) * THUMB * 2}px)`,
           }}
@@ -165,10 +165,10 @@ export function PanelSlider({
               className={cn(
                 "min-h-8 rounded-lg px-2 text-[0.75rem] font-semibold tabular-nums",
                 "transition-colors duration-150 motion-reduce:transition-none",
-                "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]",
+                "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]",
                 "disabled:cursor-not-allowed disabled:opacity-50",
                 active
-                  ? "bg-[#fff1e8] text-[#8f3d21]"
+                  ? "bg-[#f8fafc] text-[#0f172a]"
                   : "text-slate-500 hover:bg-slate-100 hover:text-slate-800",
               )}
             >

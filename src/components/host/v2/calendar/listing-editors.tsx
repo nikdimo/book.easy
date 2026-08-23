@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { BASE_CURRENCY } from "@/lib/currency/currency-preference";
 import { ChevronDown, Eye, EyeOff, LockKeyhole, UnlockKeyhole } from "lucide-react";
 import { interpolate, useI18n } from "@/lib/i18n/client";
 import { CALENDAR_ANCHOR, anchorProps } from "@/lib/host/v2/calendar-anchors";
@@ -46,6 +47,7 @@ import {
   priceFromPercent,
   PRICE_PERCENT_PRESETS,
   PRICE_PERCENT_RANGE,
+  wholeAmountFromInput,
 } from "@/lib/host/v2/calendar-price-action";
 import {
   bookableDatesLabel,
@@ -536,8 +538,8 @@ export function DefaultPricingEditor({
           prefix={symbol}
           onChange={(next) => {
             setBaseDraft(next);
-            const parsed = Number(next.replace(/[^0-9]/g, ""));
-            if (Number.isFinite(parsed) && parsed >= 1) setBaseRate(parsed);
+            const parsed = wholeAmountFromInput(next);
+            if (parsed !== null && parsed >= 1) setBaseRate(parsed);
           }}
           onBlur={() => setBaseDraft(null)}
         />
@@ -618,8 +620,8 @@ export function DefaultPricingEditor({
             prefix={symbol}
             onChange={(next) => {
               setCleaningDraft(next);
-              const parsed = Number(next.replace(/[^0-9]/g, ""));
-              if (/\d/.test(next) && Number.isFinite(parsed)) {
+              const parsed = wholeAmountFromInput(next);
+              if (parsed !== null) {
                 setCleaningFee(parsed);
               }
             }}
@@ -746,7 +748,7 @@ export function OngoingPromotionEditor({
       : null;
     return ongoingPromotionFormOf(listing, target);
   });
-  const currency = listing.pricing?.currency ?? "EUR";
+  const currency = listing.pricing?.currency ?? BASE_CURRENCY;
 
   const saved = form.promotionId
     ? (listing.promotions.find(
@@ -855,7 +857,7 @@ export function OngoingPromotionEditor({
         <button
           type="button"
           onClick={() => setForm({ ...form, removing: false })}
-          className="min-h-11 self-start rounded-lg bg-slate-50 px-3 text-[0.8125rem] font-semibold text-slate-700 transition-colors duration-150 hover:bg-slate-100 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]"
+          className="min-h-11 self-start rounded-lg bg-slate-50 px-3 text-[0.8125rem] font-semibold text-slate-700 transition-colors duration-150 hover:bg-slate-100 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]"
         >
           {
             i18n.resolve(
@@ -903,7 +905,7 @@ export function OngoingPromotionEditor({
         <button
           type="button"
           onClick={() => onModeChange("list")}
-          className="flex min-h-10 w-full items-center justify-between rounded-lg bg-slate-50 px-3 text-left text-[0.8125rem] font-semibold text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#a94b28]"
+          className="flex min-h-10 w-full items-center justify-between rounded-lg bg-slate-50 px-3 text-left text-[0.8125rem] font-semibold text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0f172a]"
         >
           <span>
             {
@@ -942,7 +944,7 @@ export function OngoingPromotionEditor({
             <button
               type="button"
               onClick={() => onModeChange("list")}
-              className="min-h-9 text-[0.75rem] font-semibold text-slate-500 transition-colors hover:text-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]"
+              className="min-h-9 text-[0.75rem] font-semibold text-slate-500 transition-colors hover:text-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]"
             >
               {i18n.resolve("host.v2.calendar.cancel", "Cancel").text}
             </button>
@@ -961,7 +963,7 @@ export function OngoingPromotionEditor({
               setForm({
                 ...form,
                 discountPercent: String(
-                  Math.min(50, Number(next.replace(/[^0-9]/g, "")) || 0),
+                  Math.min(50, wholeAmountFromInput(next) ?? 0),
                 ),
               })
             }

@@ -9,7 +9,7 @@ import {
   isSelectionStayBookable,
   type SelectionStayBookability,
 } from "@/lib/host/v2/calendar-model";
-import { money, stayBookabilityReason } from "./calendar-labels";
+import { moneyExact, stayBookabilityReason } from "./calendar-labels";
 
 function Row({
   label,
@@ -69,7 +69,9 @@ export function GuestQuotePanel({
   stay: SelectionStayBookability;
 }) {
   const i18n = useI18n();
-  const format = (amount: number) => money(amount, currency, formats);
+  // The breakdown is the receipt: every line to the cent, however the summary above
+  // rounded it for scanning.
+  const format = (amount: number) => moneyExact(amount, currency, formats);
   const discounted = quote.discountAmount > 0;
   // The arithmetic is the same either way — the canonical quote engine. What changes
   // is the claim being made about it: a real guest total, or a worked example for a

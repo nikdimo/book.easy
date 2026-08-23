@@ -39,6 +39,22 @@ export interface ListingDraftData {
   minNights?: string;
   checkInTime?: string;
   checkOutTime?: string;
+  /**
+   * The structured house rules, as the draft can hold them: strings, because a draft
+   * holds whatever a half-finished form had in it.
+   *
+   * "" and absent both mean the host has not answered — publishing writes NULL for
+   * either, which is what keeps an unasked question distinguishable from an explicit
+   * "not allowed". See `lib/host/listing-house-rules-draft.ts`, which owns the
+   * conversion in both directions.
+   */
+  petPolicy?: string;
+  smokingPolicy?: string;
+  eventPolicy?: string;
+  quietHoursPolicy?: string;
+  quietHoursStart?: string;
+  quietHoursEnd?: string;
+  additionalRules?: string;
   promotionType?: string;
   promotionPercent?: string;
   promotionMinimumNights?: string;

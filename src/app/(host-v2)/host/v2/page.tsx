@@ -2,18 +2,26 @@ import Link from "next/link";
 import {
   ArrowRight,
   CalendarCheck,
-  CircleCheck,
   CircleAlert,
   CalendarDays,
   Sparkles,
   MessageCircle,
-  Plus,
 } from "lucide-react";
 import { requireHostPage } from "@/lib/auth-helpers";
 import { getHostAttentionSummary } from "@/lib/services/attention.service";
-import { getT, T, TWithValues } from "@/lib/i18n/t";
+import { hostCalendarHref } from "@/lib/host/v2/calendar-href";
+import { hostMessagesHref } from "@/lib/host/v2/messages-href";
+import { getT, T } from "@/lib/i18n/t";
 
 export const metadata = { title: "New Host Panel Preview" };
+
+/*
+ * One card style for the whole screen: white, a hairline of shadow for depth, and no
+ * fill. The tinted group this replaced put a grey plate behind rows that were already
+ * distinct, which read as a disabled state rather than as something to tap.
+ */
+const CARD =
+  "rounded-2xl bg-white shadow-[0_1px_2px_rgba(15,23,42,0.06),0_8px_20px_-12px_rgba(15,23,42,0.24)]";
 
 export default async function HostV2TodayPage() {
   const user = await requireHostPage();
@@ -29,45 +37,33 @@ export default async function HostV2TodayPage() {
     {
       label: t.resolve("host.v2.attention.booking_requests", "Booking requests"),
       value: attention.pendingBookings,
-      href: "/host/v2/reservations",
+      href: "/host/reservations",
       icon: CalendarCheck,
     },
     {
       label: t.resolve("host.v2.attention.unread_messages", "Unread messages"),
       value: attention.unreadThreads,
-      href: "/host/v2/messages",
+      href: hostMessagesHref(),
       icon: MessageCircle,
     },
     {
       label: t.resolve("host.v2.attention.damage_reports", "Damage reports"),
       value: attention.damageReports,
-      href: "/host/inbox",
+      // The newest open report's own thread when the host is in it — the V2 inbox
+      // renders damage reports inline in the timeline — and the inbox itself
+      // otherwise. Never the classic panel: that leaves the V2 shell behind.
+      href: hostMessagesHref(attention.damageReportConversationId),
       icon: CircleAlert,
     },
   ].filter((item) => item.value > 0);
-
-  const assistantUpdate = attention.pendingBookings > 0
-    ? t.resolve(
-        "host.v2.assistant.booking_request",
-        "Good news, {name} — a booking request is ready to review."
-      )
-    : attention.unreadThreads > 0
-      ? t.resolve(
-          "host.v2.assistant.unread_message",
-          "A guest is waiting to hear from you."
-        )
-      : attention.damageReports > 0
-        ? t.resolve(
-            "host.v2.assistant.damage_report",
-            "A guest report is ready for your review."
-          )
-        : t.resolve("host.v2.assistant.copy", "A quick update from your homes.");
 
   const caughtUpSuggestion =
     attention.firstActiveListing && attention.confirmedBookingCount === 0
       ? {
           icon: Sparkles,
-          href: `/host/listings/${attention.firstActiveListing.id}/promotion`,
+          // Promotions live inside the V2 calendar now, on the selected listing; the
+          // classic `/host/listings/<id>/promotion` page is the old panel.
+          href: hostCalendarHref(attention.firstActiveListing.id),
           title: t.resolve(
             "host.v2.assistant.promotion.title",
             "Want to attract your next booking?"
@@ -81,11 +77,11 @@ export default async function HostV2TodayPage() {
       : attention.upcomingStay
         ? {
             icon: CalendarDays,
-            href: `/host/listings/${attention.upcomingStay.listingId}/availability`,
-          title: t.resolve(
-            "host.v2.assistant.upcoming.title",
-            "Your next guest arrives on {date}."
-          ),
+            href: hostCalendarHref(attention.upcomingStay.listingId),
+            title: t.resolve(
+              "host.v2.assistant.upcoming.title",
+              "Your next guest arrives on {date}."
+            ),
             copy: t.resolve(
               "host.v2.assistant.upcoming.copy",
               "Everything is in place. We’ll let you know if anything changes."
@@ -95,113 +91,93 @@ export default async function HostV2TodayPage() {
         : null;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-7 md:space-y-10">
-      <section className="border-b border-slate-100 pb-6 sm:pb-8">
-        <div>
-          <h1 className="font-[family-name:var(--font-manrope)] text-3xl font-semibold tracking-tight md:text-4xl">
-            {t
-              .resolve("host.v2.today.greeting", "Welcome back, {name}")
-              .text.replace("{name}", firstName)}
-          </h1>
-        </div>
-      </section>
+    /*
+     * The shell hands a phone the full viewport with no header above it, so this centres
+     * itself in what is left rather than starting on the first pixel and leaving the
+     * bottom two thirds empty. `justify-center` with `flex-1`, not a fixed top pad, so a
+     * longer day (several attention rows) still grows downward and scrolls normally. The
+     * bottom pad is heavier than the top on purpose: a block centred by arithmetic sits
+     * low to the eye, and the extra pad below lifts it back to where it reads as centred.
+     *
+     * `px-3` is on top of the shell's own `px-5`, and only below `md`. A phone shows this
+     * page as a single column against the screen edges, where the shell's gutter alone
+     * leaves the greeting and the card looking pinned to the glass; on desktop the
+     * max-width already does the work and extra padding would only narrow the column.
+     *
+     * One narrow centred column, not the 1440px frame the calendar wants: a greeting and
+     * a card or two stretched across the full width sit off in the left third of a
+     * desktop screen with nothing balancing them.
+     */
+    <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center px-3 pb-24 pt-8 md:px-0 md:pb-20 md:pt-4">
+      <h1 className="font-heading text-[2rem] font-semibold leading-[1.1] tracking-[-0.035em] text-slate-950 md:text-[2.5rem]">
+        {t
+          .resolve("host.v2.today.greeting", "Welcome back, {name}")
+          .text.replace("{name}", firstName)}
+      </h1>
+      {/* When there is nothing to act on, the status is a subtitle to the greeting
+          rather than a card of its own — one thought, one block. A tick in a circle
+          on top of it was a third way of saying the same calm thing. */}
+      {attentionRows.length === 0 ? (
+        <p className="mt-3 text-base leading-7 text-slate-500">
+          <T
+            t={t}
+            k="host.v2.assistant.caught_up.copy"
+            source="Your guests and listings are in good shape. Enjoy the quiet moment."
+          />
+        </p>
+      ) : null}
 
-      <section aria-labelledby="host-attention-heading" className="max-w-4xl">
-        <div>
-          <h2 id="host-attention-heading" className="text-xl font-semibold tracking-tight">
-            <T t={t} k="host.v2.assistant.heading" source="Your host assistant" />
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            {assistantUpdate.text.replace("{name}", firstName)}
-          </p>
-        </div>
-
-        <div className="mt-5 overflow-hidden rounded-2xl bg-slate-50">
-          {attentionRows.length > 0 ? (
-            <div className="divide-y divide-white">
-              {attentionRows.map((item) => (
-                <Link
-                  key={item.href + item.label.text}
-                  href={item.href}
-                  className="group flex min-h-16 items-center gap-4 px-4 py-3 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#d9774f] md:px-5"
-                >
-                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-white text-slate-600">
-                    <item.icon className="size-5" aria-hidden />
-                  </span>
-                  <span className="min-w-0 flex-1 font-medium">{item.label.text}</span>
-                  <span className="rounded-full bg-white px-2.5 py-1 text-sm font-semibold tabular-nums text-slate-700">
-                    {item.value}
-                  </span>
-                  <ArrowRight
-                    className="size-4 text-slate-400 transition-transform group-hover:translate-x-0.5"
-                    aria-hidden
-                  />
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-4 px-4 py-5 md:px-5 md:py-6">
-              <div className="flex items-start gap-4">
-                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-white text-emerald-700">
-                  <CircleCheck className="size-5" aria-hidden />
+      <section aria-label={t.resolve("host.v2.assistant.heading", "Your host assistant").text} className="mt-12 space-y-3">
+        {attentionRows.length > 0 ? (
+          attentionRows.map((item) => (
+            <Link
+              key={item.href + item.label.text}
+              href={item.href}
+              className={`group flex min-h-16 items-center gap-4 px-4 py-3 transition-shadow hover:shadow-[0_2px_4px_rgba(15,23,42,0.08),0_12px_28px_-14px_rgba(15,23,42,0.32)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 md:px-5 ${CARD}`}
+            >
+              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-700">
+                <item.icon className="size-5" strokeWidth={1.5} aria-hidden />
+              </span>
+              <span className="min-w-0 flex-1 font-medium">{item.label.text}</span>
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-sm font-semibold tabular-nums text-slate-800">
+                {item.value}
+              </span>
+              <ArrowRight
+                className="size-4 text-slate-400 transition-transform group-hover:translate-x-0.5"
+                aria-hidden
+              />
+            </Link>
+          ))
+        ) : (
+          <>
+            {caughtUpSuggestion ? (
+              <Link
+                href={caughtUpSuggestion.href}
+                className={`group flex items-center gap-4 px-4 py-4 transition-shadow hover:shadow-[0_2px_4px_rgba(15,23,42,0.08),0_12px_28px_-14px_rgba(15,23,42,0.32)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 md:px-5 ${CARD}`}
+              >
+                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-900">
+                  <caughtUpSuggestion.icon className="size-5" strokeWidth={1.5} aria-hidden />
                 </span>
-                <div>
-                  <h2 className="font-semibold text-slate-800">
-                    <TWithValues
-                      t={t}
-                      k="host.v2.assistant.caught_up.title"
-                      source="You’re all caught up, {name}."
-                      values={{ name: firstName }}
-                      protectedValues={["name"]}
-                    />
-                  </h2>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">
-                    <T
-                      t={t}
-                      k="host.v2.assistant.caught_up.copy"
-                      source="Your guests and listings are in good shape. Enjoy the quiet moment."
-                    />
-                  </p>
-                </div>
-              </div>
-
-              {caughtUpSuggestion ? (
-                <Link
-                  href={caughtUpSuggestion.href}
-                  className="group flex items-center gap-3 rounded-xl bg-white px-3 py-3 transition-colors hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d9774f]"
-                >
-                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#fff2eb] text-[#a94b28]">
-                    <caughtUpSuggestion.icon className="size-4" aria-hidden />
+                <span className="min-w-0 flex-1">
+                  <span className="block font-semibold text-slate-900">
+                    {caughtUpSuggestion.title.text.replace("{date}", nextCheckInDate ?? "")}
                   </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium text-slate-800">
-                      {caughtUpSuggestion.title.text.replace("{date}", nextCheckInDate ?? "")}
-                    </span>
-                    <span className="mt-0.5 block text-sm text-slate-500">
-                      {caughtUpSuggestion.copy.text}
-                    </span>
+                  <span className="mt-1 block text-sm leading-6 text-slate-600">
+                    {caughtUpSuggestion.copy.text}
                   </span>
-                  <span className="hidden text-sm font-semibold text-[#a94b28] sm:inline">
-                    {caughtUpSuggestion.action.text}
-                  </span>
-                  <ArrowRight
-                    className="size-4 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5"
-                    aria-hidden
-                  />
-                </Link>
-              ) : null}
-            </div>
-          )}
-        </div>
+                </span>
+                <span className="hidden text-sm font-semibold text-slate-900 sm:inline">
+                  {caughtUpSuggestion.action.text}
+                </span>
+                <ArrowRight
+                  className="size-4 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5"
+                  aria-hidden
+                />
+              </Link>
+            ) : null}
+          </>
+        )}
       </section>
-
-      <Link
-        href="/host/listings/new"
-        className="fixed bottom-20 right-5 z-30 inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#fde7dc] px-5 text-sm font-semibold text-[#8f3d21] shadow-sm transition-colors hover:bg-[#f9d7c6] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d9774f] md:bottom-8 md:right-8"
-      >
-        <Plus className="size-4" aria-hidden />
-        <T t={t} k="host.v2.today.add_listing" source="Add listing" />
-      </Link>
     </div>
   );
 }

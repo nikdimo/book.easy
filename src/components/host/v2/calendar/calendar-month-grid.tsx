@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useMemo } from "react";
+import { BASE_CURRENCY } from "@/lib/currency/currency-preference";
 import { addDays, format, startOfWeek } from "date-fns";
 import { Lock } from "lucide-react";
 import {
@@ -49,8 +50,8 @@ const CELL_SHAPE = "border";
  * the stay carries where it came from — visible when it is wanted, silent when it is
  * not.
  */
-const OCCUPIED_FILL = "#e6f1fb";
-const OCCUPIED_EDGE = "#b5d4f4";
+const OCCUPIED_FILL = "#cfe4f8";
+const OCCUPIED_EDGE = "#7fb2e4";
 
 /**
  * Fill and edge per state.
@@ -67,26 +68,33 @@ const OCCUPIED_EDGE = "#b5d4f4";
 function cellStyle(
   day: HostCalendarDay,
   selected: boolean,
-): { background: string; borderColor: string } {
+): { background: string; borderColor: string; boxShadow?: string } {
   const borderColor =
     day.state === "booked" || day.reason === "external"
       ? OCCUPIED_EDGE
       : day.state === "open_not_bookable"
-        ? "#f0e0b6"
+        ? "#e2bd6a"
         : day.state === "past"
-          ? "#f2f4f6"
+          ? "#eaeef1"
           : day.state === "blocked"
             ? day.reason === "closed_default"
-              ? "#eef1f4"
-              : "#e6e9ec"
-            : "#e2e6ea";
+              ? "#dfe5ec"
+              : "#c6d0da"
+            : "#d5dbe1";
+
+  // The one mark that survives every fill underneath it. Selection cannot be a colour
+  // here: blue is booked, amber is open-but-not-bookable and the greys are blocked, so
+  // any hue strong enough to see would be claiming one of those meanings. A dark ring
+  // is not in the state vocabulary at all, and it is the only treatment that shows on
+  // a booked night — where the fill has to stay blue, and so has nothing left to say.
+  const ring = selected ? { boxShadow: "inset 0 0 0 2px #0f172a" } : {};
 
   if (day.state === "booked" || day.reason === "external") {
-    return { background: OCCUPIED_FILL, borderColor };
+    return { background: OCCUPIED_FILL, borderColor, ...ring };
   }
   // Warmed rather than replaced. A blocked night in the middle of a selected run has to
   // go on looking blocked — it is the case the two-button editor beside the grid is for
-  // — so the peach is laid over the grey instead of erasing it, and the struck-through
+  // — so the tint is laid over the grey instead of erasing it, and the struck-through
   // date carries on saying what the night is.
   if (day.state === "blocked") {
     /**
@@ -96,15 +104,15 @@ function cellStyle(
      * that has not been opened yet.
      */
     if (day.reason === "closed_default") {
-      return { background: selected ? "#f4ece7" : "#fafbfc", borderColor };
+      return { background: selected ? "#e6ecf2" : "#f2f5f8", borderColor, ...ring };
     }
-    return { background: selected ? "#efe0d6" : "#f2f4f6", borderColor };
+    return { background: selected ? "#d3dae1" : "#e2e7ec", borderColor, ...ring };
   }
   if (day.state === "open_not_bookable") {
-    return { background: selected ? "#fbe8c4" : "#fdf8ec", borderColor };
+    return { background: selected ? "#f7dfa8" : "#fcecc9", borderColor, ...ring };
   }
   if (day.state === "past") return { background: "#fbfcfc", borderColor };
-  return { background: selected ? "#ffe2cd" : "#ffffff", borderColor };
+  return { background: selected ? "#dbe3ec" : "#ffffff", borderColor, ...ring };
 }
 
 /**
@@ -176,7 +184,7 @@ function CalendarMonthGridImpl({
   onMoveFocus,
 }: CalendarMonthGridProps) {
   const i18n = useI18n();
-  const currency = listing.pricing?.currency ?? "EUR";
+  const currency = listing.pricing?.currency ?? BASE_CURRENCY;
 
   const cells = useMemo(() => {
     const first = ymdToLocalDate(month);
@@ -261,7 +269,7 @@ function CalendarMonthGridImpl({
         const priceText =
           day.price !== null ? money(day.price, currency, formats) : null;
         const promotionCount = index.promotionCountByDate.get(date) ?? 0;
-        const { background, borderColor } = cellStyle(day, selected);
+        const { background, borderColor, boxShadow } = cellStyle(day, selected);
         const occupied = day.state === "booked" || day.reason === "external";
         /**
          * Drawn on the first and last night only. Repeating it down a two-week stay
@@ -325,13 +333,13 @@ function CalendarMonthGridImpl({
             className={cn(
               CELL_SHAPE,
               "relative flex min-h-14 scroll-mt-[4.25rem] flex-col items-start justify-between p-1.5 text-left transition-transform md:min-h-[4.75rem] md:scroll-mt-2 md:p-2",
-              "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]",
+              "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]",
               disabled ? "cursor-default" : "hover:-translate-y-px",
             )}
-            // Selection is a fill and nothing else. It was briefly a coral edge as well,
-            // which put a second, louder line around a handful of cells on a grid whose
-            // whole edge treatment is one quiet hairline.
-            style={{ background, borderColor, borderRadius: cellRadius(stay) }}
+            // Selection is a ring drawn inside the cell, over whatever fill the state
+            // already put there. Drawn inside rather than outside so a run of selected
+            // nights does not grow by two pixels and shove its neighbours around.
+            style={{ background, borderColor, boxShadow, borderRadius: cellRadius(stay) }}
           >
 
             <span className="relative flex w-full items-start justify-between gap-1">
@@ -345,8 +353,8 @@ function CalendarMonthGridImpl({
                       ? "text-slate-300"
                       : day.state === "blocked"
                         ? day.reason === "closed_default"
-                          ? "text-slate-300"
-                          : "text-slate-400"
+                          ? "text-slate-400"
+                          : "text-slate-500"
                         : "text-slate-900",
                 )}
               >
@@ -358,7 +366,7 @@ function CalendarMonthGridImpl({
                   aria-hidden
                   className={cn(
                     "rounded-full px-1 py-0.5 text-[0.5625rem] font-semibold leading-none tabular-nums",
-                    "bg-[#fde7dc] text-[#8f3d21]",
+                    "bg-[#f1f5f9] text-[#0f172a]",
                   )}
                 >
                   {promotionCount === 1 ? "%" : `% ${promotionCount}`}
@@ -416,7 +424,7 @@ function CalendarMonthGridImpl({
                       : day.state === "blocked"
                         ? "text-slate-300"
                         : day.customPrice
-                          ? "font-medium text-[#a94b28]"
+                          ? "font-medium text-[#0f172a]"
                           : "text-slate-500",
                   )}
                 >

@@ -467,7 +467,7 @@ export function InboxThread({
         <header className="flex shrink-0 items-center gap-2 px-4 py-3.5 md:px-5">
           {/* The way back on a phone, where the list is not on screen. */}
           <Link
-            href="/host/v2/messages"
+            href="/host/messages"
             aria-label={resolve("host.v2.messages.back", "Back to messages").text}
             className={cn(
               "-ml-1 grid size-9 shrink-0 place-items-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-950 lg:hidden",
@@ -494,7 +494,7 @@ export function InboxThread({
           </div>
 
           {supportJoined ? (
-            <span className="hidden items-center gap-1 rounded-full bg-[#fde7dc] px-2.5 py-1 text-xs font-medium text-[#8f3d21] sm:inline-flex">
+            <span className="hidden items-center gap-1 rounded-full bg-[#f1f5f9] px-2.5 py-1 text-xs font-medium text-[#0f172a] sm:inline-flex">
               <Headphones className="size-3.5" aria-hidden />
               <Tx k="conversation.support" source="Support" />
             </span>
@@ -862,7 +862,7 @@ function MessageBubble({
             mine
               ? "bg-slate-900 text-white"
               : support
-                ? "bg-[#fde7dc] text-[#5c2812]"
+                ? "bg-[#f1f5f9] text-[#0f172a]"
                 : "bg-slate-100 text-slate-900",
             message.deliveryState === "failed" && "opacity-70 ring-1 ring-red-400"
           )}

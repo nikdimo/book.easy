@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import { ConfirmDialog } from "@/components/host/v2/listings/confirm-dialog";
@@ -33,6 +34,7 @@ export function ListingVisibilitySwitch({
 }) {
   const [isPending, startTransition] = useTransition();
   const [confirming, setConfirming] = useState(false);
+  const router = useRouter();
   const { resolve } = useI18n();
   const isPublished = status === "APPROVED";
 
@@ -40,10 +42,12 @@ export function ListingVisibilitySwitch({
     startTransition(async () => {
       const result = await submitForReview(listingId);
       if (result?.error) toast.error(result.error);
-      else
+      else {
         toast.success(
           resolve("host.visibility.live_success", "Listing is live on the site").text
         );
+        router.refresh();
+      }
     });
   }
 
@@ -56,6 +60,7 @@ export function ListingVisibilitySwitch({
         toast.success(
           resolve("host.visibility.hidden_success", "Listing hidden from the site").text
         );
+        router.refresh();
       }
     });
   }

@@ -11,8 +11,10 @@ type MapsListener = { remove(): void };
 type StreetViewPanorama = {
   getPano(): string;
   getPov(): StreetViewPov;
+  getZoom(): number;
   setPano(pano: string): void;
   setPov(pov: StreetViewPov): void;
+  setZoom(zoom: number): void;
   addListener(
     event: "pano_changed" | "pov_changed",
     handler: () => void
@@ -30,6 +32,14 @@ type MapsApi = {
       visible: boolean;
       addressControl?: boolean;
       fullscreenControl?: boolean;
+      /** Google's own wheel-to-zoom. Turned off for `cooperative`, where a wheel
+       *  handler below zooms only while ⌘/Ctrl is held. */
+      scrollwheel?: boolean;
+      /** The on-street arrows that walk the camera to the next panorama. */
+      linksControl?: boolean;
+      panControl?: boolean;
+      zoomControl?: boolean;
+      clickToGo?: boolean;
     }
   ) => StreetViewPanorama;
   StreetViewService: new () => {
@@ -57,6 +67,7 @@ export function StreetViewPicker({
   compact = false,
   readOnly = false,
   fill = false,
+  gestureHandling = "greedy",
 }: {
   latitude: number;
   longitude: number;
@@ -65,12 +76,19 @@ export function StreetViewPicker({
   compact?: boolean;
   readOnly?: boolean;
   fill?: boolean;
+  /** "greedy" leaves Google's wheel-to-zoom on. "cooperative" gives the wheel back to
+   *  the page and zooms only while ⌘/Ctrl is held — which is also what a trackpad pinch
+   *  sends — so scrolling past a panorama embedded in a form no longer zooms it. */
+  gestureHandling?: "greedy" | "cooperative";
 }) {
   const key =
     process.env.NEXT_PUBLIC_GOOGLE_MAPS_JAVASCRIPT_API_KEY?.trim();
   const containerRef = React.useRef<HTMLDivElement>(null);
   const panoramaRef = React.useRef<StreetViewPanorama | null>(null);
   const listenersRef = React.useRef<MapsListener[]>([]);
+  /** Detaches the cooperative wheel handler, which is a plain DOM listener rather than
+   *  one of Google's and so is not covered by `listenersRef`. */
+  const wheelCleanupRef = React.useRef<(() => void) | null>(null);
   const onUseViewRef = React.useRef(onUseView);
   const initialSelectionRef = React.useRef(initialSelection);
   const [maps, setMaps] = React.useState<MapsApi | null>(null);
@@ -142,6 +160,7 @@ export function StreetViewPicker({
         return;
       }
 
+      const cooperative = gestureHandling === "cooperative";
       panoramaRef.current = new maps.StreetViewPanorama(
         containerRef.current!,
         {
@@ -155,8 +174,33 @@ export function StreetViewPicker({
           visible: true,
           addressControl: false,
           fullscreenControl: true,
+          // The controls that make this a real Street View rather than a still: the
+          // on-street arrows and click-to-go walk the camera along the road, so a host
+          // can step to the corner the guest will actually approach from.
+          linksControl: true,
+          clickToGo: true,
+          panControl: true,
+          zoomControl: true,
+          scrollwheel: !cooperative,
         }
       );
+      if (cooperative && containerRef.current) {
+        const element = containerRef.current;
+        const handleWheel = (event: WheelEvent) => {
+          const panorama = panoramaRef.current;
+          if (!panorama) return;
+          // A trackpad pinch arrives as a wheel event with ctrlKey set, so pinching
+          // zooms and two-finger scrolling still scrolls the page past the panorama.
+          if (!event.ctrlKey && !event.metaKey) return;
+          event.preventDefault();
+          const next = panorama.getZoom() - event.deltaY * 0.01;
+          panorama.setZoom(Math.min(5, Math.max(0, next)));
+        };
+        element.addEventListener("wheel", handleWheel, { passive: false });
+        wheelCleanupRef.current = () =>
+          element.removeEventListener("wheel", handleWheel);
+      }
+
       const syncSelection = () => {
         const panorama = panoramaRef.current;
         if (!panorama || readOnly) return;
@@ -187,9 +231,11 @@ export function StreetViewPicker({
       cancelled = true;
       for (const listener of listenersRef.current) listener.remove();
       listenersRef.current = [];
+      wheelCleanupRef.current?.();
+      wheelCleanupRef.current = null;
       panoramaRef.current = null;
     };
-  }, [latitude, longitude, maps, readOnly]);
+  }, [gestureHandling, latitude, longitude, maps, readOnly]);
 
   if (!key) {
     return (

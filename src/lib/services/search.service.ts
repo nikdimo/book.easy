@@ -5,7 +5,11 @@ import { ListingStatus, Prisma } from "@prisma/client";
 import { ITEMS_PER_PAGE } from "@/lib/constants";
 import { sortPropertyTypesInDisplayOrder } from "@/lib/property-type-filter";
 import { getActivePropertyTypes } from "@/lib/services/property-type.service";
-import { getAmenityCatalog } from "@/lib/services/amenity.service";
+import { getAmenityCatalogWithPetsFilter } from "@/lib/services/amenity.service";
+import {
+  PETS_ALLOWED_AMENITY_NAME,
+  isPetsAllowedFilter,
+} from "@/lib/amenities/pets";
 import {
   serializeListingCard,
   listingCardSelect,
@@ -123,10 +127,23 @@ function buildListingWhere(filters: SearchFilters): Prisma.ListingWhereInput {
     // Must have ALL selected amenities (US-05.05 / phase-1-scope.md technical
     // acceptance criteria), not just any one of them — one `some` clause per amenity,
     // ANDed together.
+    //
+    // "Pets allowed" is the exception, and deliberately still a filter token rather than
+    // a filter of its own: guests have bookmarked and shared `?amenities=Pets+allowed`,
+    // and the panel is where they look for it. What changed underneath is where the
+    // answer is read from — `Listing.petPolicy`, since the amenity that used to carry it
+    // was migrated into that column and its join rows deleted. A join clause here would
+    // now match nothing at all.
+    //
+    // ASK_HOST does not match. A guest filtering for "pets allowed" is looking for a
+    // place they can bring a pet to, not one where they may ask; returning maybes as
+    // matches is how a filter stops meaning anything.
     andClauses.push(
-      ...filters.amenities.map((name) => ({
-        amenities: { some: { amenity: { name } } },
-      }))
+      ...filters.amenities.map((name) =>
+        isPetsAllowedFilter(name)
+          ? { petPolicy: "ALLOWED" as const }
+          : { amenities: { some: { amenity: { name } } } }
+      )
     );
   }
 
@@ -341,7 +358,11 @@ export const countApprovedListings = unstable_cache(
  * was being fetched fresh per search. Delegating keeps a single cached copy rather
  * than adding a second cache entry for the same rows. */
 export async function getAvailableAmenities() {
-  return getAmenityCatalog();
+  // The guest filter panel, not a host picker — so it carries the deactivated pets row
+  // as well. Deactivating that row is what removed pets from the host's amenity list
+  // once the policy column took over; leaving the guest filter to inherit that would
+  // have quietly deleted a filter guests use, for a rule the listings still have.
+  return getAmenityCatalogWithPetsFilter();
 }
 
 export async function getAvailableAmenityNames(filters: SearchFilters) {
@@ -353,13 +374,31 @@ export async function getAvailableAmenityNames(filters: SearchFilters) {
 
   // Ask the DB for distinct amenity names directly instead of fetching every matching
   // listing's full amenity list and deduping in Node.
-  const rows = await db.amenity.findMany({
-    where: { listings: { some: { listing: where } } },
-    select: { name: true },
-    orderBy: { name: "asc" },
-  });
+  const [rows, petsAllowed] = await Promise.all([
+    db.amenity.findMany({
+      where: { listings: { some: { listing: where } } },
+      select: { name: true },
+      orderBy: { name: "asc" },
+    }),
+    // The pets token has no amenity rows behind it any more, so its availability is a
+    // question about the policy column. Asked separately rather than inferred, so the
+    // chip is greyed out for exactly the same reason as every other one: nothing in this
+    // result set has it.
+    db.listing.count({ where: { ...where, petPolicy: "ALLOWED" }, take: 1 }),
+  ]);
 
-  return rows.map((r) => r.name);
+  return withPetsAllowed(
+    rows.map((r) => r.name),
+    petsAllowed > 0
+  );
+}
+
+/** Adds the pets token to an available-amenity list when some matching listing allows
+ *  pets. Sorted back into place so the filter panel's ordering is unchanged by where the
+ *  answer came from. */
+function withPetsAllowed(names: string[], allowed: boolean): string[] {
+  if (!allowed || names.includes(PETS_ALLOWED_AMENITY_NAME)) return names;
+  return [...names, PETS_ALLOWED_AMENITY_NAME].sort((a, b) => a.localeCompare(b));
 }
 
 export async function getAvailablePropertyTypes(filters: SearchFilters) {
@@ -400,7 +439,7 @@ export async function getSearchFilterPreview(
     bedrooms: undefined,
   });
 
-  const [totalCount, propertyTypeRows, amenityRows, bedroomStats] =
+  const [totalCount, propertyTypeRows, amenityRows, petsAllowedCount, bedroomStats] =
     await Promise.all([
       db.listing.count({ where: totalWhere }),
       db.property.groupBy({
@@ -412,6 +451,9 @@ export async function getSearchFilterPreview(
         select: { name: true },
         orderBy: { name: "asc" },
       }),
+      // See `getAvailableAmenityNames`: the pets chip is backed by a column now, so its
+      // availability is counted rather than joined.
+      db.listing.count({ where: { ...amenitiesWhere, petPolicy: "ALLOWED" }, take: 1 }),
       db.listing.aggregate({
         where: bedroomsWhere,
         _max: {
@@ -425,7 +467,10 @@ export async function getSearchFilterPreview(
     availablePropertyTypes: await collectAvailablePropertyTypes(
       propertyTypeRows.map((r) => r.propertyType)
     ),
-    availableAmenities: amenityRows.map((r) => r.name),
+    availableAmenities: withPetsAllowed(
+      amenityRows.map((r) => r.name),
+      petsAllowedCount > 0
+    ),
     maxBedrooms: bedroomStats._max.bedrooms ?? 0,
   };
 }

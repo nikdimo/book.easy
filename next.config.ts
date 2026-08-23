@@ -44,6 +44,75 @@ const securityHeaders = [
     : []),
 ];
 
+/*
+ * `/host` is the one public URL for the host product. The implementation still lives
+ * under `/host/v2` internally so the retired route files can remain in the tree during
+ * the migration, but before-files rewrites make the new panel win over those files while
+ * keeping the clean URL in the browser.
+ *
+ * Redirects preserve old bookmarks and sent links. They are temporary (307), so this
+ * migration is never cached forever by a browser. `/admin` is intentionally absent: it
+ * is the separate staff moderation product, not the host panel.
+ */
+type RedirectRule = Awaited<ReturnType<NonNullable<NextConfig["redirects"]>>>[number];
+type RewriteRule = { source: string; destination: string };
+
+export const hostV1Redirects: RedirectRule[] = [
+  // The temporary implementation URL is no longer public branding.
+  { source: "/host/v2", destination: "/host", permanent: false },
+  { source: "/host/v2/:path*", destination: "/host/:path*", permanent: false },
+  { source: "/host/mobile", destination: "/host", permanent: false },
+
+  // Listing creation. The classic wizard carried its draft in `?draft=`; `/host/start/resume`
+  // is the V2 route that reopens an owned draft at the step it stopped on, and it verifies
+  // ownership itself. Ordered before the `:id` rules below, which would otherwise treat
+  // "new" as a listing id.
+  {
+    source: "/host/listings/new",
+    has: [{ type: "query", key: "draft" }],
+    destination: "/host/start/resume",
+    permanent: false,
+  },
+  { source: "/host/listings/new", destination: "/host/start/new", permanent: false },
+
+  { source: "/host/listings/:id/edit", destination: "/host/listings/:id", permanent: false },
+  // The new panel has no standalone promotion page: promotions are a calendar lens, opened
+  // on one listing via `?listing=`. An id that is not this host's simply is not in the
+  // calendar payload, so the parameter grants nothing.
+  {
+    source: "/host/listings/:id/promotion",
+    destination: "/host/calendar?listing=:id",
+    permanent: false,
+  },
+
+  // Classic terminology remains compatible with the new navigation labels.
+  { source: "/host/bookings", destination: "/host/reservations", permanent: false },
+  {
+    source: "/host/bookings/:id",
+    destination: "/host/reservations/:id",
+    permanent: false,
+  },
+
+  { source: "/host/inbox", destination: "/host/messages", permanent: false },
+  { source: "/host/inbox/:id", destination: "/host/messages/:id", permanent: false },
+];
+
+/** Clean public Host URLs mapped to the already-proven new-panel route files. */
+export const hostCanonicalRewrites: RewriteRule[] = [
+  { source: "/host", destination: "/host/v2" },
+  { source: "/host/calendar", destination: "/host/v2/calendar" },
+  { source: "/host/listings", destination: "/host/v2/listings" },
+  { source: "/host/listings/:id", destination: "/host/v2/listings/:id" },
+  {
+    source: "/host/listings/:id/:section",
+    destination: "/host/v2/listings/:id/:section",
+  },
+  { source: "/host/reservations", destination: "/host/v2/reservations" },
+  { source: "/host/reservations/:id", destination: "/host/v2/reservations/:id" },
+  { source: "/host/messages", destination: "/host/v2/messages" },
+  { source: "/host/messages/:id", destination: "/host/v2/messages/:id" },
+];
+
 const nextConfig: NextConfig = {
   // Production deploys build into a staging directory, then atomically promote it
   // to .next only after every build check succeeds. `next start` does not set the
@@ -57,6 +126,12 @@ const nextConfig: NextConfig = {
         headers: securityHeaders,
       },
     ];
+  },
+  async redirects() {
+    return hostV1Redirects;
+  },
+  async rewrites() {
+    return { beforeFiles: hostCanonicalRewrites };
   },
   // Prefer project lockfile over a parent directory lockfile (e.g. user home).
   outputFileTracingRoot: path.join(process.cwd()),

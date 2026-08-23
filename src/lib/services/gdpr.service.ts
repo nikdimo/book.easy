@@ -1,4 +1,6 @@
 import { db } from '@/lib/db';
+import { enqueueUserDraftUploads } from '@/lib/listing-draft-cleanup';
+import { processPendingUploadDeletions, sweepUploads } from '@/lib/storage/upload-cleanup';
 
 export interface UserDataExport {
   account: {
@@ -260,6 +262,8 @@ export async function deleteUserAccount(userId: string): Promise<{
   anonymizedRecords: Record<string, number>;
 }> {
   const deletedRecords: Record<string, number> = {};
+  // Filled inside the transaction, swept after it commits.
+  let queuedUploads: string[] = [];
   const anonymizedRecords: Record<string, number> = {};
 
   try {
@@ -412,12 +416,28 @@ export async function deleteUserAccount(userId: string): Promise<{
       });
       deletedRecords['accounts'] = accountsDeleted.count;
 
-      // 10. Finally delete the user account
+      // 10. Record the uploads the account's listing drafts are about to strand.
+      // `ListingDraft.host` is `onDelete: Cascade`, so those rows disappear with the user
+      // without any draft-delete path running. Queued inside this transaction, so a
+      // deletion that rolls back queues nothing — and a crash after the commit still
+      // leaves the files discoverable. Nothing is unlinked here: the reference sweep runs
+      // per file afterwards, so a photo also held by a published listing, another host's
+      // draft, an avatar or a case attachment survives.
+      queuedUploads = await enqueueUserDraftUploads(tx, userId);
+
+      // 11. Finally delete the user account
       await tx.user.delete({
         where: { id: userId },
       });
       deletedRecords['user'] = 1;
     });
+
+    // After the commit, never inside it: unlinking a file cannot be rolled back, and a
+    // failure here must not undo an erasure the user is legally owed.
+    if (queuedUploads.length > 0) {
+      const cleanup = await sweepUploads(queuedUploads, `account-deletion:${userId}`);
+      deletedRecords['draftUploads'] = cleanup.deleted;
+    }
 
     return {
       success: true,
@@ -517,6 +537,15 @@ export async function runDataRetentionCleanup(): Promise<{
         deletedRecords['deactivatedInactiveUsers'] = inactiveUsers.length;
       }
     });
+
+    // Outside the transaction, and last: unlinking a file cannot be rolled back. This is
+    // the retry the cleanup outbox depends on — anything a crash or a locked file left
+    // queued gets another attempt on every nightly run, and the sweep is idempotent, so
+    // running it repeatedly can only converge.
+    const uploads = await processPendingUploadDeletions();
+    deletedRecords['pendingUploadsDeleted'] = uploads.deleted;
+    deletedRecords['pendingUploadsKept'] = uploads.kept;
+    deletedRecords['pendingUploadsStillQueued'] = uploads.failed;
 
     return {
       deletedRecords,

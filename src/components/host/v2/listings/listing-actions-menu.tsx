@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Archive,
   ArchiveRestore,
@@ -38,6 +39,14 @@ import { interpolate, useI18n } from "@/lib/i18n/client";
 
 type Pending = "archive" | "delete" | null;
 
+/**
+ * Where the unlabelled "Edit" goes: the V2 editor, the same place the row click opens.
+ * The classic editor is still reachable, but only from the item that says so by name.
+ */
+export function listingEditHref(listingId: string) {
+  return `/host/listings/${listingId}`;
+}
+
 export function ListingActionsMenu({
   listingId,
   slug,
@@ -53,6 +62,7 @@ export function ListingActionsMenu({
 }) {
   const [isPending, startTransition] = useTransition();
   const [confirming, setConfirming] = useState<Pending>(null);
+  const router = useRouter();
   const { resolve } = useI18n();
 
   const isArchived = status === "ARCHIVED";
@@ -74,6 +84,7 @@ export function ListingActionsMenu({
               ).text
             : resolve("host.archive_listing.archived", "Listing archived").text
         );
+        router.refresh();
       }
     });
   }
@@ -94,6 +105,7 @@ export function ListingActionsMenu({
               ).text
             : resolve("host.delete_listing.deleted", "Listing deleted").text
         );
+        router.refresh();
       }
     });
   }
@@ -115,7 +127,7 @@ export function ListingActionsMenu({
             }).text
           }
           disabled={isPending}
-          className={`relative z-10 grid size-9 shrink-0 place-items-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d9774f] disabled:opacity-50 ${className ?? ""}`}
+          className={`relative z-10 grid size-9 shrink-0 place-items-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a] disabled:opacity-50 ${className ?? ""}`}
           onClick={(event) => event.stopPropagation()}
         >
           {isPending ? (
@@ -130,7 +142,7 @@ export function ListingActionsMenu({
           onClick={(event) => event.stopPropagation()}
         >
           <DropdownMenuItem asChild>
-            <Link href={`/host/listings/${listingId}/edit`}>
+            <Link href={listingEditHref(listingId)}>
               <Pencil className="size-4" aria-hidden />
               {resolve("host.workspace.edit", "Edit").text}
             </Link>

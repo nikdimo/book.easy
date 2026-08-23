@@ -3,8 +3,16 @@
 import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { CalendarDays, ImageIcon, LayoutGrid, List, Plus } from "lucide-react";
+import { CalendarDays, ImageIcon, LayoutGrid, List } from "lucide-react";
+import {
+  AddListingActions,
+  AddListingMenu,
+} from "@/components/host/v2/listings/add-listing-menu";
 import { ListingActionsMenu } from "@/components/host/v2/listings/listing-actions-menu";
+import {
+  ListingModerationNotice,
+  isModerationBlocked,
+} from "@/components/host/v2/listings/listing-moderation-notice";
 import { DeleteDraftControl } from "@/components/host/v2/listings/delete-draft-control";
 import {
   ListingVisibilitySwitch,
@@ -146,7 +154,7 @@ export function ListingOverview({
             onChange={(event) => setQuery(event.target.value)}
             placeholder={searchLabel}
             aria-label={searchLabel}
-            className="h-10 w-full max-w-sm rounded-full border border-slate-200 px-4 text-sm outline-none transition-colors placeholder:text-slate-400 focus-visible:border-[#d9774f]"
+            className="h-10 w-full max-w-sm rounded-full border border-slate-200 px-4 text-sm outline-none transition-colors placeholder:text-slate-400 focus-visible:border-[#0f172a]"
           />
         ) : (
           <span className="flex-1" />
@@ -167,14 +175,9 @@ export function ListingOverview({
             <LayoutGrid className="size-5" aria-hidden />
           </ViewButton>
           <span className="mx-2 h-5 w-px bg-slate-200" aria-hidden />
-          <Link
-            href="/host/listings/new"
-            aria-label={resolve("host.v2.listings.new", "New listing").text}
-            title={resolve("host.v2.listings.new", "New listing").text}
-            className="grid size-9 place-items-center rounded-full bg-[#fde7dc] text-[#8f3d21] transition-colors hover:bg-[#f9d7c6] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d9774f]"
-          >
-            <Plus className="size-4" aria-hidden />
-          </Link>
+          {/* Two ways to start, both reachable from the row of controls that is present
+              in every view — see add-listing-menu.tsx. */}
+          <AddListingMenu />
         </div>
       </div>
 
@@ -212,24 +215,44 @@ export function ListingOverview({
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
-              {visible.map((listing) => (
-                <ListingTile
-                  key={listing.id}
-                  listing={listing}
-                  state={resolveListingState(listing)}
-                  label={label}
-                  statusLabel={statusLabels[listing.status] ?? listing.status}
-                />
-              ))}
-            </div>
+            visible.length === 0 ? (
+              // The list view has always had this line; the grid rendered an empty block
+              // instead, so a search with no hits looked like a broken page. A host whose
+              // only work in progress is a draft gets told where drafts live rather than
+              // that nothing matched a search they did not run.
+              <p className="px-2 py-12 text-center text-sm text-slate-500">
+                {searching ? (
+                  <Tx
+                    k="host.v2.listings.no_matches"
+                    source="No listings match your search."
+                  />
+                ) : (
+                  <Tx
+                    k="host.v2.listings.drafts_in_list"
+                    source="Your unfinished drafts appear in list view."
+                  />
+                )}
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+                {visible.map((listing) => (
+                  <ListingTile
+                    key={listing.id}
+                    listing={listing}
+                    state={resolveListingState(listing)}
+                    label={label}
+                    statusLabel={statusLabels[listing.status] ?? listing.status}
+                  />
+                ))}
+              </div>
+            )
           )}
 
           {archived.length > 0 && (
             <button
               type="button"
               onClick={() => setShowArchived((current) => !current)}
-              className="rounded-full px-1 text-sm font-medium text-slate-500 underline-offset-4 transition-colors hover:text-slate-900 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d9774f]"
+              className="rounded-full px-1 text-sm font-medium text-slate-500 underline-offset-4 transition-colors hover:text-slate-900 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]"
             >
               {
                 interpolate(
@@ -268,7 +291,7 @@ function ViewButton({
       aria-label={label}
       title={label}
       aria-pressed={active}
-      className={`grid size-9 place-items-center rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d9774f] ${
+      className={`grid size-9 place-items-center rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a] ${
         active ? "bg-slate-100 text-slate-900" : "text-slate-500 hover:bg-slate-50"
       }`}
     >
@@ -308,11 +331,11 @@ function CalendarButton({ listingId, title }: { listingId: string; title: string
       // calendar is one workspace over every property, and a path per listing would
       // make it look like a different page each time. An id the payload does not
       // contain is ignored there, so a stale link opens the default property.
-      href={`/host/v2/calendar?listing=${encodeURIComponent(listingId)}`}
+      href={`/host/calendar?listing=${encodeURIComponent(listingId)}`}
       aria-label={label}
       title={label}
       onClick={(event) => event.stopPropagation()}
-      className="relative z-10 grid size-9 shrink-0 place-items-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d9774f]"
+      className="relative z-10 grid size-9 shrink-0 place-items-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]"
     >
       <CalendarDays className="size-4" aria-hidden />
     </Link>
@@ -347,14 +370,27 @@ function ListingRow({
   statusLabel: string;
 }) {
   const line = label(state);
+  // The moderator's own words replace the state line when the state was only going to
+  // say "rejected — open the listing to see why". A rejected listing whose calendar is
+  // also broken keeps its sync line and gains the note below it, so neither fact hides
+  // the other.
+  const blocked = isModerationBlocked(listing.status);
+  const restatesBlock = state.code === "REJECTED" || state.code === "SUSPENDED";
   return (
-    <div className="group relative flex min-h-20 items-center gap-4 rounded-xl px-3 transition-colors hover:bg-slate-50">
-      <Thumb url={listing.imageUrl} className="h-14 w-20" />
+    <div
+      className={`group relative flex min-h-20 gap-4 rounded-xl px-3 transition-colors hover:bg-slate-50 ${
+        blocked ? "items-start py-1" : "items-center"
+      }`}
+    >
+      <Thumb
+        url={listing.imageUrl}
+        className={`h-14 w-20 ${blocked ? "mt-4" : ""}`}
+      />
       <div className="min-w-0 flex-1 py-3">
         {/* The link spans the row via `after:absolute`, so the whole row opens the editor
             while the controls stacked above it keep their own hit areas. */}
         <Link
-          href={`/host/v2/listings/${listing.id}`}
+          href={`/host/listings/${listing.id}`}
           className="after:absolute after:inset-0 focus-visible:outline-none"
         >
           <span
@@ -365,15 +401,27 @@ function ListingRow({
             {listing.title}
           </span>
         </Link>
-        <span
-          className={`mt-0.5 block truncate text-sm ${line.className}`}
-          translate={line.translated ? "no" : undefined}
-        >
-          {line.text}
-        </span>
+        {blocked && restatesBlock ? null : (
+          <span
+            className={`mt-0.5 block truncate text-sm ${line.className}`}
+            translate={line.translated ? "no" : undefined}
+          >
+            {line.text}
+          </span>
+        )}
+        {blocked && (
+          <ListingModerationNotice
+            status={listing.status}
+            note={listing.moderationNote}
+          />
+        )}
       </div>
 
-      <div className="hidden sm:block">
+      {/* `relative z-10`, like every other control in this row: the row's link covers
+          the whole row with an `after:absolute` overlay, and an unpositioned control
+          sits underneath it — so clicking the switch opened the editor instead of
+          listing or unlisting. */}
+      <div className="relative z-10 hidden sm:block">
         {isVisibilitySwitchable(listing.status) ? (
           <ListingVisibilitySwitch
             listingId={listing.id}
@@ -414,7 +462,7 @@ function DraftRow({ draft }: { draft: DraftItem }) {
       </div>
       <div className="min-w-0 flex-1 py-3">
         <Link
-          href={`/host/listings/new?draft=${draft.id}`}
+          href={`/host/start/resume?draft=${encodeURIComponent(draft.id)}`}
           className="after:absolute after:inset-0 focus-visible:outline-none"
         >
           <span className="block truncate font-medium text-slate-900">{draft.title}</span>
@@ -493,7 +541,7 @@ function ListingTile({
         />
       </div>
       <Link
-        href={`/host/v2/listings/${listing.id}`}
+        href={`/host/listings/${listing.id}`}
         className="mt-3 block after:absolute after:inset-x-0 after:bottom-0 after:top-0 focus-visible:outline-none"
       >
         <span
@@ -507,6 +555,15 @@ function ListingTile({
           {listing.city}
         </span>
       </Link>
+      {/* Clamped to two lines with the full text on hover: the tile is a photo card, and
+          a paragraph under it would push the next row of the grid out of alignment. The
+          tile's overlay link still covers this, so a click anywhere opens the editor —
+          which is where the host fixes what the note is complaining about. */}
+      <ListingModerationNotice
+        status={listing.status}
+        note={listing.moderationNote}
+        compact
+      />
     </div>
   );
 }
@@ -523,13 +580,7 @@ function EmptyState() {
           source="Add your home and we'll walk you through photos, prices, and the dates you want to host."
         />
       </p>
-      <Link
-        href="/host/listings/new"
-        className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-full bg-[#fde7dc] px-5 text-sm font-semibold text-[#8f3d21] transition-colors hover:bg-[#f9d7c6] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d9774f]"
-      >
-        <Plus className="size-4" aria-hidden />
-        <Tx k="host.v2.listings.empty_action" source="Add listing" />
-      </Link>
+      <AddListingActions />
     </div>
   );
 }

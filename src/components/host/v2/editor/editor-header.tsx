@@ -21,6 +21,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useSaveState } from "@/components/host/v2/editor/save-state";
+import { hostCalendarHref } from "@/lib/host/v2/calendar-href";
+import {
+  EDITOR_OVERVIEW_SLUG,
+  editorSectionHref,
+} from "@/lib/host/v2/editor-sections";
+import { listingPreviewable } from "@/lib/host/v2/listing-status";
 import type { EditorListingOption } from "@/lib/services/listing-editor.service";
 import { Tx, useI18n } from "@/lib/i18n/client";
 
@@ -72,14 +78,18 @@ export function EditorHeader({
   const moreLabel = resolve("host.editor.more", "More actions").text;
 
   // Switching keeps you where you were: a host comparing photos across two properties
-  // wants the other one's photos, not its front page.
-  const section = pathname.split("/")[5] ?? "photos";
+  // wants the other one's photos, not its front page. On the base route there is no
+  // fifth segment, and the other listing's Overview is exactly the right landing place.
+  const section = pathname.split("/")[5] ?? EDITOR_OVERVIEW_SLUG;
+  // The public page exists for approved listings only, so a preview link on a draft
+  // would open a 404 and call it a preview.
+  const canPreview = listingPreviewable(status);
 
   return (
     <header className="sticky top-0 z-30 shrink-0 border-b border-slate-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
       <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-2 px-4 md:h-16 md:gap-3 md:px-6">
         <Link
-          href="/host/v2/listings"
+          href="/host/listings"
           aria-label={resolve("host.editor.back", "Back to listings").text}
           className="grid size-9 shrink-0 place-items-center rounded-full text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:bg-slate-100 focus-visible:outline-none"
         >
@@ -136,7 +146,7 @@ export function EditorHeader({
               const current = listing.id === listingId;
               return (
                 <DropdownMenuItem key={listing.id} asChild className="gap-2.5 py-2">
-                  <Link href={`/host/v2/listings/${listing.id}/${section}`}>
+                  <Link href={editorSectionHref(listing.id, section)}>
                     <span className="relative size-9 shrink-0 overflow-hidden rounded-md bg-slate-100">
                       {listing.coverUrl ? (
                         <Image
@@ -179,7 +189,7 @@ export function EditorHeader({
             })}
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link href="/host/v2/listings">
+              <Link href="/host/listings">
                 <Tx k="host.editor.all_listings" source="See all listings" />
               </Link>
             </DropdownMenuItem>
@@ -188,16 +198,18 @@ export function EditorHeader({
 
         <SaveIndicator state={saveState} />
 
-        <Link
-          href={`/properties/${slug}`}
-          target="_blank"
-          rel="noreferrer"
-          // Filled-on-hover rather than outlined. Keyboard focus is carried by the same
-          // fill, so the control is still findable without drawing a box around it.
-          className="hidden items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:bg-slate-100 focus-visible:outline-none sm:inline-flex"
-        >
-          {previewLabel}
-        </Link>
+        {canPreview && (
+          <Link
+            href={`/properties/${slug}`}
+            target="_blank"
+            rel="noreferrer"
+            // Filled-on-hover rather than outlined. Keyboard focus is carried by the same
+            // fill, so the control is still findable without drawing a box around it.
+            className="hidden items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm text-slate-700 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:bg-slate-100 focus-visible:outline-none sm:inline-flex"
+          >
+            {previewLabel}
+          </Link>
+        )}
 
         <DropdownMenu>
           <DropdownMenuTrigger
@@ -207,20 +219,17 @@ export function EditorHeader({
             <Ellipsis className="size-5" aria-hidden />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem asChild className="sm:hidden">
-              <Link href={`/properties/${slug}`} target="_blank" rel="noreferrer">
-                <ExternalLink className="size-4" aria-hidden />
-                {previewLabel}
-              </Link>
-            </DropdownMenuItem>
+            {canPreview && (
+              <DropdownMenuItem asChild className="sm:hidden">
+                <Link href={`/properties/${slug}`} target="_blank" rel="noreferrer">
+                  <ExternalLink className="size-4" aria-hidden />
+                  {previewLabel}
+                </Link>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem asChild>
-              <Link href={`/host/v2/calendar?listing=${encodeURIComponent(listingId)}`}>
+              <Link href={hostCalendarHref(listingId)}>
                 <Tx k="host.editor.open_calendar" source="Dates and prices" />
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href={`/host/listings/${listingId}/edit`}>
-                <Tx k="host.editor.open_classic" source="Open the classic editor" />
               </Link>
             </DropdownMenuItem>
           </DropdownMenuContent>

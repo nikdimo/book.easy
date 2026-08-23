@@ -193,4 +193,114 @@ describe("mobile listing draft patches", () => {
       },
     });
   });
+
+  it("makes legacy imageUrls visible to Host V2 and publishing in stored order", () => {
+    expect(
+      listingDraftData({
+        imageUrls: ["/uploads/cover.jpg", "/uploads/room.jpg", "/uploads/cover.jpg"],
+      }).mediaItems,
+    ).toEqual([
+      { url: "/uploads/cover.jpg", mediaType: "IMAGE", alt: null },
+      { url: "/uploads/room.jpg", mediaType: "IMAGE", alt: null },
+    ]);
+  });
+
+  it("keeps ordered mediaItems authoritative when both draft shapes exist", () => {
+    const mediaItems = [{ url: "/uploads/current.jpg", mediaType: "IMAGE" as const }];
+
+    expect(
+      listingDraftData({ mediaItems, imageUrls: ["/uploads/stale.jpg"] }).mediaItems,
+    ).toEqual(mediaItems);
+  });
+});
+
+describe("house rules in the mobile draft contract", () => {
+  it("accepts every rule the shared House rules screen writes", () => {
+    const parsed = parseMobileListingDraftPatch({
+      checkInTime: "16:00",
+      checkOutTime: "10:00",
+      maxGuests: "6",
+      petPolicy: "ASK_HOST",
+      smokingPolicy: "OUTDOORS_ONLY",
+      eventPolicy: "NOT_ALLOWED",
+      quietHoursPolicy: "SET",
+      quietHoursStart: "22:00",
+      quietHoursEnd: "08:00",
+      additionalRules: "No shoes indoors.",
+    });
+
+    expect(parsed).toEqual({
+      data: {
+        checkInTime: "16:00",
+        checkOutTime: "10:00",
+        maxGuests: "6",
+        petPolicy: "ASK_HOST",
+        smokingPolicy: "OUTDOORS_ONLY",
+        eventPolicy: "NOT_ALLOWED",
+        quietHoursPolicy: "SET",
+        quietHoursStart: "22:00",
+        quietHoursEnd: "08:00",
+        additionalRules: "No shoes indoors.",
+      },
+    });
+  });
+
+  it('accepts "" for a policy, which is how a client clears an answer', () => {
+    // Unanswered is a real state — the one every listing starts in — so it has to be
+    // sendable, not just absent.
+    expect(
+      parseMobileListingDraftPatch({ petPolicy: "", quietHoursPolicy: "" }),
+    ).toEqual({ data: { petPolicy: "", quietHoursPolicy: "" } });
+  });
+
+  it("refuses a policy outside the closed set rather than storing it", () => {
+    // A value that could never be published is better refused here than carried to a
+    // screen further along that has to fail on it instead.
+    expect(parseMobileListingDraftPatch({ petPolicy: "MAYBE" })).toEqual({
+      error: "Invalid listing draft data",
+    });
+    expect(parseMobileListingDraftPatch({ smokingPolicy: "SOMETIMES" })).toEqual({
+      error: "Invalid listing draft data",
+    });
+  });
+
+  it("refuses additional rules longer than the column stores", () => {
+    expect(
+      parseMobileListingDraftPatch({ additionalRules: "x".repeat(5_000) }),
+    ).toEqual({ error: "Invalid listing draft data" });
+  });
+
+  it("keeps an imported off-grid quiet-hours time rather than rejecting it", () => {
+    expect(
+      parseMobileListingDraftPatch({ quietHoursStart: "22:15" }),
+    ).toEqual({ data: { quietHoursStart: "22:15" } });
+  });
+
+  it("leaves a web-written rule alone when the app patches something else", () => {
+    // The two clients share one draft row; a patch carries only what its screen touched.
+    expect(
+      mergeMobileListingDraft(
+        { petPolicy: "ASK_HOST", additionalRules: "No shoes indoors." },
+        { title: "After" },
+      ),
+    ).toEqual({
+      petPolicy: "ASK_HOST",
+      additionalRules: "No shoes indoors.",
+      title: "After",
+    });
+  });
+
+  it("reads the rules back off a stored draft unchanged", () => {
+    expect(
+      listingDraftData({
+        petPolicy: "ALLOWED",
+        quietHoursPolicy: "NONE",
+        additionalRules: "Bins out on Tuesday.",
+      }),
+    ).toMatchObject({
+      petPolicy: "ALLOWED",
+      quietHoursPolicy: "NONE",
+      additionalRules: "Bins out on Tuesday.",
+    });
+  });
 });

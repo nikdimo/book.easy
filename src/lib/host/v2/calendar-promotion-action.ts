@@ -2,6 +2,7 @@ import { addDaysToYmd } from "@/lib/utils/date-only";
 import {
   parseLocalYmd,
   selectApplicablePromotion,
+  selectApplicablePromotionForNight,
   type StayPromotion,
 } from "@/lib/utils/stay-pricing";
 import type { CalendarSelection } from "./calendar-selection";
@@ -276,6 +277,48 @@ export function selectionLadder({
   return ladderOf(list, bandsOf(list, selection.start, maxNights), maxNights);
 }
 
+/**
+ * Whether the draft can win at least one selected night for any supported booking
+ * length. A dated offer may cover only two nights and still be useful to a guest whose
+ * whole booking is much longer, so the selected range must never cap this check.
+ */
+export function selectionDraftCanWin({
+  listing,
+  selection,
+  draft,
+  horizon = PROMOTION_BAND_HORIZON,
+}: {
+  listing: HostCalendarListing;
+  selection: CalendarSelection;
+  draft: ProposedPromotion;
+  horizon?: number;
+}): boolean {
+  const list = candidates({
+    listing,
+    selection,
+    draft,
+    evergreenOnly: false,
+  });
+  const stays = list.map((candidate) => candidate.stay);
+  const maxNights = horizonFor(listing, horizon);
+
+  for (
+    let night = selection.start;
+    night <= selection.end;
+    night = addDaysToYmd(night, 1)
+  ) {
+    for (let stayNights = 1; stayNights <= maxNights; stayNights += 1) {
+      const winner = selectApplicablePromotionForNight(
+        stays,
+        parseLocalYmd(night),
+        stayNights,
+      );
+      if (winner?.id === DRAFT_PROMOTION_ID) return true;
+    }
+  }
+  return false;
+}
+
 /** The always-active offers, each with the stay lengths it wins. */
 export function evergreenLadder({
   listing,
@@ -330,8 +373,6 @@ export function evergreenMinimumClash({
  */
 export type PromotionDraftProblem =
   | { code: "NO_BENEFIT" }
-  /** The minimum is longer than the selection, so these dates alone cannot earn it. */
-  | { code: "MINIMUM_ABOVE_SELECTION"; minimumNights: number; nights: number }
   | { code: "NEVER_WINS"; discountPercent: number; winnerIsEvergreen: boolean };
 
 export function promotionDraftProblem({
@@ -353,15 +394,8 @@ export function promotionDraftProblem({
   if (draft.discountPercent <= 0 && !draft.freeCleaning) {
     return { code: "NO_BENEFIT" };
   }
-  if (draft.minimumNights > nights) {
-    return {
-      code: "MINIMUM_ABOVE_SELECTION",
-      minimumNights: draft.minimumNights,
-      nights,
-    };
-  }
   const applies =
-    draftApplied ?? bands.some((band) => band.draft);
+    Boolean(draftApplied) || bands.some((band) => band.draft);
   if (!applies) {
     const bandWinner = bands.find(
       (band) => nights >= band.fromNights && nights <= band.toNights,

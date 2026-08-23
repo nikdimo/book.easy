@@ -720,7 +720,7 @@ function MarketplaceSearchBarInner({
       <div className="flex w-full justify-center @min-[200px]:block">
         <button
           type="button"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-left transition-shadow focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background @min-[200px]:w-full @min-[200px]:justify-start @min-[200px]:gap-2 @min-[200px]:border @min-[200px]:border-border/70 @min-[200px]:bg-background @min-[200px]:px-3 @min-[200px]:shadow-[0_10px_26px_rgba(15,23,42,0.08)] @min-[200px]:hover:shadow-[0_14px_32px_rgba(15,23,42,0.12)]"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-left transition-shadow focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background @min-[200px]:h-auto @min-[200px]:min-h-16 @min-[200px]:w-full @min-[200px]:justify-start @min-[200px]:gap-3 @min-[200px]:border @min-[200px]:border-border/70 @min-[200px]:bg-background @min-[200px]:py-3 @min-[200px]:pl-5 @min-[200px]:pr-3 @min-[200px]:shadow-[0_10px_26px_rgba(15,23,42,0.08)] @min-[200px]:hover:shadow-[0_14px_32px_rgba(15,23,42,0.12)]"
           onClick={() => setSearchFlowOpen(true)}
           aria-label={labels.openSearch.text}
         >
@@ -735,7 +735,7 @@ function MarketplaceSearchBarInner({
             >
               {citySummary}
             </span>
-            <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+            <span className="mt-1 block truncate text-xs text-muted-foreground">
               <span
                 className="notranslate"
                 translate="no"
@@ -746,7 +746,7 @@ function MarketplaceSearchBarInner({
               <span className={guestSummary.translated ? "notranslate" : undefined}>{guestSummary.text}</span>
             </span>
           </span>
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_10px_26px_rgba(15,23,42,0.08)] @min-[200px]:h-8 @min-[200px]:w-8 @min-[200px]:shadow-none">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_10px_26px_rgba(15,23,42,0.08)] @min-[200px]:h-10 @min-[200px]:w-10 @min-[200px]:shadow-none">
             <Search className="h-4 w-4" strokeWidth={2.5} />
           </span>
         </button>

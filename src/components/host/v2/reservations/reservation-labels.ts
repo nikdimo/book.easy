@@ -3,7 +3,12 @@
 import { interpolate, type useI18n } from "@/lib/i18n/client";
 import type { Resolved } from "@/lib/i18n/t";
 import { resolveBookingStatus } from "@/lib/i18n/status-labels";
-import { formatMoney } from "@/lib/host/v2/calendar-format";
+import {
+  formatDisplayMoney,
+  formatMoney,
+  formatMoneyRounded,
+  toDisplayAmount,
+} from "@/lib/host/v2/calendar-format";
 import type { CalendarFormats } from "@/lib/host/v2/calendar-format";
 import type { HostActionKind } from "@/lib/host/booking-action-queue";
 import {
@@ -24,13 +29,91 @@ import type { HostReservation } from "@/lib/host/v2/reservation-types";
  */
 export type Translator = ReturnType<typeof useI18n>;
 
-/** Money always goes through the server's snapshot, never `Intl` on the client. */
+/**
+ * Money always goes through the server's snapshot, never `Intl` on the client.
+ *
+ * This panel is entirely read-only — nothing on it is a field a host types a price
+ * into — so every figure here is shown in the currency the host chose to read prices
+ * in, converted from the booking's own currency where rates allow. The booking's
+ * official amount is never lost: `officialMoney` renders it, and the panel discloses
+ * it beside the total, because what a host is actually paid is that number and not
+ * this approximation of it.
+ */
 export function money(
   amount: number,
   currency: string,
   formats: CalendarFormats,
 ): string {
+  return formatDisplayMoney(amount, currency, formats).text;
+}
+
+/** The amount in the currency the booking is denominated, settled and paid in. */
+export function officialMoney(
+  amount: number,
+  currency: string,
+  formats: CalendarFormats,
+): string {
   return formatMoney(amount, currency, formats);
+}
+
+/** True when `money` is showing something other than the booking's own currency, and
+ *  the official figure therefore has to be stated somewhere on the screen. */
+export function isConvertedMoney(
+  currency: string,
+  formats: CalendarFormats,
+): boolean {
+  return formatDisplayMoney(0, currency, formats).converted;
+}
+
+/**
+ * Several amounts, added up and shown as one figure.
+ *
+ * Each is moved into the display currency *before* being added. Summing totals in
+ * different currencies and labelling the result with whichever one happened to come
+ * first is not an approximation — it is a wrong number. A partial conversion is not
+ * shown either: when every row already shares one official currency that honest total
+ * is used, otherwise an em dash says that no total is currently available.
+ */
+export function sumMoney(
+  amounts: { amount: number; currency: string }[],
+  fallbackCurrency: string,
+  formats: CalendarFormats,
+): string {
+  const display = formats.display;
+  const currencies = new Set(amounts.map((item) => item.currency));
+  const oneOfficialCurrency = currencies.size <= 1;
+  if (!display) {
+    if (!oneOfficialCurrency) return "—";
+    return formatMoney(
+      amounts.reduce((sum, item) => sum + item.amount, 0),
+      fallbackCurrency,
+      formats,
+    );
+  }
+
+  let total = 0;
+  let allConverted = true;
+  for (const item of amounts) {
+    const converted = toDisplayAmount(item.amount, item.currency, formats);
+    if (converted.currency !== display.currency) {
+      allConverted = false;
+      continue;
+    }
+    total += converted.amount;
+  }
+
+  if (!allConverted) {
+    // A partial converted sum is just as wrong as adding raw currencies. If all rows
+    // share one official currency, that total is still meaningful; otherwise no
+    // honest portfolio total exists until rates are available.
+    if (!oneOfficialCurrency) return "—";
+    return formatMoney(
+      amounts.reduce((sum, item) => sum + item.amount, 0),
+      fallbackCurrency,
+      formats,
+    );
+  }
+  return formatMoneyRounded(total, display.currency, formats);
 }
 
 /**

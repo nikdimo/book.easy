@@ -32,6 +32,13 @@ async function getListingForManager(userId: string, role: string, listingId: str
 function revalidateListingPaths(listingId: string, slug?: string | null) {
   revalidatePath(`/host/listings/${listingId}/availability`);
   revalidatePath(`/host/listings/${listingId}/pricing`);
+  // Host V2 renders the same availability from its own routes, so it needs its own
+  // entries here — the classic paths above do not cover them and a host who changed a
+  // date in V2 would keep reading the pre-change answer.
+  revalidatePath(`/host/listings/${listingId}/availability`);
+  revalidatePath(`/host/listings/${listingId}/pricing`);
+  revalidatePath(`/host/listings/${listingId}`);
+  revalidatePath("/host/calendar");
   revalidatePath(`/admin/listings/${listingId}`);
   if (slug) revalidatePath(`/properties/${slug}`);
 }

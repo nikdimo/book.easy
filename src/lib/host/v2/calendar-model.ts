@@ -616,6 +616,30 @@ export function summarizeSelectionPrices(
   return { min, max, mixed: min !== max, customCount };
 }
 
+/**
+ * The listing the calendar opens on, given what `?listing=` asked for.
+ *
+ * The request is honoured only when the payload actually contains that listing, and the
+ * payload is already scoped to the signed-in host. So an id belonging to someone else,
+ * or one deleted since the link was made, resolves to nothing and the host's default
+ * property is shown instead of an empty calendar — a stale link never becomes a way to
+ * learn whether a listing exists.
+ *
+ * `null` means the host has no listings at all; the workspace shows its all-listings
+ * view for that.
+ */
+export function initialCalendarListingId(
+  data: HostCalendarWorkspaceData,
+  requestedListingId: string | null,
+): string | null {
+  const requested = data.listings.some(
+    (listing) => listing.id === requestedListingId,
+  )
+    ? requestedListingId
+    : null;
+  return requested ?? defaultListingId(data);
+}
+
 /** The workspace's default listing: the first one the host can actually work on. */
 export function defaultListingId(
   data: HostCalendarWorkspaceData,

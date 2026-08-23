@@ -1,0 +1,129 @@
+/* One square stage that every layer is measured against. Positions and sizes are
+   percentages of this box, never pixels, so the composition is identical at 1920px and at 350px — nothing can drift out of
+   frame or collide on the way down to mobile. */
+.stage {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  max-width: 30rem;
+  margin-inline: auto;
+  aspect-ratio: 1 / 1;
+}
+
+/* From md up the flow shell is `h-dvh overflow-hidden`, so the artwork also has to fit
+   the height left between the header and the fixed footer — 13rem, the same allowance
+   the rest of the flow uses. The stage is square, so that is the width cap too. */
+@media (min-width: 768px) {
+  .stage {
+    max-width: min(30rem, calc(100dvh - 13rem));
+  }
+}
+
+.layer {
+  position: absolute;
+  left: var(--left);
+  top: var(--top);
+  width: var(--width);
+  height: auto;
+  animation-delay: var(--delay);
+  animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+  /* `both` is what makes the staging work without JavaScript: the layer holds its
+     `from` state through its delay, then holds its `to` state forever after. */
+  animation-fill-mode: both;
+}
+
+/* The orbit is the faintest thing on the stage — it only fades, so it reads as the
+   ground the objects arrive on rather than as an eighth moving part. */
+.trail {
+  animation-name: trail-in;
+  animation-duration: 550ms;
+}
+
+.settle {
+  animation-name: settle-in;
+  animation-duration: 600ms;
+}
+
+/* The listing itself drops the last few pixels onto its platform, so the tile reads as
+   something the sparkle lands on rather than a shape behind it. */
+.land {
+  animation-name: land-in;
+  animation-duration: 620ms;
+}
+
+.rise {
+  animation-name: rise-in;
+  animation-duration: 440ms;
+}
+
+.pop {
+  animation-name: pop-in;
+  animation-duration: 460ms;
+}
+
+@keyframes trail-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes settle-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes land-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -22px, 0) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* A 4% overshoot, not a bounce: enough to register as the last beat of the sequence,
+   not enough to turn the checkmark into a mascot. */
+@keyframes pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.72);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* The base rules above are already the finished composition — opacity 1, no transform —
+   so dropping the animation renders the end state on the first frame. */
+@media (prefers-reduced-motion: reduce) {
+  .layer {
+    animation: none;
+  }
+}

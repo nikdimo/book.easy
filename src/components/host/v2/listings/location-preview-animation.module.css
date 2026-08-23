@@ -1,0 +1,69 @@
+.stage {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  width: min(100%, calc((100dvh - 13rem) * 0.973154));
+  margin-inline: auto;
+}
+
+@media (max-width: 1023px) {
+  .stage {
+    width: 100%;
+  }
+}
+
+.backdropPhoto {
+  animation: backdrop-photo 9s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  transform-origin: center;
+}
+
+.phone {
+  animation: phone-preview 9s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  transform-origin: center;
+}
+
+@keyframes backdrop-photo {
+  0%,
+  24% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  42%,
+  88% {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes phone-preview {
+  0%,
+  24% {
+    opacity: 0;
+    transform: translateY(12%) scale(0.78);
+  }
+  44%,
+  88% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(10%) scale(0.82);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdropPhoto {
+    animation: none;
+    opacity: 0;
+    transform: scale(0.86);
+  }
+
+  .phone {
+    animation: none;
+  }
+}

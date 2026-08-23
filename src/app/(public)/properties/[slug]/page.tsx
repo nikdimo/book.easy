@@ -19,6 +19,9 @@ import {
   PreservedPlaceText,
 } from "@/components/public/expandable-description";
 import { AmenityList } from "@/components/public/amenity-list";
+import { HouseRulesList } from "@/components/public/house-rules-list";
+import { houseRulesSnapshot } from "@/lib/host/v2/listing-house-rules";
+import { houseRulesVersion } from "@/lib/host/v2/house-rules-version.server";
 import { ListingLocationMap } from "@/components/public/listing-location-map";
 import { BookingWidget } from "@/components/public/booking-widget";
 import { ListingStayProvider } from "@/components/public/listing-stay-context";
@@ -190,6 +193,10 @@ export default async function ListingDetailPage({
               time: listing.checkOutTime as string,
             })
       : null;
+  // The listing's rules in the shape a booking freezes, so the section below, the
+  // booking sheet and — later — the guest's confirmation all render from one thing.
+  const houseRules = houseRulesSnapshot(listing);
+  const renderedHouseRulesVersion = houseRulesVersion(houseRules);
   const hostedBy = ti(t, "listing.hosted_by", "Hosted by {name}", {
     name: hostName,
   });
@@ -237,6 +244,8 @@ export default async function ListingDetailPage({
       initialGuestDetails={initialGuestDetails}
       hasExplicitSearchSelection={hasExplicitSearchSelection}
       reserveTooltip={reserveTooltip}
+      houseRules={<HouseRulesList t={t} rules={houseRules} />}
+      houseRulesVersion={renderedHouseRulesVersion}
     />
   ) : null;
   // Airbnb-style: the open nights are on the page itself, so a guest who arrived
@@ -440,6 +449,18 @@ export default async function ListingDetailPage({
             <Separator />
 
             <AmenityList amenities={listing.amenities} />
+
+            <Separator />
+
+            <section aria-labelledby="house-rules-heading">
+              <h2 id="house-rules-heading" className="text-xl font-semibold mb-4">
+                <T t={t} k="listing.house_rules.heading" source="House rules" />
+              </h2>
+              {/* The same rules the guest must accept before the request is sent, in the
+                  same words: the booking sheet renders this list too. A rule the host
+                  never answered is absent from both rather than shown as a blank. */}
+              <HouseRulesList t={t} rules={houseRules} />
+            </section>
 
             {availabilityCalendar && (
               <>

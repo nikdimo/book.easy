@@ -14,8 +14,8 @@ import { PANE } from "./inbox-surface";
  * navigation, not a re-render of the whole inbox — the column keeps its scroll position,
  * its filter and its search text while threads swap in and out beside it.
  *
- * Below `lg` there is only ever one column on screen: the list at `/host/v2/messages`,
- * the thread at `/host/v2/messages/<id>`. Two panes side by side on a phone would make
+ * Below `lg` there is only ever one column on screen: the list at `/host/messages`,
+ * the thread at `/host/messages/<id>`. Two panes side by side on a phone would make
  * both unusable, and the route is already the state that says which one the host is
  * looking at — so back goes to the list without any of it being kept in React.
  */
@@ -27,8 +27,8 @@ export function HostInboxShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const activeId = pathname.startsWith("/host/v2/messages/")
-    ? pathname.slice("/host/v2/messages/".length).split("/")[0] || null
+  const activeId = pathname.startsWith("/host/messages/")
+    ? pathname.slice("/host/messages/".length).split("/")[0] || null
     : null;
 
   return (

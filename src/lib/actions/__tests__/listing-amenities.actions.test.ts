@@ -237,8 +237,8 @@ describe("setListingAmenities — revalidation", () => {
     const paths = mocks.revalidatePath.mock.calls.map(([path]) => path);
     expect(paths).toEqual(
       expect.arrayContaining([
-        "/host/v2/listings/listing-1/amenities",
-        "/host/v2/listings/listing-1",
+        "/host/listings/listing-1/amenities",
+        "/host/listings/listing-1",
         "/host/listings/listing-1/edit",
         "/properties/seaside-flat",
       ]),
@@ -253,7 +253,7 @@ describe("setListingAmenities — revalidation", () => {
     await setListingAmenities("listing-1", ["am-1"]);
 
     const paths = mocks.revalidatePath.mock.calls.map(([path]) => path);
-    expect(paths).toContain("/host/v2/listings/listing-1/amenities");
+    expect(paths).toContain("/host/listings/listing-1/amenities");
     expect(paths).not.toContain("/properties/seaside-flat");
     expect(mocks.revalidatePublicListingCaches).not.toHaveBeenCalled();
   });

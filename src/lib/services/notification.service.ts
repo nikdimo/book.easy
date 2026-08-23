@@ -312,7 +312,7 @@ export async function notifyBookingEvent(
       type: "BOOKING_REQUEST",
       title: "New booking request",
       body: `${booking.guest.name} requested ${booking.listing.title}.`,
-      route: `/host/bookings/${booking.id}`,
+      route: `/host/reservations/${booking.id}`,
       data: commonData,
     });
     return;
@@ -324,7 +324,7 @@ export async function notifyBookingEvent(
       type: "BOOKING_CANCELLED",
       title: "Booking cancelled",
       body: `${booking.guest.name} cancelled ${booking.listing.title}.`,
-      route: `/host/bookings/${booking.id}`,
+      route: `/host/reservations/${booking.id}`,
       data: commonData,
     });
     return;

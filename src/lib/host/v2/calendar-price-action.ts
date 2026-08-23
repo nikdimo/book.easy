@@ -76,6 +76,29 @@ export function buildPriceAction({
  * Floored at one currency unit, because that is the lowest the pricing service accepts
  * and −30% of a very low base would otherwise resolve to a price that cannot be saved.
  */
+/**
+ * The whole units a host typed, out of whatever they actually typed.
+ *
+ * Stripping every non-digit is the obvious reading and the wrong one: "141.45" becomes
+ * 14145, a price a hundred times too high, silently, with the field showing what looks
+ * like a normal number. A European keyboard produces "141,45" and fails the same way.
+ *
+ * Every amount in this workspace is whole, so a typed fraction is dropped rather than
+ * rejected — the host lands on the unit they meant. A separator with one or two digits
+ * behind it is that fraction; anything else is a thousands separator and survives, so
+ * "1,200" and "1.200" both stay 1200.
+ *
+ * Returns null when there is no number in the input at all, which is how a half-typed
+ * field ("", "€") is told apart from a real zero.
+ */
+export function wholeAmountFromInput(input: string): number | null {
+  const cleaned = input.replace(/[^0-9.,]/g, "").replace(/[.,](\d{1,2})$/, "");
+  const digits = cleaned.replace(/[.,]/g, "");
+  if (digits.length === 0) return null;
+  const parsed = Number(digits);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 export function priceFromPercent(base: number, percent: number): number {
   return Math.max(1, Math.round(base * (1 + percent / 100)));
 }

@@ -43,7 +43,7 @@ describe("AvailabilitySummary", () => {
   it("sends the host to Calendar for this listing and nowhere else", () => {
     const html = render(overview());
 
-    expect(html).toContain('href="/host/v2/calendar?listing=listing-1"');
+    expect(html).toContain('href="/host/calendar?listing=listing-1"');
     expect(html).toContain("Manage availability in Calendar");
     // The one link on the page is the handoff.
     expect(html.match(/<a /g)).toHaveLength(1);

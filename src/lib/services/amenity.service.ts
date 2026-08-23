@@ -3,6 +3,7 @@ import { unstable_cache } from "next/cache";
 import { db } from "@/lib/db";
 import { DEFAULT_LOCALE } from "@/lib/i18n/locale-preference";
 import { getT, getTForLocale, type Translator } from "@/lib/i18n/t";
+import { PETS_ALLOWED_AMENITY_KEY } from "@/lib/amenities/pets";
 import {
   resolveAmenityCategory,
   resolveAmenityLabel,
@@ -90,6 +91,38 @@ export async function getAmenityCatalog(): Promise<CatalogAmenity[]> {
   const translator = await getT();
   const rows = await getCatalogRows(translator.locale);
   return rows.map((row) => serialize(translator, row));
+}
+
+/**
+ * The catalog the *guest* filter panel offers: the active rows, plus the deactivated
+ * "Pets allowed" one.
+ *
+ * Pets moved out of the amenity catalog and into `Listing.petPolicy`, because an
+ * amenity checkbox cannot say "ask the host". Deactivating the row is what took pets out
+ * of every host picker, which is right — but the guest-facing filter is a different
+ * question, and letting it inherit that deactivation would have silently removed a
+ * filter guests use for a rule the listings still have. `search.service` answers the
+ * chip from the policy column; this only keeps the chip on the panel.
+ *
+ * Nothing else calls this. A host picker asking for the pets row would be asking to
+ * store the very duplicate the migration removed.
+ */
+export async function getAmenityCatalogWithPetsFilter(): Promise<CatalogAmenity[]> {
+  const catalog = await getAmenityCatalog();
+  if (catalog.some((row) => row.key === PETS_ALLOWED_AMENITY_KEY)) return catalog;
+
+  const translator = await getT();
+  const pets = await db.amenity.findUnique({
+    where: { key: PETS_ALLOWED_AMENITY_KEY },
+    include: {
+      category: { include: { translations: { where: { locale: translator.locale } } } },
+      translations: { where: { locale: translator.locale } },
+    },
+  });
+  // Absent on a database that never seeded it. The filter simply has no pets chip then,
+  // which is the same thing every other unseeded amenity does.
+  if (!pets) return catalog;
+  return [...catalog, serialize(translator, pets)];
 }
 
 /**

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { BASE_CURRENCY } from "@/lib/currency/currency-preference";
 import {
   CalendarCheck,
   CalendarSync,
@@ -69,7 +70,7 @@ export function ScheduledChanges({
 }) {
   const i18n = useI18n();
   const [filter, setFilter] = useState<ScheduledFilter>("all");
-  const currency = listing.pricing?.currency ?? "EUR";
+  const currency = listing.pricing?.currency ?? BASE_CURRENCY;
 
   const entries = useMemo(
     () => buildScheduledChanges({ listing, today, horizonEnd }),
@@ -159,9 +160,9 @@ export function ScheduledChanges({
             className={cn(
               "min-h-11 rounded-full px-3 text-[0.8125rem] font-medium",
               "transition-colors duration-150 motion-reduce:transition-none",
-              "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]",
+              "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]",
               filter === candidate
-                ? "bg-[#fff1e8] text-[#8f3d21] ring-1 ring-inset ring-[#d9774f]"
+                ? "bg-[#f8fafc] text-[#0f172a] ring-1 ring-inset ring-[#0f172a]"
                 : "bg-slate-50 text-slate-600 hover:bg-slate-100",
             )}
           >
@@ -187,7 +188,7 @@ export function ScheduledChanges({
                 className={cn(
                   "flex min-h-11 w-full items-start gap-2.5 rounded-lg px-2 py-2 text-left",
                   "transition-colors duration-150 hover:bg-slate-50 motion-reduce:transition-none",
-                  "focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#a94b28]",
+                  "focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0f172a]",
                 )}
               >
                 <Icon
@@ -240,7 +241,7 @@ export function ScheduledChanges({
                   <button
                     type="button"
                     onClick={() => onOpenEntry(entry)}
-                    className="min-h-11 rounded-lg px-2 text-[0.75rem] font-semibold text-[#a94b28] transition-colors duration-150 hover:bg-[#fff1e8] motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#a94b28]"
+                    className="min-h-11 rounded-lg px-2 text-[0.75rem] font-semibold text-[#0f172a] transition-colors duration-150 hover:bg-[#f8fafc] motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0f172a]"
                   >
                     {i18n.resolve("host.v2.calendar.schedule.edit", "Edit").text}
                   </button>

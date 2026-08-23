@@ -63,7 +63,7 @@ function toneDotClass(tone: RailItem["tone"]): string {
   return tone === "positive"
     ? "bg-teal-500"
     : tone === "warning"
-      ? "bg-[#d9774f]"
+      ? "bg-[#0f172a]"
       : "bg-slate-300";
 }
 
@@ -132,11 +132,11 @@ export function RailCard({
         title={accessibleName}
         className={cn(
           "relative flex w-full shrink-0 justify-center rounded-xl p-1.5 transition-colors",
-          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]",
+          "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]",
           selected
-            ? "bg-[#ffe9dc]"
+            ? "bg-[#f1f5f9]"
             : attention
-              ? "bg-[#fff4ee]"
+              ? "bg-[#f8fafc]"
               : "hover:bg-slate-100/70",
         )}
         {...anchorProps}
@@ -166,11 +166,11 @@ export function RailCard({
         // both said with a fill. An outlined card next to a tinted one gave the rail two
         // competing ways of marking the same thing, and eight of them made a grid.
         "flex w-full shrink-0 items-center gap-2.5 rounded-xl p-2 text-left transition-colors",
-        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]",
+        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]",
         selected
-          ? "bg-[#ffe9dc]"
+          ? "bg-[#f1f5f9]"
           : attention
-            ? "bg-[#fff4ee] hover:bg-[#ffe9dc]"
+            ? "bg-[#f8fafc] hover:bg-[#f1f5f9]"
             : "hover:bg-slate-100/70",
       )}
       {...anchorProps}
@@ -193,7 +193,7 @@ export function RailCard({
           <>
             <span
               className={cn(
-                "mt-0.5 flex items-center gap-1 text-[0.6875rem] font-semibold leading-4 text-[#a94b28]",
+                "mt-0.5 flex items-center gap-1 text-[0.6875rem] font-semibold leading-4 text-[#0f172a]",
                 attention.label.translated && "notranslate",
               )}
             >
@@ -221,7 +221,7 @@ export function RailCard({
         ) : null}
       </span>
       {item.trailing ?? (selected ? (
-        <Check className="size-4 shrink-0 text-[#a94b28]" aria-hidden />
+        <Check className="size-4 shrink-0 text-[#0f172a]" aria-hidden />
       ) : null)}
     </button>
   );
@@ -256,9 +256,9 @@ export function AllEntitiesCard({
       title={compact ? accessibleName : undefined}
       className={cn(
         "flex w-full shrink-0 items-center gap-2.5 rounded-xl p-2 text-left transition-colors",
-        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]",
+        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]",
         compact && "justify-center p-1.5",
-        selected ? "bg-[#ffe9dc]" : "hover:bg-slate-100/70",
+        selected ? "bg-[#f1f5f9]" : "hover:bg-slate-100/70",
       )}
       {...(anchor ? { id: anchor, "data-linger-anchor": anchor } : {})}
     >
@@ -406,7 +406,7 @@ export function EntityRail({
           onClick={onToggleCompact}
           aria-label={toggleLabel.text}
           title={toggleLabel.text}
-          className="grid size-8 shrink-0 place-items-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]"
+          className="grid size-8 shrink-0 place-items-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]"
         >
           {compact ? (
             <PanelLeftOpen className="size-4" aria-hidden />

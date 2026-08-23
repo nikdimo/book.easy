@@ -128,7 +128,7 @@
       "key": "baking_sheet",
       "name": "Baking sheet",
       "category": "kitchen",
-      "icon": "chef-hat",
+      "icon": "cooking-pot",
       "sortOrder": 0,
       "isActive": true,
       "translations": {}
@@ -245,7 +245,7 @@
       "key": "cleaning_products",
       "name": "Cleaning products",
       "category": "essentials",
-      "icon": "wifi",
+      "icon": "spray-can",
       "sortOrder": 0,
       "isActive": true,
       "translations": {}
@@ -290,7 +290,7 @@
       "key": "cooking_basics",
       "name": "Cooking basics",
       "category": "kitchen",
-      "icon": "chef-hat",
+      "icon": "cooking-pot",
       "sortOrder": 0,
       "isActive": true,
       "translations": {}
@@ -416,7 +416,7 @@
       "key": "freezer",
       "name": "Freezer",
       "category": "kitchen",
-      "icon": "chef-hat",
+      "icon": "snowflake",
       "sortOrder": 0,
       "isActive": true,
       "translations": {}
@@ -452,7 +452,7 @@
       "key": "hangers",
       "name": "Hangers",
       "category": "bedroom",
-      "icon": "bed-double",
+      "icon": "shirt",
       "sortOrder": 0,
       "isActive": true,
       "translations": {}
@@ -497,7 +497,7 @@
       "key": "hot_water",
       "name": "Hot water",
       "category": "bathroom",
-      "icon": "bath",
+      "icon": "droplets",
       "sortOrder": 0,
       "isActive": true,
       "translations": {}
@@ -506,7 +506,7 @@
       "key": "hot_water_kettle",
       "name": "Hot water kettle",
       "category": "kitchen",
-      "icon": "chef-hat",
+      "icon": "coffee",
       "sortOrder": 0,
       "isActive": true,
       "translations": {}
@@ -616,7 +616,7 @@
       "category": "family",
       "icon": "paw-print",
       "sortOrder": 40,
-      "isActive": true,
+      "isActive": false,
       "translations": {}
     },
     {
@@ -758,7 +758,7 @@
       "key": "towels_toiletries",
       "name": "Towels and toiletries",
       "category": "bathroom",
-      "icon": "sparkles",
+      "icon": "droplets",
       "sortOrder": 40,
       "isActive": true,
       "translations": {}
@@ -794,7 +794,7 @@
       "key": "wine_glasses",
       "name": "Wine glasses",
       "category": "kitchen",
-      "icon": "chef-hat",
+      "icon": "wine",
       "sortOrder": 0,
       "isActive": true,
       "translations": {}

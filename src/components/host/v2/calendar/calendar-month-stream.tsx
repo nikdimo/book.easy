@@ -48,6 +48,15 @@ export interface CalendarMonthStreamProps {
   onVisibleMonthChange: (month: string) => void;
   /** Owned by the workspace so its month controls can scroll this pane. */
   scrollRef: RefObject<HTMLDivElement | null>;
+  /**
+   * Rendered inside the scroller, above the first month.
+   *
+   * Anything about the horizon rather than about one month belongs here. Placed above
+   * the pane instead, it would sit outside the only thing that scrolls from `md` up and
+   * so would follow the host down eighteen months of dates — permanent chrome, for a
+   * notice they read once.
+   */
+  lead?: React.ReactNode;
 }
 
 /**
@@ -76,6 +85,7 @@ export function CalendarMonthStream({
   onClearSelection,
   onVisibleMonthChange,
   scrollRef,
+  lead,
 }: CalendarMonthStreamProps) {
   const i18n = useI18n();
   const weekdays = weekdayLabels(formats);
@@ -201,6 +211,7 @@ export function CalendarMonthStream({
         onPointerDown={drag.onPointerDown}
         className="relative min-h-0 select-none overscroll-contain md:flex-1 md:overflow-y-auto"
       >
+        {lead}
         {months.map((month, position) => {
           const title = formatMonthYear(month, formats);
           return (

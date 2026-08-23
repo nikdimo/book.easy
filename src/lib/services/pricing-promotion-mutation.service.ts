@@ -68,6 +68,14 @@ function revalidatePricingPaths(listing: ManagedAvailabilityListing) {
   revalidatePath(`/host/listings/${listing.id}/availability`);
   revalidatePath(`/host/listings/${listing.id}/edit`);
   revalidatePath("/host/listings");
+  // The V2 equivalents of each of the four above. Pricing is edited from the V2
+  // calendar and the V2 pricing section now, so leaving these out meant the surface
+  // that made the change was the one still showing the old number.
+  revalidatePath(`/host/listings/${listing.id}/pricing`);
+  revalidatePath(`/host/listings/${listing.id}/availability`);
+  revalidatePath(`/host/listings/${listing.id}`);
+  revalidatePath("/host/listings");
+  revalidatePath("/host/calendar");
   if (listing.slug) revalidatePath(`/properties/${listing.slug}`);
   revalidatePublicListingCaches();
 }
@@ -78,6 +86,13 @@ function revalidatePromotionPaths(listing: ManagedAvailabilityListing) {
   revalidatePath(`/host/listings/${listing.id}/promotion`);
   revalidatePath(`/host/listings/${listing.id}/edit`);
   revalidatePath("/host/listings");
+  // V2 has no separate promotion route: promotions are a lens of the calendar, which
+  // is why `/host/calendar` stands in for the classic `/promotion` path.
+  revalidatePath(`/host/listings/${listing.id}/availability`);
+  revalidatePath(`/host/listings/${listing.id}/pricing`);
+  revalidatePath(`/host/listings/${listing.id}`);
+  revalidatePath("/host/listings");
+  revalidatePath("/host/calendar");
   if (listing.slug) revalidatePath(`/properties/${listing.slug}`);
   revalidatePublicListingCaches();
 }

@@ -74,6 +74,7 @@ export default function ListingLocationPickerInner({
   className,
   interactive = true,
   pinBehavior = "center",
+  gestureHandling = "greedy",
 }: {
   lat: number;
   lng: number;
@@ -85,6 +86,11 @@ export default function ListingLocationPickerInner({
   /** Host editing keeps the pin fixed in the viewport while the map moves beneath it.
    *  Public maps anchor it to the approximate coordinates instead. */
   pinBehavior?: "center" | "location";
+  /** "greedy" lets the wheel zoom the map directly — right for a map that fills the
+   *  screen. "cooperative" gives the wheel back to the page and asks for ⌘/Ctrl (or two
+   *  fingers) to zoom, which is what a map embedded in a scrolling form needs: scrolling
+   *  past it must not silently zoom it to street level. */
+  gestureHandling?: "greedy" | "cooperative";
 }) {
   const key =
     process.env.NEXT_PUBLIC_GOOGLE_MAPS_JAVASCRIPT_API_KEY?.trim();
@@ -153,7 +159,7 @@ export default function ListingLocationPickerInner({
           mapTypeControl: false,
           streetViewControl: false,
           zoomControl: interactive,
-          gestureHandling: interactive ? "greedy" : "none",
+          gestureHandling: interactive ? gestureHandling : "none",
           keyboardShortcuts: interactive,
         });
 
@@ -225,7 +231,7 @@ export default function ListingLocationPickerInner({
       locationMarkerRef.current = null;
       mapRef.current = null;
     };
-  }, [emitPosition, interactive, key, pinBehavior]);
+  }, [emitPosition, gestureHandling, interactive, key, pinBehavior]);
 
   React.useEffect(() => {
     const map = mapRef.current;

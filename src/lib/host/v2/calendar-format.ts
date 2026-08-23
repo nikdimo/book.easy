@@ -1,3 +1,5 @@
+import { convertAmount } from "@/lib/currency/convert";
+
 /**
  * Locale formatting that cannot disagree between the server and the browser.
  *
@@ -50,11 +52,22 @@ export interface DateFormat {
   monthYear: DateToken[];
 }
 
+/** The host's display currency and the rate table that reaches it, carried on the
+ *  snapshot so a client component can convert without an `Intl` call or a fetch. */
+export interface DisplayMoneyContext {
+  currency: string;
+  /** Base-quoted multipliers, exactly as `getExchangeRates()` returns them. */
+  rates: Readonly<Record<string, number>>;
+}
+
 export interface CalendarFormats {
   /** What the server's `Intl` actually resolved to — reported, never re-resolved. */
   locale: string;
   money: Record<string, MoneyFormat>;
   date: DateFormat;
+  /** Null when rates are unavailable, or absent on a snapshot built before this
+   *  existed. Either way every amount renders in its listing's own currency. */
+  display?: DisplayMoneyContext | null;
 }
 
 const PROBE_AMOUNT = 1234567.89;
@@ -130,6 +143,10 @@ function tokenize(
 export function buildCalendarFormats(
   locale: string,
   currencies: string[],
+  /** The host's display currency, so read-only amounts can be shown in the currency
+   *  they chose. Editors ignore it: a field a host types a price into must stay in
+   *  the currency that price is stored and paid in. */
+  display?: DisplayMoneyContext | null,
 ): CalendarFormats {
   const resolved = new Intl.DateTimeFormat(locale).resolvedOptions().locale;
   const monthLong = Array.from({ length: 12 }, (_, month) =>
@@ -150,13 +167,19 @@ export function buildCalendarFormats(
   );
 
   const money: Record<string, MoneyFormat> = {};
-  for (const currency of new Set(currencies)) {
+  // The display currency joins the map even when no listing is priced in it — it is
+  // the currency conversions land in, and a missing pattern would fall back to the
+  // bare-code rendering for every converted amount on the screen.
+  for (const currency of new Set(
+    display ? [...currencies, display.currency] : currencies,
+  )) {
     money[currency] = moneyFormat(locale, currency);
   }
 
   return {
     locale: resolved,
     money,
+    display: display ?? null,
     date: {
       monthLong,
       monthShort,
@@ -201,6 +224,10 @@ export function formatMoney(
   amount: number,
   currency: string,
   formats: CalendarFormats,
+  options?: {
+    /** Overrides the currency's own precision. Only `formatMoneyRounded` passes it. */
+    fractionDigits?: number;
+  },
 ): string {
   const format = formats.money[currency];
   if (!format) {
@@ -208,18 +235,39 @@ export function formatMoney(
     // with another currency's symbol either.
     return `${amount.toFixed(2)} ${currency}`;
   }
+  const fractionDigits = options?.fractionDigits ?? format.fractionDigits;
   const negative = amount < 0;
-  const fixed = Math.abs(amount).toFixed(format.fractionDigits);
+  const fixed = Math.abs(amount).toFixed(fractionDigits);
   const [integerPart, fractionPart = ""] = fixed.split(".");
   const digits = groupDigits(integerPart, format);
   const number =
-    format.fractionDigits > 0
+    fractionDigits > 0
       ? `${digits}${format.decimalSeparator}${fractionPart}`
       : digits;
   const body = format.symbolFirst
     ? `${format.symbol}${format.symbolSpacing}${number}`
     : `${number}${format.symbolSpacing}${format.symbol}`;
   return negative ? `${format.minusSign}${body}` : body;
+}
+
+/**
+ * The same amount, as a whole unit.
+ *
+ * Every price a host sets in this workspace is whole — the slider rounds, promotions
+ * round by default, and nobody lets a room at €141.45. Padding all of them to `.00`
+ * spends two characters per line to say "no decimals here", on a panel where a dozen
+ * amounts can be on screen at once. Decimals are left to `formatMoney`, which the
+ * price breakdown uses: a summary rounds for scanning, and the receipt beneath it
+ * stays exact to the cent.
+ */
+export function formatMoneyRounded(
+  amount: number,
+  currency: string,
+  formats: CalendarFormats,
+): string {
+  return formatMoney(Math.round(amount), currency, formats, {
+    fractionDigits: 0,
+  });
 }
 
 function renderTokens(
@@ -265,4 +313,71 @@ export function formatMonthYear(ymd: string, formats: CalendarFormats): string {
 
 export function weekdayLabels(formats: CalendarFormats): string[] {
   return formats.date.weekdayShort;
+}
+
+/**
+ * One read-only amount, in the currency the host chose to read prices in.
+ *
+ * Conversion is display-only, and the official amount is always returned alongside so
+ * the caller can disclose it: what a host is actually paid is the number in
+ * `official`, and no screen may quietly replace it with an approximation. Falls back
+ * to the official amount whenever the snapshot carries no display context or the pair
+ * is unquotable — never to a guess, and never to a blank.
+ *
+ * Editors deliberately do not use this. A price a host types is the price that gets
+ * stored and charged, so those fields stay in the listing's own currency; see the
+ * note on `buildCalendarFormats`.
+ */
+export function formatDisplayMoney(
+  amount: number,
+  officialCurrency: string,
+  formats: CalendarFormats,
+): { text: string; official: string; currency: string; converted: boolean } {
+  const official = formatMoney(amount, officialCurrency, formats);
+  const display = formats.display;
+  if (!display || display.currency === officialCurrency) {
+    return { text: official, official, currency: officialCurrency, converted: false };
+  }
+
+  const converted = convertAmount(amount, officialCurrency, {
+    display: display.currency,
+    rates: display.rates,
+  });
+  if (converted === null) {
+    return { text: official, official, currency: officialCurrency, converted: false };
+  }
+
+  return {
+    // Whole units, matching what `displayPrice` does for converted amounts above ten:
+    // a converted figure is an approximation, and rendering it to the cent claims a
+    // precision it does not have.
+    text: formatMoneyRounded(converted, display.currency, formats),
+    official,
+    currency: display.currency,
+    converted: true,
+  };
+}
+
+/**
+ * The numeric half of `formatDisplayMoney`: an amount moved into the display currency,
+ * or left in its own when that is not possible. Callers that have to *add* amounts
+ * before showing them need this — summing two currencies and labelling the result with
+ * whichever one came first is not a rounding error, it is a wrong number.
+ */
+export function toDisplayAmount(
+  amount: number,
+  officialCurrency: string,
+  formats: CalendarFormats,
+): { amount: number; currency: string; converted: boolean } {
+  const display = formats.display;
+  if (!display || display.currency === officialCurrency) {
+    return { amount, currency: officialCurrency, converted: false };
+  }
+  const converted = convertAmount(amount, officialCurrency, {
+    display: display.currency,
+    rates: display.rates,
+  });
+  return converted === null
+    ? { amount, currency: officialCurrency, converted: false }
+    : { amount: converted, currency: display.currency, converted: true };
 }

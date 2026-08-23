@@ -6,7 +6,13 @@ import {
   completePastBookings,
   expirePendingBookings,
 } from "@/lib/services/booking.service";
-import { buildCalendarFormats } from "@/lib/host/v2/calendar-format";
+import {
+  buildCalendarFormats,
+  type DisplayMoneyContext,
+} from "@/lib/host/v2/calendar-format";
+import { getDisplayCurrency } from "@/lib/currency/server";
+import { getExchangeRates } from "@/lib/currency/rates";
+import { BASE_CURRENCY } from "@/lib/currency/currency-preference";
 import type {
   HostReservation,
   HostReservationProperty,
@@ -164,9 +170,20 @@ export async function getHostReservations(
       locale,
       // Only the currencies actually present, plus a fallback so an account with no
       // bookings still has a pattern to format a zero total with.
-      reservations.map((reservation) => reservation.currency).concat("EUR"),
+      reservations.map((reservation) => reservation.currency).concat(BASE_CURRENCY),
+      await displayMoneyContext(),
     ),
     properties,
     reservations,
   };
+}
+
+/**
+ * The host's display currency plus the rates that reach it, or null when the provider
+ * is unavailable. Display-only: it never touches what a listing is priced in, what a
+ * guest is charged, or what a host is paid — see `formatDisplayMoney`.
+ */
+async function displayMoneyContext(): Promise<DisplayMoneyContext | null> {
+  const [currency, table] = await Promise.all([getDisplayCurrency(), getExchangeRates()]);
+  return table ? { currency, rates: table.rates } : null;
 }

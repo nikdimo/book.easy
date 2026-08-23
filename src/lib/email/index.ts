@@ -314,7 +314,7 @@ function greetingFormal(name: string, t: EmailTranslator): string {
 function bookingEmailLinks(booking: BookingEmailContext) {
   return {
     guest: communicationAppUrl(`/account/bookings/${booking.id}`),
-    host: communicationAppUrl(`/host/bookings/${booking.id}`),
+    host: communicationAppUrl(`/host/reservations/${booking.id}`),
     listing: communicationAppUrl(`/properties/${booking.listing.slug}`),
   };
 }

@@ -5,6 +5,13 @@ import {
   listingStepId,
   resumeListingStep,
 } from "@/lib/constants/listing-steps";
+import {
+  ADDITIONAL_RULES_MAX,
+  EVENT_POLICIES,
+  PET_POLICIES,
+  QUIET_HOURS_POLICIES,
+  SMOKING_POLICIES,
+} from "@/lib/host/v2/listing-house-rules";
 import type { ListingDraftData } from "@/lib/types/listing-draft";
 import { parsePrePublishPlan } from "@/lib/types/listing-prepublish-plan";
 import { normalizePropertyType } from "@/lib/types/property-type";
@@ -33,8 +40,28 @@ const mobileListingDraftPatchSchema = z
     beds: draftString.optional(),
     bathrooms: draftString.optional(),
     baseNightlyRate: draftString.optional(),
+    currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/).optional(),
     cleaningFee: draftString.optional(),
     minNights: draftString.optional(),
+    checkInTime: draftString.optional(),
+    checkOutTime: draftString.optional(),
+
+    // House rules. The policies are validated as the closed sets they are rather than
+    // carried as free text: a value outside them could never be published, and storing
+    // it would only move the failure to a screen further along. "" is always allowed —
+    // it is how a client says "the host has not answered", which is a real state and
+    // the one every listing starts in.
+    petPolicy: z.enum(["", ...PET_POLICIES]).optional(),
+    smokingPolicy: z.enum(["", ...SMOKING_POLICIES]).optional(),
+    eventPolicy: z.enum(["", ...EVENT_POLICIES]).optional(),
+    quietHoursPolicy: z.enum(["", ...QUIET_HOURS_POLICIES]).optional(),
+    // Times stay loose here, like the arrival pair above: publishing validates them,
+    // and an imported off-grid value must survive the round trip rather than being
+    // rejected by a draft save.
+    quietHoursStart: draftString.optional(),
+    quietHoursEnd: draftString.optional(),
+    additionalRules: z.string().max(ADDITIONAL_RULES_MAX).optional(),
+
     amenityIds: z.array(z.string().min(1).max(100)).max(250).optional(),
 
     // Location, address and Street View. These were previously refused because the
@@ -77,6 +104,7 @@ const mobileListingDraftPatchSchema = z
     promotionType: draftString.optional(),
     promotionPercent: draftString.optional(),
     promotionMinimumNights: draftString.optional(),
+    promotionFreeCleaning: draftString.optional(),
     // The shared parser below validates and caps every optional range. Keeping this
     // field in the native draft contract lets the mandatory availability answer
     // survive app restarts without creating a second source of truth.
@@ -140,8 +168,22 @@ export function listingDraftData(value: Prisma.JsonValue): ListingDraftData {
     value && typeof value === "object" && !Array.isArray(value) ? value : {}
   ) as ListingDraftData;
 
+  // Drafts written before ordered media items existed carry only `imageUrls`. Host V2
+  // and publishing both read `mediaItems`, so normalize genuinely legacy rows on read.
+  // When `mediaItems` exists it remains authoritative, even when it is intentionally
+  // empty; the parallel legacy list must not resurrect a removed photo.
+  const legacyMediaItems =
+    data.mediaItems === undefined && Array.isArray(data.imageUrls)
+      ? [...new Set(data.imageUrls)].map((url) => ({
+          url,
+          mediaType: "IMAGE" as const,
+          alt: null,
+        }))
+      : undefined;
+
   return {
     ...data,
+    ...(legacyMediaItems === undefined ? {} : { mediaItems: legacyMediaItems }),
     ...(data.prePublishPlan === undefined
       ? {}
       : { prePublishPlan: parsePrePublishPlan(data.prePublishPlan) }),

@@ -9,6 +9,7 @@ import {
   useTransition,
 } from "react";
 import { useRouter } from "next/navigation";
+import { BASE_CURRENCY } from "@/lib/currency/currency-preference";
 import {
   CalendarDays,
   ChevronLeft,
@@ -36,7 +37,7 @@ import { useRailPreference } from "@/components/host/v2/entity-rail";
 import {
   buildListingCalendarIndex,
   countDates,
-  defaultListingId,
+  initialCalendarListingId,
 } from "@/lib/host/v2/calendar-model";
 import { summarizeListingStatus } from "@/lib/host/v2/listing-status";
 import type { HostCalendarWorkspaceData } from "@/lib/host/v2/calendar-types";
@@ -132,14 +133,9 @@ export function HostCalendarWorkspace({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
-  const [selectedId, setSelectedId] = useState<string>(() => {
-    const requested = data.listings.some(
-      (listing) => listing.id === requestedListingId,
-    )
-      ? requestedListingId
-      : null;
-    return requested ?? defaultListingId(data) ?? ALL_LISTINGS;
-  });
+  const [selectedId, setSelectedId] = useState<string>(
+    () => initialCalendarListingId(data, requestedListingId) ?? ALL_LISTINGS,
+  );
   const [selection, setSelection] = useState<CalendarSelection | null>(null);
   const [promotionEditorId, setPromotionEditorId] = useState<string | null>(null);
   /** The month the stream is showing. Reported by scrolling, not by paging. */
@@ -411,6 +407,18 @@ export function HostCalendarWorkspace({
     });
   }, [guard]);
 
+  /** The same destination the pricing editor's "Change" link reaches, but entered on
+   *  its own terms: no field is singled out, because nothing sent the host here. */
+  const openListingDefaults = useCallback(() => {
+    guard(() => {
+      setSelection(null);
+      anchorRef.current = null;
+      setChange(null);
+      setView({ kind: "editor", editor: MINIMUM_STAY_TARGET.editor });
+      setFocusMinimumStay(false);
+    });
+  }, [guard]);
+
   const openSchedule = useCallback(() => {
     guard(() => {
       setChange(null);
@@ -614,6 +622,12 @@ export function HostCalendarWorkspace({
       anchorRef.current = null;
       setPromotionEditorId(null);
       setView({ kind: "editor", editor: "listing_promotions" });
+      // The banner is the only opener that sits outside the panel, so it is the only
+      // one that has to raise the drawer as well as choose the editor: every other
+      // caller is already inside a panel the host has open. Guarded by width because
+      // on desktop the panel is mounted in the right column, where `sheetOpen` would
+      // put dialog semantics on a pane that is not a dialog.
+      if (!window.matchMedia("(min-width: 1024px)").matches) setSheetOpen(true);
     });
   }, [guard]);
 
@@ -952,6 +966,7 @@ export function HostCalendarWorkspace({
       promotionEditorId={promotionEditorId}
       onChange={setChange}
       onClearSelection={clearSelection}
+      onCloseDrawer={() => setSheetOpen(false)}
       onReviewDate={() => setReviewTarget({ kind: "date" })}
       actionPending={pending}
       actionResult={liveDateAction?.result ?? null}
@@ -970,6 +985,7 @@ export function HostCalendarWorkspace({
         }
       }}
       onEditListingWideStayRules={editListingWideStayRules}
+      onOpenListingDefaults={openListingDefaults}
       focusMinimumStay={focusMinimumStay}
       view={activeView}
       onOpenEditor={openEditor}
@@ -1048,7 +1064,7 @@ export function HostCalendarWorkspace({
                 where in the horizon the host currently is, and how to move. */}
             <header
               {...anchorProps(CALENDAR_ANCHOR.monthControls)}
-              className="sticky top-0 z-40 flex h-10 shrink-0 items-center gap-2 bg-white md:static md:h-auto md:pb-2"
+              className="sticky top-0 z-40 flex min-h-10 shrink-0 items-center gap-2 bg-white pb-2 md:static md:h-auto"
             >
               <button
                 type="button"
@@ -1062,7 +1078,7 @@ export function HostCalendarWorkspace({
                     { property: active.listing.title },
                   ).text
                 }
-                className="grid size-7 shrink-0 place-items-center overflow-hidden rounded-lg bg-slate-100 text-slate-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28] md:hidden"
+                className="grid size-7 shrink-0 place-items-center overflow-hidden rounded-lg bg-slate-100 text-slate-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a] md:hidden"
               >
                 {active.listing.photoUrl ? (
                   <Image
@@ -1121,43 +1137,46 @@ export function HostCalendarWorkspace({
               </div>
             </header>
 
-            {allDatePromotionCount > 0 ? (
-              <button
-                type="button"
-                onClick={openAllDatePromotions}
-                className="mb-2 flex min-h-11 shrink-0 items-center justify-between gap-3 rounded-xl bg-[#fff1e8] px-3 py-2 text-left text-[#8f3d21] transition-colors hover:bg-[#fde7dc] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#a94b28]"
-              >
-                <span className="flex min-w-0 items-center gap-2">
-                  <Percent className="size-4 shrink-0" aria-hidden />
-                  <span className="min-w-0">
-                    <span className="block text-[0.8125rem] font-semibold">
-                      {interpolate(
-                        i18n.plural(
-                          "host.v2.calendar.all_date_promotions_count",
-                          allDatePromotionCount,
-                          "{n} all-date promotion active",
-                          "{n} all-date promotions active",
-                        ),
-                        {},
-                      ).text}
-                    </span>
-                    <span className="block truncate text-[0.6875rem] text-[#a94b28]">
-                      {
-                        i18n.resolve(
-                          "host.v2.calendar.all_date_promotions_hint",
-                          "Available when the guest meets the minimum stay",
-                        ).text
-                      }
-                    </span>
-                  </span>
-                </span>
-                <span className="shrink-0 text-[0.75rem] font-semibold">
-                  {i18n.resolve("host.v2.calendar.manage", "Manage").text}
-                </span>
-              </button>
-            ) : null}
-
             <CalendarMonthStream
+              lead={
+                <>
+                  {allDatePromotionCount > 0 ? (
+                    <button
+                      type="button"
+                      onClick={openAllDatePromotions}
+                      className="mb-3 flex min-h-11 w-full shrink-0 items-center justify-between gap-4 rounded-xl bg-[#f8fafc] px-3.5 py-2.5 text-left text-[#0f172a] transition-colors hover:bg-[#f1f5f9] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]"
+                    >
+                      <span className="flex min-w-0 items-center gap-2">
+                        <Percent className="size-4 shrink-0" aria-hidden />
+                        <span className="min-w-0">
+                          <span className="block text-[0.8125rem] font-semibold">
+                            {interpolate(
+                              i18n.plural(
+                                "host.v2.calendar.all_date_promotions_count",
+                                allDatePromotionCount,
+                                "{n} all-date promotion active",
+                                "{n} all-date promotions active",
+                              ),
+                              {},
+                            ).text}
+                          </span>
+                          <span className="block truncate text-[0.6875rem] text-[#0f172a]">
+                            {
+                              i18n.resolve(
+                                "host.v2.calendar.all_date_promotions_hint",
+                                "Available when the guest meets the minimum stay",
+                              ).text
+                            }
+                          </span>
+                        </span>
+                      </span>
+                      <span className="shrink-0 text-[0.75rem] font-semibold">
+                        {i18n.resolve("host.v2.calendar.manage", "Manage").text}
+                      </span>
+                    </button>
+                  ) : null}
+                </>
+              }
               listing={active.listing}
               index={active.index}
               formats={data.formats}
@@ -1186,7 +1205,7 @@ export function HostCalendarWorkspace({
               <li className="flex items-center gap-1.5">
                 <span
                   aria-hidden
-                  className="size-2.5 rounded-[3px] border border-[#e2e6ea] bg-[#ffe2cd]"
+                  className="size-2.5 rounded-[3px] border border-[#e2e6ea] bg-[#e2e8f0]"
                 />
                 {i18n.resolve("host.v2.calendar.legend.selected", "Selected").text}
               </li>
@@ -1259,36 +1278,19 @@ export function HostCalendarWorkspace({
               "lg:static lg:inset-auto lg:z-auto lg:flex lg:h-auto lg:min-h-0 lg:w-[23rem] lg:shrink-0 lg:flex-col lg:overflow-hidden lg:border-l lg:border-slate-100 lg:bg-transparent lg:pl-4 xl:w-[25rem]",
             )}
           >
-            <header
-              className="flex shrink-0 items-center gap-3 border-b border-slate-100 px-4 pb-3 lg:hidden"
-              style={{ paddingTop: "calc(0.75rem + env(safe-area-inset-top))" }}
-            >
-              <div className="min-w-0 flex-1">
-                <h2
-                  id="host-v2-manage-drawer-title"
-                  className="truncate text-base font-semibold text-slate-950"
-                >
-                  {
-                    i18n.resolve(
-                      "host.v2.calendar.manage_title",
-                      "Manage calendar",
-                    ).text
-                  }
-                </h2>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => setSheetOpen(false)}
-                aria-label={i18n.resolve("common.close", "Close").text}
-              >
-                <X className="size-4" aria-hidden />
-              </Button>
-            </header>
             {/* The panel is one flex column in both layouts: its own header and its
-                own sticky action, with the body between them as the only scroller. */}
-            <div className="flex min-h-0 flex-1 flex-col px-4 pt-3 lg:px-0 lg:pt-0">
+                own sticky action, with the body between them as the only scroller.
+                It carries the safe-area inset the removed drawer bar used to absorb —
+                its header is the topmost thing in the sheet now, so the notch is its
+                problem. */}
+            <div
+              className="flex min-h-0 flex-1 flex-col px-4 pt-3 lg:px-0 lg:pt-0"
+              style={
+                sheetOpen
+                  ? { paddingTop: "calc(0.75rem + env(safe-area-inset-top))" }
+                  : undefined
+              }
+            >
               {managePanel}
             </div>
           </aside>
@@ -1310,7 +1312,7 @@ export function HostCalendarWorkspace({
           <button
             type="button"
             onClick={() => setSheetOpen(true)}
-            className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1 text-left transition-colors duration-150 hover:bg-slate-50 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#a94b28]"
+            className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1 text-left transition-colors duration-150 hover:bg-slate-50 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0f172a]"
           >
             <CalendarDays className="size-4 shrink-0 text-slate-400" aria-hidden />
             {/* Verb first in both states, so the bar reads as the one thing it is:
@@ -1352,7 +1354,7 @@ export function HostCalendarWorkspace({
                     "Clear selection",
                   ).text
                 }
-                className="grid size-11 shrink-0 place-items-center rounded-lg text-slate-400 transition-colors duration-150 hover:bg-slate-50 hover:text-slate-600 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#a94b28]"
+                className="grid size-11 shrink-0 place-items-center rounded-lg text-slate-400 transition-colors duration-150 hover:bg-slate-50 hover:text-slate-600 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0f172a]"
               >
                 <X className="size-4" aria-hidden />
               </button>
@@ -1378,7 +1380,7 @@ export function HostCalendarWorkspace({
               ? `${active.listing.title} · ${rangeLabel}`
               : active.listing.title
           }
-          currency={active.listing.pricing?.currency ?? "EUR"}
+          currency={active.listing.pricing?.currency ?? BASE_CURRENCY}
           formats={data.formats}
           pending={pending}
           // Only a block carries a note. Everything else gets null and no field.
@@ -1446,7 +1448,7 @@ export function HostCalendarWorkspace({
             <Button
               type="button"
               size="lg"
-              className="bg-[#d9774f] text-white hover:bg-[#c2643e]"
+              className="bg-[#0f172a] text-white hover:bg-[#1e293b]"
               onClick={() => {
                 const intent = pendingIntent;
                 setPendingIntent(null);

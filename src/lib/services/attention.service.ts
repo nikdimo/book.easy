@@ -14,6 +14,7 @@ export async function getHostAttentionSummary(hostId: string) {
     firstActiveListing,
     confirmedBookingCount,
     upcomingStay,
+    latestDamageReport,
   ] =
     await Promise.all([
       db.booking.count({
@@ -66,6 +67,24 @@ export async function getHostAttentionSummary(hostId: string) {
         select: { checkIn: true, listingId: true },
         orderBy: { checkIn: "asc" },
       }),
+      // The thread behind the newest open damage report, so the Today row can open the
+      // report itself instead of the inbox. Same filter as the count above plus one
+      // more condition: the host must already be a participant of that conversation,
+      // which is exactly what the thread route re-checks before it renders. An id that
+      // would 404 therefore never becomes a link — the row falls back to the inbox.
+      db.damageReport.findFirst({
+        where: {
+          booking: { listing: { hostId } },
+          reporterId: { not: hostId },
+          status: { in: ["REPORTED", "ESCALATED"] },
+          conversation: {
+            listing: { hostId },
+            participants: { some: { userId: hostId } },
+          },
+        },
+        select: { conversationId: true },
+        orderBy: { createdAt: "desc" },
+      }),
     ]);
 
   return {
@@ -73,6 +92,7 @@ export async function getHostAttentionSummary(hostId: string) {
     pendingBookings,
     unreadThreads,
     damageReports,
+    damageReportConversationId: latestDamageReport?.conversationId ?? null,
     recentNotifications,
     firstActiveListing,
     confirmedBookingCount,

@@ -338,7 +338,7 @@ export async function getConversationMessages(
             totalPrice: Number(conversation.booking.totalPrice),
             detailsUrl:
               conversation.booking.listing.hostId === userId
-                ? `/host/bookings/${conversation.booking.id}`
+                ? `/host/reservations/${conversation.booking.id}`
                 : `/account/bookings/${conversation.booking.id}`,
           }
         : null,

@@ -6,6 +6,9 @@
  */
 import "dotenv/config";
 import { PrismaClient, UserRole } from "@prisma/client";
+import { enqueueUploadDeletions, processPendingUploadDeletions } from "@/lib/storage/upload-cleanup";
+import { draftUploadUrls } from "@/lib/storage/upload-references";
+import { listingDraftData } from "@/lib/mobile-listing-draft";
 
 const prisma = new PrismaClient();
 
@@ -56,7 +59,29 @@ async function main() {
   console.log("Deleting users:", deleteIds.length);
   console.log("Removing listings (and related data):", doomedListingIds.length);
 
+  // Both the doomed listings' photos and the doomed users' draft photos are managed
+  // uploads that nothing will point at once this runs — `ListingDraft.host` cascades, so
+  // the drafts disappear without any delete path seeing them. Read before the transaction,
+  // queued inside it.
+  const [doomedImages, doomedDrafts] = await Promise.all([
+    prisma.listingImage.findMany({
+      where: doomedListingIds.length > 0 ? { listingId: { in: doomedListingIds } } : { id: "" },
+      select: { url: true },
+    }),
+    prisma.listingDraft.findMany({ where: { hostId: { in: deleteIds } }, select: { data: true } }),
+  ]);
+  const doomedUploads = [
+    ...doomedImages.map((image) => image.url),
+    ...doomedDrafts.flatMap((draft) => draftUploadUrls(listingDraftData(draft.data))),
+  ];
+
   await prisma.$transaction(async (tx) => {
+    // Queued in the same transaction as the deletions below: if this rolls back, nothing
+    // is scheduled for removal. The files themselves are swept after the commit, and each
+    // one is re-checked against every other reference first.
+    const queued = await enqueueUploadDeletions(tx, doomedUploads, "purge-users-script");
+    console.log("  uploads queued for cleanup:", queued.length);
+
     const bookingDelete = await tx.booking.deleteMany({
       where: {
         OR: [
@@ -91,6 +116,14 @@ async function main() {
     });
     console.log("  users removed:", userDelete.count);
   });
+
+  const cleanup = await processPendingUploadDeletions({ limit: doomedUploads.length || 1 });
+  console.log(
+    `  uploads removed: ${cleanup.deleted} (kept, still referenced: ${cleanup.kept}; failed: ${cleanup.failed})`,
+  );
+  if (cleanup.failed > 0) {
+    console.log("  Re-run `npm run uploads:process-deletions` to retry the failures.");
+  }
 
   console.log("Done.");
 }

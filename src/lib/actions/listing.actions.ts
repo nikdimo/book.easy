@@ -3,10 +3,10 @@
 import type { ListingMediaType, Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { listingFormSchema } from "@/lib/validations/listing.schema";
+import { listingFormSchema, type ListingFormInput } from "@/lib/validations/listing.schema";
 import { generateUniqueSlug, archiveOrDeleteListing } from "@/lib/services/listing.service";
-import { getStorageAdapter } from "@/lib/storage";
-import { isLocalUploadUrl } from "@/lib/utils/upload-url";
+import { enqueueUploadDeletions, sweepUploads } from "@/lib/storage/upload-cleanup";
+import { deleteOwnedListingDraftWithCleanup } from "@/lib/listing-draft-cleanup";
 import { revalidatePublicListingCaches } from "@/lib/utils/revalidate-public-listing-caches";
 import { revalidatePath } from "next/cache";
 import { firstZodMessage } from "@/lib/utils/zod-error";
@@ -34,6 +34,7 @@ import {
   validateStoredListingAvailabilityForPublish,
 } from "@/lib/types/listing-availability-start";
 import { getExchangeRates } from "@/lib/currency/rates";
+import { MIN_PUBLISH_PHOTOS } from "@/lib/host/v2/photo-draft";
 
 async function currencyIsCurrentlyQuotable(currency: string): Promise<boolean> {
   const rates = await getExchangeRates();
@@ -85,6 +86,13 @@ function draftDataFromForm(formData: FormData): Prisma.InputJsonValue {
     minNights: str("minNights"),
     checkInTime: str("checkInTime"),
     checkOutTime: str("checkOutTime"),
+    petPolicy: str("petPolicy"),
+    smokingPolicy: str("smokingPolicy"),
+    eventPolicy: str("eventPolicy"),
+    quietHoursPolicy: str("quietHoursPolicy"),
+    quietHoursStart: str("quietHoursStart"),
+    quietHoursEnd: str("quietHoursEnd"),
+    additionalRules: str("additionalRules"),
     promotionType: str("promotionType"),
     promotionPercent: str("promotionPercent"),
     promotionMinimumNights: str("promotionMinimumNights"),
@@ -138,11 +146,16 @@ export async function deleteListingDraft(draftId: string) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Not authorized" };
 
-  const result = await db.listingDraft.deleteMany({
-    where: { id: draftId, hostId: session.user.id },
+  // Ownership is still the caller's own `hostId` — this is not an admin path and never
+  // was. The shared operation adds the part that was missing: the draft's uploaded photos
+  // are unlinked once the row is gone and nothing else references them.
+  const result = await deleteOwnedListingDraftWithCleanup({
+    hostId: session.user.id,
+    draftId,
   });
-  if (result.count === 0) return { error: "Draft not found" };
+  if (!result.ok) return { error: result.error };
 
+  revalidatePath("/host/listings");
   revalidatePath("/host/listings");
   return { success: true };
 }
@@ -217,6 +230,30 @@ function firstImageIndex(mediaItems: ListingMediaItem[]): number {
 }
 
 /**
+ * The structured house rules, from a parsed form to the columns that hold them.
+ *
+ * NULL for every unanswered policy, and — as with the arrival times — never `false`.
+ * A listing published by a client that has no rules screen yet has said nothing about
+ * smoking, and saying nothing is what the row must record.
+ *
+ * Quiet-hours times are dropped unless the policy is SET, so a draft that once had
+ * times and was later switched to "no quiet hours" cannot publish a rule its host
+ * turned off.
+ */
+function houseRulesCreateData(data: ListingFormInput) {
+  const quietHours = data.quietHoursPolicy === "SET";
+  return {
+    petPolicy: data.petPolicy,
+    smokingPolicy: data.smokingPolicy,
+    eventPolicy: data.eventPolicy,
+    quietHoursPolicy: data.quietHoursPolicy,
+    quietHoursStart: quietHours ? data.quietHoursStart || null : null,
+    quietHoursEnd: quietHours ? data.quietHoursEnd || null : null,
+    additionalRules: data.additionalRules || null,
+  };
+}
+
+/**
  * Creates a new listing and publishes it immediately — there's no intermediate
  * "created but not submitted" state a real Listing row can be in; that's what
  * ListingDraft (see saveListingDraft above) is for, before this is called. Sets
@@ -265,6 +302,13 @@ export async function submitNewListing(
     minNights: formData.get("minNights") || "1",
     checkInTime: formData.get("checkInTime") || undefined,
     checkOutTime: formData.get("checkOutTime") || undefined,
+    petPolicy: formData.get("petPolicy") || undefined,
+    smokingPolicy: formData.get("smokingPolicy") || undefined,
+    eventPolicy: formData.get("eventPolicy") || undefined,
+    quietHoursPolicy: formData.get("quietHoursPolicy") || undefined,
+    quietHoursStart: formData.get("quietHoursStart") || undefined,
+    quietHoursEnd: formData.get("quietHoursEnd") || undefined,
+    additionalRules: formData.get("additionalRules") || undefined,
     promotionType: formData.get("promotionType") || "NONE",
     promotionPercent: formData.get("promotionPercent") || "15",
     promotionMinimumNights: formData.get("promotionMinimumNights") || "5",
@@ -314,8 +358,8 @@ export async function submitNewListing(
   }
   const mediaItems = parseMediaItemsFromForm(formData);
   const primaryImageIndex = firstImageIndex(mediaItems);
-  if (mediaItems.filter((item) => item.mediaType === "IMAGE").length < 3) {
-    return { error: "Add at least 3 photos before publishing" };
+  if (mediaItems.filter((item) => item.mediaType === "IMAGE").length < MIN_PUBLISH_PHOTOS) {
+    return { error: `Add at least ${MIN_PUBLISH_PHOTOS} photos before publishing` };
   }
 
   // Everything the host optionally set up on the last screen. Re-parsed rather than
@@ -457,6 +501,7 @@ export async function submitNewListing(
       // is displayed, so the empty string never reaches the database.
       checkInTime: data.checkInTime || null,
       checkOutTime: data.checkOutTime || null,
+      ...houseRulesCreateData(data),
       pricingRule: {
         create: {
           currency: data.currency,
@@ -499,9 +544,14 @@ export async function submitNewListing(
   });
 
   if (draftId) {
-    await db.listingDraft.deleteMany({ where: { id: draftId, hostId: session.user.id } });
+    // The listing now owns the photos the draft was holding, so the reference check keeps
+    // every one it carried across. What it does clean up is whatever the draft collected
+    // and publish did not take — the same shared path as every other draft deletion, so
+    // there is no second set of rules for the one that happens on success.
+    await deleteOwnedListingDraftWithCleanup({ hostId: session.user.id, draftId });
   }
 
+  revalidatePath("/host/listings");
   revalidatePath("/host/listings");
   revalidatePublicListingCaches();
   return { success: true, listingId: listing.id, slug: listing.slug };
@@ -559,6 +609,16 @@ export async function updateListing(listingId: string, formData: FormData) {
     minNights: listing.pricingRule.minNights,
     checkInTime: formData.get("checkInTime") || undefined,
     checkOutTime: formData.get("checkOutTime") || undefined,
+    // The classic detail form has no controls for these, so it posts nothing and the
+    // listing keeps what the House rules section stored. Reading them here anyway would
+    // make every save from that form clear four policies it never showed.
+    petPolicy: listing.petPolicy ?? undefined,
+    smokingPolicy: listing.smokingPolicy ?? undefined,
+    eventPolicy: listing.eventPolicy ?? undefined,
+    quietHoursPolicy: listing.quietHoursPolicy ?? undefined,
+    quietHoursStart: listing.quietHoursStart ?? undefined,
+    quietHoursEnd: listing.quietHoursEnd ?? undefined,
+    additionalRules: listing.additionalRules ?? undefined,
     amenityIds: formData.getAll("amenityIds"),
   };
 
@@ -604,6 +664,7 @@ export async function updateListing(listingId: string, formData: FormData) {
       beds: data.beds,
       checkInTime: data.checkInTime || null,
       checkOutTime: data.checkOutTime || null,
+      ...houseRulesCreateData(data),
       // Editing a live listing stays live (listings publish immediately), but flags it
       // for admin re-review since the content just changed post-approval.
       ...(listing.status === "APPROVED" ? { needsReview: true } : {}),
@@ -631,26 +692,31 @@ export async function updateListing(listingId: string, formData: FormData) {
     .map((img) => img.url)
     .filter((url) => !keptUrls.has(url));
 
-  await db.listingImage.deleteMany({ where: { listingId } });
-  if (mediaItems.length > 0) {
-    await db.listingImage.createMany({
-      data: mediaItems.map((item, i) => ({
-        listingId,
-        url: item.url,
-        mediaType: item.mediaType as ListingMediaType,
-        displayOrder: i,
-        isPrimary: i === primaryImageIndex,
-      })),
-    });
-  }
-
-  const removedLocalUrls = removedUrls.filter(isLocalUploadUrl);
-  if (removedLocalUrls.length > 0) {
-    const storage = getStorageAdapter();
-    await Promise.all(removedLocalUrls.map((url) => storage.delete(url)));
-  }
+  // The gallery rewrite and the intent to unlink whatever dropped out of it commit
+  // together. This used to unlink straight away, on a bare `/uploads/` prefix test and
+  // with no reference check at all — which destroyed a file that a draft, or another
+  // listing, was still showing. Both are the sweep's job now.
+  const queued = await db.$transaction(async (tx) => {
+    await tx.listingImage.deleteMany({ where: { listingId } });
+    if (mediaItems.length > 0) {
+      await tx.listingImage.createMany({
+        data: mediaItems.map((item, i) => ({
+          listingId,
+          url: item.url,
+          mediaType: item.mediaType as ListingMediaType,
+          displayOrder: i,
+          isPrimary: i === primaryImageIndex,
+        })),
+      });
+    }
+    return enqueueUploadDeletions(tx, removedUrls, "listing-photo-replaced");
+  });
+  await sweepUploads(queued, `listing-photo-replaced:${listingId}`);
 
   revalidatePath(`/host/listings/${listingId}/edit`);
+  revalidatePath("/host/listings");
+  revalidatePath(`/host/listings/${listingId}`);
+  revalidatePath(`/host/listings/${listingId}/photos`);
   revalidatePath("/host/listings");
   return { success: true };
 }
@@ -682,8 +748,8 @@ export async function submitForReview(listingId: string) {
 
   if (!listing.pricingRule) return { error: "Please set pricing before submitting" };
 
-  if (listing.images.filter((item) => item.mediaType === "IMAGE").length < 3) {
-    return { error: "Add at least 3 photos before publishing" };
+  if (listing.images.filter((item) => item.mediaType === "IMAGE").length < MIN_PUBLISH_PHOTOS) {
+    return { error: `Add at least ${MIN_PUBLISH_PHOTOS} photos before publishing` };
   }
 
   const availability = validateStoredListingAvailabilityForPublish(listing);
@@ -705,6 +771,7 @@ export async function submitForReview(listingId: string) {
   });
 
   revalidatePath("/host/listings");
+  revalidatePath("/host/listings");
   revalidatePublicListingCaches();
   return { success: true };
 }
@@ -724,6 +791,7 @@ export async function unpublishListing(listingId: string) {
     data: { status: "UNPUBLISHED" },
   });
 
+  revalidatePath("/host/listings");
   revalidatePath("/host/listings");
   revalidatePublicListingCaches();
   return { success: true };
@@ -762,6 +830,7 @@ export async function archiveListing(listingId: string) {
   });
 
   revalidatePath("/host/listings");
+  revalidatePath("/host/listings");
   revalidatePublicListingCaches();
   return { success: true };
 }
@@ -784,6 +853,7 @@ export async function unarchiveListing(listingId: string) {
   });
 
   revalidatePath("/host/listings");
+  revalidatePath("/host/listings");
   revalidatePublicListingCaches();
   return { success: true };
 }
@@ -799,6 +869,7 @@ export async function deleteListing(
   const result = await archiveOrDeleteListing(listingId, session.user.id);
   if ("error" in result) return result;
 
+  revalidatePath("/host/listings");
   revalidatePath("/host/listings");
   revalidatePublicListingCaches();
   return { success: true, outcome: result.outcome };
