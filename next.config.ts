@@ -2,6 +2,9 @@ import path from "node:path";
 import type { NextConfig } from "next";
 
 const distDir = process.env.NEXT_BUILD_DIR?.trim() || ".next";
+const deployTsconfig = process.env.NEXT_BUILD_DIR?.trim()
+  ? "tsconfig.deploy.json"
+  : "tsconfig.json";
 const isProduction = process.env.NODE_ENV === "production";
 
 // Static CSP keeps public pages cacheable. Inline scripts/styles are currently needed
@@ -118,6 +121,13 @@ const nextConfig: NextConfig = {
   // to .next only after every build check succeeds. `next start` does not set the
   // override, so it always serves the promoted .next directory.
   distDir,
+  // Candidate deploys build beside the live `.next` directory. Their type check must
+  // ignore the live build's generated route validators, which can legitimately refer
+  // to routes removed by the candidate source. The deploy config still checks all
+  // source and the candidate build's own generated route types.
+  typescript: {
+    tsconfigPath: deployTsconfig,
+  },
   poweredByHeader: false,
   async headers() {
     return [

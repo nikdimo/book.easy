@@ -134,7 +134,9 @@ fi
 echo "[deploy] Building"
 # Next's production build performs its own TypeScript pass on Linux. The control panel
 # already ran standalone web/mobile typechecks locally, so another standalone tsc here
-# only duplicated work without adding a distinct check.
+# only duplicated work without adding a distinct check. With NEXT_BUILD_DIR set,
+# next.config.ts selects tsconfig.deploy.json so this candidate is checked against its
+# own generated route validators instead of the still-live .next directory.
 NEXT_BUILD_DIR="$BUILD_DIR" npm run build
 
 for required_build_path in \

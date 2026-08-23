@@ -1,0 +1,23 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.mts",
+    ".next-build/types/**/*.ts",
+    ".next-build/dev/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "Listing-Explorer",
+    ".codex-backups",
+    ".tmp.driveupload",
+    "replit",
+    "replit-ui-export-*",
+    "src/generated",
+    "mobile",
+    ".next",
+    ".next-previous"
+  ]
+}

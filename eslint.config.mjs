@@ -9,6 +9,10 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
+    // Deployment builds beside the live output and may leave these generated trees
+    // behind after local verification or a failed release. They are never source.
+    ".next-build/**",
+    ".next-previous/**",
     "out/**",
     "build/**",
     "next-env.d.ts",
