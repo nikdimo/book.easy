@@ -1,7 +1,9 @@
 [CmdletBinding()]
 param(
     [ValidateRange(1, 10)]
-    [int]$MaxPushAttempts = 5
+    [int]$MaxPushAttempts = 5,
+
+    [string]$Description = $env:BOOKEASY_RELEASE_DESCRIPTION
 )
 
 Set-StrictMode -Version Latest
@@ -23,10 +25,14 @@ function Invoke-Git {
 }
 
 try {
-    $message = Read-Host "Describe this version"
+    $message = $Description
+    if ([string]::IsNullOrWhiteSpace($message)) {
+        $message = Read-Host "Describe this version"
+    }
     if ([string]::IsNullOrWhiteSpace($message)) {
         throw "Description cannot be empty."
     }
+    $message = $message.Trim()
 
     $branch = (& git branch --show-current).Trim()
     if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($branch)) {
