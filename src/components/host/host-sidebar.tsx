@@ -218,7 +218,7 @@ function SidebarContent({
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href="/host/panel?version=v2" onClick={onNavigate}>
+                <Link href="/host" onClick={onNavigate}>
                   <Sparkles className="mr-2 h-4 w-4" />
                   <Tx k="host.sidebar.new_panel" source="New host panel" />
                   <span className="ml-auto rounded-full bg-orange-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#a94420]">

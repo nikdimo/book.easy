@@ -26,6 +26,7 @@ const CLASSIC_ROUTES = [
   "/host/bookings",
   "/host/inbox",
   "/host/v2",
+  "/host/panel",
   "/host/panel?version=current",
 ];
 

@@ -211,7 +211,7 @@ export function Header({
               asChild
             >
               <Link
-                href="/host/panel"
+                href="/host"
                 aria-label={navLabels.switchToHosting.text}
               >
                 <Home className="size-[18px]" />
@@ -392,7 +392,7 @@ export function Header({
                         to label "new": this is the hosting dashboard, and the badge
                         is the only thing the row still has to say. */}
                     <DropdownMenuItem asChild>
-                      <Link href="/host/panel">
+                      <Link href="/host">
                         <LayoutDashboard className="mr-2 h-4 w-4" />
                         <span
                           className={

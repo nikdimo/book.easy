@@ -13,15 +13,24 @@ import {
  * what expires the leftover cookie.
  */
 export function GET(request: NextRequest) {
-  const response = NextResponse.redirect(
-    new URL(hostPanelDestination(), request.nextUrl),
-  );
+  // Keep the Location relative. Behind the production reverse proxy, Next's internal
+  // request origin can be localhost even though the browser is on lingerhomes.com.
+  // A relative redirect is resolved by the browser against the public origin and can
+  // therefore never leak the proxy's internal hostname or port.
+  const response = new NextResponse(null, {
+    status: 307,
+    headers: { Location: hostPanelDestination() },
+  });
+  const forwardedProtocol = request.headers
+    .get("x-forwarded-proto")
+    ?.split(",", 1)[0]
+    ?.trim();
   response.cookies.set(HOST_PANEL_COOKIE, "", {
     httpOnly: true,
     maxAge: 0,
     path: "/",
     sameSite: "lax",
-    secure: request.nextUrl.protocol === "https:",
+    secure: forwardedProtocol === "https" || request.nextUrl.protocol === "https:",
   });
   return response;
 }
