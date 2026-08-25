@@ -29,6 +29,8 @@ import { ListingAvailabilityCalendar } from "@/components/public/listing-availab
 import { ListingActions } from "@/components/public/listing-actions";
 import { ListingViewTracker } from "@/components/public/listing-view-tracker";
 import { getListingBySlug } from "@/lib/services/property.service";
+import { bookableStayFromSearch } from "@/lib/utils/booking-selection";
+import { todayYmd } from "@/lib/utils/date-only";
 import { getBlockedDateRangesForListing } from "@/lib/services/availability.service";
 import { getFutureDatePriceRowsForListing } from "@/lib/services/pricing.service";
 import { dateKey } from "@/lib/utils/stay-pricing";
@@ -80,10 +82,19 @@ export default async function ListingDetailPage({
 
   if (!listing) notFound();
 
-  const initialCheckIn =
-    typeof search.checkIn === "string" ? search.checkIn : undefined;
-  const initialCheckOut =
-    typeof search.checkOut === "string" ? search.checkOut : undefined;
+  // A stay is only seeded from the URL when it is still bookable. Listing links get
+  // shared and bookmarked with the dates the sender was looking at, and a stay that has
+  // since gone by used to arrive here priced and reservable — the guest pressed reserve,
+  // agreed to the house rules and only then met the server's "check-in cannot be in the
+  // past". Dropping it seeds nothing instead, which is what the page shows a guest who
+  // arrived without dates at all.
+  const seededStay = bookableStayFromSearch(
+    search.checkIn,
+    search.checkOut,
+    todayYmd(),
+  );
+  const initialCheckIn = seededStay.checkIn;
+  const initialCheckOut = seededStay.checkOut;
   const hasExplicitSearchSelection = [
     "checkIn",
     "checkOut",

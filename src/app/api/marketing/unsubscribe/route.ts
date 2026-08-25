@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { relativeRedirect } from "@/lib/http/relative-redirect";
 import { clientIpFromHeaders, rateLimit } from "@/lib/rate-limit";
 import { unsubscribeEmailMarketing } from "@/lib/services/marketing-consent.service";
 
@@ -30,5 +31,5 @@ export async function POST(request: Request) {
   if (oneClick || new URL(request.url).searchParams.has("token")) {
     return new NextResponse(null, { status: 204 });
   }
-  return NextResponse.redirect(new URL("/unsubscribe/success", request.url), 303);
+  return relativeRedirect("/unsubscribe/success", 303);
 }

@@ -401,14 +401,12 @@ function GuestRow({
   subtitle,
   value,
   onChange,
-  linkText,
   increaseDisabled = false,
 }: {
   title: Resolved;
   subtitle?: Resolved;
   value: number;
   onChange: (next: number) => void;
-  linkText?: Resolved;
   increaseDisabled?: boolean;
 }) {
   return (
@@ -431,17 +429,6 @@ function GuestRow({
           >
             {subtitle.text}
           </p>
-        ) : null}
-        {linkText ? (
-          <button
-            type="button"
-            className={cn(
-              "mt-0.5 text-sm leading-[1.125rem] text-muted-foreground underline underline-offset-2",
-              linkText.translated && "notranslate",
-            )}
-          >
-            {linkText.text}
-          </button>
         ) : null}
       </div>
       <div className="flex shrink-0 items-center gap-2">
@@ -602,7 +589,7 @@ export function GuestCountsStep({
       />
       <GuestRow
         title={labels.pets}
-        linkText={labels.petsHint}
+        subtitle={labels.petsHint}
         value={guestCounts.pets}
         onChange={(pets) => onGuestCountsChange({ ...guestCounts, pets })}
       />
@@ -2085,6 +2072,7 @@ export function MarketplaceStayDatePicker({
   desktopContentStyle,
   useSharedDesktopShell = false,
   showPillGuestAction = false,
+  showGuestStepChrome = false,
   searchPresentation = false,
   dialogContentId,
   className,
@@ -2143,6 +2131,16 @@ export function MarketplaceStayDatePicker({
   desktopContentStyle?: React.CSSProperties;
   useSharedDesktopShell?: boolean;
   showPillGuestAction?: boolean;
+  /**
+   * Gives the streamlined guest step a title, a close control and a way back to the
+   * dates.
+   *
+   * Off for the search pill, whose guest panel hangs under the pill it belongs to and
+   * reads as part of it. A booking flow opens the same step as a centred dialog with
+   * nothing else on screen, and without this it is a column of counters that names
+   * neither what it is asking nor how to get out of it.
+   */
+  showGuestStepChrome?: boolean;
   /** Keep the caller's trigger while using the streamlined search calendar and guest panels. */
   searchPresentation?: boolean;
   dialogContentId?: string;
@@ -3021,6 +3019,27 @@ export function MarketplaceStayDatePicker({
                   : "contents",
               )}
             >
+              {useSearchPresentation && showGuestStepChrome ? (
+                <div className="flex shrink-0 items-start justify-between gap-4 px-4 pt-5 md:px-6 md:pt-6">
+                  <p
+                    className={cn(
+                      "text-lg font-semibold text-foreground",
+                      resolvedGuestStepTitle.translated && "notranslate",
+                    )}
+                  >
+                    {resolvedGuestStepTitle.text}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={closePicker}
+                    className="-mr-1 -mt-1 inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    aria-label={labels.closePicker.text}
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : null}
+
               <div
                 ref={bodyScrollRef}
                 className="flex-1 min-h-0 overflow-y-auto px-4 py-5 md:px-6 md:py-6"
@@ -3033,7 +3052,32 @@ export function MarketplaceStayDatePicker({
               </div>
 
               {useSearchPresentation && showPillGuestAction ? (
-                <div className="flex shrink-0 justify-center bg-background px-4 md:px-10 md:pb-7 md:pt-4">
+                <div
+                  className={cn(
+                    "flex shrink-0 items-center gap-3 bg-background px-4 md:px-10 md:pb-7 md:pt-4",
+                    // Lined up with the counters above rather than centred under them,
+                    // now that there are two buttons to line up.
+                    showGuestStepChrome
+                      ? "justify-between md:px-6"
+                      : "justify-center",
+                  )}
+                >
+                  {/* Without this the dates are unreachable from here: the guest step
+                      of a booking flow is a dialog of its own, opened straight from the
+                      card's guests row as often as from the calendar behind it. */}
+                  {showGuestStepChrome ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className={cn(
+                        "rounded-full",
+                        labels.back.translated && "notranslate",
+                      )}
+                      onClick={() => changeStep("dates")}
+                    >
+                      {labels.back.text}
+                    </Button>
+                  ) : null}
                   <Button
                     type="button"
                     className={cn(

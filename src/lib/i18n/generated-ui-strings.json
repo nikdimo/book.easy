@@ -1435,6 +1435,11 @@
     "filePath": "src/app/(public)/bookings/confirm/page.tsx"
   },
   {
+    "key": "booking.dates",
+    "sourceText": "Dates",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
     "key": "booking.details",
     "sourceText": "Booking details",
     "filePath": "src/app/(public)/bookings/confirm/page.tsx"
@@ -15587,7 +15592,7 @@
   {
     "key": "mobile.generic.continue",
     "sourceText": "Continue",
-    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+    "filePath": "src/components/public/booking-widget.tsx"
   },
   {
     "key": "mobile.generic.dashboard",

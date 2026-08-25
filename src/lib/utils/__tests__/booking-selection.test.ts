@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { validateBookingSelection } from "@/lib/utils/booking-selection";
+import {
+  bookableStayFromSearch,
+  validateBookingSelection,
+} from "@/lib/utils/booking-selection";
 
 function localDate(ymd: string) {
   const [year, month, day] = ymd.split("-").map(Number);
@@ -57,5 +60,41 @@ describe("validateBookingSelection", () => {
         blocked
       )
     ).toEqual({ status: "valid", nights: 5 });
+  });
+});
+
+describe("bookableStayFromSearch", () => {
+  const today = "2026-08-25";
+
+  it("keeps a stay that is still ahead of today", () => {
+    expect(bookableStayFromSearch("2026-09-15", "2026-09-18", today)).toEqual({
+      checkIn: "2026-09-15",
+      checkOut: "2026-09-18",
+    });
+    expect(bookableStayFromSearch(today, "2026-08-27", today)).toEqual({
+      checkIn: today,
+      checkOut: "2026-08-27",
+    });
+  });
+
+  it("drops a stay whose check-in has passed", () => {
+    expect(bookableStayFromSearch("2026-08-24", "2026-08-30", today)).toEqual({});
+  });
+
+  it("drops anything that is not a date-only pair", () => {
+    expect(bookableStayFromSearch(undefined, undefined, today)).toEqual({});
+    expect(bookableStayFromSearch(["2026-09-15"], "2026-09-18", today)).toEqual({});
+    expect(bookableStayFromSearch("15/09/2026", "2026-09-18", today)).toEqual({});
+  });
+
+  it("keeps a future check-in whose check-out does not follow it", () => {
+    expect(bookableStayFromSearch("2026-09-15", "2026-09-15", today)).toEqual({
+      checkIn: "2026-09-15",
+      checkOut: undefined,
+    });
+    expect(bookableStayFromSearch("2026-09-15", "2026-09-10", today)).toEqual({
+      checkIn: "2026-09-15",
+      checkOut: undefined,
+    });
   });
 });

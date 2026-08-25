@@ -254,7 +254,10 @@ export function BookingWidget({
     boundedPromotionsOnly: true,
     showCurrencySymbol: true,
   });
-  const { data: session } = useSession();
+  // `status` and not just the session: "not signed in" and "not known yet" have to
+  // be told apart, or the first press of reserve on a slow session fetch throws the
+  // guest at the login page they were already past.
+  const { data: session, status: sessionStatus } = useSession();
   const router = useRouter();
   // Which presentation the panels get: swapped into the card, or slid up as a
   // drawer. The same query the results sheet uses, so the two agree on where the
@@ -461,7 +464,11 @@ export function BookingWidget({
   const reserveStep: "dates" | "guests" | "rules" | "reserve" =
     selectionValidation.status !== "valid"
       ? "dates"
-      : !guestsConfirmed
+      : // A party of nobody is not a party: infants and pets don't consume capacity,
+        // so a selection made only of them has no one the booking is for. The server
+        // refuses `guestCount: 0` outright, and this is what keeps the guest from
+        // meeting that refusal as a validation error after they pressed reserve.
+        !guestsConfirmed || guests < 1
         ? "guests"
         : !rulesAccepted && houseRules
           ? "rules"
@@ -469,6 +476,32 @@ export function BookingWidget({
   const reserveLabel = i18n.resolve("booking.reserve", "Reserve");
   // Reuses the search catalog's existing key so the copy stays translated.
   const whosComingLabel = i18n.resolve("search.whos_coming", "Who's coming");
+  /**
+   * What the picker's last press promises.
+   *
+   * Not "Reserve", which is what it used to say: nothing is sent from inside the
+   * picker, and a button that says reserve while the guest is still counting heads
+   * either lies or — on a listing with no rules left to agree to — sends a request
+   * from a dialog that never showed them the total. It hands back to the summary,
+   * and says so.
+   */
+  const continueLabel = i18n.resolve("mobile.generic.continue", "Continue");
+  const datesRowLabel = i18n.resolve("booking.dates", "Dates");
+  const addDatesLabel = i18n.resolve("search.add_dates", "Add dates");
+  const stayRangeFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat(i18n.locale, { month: "short", day: "numeric" }),
+    [i18n.locale],
+  );
+  const stayRangeSummary: Resolved =
+    checkIn && checkOut
+      ? {
+          text: `${stayRangeFormatter.format(checkIn)} – ${stayRangeFormatter.format(checkOut)}`,
+          translated: true,
+        }
+      : checkIn
+        ? { text: stayRangeFormatter.format(checkIn), translated: true }
+        : addDatesLabel;
   const primaryActionLabel =
     reserveStep === "dates"
       ? i18n.resolve("booking.select_dates_cta", "Select dates")
@@ -546,6 +579,39 @@ export function BookingWidget({
   }
 
   /**
+   * The picker's last press. It never sends the request — it closes the picker and
+   * hands the guest back to the summary that shows what the stay costs, which on a
+   * phone is the confirm sheet the sticky bar opens and on desktop is the card the
+   * picker was opened from. Reserve lives there, next to the total, and nowhere else.
+   */
+  function handlePickerDone() {
+    setError(null);
+    if (isSmallScreen) setConfirmOpen(true);
+  }
+
+  /**
+   * Sends the guest to sign in, with the stay on the URL so they come back to this
+   * listing still holding it.
+   *
+   * Called before the house rules rather than after them: an acceptance is never
+   * carried across a redirect — deliberately, see `rulesAccepted` — so collecting it
+   * from a guest who is about to be bounced to a login page only makes them give it
+   * twice.
+   */
+  function goToLogin() {
+    const returnUrl = new URL(window.location.href);
+    returnUrl.searchParams.set("checkIn", checkInStr);
+    returnUrl.searchParams.set("checkOut", checkOutStr);
+    returnUrl.searchParams.set("adults", String(guestDetails.adults));
+    returnUrl.searchParams.set("children", String(guestDetails.children));
+    returnUrl.searchParams.set("infants", String(guestDetails.infants));
+    returnUrl.searchParams.set("pets", String(guestDetails.pets));
+    router.push(
+      `/login?callbackUrl=${encodeURIComponent(`${returnUrl.pathname}${returnUrl.search}`)}`,
+    );
+  }
+
+  /**
    * The primary button never dead-ends: until the selection is complete it
    * opens whichever step is missing, and only then does it reserve.
    */
@@ -559,6 +625,11 @@ export function BookingWidget({
 
     if (reserveStep === "guests") {
       openPicker("guests");
+      return;
+    }
+
+    if (sessionStatus === "unauthenticated") {
+      goToLogin();
       return;
     }
 
@@ -630,17 +701,10 @@ export function BookingWidget({
       return;
     }
 
+    // The backstop for the check `handlePrimaryAction` makes before the rules panel:
+    // a session that expired while the guest was reading them still lands here.
     if (!session) {
-      const returnUrl = new URL(window.location.href);
-      returnUrl.searchParams.set("checkIn", checkInStr);
-      returnUrl.searchParams.set("checkOut", checkOutStr);
-      returnUrl.searchParams.set("adults", String(guestDetails.adults));
-      returnUrl.searchParams.set("children", String(guestDetails.children));
-      returnUrl.searchParams.set("infants", String(guestDetails.infants));
-      returnUrl.searchParams.set("pets", String(guestDetails.pets));
-      router.push(
-        `/login?callbackUrl=${encodeURIComponent(`${returnUrl.pathname}${returnUrl.search}`)}`,
-      );
+      goToLogin();
       return;
     }
 
@@ -879,64 +943,79 @@ export function BookingWidget({
    * The stay, the party and the two things a guest still owes the host, as one stack
    * of rows. The picker is a row of it rather than a section above it, so opening the
    * calendar, the guest count, the rules or the message are all the same gesture.
+   *
+   * `mountPicker` is false in exactly one place: the phone's confirm sheet, which
+   * shows the same rows over a card that is only hidden by CSS and therefore still
+   * mounted. Two mounts of the picker means two dialogs in the portal from one press
+   * — the same calendar drawn twice over itself — so the sheet's dates row opens the
+   * card's picker instead of bringing its own.
    */
-  function renderSummary() {
+  function renderSummary({ mountPicker = true } = {}) {
     return (
       <div className="space-y-2">
         <div className="overflow-hidden rounded-xl border border-border/50 bg-background">
-          <MarketplaceStayDatePicker
-            layout="compact"
-            checkIn={checkInStr}
-            checkOut={checkOutStr}
-            open={datePickerOpen}
-            onOpenChange={(next) => {
-              setDatePickerOpen(next);
-              // Otherwise the next open from a date field would land on the
-              // guests step this one was left on.
-              if (!next) setPickerStep("dates");
-            }}
-            initialSegment={checkInStr && !checkOutStr ? "checkout" : "checkin"}
-            dateFlexibility={dateFlexibility}
-            showDateFlexibility
-            onDateFlexibilityChange={setDateFlexibility}
-            dayMeta={dayPrice}
-            dayVariant="booking"
-            initialStep={pickerStep}
-            onStepChange={(step) => {
-              // Reaching the guests step is the confirmation — the counts are
-              // always valid, so the step is about intent, not validity.
-              if (step === "guests") setGuestsConfirmed(true);
-            }}
-            guestCounts={guestDetails}
-            onGuestCountsChange={(next) => {
-              setGuestDetails(next);
-              setGuestsConfirmed(true);
-              setError(null);
-            }}
-            maxOccupancy={maxGuests}
-            nextActionLabel={whosComingLabel}
-            guestStepTitle={whosComingLabel}
-            finalActionLabel={reserveLabel}
-            finalActionDisabled={
-              isPending || selectionValidation.status !== "valid" || guests < 1
-            }
-            showFinalActionIcon={false}
-            // Reserve inside the picker lands where reserve lands everywhere
-            // else at that width: the request summary on a phone, the next
-            // missing step in the card on desktop.
-            onFinalAction={isSmallScreen ? handleBarAction : handlePrimaryAction}
-            pagedCalendarOnDesktop
-            searchPresentation
-            showPillGuestAction
-            disabledDateRanges={disabledDateRanges}
-            minimumStayNights={minNights}
-            minimumStayMessage={minimumStayMessage}
-            onRangeStringsChange={({ checkIn: ci, checkOut: co }) => {
-              setStayRange({ checkIn: ci, checkOut: co });
-              setError(null);
-            }}
-            className="w-full [&_button]:!rounded-none [&_button]:!border-0"
-          />
+          {mountPicker ? (
+            <MarketplaceStayDatePicker
+              layout="compact"
+              checkIn={checkInStr}
+              checkOut={checkOutStr}
+              open={datePickerOpen}
+              onOpenChange={(next) => {
+                setDatePickerOpen(next);
+                // Otherwise the next open from a date field would land on the
+                // guests step this one was left on.
+                if (!next) setPickerStep("dates");
+              }}
+              initialSegment={checkInStr && !checkOutStr ? "checkout" : "checkin"}
+              dateFlexibility={dateFlexibility}
+              showDateFlexibility
+              onDateFlexibilityChange={setDateFlexibility}
+              dayMeta={dayPrice}
+              dayVariant="booking"
+              initialStep={pickerStep}
+              onStepChange={(step) => {
+                // Reaching the guests step is the confirmation — the counts are
+                // always valid, so the step is about intent, not validity.
+                if (step === "guests") setGuestsConfirmed(true);
+              }}
+              guestCounts={guestDetails}
+              onGuestCountsChange={(next) => {
+                setGuestDetails(next);
+                setGuestsConfirmed(true);
+                setError(null);
+              }}
+              maxOccupancy={maxGuests}
+              nextActionLabel={whosComingLabel}
+              guestStepTitle={whosComingLabel}
+              finalActionLabel={continueLabel}
+              finalActionDisabled={
+                isPending || selectionValidation.status !== "valid" || guests < 1
+              }
+              showFinalActionIcon={false}
+              // The guest step is a step, not a checkout: it gets the title and the way
+              // back to the dates that the search pill's own version does without.
+              showGuestStepChrome
+              onFinalAction={handlePickerDone}
+              pagedCalendarOnDesktop
+              searchPresentation
+              showPillGuestAction
+              disabledDateRanges={disabledDateRanges}
+              minimumStayNights={minNights}
+              minimumStayMessage={minimumStayMessage}
+              onRangeStringsChange={({ checkIn: ci, checkOut: co }) => {
+                setStayRange({ checkIn: ci, checkOut: co });
+                setError(null);
+              }}
+              className="w-full [&_button]:!rounded-none [&_button]:!border-0"
+            />
+          ) : (
+            <BookingSummaryRow
+              label={datesRowLabel}
+              value={stayRangeSummary}
+              done={selectionValidation.status === "valid"}
+              onOpen={() => openPicker("dates")}
+            />
+          )}
           <div className="border-t border-border/50">
             <BookingGuestRow
               summary={guestSummary}
@@ -1369,7 +1448,7 @@ export function BookingWidget({
                 </SheetTitle>
               </SheetHeader>
               <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-                {renderSummary()}
+                {renderSummary({ mountPicker: false })}
                 {renderFooter()}
               </div>
             </SheetContent>
