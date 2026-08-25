@@ -491,12 +491,18 @@ function SearchFiltersInner({
     );
   }
 
+  /**
+   * Takes the list key, because the wrapper — not the button inside it — is what
+   * ends up as the child of the grid. A key on the button would be a key on the
+   * tooltip's trigger, which React does not count.
+   */
   function renderUnavailableWrapper(
+    key: React.Key,
     child: React.ReactNode,
     message = i18n.resolve("filters.no_match", "No properties match this filter yet.")
   ) {
     return (
-      <Tooltip>
+      <Tooltip key={key}>
         <TooltipTrigger asChild>{child}</TooltipTrigger>
         <TooltipContent sideOffset={8} className={message.translated ? "notranslate" : undefined}>{message.text}</TooltipContent>
       </Tooltip>
@@ -646,7 +652,7 @@ function SearchFiltersInner({
                 );
 
                 return unavailable
-                  ? renderUnavailableWrapper(button)
+                  ? renderUnavailableWrapper(value, button)
                   : button;
               })}
             </div>
@@ -705,7 +711,7 @@ function SearchFiltersInner({
                         );
 
                         return unavailable
-                          ? renderUnavailableWrapper(button)
+                          ? renderUnavailableWrapper(amenity.id, button)
                           : button;
                       })}
                     </div>

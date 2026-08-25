@@ -3,6 +3,10 @@ import { db } from "@/lib/db";
 import { translateBatchToLocales } from "@/lib/ai/anthropic";
 import { translateBatchToLocalesWithGemini } from "@/lib/ai/gemini";
 import type { TranslationTarget } from "@/lib/ai/translation-batch";
+import {
+  isPermanentTranslationApiFailure,
+  shouldUseGeminiFallback,
+} from "@/lib/ai/translation-provider-fallback";
 import generatedCatalog from "@/lib/i18n/generated-ui-strings.json";
 import { CURATED_TRANSLATION_OVERRIDES } from "@/lib/i18n/curated-overrides";
 
@@ -17,9 +21,25 @@ const UI_CATALOG = generatedCatalog as GeneratedUiString[];
  * request budget is the product of strings and locales rather than the string
  * count alone: 20 strings across 15 languages costs the same output as 300
  * single-language strings. */
-const MAX_TRANSLATIONS_PER_REQUEST = 300;
-const MAX_SOURCE_CHARACTERS_PER_REQUEST = 30_000;
-const MAX_BATCH_STRINGS = 40;
+interface TranslationBatchLimits {
+  translations: number;
+  sourceCharacters: number;
+  strings: number;
+}
+
+/** Claude keeps the long-proven conservative payload. Gemini 2.5 Flash supports a
+ * 65,536-token response, so its fallback can pack enough work to fit the project's
+ * 20-request free daily allowance. */
+const ANTHROPIC_BATCH_LIMITS: TranslationBatchLimits = {
+  translations: 300,
+  sourceCharacters: 30_000,
+  strings: 40,
+};
+const GEMINI_BATCH_LIMITS: TranslationBatchLimits = {
+  translations: 1_200,
+  sourceCharacters: 130_000,
+  strings: 200,
+};
 const DEFAULT_SYNC_CONCURRENCY = 3;
 
 const SYNC_LOCK_ID = "ui-translation-sync";
@@ -70,17 +90,18 @@ type TranslationEntry = Pick<GeneratedUiString, "key" | "sourceText">;
 function chunks(
   entries: TranslationEntry[],
   localeCount: number,
+  limits: TranslationBatchLimits,
 ): TranslationEntry[][] {
   const maxStrings = Math.max(
     1,
     Math.min(
-      MAX_BATCH_STRINGS,
-      Math.floor(MAX_TRANSLATIONS_PER_REQUEST / Math.max(localeCount, 1)),
+      limits.strings,
+      Math.floor(limits.translations / Math.max(localeCount, 1)),
     ),
   );
   const maxCharacters = Math.max(
     1,
-    Math.floor(MAX_SOURCE_CHARACTERS_PER_REQUEST / Math.max(localeCount, 1)),
+    Math.floor(limits.sourceCharacters / Math.max(localeCount, 1)),
   );
 
   const result: TranslationEntry[][] = [];
@@ -110,21 +131,6 @@ function syncConcurrency(): number {
   );
   if (!Number.isFinite(configured)) return DEFAULT_SYNC_CONCURRENCY;
   return Math.min(Math.max(configured, 1), 4);
-}
-
-function isPermanentTranslationApiFailure(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return /credit balance|billing|quota|rate.?limit|429|ANTHROPIC_API_KEY is not configured|GOOGLE_API_KEY is not configured/i.test(
-    message,
-  );
-}
-
-function shouldUseGeminiFallback(error: unknown): boolean {
-  if (!process.env.GOOGLE_API_KEY) return false;
-  const message = error instanceof Error ? error.message : String(error);
-  return /credit balance|billing|quota|rate.?limit|429|ANTHROPIC_API_KEY is not configured|529|503|502/i.test(
-    message,
-  );
 }
 
 /** Runs `task` over `items` with bounded concurrency, isolating failures: a rejected
@@ -311,15 +317,29 @@ export async function syncTranslations(): Promise<SyncResult[]> {
         });
     }
 
-    const tasks = [...groups.values()].flatMap(({ languages, entries }) => {
-      const batches = chunks(entries, languages.length);
-      return batches.map((batch, batchIndex) => ({
-        languages,
-        batch,
-        batchIndex,
-        batchCount: batches.length,
-      }));
-    });
+    const groupedPlans = [...groups.values()];
+    const makeTasks = (
+      limits: TranslationBatchLimits,
+      completed?: {
+        languages: TranslationTarget[];
+        keys: ReadonlySet<string>;
+      },
+    ) =>
+      groupedPlans.flatMap(({ languages, entries }) => {
+        const pendingEntries =
+          completed?.languages === languages
+            ? entries.filter((entry) => !completed.keys.has(entry.key))
+            : entries;
+        const batches = chunks(pendingEntries, languages.length, limits);
+        return batches.map((batch, batchIndex) => ({
+          languages,
+          batch,
+          batchIndex,
+          batchCount: batches.length,
+        }));
+      });
+
+    const tasks = makeTasks(ANTHROPIC_BATCH_LIMITS);
 
     if (tasks.length && !process.env.ANTHROPIC_API_KEY && !process.env.GOOGLE_API_KEY) {
       throw new Error(
@@ -331,6 +351,7 @@ export async function syncTranslations(): Promise<SyncResult[]> {
     // once one batch proves it unusable the rest of the run goes straight to Gemini
     // rather than paying the same failing round trip for every remaining batch.
     let anthropicUnavailable = !process.env.ANTHROPIC_API_KEY;
+    let permanentProviderFailure: unknown | null = null;
 
     const translateTask = async ({
       languages,
@@ -338,27 +359,41 @@ export async function syncTranslations(): Promise<SyncResult[]> {
       batchIndex,
       batchCount,
     }: (typeof tasks)[number]) => {
+      if (permanentProviderFailure) {
+        const message =
+          permanentProviderFailure instanceof Error
+            ? permanentProviderFailure.message
+            : String(permanentProviderFailure);
+        throw new Error(`Skipped after provider configuration failure: ${message}`);
+      }
       const texts = Object.fromEntries(
         batch.map((entry) => [entry.key, entry.sourceText]),
       );
       const locales = languages.map((language) => language.code).join(", ");
 
       let translated: Record<string, Record<string, string>> | null = null;
-      if (!anthropicUnavailable) {
-        try {
-          translated = await translateBatchToLocales(texts, languages);
-        } catch (error) {
-          if (!shouldUseGeminiFallback(error)) throw error;
-          anthropicUnavailable = true;
-          console.warn(
-            `[i18n] Anthropic unavailable; using Gemini for the rest of this run — ${
-              error instanceof Error ? error.message : String(error)
-            }`,
-          );
+      try {
+        if (!anthropicUnavailable) {
+          try {
+            translated = await translateBatchToLocales(texts, languages);
+          } catch (error) {
+            if (!shouldUseGeminiFallback(error)) throw error;
+            anthropicUnavailable = true;
+            console.warn(
+              `[i18n] Anthropic unavailable; using Gemini for the rest of this run — ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+            );
+          }
         }
-      }
-      if (!translated) {
-        translated = await translateBatchToLocalesWithGemini(texts, languages);
+        if (!translated) {
+          translated = await translateBatchToLocalesWithGemini(texts, languages);
+        }
+      } catch (error) {
+        if (isPermanentTranslationApiFailure(error)) {
+          permanentProviderFailure ??= error;
+        }
+        throw error;
       }
 
       for (const language of languages) {
@@ -394,9 +429,19 @@ export async function syncTranslations(): Promise<SyncResult[]> {
     // both providers, and the remaining batches would only repeat that error.
     const failures: { item: (typeof tasks)[number]; error: unknown }[] = [];
     if (tasks.length) {
-      const [probe, ...remaining] = tasks;
+      const [probe] = tasks;
       const probeFailures = await runWithConcurrency([probe], 1, translateTask);
       failures.push(...probeFailures);
+
+      // Once the probe establishes that Claude is unavailable, repack everything
+      // after that probe into Gemini-sized batches. The successfully translated or
+      // already-accounted-for probe keys are omitted, so no work is duplicated.
+      const remaining = anthropicUnavailable
+        ? makeTasks(GEMINI_BATCH_LIMITS, {
+            languages: probe.languages,
+            keys: new Set(probe.batch.map((entry) => entry.key)),
+          })
+        : tasks.slice(1);
 
       const permanentFailure = probeFailures.find(({ error }) =>
         isPermanentTranslationApiFailure(error),
@@ -418,7 +463,9 @@ export async function syncTranslations(): Promise<SyncResult[]> {
         failures.push(
           ...(await runWithConcurrency(
             remaining,
-            syncConcurrency(),
+            // Gemini's free tier is deliberately sequential: when a daily cap is
+            // reached, no already-queued worker can spend another doomed request.
+            anthropicUnavailable ? 1 : syncConcurrency(),
             translateTask,
           )),
         );

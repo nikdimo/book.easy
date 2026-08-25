@@ -34,6 +34,29 @@ export const getListingBySlug = cache(async (slug: string) => {
   });
 });
 
+/**
+ * Every approved listing, with just enough to build the sitemap: the slug for the
+ * two public URLs it owns, `updatedAt` for `lastmod`, and its photos so the tour
+ * page can be submitted as an image sitemap rather than left for a crawler to
+ * find on its own. Ordered oldest-first so entries keep a stable position between
+ * regenerations instead of reshuffling whenever a host edits something.
+ */
+export async function getListingsForSitemap() {
+  return db.listing.findMany({
+    where: { status: ListingStatus.APPROVED },
+    select: {
+      slug: true,
+      updatedAt: true,
+      images: {
+        where: { mediaType: "IMAGE" },
+        select: { url: true },
+        orderBy: { displayOrder: "asc" },
+      },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+}
+
 export async function getListingAvailabilityBlocks(listingId: string) {
   return db.availabilityBlock.findMany({
     where: {

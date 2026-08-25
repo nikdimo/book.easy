@@ -176,15 +176,8 @@ export const CURATED_TRANSLATION_OVERRIDES: Record<string, Record<string, string
     mk: "Изберете еден или повеќе видови сместување.",
     bg: "Изберете един или повече типове настаняване.",
   },
-  "gallery.all_media.one": {
-    sq: "I gjithë materiali multimedial ({n})",
-    bg: "Целият медиен файл ({n})",
-  },
   "gallery.back_all": {
     sq: "Kthehu te të gjitha materialet",
-  },
-  "gallery.media_position": {
-    sq: "Materiali {current} nga {total}",
   },
   "gallery.show_all.one": {
     sq: "Shfaq elementin ({n})",

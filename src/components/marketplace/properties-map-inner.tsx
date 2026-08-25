@@ -521,11 +521,14 @@ function GroupedListingPreview({ pins }: { pins: MapPin[] }) {
 function PriceMarker({
   pin,
   active,
+  popup,
   onSelected,
   onHovered,
 }: {
   pin: MapPin;
   active: boolean;
+  /** Off where the caller shows the selected pin itself — see `pinPopups`. */
+  popup: boolean;
   onSelected: (id: string | null) => void;
   onHovered: (id: string | null) => void;
 }) {
@@ -538,17 +541,19 @@ function PriceMarker({
         click: () => onSelected(pin.id),
         mouseover: () => onHovered(pin.id),
         mouseout: () => onHovered(null),
-        popupclose: () => onSelected(null),
+        ...(popup ? { popupclose: () => onSelected(null) } : {}),
       }}
     >
-      <Popup
-        className="listing-preview-popup"
-        minWidth={280}
-        maxWidth={320}
-        offset={[0, -8]}
-      >
-        <ListingPreview pin={pin} />
-      </Popup>
+      {popup ? (
+        <Popup
+          className="listing-preview-popup"
+          minWidth={280}
+          maxWidth={320}
+          offset={[0, -8]}
+        >
+          <ListingPreview pin={pin} />
+        </Popup>
+      ) : null}
     </Marker>
   );
 }
@@ -558,6 +563,7 @@ function ClusteredMarkers({
   hoveredPinId,
   selectedPinId,
   mapHoveredPinId,
+  pinPopups,
   onSelected,
   onHovered,
 }: {
@@ -565,6 +571,7 @@ function ClusteredMarkers({
   hoveredPinId?: string | null;
   selectedPinId: string | null;
   mapHoveredPinId: string | null;
+  pinPopups: boolean;
   onSelected: (id: string | null) => void;
   onHovered: (id: string | null) => void;
 }) {
@@ -665,6 +672,7 @@ function ClusteredMarkers({
         key={pin.id}
         pin={pin}
         active={active}
+        popup={pinPopups}
         onSelected={onSelected}
         onHovered={onHovered}
       />
@@ -679,6 +687,11 @@ export default function PropertiesMapInner({
   initialBounds,
   onBoundsChange,
   expandable = true,
+  expanded = false,
+  onExpandedChange,
+  pinPopups = true,
+  selectedPinId: controlledSelectedPinId,
+  onSelectedPinChange,
 }: {
   pins: MapPin[];
   className?: string;
@@ -689,10 +702,41 @@ export default function PropertiesMapInner({
   /** Off where the map is already sized to the screen and the corner is wanted for
    *  something else — full screen would be a no-op there anyway. */
   expandable?: boolean;
+  /**
+   * Whether the caller is currently showing this map at full width, and how to ask
+   * it to change that. Growing the map is a layout decision only the page around it
+   * can make — it is the one that knows what has to step aside — so the button here
+   * reports the intent instead of throwing a `position: fixed` sheet over the page.
+   * That sheet used to size itself in `vw`/`dvh`, which a zoomed route renders at
+   * 90% of the screen, and it landed under the sticky header's stacking context.
+   */
+  expanded?: boolean;
+  onExpandedChange?: (expanded: boolean) => void;
+  /**
+   * Whether tapping a price marker opens Leaflet's own preview popup. Off where the
+   * caller shows the selection itself — the phone layout docks a card above the
+   * results sheet instead, which a popup anchored to the marker would sit under.
+   */
+  pinPopups?: boolean;
+  /** Selection is the caller's to hold whenever it draws the selected pin. */
+  selectedPinId?: string | null;
+  onSelectedPinChange?: (id: string | null) => void;
 }) {
   const i18n = useI18n();
-  const [expanded, setExpanded] = React.useState(false);
-  const [selectedPinId, setSelectedPinId] = React.useState<string | null>(null);
+  const [ownSelectedPinId, setOwnSelectedPinId] = React.useState<string | null>(
+    null
+  );
+  const selectedPinId =
+    controlledSelectedPinId === undefined
+      ? ownSelectedPinId
+      : controlledSelectedPinId;
+  const setSelectedPinId = React.useCallback(
+    (id: string | null) => {
+      if (controlledSelectedPinId === undefined) setOwnSelectedPinId(id);
+      onSelectedPinChange?.(id);
+    },
+    [controlledSelectedPinId, onSelectedPinChange]
+  );
   const [mapHoveredPinId, setMapHoveredPinId] = React.useState<string | null>(null);
   // Every reported move rewrites the URL and hands back a new `initialBounds`.
   // Freeze the one we mounted with so restoring the view stays a one-off.
@@ -719,21 +763,15 @@ export default function PropertiesMapInner({
   );
 
   React.useEffect(() => {
-    if (!expanded) return;
-
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    if (!expanded || !onExpandedChange) return;
 
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setExpanded(false);
+      if (event.key === "Escape") onExpandedChange(false);
     };
     window.addEventListener("keydown", onKeyDown);
 
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [expanded]);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [expanded, onExpandedChange]);
 
   return (
     <div
@@ -744,18 +782,19 @@ export default function PropertiesMapInner({
         // any height passed in was discarded — a caller whose parent had no height then
         // collapsed to `min-h-[320px]`. Callers that size the map from a parent still
         // pass `h-full` themselves, so nothing changes for them.
-        !expanded && "h-full min-h-[320px] w-full",
-        className,
-        // Full screen is not the caller's call to make, so it wins over both.
-        expanded &&
-          "fixed inset-0 z-[100] m-0 h-[100dvh] min-h-0 w-screen max-w-none rounded-none border-0"
+        "h-full min-h-[320px] w-full",
+        className
       )}
     >
-      {expandable && (
+      {expandable && onExpandedChange && (
         <button
           type="button"
-          onClick={() => setExpanded((e) => !e)}
-          className="absolute right-3 top-3 z-[1000] flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background shadow-md transition-colors hover:bg-muted"
+          onClick={() => onExpandedChange(!expanded)}
+          // z-30, not Leaflet's own 1000: MapContainer below carries `z-0`, which
+          // seals every pane and control it owns into a stacking context of their
+          // own, so anything positive out here already clears them — while staying
+          // under the site header and the menus that open from it.
+          className="absolute right-3 top-3 z-30 flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background shadow-md transition-colors hover:bg-muted"
           aria-label={expanded ? i18n.resolve("map.exit_fullscreen", "Exit full screen map").text : i18n.resolve("map.expand", "Expand map").text}
         >
           {expanded ? (
@@ -792,6 +831,7 @@ export default function PropertiesMapInner({
           hoveredPinId={hoveredPinId}
           selectedPinId={selectedPinId}
           mapHoveredPinId={mapHoveredPinId}
+          pinPopups={pinPopups}
           onSelected={setSelectedPinId}
           onHovered={setMapHoveredPinId}
         />

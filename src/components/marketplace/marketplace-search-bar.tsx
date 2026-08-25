@@ -45,7 +45,13 @@ import {
   type ActiveSearchState,
 } from "@/lib/marketplace-search-state";
 
-type Variant = "hero" | "compact" | "pill" | "summary" | "floating";
+type Variant =
+  | "hero"
+  | "compact"
+  | "pill"
+  | "summary"
+  | "mobile-header"
+  | "floating";
 type DesktopPanel = "where" | "when" | "who";
 
 type CapsuleGeometry = {
@@ -236,6 +242,7 @@ export function MarketplaceSearchBar({
   popularCities = [],
   availablePropertyTypesByCity = {},
   propertyTypes = [],
+  mobileTitle,
 }: {
   variant?: Variant;
   defaultCity?: string;
@@ -246,6 +253,7 @@ export function MarketplaceSearchBar({
   popularCities?: PlaceOption[];
   availablePropertyTypesByCity?: Record<string, string[]>;
   propertyTypes?: PropertyTypeOption[];
+  mobileTitle?: string;
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -317,6 +325,7 @@ export function MarketplaceSearchBar({
       availablePropertyTypesByCity={availablePropertyTypesByCity}
       propertyTypes={propertyTypes}
       allPropertyTypeValues={allPropertyTypeValues}
+      mobileTitle={mobileTitle}
     />
   );
 }
@@ -335,6 +344,7 @@ function MarketplaceSearchBarInner({
   availablePropertyTypesByCity,
   propertyTypes: propertyTypeOptions,
   allPropertyTypeValues,
+  mobileTitle,
 }: {
   variant: Variant;
   initialState: SearchBarState;
@@ -343,11 +353,13 @@ function MarketplaceSearchBarInner({
   availablePropertyTypesByCity: Record<string, string[]>;
   propertyTypes: PropertyTypeOption[];
   allPropertyTypeValues: string[];
+  mobileTitle?: string;
 }) {
   const labels = useSearchLabels();
   const router = useRouter();
   const isCompact = variant === "compact";
   const isSummary = variant === "summary";
+  const isMobileHeader = variant === "mobile-header";
   const isFloating = variant === "floating";
   const [city, setCity] = useState(initialState.city);
   const [country, setCountry] = useState(initialState.country);
@@ -704,10 +716,11 @@ function MarketplaceSearchBarInner({
     );
   }
 
-  if (isSummary) {
+  if (isSummary || isMobileHeader) {
     const citySummary = city
       ? localizePlaceName(city, labels.locale)
       : labels.whereToPlaceholder.text;
+    const primarySummary = mobileTitle || citySummary;
     const dateSummary = formatDateSummary(checkIn, checkOut, labels.anyDates, labels.locale);
     const guestSummary = formatGuestSummary(guestCounts, labels);
 
@@ -717,14 +730,29 @@ function MarketplaceSearchBarInner({
     // it reacts to the space left over by the account/notification controls beside it.
     // aria-label carries the meaning that the visible text otherwise would.
     return (
-      <div className="flex w-full justify-center @min-[200px]:block">
+      <div
+        className={cn(
+          "flex w-full justify-center @min-[200px]:block",
+          isMobileHeader && "block",
+        )}
+      >
         <button
           type="button"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-left transition-shadow focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background @min-[200px]:h-auto @min-[200px]:min-h-16 @min-[200px]:w-full @min-[200px]:justify-start @min-[200px]:gap-3 @min-[200px]:border @min-[200px]:border-border/70 @min-[200px]:bg-background @min-[200px]:py-3 @min-[200px]:pl-5 @min-[200px]:pr-3 @min-[200px]:shadow-[0_10px_26px_rgba(15,23,42,0.08)] @min-[200px]:hover:shadow-[0_14px_32px_rgba(15,23,42,0.12)]"
+          className={cn(
+            "flex shrink-0 items-center text-left transition-shadow focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+            isMobileHeader
+              ? "min-h-16 w-full justify-center rounded-full border border-border/70 bg-background px-4 py-2.5 shadow-[0_8px_24px_rgba(15,23,42,0.10)]"
+              : "h-11 w-11 justify-center rounded-full @min-[200px]:h-auto @min-[200px]:min-h-16 @min-[200px]:w-full @min-[200px]:justify-start @min-[200px]:gap-3 @min-[200px]:border @min-[200px]:border-border/70 @min-[200px]:bg-background @min-[200px]:py-3 @min-[200px]:pl-5 @min-[200px]:pr-3 @min-[200px]:shadow-[0_10px_26px_rgba(15,23,42,0.08)] @min-[200px]:hover:shadow-[0_14px_32px_rgba(15,23,42,0.12)]",
+          )}
           onClick={() => setSearchFlowOpen(true)}
           aria-label={labels.openSearch.text}
         >
-          <span className="hidden min-w-0 flex-1 @min-[200px]:block">
+          <span
+            className={cn(
+              "min-w-0 flex-1",
+              isMobileHeader ? "block text-center" : "hidden @min-[200px]:block",
+            )}
+          >
             <span
               className={cn(
                 "block truncate text-sm font-semibold text-foreground",
@@ -733,7 +761,7 @@ function MarketplaceSearchBarInner({
               translate="no"
               suppressHydrationWarning
             >
-              {citySummary}
+              {primarySummary}
             </span>
             <span className="mt-1 block truncate text-xs text-muted-foreground">
               <span
@@ -743,12 +771,19 @@ function MarketplaceSearchBarInner({
               >
                 {dateSummary.text}
               </span> ·{" "}
-              <span className={guestSummary.translated ? "notranslate" : undefined}>{guestSummary.text}</span>
+              <span
+                className={guestSummary.translated ? "notranslate" : undefined}
+                suppressHydrationWarning
+              >
+                {guestSummary.text}
+              </span>
             </span>
           </span>
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_10px_26px_rgba(15,23,42,0.08)] @min-[200px]:h-10 @min-[200px]:w-10 @min-[200px]:shadow-none">
-            <Search className="h-4 w-4" strokeWidth={2.5} />
-          </span>
+          {!isMobileHeader ? (
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_10px_26px_rgba(15,23,42,0.08)] @min-[200px]:h-10 @min-[200px]:w-10 @min-[200px]:shadow-none">
+              <Search className="h-4 w-4" strokeWidth={2.5} />
+            </span>
+          ) : null}
         </button>
 
         <MarketplaceSearchFlowDialog
@@ -929,8 +964,13 @@ function MarketplaceSearchBarInner({
             <Button
               type="submit"
               className={cn(
-                "relative z-10 ml-1 h-11 shrink-0 rounded-full bg-primary px-4 text-primary-foreground shadow-none transition-all duration-200 hover:bg-primary/95",
-                visualDesktopPanel ? "gap-2 px-5" : "w-11 px-0"
+                // `md:h-11` restates the height the `size` variant overrides with
+                // `md:h-8`: without it the 44px-wide circle renders 32px tall above
+                // the md breakpoint, so only mobile got a round button. `gap-0` keeps
+                // the icon centred — the collapsed "Search" label is still a flex
+                // child at max-w-0, and the variant gap would push the glass 3px left.
+                "relative z-10 ml-1 h-11 shrink-0 rounded-full bg-primary px-4 text-primary-foreground shadow-none transition-all duration-200 hover:bg-primary/95 md:h-11",
+                visualDesktopPanel ? "gap-2 px-5" : "w-11 gap-0 px-0"
               )}
               aria-label={labels.search.text}
             >

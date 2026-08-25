@@ -34,7 +34,7 @@ export function LoginModal({ localDevLogin = false }: { localDevLogin?: boolean 
         className="absolute inset-0 bg-black/50"
         onClick={() => router.back()}
       />
-      <div className="relative w-full max-w-[420px]">
+      <div className="relative w-full max-w-[568px]">
         <AuthForm
           onClose={() => router.back()}
           localDevLogin={localDevLogin}

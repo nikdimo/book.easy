@@ -193,6 +193,16 @@ function OwnerGrowthHero({
           aria-hidden="true"
         />
 
+        {/* Melts the top of the photo into the (white) header instead of butting up
+            against it with a hard edge. On desktop the section is pulled up under the
+            5rem header by `-mt-20`, so the first 5rem stays solid white — that strip is
+            what the header covers — and the fade only starts below it. On phones the
+            hero starts at the header's bottom edge, so it fades from the very top. */}
+        <div
+          className="absolute inset-x-0 top-0 h-24 bg-[linear-gradient(to_bottom,#fff_0%,rgba(255,255,255,0.75)_38%,rgba(255,255,255,0)_100%)] md:h-56 md:bg-[linear-gradient(to_bottom,#fff_0%,#fff_5rem,rgba(255,255,255,0.8)_7.5rem,rgba(255,255,255,0)_100%)]"
+          aria-hidden="true"
+        />
+
         <div className="relative z-10 flex min-h-[410px] select-none flex-col items-center justify-center px-6 py-8 md:min-h-[500px] md:px-12 md:pt-24">
           <div className="w-full max-w-5xl select-auto" data-home-hero-search>
             <div className="@container mx-auto w-full max-w-md md:hidden">
@@ -233,7 +243,12 @@ function OwnerGrowthHero({
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               <OwnerServicesDialog />
-              <Button size="lg" className="rounded-full px-6" asChild>
+              <Button
+                size="lg"
+                variant="outline"
+                className="rounded-full border-slate-300 bg-white px-7 text-slate-900 shadow-sm hover:bg-white md:h-11"
+                asChild
+              >
                 <Link href="/account/become-host">
                   <T
                     t={t}

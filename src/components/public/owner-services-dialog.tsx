@@ -74,7 +74,7 @@ export function OwnerServicesDialog() {
         <Button
           size="lg"
           variant="outline"
-          className="rounded-full border-slate-300 bg-white/80 px-6 text-slate-900 shadow-sm backdrop-blur hover:bg-white"
+          className="rounded-full border-slate-300 bg-white px-7 text-slate-900 shadow-sm hover:bg-white md:h-11"
         >
           <Tx k="home.owner_hero.how_it_works" source="How it works" />
         </Button>

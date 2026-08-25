@@ -136,6 +136,7 @@ export function PropertyCardGallery({
 
   return (
     <div
+      data-property-card-gallery
       className="group relative aspect-[20/19] touch-pan-y overflow-hidden rounded-xl bg-muted sm:aspect-[4/3]"
       onClickCapture={swipe.onClickCapture}
       onTouchStart={hasMultiple ? swipe.onTouchStart : undefined}

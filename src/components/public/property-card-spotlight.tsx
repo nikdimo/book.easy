@@ -98,7 +98,7 @@ export async function PropertyCardSpotlight({
   return (
     <a
       href={href}
-      className="group grid grid-cols-1 sm:grid-cols-2 overflow-hidden rounded-2xl border bg-card transition-shadow hover:shadow-md"
+      className="group grid grid-cols-1 sm:grid-cols-2 overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(15,23,42,0.06)] transition-shadow hover:shadow-[0_4px_12px_rgba(15,23,42,0.09)]"
     >
       <div className="relative grid grid-cols-3 grid-rows-2 gap-0.5 aspect-[4/3] sm:aspect-auto bg-muted">
         {main ? (

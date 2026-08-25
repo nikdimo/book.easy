@@ -157,6 +157,21 @@ const nextConfig: NextConfig = {
         hostname: "picsum.photos",
       },
     ],
+    // AVIF first, WebP for everything that can't take it. Listing photos are already
+    // lossy phone JPEGs, so the re-encode is a second generation loss and the format
+    // has to buy back the headroom. NOTE for the proxy in front of this app: the
+    // variant is chosen from the request's `Accept` header, so nginx has to forward
+    // it and must not cache these responses without honouring `Vary: Accept`.
+    formats: ["image/avif", "image/webp"],
+    // An allowlist, not a default, since Next 16 — `quality={85}` anywhere in the app
+    // fails unless the number appears here. 75 stays for cards and thumbnails, where
+    // the extra bytes buy nothing; 85 is for the gallery, where the photo is the
+    // content and 75 visibly muddies an interior shot.
+    qualities: [75, 85],
+    // Uploaded photos never change behind their URL, so the 4 hour default just means
+    // re-encoding the same file forever — which on a single VPS is paid for by
+    // whichever visitor arrives first, and AVIF is the slow one to encode.
+    minimumCacheTTL: 2678400,
   },
 };
 

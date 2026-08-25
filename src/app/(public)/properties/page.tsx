@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import {
   searchListings,
   getAvailableAmenities,
+  getAvailableCities,
+  getAvailablePropertyTypesByCity,
   getSearchFilterPreview,
 } from "@/lib/services/search.service";
 import { getActivePropertyTypes } from "@/lib/services/property-type.service";
@@ -118,10 +120,18 @@ export default async function PropertiesPage({
     if (typeof value === "string" && value) guestBreakdownParams[key] = value;
   }
 
-  const [results, amenities, filterPreview] = await Promise.all([
+  const [
+    results,
+    amenities,
+    filterPreview,
+    popularCities,
+    availablePropertyTypesByCity,
+  ] = await Promise.all([
     searchListings(filters),
     getAvailableAmenities(),
     getSearchFilterPreview(filters),
+    getAvailableCities(),
+    getAvailablePropertyTypesByCity(),
   ]);
 
   function buildPageUrl(page: number) {
@@ -227,7 +237,10 @@ export default async function PropertiesPage({
   });
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div
+      data-viewport-page
+      className="flex flex-col bg-background"
+    >
       <h1 className="sr-only">
         {filters.city ? (
           (() => {
@@ -244,7 +257,7 @@ export default async function PropertiesPage({
           <T t={t} k="properties.explore" source="Explore properties" />
         )}
       </h1>
-      <div className="flex-1 w-full">
+      <div className="w-full flex-1">
         <Suspense
           fallback={
             <div className="animate-pulse h-40 bg-muted mb-8 mx-4 md:mx-8 rounded-xl" />
@@ -258,6 +271,8 @@ export default async function PropertiesPage({
             totalLabel={totalLabel}
             totalCount={results.total}
             mapPins={mapPins}
+            popularCities={popularCities}
+            availablePropertyTypesByCity={availablePropertyTypesByCity}
             featuredMarket={params.featured === "1"}
           >
             {results.listings.length > 0 ? (

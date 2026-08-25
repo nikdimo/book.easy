@@ -51,7 +51,7 @@
 
 /* Linger Homes light theme: warm neutrals with a coral primary. */
 :root {
-  --background: #f6f7f8;
+  --background: #ffffff;
   --foreground: #1f2933;
   --card: hsl(0 0% 100%);
   --card-foreground: hsl(20 14% 10%);
@@ -136,6 +136,23 @@
   }
 }
 
+/* Where the phone search results sheet rests over the map.
+   One declaration owns the sheet's offset, because two would not override each
+   other: Tailwind's `translate-y-*` compiles to the `translate` property while an
+   inline transform is `transform`, and the two compose — the sheet would be pushed
+   down twice and land below the stage that clips it.
+   The fallback is what holds it at its peek height on first paint; once the sheet
+   has measured the stage it sets `--sheet-offset` in pixels and drags from there. */
+@media (width < 64rem) {
+  .results-sheet {
+    transform: translate3d(0, var(--sheet-offset, calc(100% - 96px)), 0);
+  }
+
+  .results-sheet [data-property-card-gallery] {
+    aspect-ratio: 4 / 3;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -203,6 +220,30 @@ body:has(.app-zoom-90) {
   min-height: calc(100dvh / 0.9);
 }
 
+/* Radix positions every popper-based layer — tooltip, dropdown, select, popover —
+   with a fixed wrapper whose translate() it computes from getBoundingClientRect(),
+   i.e. real viewport pixels. Inside a zoomed body that translate is itself scaled by
+   the zoom, so each layer lands at `zoom x` its intended offset and drifts toward the
+   top-left of the screen — the notification panel opening a finger's width left of the
+   bell. Cancelling the zoom on the wrapper puts the offset back in viewport pixels;
+   re-applying it on the panel inside keeps the layer drawn at the page's own scale, so
+   only the position changes and nothing gets bigger. */
+body:has(.app-zoom-80) [data-radix-popper-content-wrapper] {
+  zoom: calc(1 / 0.8);
+}
+
+body:has(.app-zoom-80) [data-radix-popper-content-wrapper] > * {
+  zoom: 0.8;
+}
+
+body:has(.app-zoom-90) [data-radix-popper-content-wrapper] {
+  zoom: calc(1 / 0.9);
+}
+
+body:has(.app-zoom-90) [data-radix-popper-content-wrapper] > * {
+  zoom: 0.9;
+}
+
 /* What "the height of the screen" means inside a zoomed route. Viewport units are not
    scaled by zoom but the elements sized with them are, so a plain 100dvh box renders at
    only 80%/90% of the screen. Anything that wants to fill the viewport should size off
@@ -210,6 +251,20 @@ body:has(.app-zoom-90) {
    minimum heights below, exposed so component classes can use it. */
 :root {
   --app-viewport-height: 100dvh;
+  /* The search page's top chrome, stacked and sticky: the site header row (`h-20`
+     on the header's inner grid) and the filter row under it. The map hangs below
+     both, so its offset and its height are derived from these rather than from a
+     number repeated in three places. */
+  --site-header-height: 5rem;
+  --search-filters-height: 4.75rem;
+  --mobile-nav-height: 4.75rem;
+}
+
+@media (width < 64rem) {
+  :root {
+    --site-header-height: 5.25rem;
+    --search-filters-height: 4rem;
+  }
 }
 
 .app-zoom-80 {

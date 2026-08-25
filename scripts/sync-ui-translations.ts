@@ -24,7 +24,11 @@ async function main() {
       .join(" ");
     if (/credit balance|billing|quota|rate.?limit|status.?429/i.test(errorText)) {
       console.error(
-        "ANTHROPIC CREDIT/API ERROR: Translation could not finish because the API has no usable credit or quota. Add credit or resolve the Anthropic billing/quota issue, then run option 6 again."
+        "AI PROVIDER CREDIT/QUOTA ERROR: Translation could not finish because the active provider has no usable credit or quota. Resolve the Anthropic or Gemini billing/quota issue, then run option 6 again."
+      );
+    } else if (/\b401\b|authentication(?:_error|\s+error)?|invalid (?:api )?key|incorrect (?:api )?key|unauthori[sz]ed/i.test(errorText)) {
+      console.error(
+        "AI PROVIDER AUTHENTICATION ERROR: Translation could not finish because a configured provider rejected its API key. Replace the invalid key, then run the translation sync again."
       );
     } else if (/ANTHROPIC_API_KEY is not configured/i.test(errorText)) {
       console.error(

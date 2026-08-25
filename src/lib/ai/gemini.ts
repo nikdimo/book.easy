@@ -5,6 +5,7 @@ import {
   TRANSLATION_RULES,
   type TranslationTarget,
 } from "@/lib/ai/translation-batch";
+import { isDailyTranslationQuotaFailure } from "@/lib/ai/translation-provider-fallback";
 
 /** Free-tier gemini-2.5-flash allows 5 requests per minute per project. Pacing to
  * that budget locally is what stops a sync from turning into a burst of 429s. */
@@ -62,8 +63,9 @@ function retryDelayFromError(body: string): number | null {
   return Math.ceil(Number(match[1]) * 1000) + 500;
 }
 
-function isRetryableStatus(status: number): boolean {
-  return status === 429 || status === 500 || status === 502 || status === 503;
+function isRetryableStatus(status: number, body: string): boolean {
+  if (status === 429) return !isDailyTranslationQuotaFailure(body);
+  return status === 500 || status === 502 || status === 503;
 }
 
 async function callGemini(prompt: string): Promise<string> {
@@ -87,7 +89,11 @@ async function callGemini(prompt: string): Promise<string> {
             generationConfig: {
               temperature: 0.15,
               responseMimeType: "application/json",
-              maxOutputTokens: 32_768,
+              // Gemini 2.5 Flash supports 65,536 output tokens. Translation is a
+              // deterministic structured-copy task, so thinking would only consume
+              // output budget that should be available to the JSON response.
+              maxOutputTokens: 65_536,
+              thinkingConfig: { thinkingBudget: 0 },
             },
           }),
           signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
@@ -124,7 +130,7 @@ async function callGemini(prompt: string): Promise<string> {
 
     const body = await response.text();
     lastError = new Error(`Gemini ${response.status}: ${body}`);
-    if (!isRetryableStatus(response.status) || attempt === MAX_ATTEMPTS) break;
+    if (!isRetryableStatus(response.status, body) || attempt === MAX_ATTEMPTS) break;
     await sleep(retryDelayFromError(body) ?? attempt * 2_000);
   }
   throw lastError ?? new Error("Gemini request failed.");

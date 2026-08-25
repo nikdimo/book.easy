@@ -469,29 +469,33 @@ export function RegionalSettingsDialog({
             <Button
               variant="ghost"
               size="sm"
-              className="gap-1.5 rounded-full px-2.5 font-semibold"
+              className="gap-1.5 rounded-full px-2.5 font-semibold lg:h-10 lg:gap-2 lg:px-3.5 lg:text-sm"
               aria-label={i18n.resolve("regional.open_language", "Change language").text}
               onClick={() => openSettings("language")}
             >
-              <Globe className="size-[18px]" />
-              <span className="hidden sm:inline">{localeBadge}</span>
+              <Globe className="size-[18px] lg:size-5" />
+              {/* Hidden only where the right cluster genuinely runs out of room.
+                  The badge is a fixed two characters — narrower than the currency
+                  code beside it, which never hides — so anything above the phone
+                  widths has space for it. */}
+              <span className="hidden min-[26rem]:inline">{localeBadge}</span>
             </Button>
           </TooltipTrigger>
           <TooltipContent>{currentLanguageLabel}</TooltipContent>
         </Tooltip>
 
-        <span aria-hidden className="h-4 w-px shrink-0 bg-border" />
+        <span aria-hidden className="h-4 w-px shrink-0 bg-border lg:h-5" />
 
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               variant="ghost"
               size="sm"
-              className="gap-1.5 rounded-full px-2.5 font-semibold"
+              className="gap-1.5 rounded-full px-2.5 font-semibold lg:h-10 lg:gap-2 lg:px-3.5 lg:text-sm"
               aria-label={i18n.resolve("regional.open_currency", "Change currency").text}
               onClick={() => openSettings("currency")}
             >
-              <CircleDollarSign className="size-[18px]" />
+              <CircleDollarSign className="size-[18px] lg:size-5" />
               <span>{currentCurrency}</span>
             </Button>
           </TooltipTrigger>

@@ -51,6 +51,8 @@ export function ListingAvailabilityCalendar({
     currency,
     priceOverrides,
     promotions,
+    boundedPromotionsOnly: true,
+    showCurrencySymbol: true,
   });
   const [{ checkIn, checkOut }, setStayRange] = useListingStayRange({
     checkIn: "",
@@ -193,7 +195,7 @@ export function ListingAvailabilityCalendar({
       </div>
 
       {/* The shared calendar surface ships with the dialog's own padding, which
-          here would shrink the grid below the width that fits two months. */}
+          here would shrink the grid below the width the roomy cells need. */}
       <div className="[&>div]:!overflow-visible [&>div]:!px-0 [&>div]:!py-0">
         <DateRangeCalendarStep
           active
@@ -210,7 +212,10 @@ export function ListingAvailabilityCalendar({
           minimumStayMessage={minimumStayMessage}
           fitViewport
           pagedOnDesktop
+          // The listing page gives this calendar the full content width. That keeps
+          // two months scannable while leaving each bordered day card roughly square.
           pagedDesktopMonthCount={2}
+          dayVariant="listing"
         />
       </div>
 

@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { MarketplaceStayDatePicker } from "@/components/marketplace/marketplace-stay-date-picker";
+import { useSheetEnabled } from "@/components/marketplace/results-sheet";
 import {
   Sheet,
   SheetContent,
@@ -23,12 +24,11 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { LocalizedPrice } from "@/components/shared/localized-price";
 import { OfficialAmountNotice } from "@/components/shared/official-amount-notice";
 import { createBookingAction } from "@/lib/actions/booking.actions";
 import { toast } from "sonner";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, ChevronUp, X } from "lucide-react";
 import { updateActiveSearchState } from "@/lib/marketplace-search-state";
 import {
   Tooltip,
@@ -80,6 +80,16 @@ type GuestDetails = {
   pets: number;
 };
 
+/**
+ * The panels the booking frame can show in place of its summary.
+ *
+ * Deliberately not a modal each: the frame's header (what a night costs) and its
+ * footer (the total and the button) stay put while the middle changes, so the card
+ * is one fixed height no matter which panel is open — the whole point of the
+ * rewrite. A guest reading the rules can still see what they are about to pay.
+ */
+type PanelView = "rules" | "message" | "price";
+
 /** Matches the horizon the card grid ranges over (pricing.service.ts), so the same
  * listing quotes the same span in search results and on its own page. */
 const RATE_RANGE_HORIZON_MONTHS = 12;
@@ -126,6 +136,97 @@ function BookingGuestRow({
   );
 }
 
+/** Resolved copy, with the opt-out the page translator needs when it is already translated. */
+function Txt({ value }: { value: Resolved }) {
+  return (
+    <span className={value.translated ? "notranslate" : undefined}>
+      {value.text}
+    </span>
+  );
+}
+
+/**
+ * A row in the summary stack that leads into a panel.
+ *
+ * Deliberately the same shape as the guests row above it: to a guest, the house rules
+ * and the message to the host are the same kind of thing as the party size — one line
+ * saying where they stand, and a way in. What used to be a rules table and an empty
+ * textarea sitting open in the card is two of these.
+ */
+function BookingSummaryRow({
+  label,
+  value,
+  done = false,
+  onOpen,
+}: {
+  label: Resolved;
+  value: Resolved;
+  done?: boolean;
+  onOpen: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="flex w-full items-center justify-between gap-3 bg-background px-4 py-3 text-left text-sm transition-colors hover:bg-muted/30 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+    >
+      <span className="flex min-w-0 items-center gap-2">
+        {done ? (
+          <Check className="size-4 shrink-0 text-primary" aria-hidden="true" />
+        ) : null}
+        <span className="min-w-0 truncate">
+          <span className="font-medium text-foreground">
+            <Txt value={label} />
+          </span>
+          <span className="text-muted-foreground">
+            {" · "}
+            <Txt value={value} />
+          </span>
+        </span>
+      </span>
+      <ChevronRight
+        className="size-4 shrink-0 text-foreground"
+        aria-hidden="true"
+      />
+    </button>
+  );
+}
+
+/**
+ * The title strip of an open panel.
+ *
+ * The close control is a corner X rather than a row at the bottom: the frame is a
+ * fixed height and a footer row is 40px of it. On phones the panel is a drawer that
+ * closes itself, so `onClose` is left off and the strip is only a title.
+ */
+function BookingPanelHeader({
+  title,
+  closeLabel,
+  onClose,
+}: {
+  title: Resolved;
+  closeLabel: Resolved;
+  onClose?: () => void;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <p className="text-sm font-semibold">
+        <Txt value={title} />
+      </p>
+      {onClose ? (
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={closeLabel.text}
+          className="-mr-1 -mt-1 rounded-full p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <X className="size-4" aria-hidden="true" />
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 export function BookingWidget({
   listingId,
   maxGuests,
@@ -150,9 +251,15 @@ export function BookingWidget({
     currency,
     priceOverrides,
     promotions,
+    boundedPromotionsOnly: true,
+    showCurrencySymbol: true,
   });
   const { data: session } = useSession();
   const router = useRouter();
+  // Which presentation the panels get: swapped into the card, or slid up as a
+  // drawer. The same query the results sheet uses, so the two agree on where the
+  // phone layout ends.
+  const isSmallScreen = useSheetEnabled();
   const [isPending, startTransition] = useTransition();
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   // Which step the picker opens on — the dates row and the guests row lead into
@@ -193,10 +300,20 @@ export function BookingWidget({
    *  agreement, so this is never seeded from a previous visit or a query parameter. */
   const [rulesAccepted, setRulesAccepted] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [priceDetailsOpen, setPriceDetailsOpen] = useState(false);
-  const [desktopPriceDetailsOpen, setDesktopPriceDetailsOpen] = useState(false);
+  /**
+   * Which panel the frame is showing; `null` is the summary it rests on.
+   *
+   * One piece of state for both breakpoints, because it is one decision: the card
+   * swaps its middle to this panel, the phone slides the same panel up as a drawer.
+   * What the guest is looking at does not depend on how wide their screen is.
+   */
+  const [panel, setPanel] = useState<PanelView | null>(null);
+  /** Phones only: the request summary the sticky bar opens. Panels stack over it. */
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  /** Edited in the message panel and committed to `note` on save, so leaving the
+   *  panel by any other route discards the draft rather than half-keeping it. */
+  const [noteDraft, setNoteDraft] = useState("");
   const hasSyncedSearchRef = useRef(false);
-  const desktopPriceDetailsRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!hasSyncedSearchRef.current) {
@@ -337,12 +454,18 @@ export function BookingWidget({
           : selectDatesMessage;
   const blockingProblem: Resolved | null =
     selectionValidation.status === "incomplete" ? null : reserveProblem;
-  const reserveStep: "dates" | "guests" | "reserve" =
+  // Agreement is the last thing missing rather than a condition the button fails on:
+  // pressing reserve without it opens the rules, where agreeing and reserving are the
+  // same press. That is why there is no longer an error telling the guest to go back
+  // and tick something.
+  const reserveStep: "dates" | "guests" | "rules" | "reserve" =
     selectionValidation.status !== "valid"
       ? "dates"
-      : guestsConfirmed
-        ? "reserve"
-        : "guests";
+      : !guestsConfirmed
+        ? "guests"
+        : !rulesAccepted && houseRules
+          ? "rules"
+          : "reserve";
   const reserveLabel = i18n.resolve("booking.reserve", "Reserve");
   // Reuses the search catalog's existing key so the copy stays translated.
   const whosComingLabel = i18n.resolve("search.whos_coming", "Who's coming");
@@ -356,6 +479,33 @@ export function BookingWidget({
     selectionValidation.status === "unavailable"
       ? unavailableDatesMessage
       : minimumStayMessage;
+  const houseRulesTitle = i18n.resolve("booking.house_rules_title", "House rules");
+  const houseRulesState = rulesAccepted
+    ? i18n.resolve("booking.house_rules_agreed", "Agreed")
+    : i18n.resolve("booking.house_rules_review", "Review and agree");
+  const agreeAndReserveLabel = i18n.resolve(
+    "booking.house_rules_agree_and_reserve",
+    "I agree and reserve",
+  );
+  const messageTitle = i18n.resolve(
+    "booking.message_optional",
+    "Message to host (optional)",
+  );
+  const messageRowLabel = i18n.resolve("booking.message_row_label", "Message");
+  // The host's own note back, not a label: once written, the row is the message.
+  const messageState: Resolved = note
+    ? { text: note, translated: false }
+    : i18n.resolve("booking.message_add", "Add a note for the host");
+  const saveMessageLabel = i18n.resolve("booking.message_save", "Save message");
+  const priceDetailsLabel = i18n.resolve(
+    "booking.price_details",
+    "Price details",
+  );
+  const closePanelLabel = i18n.resolve("booking.close_panel", "Close");
+  const confirmTitle = i18n.resolve(
+    "booking.confirm_title",
+    "Confirm your request",
+  );
   const bookingMessage = error
     ? { text: error, translated: false }
     : blockingProblem;
@@ -372,27 +522,19 @@ export function BookingWidget({
         : null;
 
   /**
-   * The breakdown lives in two places — an inline panel on desktop and a bottom
-   * sheet on mobile — so the headline rate opens whichever one is on screen.
+   * Opens a panel. One path for both breakpoints — the card renders `panel` in place
+   * of its summary, the phone renders it as a drawer — so nothing here has to know
+   * how wide the screen is. The media query this replaced was the only reason a
+   * guest could see the breakdown in two different shapes from one press.
    */
-  function openPriceDetails() {
-    if (!hasStayQuote) return;
+  function openPanel(next: PanelView) {
+    if (next === "price" && !hasStayQuote) return;
+    if (next === "message") setNoteDraft(note);
+    setPanel(next);
+  }
 
-    if (window.matchMedia("(min-width: 1024px)").matches) {
-      const opening = !desktopPriceDetailsOpen;
-      setDesktopPriceDetailsOpen(opening);
-      if (opening) {
-        requestAnimationFrame(() => {
-          desktopPriceDetailsRef.current?.scrollIntoView({
-            block: "nearest",
-            behavior: "smooth",
-          });
-        });
-      }
-      return;
-    }
-
-    setPriceDetailsOpen(true);
+  function closePanel() {
+    setPanel(null);
   }
 
   function openPicker(step: "dates" | "guests") {
@@ -420,10 +562,54 @@ export function BookingWidget({
       return;
     }
 
+    // The rules are the last missing step, and the panel's own button both agrees
+    // and sends — so this opens it rather than refusing the press.
+    if (reserveStep === "rules") {
+      openPanel("rules");
+      return;
+    }
+
     handleSubmit();
   }
 
-  function handleSubmit() {
+  /**
+   * The sticky bar's button. It finishes the selection the same way the card's does,
+   * but once the selection is whole it opens the request summary rather than sending:
+   * on a phone the bar is all a guest can see of the booking, and nobody should send
+   * a request from a control that never showed them what is in it.
+   */
+  function handleBarAction() {
+    setError(null);
+
+    if (reserveStep === "dates") {
+      openPicker("dates");
+      return;
+    }
+
+    if (reserveStep === "guests") {
+      openPicker("guests");
+      return;
+    }
+
+    setConfirmOpen(true);
+  }
+
+  /** The rules panel's button: the agreement and the request are one press, because
+   *  the guest is looking at the rules as they make it. */
+  function acceptRulesAndSubmit() {
+    setRulesAccepted(true);
+    setPanel(null);
+    handleSubmit({ rulesAccepted: true });
+  }
+
+  function saveMessage() {
+    setNote(noteDraft);
+    setPanel(null);
+  }
+
+  /** `accepted` lets the rules panel submit in the same press it agrees in, without
+   *  waiting a render for the state it just set. */
+  function handleSubmit({ rulesAccepted: accepted = rulesAccepted } = {}) {
     setError(null);
 
     if (reserveProblem) {
@@ -434,7 +620,7 @@ export function BookingWidget({
     // Checked here as well as on the server. The server is the one that decides — it
     // refuses a request that does not carry the acceptance — and this exists so the
     // guest is told which control they missed instead of watching a request fail.
-    if (!rulesAccepted) {
+    if (!accepted) {
       const message = i18n.resolve(
         "booking.house_rules_required",
         "Please agree to the house rules before you send your request.",
@@ -482,10 +668,10 @@ export function BookingWidget({
     setGuestDetails({ adults: 1, children: 0, infants: 0, pets: 0 });
     setGuestsConfirmed(false);
     setNote("");
+    setNoteDraft("");
     setRulesAccepted(false);
     setError(null);
-    setPriceDetailsOpen(false);
-    setDesktopPriceDetailsOpen(false);
+    setPanel(null);
     updateActiveSearchState({
       checkIn: "",
       checkOut: "",
@@ -667,10 +853,323 @@ export function BookingWidget({
     );
   }
 
+
+  /**
+   * The button under the total belongs to whatever the frame is showing: it reserves
+   * from the summary, agrees and reserves from the rules, saves from the message. One
+   * button in one place, so the frame never grows a second one to hold a panel's action.
+   */
+  const footerAction =
+    panel === "rules"
+      ? { label: agreeAndReserveLabel, run: acceptRulesAndSubmit }
+      : panel === "message"
+        ? { label: saveMessageLabel, run: saveMessage }
+        : { label: primaryActionLabel, run: handlePrimaryAction };
+
+  const hasSelection =
+    Boolean(checkInStr) ||
+    Boolean(checkOutStr) ||
+    Boolean(note) ||
+    rulesAccepted ||
+    guests !== 1 ||
+    guestDetails.infants > 0 ||
+    guestDetails.pets > 0;
+
+  /**
+   * The stay, the party and the two things a guest still owes the host, as one stack
+   * of rows. The picker is a row of it rather than a section above it, so opening the
+   * calendar, the guest count, the rules or the message are all the same gesture.
+   */
+  function renderSummary() {
+    return (
+      <div className="space-y-2">
+        <div className="overflow-hidden rounded-xl border border-border/50 bg-background">
+          <MarketplaceStayDatePicker
+            layout="compact"
+            checkIn={checkInStr}
+            checkOut={checkOutStr}
+            open={datePickerOpen}
+            onOpenChange={(next) => {
+              setDatePickerOpen(next);
+              // Otherwise the next open from a date field would land on the
+              // guests step this one was left on.
+              if (!next) setPickerStep("dates");
+            }}
+            initialSegment={checkInStr && !checkOutStr ? "checkout" : "checkin"}
+            dateFlexibility={dateFlexibility}
+            showDateFlexibility
+            onDateFlexibilityChange={setDateFlexibility}
+            dayMeta={dayPrice}
+            dayVariant="booking"
+            initialStep={pickerStep}
+            onStepChange={(step) => {
+              // Reaching the guests step is the confirmation — the counts are
+              // always valid, so the step is about intent, not validity.
+              if (step === "guests") setGuestsConfirmed(true);
+            }}
+            guestCounts={guestDetails}
+            onGuestCountsChange={(next) => {
+              setGuestDetails(next);
+              setGuestsConfirmed(true);
+              setError(null);
+            }}
+            maxOccupancy={maxGuests}
+            nextActionLabel={whosComingLabel}
+            guestStepTitle={whosComingLabel}
+            finalActionLabel={reserveLabel}
+            finalActionDisabled={
+              isPending || selectionValidation.status !== "valid" || guests < 1
+            }
+            showFinalActionIcon={false}
+            // Reserve inside the picker lands where reserve lands everywhere
+            // else at that width: the request summary on a phone, the next
+            // missing step in the card on desktop.
+            onFinalAction={isSmallScreen ? handleBarAction : handlePrimaryAction}
+            pagedCalendarOnDesktop
+            searchPresentation
+            showPillGuestAction
+            disabledDateRanges={disabledDateRanges}
+            minimumStayNights={minNights}
+            minimumStayMessage={minimumStayMessage}
+            onRangeStringsChange={({ checkIn: ci, checkOut: co }) => {
+              setStayRange({ checkIn: ci, checkOut: co });
+              setError(null);
+            }}
+            className="w-full [&_button]:!rounded-none [&_button]:!border-0"
+          />
+          <div className="border-t border-border/50">
+            <BookingGuestRow
+              summary={guestSummary}
+              onOpen={() => openPicker("guests")}
+            />
+          </div>
+          {houseRules ? (
+            <div className="border-t border-border/50">
+              <BookingSummaryRow
+                label={houseRulesTitle}
+                value={houseRulesState}
+                done={rulesAccepted}
+                onOpen={() => openPanel("rules")}
+              />
+            </div>
+          ) : null}
+          <div className="border-t border-border/50">
+            <BookingSummaryRow
+              label={messageRowLabel}
+              value={messageState}
+              done={Boolean(note)}
+              onOpen={() => openPanel("message")}
+            />
+          </div>
+        </div>
+        {selectionValidation.status !== "valid" && checkInStr && checkOutStr && (
+          <p aria-live="polite" className="text-sm text-destructive">
+            <Txt value={pickerMessage} />
+          </p>
+        )}
+        {hasSelection && (
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={clearSelection}
+              className="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              <Tx k="booking.clear_selection" source="Clear selection" />
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  /**
+   * A panel's own content, without a button: the frame's footer supplies that.
+   *
+   * `dismissable` is the corner X, which the card needs and the drawer does not — a
+   * drawer closes itself. A panel scrolls inside its own box, so a host with a lot to
+   * say about their rules cannot push the button off the screen.
+   */
+  function renderPanel(dismissable: boolean) {
+    if (panel === "rules") {
+      return (
+        <div className="flex min-h-0 flex-1 flex-col gap-2">
+          <BookingPanelHeader
+            title={houseRulesTitle}
+            closeLabel={closePanelLabel}
+            onClose={dismissable ? closePanel : undefined}
+          />
+          {/* The listing's own rules, rendered by the server and shown here in full
+              rather than linked. A guest agreeing to rules they would have to scroll
+              away to read has not been shown them — which is why the button that
+              agrees to them sits under this panel and nowhere else. */}
+          <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-border/40 bg-muted/15 px-4">
+            {houseRules}
+          </div>
+        </div>
+      );
+    }
+
+    if (panel === "message") {
+      return (
+        <div className="flex min-h-0 flex-1 flex-col gap-2">
+          <BookingPanelHeader
+            title={messageTitle}
+            closeLabel={closePanelLabel}
+            onClose={dismissable ? closePanel : undefined}
+          />
+          <Textarea
+            autoFocus
+            placeholder={
+              i18n.resolve(
+                "booking.message_placeholder",
+                "Introduce yourself and share your travel plans...",
+              ).text
+            }
+            value={noteDraft}
+            onChange={(event) => setNoteDraft(event.target.value)}
+            className="min-h-0 flex-1 resize-none"
+          />
+        </div>
+      );
+    }
+
+    if (panel === "price") {
+      return (
+        <div className="flex min-h-0 flex-1 flex-col gap-2">
+          <BookingPanelHeader
+            title={priceDetailsLabel}
+            closeLabel={closePanelLabel}
+            onClose={dismissable ? closePanel : undefined}
+          />
+          <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-border/40 bg-muted/15 px-4 py-3">
+            {renderPriceBreakdown()}
+          </div>
+        </div>
+      );
+    }
+
+    return null;
+  }
+
+  function renderFooterButton() {
+    return (
+      <Button
+        onClick={footerAction.run}
+        className="w-full rounded-lg py-6 text-base font-semibold disabled:bg-muted disabled:text-muted-foreground"
+        size="lg"
+        disabled={isPending}
+      >
+        {isPending ? (
+          <Tx k="booking.sending_request" source="Sending request…" />
+        ) : (
+          footerAction.label.text
+        )}
+      </Button>
+    );
+  }
+
+  /** The total and the button, pinned under every view so the price is never the
+   *  thing a guest has to leave a panel to check. */
+  function renderFooter() {
+    return (
+      <div className="mt-auto space-y-3 pt-3">
+        {nights > 0 && stayPricing ? (
+          <button
+            type="button"
+            onClick={() =>
+              panel === "price" ? closePanel() : openPanel("price")
+            }
+            aria-expanded={panel === "price"}
+            className="flex w-full items-end justify-between gap-3 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span>
+              <span className="block text-sm font-medium">
+                <Txt value={nightLabel} /> ·{" "}
+                <span className="text-muted-foreground">
+                  <Tx k="booking.total" source="Total" />
+                </span>
+              </span>
+              <span className="mt-0.5 inline-flex items-center gap-1 text-xs text-muted-foreground underline underline-offset-2">
+                <Txt value={priceDetailsLabel} />
+                {panel === "price" ? (
+                  <ChevronUp className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                )}
+              </span>
+            </span>
+            <span className="flex flex-col items-end">
+              {stayPricing.discountAmount > 0 ? (
+                <LocalizedPrice
+                  amount={stayPricing.originalTotal}
+                  currency={currency}
+                  locale={i18n.locale}
+                  className="text-sm text-muted-foreground line-through"
+                />
+              ) : null}
+              <LocalizedPrice
+                amount={total}
+                currency={currency}
+                locale={i18n.locale}
+                className="text-xl font-semibold"
+              />
+            </span>
+          </button>
+        ) : null}
+
+        {bookingMessage && panel === null && (
+          <p
+            aria-live="polite"
+            className={
+              bookingMessageIsError
+                ? "rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm"
+                : "text-sm text-muted-foreground"
+            }
+          >
+            <Txt value={bookingMessage} />
+          </p>
+        )}
+
+        {panel === null ? (
+          <Tooltip>
+            <TooltipTrigger asChild>{renderFooterButton()}</TooltipTrigger>
+            <TooltipContent
+              className={
+                (blockingProblem ?? reserveTooltip).translated
+                  ? "notranslate"
+                  : undefined
+              }
+            >
+              {(blockingProblem ?? reserveTooltip).text}
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          renderFooterButton()
+        )}
+
+        <p className="text-center text-xs leading-relaxed text-muted-foreground">
+          <Tx
+            k="booking.no_charge_notice"
+            source="You won't be charged yet. The host will approve or decline your request."
+          />
+        </p>
+      </div>
+    );
+  }
+
+  /** The grab handle the results sheet uses, so a drawer here reads as the same kind
+   *  of object a guest already met over the map. */
+  const drawerHandle = (
+    <span
+      aria-hidden
+      className="mx-auto mt-1 mb-3 block h-1 w-9 shrink-0 rounded-full bg-border"
+    />
+  );
+
   return (
     <>
       <Card
-        className="notranslate rounded-2xl border-2 border-border shadow-xl overflow-hidden lg:sticky lg:top-24"
+        className="notranslate hidden overflow-hidden rounded-2xl border border-border/50 shadow-[0_2px_12px_rgba(15,23,42,0.06)] lg:sticky lg:top-24 lg:flex"
         translate="no"
       >
         <CardHeader className="pb-2">
@@ -678,8 +1177,10 @@ export function BookingWidget({
             {hasStayQuote && stayPricing ? (
               <button
                 type="button"
-                onClick={openPriceDetails}
-                aria-expanded={desktopPriceDetailsOpen || priceDetailsOpen}
+                onClick={() =>
+                  panel === "price" ? closePanel() : openPanel("price")
+                }
+                aria-expanded={panel === "price"}
                 className="flex flex-col items-start gap-0.5 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <span className="flex items-baseline gap-1">
@@ -702,19 +1203,7 @@ export function BookingWidget({
                   </span>
                 </span>
                 <span className="inline-flex items-center gap-1 text-xs font-normal text-muted-foreground underline underline-offset-2">
-                  <span
-                    className={
-                      averageNightsLabel.translated ? "notranslate" : undefined
-                    }
-                  >
-                    {averageNightsLabel.text}
-                  </span>{" "}
-                  · <Tx k="booking.price_details" source="Price details" />
-                  {desktopPriceDetailsOpen ? (
-                    <ChevronUp className="h-3.5 w-3.5" />
-                  ) : (
-                    <ChevronDown className="h-3.5 w-3.5" />
-                  )}
+                  <Txt value={averageNightsLabel} />
                 </span>
               </button>
             ) : (
@@ -753,272 +1242,17 @@ export function BookingWidget({
             )}
             {promotionLabel ? (
               <Badge variant="secondary" className="mt-1 w-fit rounded-md">
-                <span
-                  className={
-                    promotionLabel.translated ? "notranslate" : undefined
-                  }
-                >
-                  {promotionLabel.text}
-                </span>
+                <Txt value={promotionLabel} />
               </Badge>
             ) : null}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4 pt-0">
-          <div className="space-y-2">
-            <Label className="text-base font-semibold">
-              <Tx k="booking.dates" source="Dates" />
-            </Label>
-            <div className="overflow-hidden rounded-xl border border-foreground/50 bg-background">
-              <MarketplaceStayDatePicker
-                layout="compact"
-                checkIn={checkInStr}
-                checkOut={checkOutStr}
-                open={datePickerOpen}
-                onOpenChange={(next) => {
-                  setDatePickerOpen(next);
-                  // Otherwise the next open from a date field would land on the
-                  // guests step this one was left on.
-                  if (!next) setPickerStep("dates");
-                }}
-                initialSegment={
-                  checkInStr && !checkOutStr ? "checkout" : "checkin"
-                }
-                dateFlexibility={dateFlexibility}
-                showDateFlexibility
-                onDateFlexibilityChange={setDateFlexibility}
-                dayMeta={dayPrice}
-                initialStep={pickerStep}
-                onStepChange={(step) => {
-                  // Reaching the guests step is the confirmation — the counts are
-                  // always valid, so the step is about intent, not validity.
-                  if (step === "guests") setGuestsConfirmed(true);
-                }}
-                guestCounts={guestDetails}
-                onGuestCountsChange={(next) => {
-                  setGuestDetails(next);
-                  setGuestsConfirmed(true);
-                  setError(null);
-                }}
-                maxOccupancy={maxGuests}
-                nextActionLabel={whosComingLabel}
-                guestStepTitle={whosComingLabel}
-                finalActionLabel={reserveLabel}
-                finalActionDisabled={
-                  isPending ||
-                  selectionValidation.status !== "valid" ||
-                  guests < 1
-                }
-                showFinalActionIcon={false}
-                onFinalAction={handleSubmit}
-                pagedCalendarOnDesktop
-                searchPresentation
-                showPillGuestAction
-                disabledDateRanges={disabledDateRanges}
-                minimumStayNights={minNights}
-                minimumStayMessage={minimumStayMessage}
-                onRangeStringsChange={({ checkIn: ci, checkOut: co }) => {
-                  setStayRange({ checkIn: ci, checkOut: co });
-                  setError(null);
-                }}
-                className="w-full [&_button]:!rounded-none [&_button]:!border-0"
-              />
-              <div className="border-t border-foreground/30">
-                <BookingGuestRow
-                  summary={guestSummary}
-                  onOpen={() => openPicker("guests")}
-                />
-              </div>
-            </div>
-            {selectionValidation.status !== "valid" &&
-              checkInStr &&
-              checkOutStr && (
-                <p aria-live="polite" className="text-sm text-destructive">
-                  <span
-                    className={
-                      pickerMessage.translated ? "notranslate" : undefined
-                    }
-                  >
-                    {pickerMessage.text}
-                  </span>
-                </p>
-              )}
-          </div>
-
-          {houseRules ? (
-            <div className="space-y-3 rounded-xl border border-border/70 bg-muted/20 p-4">
-              <p className="text-sm font-medium">
-                <Tx k="booking.house_rules_title" source="House rules" />
-              </p>
-              {/* The listing's own rules, rendered by the server and shown here in full
-                  rather than linked. A guest agreeing to rules they would have to scroll
-                  away to read has not been shown them. */}
-              {houseRules}
-              <label className="flex cursor-pointer items-start gap-2.5 pt-1 text-sm">
-                <input
-                  type="checkbox"
-                  name="houseRulesAccepted"
-                  checked={rulesAccepted}
-                  onChange={(event) => setRulesAccepted(event.target.checked)}
-                  className="mt-0.5 size-4 shrink-0 rounded border-input accent-primary"
-                />
-                <span className="text-muted-foreground">
-                  <Tx
-                    k="booking.house_rules_accept"
-                    source="I agree to these house rules."
-                  />
-                </span>
-              </label>
-            </div>
-          ) : null}
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-3">
-              <Label>
-                <Tx
-                  k="booking.message_optional"
-                  source="Message to host (optional)"
-                />
-              </Label>
-              {(checkInStr ||
-                checkOutStr ||
-                note ||
-                rulesAccepted ||
-                guests !== 1 ||
-                guestDetails.infants > 0 ||
-                guestDetails.pets > 0) && (
-                <button
-                  type="button"
-                  onClick={clearSelection}
-                  className="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                >
-                  <Tx k="booking.clear_selection" source="Clear selection" />
-                </button>
-              )}
-            </div>
-            <Textarea
-              placeholder={
-                i18n.resolve(
-                  "booking.message_placeholder",
-                  "Introduce yourself and share your travel plans...",
-                ).text
-              }
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              rows={3}
-            />
-          </div>
-
-          {nights > 0 && stayPricing && (
-            <div
-              ref={desktopPriceDetailsRef}
-              className="hidden rounded-xl border border-border/70 bg-muted/20 px-4 py-3 lg:block"
-            >
-              <div className="flex items-end justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium">
-                    <span
-                      className={
-                        nightLabel.translated ? "notranslate" : undefined
-                      }
-                    >
-                      {nightLabel.text}
-                    </span>{" "}
-                    ·{" "}
-                    <span className="text-muted-foreground">
-                      <Tx k="booking.total" source="Total" />
-                    </span>
-                  </p>
-                  <button
-                    type="button"
-                    className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-                    onClick={() => setDesktopPriceDetailsOpen((open) => !open)}
-                    aria-expanded={desktopPriceDetailsOpen}
-                  >
-                    <Tx k="booking.price_details" source="Price details" />
-                    {desktopPriceDetailsOpen ? (
-                      <ChevronUp className="h-3.5 w-3.5" />
-                    ) : (
-                      <ChevronDown className="h-3.5 w-3.5" />
-                    )}
-                  </button>
-                </div>
-                <span className="flex flex-col items-end">
-                  {stayPricing.discountAmount > 0 ? (
-                    <LocalizedPrice
-                      amount={stayPricing.originalTotal}
-                      currency={currency}
-                      locale={i18n.locale}
-                      className="text-sm text-muted-foreground line-through"
-                    />
-                  ) : null}
-                  <LocalizedPrice
-                    amount={total}
-                    currency={currency}
-                    locale={i18n.locale}
-                    className="text-xl font-semibold"
-                  />
-                </span>
-              </div>
-              {desktopPriceDetailsOpen && (
-                <div className="mt-3 border-t border-border/60 pt-3">
-                  {renderPriceBreakdown()}
-                </div>
-              )}
-            </div>
-          )}
-
-          {bookingMessage && (
-            <p
-              aria-live="polite"
-              className={
-                bookingMessageIsError
-                  ? "hidden rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm lg:block"
-                  : "hidden text-sm text-muted-foreground lg:block"
-              }
-            >
-              <span
-                className={
-                  bookingMessage.translated ? "notranslate" : undefined
-                }
-              >
-                {bookingMessage.text}
-              </span>
-            </p>
-          )}
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                onClick={handlePrimaryAction}
-                className="hidden w-full rounded-lg text-base font-semibold py-6 disabled:bg-muted disabled:text-muted-foreground lg:flex"
-                size="lg"
-                disabled={isPending}
-              >
-                {isPending ? (
-                  <Tx k="booking.sending_request" source="Sending request…" />
-                ) : (
-                  primaryActionLabel.text
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent
-              className={
-                (blockingProblem ?? reserveTooltip).translated
-                  ? "notranslate"
-                  : undefined
-              }
-            >
-              {(blockingProblem ?? reserveTooltip).text}
-            </TooltipContent>
-          </Tooltip>
-
-          <p className="hidden text-xs text-muted-foreground text-center leading-relaxed lg:block">
-            <Tx
-              k="booking.no_charge_notice"
-              source="You won't be charged yet. The host will approve or decline your request."
-            />
-          </p>
+        {/* The frame: a middle the views take turns in, and a footer that never moves.
+            The minimum height is the tallest view's, so swapping panels does not
+            resize a card the page is already scrolled against. */}
+        <CardContent className="flex min-h-[21rem] flex-1 flex-col pt-0">
+          {panel === null ? renderSummary() : renderPanel(true)}
+          {renderFooter()}
         </CardContent>
       </Card>
 
@@ -1027,7 +1261,7 @@ export function BookingWidget({
         translate="no"
         style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
       >
-        {bookingMessage && (
+        {bookingMessage && !confirmOpen && (
           <p
             aria-live="polite"
             className={
@@ -1043,7 +1277,7 @@ export function BookingWidget({
           <button
             type="button"
             className="flex min-w-0 flex-col items-start text-left disabled:pointer-events-none"
-            onClick={() => setPriceDetailsOpen(true)}
+            onClick={() => openPanel("price")}
             disabled={!(nights > 0 && stayPricing)}
           >
             {nights > 0 && stayPricing ? (
@@ -1055,14 +1289,7 @@ export function BookingWidget({
                   className="text-base font-semibold"
                 />
                 <span className="flex items-center gap-0.5 text-xs text-muted-foreground underline underline-offset-2">
-                  <span
-                    className={
-                      nightLabel.translated ? "notranslate" : undefined
-                    }
-                  >
-                    {nightLabel.text}
-                  </span>{" "}
-                  · <Tx k="booking.price_details" source="Price details" />
+                  <Txt value={nightLabel} /> · <Txt value={priceDetailsLabel} />
                   <ChevronUp className="h-3 w-3" />
                 </span>
               </>
@@ -1103,7 +1330,7 @@ export function BookingWidget({
             )}
           </button>
           <Button
-            onClick={handlePrimaryAction}
+            onClick={handleBarAction}
             className="shrink-0 rounded-xl px-6 font-semibold disabled:bg-muted disabled:text-muted-foreground"
             size="lg"
             disabled={isPending}
@@ -1117,20 +1344,68 @@ export function BookingWidget({
         </div>
       </div>
 
-      <Sheet open={priceDetailsOpen} onOpenChange={setPriceDetailsOpen}>
-        <SheetContent
-          side="bottom"
-          className="notranslate max-h-[80vh] overflow-y-auto rounded-t-2xl"
-          translate="no"
-        >
-          <SheetHeader>
-            <SheetTitle>
-              <Tx k="booking.price_details" source="Price details" />
-            </SheetTitle>
-          </SheetHeader>
-          <div className="px-4 pb-4">{renderPriceBreakdown()}</div>
-        </SheetContent>
-      </Sheet>
+      {/* Phones show the same views as drawers rather than in place: there is no card
+          to swap the middle of, and a sheet that slides up from the bottom is what
+          this app already does with the map's results. Mounted only at the breakpoint
+          that uses them, so a panel opened in the card never also opens an overlay. */}
+      {isSmallScreen ? (
+        <>
+          <Sheet
+            open={confirmOpen}
+            onOpenChange={(next) => {
+              setConfirmOpen(next);
+              if (!next) closePanel();
+            }}
+          >
+            <SheetContent
+              side="bottom"
+              className="notranslate max-h-[88vh] rounded-t-2xl px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(15,23,42,0.14)]"
+              translate="no"
+            >
+              {drawerHandle}
+              <SheetHeader className="p-0">
+                <SheetTitle className="text-base">
+                  <Txt value={confirmTitle} />
+                </SheetTitle>
+              </SheetHeader>
+              <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+                {renderSummary()}
+                {renderFooter()}
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          <Sheet
+            open={panel !== null}
+            onOpenChange={(next) => {
+              if (!next) closePanel();
+            }}
+          >
+            <SheetContent
+              side="bottom"
+              className="notranslate flex h-[80vh] flex-col rounded-t-2xl px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(15,23,42,0.14)]"
+              translate="no"
+            >
+              {drawerHandle}
+              <SheetHeader className="sr-only">
+                <SheetTitle>
+                  <Txt
+                    value={
+                      panel === "rules"
+                        ? houseRulesTitle
+                        : panel === "message"
+                          ? messageTitle
+                          : priceDetailsLabel
+                    }
+                  />
+                </SheetTitle>
+              </SheetHeader>
+              {renderPanel(false)}
+              {renderFooter()}
+            </SheetContent>
+          </Sheet>
+        </>
+      ) : null}
     </>
   );
 }

@@ -4,12 +4,12 @@ import { Bell } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { CountBadge } from "@/components/communication/attention-indicator";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { CountBadge } from "@/components/communication/attention-indicator";
 import { Tx, useI18n } from "@/lib/i18n/client";
 
 interface NotificationItem {
@@ -71,14 +71,14 @@ export function NotificationBell({ enabled }: { enabled: boolean }) {
           type="button"
           variant="ghost"
           size="icon"
-          className="relative rounded-full"
+          className="relative rounded-full lg:size-11"
           aria-label={resolve("notifications.unread_count", "Notifications, {count} unread").text.replace("{count}", String(unreadCount))}
         >
-          <Bell className="size-[18px]" />
+          <Bell className="size-[18px] lg:size-5" />
           <CountBadge
             value={unreadCount}
             label={resolve("notifications.unread_label", "unread notifications").text}
-            className="absolute -right-1 -top-1"
+            className="absolute right-1 top-1 ring-2 ring-background lg:right-1.5 lg:top-1.5"
           />
         </Button>
       </PopoverTrigger>

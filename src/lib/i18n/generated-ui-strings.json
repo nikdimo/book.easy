@@ -1245,8 +1245,8 @@
     "filePath": "src/components/auth/login-form.tsx"
   },
   {
-    "key": "auth.email_label",
-    "sourceText": "Email",
+    "key": "auth.email_helper",
+    "sourceText": "We'll email you a sign-in link — no password needed.",
     "filePath": "src/components/auth/login-form.tsx"
   },
   {
@@ -1420,14 +1420,19 @@
     "filePath": "src/components/public/booking-widget.tsx"
   },
   {
+    "key": "booking.close_panel",
+    "sourceText": "Close",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.confirm_title",
+    "sourceText": "Confirm your request",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
     "key": "booking.continue_browsing",
     "sourceText": "Continue browsing",
     "filePath": "src/app/(public)/bookings/confirm/page.tsx"
-  },
-  {
-    "key": "booking.dates",
-    "sourceText": "Dates",
-    "filePath": "src/components/public/booking-widget.tsx"
   },
   {
     "key": "booking.details",
@@ -1555,13 +1560,23 @@
     "filePath": "src/components/booking/booking-status-hero.tsx"
   },
   {
-    "key": "booking.house_rules_accept",
-    "sourceText": "I agree to these house rules.",
+    "key": "booking.house_rules_agree_and_reserve",
+    "sourceText": "I agree and reserve",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.house_rules_agreed",
+    "sourceText": "Agreed",
     "filePath": "src/components/public/booking-widget.tsx"
   },
   {
     "key": "booking.house_rules_required",
     "sourceText": "Please agree to the house rules before you send your request.",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.house_rules_review",
+    "sourceText": "Review and agree",
     "filePath": "src/components/public/booking-widget.tsx"
   },
   {
@@ -1600,6 +1615,11 @@
     "filePath": "src/components/public/booking-widget.tsx"
   },
   {
+    "key": "booking.message_add",
+    "sourceText": "Add a note for the host",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
     "key": "booking.message_optional",
     "sourceText": "Message to host (optional)",
     "filePath": "src/components/public/booking-widget.tsx"
@@ -1607,6 +1627,16 @@
   {
     "key": "booking.message_placeholder",
     "sourceText": "Introduce yourself and share your travel plans...",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.message_row_label",
+    "sourceText": "Message",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.message_save",
+    "sourceText": "Save message",
     "filePath": "src/components/public/booking-widget.tsx"
   },
   {
@@ -3150,11 +3180,6 @@
     "filePath": "src/lib/email/index.ts"
   },
   {
-    "key": "filters.all",
-    "sourceText": "All filters",
-    "filePath": "src/components/marketplace/properties-explorer-client.tsx"
-  },
-  {
     "key": "filters.amenities",
     "sourceText": "Amenities",
     "filePath": "src/components/public/search-filters.tsx"
@@ -3385,84 +3410,49 @@
     "filePath": "src/components/shared/footer.tsx"
   },
   {
-    "key": "gallery.all_media.few",
-    "sourceText": "All {n} media items",
-    "filePath": "src/components/public/image-gallery.tsx"
-  },
-  {
-    "key": "gallery.all_media.many",
-    "sourceText": "All {n} media items",
-    "filePath": "src/components/public/image-gallery.tsx"
-  },
-  {
-    "key": "gallery.all_media.one",
-    "sourceText": "All {n} media item",
-    "filePath": "src/components/public/image-gallery.tsx"
-  },
-  {
-    "key": "gallery.all_media.other",
-    "sourceText": "All {n} media items",
-    "filePath": "src/components/public/image-gallery.tsx"
-  },
-  {
-    "key": "gallery.all_media.two",
-    "sourceText": "All {n} media items",
-    "filePath": "src/components/public/image-gallery.tsx"
-  },
-  {
-    "key": "gallery.all_media.zero",
-    "sourceText": "All {n} media items",
-    "filePath": "src/components/public/image-gallery.tsx"
-  },
-  {
     "key": "gallery.back_all",
     "sourceText": "Back to all media",
-    "filePath": "src/components/public/image-gallery.tsx"
+    "filePath": "src/components/public/photo-tour.tsx"
   },
   {
     "key": "gallery.back_property",
     "sourceText": "Back to property",
-    "filePath": "src/components/public/image-gallery.tsx"
+    "filePath": "src/components/public/photo-tour.tsx"
   },
   {
     "key": "gallery.items.few",
     "sourceText": "{n} items",
-    "filePath": "src/components/public/image-gallery.tsx"
+    "filePath": "src/components/public/photo-tour.tsx"
   },
   {
     "key": "gallery.items.many",
     "sourceText": "{n} items",
-    "filePath": "src/components/public/image-gallery.tsx"
+    "filePath": "src/components/public/photo-tour.tsx"
   },
   {
     "key": "gallery.items.one",
     "sourceText": "{n} item",
-    "filePath": "src/components/public/image-gallery.tsx"
+    "filePath": "src/components/public/photo-tour.tsx"
   },
   {
     "key": "gallery.items.other",
     "sourceText": "{n} items",
-    "filePath": "src/components/public/image-gallery.tsx"
+    "filePath": "src/components/public/photo-tour.tsx"
   },
   {
     "key": "gallery.items.two",
     "sourceText": "{n} items",
-    "filePath": "src/components/public/image-gallery.tsx"
+    "filePath": "src/components/public/photo-tour.tsx"
   },
   {
     "key": "gallery.items.zero",
     "sourceText": "{n} items",
-    "filePath": "src/components/public/image-gallery.tsx"
-  },
-  {
-    "key": "gallery.media_position",
-    "sourceText": "Media item {current} of {total}",
-    "filePath": "src/components/public/image-gallery.tsx"
+    "filePath": "src/components/public/photo-tour.tsx"
   },
   {
     "key": "gallery.next",
     "sourceText": "Next photo",
-    "filePath": "src/components/public/image-gallery.tsx"
+    "filePath": "src/components/public/photo-tour.tsx"
   },
   {
     "key": "gallery.no_media",
@@ -3470,14 +3460,19 @@
     "filePath": "src/components/public/image-gallery.tsx"
   },
   {
+    "key": "gallery.photos",
+    "sourceText": "Photos",
+    "filePath": "src/app/(gallery)/properties/[slug]/photos/page.tsx"
+  },
+  {
     "key": "gallery.previous",
     "sourceText": "Previous photo",
-    "filePath": "src/components/public/image-gallery.tsx"
+    "filePath": "src/components/public/photo-tour.tsx"
   },
   {
     "key": "gallery.property_photo",
     "sourceText": "Property photo",
-    "filePath": "src/components/public/image-gallery.tsx"
+    "filePath": "src/components/public/gallery-media.tsx"
   },
   {
     "key": "gallery.show_all.few",
@@ -14800,6 +14795,11 @@
     "filePath": "src/components/public/property-street-view.tsx"
   },
   {
+    "key": "map.close_preview",
+    "sourceText": "Close preview",
+    "filePath": "src/components/marketplace/properties-explorer-client.tsx"
+  },
+  {
     "key": "map.exit_fullscreen",
     "sourceText": "Exit full screen map",
     "filePath": "src/components/marketplace/properties-map-inner.tsx"
@@ -14817,7 +14817,7 @@
   {
     "key": "map.view_listing",
     "sourceText": "View listing",
-    "filePath": "src/components/marketplace/properties-map-inner.tsx"
+    "filePath": "src/components/marketplace/properties-explorer-client.tsx"
   },
   {
     "key": "mobile.account.all_tools",
@@ -15975,6 +15975,11 @@
     "filePath": "src/components/host/v2/host-v2-account-menu.tsx"
   },
   {
+    "key": "navigation.back",
+    "sourceText": "Back",
+    "filePath": "src/components/marketplace/properties-explorer-client.tsx"
+  },
+  {
     "key": "newsletter.consent",
     "sourceText": "I would like to receive inspiration, special offers and news from Linger Homes by email. I can unsubscribe at any time.",
     "filePath": "src/app/(public)/newsletter/newsletter-form.tsx"
@@ -16210,8 +16215,13 @@
     "filePath": "src/app/(public)/properties/page.tsx"
   },
   {
-    "key": "properties.list",
-    "sourceText": "List",
+    "key": "properties.homes_in_map_area",
+    "sourceText": "Homes in map area",
+    "filePath": "src/components/marketplace/properties-explorer-client.tsx"
+  },
+  {
+    "key": "properties.homes_nearby",
+    "sourceText": "Homes nearby",
     "filePath": "src/components/marketplace/properties-explorer-client.tsx"
   },
   {
@@ -16323,6 +16333,11 @@
     "key": "properties.stays_in_city",
     "sourceText": "Stays in {city}",
     "filePath": "src/app/(public)/properties/page.tsx"
+  },
+  {
+    "key": "properties.toggle_results",
+    "sourceText": "Show or hide the results list",
+    "filePath": "src/components/marketplace/properties-explorer-client.tsx"
   },
   {
     "key": "property_card.minimum_nights.few",

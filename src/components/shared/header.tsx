@@ -127,10 +127,8 @@ export function Header({
   return (
     <header
       className={cn(
-        "w-full border-b",
-        isHomePage
-          ? "bg-background/95 backdrop-blur md:relative md:z-50 md:border-b-0 md:bg-white/75 md:backdrop-blur-xl"
-          : "bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
+        "w-full border-b bg-background",
+        isHomePage && "md:relative md:z-50 md:border-b-0",
       )}
     >
       <div className="container mx-auto px-4 md:px-8 h-20 grid grid-cols-[auto_1fr_auto] items-center gap-4 max-w-[1760px]">
@@ -193,13 +191,13 @@ export function Header({
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-1">
+        <div className="flex items-center justify-end gap-1 lg:gap-1.5">
           {regionalSettings}
 
           {/* Hairline between "how the site is shown to me" and "my account". */}
           <span
             aria-hidden
-            className="mx-1.5 hidden h-6 w-px shrink-0 bg-border md:block"
+            className="mx-1.5 hidden h-6 w-px shrink-0 bg-border md:block lg:mx-2 lg:h-7"
           />
 
           {user?.isHost ? (
@@ -207,14 +205,14 @@ export function Header({
                the label then spills out of. Square only where it is icon-only. */
             <Button
               variant="ghost"
-              className="relative rounded-full font-medium max-sm:w-11 max-sm:px-0"
+              className="relative rounded-full font-medium max-sm:w-11 max-sm:px-0 lg:h-11 lg:px-4 lg:text-[0.9375rem]"
               asChild
             >
               <Link
                 href="/host"
                 aria-label={navLabels.switchToHosting.text}
               >
-                <Home className="size-[18px]" />
+                <Home className="size-[18px] lg:size-5" />
                 <span
                   className={cn(
                     "hidden sm:inline",
@@ -228,7 +226,7 @@ export function Header({
                 <CountBadge
                   value={summary?.host?.total}
                   label="hosting items needing attention"
-                  className="absolute -right-1 -top-1 sm:static"
+                  className="absolute right-1 top-1 ring-2 ring-background sm:static sm:ml-0.5 sm:ring-0 lg:right-1.5 lg:top-1.5"
                 />
               </Link>
             </Button>
@@ -267,14 +265,14 @@ export function Header({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="rounded-full"
+                    className="rounded-full lg:size-11"
                     asChild
                   >
                     <Link
                       href="/account/favorites"
                       aria-label={navLabels.favorites.text}
                     >
-                      <Heart className="size-[18px]" />
+                      <Heart className="size-[18px] lg:size-5" />
                     </Link>
                   </Button>
                 </TooltipTrigger>
@@ -295,18 +293,18 @@ export function Header({
                 <button
                   type="button"
                   className={cn(
-                    "ml-1 flex shrink-0 cursor-pointer items-center gap-2 rounded-full border border-border/80 bg-background p-1.5 pl-3 text-left shadow-xs transition-shadow hover:shadow-md",
+                    "ml-1 flex shrink-0 cursor-pointer items-center gap-2 rounded-full border border-border/80 bg-background p-1.5 pl-3 text-left shadow-xs transition-shadow hover:shadow-md lg:ml-1.5 lg:gap-2.5 lg:p-2 lg:pl-3.5",
                     isHomePage && "pl-1.5 md:pl-3",
                   )}
                 >
                   <SlidersHorizontal
                     className={cn(
-                      "size-4 shrink-0 text-muted-foreground",
+                      "size-4 shrink-0 text-muted-foreground lg:size-[18px]",
                       isHomePage && "hidden md:block",
                     )}
                   />
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="text-xs bg-muted text-foreground">
+                  <Avatar className="h-8 w-8 lg:h-9 lg:w-9">
+                    <AvatarFallback className="text-xs bg-muted text-foreground lg:text-sm">
                       {initials}
                     </AvatarFallback>
                   </Avatar>

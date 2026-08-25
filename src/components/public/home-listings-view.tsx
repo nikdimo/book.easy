@@ -147,20 +147,25 @@ export function HomeListingsView({
           className="h-[calc(var(--app-viewport-height)_-_13.5rem)] min-h-[24rem]"
         />
 
-        {/* Both overlays sit above the map's markers (z-600) and controls (z-1000), and
-            are transparent to the pointer except on the controls themselves, so the map
-            still drags everywhere else. */}
+        {/* Both overlays are transparent to the pointer except on the controls
+            themselves, so the map still drags everywhere else.
+
+            `z-30` clears the map without clearing the app: the map container is a
+            stacking context of its own (`z-0` on MapContainer), so Leaflet's internal
+            600s and 1000s are sealed inside it and any positive z-index here wins.
+            Matching those numbers instead — z-1001 — put these buttons above the site
+            header and every dropdown, so the account menu opened *underneath* them. */}
 
         {/* Centred on the map, independent of the switcher — its width swings a lot
             between languages and must not drag the search off centre. */}
-        <div className="pointer-events-none absolute inset-x-0 top-3 z-[1001] flex justify-center px-3 md:top-4 md:px-4">
+        <div className="pointer-events-none absolute inset-x-0 top-3 z-30 flex justify-center px-3 md:top-4 md:px-4">
           {mapSearch}
         </div>
 
         {/* Same line as the search on desktop, where `h-14` matches the collapsed
             search pill so the two line up; a bottom-centre pill on phones, where there
             is no room beside it. Expanding the search simply covers this. */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-4 z-[1001] flex justify-center px-3 md:bottom-auto md:top-4 md:h-14 md:items-center md:justify-end md:px-4">
+        <div className="pointer-events-none absolute inset-x-0 bottom-4 z-30 flex justify-center px-3 md:bottom-auto md:top-4 md:h-14 md:items-center md:justify-end md:px-4">
           {switcher}
         </div>
       </div>

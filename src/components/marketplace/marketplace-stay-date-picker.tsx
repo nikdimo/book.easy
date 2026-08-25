@@ -21,9 +21,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Info,
+  LogOut,
   Minus,
   Plus,
   Search,
+  Tag,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -146,7 +148,7 @@ type DragCtx = {
     e: React.PointerEvent<HTMLButtonElement>,
   ) => void;
   dayMeta?: (date: Date) => MarketplaceDayMeta | undefined;
-  dayVariant?: "default" | "availability";
+  dayVariant?: "default" | "availability" | "listing" | "booking";
   /** Paged (two-month, desktop-scale) grid: cells are big enough that the day circle
    *  sits inside the cell with breathing room instead of filling it. */
   paged?: boolean;
@@ -630,6 +632,8 @@ function MarketplaceRangeDayButton({
   // Both mark "this day is a valid check-out, not a night you get to sleep", so they
   // share the accent ring rather than inventing a third mark for the same message.
   const marksCheckout = isEarliestCheckout || isCheckoutBoundary;
+  const cardVariant =
+    ctx?.dayVariant === "listing" || ctx?.dayVariant === "booking";
 
   void onPointerDown;
 
@@ -700,7 +704,8 @@ function MarketplaceRangeDayButton({
                 : undefined
             }
             className={cn(
-              "block size-full rounded-full outline-none",
+              "block size-full outline-none",
+              cardVariant ? "rounded-[10px]" : "rounded-full",
               block &&
                 "cursor-not-allowed focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
             )}
@@ -772,6 +777,120 @@ function MarketplaceRangeDayButton({
         >
           {meta?.sublabel ?? ""}
         </span>
+      </Button>,
+    );
+  }
+
+  // The listing page's own calendar, which is the one surface with room for a real
+  // cell rather than a circle with a caption under it. Each day is a card: the button
+  // *is* the tile, so the selected run is painted per-cell and the shared `before:`
+  // band is switched off for this lens (see `band`, below) — a continuous band cannot
+  // cross a gap between two bordered tiles without looking like a mistake.
+  if (cardVariant) {
+    const price = meta?.sublabel ? meta : undefined;
+    const taken = modifiers.disabled || modifiers.unavailable;
+    const inRange = modifiers.range_middle || (modifiers.selected && !isEndpoint);
+
+    return withMinimumStayHint(
+      <Button
+        {...rest}
+        ref={ref}
+        variant="ghost"
+        size="icon"
+        data-day={toYmd(day.date)}
+        data-ymd={toYmd(day.date)}
+        onPointerDown={handlePointerDown}
+        onClick={handleClick}
+        aria-disabled={block ? true : rest["aria-disabled"]}
+        // The hatch marks the cell itself here rather than a circle inside it, because
+        // on this lens the cell is all there is.
+        style={block ? MINIMUM_STAY_HATCH : undefined}
+        tabIndex={block ? -1 : rest.tabIndex}
+        className={cn(
+          "group/date relative z-10 flex !size-full flex-col items-stretch justify-between gap-0 rounded-[10px] border px-1.5 py-1.5 text-left font-normal leading-none shadow-none outline-none transition-[background-color,border-color,color] md:px-2.5 md:py-2.5",
+          "border-border/70 bg-card text-foreground",
+          !taken &&
+            !block &&
+            "hover:border-foreground/30 hover:bg-muted/20 focus-visible:border-primary/70 focus-visible:ring-2 focus-visible:ring-primary/20",
+          // Taken and past nights recede rather than disappear: the shape of a booked
+          // week is itself information a guest reads before they pick anything.
+          taken && "cursor-not-allowed border-border/40 bg-muted/25 text-muted-foreground/60 hover:bg-muted/25",
+          block && "cursor-not-allowed border-border/50 text-muted-foreground",
+          inRange && "border-primary/30 bg-primary/[0.07] text-foreground hover:bg-primary/[0.09]",
+          isEndpoint &&
+            "border-primary bg-primary text-primary-foreground hover:bg-primary/90",
+          marksCheckout && !isEndpoint && "border-primary/60",
+          modifiers.outside && "opacity-0",
+          ctx?.hasRange &&
+            (modifiers.range_start || modifiers.range_end) &&
+            "touch-none cursor-grab select-none active:cursor-grabbing",
+          defaultClassNames.day,
+          className,
+        )}
+      >
+        <span className="flex items-start justify-between gap-1">
+          <span
+            className={cn(
+              "text-sm font-medium md:text-[0.9375rem]",
+              modifiers.unavailable && "line-through decoration-[1.5px]",
+            )}
+          >
+            {day.date.getDate()}
+          </span>
+          {/* One mark per cell, and only when it says something the price cannot:
+              this night is discounted, or it can end a stay but not start one. The
+              second used to live in a tooltip, which is to say nowhere on a phone. */}
+          {!taken && price?.sublabelOriginal ? (
+            <Tag
+              className={cn(
+                "size-3.5 shrink-0",
+                isEndpoint ? "text-primary-foreground/80" : "text-emerald-700",
+              )}
+              aria-hidden="true"
+            />
+          ) : !taken && marksCheckout && !isEndpoint ? (
+            <LogOut className="size-3.5 shrink-0 text-primary" aria-hidden="true" />
+          ) : null}
+        </span>
+
+        {price ? (
+          <span
+            className={cn(
+              "notranslate flex items-baseline gap-1 leading-none",
+              taken && "opacity-0",
+            )}
+            translate="no"
+            suppressHydrationWarning
+          >
+            <span
+              className={cn(
+                "text-[0.6875rem]",
+                ctx?.dayVariant === "listing" ? "md:text-xs" : "md:text-[0.7rem]",
+                isEndpoint
+                  ? "text-primary-foreground"
+                  : price.sublabelOriginal
+                    ? "font-semibold text-emerald-700"
+                    : price.isCustomPrice
+                      ? "font-medium text-foreground"
+                      : "text-muted-foreground",
+              )}
+            >
+              {price.sublabel}
+            </span>
+            {price.sublabelOriginal ? (
+              <span
+                className={cn(
+                  "text-[0.625rem] line-through",
+                  isEndpoint
+                    ? "text-primary-foreground/70"
+                    : "text-muted-foreground",
+                )}
+              >
+                {price.sublabelOriginal}
+              </span>
+            ) : null}
+          </span>
+        ) : null}
       </Button>,
     );
   }
@@ -952,7 +1071,7 @@ export function DateRangeCalendarStep({
   onFromOnlySelected?: () => void;
   disabledDateRanges?: { from: Date; to: Date }[];
   dayMeta?: (date: Date) => MarketplaceDayMeta | undefined;
-  dayVariant?: "default" | "availability";
+  dayVariant?: "default" | "availability" | "listing" | "booking";
   dateModifiers?: React.ComponentProps<typeof Calendar>["modifiers"];
   dateModifiersClassNames?: React.ComponentProps<
     typeof Calendar
@@ -1023,9 +1142,18 @@ export function DateRangeCalendarStep({
   }, []);
 
   const pagedCalendar = fitViewport || (pagedOnDesktop && !isMobile);
+  const cardDayVariant =
+    dayVariant === "listing" || dayVariant === "booking";
   // `dragToSelect` is the host-only flag, and the host lenses are the ones that paint
   // hatches and tints on the same cell the band has to show through.
-  const band = dragToSelect ? HOST_RANGE_BAND : RANGE_BAND;
+  // The listing lens paints the run on the cells themselves, so it takes no band —
+  // a continuous strip cannot cross the gap between two bordered tiles.
+  const band =
+    cardDayVariant
+      ? ""
+      : dragToSelect
+        ? HOST_RANGE_BAND
+        : RANGE_BAND;
   const pagedMonthCount =
     !isMobile &&
     pagedDesktopMonthCount === 2 &&
@@ -1762,7 +1890,7 @@ export function DateRangeCalendarStep({
               // The host availability grid has room for the unambiguous short form.
               formatWeekdayName: (date) =>
                 new Intl.DateTimeFormat(calendarLocale, {
-                  weekday: dayVariant === "availability" ? "short" : "narrow",
+                  weekday: dayVariant === "default" ? "narrow" : "short",
                 }).format(date),
             }}
             modifiers={calendarModifiers}
@@ -1771,7 +1899,13 @@ export function DateRangeCalendarStep({
               "mx-auto bg-transparent p-0",
               dayVariant === "availability"
                 ? "[--cell-size:3rem] md:[--cell-size:3.25rem]"
-                : // A priced cell stacks a number, a price and sometimes the price it
+                : // At full listing-page width, two months still leave each card near
+                  // 4.5rem square. Phones use the fluid single-month row below.
+                  dayVariant === "listing"
+                  ? "[--cell-size:2.6rem] md:[--cell-size:4.5rem]"
+                  : dayVariant === "booking"
+                    ? "[--cell-size:2.6rem] md:[--cell-size:3.75rem]"
+                  : // A priced cell stacks a number, a price and sometimes the price it
                   // was struck down from, so it needs the room the bare day never did.
                   showsDayPrices
                   ? "[--cell-size:3.1rem] md:[--cell-size:3.4rem]"
@@ -1789,24 +1923,48 @@ export function DateRangeCalendarStep({
                 "relative mx-auto grid w-full grid-cols-1 justify-center gap-y-8 md:gap-y-10",
                 pagedCalendar
                   ? pagedMonthCount === 2
-                    ? "max-w-[58.5rem] md:grid-cols-2 md:gap-x-[4.25rem]"
-                    : "max-w-[24rem]"
+                    ? dayVariant === "listing"
+                      ? "max-w-none md:grid-cols-2 md:gap-x-12"
+                      : dayVariant === "booking"
+                        ? "max-w-[54rem] md:grid-cols-2 md:gap-x-10"
+                        : "max-w-[58.5rem] md:grid-cols-2 md:gap-x-[4.25rem]"
+                    : dayVariant === "listing"
+                      ? "max-w-[24rem] md:max-w-none"
+                      : dayVariant === "booking"
+                        ? "max-w-[26rem]"
+                        : "max-w-[24rem]"
                   : dayVariant === "availability"
                     ? "md:grid-cols-2 md:gap-x-6"
-                    : "md:w-fit md:grid-cols-2 md:gap-x-8",
+                    : dayVariant === "booking"
+                      ? "max-w-[24rem]"
+                      : "md:w-fit md:grid-cols-2 md:gap-x-8",
               ),
               month: cn(
                 "mx-auto flex w-full flex-col items-center",
                 pagedCalendar
-                  ? "max-w-[24rem] md:max-w-none"
+                  ? dayVariant === "booking"
+                    ? "max-w-[26rem] md:max-w-none"
+                    : "max-w-[24rem] md:max-w-none"
                   : dayVariant === "availability"
                     ? "max-w-[19rem] md:w-[23rem] md:max-w-none"
-                    : "max-w-[19rem] md:w-[20rem] md:max-w-none",
+                    : dayVariant === "booking"
+                      ? "max-w-[24rem]"
+                      : "max-w-[19rem] md:w-[20rem] md:max-w-none",
               ),
               nav: pagedCalendar
                 ? cn(
                     "absolute left-1/2 top-0 z-10 flex h-10 w-full -translate-x-1/2 items-center justify-between",
-                    pagedMonthCount === 2 ? "max-w-[58.5rem]" : "max-w-[24rem]",
+                    pagedMonthCount === 2
+                      ? dayVariant === "listing"
+                        ? "max-w-none"
+                        : dayVariant === "booking"
+                          ? "max-w-[54rem]"
+                          : "max-w-[58.5rem]"
+                      : dayVariant === "listing"
+                        ? "max-w-none"
+                        : dayVariant === "booking"
+                          ? "max-w-[26rem]"
+                          : "max-w-[24rem]",
                   )
                 : "hidden",
               // Bare chevrons with a hover-only halo, and a visibly dead back arrow on
@@ -1821,6 +1979,10 @@ export function DateRangeCalendarStep({
                 "mb-4 flex h-10 w-full items-center justify-center font-semibold text-foreground md:mb-5",
                 pagedCalendar ? "text-[1.0625rem]" : "text-lg",
               ),
+              month_grid:
+                cardDayVariant
+                  ? "mx-auto w-full border-collapse"
+                  : undefined,
               table: "mx-auto w-full border-collapse",
               weekdays: cn("flex w-full", pagedCalendar && "pb-3"),
               weekday:
@@ -1830,7 +1992,11 @@ export function DateRangeCalendarStep({
               // range still reads as one continuous run rather than stacked dots.
               week: cn("flex w-full", !pagedCalendar && "mt-1"),
               day: cn(
-                dayVariant === "availability"
+                cardDayVariant
+                  ? // Square, and gapped by the cell's own padding so the tiles read as
+                    // separate cards rather than one ruled table.
+                    "group/day relative h-[3.4rem] min-w-0 flex-1 p-[2px] text-center md:h-auto md:aspect-square"
+                  : dayVariant === "availability"
                   ? "group/day relative h-[3.2rem] min-w-0 flex-1 p-0 text-center md:h-[3.6rem] md:w-[3.25rem] md:flex-none"
                   : // Room for three stacked lines — day number, the price, and the
                     // price it was struck down from — at every width, since the cell
@@ -1849,9 +2015,18 @@ export function DateRangeCalendarStep({
                 "[&:first-child]:before:rounded-l-full",
                 "[&:last-child]:before:rounded-r-full",
               ),
-              range_start: cn(band, "before:rounded-l-full [&_button]:rounded-full"),
-              range_middle: cn(band, "[&_button]:bg-transparent"),
-              range_end: cn(band, "before:rounded-r-full [&_button]:rounded-full"),
+              range_start:
+                cardDayVariant
+                  ? "relative"
+                  : cn(band, "before:rounded-l-full [&_button]:rounded-full"),
+              range_middle:
+                cardDayVariant
+                  ? "relative"
+                  : cn(band, "[&_button]:bg-transparent"),
+              range_end:
+                cardDayVariant
+                  ? "relative"
+                  : cn(band, "before:rounded-r-full [&_button]:rounded-full"),
               // The shadcn default fills today with `bg-muted`, which reads as a second
               // selection sitting next to the real one. Today is marked by weight only.
               today: "bg-transparent font-semibold text-foreground",
@@ -1948,7 +2123,7 @@ export function MarketplaceStayDatePicker({
   hideDateSegmentCards?: boolean;
   disabledDateRanges?: { from: Date; to: Date }[];
   dayMeta?: (date: Date) => MarketplaceDayMeta | undefined;
-  dayVariant?: "default" | "availability";
+  dayVariant?: "default" | "availability" | "listing" | "booking";
   dateModifiers?: React.ComponentProps<typeof Calendar>["modifiers"];
   dateModifiersClassNames?: React.ComponentProps<
     typeof Calendar

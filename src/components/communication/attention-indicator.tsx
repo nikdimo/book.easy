@@ -38,6 +38,15 @@ export function useAttentionSummary(enabled = true) {
   return { summary, refresh };
 }
 
+/**
+ * The one count badge in the app: the bell's unread count, the hosting switch, the
+ * host sidebar and the account menu all render this, so a "3" means the same thing
+ * and looks the same wherever it appears. Brand terracotta rather than the
+ * destructive red — an unread notification is something to look at, not an error.
+ *
+ * Callers that float it over an icon add `ring-2 ring-background` so the pill reads
+ * as separate from the strokes underneath it.
+ */
 export function CountBadge({
   value,
   label,
@@ -51,7 +60,7 @@ export function CountBadge({
   return (
     <span
       aria-label={`${value} ${label}`}
-      className={`inline-flex min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 py-0.5 text-[10px] font-bold leading-none text-destructive-foreground ${className}`}
+      className={`pointer-events-none inline-flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-primary px-[3px] text-[9px] font-semibold leading-none text-primary-foreground tabular-nums lg:h-[17px] lg:min-w-[17px] lg:text-[10px] ${className}`}
     >
       {value > 99 ? "99+" : value}
     </span>

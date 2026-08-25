@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import {
   CalendarDays,
   Clock,
+  Home,
   MapPin,
   Sparkles,
   Users,
@@ -12,7 +13,6 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
 import { ImageGallery } from "@/components/public/image-gallery";
 import {
   ExpandableDescription,
@@ -286,9 +286,14 @@ export default async function ListingDetailPage({
               placeNames={protectedPlaceNames}
             />
           </h1>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-sm">
+          {/* Subtitle, not chrome: where the place is and what you get of it, in one
+             quiet line. These were two filled badges — one brand, one teal — which
+             read as two calls to action stacked under the title and pulled the eye
+             off it. The property type moved down to the facts row under the gallery,
+             where the rest of "what this place is" already lives. */}
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
             <span
-              className="notranslate flex items-center gap-1 text-muted-foreground"
+              className="notranslate flex items-center gap-1"
               translate="no"
             >
               <MapPin className="h-4 w-4 shrink-0" />
@@ -299,16 +304,9 @@ export default async function ListingDetailPage({
                arrival is close — see canSeeExactLocation and the guest's booking
                detail page. Public visitors get the area, not the front door. */}
             {spaceTypeLabel && (
-              <Badge className="font-normal rounded-md">{spaceTypeLabel}</Badge>
-            )}
-            {typeLabel && (
               <>
-                <span className="text-muted-foreground hidden sm:inline">
-                  ·
-                </span>
-                <Badge variant="secondary" className="font-normal rounded-md">
-                  {typeLabel}
-                </Badge>
+                <span aria-hidden>·</span>
+                <span>{spaceTypeLabel}</span>
               </>
             )}
           </div>
@@ -321,7 +319,7 @@ export default async function ListingDetailPage({
         />
       </div>
 
-      <ImageGallery images={listing.images} />
+      <ImageGallery images={listing.images} slug={slug} />
 
       <ListingStayProvider
         initialCheckIn={initialCheckIn}
@@ -330,6 +328,12 @@ export default async function ListingDetailPage({
         <div className="mt-10 grid grid-cols-1 lg:grid-cols-3 gap-10 lg:gap-14">
           <div className="lg:col-span-2 space-y-8">
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground pb-2 border-b border-border/80">
+              {typeLabel && (
+                <span className="flex items-center gap-1.5">
+                  <Home className="h-4 w-4" />
+                  <span>{typeLabel}</span>
+                </span>
+              )}
               <span className="flex items-center gap-1.5">
                 <Users className="h-4 w-4" />
                 <span
@@ -461,29 +465,35 @@ export default async function ListingDetailPage({
                   never answered is absent from both rather than shown as a blank. */}
               <HouseRulesList t={t} rules={houseRules} />
             </section>
+          </div>
 
-            {availabilityCalendar && (
-              <>
+          {/* One mount at every width. The widget is a sticky card in this column on
+              desktop and a sticky bar plus its drawers on phones, so below `lg` it
+              contributes no layout of its own and this cell collapses away. */}
+          <div className="relative max-lg:contents lg:col-start-3 lg:row-start-1 lg:block">
+            {bookingWidget}
+          </div>
+
+          {availabilityCalendar && (
+            <div className="border-y border-border/70 py-8 lg:col-span-3 lg:py-10">
+              {availabilityCalendar}
+            </div>
+          )}
+
+          {listing.property.latitude != null &&
+            listing.property.longitude != null && (
+              <div className="space-y-8 lg:col-span-3">
                 <Separator />
-                {availabilityCalendar}
-              </>
+                <ListingLocationMap
+                  listingId={listing.id}
+                  latitude={listing.property.latitude}
+                  longitude={listing.property.longitude}
+                  locationLine={locationLine}
+                />
+              </div>
             )}
 
-            {bookingWidget && <div className="lg:hidden">{bookingWidget}</div>}
-
-            {listing.property.latitude != null &&
-              listing.property.longitude != null && (
-                <>
-                  <Separator />
-                  <ListingLocationMap
-                    listingId={listing.id}
-                    latitude={listing.property.latitude}
-                    longitude={listing.property.longitude}
-                    locationLine={locationLine}
-                  />
-                </>
-              )}
-
+          <div className="space-y-8 lg:col-span-2">
             {reviewSummary.count > 0 ? (
               <>
                 <Separator />
@@ -547,7 +557,6 @@ export default async function ListingDetailPage({
             ) : null}
           </div>
 
-          <div className="relative hidden lg:block">{bookingWidget}</div>
         </div>
       </ListingStayProvider>
     </div>

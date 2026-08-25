@@ -4,16 +4,17 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { MailCheck, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { CircleAlert, MailCheck, X } from "lucide-react";
 import { BrandLogo } from "@/components/shared/brand-logo";
 import { emailSignInSchema } from "@/lib/validations/auth.schema";
 import { firstZodMessage } from "@/lib/utils/zod-error";
 import { Tx, useI18n } from "@/lib/i18n/client";
 
 const RESEND_COOLDOWN_SECONDS = 30;
+
+/* Airbnb's log-in dialog, measured off it: a 568px card, 24px gutters, a 56px field
+ * with a floating label, a 48px primary button and a 48px provider button, at their
+ * spacing. Only the mark and the accent colour are ours. */
 
 export function AuthForm({
   onClose,
@@ -98,161 +99,172 @@ export function AuthForm({
     await sendMagicLink(parsed.data.email);
   }
 
+  const invalid = Boolean(error) && !sentTo;
+  const closeLabel = i18n.resolve("auth.close", "Close").text;
+  const closeClass =
+    "absolute right-[22px] top-[22px] inline-flex size-8 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted";
+
   return (
-    <div className="relative rounded-3xl bg-card p-6 shadow-[0_18px_60px_-20px_rgba(15,23,42,0.45)] ring-1 ring-black/5 sm:p-10">
+    <div className="relative mx-auto w-full max-w-[568px] rounded-2xl bg-card px-6 pb-6 pt-[72px] shadow-[0_8px_28px_rgba(0,0,0,0.28)]">
       {onClose ? (
-        <button
-          type="button"
-          aria-label={i18n.resolve("auth.close", "Close").text}
-          onClick={onClose}
-          className="absolute right-4 top-4 rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-        >
-          <X className="size-5" />
+        <button type="button" aria-label={closeLabel} onClick={onClose} className={closeClass}>
+          <X className="size-4" strokeWidth={2.5} />
         </button>
       ) : (
-        <Link
-          href="/"
-          aria-label={i18n.resolve("auth.close", "Close").text}
-          className="absolute right-4 top-4 rounded-full p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-        >
-          <X className="size-5" />
+        <Link href="/" aria-label={closeLabel} className={closeClass}>
+          <X className="size-4" strokeWidth={2.5} />
         </Link>
       )}
 
       {/* Mark, then heading, then the form — the card is one centred column with the
           brand at the top of it, not a header band above a body. */}
-      <div className="flex flex-col items-center gap-5 pb-7 text-center">
-        <BrandLogo compact className="h-9 w-auto" />
-        <h1 className="text-[1.6rem] font-semibold leading-tight tracking-[-0.02em] sm:text-[1.75rem]">
-          <Tx k="auth.heading" source="Log in or sign up" />
-        </h1>
-      </div>
+      <BrandLogo compact className="mx-auto h-10 w-auto" />
+      <h1 className="mt-[26px] text-center text-[26px] font-semibold leading-[30px] tracking-[-0.01em]">
+        <Tx k="auth.heading" source="Log in or sign up" />
+      </h1>
 
-      <div className="space-y-4">
-        {error && (
-          <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-lg">
-            {error}
+      {sentTo ? (
+        <div className="mt-[42px] flex flex-col items-center gap-3 text-center">
+          <div className="rounded-full bg-secondary/15 p-4 text-secondary">
+            <MailCheck className="size-7" />
           </div>
-        )}
+          <div className="space-y-1">
+            <p className="text-base font-medium">
+              <Tx k="auth.check_inbox" source="Check your inbox" />
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {i18n
+                .resolve(
+                  "auth.email_sent_detail",
+                  "We sent a sign-in link to {email}. It may take a minute to arrive — check spam too.",
+                )
+                .text.replace("{email}", sentTo)}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="mt-1 h-12 w-full rounded-lg bg-primary text-base font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+            disabled={cooldown > 0 || emailLoading}
+            onClick={() => sendMagicLink(sentTo)}
+          >
+            {emailLoading
+              ? i18n.resolve("auth.sending", "Sending…").text
+              : cooldown > 0
+                ? i18n
+                    .resolve("auth.resend_with_seconds", "Resend link ({seconds}s)")
+                    .text.replace("{seconds}", String(cooldown))
+                : i18n.resolve("auth.resend", "Resend link").text}
+          </button>
+          <button
+            type="button"
+            className="text-sm text-muted-foreground underline transition-colors hover:text-foreground"
+            onClick={() => {
+              setSentTo(null);
+              setError(null);
+            }}
+          >
+            <Tx k="auth.use_different_email" source="Use a different email" />
+          </button>
+        </div>
+      ) : (
+        <>
+          {localDevLogin ? (
+            <div className="mt-[42px] rounded-lg border border-secondary/30 bg-secondary/10 p-3">
+              <p className="mb-2 text-xs font-medium text-secondary">Local development only</p>
+              <button
+                type="button"
+                className="h-12 w-full rounded-lg bg-secondary text-base font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                disabled={localDevLoading}
+                onClick={handleLocalDevLogin}
+              >
+                {localDevLoading ? "Opening host panel…" : "Continue as local host"}
+              </button>
+            </div>
+          ) : null}
 
-        {sentTo ? (
-          <div className="flex flex-col items-center gap-3 text-center py-2">
-            <div className="rounded-full bg-secondary/15 p-4 text-secondary">
-              <MailCheck className="size-7" />
+          {/* The field leads. Someone arriving here already knows their email; a
+              provider button first makes them read past the thing they came to do. */}
+          <form
+            onSubmit={handleEmailSubmit}
+            noValidate
+            className={localDevLogin ? "mt-6" : "mt-[42px]"}
+          >
+            <div className="relative">
+              <input
+                id="email"
+                name="email"
+                type="email"
+                placeholder=" "
+                autoComplete="email"
+                aria-invalid={invalid}
+                aria-describedby={invalid ? "email-error" : "email-helper"}
+                onChange={() => {
+                  if (error) setError(null);
+                }}
+                className="peer h-14 w-full rounded-lg border border-input bg-card px-3 pb-1 pt-[22px] text-base outline-none transition-colors placeholder:text-transparent focus:border-foreground focus:ring-1 focus:ring-foreground aria-invalid:border-destructive aria-invalid:bg-destructive/5 aria-invalid:focus:border-destructive aria-invalid:focus:ring-destructive"
+              />
+              <label
+                htmlFor="email"
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-base text-muted-foreground transition-all peer-focus:top-[9px] peer-focus:translate-y-0 peer-focus:text-xs peer-aria-invalid:text-destructive peer-[:not(:placeholder-shown)]:top-[9px] peer-[:not(:placeholder-shown)]:translate-y-0 peer-[:not(:placeholder-shown)]:text-xs"
+              >
+                {i18n.resolve("auth.email_address", "Email address").text}
+              </label>
             </div>
-            <div className="space-y-1">
-              <p className="text-sm font-medium">
-                <Tx k="auth.check_inbox" source="Check your inbox" />
+
+            {invalid && (
+              <p
+                id="email-error"
+                className="mt-1.5 flex items-center gap-1.5 text-xs leading-4 text-destructive"
+              >
+                <CircleAlert className="size-4 shrink-0" />
+                {error}
               </p>
-              <p className="text-sm text-muted-foreground">
-                {i18n
-                  .resolve(
-                    "auth.email_sent_detail",
-                    "We sent a sign-in link to {email}. It may take a minute to arrive — check spam too.",
-                  )
-                  .text.replace("{email}", sentTo)}
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="secondary"
-              className="w-full h-12 rounded-xl"
-              disabled={cooldown > 0 || emailLoading}
-              onClick={() => sendMagicLink(sentTo)}
+            )}
+
+            <p id="email-helper" className="mt-1.5 text-xs leading-4 text-muted-foreground">
+              <Tx
+                k="auth.email_helper"
+                source="We'll email you a sign-in link — no password needed."
+              />
+            </p>
+
+            <button
+              type="submit"
+              className="mt-4 h-12 w-full rounded-lg bg-primary text-base font-semibold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+              disabled={emailLoading}
             >
               {emailLoading
                 ? i18n.resolve("auth.sending", "Sending…").text
-                : cooldown > 0
-                  ? i18n
-                      .resolve("auth.resend_with_seconds", "Resend link ({seconds}s)")
-                      .text.replace("{seconds}", String(cooldown))
-                  : i18n.resolve("auth.resend", "Resend link").text}
-            </Button>
-            <button
-              type="button"
-              className="text-sm text-muted-foreground hover:text-foreground hover:underline transition-colors"
-              onClick={() => {
-                setSentTo(null);
-                setError(null);
-              }}
-            >
-              <Tx k="auth.use_different_email" source="Use a different email" />
+                : i18n.resolve("auth.continue", "Continue").text}
             </button>
-          </div>
-        ) : (
-          <>
-            {localDevLogin ? (
-              <div className="rounded-2xl border border-secondary/30 bg-secondary/10 p-3">
-                <p className="mb-2 text-xs font-medium text-secondary">
-                  Local development only
-                </p>
-                <Button
-                  type="button"
-                  className="h-12 w-full rounded-xl font-medium"
-                  disabled={localDevLoading}
-                  onClick={handleLocalDevLogin}
-                >
-                  {localDevLoading ? "Opening host panel…" : "Continue as local host"}
-                </Button>
-              </div>
-            ) : null}
+          </form>
 
-            {/* The field leads. Someone arriving here already knows their email; a
-                provider button first makes them read past the thing they came to do. */}
-            <form onSubmit={handleEmailSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="email" className="sr-only">
-                  <Tx k="auth.email_label" source="Email" />
-                </Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder={i18n.resolve("auth.email_address", "Email address").text}
-                  required
-                  autoComplete="email"
-                  className="h-14 rounded-xl px-4 text-base"
-                />
-              </div>
-              <Button
-                type="submit"
-                className="h-14 w-full rounded-xl text-base font-semibold"
-                disabled={emailLoading}
-              >
-                {emailLoading
-                  ? i18n.resolve("auth.sending", "Sending…").text
-                  : i18n.resolve("auth.continue", "Continue").text}
-              </Button>
-            </form>
-
-            <div className="relative py-1">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="bg-card px-3 text-muted-foreground">
-                  <Tx k="auth.or" source="or" />
-                </span>
-              </div>
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center" aria-hidden>
+              <span className="w-full border-t" />
             </div>
+            <div className="relative flex justify-center">
+              <span className="bg-card px-4 text-xs text-muted-foreground">
+                <Tx k="auth.or" source="or" />
+              </span>
+            </div>
+          </div>
 
-            {/* Google is the only provider wired up, so it stays a full-width button
-                rather than the row of square tiles a second provider would earn. */}
-            <Button
-              type="button"
-              variant="outline"
-              className="h-14 w-full gap-2 rounded-xl text-base font-medium"
-              disabled={googleLoading}
-              onClick={handleGoogle}
-            >
-              <GoogleIcon className="size-5 shrink-0" />
-              {googleLoading
-                ? i18n.resolve("auth.redirecting", "Redirecting…").text
-                : i18n.resolve("auth.continue_google", "Continue with Google").text}
-            </Button>
-          </>
-        )}
-      </div>
+          {/* Google is the only provider wired up, so it stays a full-width button
+              rather than the row of square tiles a second provider would earn. */}
+          <button
+            type="button"
+            className="relative flex h-12 w-full items-center justify-center rounded-lg border border-foreground/80 text-base font-medium transition-colors hover:bg-muted disabled:opacity-50"
+            disabled={googleLoading}
+            onClick={handleGoogle}
+          >
+            <GoogleIcon className="absolute left-5 size-5" />
+            {googleLoading
+              ? i18n.resolve("auth.redirecting", "Redirecting…").text
+              : i18n.resolve("auth.continue_google", "Continue with Google").text}
+          </button>
+        </>
+      )}
     </div>
   );
 }

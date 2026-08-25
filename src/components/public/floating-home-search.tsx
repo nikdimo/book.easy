@@ -39,7 +39,7 @@ export function FloatingHomeSearch(props: HomeSearchData) {
   }, []);
 
   return visible ? (
-    <div className="fixed inset-x-0 top-0 z-50 flex justify-center border-b bg-background/95 px-4 py-3 shadow-sm backdrop-blur md:top-3 md:border-0 md:bg-transparent md:p-0 md:shadow-none">
+    <div className="fixed inset-x-0 top-0 z-50 flex justify-center border-b bg-background/95 px-4 py-3 shadow-sm backdrop-blur md:top-3 md:border-0 md:bg-transparent md:p-0 md:shadow-none md:backdrop-blur-none">
       <CompactHomeSearch {...props} />
     </div>
   ) : null;

@@ -83,8 +83,21 @@ export default async function PublicLayout({ children }: { children: React.React
   // Search/picker copy is resolved by `useSearchLabels()` on the client, off the
   // root `I18nProvider` — there is no second provider here.
   return (
-    <div className="app-zoom-90 h-dvh overflow-hidden">
-      <div className="h-full overflow-y-auto">
+    <div className="app-zoom-90 h-[var(--app-viewport-height)] overflow-hidden">
+      {/* Every page scrolls here. A page that owns the viewport — search results,
+          whose map stays put while the listings scroll past it — marks itself
+          `data-viewport-page`: the header then pins to the top and hands its
+          bottom rule to the page's own filter row, so the two read as one block
+          the way Airbnb's do, and the footer is dropped. */}
+      <div
+        className={[
+          "h-full overflow-y-auto",
+          "[&:has([data-viewport-page])_header]:sticky [&:has([data-viewport-page])_header]:top-0 [&:has([data-viewport-page])_header]:z-40",
+          "[&:has([data-viewport-page])_header]:border-b-0 [&:has([data-viewport-page])_header]:bg-card",
+          "max-lg:[&:has([data-viewport-page])_header]:hidden",
+          "[&:has([data-viewport-page])_footer]:hidden",
+        ].join(" ")}
+      >
         <Suspense fallback={<div className="h-[72px] border-b bg-background" />}>
           <HeaderWithPopularCities t={t} />
         </Suspense>

@@ -20,6 +20,11 @@ export function PropertiesMap({
   initialBounds,
   onBoundsChange,
   expandable,
+  expanded,
+  onExpandedChange,
+  pinPopups,
+  selectedPinId,
+  onSelectedPinChange,
 }: {
   pins: MapPin[];
   className?: string;
@@ -27,6 +32,11 @@ export function PropertiesMap({
   initialBounds?: MapBounds | null;
   onBoundsChange?: (bounds: MapBounds) => void;
   expandable?: boolean;
+  expanded?: boolean;
+  onExpandedChange?: (expanded: boolean) => void;
+  pinPopups?: boolean;
+  selectedPinId?: string | null;
+  onSelectedPinChange?: (id: string | null) => void;
 }) {
   return (
     <PropertiesMapInner
@@ -36,6 +46,11 @@ export function PropertiesMap({
       initialBounds={initialBounds}
       onBoundsChange={onBoundsChange}
       expandable={expandable}
+      expanded={expanded}
+      onExpandedChange={onExpandedChange}
+      pinPopups={pinPopups}
+      selectedPinId={selectedPinId}
+      onSelectedPinChange={onSelectedPinChange}
     />
   );
 }

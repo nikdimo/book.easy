@@ -1,12 +1,12 @@
 "use client";
 
 import { Dialog as DialogPrimitive } from "radix-ui";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import {
-  List as ListIcon,
+  ArrowLeft,
   Map as MapIcon,
-  Search,
   SlidersHorizontal,
   X,
 } from "lucide-react";
@@ -37,16 +37,24 @@ import {
 import { cn } from "@/lib/utils";
 import { PropertiesMap, type MapPin } from "@/components/marketplace/properties-map";
 import {
+  ResultsSheet,
+  SHEET_PEEK_HEIGHT,
+  useSheetEnabled,
+  type SheetSnap,
+} from "@/components/marketplace/results-sheet";
+import {
   MAP_BOUNDS_PARAM,
   parseMapBounds,
   stringifyMapBounds,
   type MapBounds,
 } from "@/lib/map-bounds";
 import { Tx, useI18n } from "@/lib/i18n/client";
-import { resolvePropertyTypeLabel } from "@/lib/i18n/property-type-labels";
 import type { Resolved } from "@/lib/i18n/t";
 import { useDisplayCurrency } from "@/lib/currency/client";
 import { BASE_CURRENCY } from "@/lib/currency/currency-preference";
+import { MarketplaceSearchBar } from "@/components/marketplace/marketplace-search-bar";
+import { MobileBottomNav } from "@/components/shared/mobile-bottom-nav";
+import type { PlaceOption } from "@/lib/utils/place";
 
 function QuickFilterButton({
   active = false,
@@ -61,7 +69,7 @@ function QuickFilterButton({
       type="button"
       variant="outline"
       className={cn(
-        "h-11 rounded-full border-border/80 bg-background px-4 text-sm font-medium shadow-none",
+        "h-11 shrink-0 rounded-full border-border/80 bg-background px-4 text-sm font-medium shadow-none",
         "hover:border-foreground/20 hover:bg-muted/25",
         active && "border-foreground bg-muted/35 shadow-sm",
         className
@@ -93,11 +101,35 @@ function formatPriceChipLabel(
   return "Price";
 }
 
-function formatAmenityChipLabel(selectedAmenities: string[]) {
-  if (selectedAmenities.length === 0) return "Amenities";
-  if (selectedAmenities.length === 1) return selectedAmenities[0] ?? "Amenities";
-  return `${selectedAmenities.length} amenities`;
-}
+/**
+ * The amenities worth a chip of their own, most useful first.
+ *
+ * Names, not ids: the English name is the catalog's identity — the same token the
+ * URL carries and the importer matches on — so this list survives re-seeding and
+ * says plainly which filters it names. Anything here that the current results do
+ * not offer is dropped, and the row is topped up from catalog order, so a chip
+ * never promises a filter that would empty the page.
+ */
+const QUICK_AMENITY_NAMES = [
+  "Wi-Fi",
+  "Kitchen",
+  "Free parking",
+  "Air conditioning",
+  "Pool",
+  "Pets allowed",
+  "Self check-in",
+  "Hot tub",
+  "Washer",
+  "Sea view",
+  "TV",
+  "Workspace",
+];
+
+/** Enough to be useful, few enough that the row still reads as a row. */
+const QUICK_AMENITY_LIMIT = 8;
+
+/** The one-tap bedroom threshold. Deeper counts live in the filter panel. */
+const QUICK_BEDROOMS = 2;
 
 function PriceFilterPopover({
   open,
@@ -195,6 +227,64 @@ function PriceFilterPopover({
   );
 }
 
+/**
+ * The tapped pin, shown as a card docked over the map instead of a popup pinned to
+ * the marker: on a phone the marker is as likely as not to be under the sheet or at
+ * the edge of the screen, and a popup there opens half off-map.
+ */
+function SelectedPinCard({
+  pin,
+  onClose,
+}: {
+  pin: MapPin;
+  onClose: () => void;
+}) {
+  const i18n = useI18n();
+
+  return (
+    <div
+      className="pointer-events-auto relative flex gap-3 rounded-2xl border border-border bg-background p-2.5 shadow-[0_12px_32px_rgba(15,23,42,0.18)]"
+    >
+      <a
+        href={`/properties/${pin.slug}${pin.query ? `?${pin.query}` : ""}`}
+        className="flex min-w-0 flex-1 gap-3"
+        aria-label={i18n.resolve("map.view_listing", "View listing").text}
+      >
+        <div className="relative h-[72px] w-24 shrink-0 overflow-hidden rounded-xl bg-muted">
+          {pin.imageUrl ? (
+            <Image
+              src={pin.imageUrl}
+              alt={pin.imageAlt || pin.title}
+              fill
+              className="object-cover"
+              sizes="96px"
+            />
+          ) : null}
+        </div>
+        <div className="min-w-0 flex-1 pr-7">
+          <p className="notranslate truncate text-sm font-semibold" translate="no">
+            {pin.location}
+          </p>
+          <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+            {pin.title}
+          </p>
+          <p className="notranslate mt-1 text-sm font-semibold" translate="no">
+            {pin.label}
+          </p>
+        </div>
+      </a>
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-background/90 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        aria-label={i18n.resolve("map.close_preview", "Close preview").text}
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
 export function PropertiesExplorerClient({
   amenities,
   propertyTypes,
@@ -204,6 +294,8 @@ export function PropertiesExplorerClient({
   totalLabel,
   totalCount,
   mapPins,
+  popularCities,
+  availablePropertyTypesByCity,
   featuredMarket = false,
 }: {
   amenities: CatalogAmenity[];
@@ -214,6 +306,8 @@ export function PropertiesExplorerClient({
   totalLabel: Resolved;
   totalCount: number;
   mapPins: MapPin[];
+  popularCities: PlaceOption[];
+  availablePropertyTypesByCity: Record<string, string[]>;
   featuredMarket?: boolean;
 }) {
   const i18n = useI18n();
@@ -224,8 +318,26 @@ export function PropertiesExplorerClient({
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [focusedSection, setFocusedSection] =
     useState<SearchFiltersSection | null>(null);
-  const [mobileView, setMobileView] = useState<"list" | "map">("list");
+  // Phones don't switch between a list and a map: the map is always there and the
+  // results ride over it on a sheet that drags between three heights. See
+  // ResultsSheet — desktop keeps the two side by side and ignores all of this.
+  const sheetEnabled = useSheetEnabled();
+  const [sheetSnap, setSheetSnap] = useState<SheetSnap>("mid");
+  const [listChromeVisible, setListChromeVisible] = useState(true);
+  const [selectedPinId, setSelectedPinId] = useState<string | null>(null);
+  // Expanding the map is a layout change, not something the map can do to itself:
+  // the listings step aside and the map takes the whole width, which is the same
+  // shape the home page's map view has. See the aside below.
+  const [mapExpanded, setMapExpanded] = useState(false);
   const [hoveredPinId, setHoveredPinId] = useState<string | null>(null);
+
+  const handleSheetSnapChange = useCallback((next: SheetSnap) => {
+    setSheetSnap(next);
+    // Leaving the full, independently scrolling list always restores the search
+    // controls and bottom navigation. This belongs to the user action that changes
+    // the snap, rather than a second render triggered from an effect.
+    if (next !== "full") setListChromeVisible(true);
+  }, []);
 
   const listingIdFromTarget = (target: EventTarget | null) =>
     target instanceof Element
@@ -236,16 +348,6 @@ export function PropertiesExplorerClient({
   const allPropertyTypeValues = useMemo(
     () => propertyTypes.map((t) => t.value),
     [propertyTypes]
-  );
-  const propertyTypeLabelByValue = useMemo(
-    () =>
-      new Map(
-        propertyTypes.map(
-          ({ value, label }) =>
-            [value, resolvePropertyTypeLabel(i18n, value, label).text] as const
-        )
-      ),
-    [propertyTypes, i18n]
   );
 
   const params = useMemo(() => {
@@ -295,6 +397,38 @@ export function PropertiesExplorerClient({
     [router, searchParams]
   );
 
+  const selectedPin = useMemo(
+    () => mapPins.find((pin) => pin.id === selectedPinId) ?? null,
+    [mapPins, selectedPinId]
+  );
+
+  /** Tapping a pin is a request to look at the map, so the sheet gets out of the way. */
+  const handleSelectedPinChange = useCallback((id: string | null) => {
+    setSelectedPinId(id);
+    if (id) handleSheetSnapChange("peek");
+  }, [handleSheetSnapChange]);
+
+  const toggleAmenity = useCallback(
+    (name: string) => {
+      mutateQuery((nextParams) => {
+        const current = nextParams.getAll("amenities");
+        const next = current.includes(name)
+          ? current.filter((value) => value !== name)
+          : [...current, name];
+        nextParams.delete("amenities");
+        for (const value of next) nextParams.append("amenities", value);
+      });
+    },
+    [mutateQuery]
+  );
+
+  const toggleBedrooms = useCallback(() => {
+    mutateQuery((nextParams) => {
+      if (nextParams.has("bedrooms")) nextParams.delete("bedrooms");
+      else nextParams.set("bedrooms", String(QUICK_BEDROOMS));
+    });
+  }, [mutateQuery]);
+
   const clearPrice = useCallback(() => {
     mutateQuery((nextParams) => {
       nextParams.delete("minPrice");
@@ -335,6 +469,31 @@ export function PropertiesExplorerClient({
     setFiltersOpen(true);
   };
 
+  /**
+   * A selected amenity keeps its chip even once the narrowed results stop offering
+   * it — otherwise the one filter that emptied the page is the one you cannot see
+   * to switch back off.
+   */
+  const quickAmenities = useMemo(() => {
+    const offered = new Set(initialFilterPreview.availableAmenities);
+    const selected = new Set(params.selectedAmenities);
+    const byName = new Map(amenities.map((amenity) => [amenity.name, amenity] as const));
+    const seen = new Set<string>();
+    const chips: CatalogAmenity[] = [];
+
+    for (const name of [...QUICK_AMENITY_NAMES, ...amenities.map((a) => a.name)]) {
+      if (seen.has(name)) continue;
+      seen.add(name);
+      if (!offered.has(name) && !selected.has(name)) continue;
+      const amenity = byName.get(name);
+      if (!amenity) continue;
+      chips.push(amenity);
+      if (chips.length >= QUICK_AMENITY_LIMIT) break;
+    }
+
+    return chips;
+  }, [amenities, initialFilterPreview.availableAmenities, params.selectedAmenities]);
+
   const propertyTypeActive = !isAllPropertyTypesSelected(
     params.selectedPropertyTypes,
     allPropertyTypeValues
@@ -348,27 +507,100 @@ export function PropertiesExplorerClient({
     Number(params.selectedAmenities.length > 0);
   const hasActiveFilters = quickFilterCount > 0;
 
-  const propertyTypeLabel = useMemo(() => {
-    if (!propertyTypeActive) return "Property type";
-    if (params.selectedPropertyTypes.length === 1) {
-      return (
-        propertyTypeLabelByValue.get(params.selectedPropertyTypes[0] ?? "") ??
-        "Property type"
-      );
-    }
-    return `${params.selectedPropertyTypes.length} types`;
-  }, [params.selectedPropertyTypes, propertyTypeActive, propertyTypeLabelByValue]);
-
-  const bedroomsLabel = params.bedrooms
-    ? `${params.bedrooms}+ bedrooms`
-    : "Bedrooms";
-  const amenitiesLabel = formatAmenityChipLabel(params.selectedAmenities);
+  const bedroomsLabel = `${params.bedrooms ?? QUICK_BEDROOMS}+ bedrooms`;
+  const mobileSearchTitle = searchParams.has(MAP_BOUNDS_PARAM)
+    ? i18n.resolve("properties.homes_in_map_area", "Homes in map area")
+    : i18n.resolve("properties.homes_nearby", "Homes nearby");
+  const quickFiltersVisible = sheetSnap !== "full" || listChromeVisible;
+  const mobileNavVisible = sheetSnap !== "peek" && listChromeVisible;
 
   return (
-    <div className="flex min-h-0 flex-col">
-      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-        <div className="container mx-auto flex items-center justify-between gap-4 px-4 py-4 md:px-8">
-          <div className="flex min-w-0 flex-1 items-center gap-3 overflow-x-auto no-scrollbar">
+    <div
+      className="flex flex-col"
+      style={
+        {
+          "--mobile-search-filters-height": quickFiltersVisible
+            ? "var(--search-filters-height)"
+            : "0px",
+        } as React.CSSProperties
+      }
+    >
+      <div className="sticky top-0 z-40 hidden h-[var(--site-header-height)] shrink-0 items-center gap-2 bg-background px-3 max-lg:flex">
+        <button
+          type="button"
+          onClick={() => {
+            if (window.history.length > 1) router.back();
+            else router.push("/");
+          }}
+          className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted"
+          aria-label={i18n.resolve("navigation.back", "Back").text}
+        >
+          <ArrowLeft className="size-5" />
+        </button>
+
+        <div className="min-w-0 flex-1">
+          <MarketplaceSearchBar
+            variant="mobile-header"
+            popularCities={popularCities}
+            availablePropertyTypesByCity={availablePropertyTypesByCity}
+            propertyTypes={propertyTypes}
+            mobileTitle={mobileSearchTitle.text}
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={() => openFilters()}
+          className="relative inline-flex size-11 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted"
+          aria-label={i18n.resolve("filters.title", "Filters").text}
+        >
+          <SlidersHorizontal className="size-5" />
+          {quickFilterCount > 0 ? (
+            <span className="absolute right-0 top-0 inline-flex size-5 items-center justify-center rounded-full bg-foreground text-[0.62rem] font-semibold text-background">
+              {quickFilterCount}
+            </span>
+          ) : null}
+        </button>
+      </div>
+
+      {/* The second half of the top chrome. It pins directly under the header and
+          carries the pair's only rule, fading from the header's white into it, so
+          the two rows read as one block instead of two stacked bars. The chips sit
+          centred under the search bar with the count parked in the right gutter —
+          a plain flex row would push them off-centre by the width of that count. */}
+      <div
+        className={cn(
+          "sticky top-[var(--site-header-height)] z-30 overflow-hidden bg-card bg-gradient-to-b from-card to-muted/60 transition-[height,border-color,opacity] duration-200 lg:h-[var(--search-filters-height)] lg:border-b",
+          quickFiltersVisible
+            ? "max-lg:h-[var(--search-filters-height)] max-lg:border-b max-lg:opacity-100"
+            : "max-lg:h-0 max-lg:border-transparent max-lg:opacity-0",
+        )}
+      >
+        <div className="container mx-auto grid h-full grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 max-lg:flex max-lg:px-4 md:px-8">
+          <span aria-hidden className="max-lg:hidden" />
+          {/* Airbnb's shape: one button for the whole panel, a hairline, then chips
+              that are the filter rather than a door to it — one tap applies, one tap
+              takes it back. Only filters this search actually supports get a chip,
+              so the row never offers a dead end. Justification is left, not centred:
+              the grid column around it is what centres the row, and a centred flex
+              row puts its own overflow out of reach when the chips run long. */}
+          <div className="flex min-w-0 items-center gap-3 overflow-x-auto no-scrollbar">
+            <QuickFilterButton
+              active={hasActiveFilters}
+              onClick={() => openFilters()}
+              className="gap-2 max-lg:hidden"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              <span><Tx k="filters.title" source="Filters" /></span>
+              {quickFilterCount > 0 ? (
+                <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-foreground px-1.5 text-xs font-semibold text-background">
+                  {quickFilterCount}
+                </span>
+              ) : null}
+            </QuickFilterButton>
+
+            <span aria-hidden className="h-7 w-px shrink-0 bg-border max-lg:hidden" />
+
             <PriceFilterPopover
               key={`${params.minPrice ?? ""}:${params.maxPrice ?? ""}`}
               open={priceOpen}
@@ -387,40 +619,26 @@ export function PropertiesExplorerClient({
               }}
             />
 
-            <QuickFilterButton
-              active={propertyTypeActive}
-              onClick={() => openFilters("propertyType")}
-            >
-              {propertyTypeLabel}
-            </QuickFilterButton>
+            {initialFilterPreview.maxBedrooms >= QUICK_BEDROOMS ? (
+              <QuickFilterButton
+                active={Boolean(params.bedrooms)}
+                onClick={toggleBedrooms}
+              >
+                {bedroomsLabel}
+              </QuickFilterButton>
+            ) : null}
 
-            <QuickFilterButton
-              active={Boolean(params.bedrooms)}
-              onClick={() => openFilters("bedrooms")}
-            >
-              {bedroomsLabel}
-            </QuickFilterButton>
-
-            <QuickFilterButton
-              active={params.selectedAmenities.length > 0}
-              onClick={() => openFilters("amenities")}
-            >
-              {amenitiesLabel}
-            </QuickFilterButton>
-
-            <QuickFilterButton
-              active={hasActiveFilters}
-              onClick={() => openFilters()}
-              className="gap-2"
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-              <span><Tx k="filters.all" source="All filters" /></span>
-              {quickFilterCount > 0 ? (
-                <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-foreground px-1.5 text-xs font-semibold text-background">
-                  {quickFilterCount}
-                </span>
-              ) : null}
-            </QuickFilterButton>
+            {quickAmenities.map((amenity) => (
+              <QuickFilterButton
+                key={amenity.id}
+                active={params.selectedAmenities.includes(amenity.name)}
+                onClick={() => toggleAmenity(amenity.name)}
+                className={amenity.translated ? "notranslate" : undefined}
+                translate={amenity.translated ? "no" : undefined}
+              >
+                {amenity.label}
+              </QuickFilterButton>
+            ))}
 
             {hasActiveFilters ? (
               <button
@@ -433,7 +651,7 @@ export function PropertiesExplorerClient({
             ) : null}
           </div>
 
-          <p className="hidden max-w-[220px] shrink-0 truncate text-sm text-muted-foreground lg:block">
+          <p className="hidden max-w-[220px] justify-self-end truncate text-sm text-muted-foreground lg:block">
             <span className={totalLabel.translated ? "notranslate" : undefined}>{totalLabel.text}</span>
           </p>
         </div>
@@ -453,8 +671,12 @@ export function PropertiesExplorerClient({
           <DialogPrimitive.Content
             className={cn(
               "fixed z-50 flex flex-col overflow-hidden border border-border/70 bg-background text-popover-foreground shadow-[0_24px_64px_rgba(15,23,42,0.18)] outline-none",
-              "left-3 right-3 top-4 bottom-4 h-auto max-h-[calc(100dvh-2rem)] rounded-[2rem]",
-              "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-[50rem] md:max-h-[calc(100dvh-5rem)] md:w-[44rem] md:max-w-[calc(100vw-6rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[2rem]"
+              // A drawer up from the bottom edge on phones, stopping just short of
+              // the top — the same gesture vocabulary as the results sheet, rather
+              // than a card dropped over the middle of the screen.
+              "inset-x-0 bottom-0 top-8 h-auto rounded-t-[1.75rem] border-x-0 border-b-0",
+              "max-md:data-open:animate-in max-md:data-open:slide-in-from-bottom max-md:data-closed:animate-out max-md:data-closed:slide-out-to-bottom",
+              "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-[50rem] md:max-h-[calc(100dvh-5rem)] md:w-[44rem] md:max-w-[calc(100vw-6rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[2rem] md:border"
             )}
           >
             <div className="sr-only">
@@ -499,36 +721,17 @@ export function PropertiesExplorerClient({
         </DialogPrimitive.Portal>
       </DialogPrimitive.Root>
 
-      <div className="container mx-auto mt-4 mb-2 flex items-center justify-between gap-2 px-4 md:px-8 lg:hidden">
-        <p className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
-          <Search className="h-4 w-4 shrink-0 opacity-70" />
-          <span className={totalLabel.translated ? "notranslate" : undefined}>{totalLabel.text}</span>
-        </p>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-9 shrink-0 rounded-full px-4"
-          type="button"
-          onClick={() =>
-            setMobileView((current) => (current === "list" ? "map" : "list"))
-          }
-        >
-          {mobileView === "list" ? (
-            <>
-              <MapIcon className="mr-2 h-4 w-4" />
-              <Tx k="properties.map" source="Map" />
-            </>
-          ) : (
-            <>
-              <ListIcon className="mr-2 h-4 w-4" />
-              <Tx k="properties.list" source="List" />
-            </>
-          )}
-        </Button>
-      </div>
-
+      {/* Two layouts in one tree. Desktop is a row: listings, then a sticky map
+          beside them, and the page scrolls. Phones make this a fixed stage the
+          height of what is left under the chrome — the map fills it, the sheet
+          rides over it, and nothing on the page scrolls but the sheet's own list. */}
       <div
-        className="relative min-w-0 flex-1"
+        className={cn(
+          "relative flex min-w-0",
+          // The public shell is zoomed to 90%, so its compensated viewport token
+          // is the only height that still reaches the physical bottom edge.
+          "max-lg:h-[calc(var(--app-viewport-height)-var(--site-header-height)-var(--mobile-search-filters-height))] max-lg:overflow-hidden max-lg:transition-[height] max-lg:duration-200"
+        )}
         onMouseOver={(event) => {
           const listingId = listingIdFromTarget(event.target);
           if (listingId) setHoveredPinId(listingId);
@@ -552,16 +755,39 @@ export function PropertiesExplorerClient({
           }
         }}
       >
-        <div className="lg:pr-[45vw] xl:pr-[48vw]">
-          <div
-            className={cn(
-              "px-4 pt-2 pb-6 md:px-8",
-              mobileView === "map" && "hidden lg:block"
-            )}
-          >
+        {/* At least as tall as the map beside it, so a short result set can never
+            leave the sticky map hanging past the end of the page. */}
+        <ResultsSheet
+          snap={sheetSnap}
+          onSnapChange={handleSheetSnapChange}
+          onListChromeVisibilityChange={setListChromeVisible}
+          enabled={sheetEnabled}
+          grabLabel={
+            i18n.resolve("properties.toggle_results", "Show or hide the results list")
+              .text
+          }
+          header={
+            <span className="block pb-2 text-center text-base font-semibold text-foreground">
+              <span className={totalLabel.translated ? "notranslate" : undefined}>
+                {totalLabel.text}
+              </span>
+            </span>
+          }
+          className={cn(
+            "lg:min-h-[calc(var(--app-viewport-height)-var(--site-header-height)-var(--search-filters-height))]",
+            mapExpanded && "lg:hidden"
+          )}
+        >
+          <div className="px-4 pt-2 pb-6 max-lg:pb-[calc(var(--mobile-nav-height)+1.5rem)] md:px-8">
             {totalCount > 0 ? (
-              <div className="mb-6 flex items-center justify-between gap-4">
-                <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+              <div
+                className={cn(
+                  "mb-6 flex items-center justify-between gap-4 max-lg:justify-end",
+                  // The sheet's own header already carries the count on phones.
+                  !featuredMarket && "max-lg:mb-0"
+                )}
+              >
+                <h2 className="text-2xl font-semibold tracking-tight text-foreground max-lg:hidden">
                   {(() => {
                     const value = i18n.plural(
                       "properties.over_results",
@@ -596,34 +822,84 @@ export function PropertiesExplorerClient({
             ) : null}
             {children}
           </div>
+        </ResultsSheet>
 
-          {mobileView === "map" ? (
-            <div className="fixed inset-x-0 top-[7.75rem] bottom-0 z-20 px-4 pb-4 lg:hidden">
-              <PropertiesMap
-                pins={mapPins}
-                hoveredPinId={hoveredPinId}
-                initialBounds={initialBounds}
-                onBoundsChange={handleBoundsChange}
-                className="h-full rounded-2xl border-0"
-              />
-            </div>
-          ) : null}
-        </div>
+        {/* Sticky rather than fixed, so the page keeps its own scrollbar at the right
+            edge of the window — the listings move under a map that never does, and a
+            wheel over the map zooms. `self-start` keeps the flex row from stretching
+            it to the full column height, which would leave it nothing to stick to.
+            Width is a share of the row: `vw` ignores the page zoom and would leave the
+            map narrower than the split it names. Expanded, it takes the row over at the
+            same height, so full screen is the page's own frame — inset and rounded,
+            below the chrome — rather than a sheet thrown over it.
 
+            On phones the same map fills the stage edge to edge behind the sheet.
+            One instance either way: a second <PropertiesMap> would mean a second
+            Leaflet map fetching its own copy of every tile. */}
         <aside
-          className="pointer-events-none absolute inset-y-0 right-0 z-30 hidden w-[45vw] border-l border-border bg-muted/20 p-0 lg:block xl:w-[48vw]"
+          className={cn(
+            "max-lg:absolute max-lg:inset-0 max-lg:z-0 max-lg:w-full max-lg:p-0",
+            "lg:sticky lg:top-[calc(var(--site-header-height)+var(--search-filters-height))] lg:h-[calc(var(--app-viewport-height)-var(--site-header-height)-var(--search-filters-height))] lg:shrink-0 lg:self-start lg:p-4",
+            mapExpanded ? "lg:w-full lg:px-8" : "lg:w-[45%] xl:w-[48%]"
+          )}
           aria-label={i18n.resolve("map.listings", "Map of listings").text}
+          // Reaching for the map is a request for the map: the sheet drops out of
+          // the way. Panning ends in a click too, but the sheet is already down by
+          // then, so collapsing again costs nothing.
+          onClick={sheetEnabled ? () => handleSheetSnapChange("peek") : undefined}
         >
-          <div className="pointer-events-auto sticky top-0 h-[100dvh] min-h-0 p-5">
-            <PropertiesMap
-              pins={mapPins}
-              hoveredPinId={hoveredPinId}
-              initialBounds={initialBounds}
-              onBoundsChange={handleBoundsChange}
-              className="h-full rounded-2xl"
+          <PropertiesMap
+            pins={mapPins}
+            hoveredPinId={hoveredPinId}
+            initialBounds={initialBounds}
+            onBoundsChange={handleBoundsChange}
+            expanded={mapExpanded}
+            onExpandedChange={setMapExpanded}
+            // Full screen is what the phone layout already gives the map, and the
+            // corner the button would take is over the map the sheet sits on.
+            expandable={!sheetEnabled}
+            // The sheet covers the bottom of the map, and Leaflet's zoom, scale and
+            // attribution controls live there. Lift them clear of it.
+            className="h-full max-lg:rounded-none max-lg:border-0 max-lg:[&_.leaflet-bottom]:mb-[6.5rem] lg:rounded-2xl"
+            pinPopups={!sheetEnabled}
+            selectedPinId={sheetEnabled ? selectedPinId : undefined}
+            onSelectedPinChange={handleSelectedPinChange}
+          />
+        </aside>
+
+        {/* Both float over the sheet, so they are the stage's, not the map's. */}
+        {sheetEnabled && selectedPin ? (
+          <div
+            className="pointer-events-none absolute inset-x-3 z-30 lg:hidden"
+            style={{ bottom: SHEET_PEEK_HEIGHT + 12 }}
+          >
+            <SelectedPinCard
+              pin={selectedPin}
+              onClose={() => setSelectedPinId(null)}
             />
           </div>
-        </aside>
+        ) : null}
+
+        {sheetSnap === "full" ? (
+          <Button
+            type="button"
+            className="absolute left-1/2 z-40 h-11 -translate-x-1/2 rounded-full px-5 text-sm font-semibold shadow-[0_10px_28px_rgba(15,23,42,0.28)] transition-[bottom] duration-300 lg:hidden"
+            style={{
+              bottom: mobileNavVisible
+                ? "calc(var(--mobile-nav-height) + 1rem)"
+                : "1.5rem",
+            }}
+            onClick={() => handleSheetSnapChange("peek")}
+          >
+            <MapIcon className="mr-2 h-4 w-4" />
+            <Tx k="properties.map" source="Map" />
+          </Button>
+        ) : null}
+
+        <MobileBottomNav
+          position="absolute"
+          visible={mobileNavVisible}
+        />
       </div>
     </div>
   );
