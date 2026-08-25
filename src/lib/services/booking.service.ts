@@ -23,6 +23,7 @@ import {
 } from "@/lib/services/booking-email-outbox.service";
 import { houseRulesSnapshot } from "@/lib/host/v2/listing-house-rules";
 import { houseRulesVersion } from "@/lib/host/v2/house-rules-version.server";
+import { paymentMethodsSnapshot } from "@/lib/payments/payment-methods";
 
 export const BOOKING_RESPONSE_WINDOW_HOURS = 24;
 
@@ -316,6 +317,7 @@ export async function createBooking(input: CreateBookingInput) {
       }
 
       const currentHouseRules = houseRulesSnapshot(listing);
+      const currentPaymentMethods = paymentMethodsSnapshot(listing);
       if (houseRulesAcceptedAt) {
         if (
           !expectedHouseRulesVersion ||
@@ -501,6 +503,12 @@ export async function createBooking(input: CreateBookingInput) {
                 houseRulesAcceptedAt,
               }
             : {}),
+          // Every new request gets the listing's current answer, including the explicit
+          // UNANSWERED state. The client cannot supply or override this object; it is
+          // built above from the listing row read inside this transaction. Historical
+          // bookings remain NULL because the additive migration performs no backfill.
+          paymentMethodsSnapshot:
+            currentPaymentMethods as unknown as Prisma.InputJsonObject,
         },
       });
 

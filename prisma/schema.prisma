@@ -45,6 +45,18 @@ enum ListingAvailabilityMode {
   CLOSED
 }
 
+enum ListingPaymentMethod {
+  CASH_AT_PROPERTY
+  BANK_TRANSFER_LOCAL_SEPA
+  BANK_TRANSFER_INTERNATIONAL
+  PAYPAL
+  REVOLUT
+  WISE
+  HOST_SECURE_CARD_LINK
+  OTHER
+  ARRANGE_DIRECTLY
+}
+
 enum PromotionType {
   PERCENT_DISCOUNT
   FREE_CLEANING
@@ -574,6 +586,12 @@ model Listing {
    * reviewed the page from one who never opened it — only a recorded visit can.
    */
   houseRulesReviewedAt DateTime?
+  /** Public method names only. Never account details, handles, links, card data, or
+   * payment instructions. An empty array with a null reviewed timestamp means this
+   * host has not answered; ARRANGE_DIRECTLY is the explicit reviewed alternative. */
+  acceptedPaymentMethods   ListingPaymentMethod[] @default([])
+  paymentMethodOther       String?
+  paymentMethodsReviewedAt DateTime?
   moderationNote String?
   /**
    * True whenever the live content was created/edited since an admin last looked at
@@ -1263,6 +1281,10 @@ model Booking {
   /// rather than defaulted. Same JSON-snapshot pattern as `priceBreakdown` above.
   houseRulesSnapshot    Json?
   houseRulesAcceptedAt  DateTime?
+  /// The listing's accepted-payment-method answer as it stood when this request was
+  /// created. Built server-side from the listing row, never from request input. Null
+  /// only for bookings created before this snapshot was introduced.
+  paymentMethodsSnapshot Json?
   guestNote             String?
   hostNote              String?
   cancellationReason    String?
