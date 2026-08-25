@@ -4490,8 +4490,20 @@ function ListingGuestPreview({
                 className="w-full rounded-lg py-6 text-base font-semibold"
                 disabled
               >
-                <Tx k="host.preview.reserve" source="Reserve" />
+                <Tx
+                  k="host.preview.request_to_book"
+                  source="Request to book"
+                />
               </Button>
+              {/* The card a guest actually sees carries this line under the button;
+                  a preview that left it out would show hosts a booking action that
+                  promises less than the real one explains. */}
+              <p className="text-center text-xs leading-relaxed text-muted-foreground">
+                <Tx
+                  k="host.preview.host_review_notice"
+                  source="The host will review your request and share payment instructions if it is accepted."
+                />
+              </p>
             </div>
           </div>
         </div>

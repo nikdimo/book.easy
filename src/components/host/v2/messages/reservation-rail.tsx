@@ -167,19 +167,19 @@ export function ReservationRail({
              * display currency entirely, so a host reading the site in DKK saw every
              * other figure in DKK and this one in the booking's currency.
              *
-             * The payout is still stated in the currency it is actually paid in — a
-             * converted figure is today's approximation, and this row is money the
-             * host will receive.
+             * The agreed booking total is still stated in its official currency — a
+             * converted figure is today's approximation, while this row records the
+             * amount the host and guest agreed.
              */}
             <Row
-              label={<Tx k="host.v2.messages.total" source="Total payout" />}
+              label={<Tx k="host.v2.messages.total_booking" source="Booking total" />}
               value={payout?.text ?? ""}
               note={
                 payout?.converted
                   ? interpolate(
                       resolve(
-                        "host.v2.messages.official_total",
-                        "Paid out as {amount}",
+                        "host.v2.messages.official_total_agreed",
+                        "Agreed as {amount}",
                       ),
                       {
                         amount: formatMoney(

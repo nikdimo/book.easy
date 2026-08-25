@@ -58,10 +58,13 @@ export async function BookingStatusHero({
         ? {
             icon: CheckCircle2,
             title: t(translator, "booking.hero.confirmed", "Booking confirmed"),
+            // Linger Homes never charges the guest, so the moment the host accepts is
+            // the moment payment becomes the two of them arranging it between
+            // themselves. Both sides are told the same thing from their own side.
             body:
               audience === "host"
-                ? t(translator, "booking.hero.confirmed_host", "The guest has been notified. These dates remain blocked in your calendar.")
-                : t(translator, "booking.hero.confirmed_guest", "You're all set. Use this page for messages, stay details and support."),
+                ? t(translator, "booking.hero.accepted_host", "The guest has been notified. Share your payment instructions with the guest directly. These dates remain blocked in your calendar.")
+                : t(translator, "booking.hero.accepted_guest", "Your booking has been accepted. The host will share payment instructions with you."),
             tone: "border-emerald-200 bg-emerald-50 text-emerald-950",
           }
         : status === "COMPLETED"

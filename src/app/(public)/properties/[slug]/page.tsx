@@ -28,6 +28,7 @@ import { ListingStayProvider } from "@/components/public/listing-stay-context";
 import { ListingAvailabilityCalendar } from "@/components/public/listing-availability-calendar";
 import { ListingActions } from "@/components/public/listing-actions";
 import { ListingViewTracker } from "@/components/public/listing-view-tracker";
+import { StartConversationButton } from "@/components/communication/start-conversation-button";
 import { getListingBySlug } from "@/lib/services/property.service";
 import { bookableStayFromSearch } from "@/lib/utils/booking-selection";
 import { todayYmd } from "@/lib/utils/date-only";
@@ -84,7 +85,7 @@ export default async function ListingDetailPage({
 
   // A stay is only seeded from the URL when it is still bookable. Listing links get
   // shared and bookmarked with the dates the sender was looking at, and a stay that has
-  // since gone by used to arrive here priced and reservable — the guest pressed reserve,
+  // since gone by used to arrive here priced and bookable — the guest pressed request to book,
   // agreed to the house rules and only then met the server's "check-in cannot be in the
   // past". Dropping it seeds nothing instead, which is what the page shows a guest who
   // arrived without dates at all.
@@ -146,9 +147,9 @@ export default async function ListingDetailPage({
       .slice(0, 2);
   const hostName =
     listing.host.profile?.hostDisplayName || listing.host.name.split(" ")[0];
-  const reserveTooltip = t.resolve(
-    "booking_widget.reserve_tooltip",
-    "Send a booking request to the host — you won't be charged yet.",
+  const requestToBookTooltip = t.resolve(
+    "booking_widget.request_to_book_tooltip",
+    "Send a booking request. The host will review it and share payment instructions if it is accepted.",
   );
   const guestCount = tPlural(
     t,
@@ -212,6 +213,24 @@ export default async function ListingDetailPage({
     name: hostName,
   });
   const session = await auth();
+  // A host opening their own listing has nobody to message — the inquiry service
+  // rejects it — so the button is simply not there for them.
+  const isOwnListing = session?.user?.id === listing.hostId;
+  // Reuses the guest booking page's key rather than minting a new one, so the
+  // words arrive already translated in every locale.
+  const messageHostLabel = t.resolve(
+    "account.booking.message_host",
+    "Message host"
+  ).text;
+  const messageHostButton = isOwnListing ? null : (
+    <StartConversationButton
+      listingId={listing.id}
+      isAuthenticated={!!session?.user}
+      label={messageHostLabel}
+      variant="outline"
+      iconOnly
+    />
+  );
   const isSaved = session?.user
     ? (await getFavoriteListingIdSet(session.user.id)).has(listing.id)
     : false;
@@ -254,7 +273,8 @@ export default async function ListingDetailPage({
       initialGuests={initialGuests}
       initialGuestDetails={initialGuestDetails}
       hasExplicitSearchSelection={hasExplicitSearchSelection}
-      reserveTooltip={reserveTooltip}
+      requestToBookTooltip={requestToBookTooltip}
+      messageHost={messageHostButton}
       houseRules={<HouseRulesList t={t} rules={houseRules} />}
       houseRulesVersion={renderedHouseRulesVersion}
     />
@@ -425,13 +445,16 @@ export default async function ListingDetailPage({
               )}
             </div>
 
+            {/* Messaging the host belongs with the host, not up in the share/save row
+               where it used to sit: it is the one action here that starts a
+               conversation, and the icon says that in the width a phone has. */}
             <div className="flex items-center gap-4">
               <Avatar className="h-14 w-14 border-2 border-border">
                 <AvatarFallback className="text-lg font-medium">
                   {hostInitials}
                 </AvatarFallback>
               </Avatar>
-              <div>
+              <div className="min-w-0 flex-1">
                 <p
                   className={
                     hostedBy.translated
@@ -447,6 +470,7 @@ export default async function ListingDetailPage({
                   </p>
                 )}
               </div>
+              {messageHostButton}
             </div>
 
             <Separator />

@@ -19,6 +19,7 @@ export function LocalizedPrice({
   locale,
   className,
   official = false,
+  exact = false,
 }: {
   amount: number | string;
   /** The listing's official currency — what the amount is denominated in, not what
@@ -32,12 +33,17 @@ export function LocalizedPrice({
   /** Set on amounts that state what someone owes or receives, which must never be
    *  converted: the payable total on checkout, host payouts, official email figures. */
   official?: boolean;
+  /** Set inside the price details, where a line is itemising a total rather than
+   *  advertising a price and "€180.00" is the form a reader checks it in. Elsewhere
+   *  a whole amount renders as "€180". Independent of `official`: one decides
+   *  whether the amount is converted, this one how precisely it is printed. */
+  exact?: boolean;
 }) {
   const display = useDisplayCurrency();
   const value = typeof amount === "string" ? Number.parseFloat(amount) : amount;
   const text = official
-    ? formatMoney(value, currency, locale ?? display.locale)
-    : display.format(amount, currency).text;
+    ? formatMoney(value, currency, locale ?? display.locale, { exact })
+    : display.format(amount, currency, { exact }).text;
 
   return (
     <span

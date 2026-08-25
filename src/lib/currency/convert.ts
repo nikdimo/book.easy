@@ -76,14 +76,49 @@ function convertedDecimals(amount: number, currency: string): number {
   return Math.abs(amount) >= 10 ? 0 : natural;
 }
 
+/**
+ * How many decimals to actually print.
+ *
+ * A price that lands on a whole unit says nothing with its minor digits: "€180.00"
+ * is "€180" plus two characters of noise, and a calendar showing "€180" beside a
+ * widget showing "€180.00" reads as two different prices. So the fraction goes
+ * whenever it would print as zeros, and stays the moment it carries a value —
+ * "€180.50" is still "€180.50".
+ *
+ * `exact` opts back into the currency's full precision for the price-details
+ * tables, where an amount is being itemised rather than advertised and the rows
+ * are meant to line up on the decimal separator.
+ */
+function displayDecimals(
+  amount: number,
+  currency: string,
+  converted: boolean,
+  exact: boolean,
+): number {
+  const decimals = converted
+    ? convertedDecimals(amount, currency)
+    : currencyDecimals(currency);
+  if (exact || decimals === 0) return decimals;
+  // Tested against what will actually be printed rather than the raw float, so a
+  // converted 179.999 — which `Intl` will render as "180.00" — drops to "180"
+  // instead of keeping cents it no longer has.
+  return Number.isInteger(Number(amount.toFixed(decimals))) ? 0 : decimals;
+}
+
 export interface FormatMoneyOptions {
   /** True when `amount` is the result of a conversion rather than the authored
-   *  price. Loosens the decimals as described above; official amounts always keep
-   *  their exact precision because they are what someone actually owes. */
+   *  price. Loosens the decimals as described above; an official amount keeps the
+   *  currency's own precision, less a fraction that would only print zeros. */
   converted?: boolean;
   /** Force the currency code instead of the symbol — used where a symbol alone
    *  would be ambiguous, such as the several currencies that render as "$". */
   showCode?: boolean;
+  /** Keep the currency's minor units even on a whole amount. For price-details
+   *  tables and anything itemising what is owed, where "€1,260.00" is the form a
+   *  reader expects to check a total in. Does not resurrect the cents `converted`
+   *  dropped — an approximation stated to the cent is worse than a round one, and
+   *  the exact figure is what `OfficialAmountNotice` is for. */
+  exact?: boolean;
 }
 
 /**
@@ -96,11 +131,13 @@ export function formatMoney(
   amount: number,
   currency: string,
   locale = "en",
-  { converted = false, showCode = false }: FormatMoneyOptions = {},
+  {
+    converted = false,
+    showCode = false,
+    exact = false,
+  }: FormatMoneyOptions = {},
 ): string {
-  const decimals = converted
-    ? convertedDecimals(amount, currency)
-    : currencyDecimals(currency);
+  const decimals = displayDecimals(amount, currency, converted, exact);
 
   try {
     return new Intl.NumberFormat(locale, {
@@ -139,10 +176,11 @@ export function displayPrice(
   officialCurrency: string,
   locale: string,
   context: ConversionContext | null,
+  { exact = false }: Pick<FormatMoneyOptions, "exact"> = {},
 ): DisplayPrice {
   if (!context || context.display === officialCurrency) {
     return {
-      text: formatMoney(amount, officialCurrency, locale),
+      text: formatMoney(amount, officialCurrency, locale, { exact }),
       currency: officialCurrency,
       converted: false,
     };
@@ -151,14 +189,17 @@ export function displayPrice(
   const value = convertAmount(amount, officialCurrency, context);
   if (value === null) {
     return {
-      text: formatMoney(amount, officialCurrency, locale),
+      text: formatMoney(amount, officialCurrency, locale, { exact }),
       currency: officialCurrency,
       converted: false,
     };
   }
 
   return {
-    text: formatMoney(value, context.display, locale, { converted: true }),
+    text: formatMoney(value, context.display, locale, {
+      converted: true,
+      exact,
+    }),
     currency: context.display,
     converted: true,
   };

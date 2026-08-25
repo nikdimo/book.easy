@@ -104,8 +104,8 @@ export function HostBookingActions({ bookingId }: { bookingId: string }) {
             <DialogDescription>
               {decision === "accept" ? (
                 <Tx
-                  k="host.booking.accept_body"
-                  source="The guest will be notified immediately and the reservation will become confirmed."
+                  k="host.booking.accept_body_direct_payment"
+                  source="The guest will be notified immediately and the booking will be accepted. Then share your payment instructions directly with the guest."
                 />
               ) : (
                 <Tx

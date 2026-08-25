@@ -58,17 +58,20 @@ export const EMAIL_CATALOG: Record<string, EmailCatalogEntry> = {
   "email.booking.view_listing": { en: "View listing", mk: "Погледнете го огласот" },
   "email.booking.view_booking": { en: "View booking", mk: "Погледнете ја резервацијата" },
   "email.booking.review_request": { en: "Review request", mk: "Разгледајте го барањето" },
-  "email.booking.no_payment_collected": {
-    en: "No payment has been collected for this request.",
-    mk: "За ова барање не е наплатено ништо.",
+  // Linger Homes never takes booking money, so none of these may read like a stage in
+  // a payment flow that has not happened yet — "no payment has been collected" invites
+  // the question of when it will be. They say what the platform does and does not do.
+  "email.booking.payment_after_acceptance": {
+    en: "Linger Homes does not collect or hold booking payments. If the host accepts, they will share payment instructions with you directly.",
+    mk: "Linger Homes не наплаќа ниту чува плаќања за резервации. Ако домаќинот го прифати барањето, непосредно ќе ви ги достави упатствата за плаќање.",
   },
-  "email.booking.no_payment_was_collected": {
-    en: "No payment was collected for this request.",
-    mk: "За ова барање не беше наплатено ништо.",
+  "email.booking.request_not_accepted": {
+    en: "This booking request was not accepted. Linger Homes does not collect or hold booking payments.",
+    mk: "Ова барање за резервација не беше прифатено. Linger Homes не наплаќа ниту чува плаќања за резервации.",
   },
-  "email.booking.no_payment_dates_free": {
-    en: "No payment was collected. Your dates are free to use for another booking.",
-    mk: "Не беше наплатено ништо. Вашите датуми се слободни за друга резервација.",
+  "email.booking.dates_free": {
+    en: "Your dates are free to use for another booking. This request was not accepted, and Linger Homes does not collect or hold booking payments.",
+    mk: "Вашите датуми се слободни за друга резервација. Ова барање не беше прифатено, а Linger Homes не наплаќа ниту чува плаќања за резервации.",
   },
   // Macedonian splits on the final digit (1, 21, 31 → гостин), which is why the
   // category comes from Intl.PluralRules rather than a `=== 1` check.
@@ -104,9 +107,9 @@ export const EMAIL_CATALOG: Record<string, EmailCatalogEntry> = {
     en: "This is a booking request, not a confirmed reservation yet.",
     mk: "Ова е барање за резервација, сè уште не е потврдена резервација.",
   },
-  "email.booking.request_received.callout": {
-    en: "The host has until {deadline} to accept or decline. No payment has been collected for this request.",
-    mk: "Домаќинот има рок до {deadline} да прифати или одбие. За ова барање не е наплатено ништо.",
+  "email.booking.request_received.callout_payment": {
+    en: "The host has until {deadline} to accept or decline. If they accept, they will share payment instructions with you directly.",
+    mk: "Домаќинот има рок до {deadline} да прифати или одбие. Ако прифати, непосредно ќе ви ги достави упатствата за плаќање.",
   },
 
   // ------------------------------------------------ booking: host request
@@ -181,9 +184,9 @@ export const EMAIL_CATALOG: Record<string, EmailCatalogEntry> = {
 
   // --------------------------------------------------- booking: confirmed
   "email.booking.confirmed.subject": { en: "Confirmed", mk: "Потврдено" },
-  "email.booking.confirmed.good_news": {
-    en: 'Good news — your booking for "{listing}" has been confirmed.',
-    mk: 'Добра вест — вашата резервација за „{listing}“ е потврдена.',
+  "email.booking.confirmed.accepted": {
+    en: 'Good news — your booking for "{listing}" has been accepted. The host will share payment instructions with you.',
+    mk: 'Добра вест — вашата резервација за „{listing}“ е прифатена. Домаќинот ќе ви ги достави упатствата за плаќање.',
   },
   "email.booking.confirmed.preheader": {
     en: "Your stay at {listing} is confirmed.",
@@ -193,14 +196,17 @@ export const EMAIL_CATALOG: Record<string, EmailCatalogEntry> = {
     en: "Booking confirmed",
     mk: "Резервацијата е потврдена",
   },
-  "email.booking.confirmed.headline": { en: "You’re all set", mk: "Сè е подготвено" },
+  "email.booking.confirmed.headline_accepted": {
+    en: "Your booking has been accepted",
+    mk: "Вашата резервација е прифатена",
+  },
   "email.booking.confirmed.intro": {
     en: "{host} accepted your booking request.",
     mk: "{host} го прифати вашето барање за резервација.",
   },
-  "email.booking.confirmed.callout": {
-    en: "Keep your messages and any payment arrangements inside {brand} for support and security.",
-    mk: "Задржете ја преписката и сите договори за плаќање во {brand} заради поддршка и безбедност.",
+  "email.booking.confirmed.callout_payment": {
+    en: "Linger Homes does not collect or hold booking payments — the host will share payment instructions with you directly. Keep your messages inside {brand} for support and security.",
+    mk: "Linger Homes не наплаќа ниту чува плаќања за резервации — домаќинот непосредно ќе ви ги достави упатствата за плаќање. Задржете ја преписката во {brand} заради поддршка и безбедност.",
   },
 
   // ---------------------------------------------------- booking: declined
@@ -275,9 +281,13 @@ export const EMAIL_CATALOG: Record<string, EmailCatalogEntry> = {
     en: "The booking has been cancelled.",
     mk: "Резервацијата е откажана.",
   },
-  "email.booking.cancelled.callout": {
-    en: "View the booking page for the current status and contact support if you need help.",
-    mk: "Погледнете ја страницата на резервацијата за тековниот статус и контактирајте ја поддршката ако ви треба помош.",
+  "email.booking.cancelled.payment_note": {
+    en: "Linger Homes does not collect or hold booking payments, so there is nothing for us to refund. Settle anything you arranged directly with the host.",
+    mk: "Linger Homes не наплаќа ниту чува плаќања за резервации, па нема што да ви вратиме. Сè што сте договориле расчистете го непосредно со домаќинот.",
+  },
+  "email.booking.cancelled.callout_payment": {
+    en: "Linger Homes does not collect or hold booking payments, so there is nothing for us to refund — settle anything you arranged directly with the host. View the booking page for the current status and contact support if you need help.",
+    mk: "Linger Homes не наплаќа ниту чува плаќања за резервации, па нема што да ви вратиме — сè што сте договориле расчистете го непосредно со домаќинот. Погледнете ја страницата на резервацијата за тековниот статус и контактирајте ја поддршката ако ви треба помош.",
   },
 
   // -------------------------------------------- booking: guest cancelled
@@ -431,9 +441,9 @@ export const EMAIL_CATALOG: Record<string, EmailCatalogEntry> = {
     en: "{reporter} submitted a booking-related {kind} request.",
     mk: "{reporter} поднесе барање за {kind} поврзано со резервација.",
   },
-  "email.claim.released.rights": {
-    en: "You can accept, counter, or reject after reviewing the evidence. You will not be silently charged for failing to respond.",
-    mk: "Откако ќе ги разгледате доказите, можете да прифатите, да дадете контрапонуда или да одбиете. Нема да ви биде наплатено ништо без ваше знаење ако не одговорите.",
+  "email.claim.released.rights_direct": {
+    en: "You can accept, counter, or reject after reviewing the evidence. Linger Homes does not collect or hold payments, so nothing is taken from you either way.",
+    mk: "Откако ќе ги разгледате доказите, можете да прифатите, да дадете контрапонуда или да одбиете. Linger Homes не наплаќа ниту чува плаќања, па во ниту еден случај нема да ви биде земено ништо.",
   },
   "email.claim.kind.expense": { en: "expense", mk: "трошок" },
   "email.claim.kind.damage": { en: "damage", mk: "штета" },

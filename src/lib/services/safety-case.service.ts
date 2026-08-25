@@ -585,7 +585,7 @@ export async function respondToClaim(input: {
         : "";
   const body =
     input.response === "ACCEPT"
-      ? `The payment request was accepted for ${amountLabel}. Payment processing still requires admin confirmation.`
+      ? `The payment request was accepted for ${amountLabel}. Linger Homes does not process payments — settle the agreed amount directly with the other party.`
       : input.response === "REJECT"
         ? `The payment request was rejected. Reason: ${note}`
         : `A counteroffer of ${amountLabel} was submitted. Reason: ${note}`;

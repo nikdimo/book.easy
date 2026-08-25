@@ -34,11 +34,21 @@ export interface PriceFormatter {
   ratesUpdatedAt: string | null;
   /** True when the provider is unreachable and stored rates are being used. */
   stale: boolean;
-  /** Formats one amount for display: converted where possible, official otherwise. */
-  format(amount: Money, officialCurrency: string): DisplayPrice;
+  /** Formats one amount for display: converted where possible, official otherwise.
+   *  `exact` keeps the currency's minor units on a whole amount, for the price
+   *  details; everything else drops a fraction that would only print zeros. */
+  format(
+    amount: Money,
+    officialCurrency: string,
+    options?: { exact?: boolean },
+  ): DisplayPrice;
   /** Formats an amount in its official currency, never converted. For anything that
    *  states what a guest actually owes or a host actually receives. */
-  formatOfficial(amount: Money, officialCurrency: string): string;
+  formatOfficial(
+    amount: Money,
+    officialCurrency: string,
+    options?: { exact?: boolean },
+  ): string;
   /** The serialisable slice handed to `DisplayCurrencyProvider` so client components
    *  format identically to the server render. */
   context: ConversionContext | null;
@@ -75,9 +85,13 @@ export const getPriceFormatter = cache(async (): Promise<PriceFormatter> => {
     ratesUpdatedAt: table?.fetchedAt ?? null,
     stale: table?.stale ?? false,
     context,
-    format: (amount, officialCurrency) =>
-      displayPrice(toNumber(amount), officialCurrency, locale, context),
-    formatOfficial: (amount, officialCurrency) =>
-      formatMoney(toNumber(amount), officialCurrency, locale),
+    format: (amount, officialCurrency, options) =>
+      displayPrice(toNumber(amount), officialCurrency, locale, context, {
+        exact: options?.exact ?? false,
+      }),
+    formatOfficial: (amount, officialCurrency, options) =>
+      formatMoney(toNumber(amount), officialCurrency, locale, {
+        exact: options?.exact ?? false,
+      }),
   };
 });

@@ -67,7 +67,7 @@ describe("PriceStep", () => {
   it("states what a guest pays, formatted the way every other price is", () => {
     // The example stay is what states the amount back to the host now: it shows the
     // rate applied over nights, which the bare per-night line could not.
-    expect(step({ initialPrice: "120" })).toContain("A 3-night stay costs €360.00.");
+    expect(step({ initialPrice: "120" })).toContain("A 3-night stay costs €360.");
   });
 
   it("keeps only whole currency units out of what the host typed", () => {
@@ -105,7 +105,7 @@ describe("PriceStep", () => {
       />,
     );
 
-    expect(html).toContain("Your price must be at least €1.00.");
+    expect(html).toContain("Your price must be at least €1.");
   });
 
   it("blocks Next while the amount is above the ceiling", () => {

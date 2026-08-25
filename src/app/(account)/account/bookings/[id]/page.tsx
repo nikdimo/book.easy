@@ -58,6 +58,18 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
         hostName={booking.listing.host.profile?.hostDisplayName || booking.listing.host.name}
       />
 
+      {/* This page is where a guest comes back looking for "pay now". There isn't one,
+          and the hero only has room to say who will send the instructions. */}
+      {booking.status === "PENDING" || booking.status === "CONFIRMED" ? (
+        <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+          <T
+            t={translator}
+            k="booking.payment_arranged_with_host"
+            source="Linger Homes does not collect or hold booking payments. Payment is arranged directly with the host after the booking is accepted."
+          />
+        </p>
+      ) : null}
+
       <Card className="mt-6 overflow-hidden">
         {booking.listing.images[0]?.url ? (
           <Link href={`/properties/${booking.listing.slug}`} className="relative block h-56 sm:h-72">

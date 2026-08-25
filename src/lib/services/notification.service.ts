@@ -334,7 +334,9 @@ export async function notifyBookingEvent(
     confirmed: {
       type: "BOOKING_CONFIRMED" as const,
       title: "Booking confirmed",
-      body: `Your stay at ${booking.listing.title} is confirmed.`,
+      // The host accepting is also the moment payment becomes theirs to arrange, so
+      // the notification that announces the one says where to expect the other.
+      body: `Your booking at ${booking.listing.title} has been accepted. The host will share payment instructions with you.`,
     },
     rejected: {
       type: "BOOKING_REJECTED" as const,

@@ -99,6 +99,27 @@ const MINIMUM_STAY_HATCH: React.CSSProperties = {
 };
 
 /**
+ * A price the way a cell should draw it: the currency symbol a size down and a shade
+ * back, the amount at full size. Two characters of symbol in front of five of number
+ * is a third of the line spent on something every other cell repeats.
+ */
+function CellPrice({
+  text,
+  symbol,
+}: {
+  text: string;
+  symbol?: string;
+}): React.ReactElement {
+  if (!symbol || !text.startsWith(symbol)) return <>{text}</>;
+  return (
+    <>
+      <span className="text-[0.85em] opacity-75">{symbol}</span>
+      {text.slice(symbol.length)}
+    </>
+  );
+}
+
+/**
  * The tint that spans the nights between check-in and check-out.
  *
  * Painted as a pseudo-element rather than a background utility for two reasons: the
@@ -121,10 +142,21 @@ const HOST_RANGE_BAND =
   "before:pointer-events-none before:absolute before:inset-x-0 before:inset-y-[3px] before:z-[1] before:bg-primary/20 before:content-[''] hover:before:bg-primary/25 md:before:inset-y-[14%]";
 
 type Layout = "pill" | "hero" | "compact" | "field";
-type Step = "dates" | "guests";
+/**
+ * The steps a stay picker can be on.
+ *
+ * `review` is optional and entirely the caller's: the picker knows only that it comes
+ * after the guests and that the caller draws it. The booking flow uses it to end where
+ * it began — one overlay from the first date to the sent request — while search, which
+ * has nothing to review, never turns it on.
+ */
+type Step = "dates" | "guests" | "review";
 
 type MarketplaceDayMeta = {
   sublabel?: string;
+  /** The currency symbol the sublabels begin with, where they carry one — the card
+   * cells draw it smaller than the amount it belongs to. */
+  sublabelSymbol?: string;
   isCustomPrice?: boolean;
   // The host calendar reuses this cell for three different lenses, so the sublabel
   // is not always a price. `isCustomPrice` stays as the marketplace-side shorthand
@@ -775,6 +807,15 @@ function MarketplaceRangeDayButton({
   // cross a gap between two bordered tiles without looking like a mistake.
   if (cardVariant) {
     const price = meta?.sublabel ? meta : undefined;
+    // A five-figure amount that kept its symbol ("kr13,127") is half again the width
+    // of "€90" in a cell that is the same size either way. The long ones step down a
+    // size rather than lose their tail to the ellipsis — and what counts as long
+    // depends on the lens: the widget's cards are half the listing page's.
+    const compactPrice =
+      Math.max(
+        price?.sublabel?.length ?? 0,
+        price?.sublabelOriginal?.length ?? 0,
+      ) > (ctx?.dayVariant === "listing" ? 8 : 6);
     const taken = modifiers.disabled || modifiers.unavailable;
     const inRange = modifiers.range_middle || (modifiers.selected && !isEndpoint);
 
@@ -794,7 +835,11 @@ function MarketplaceRangeDayButton({
         style={block ? MINIMUM_STAY_HATCH : undefined}
         tabIndex={block ? -1 : rest.tabIndex}
         className={cn(
-          "group/date relative z-10 flex !size-full flex-col items-stretch justify-between gap-0 rounded-[10px] border px-1.5 py-1.5 text-left font-normal leading-none shadow-none outline-none transition-[background-color,border-color,color] md:px-2.5 md:py-2.5",
+          "group/date relative z-10 flex !size-full flex-col items-stretch justify-between gap-0 rounded-[10px] border px-1.5 py-1.5 text-left font-normal leading-none shadow-none outline-none transition-[background-color,border-color,color]",
+          // The widget's cards are two thirds the listing page's, and a discounted
+          // night stacks three lines inside them — they give the padding back, the
+          // horizontal side especially: it is what the price has to fit across.
+          ctx?.dayVariant === "listing" ? "md:px-2.5 md:py-2.5" : "md:px-1.5 md:py-2",
           "border-border/70 bg-card text-foreground",
           !taken &&
             !block &&
@@ -843,16 +888,38 @@ function MarketplaceRangeDayButton({
         {price ? (
           <span
             className={cn(
-              "notranslate flex items-baseline gap-1 leading-none",
+              // Stacked, not side by side: a discounted night carries two prices, and
+              // in a currency whose symbol is a word ("CFPF11,217") two of them are
+              // wider than the cell they sit in — the struck one used to run off the
+              // edge of the card. What it was is a footnote to what it costs, so it
+              // goes above, in the smaller type.
+              "notranslate flex min-w-0 flex-col items-start gap-px leading-none",
               taken && "opacity-0",
             )}
             translate="no"
             suppressHydrationWarning
           >
+            {price.sublabelOriginal ? (
+              <span
+                className={cn(
+                  "max-w-full truncate text-[0.5625rem] line-through md:text-[0.625rem]",
+                  compactPrice && "text-[0.5rem] md:text-[0.5625rem]",
+                  isEndpoint
+                    ? "text-primary-foreground/70"
+                    : "text-muted-foreground",
+                )}
+              >
+                <CellPrice
+                  text={price.sublabelOriginal}
+                  symbol={price.sublabelSymbol}
+                />
+              </span>
+            ) : null}
             <span
               className={cn(
-                "text-[0.6875rem]",
+                "max-w-full truncate text-[0.6875rem]",
                 ctx?.dayVariant === "listing" ? "md:text-xs" : "md:text-[0.7rem]",
+                compactPrice && "text-[0.625rem] md:text-[0.6875rem]",
                 isEndpoint
                   ? "text-primary-foreground"
                   : price.sublabelOriginal
@@ -862,20 +929,11 @@ function MarketplaceRangeDayButton({
                       : "text-muted-foreground",
               )}
             >
-              {price.sublabel}
+              <CellPrice
+                text={price.sublabel ?? ""}
+                symbol={price.sublabelSymbol}
+              />
             </span>
-            {price.sublabelOriginal ? (
-              <span
-                className={cn(
-                  "text-[0.625rem] line-through",
-                  isEndpoint
-                    ? "text-primary-foreground/70"
-                    : "text-muted-foreground",
-                )}
-              >
-                {price.sublabelOriginal}
-              </span>
-            ) : null}
           </span>
         ) : null}
       </Button>,
@@ -1050,6 +1108,7 @@ export function DateRangeCalendarStep({
   dragToSelect = false,
   toggleSelectedRange = false,
   showEndpointHeader = false,
+  priceNote,
   locale,
 }: {
   active: boolean;
@@ -1077,6 +1136,9 @@ export function DateRangeCalendarStep({
   /** Names the two endpoints and counts the nights above the grid. For surfaces that
    *  don't already carry Check in / Check out segment cards of their own. */
   showEndpointHeader?: boolean;
+  /** Names the currency the day prices are in, under the grid. The cells themselves
+   *  have room for the amount and not much else. */
+  priceNote?: Resolved;
   locale?: string;
 }) {
   const labels = useSearchLabels();
@@ -1966,10 +2028,15 @@ export function DateRangeCalendarStep({
                 "mb-4 flex h-10 w-full items-center justify-center font-semibold text-foreground md:mb-5",
                 pagedCalendar ? "text-[1.0625rem]" : "text-lg",
               ),
-              month_grid:
-                cardDayVariant
-                  ? "mx-auto w-full border-collapse"
-                  : undefined,
+              // `table-fixed` is what keeps two months apart. Under the automatic
+              // algorithm a table is never narrower than its widest cell's content
+              // times seven, so one long price ("CFPF13,127") swelled the whole grid
+              // past its column and the month next to it was drawn underneath. Only
+              // these lenses can take it: their cells are `flex-1`, so the row divides
+              // whatever width the table is given rather than asking for its own.
+              month_grid: cardDayVariant
+                ? "mx-auto w-full table-fixed border-collapse"
+                : undefined,
               table: "mx-auto w-full border-collapse",
               weekdays: cn("flex w-full", pagedCalendar && "pb-3"),
               weekday:
@@ -2022,6 +2089,16 @@ export function DateRangeCalendarStep({
             }}
             components={{ DayButton: MarketplaceRangeDayButton }}
           />
+          {priceNote ? (
+            <p
+              className={cn(
+                "mt-3 text-center text-xs text-muted-foreground md:mt-4",
+                priceNote.translated && "notranslate",
+              )}
+            >
+              {priceNote.text}
+            </p>
+          ) : null}
         </div>
       </div>
     </DragContext.Provider>
@@ -2059,6 +2136,7 @@ export function MarketplaceStayDatePicker({
   hideDateSegmentCards = false,
   disabledDateRanges = [],
   dayMeta,
+  priceNote,
   dayVariant = "default",
   dateModifiers,
   dateModifiersClassNames,
@@ -2073,6 +2151,8 @@ export function MarketplaceStayDatePicker({
   useSharedDesktopShell = false,
   showPillGuestAction = false,
   showGuestStepChrome = false,
+  reviewStepTitle,
+  renderReviewStep,
   searchPresentation = false,
   dialogContentId,
   className,
@@ -2093,7 +2173,7 @@ export function MarketplaceStayDatePicker({
   finalActionLabel?: Resolved;
   /** Guards the final action against a selection the caller considers incomplete. */
   finalActionDisabled?: boolean;
-  /** The search icon belongs to "Search"; a booking flow ends in "Reserve" instead. */
+  /** The search icon belongs to "Search"; a booking flow ends in "Request to book". */
   showFinalActionIcon?: boolean;
   /** Names the guest step on the dates footer ("Who's coming" beats a bare "Next"). */
   nextActionLabel?: Resolved;
@@ -2111,6 +2191,8 @@ export function MarketplaceStayDatePicker({
   hideDateSegmentCards?: boolean;
   disabledDateRanges?: { from: Date; to: Date }[];
   dayMeta?: (date: Date) => MarketplaceDayMeta | undefined;
+  /** Names the currency the day prices are in, under the grid. */
+  priceNote?: Resolved;
   dayVariant?: "default" | "availability" | "listing" | "booking";
   dateModifiers?: React.ComponentProps<typeof Calendar>["modifiers"];
   dateModifiersClassNames?: React.ComponentProps<
@@ -2141,6 +2223,21 @@ export function MarketplaceStayDatePicker({
    * neither what it is asking nor how to get out of it.
    */
   showGuestStepChrome?: boolean;
+  /** Names the review step in the header and for screen readers. */
+  reviewStepTitle?: Resolved;
+  /**
+   * The step after the guests, drawn by the caller.
+   *
+   * Supplying it turns the guest step's primary button into a way forward rather than a
+   * way out: the picker advances to this step instead of firing `onFinalAction` and
+   * closing. Return a scrollable body and a footer — the dialog is a flex column and
+   * this renders straight into it — and use `goToStep` to send the guest back to the
+   * dates or the guests they are reviewing.
+   */
+  renderReviewStep?: (controls: {
+    goToStep: (step: "dates" | "guests") => void;
+    close: () => void;
+  }) => React.ReactNode;
   /** Keep the caller's trigger while using the streamlined search calendar and guest panels. */
   searchPresentation?: boolean;
   dialogContentId?: string;
@@ -2156,12 +2253,20 @@ export function MarketplaceStayDatePicker({
   // gives no reason to press it.
   const resolvedNextActionLabel = nextActionLabel ?? labels.whosComing;
   const resolvedGuestStepTitle = guestStepTitle ?? labels.who;
+  const resolvedReviewStepTitle = reviewStepTitle ?? resolvedGuestStepTitle;
   const isPillLayout = layout === "pill";
   const [isDesktopViewport, setIsDesktopViewport] = React.useState(false);
   const useSearchPresentation =
     isPillLayout || (searchPresentation && isDesktopViewport);
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
   const [step, setStep] = React.useState<Step>(initialStep);
+  /** What the dialog calls itself, wherever the guest is in it. */
+  const stepTitle =
+    step === "dates"
+      ? resolvedDialogTitle
+      : step === "guests"
+        ? resolvedGuestStepTitle
+        : resolvedReviewStepTitle;
   const [activeSegment, setActiveSegment] = React.useState<
     "checkin" | "checkout"
   >("checkin");
@@ -2191,6 +2296,29 @@ export function MarketplaceStayDatePicker({
     },
     [onStepChange],
   );
+
+  /**
+   * What the guest step's primary button does.
+   *
+   * With a review step it is a way forward and the picker stays open; without one it is
+   * the last press in here, which is search's case — it fires the final action and
+   * closes. Both footers below share it so the two presentations cannot drift.
+   */
+  const leaveGuestStep = React.useCallback(() => {
+    if (renderReviewStep) {
+      changeStep("review");
+      return;
+    }
+    if (onFinalAction) onFinalAction();
+    else onSearchRequest();
+    closePicker();
+  }, [
+    changeStep,
+    closePicker,
+    onFinalAction,
+    onSearchRequest,
+    renderReviewStep,
+  ]);
 
   React.useEffect(() => {
     if (!open || (isPillLayout && window.innerWidth >= 768)) return;
@@ -2614,6 +2742,10 @@ export function MarketplaceStayDatePicker({
                 : "md:left-1/2 md:right-auto md:top-[5.75rem] md:bottom-auto md:h-auto md:max-h-[min(35rem,calc(100dvh-7rem))] md:w-[45rem] md:max-w-[calc(100vw-2rem)] md:-translate-x-1/2 md:rounded-[1.75rem]"
               : !useSharedDesktopShell && dayVariant === "availability"
                 ? "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-[50rem] md:max-h-[calc(100dvh-5rem)] md:w-[58rem] md:max-w-[calc(100vw-4rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[2rem]"
+                : !useSharedDesktopShell && useSearchPresentation && step === "review"
+                  ? // Wider and taller than the guest counters: this one carries the
+                    // price, the rules and the button that sends the request.
+                    "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-auto md:max-h-[calc(100dvh-4rem)] md:w-[30rem] md:max-w-[calc(100vw-2rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[1.75rem]"
                 : !useSharedDesktopShell && useSearchPresentation && step === "guests"
                   ? "md:left-1/2 md:right-auto md:top-1/2 md:bottom-auto md:h-auto md:max-h-[calc(100dvh-5rem)] md:w-[25rem] md:max-w-[calc(100vw-2rem)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-[1.75rem]"
                   : !useSharedDesktopShell && searchPresentation && step === "dates"
@@ -2646,18 +2778,9 @@ export function MarketplaceStayDatePicker({
         >
           <div className="sr-only">
             <DialogPrimitive.Title
-              className={
-                (step === "dates"
-                  ? resolvedDialogTitle
-                  : resolvedGuestStepTitle
-                ).translated
-                  ? "notranslate"
-                  : undefined
-              }
+              className={stepTitle.translated ? "notranslate" : undefined}
             >
-              {step === "dates"
-                ? resolvedDialogTitle.text
-                : resolvedGuestStepTitle.text}
+              {stepTitle.text}
             </DialogPrimitive.Title>
             <DialogPrimitive.Description
               className={
@@ -2676,20 +2799,20 @@ export function MarketplaceStayDatePicker({
           </div>
 
           {!useSearchPresentation ? (
-            <div className="border-b border-border/70 bg-background px-4 pt-4 pb-4 md:px-6 md:pt-5">
-              <div className="mb-4 flex items-start justify-between gap-4">
+            <div className="shrink-0 border-b border-border/70 bg-background px-4 pt-4 pb-4 md:px-6 md:pt-5">
+              <div
+                className={cn(
+                  "flex items-start justify-between gap-4",
+                  step !== "review" && "mb-4",
+                )}
+              >
                 <p
                   className={cn(
                     "text-lg font-semibold text-foreground md:text-2xl",
-                    (step === "dates"
-                      ? resolvedDialogTitle
-                      : resolvedGuestStepTitle
-                    ).translated && "notranslate",
+                    stepTitle.translated && "notranslate",
                   )}
                 >
-                  {step === "dates"
-                    ? resolvedDialogTitle.text
-                    : resolvedGuestStepTitle.text}
+                  {stepTitle.text}
                 </p>
                 <button
                   type="button"
@@ -2701,7 +2824,7 @@ export function MarketplaceStayDatePicker({
                 </button>
               </div>
 
-              {step === "dates" ? (
+              {step === "review" ? null : step === "dates" ? (
                 hideDateSegmentCards ? null : (
                   <div className="grid grid-cols-2 gap-2 md:gap-3">
                     <button
@@ -2822,6 +2945,30 @@ export function MarketplaceStayDatePicker({
             </div>
           ) : null}
 
+          {/* The streamlined presentation drops the header, which suits a panel hanging
+              under the search pill and leaves a centred booking dialog unnamed and with
+              no way out. The dates step keeps its own chrome either way. */}
+          {useSearchPresentation && showGuestStepChrome && step !== "dates" ? (
+            <div className="flex shrink-0 items-start justify-between gap-4 px-4 pt-5 md:px-6 md:pt-6">
+              <p
+                className={cn(
+                  "text-lg font-semibold text-foreground",
+                  stepTitle.translated && "notranslate",
+                )}
+              >
+                {stepTitle.text}
+              </p>
+              <button
+                type="button"
+                onClick={closePicker}
+                className="-mr-1 -mt-1 inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                aria-label={labels.closePicker.text}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : null}
+
           {step === "dates" ? (
             <div
               key="dates"
@@ -2864,6 +3011,7 @@ export function MarketplaceStayDatePicker({
                   onFromOnlySelected={() => setActiveSegment("checkout")}
                   disabledDateRanges={disabledDateRanges}
                   dayMeta={dayMeta}
+                  priceNote={priceNote}
                   dayVariant={dayVariant}
                   dateModifiers={dateModifiers}
                   dateModifiersClassNames={dateModifiersClassNames}
@@ -3010,7 +3158,7 @@ export function MarketplaceStayDatePicker({
                 ) : null}
               </div>
             </div>
-          ) : (
+          ) : step === "guests" ? (
             <div
               key="guests"
               className={cn(
@@ -3019,27 +3167,6 @@ export function MarketplaceStayDatePicker({
                   : "contents",
               )}
             >
-              {useSearchPresentation && showGuestStepChrome ? (
-                <div className="flex shrink-0 items-start justify-between gap-4 px-4 pt-5 md:px-6 md:pt-6">
-                  <p
-                    className={cn(
-                      "text-lg font-semibold text-foreground",
-                      resolvedGuestStepTitle.translated && "notranslate",
-                    )}
-                  >
-                    {resolvedGuestStepTitle.text}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={closePicker}
-                    className="-mr-1 -mt-1 inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                    aria-label={labels.closePicker.text}
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ) : null}
-
               <div
                 ref={bodyScrollRef}
                 className="flex-1 min-h-0 overflow-y-auto px-4 py-5 md:px-6 md:py-6"
@@ -3085,11 +3212,7 @@ export function MarketplaceStayDatePicker({
                       resolvedFinalActionLabel.translated && "notranslate",
                     )}
                     disabled={finalActionDisabled}
-                    onClick={() => {
-                      if (onFinalAction) onFinalAction();
-                      else onSearchRequest();
-                      closePicker();
-                    }}
+                    onClick={leaveGuestStep}
                   >
                     {showFinalActionIcon ? (
                       <Search className="mr-2 h-4 w-4" />
@@ -3132,14 +3255,7 @@ export function MarketplaceStayDatePicker({
                           resolvedFinalActionLabel.translated && "notranslate",
                         )}
                         disabled={finalActionDisabled}
-                        onClick={() => {
-                          if (onFinalAction) {
-                            onFinalAction();
-                          } else {
-                            onSearchRequest();
-                          }
-                          closePicker();
-                        }}
+                        onClick={leaveGuestStep}
                       >
                         {showFinalActionIcon ? (
                           <Search className="mr-2 h-4 w-4" />
@@ -3150,6 +3266,23 @@ export function MarketplaceStayDatePicker({
                   </div>
                 </div>
               ) : null}
+            </div>
+          ) : (
+            // Wholly the caller's: a body and a footer, rendered straight into the
+            // dialog's column. The picker supplies the frame, the header and the way
+            // back, and knows nothing about what is being reviewed.
+            <div
+              key="review"
+              className={cn(
+                useSharedDesktopShell
+                  ? "desktop-search-panel-content flex min-h-0 flex-1 flex-col"
+                  : "contents",
+              )}
+            >
+              {renderReviewStep?.({
+                goToStep: changeStep,
+                close: closePicker,
+              })}
             </div>
           )}
         </DialogPrimitive.Content>

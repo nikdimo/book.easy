@@ -69,7 +69,7 @@ describe("PriceStep — the draft's own currency", () => {
     expect(html).toContain("USD");
     expect(html).toContain("US Dollar");
     expect(html).toContain("$");
-    expect(html).toContain("A 3-night stay costs $360.00.");
+    expect(html).toContain("A 3-night stay costs $360.");
     expect(html).not.toContain("EUR");
     expect(html).not.toContain("€");
     expect(html).not.toContain("Euro");
@@ -186,7 +186,7 @@ describe("PriceStep — the cleaning fee", () => {
     draft.data = { baseNightlyRate: "60", cleaningFee: "15" };
 
     // 60 x 3 nights + 15 once.
-    expect(step()).toContain("A 3-night stay costs €195.00.");
+    expect(step()).toContain("A 3-night stay costs €195.");
   });
 
   it("saves the fee alongside the nightly rate", async () => {
@@ -221,7 +221,7 @@ describe("PriceStep — the cleaning fee", () => {
 
     const html = step({ initialTouched: true });
 
-    expect(html).toContain("Your cleaning fee can be at most €1,000.00.");
+    expect(html).toContain("Your cleaning fee can be at most €1,000.");
     expect(html).not.toContain("A 3-night stay costs");
   });
 });
@@ -279,7 +279,7 @@ describe("PriceStep — a currency change during an unfinished draft", () => {
     // Still 120, still dollars — the notice offers, it does not act.
     expect(html).toContain('value="120"');
     expect(html).toContain("Prices in USD");
-    expect(html).toContain("A 3-night stay costs $360.00.");
+    expect(html).toContain("A 3-night stay costs $360.");
   });
 
   it("says which currency the listing is in and which the host is browsing in", () => {

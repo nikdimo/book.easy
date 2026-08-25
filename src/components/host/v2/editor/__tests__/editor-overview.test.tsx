@@ -136,7 +136,7 @@ describe("EditorOverview all-sections area", () => {
     expect(html).toContain("12 photos");
     expect(html).toContain("3 rooms and spaces");
     expect(html).toContain("9 amenities");
-    expect(html).toContain("€60.00 per night");
+    expect(html).toContain("€60 per night");
     expect(html).toContain("Open by default");
     expect(html).toContain("Reviewed");
     expect(html).toContain("5 of 5 complete");

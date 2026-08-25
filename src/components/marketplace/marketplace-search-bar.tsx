@@ -911,7 +911,11 @@ function MarketplaceSearchBarInner({
               dateFlexibility={dateFlexibility}
               open={datePickerOpen}
               onOpenChange={handleDatePickerOpenChange}
-              onStepChange={setDatePickerInitialStep}
+              onStepChange={(step) => {
+                // Search has no review step to reach, so the picker never reports one
+                // here; this keeps that fact in the type rather than in a comment.
+                if (step !== "review") setDatePickerInitialStep(step);
+              }}
               initialSegment={datePickerInitialSegment}
               initialStep={datePickerInitialStep}
               showBackToPlace={datePickerCanReturnToPlace}

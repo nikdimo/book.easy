@@ -2,13 +2,11 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Grid } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import type { ListingMediaItem } from "@/lib/types/listing-media";
 import { cn } from "@/lib/utils";
 import { useSwipe } from "@/lib/hooks/use-swipe";
 import { useProgressivePreload } from "@/lib/hooks/use-progressive-preload";
-import { Tx, useI18n } from "@/lib/i18n/client";
+import { Tx, interpolate, useI18n } from "@/lib/i18n/client";
 import { GalleryMedia, PreloadImages, preloadIndicesFor } from "./gallery-media";
 
 interface ImageGalleryProps {
@@ -49,6 +47,10 @@ export function ImageGallery({ images, slug }: ImageGalleryProps) {
   }
 
   const tourHref = `/properties/${slug}/photos`;
+  const seeAllLabel = interpolate(
+    i18n.resolve("gallery.see_all", "See all ({n})"),
+    { n: images.length }
+  );
   const photoHref = (index: number) => `${tourHref}?photo=${index}`;
   const mainImage = images[0];
   const gridImages = images.slice(1, 5);
@@ -137,18 +139,19 @@ export function ImageGallery({ images, slug }: ImageGalleryProps) {
           </Link>
         ))}
       </div>
+      {/* One way into the full gallery, at both widths: a plain white label in the
+          corner. It was a bordered button with an icon reading "Show all 22 items",
+          which on a phone was wide enough to sit on top of the dots. */}
       {images.length > 1 && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="absolute bottom-4 right-4 rounded-lg border border-black/60 bg-white px-3 py-1.5 text-[0.8rem] font-medium text-black shadow-sm hover:bg-white hover:text-black dark:bg-white dark:text-black dark:border-black/60"
-          asChild
+        <Link
+          href={tourHref}
+          className={cn(
+            "absolute bottom-4 right-4 rounded-full bg-white/95 px-3 py-1.5 text-[0.8rem] font-medium text-black shadow-sm transition-colors hover:bg-white",
+            seeAllLabel.translated && "notranslate"
+          )}
         >
-          <Link href={tourHref}>
-            <Grid className="h-4 w-4 mr-2" />
-            {(() => { const value = i18n.plural("gallery.show_all", images.length, "Show all {n} item", "Show all {n} items"); return <span className={value.translated ? "notranslate" : undefined}>{value.text}</span>; })()}
-          </Link>
-        </Button>
+          {seeAllLabel.text}
+        </Link>
       )}
     </div>
   );

@@ -476,7 +476,7 @@ export function ConversationThread({
       {thread.conversation.kind === "INQUIRY" ? (
         <div className="flex shrink-0 gap-2 border-b bg-amber-50 px-4 py-3 text-sm text-amber-950">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <Tx k="conversation.safety_notice" source="Keep payment and contact details inside Linger Homes until the booking is confirmed." />
+          <Tx k="conversation.safety_notice_direct_payment" source="Keep your conversation inside Linger Homes. If a booking is accepted, the host will share payment instructions directly; Linger Homes does not collect booking payments." />
         </div>
       ) : null}
 

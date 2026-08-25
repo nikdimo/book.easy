@@ -61,12 +61,26 @@ export default async function BookingConfirmPage({ searchParams }: ConfirmPagePr
           isPending ? (
             <T
               t={t}
-              k="booking.request_sent_description"
-              source="Your booking request has been submitted. The host will review and respond."
+              k="booking.request_sent_body"
+              source="Your booking request has been sent. The host will accept or decline it."
             />
           ) : undefined
         }
       />
+
+      {/* The fuller statement goes here rather than under the card's button: this is
+          the first screen a guest reaches having actually sent something, and it is
+          the last chance to settle where the money is going to be handled before they
+          go looking for a payment step that does not exist. */}
+      {isPending ? (
+        <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+          <T
+            t={t}
+            k="booking.payment_arranged_with_host"
+            source="Linger Homes does not collect or hold booking payments. Payment is arranged directly with the host after the booking is accepted."
+          />
+        </p>
+      ) : null}
 
       <Card className="mt-6 overflow-hidden">
         {booking.listing.images[0]?.url ? (
@@ -150,12 +164,12 @@ export default async function BookingConfirmPage({ searchParams }: ConfirmPagePr
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span><T t={t} k="booking.accommodation" source="Accommodation" /> · <span className={nights.translated ? "notranslate" : undefined}>{nights.text}</span></span>
-              <LocalizedPrice official amount={accommodationSubtotal} currency={booking.currency} locale={t.locale} />
+              <LocalizedPrice official exact amount={accommodationSubtotal} currency={booking.currency} locale={t.locale} />
             </div>
             {Number(booking.cleaningFee) > 0 && (
               <div className="flex justify-between">
                 <span><T t={t} k="booking.cleaning_fee" source="Cleaning fee" /></span>
-                <LocalizedPrice official amount={Number(booking.cleaningFee)} currency={booking.currency} locale={t.locale} />
+                <LocalizedPrice official exact amount={Number(booking.cleaningFee)} currency={booking.currency} locale={t.locale} />
               </div>
             )}
             {Number(booking.discountAmount) > 0 && (
@@ -165,7 +179,7 @@ export default async function BookingConfirmPage({ searchParams }: ConfirmPagePr
                     ? <T t={t} k="promotion.free_cleaning" source="Free cleaning" />
                     : <T t={t} k="promotion.special_offer" source="Special offer" />}
                 </span>
-                <span>−<LocalizedPrice official amount={Number(booking.discountAmount)} currency={booking.currency} locale={t.locale} /></span>
+                <span>−<LocalizedPrice official exact amount={Number(booking.discountAmount)} currency={booking.currency} locale={t.locale} /></span>
               </div>
             )}
             <Separator />
@@ -173,9 +187,9 @@ export default async function BookingConfirmPage({ searchParams }: ConfirmPagePr
               <span><T t={t} k="booking.total" source="Total" /></span>
               <span className="flex items-baseline gap-2">
                 {booking.originalTotal && Number(booking.discountAmount) > 0 ? (
-                  <LocalizedPrice official amount={Number(booking.originalTotal)} currency={booking.currency} locale={t.locale} className="text-sm font-normal text-muted-foreground line-through" />
+                  <LocalizedPrice official exact amount={Number(booking.originalTotal)} currency={booking.currency} locale={t.locale} className="text-sm font-normal text-muted-foreground line-through" />
                 ) : null}
-                <LocalizedPrice official amount={Number(booking.totalPrice)} currency={booking.currency} locale={t.locale} />
+                <LocalizedPrice official exact amount={Number(booking.totalPrice)} currency={booking.currency} locale={t.locale} />
               </span>
             </div>
             {/* The booking is agreed in the listing's currency. This line is the

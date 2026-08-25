@@ -211,7 +211,9 @@ export default function BookingsScreen() {
                   onPress={() =>
                     Alert.alert(
                       t("Confirm booking"),
-                      t("Accept this request and reserve these dates for the guest?"),
+                      t(
+                        "Accept this request and reserve these dates for the guest? After accepting, share your payment instructions directly with the guest."
+                      ),
                       [
                         { text: t("Not yet"), style: "cancel" },
                         {

@@ -51,7 +51,7 @@ export default function PrivacyPage() {
               </li>
               <li>
                 <strong>Booking Information:</strong> Check-in/check-out dates, number of guests,
-                special requests, and payment information
+                and any message you send with a booking request
               </li>
               <li>
                 <strong>Listing Information:</strong> Property details, descriptions, photos,
@@ -62,8 +62,11 @@ export default function PrivacyPage() {
                 and support inquiries
               </li>
               <li>
-                <strong>Payment Data:</strong> We do not directly collect credit card data; payment
-                processing is handled by third-party payment processors
+                <strong>Payment Processing Data:</strong> We do not collect or hold booking
+                payments, collect card or bank details to process them, or use a payment
+                processor. Payment is arranged directly between guest and host after a booking is
+                accepted. If a user voluntarily shares payment instructions in Messages, we
+                process that information as part of the communication
               </li>
               <li>
                 <strong>Preferences:</strong> Language settings, saved listings (favorites), and
@@ -102,10 +105,6 @@ export default function PrivacyPage() {
                 email, and profile picture from Google
               </li>
               <li>
-                <strong>Payment Processors:</strong> Transaction confirmations and fraud prevention
-                data
-              </li>
-              <li>
                 <strong>Analytics Providers:</strong> Aggregated usage patterns and user behavior
                 data
               </li>
@@ -142,7 +141,7 @@ export default function PrivacyPage() {
             <h2 className="text-2xl font-semibold mb-4">4. How We Use Your Information</h2>
             <ul className="list-disc pl-6 space-y-2">
               <li>To create and maintain your account</li>
-              <li>To process bookings and payments</li>
+              <li>To pass booking requests between guests and hosts</li>
               <li>To connect hosts and guests for communication</li>
               <li>To send transactional emails (booking confirmations, cancellations)</li>
               <li>To improve and optimize the Site and Service</li>
@@ -199,9 +198,6 @@ export default function PrivacyPage() {
               <li>
                 <strong>Email Delivery Provider:</strong> Delivery of account, booking, and
                 consented marketing email
-              </li>
-              <li>
-                <strong>Payment Processors:</strong> Payment authorization and processing
               </li>
               <li>
                 <strong>Analytics Providers:</strong> Usage patterns (anonymized where possible)

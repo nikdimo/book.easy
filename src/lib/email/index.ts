@@ -422,9 +422,12 @@ export async function notifyGuestBookingRequestReceived(bookingId: string): Prom
   const deadline = bookingDeadline(booking, t.locale);
   const viewRequest = t.t("email.booking.view_request", "View request");
   const viewListing = t.t("email.booking.view_listing", "View listing");
-  const noPayment = t.t(
-    "email.booking.no_payment_collected",
-    "No payment has been collected for this request."
+  // Deliberately not "no payment has been collected yet": nothing is ever collected
+  // here, and a sentence shaped like a stage in a payment flow is what sends a guest
+  // looking for the next stage.
+  const paymentNotice = t.t(
+    "email.booking.payment_after_acceptance",
+    "Linger Homes does not collect or hold booking payments. If the host accepts, they will share payment instructions with you directly."
   );
 
   await sendTransactionalEmail({
@@ -443,7 +446,7 @@ export async function notifyGuestBookingRequestReceived(bookingId: string): Prom
         "This booking is not confirmed yet. The host has until {deadline} to respond.",
         { deadline }
       ),
-      noPayment,
+      paymentNotice,
       "",
       `${t.t("email.booking.reference", "Reference")}: ${booking.reference}`,
       `${t.t("email.booking.check_in", "Check-in")}: ${formatDate(booking.checkIn, t.locale)}`,
@@ -482,8 +485,8 @@ export async function notifyGuestBookingRequestReceived(bookingId: string): Prom
       location: bookingLocation(booking),
       details: bookingEmailDetails(booking, t),
       callout: t.ti(
-        "email.booking.request_received.callout",
-        "The host has until {deadline} to accept or decline. No payment has been collected for this request.",
+        "email.booking.request_received.callout_payment",
+        "The host has until {deadline} to accept or decline. If they accept, they will share payment instructions with you directly.",
         { deadline }
       ),
       buttons: [
@@ -636,8 +639,8 @@ export async function notifyGuestBookingConfirmed(bookingId: string): Promise<vo
     greeting(booking.guest.name, t),
     ``,
     t.ti(
-      "email.booking.confirmed.good_news",
-      'Good news — your booking for "{listing}" has been confirmed.',
+      "email.booking.confirmed.accepted",
+      'Good news — your booking for "{listing}" has been accepted. The host will share payment instructions with you.',
       { listing: booking.listing.title }
     ),
     `${t.t("email.booking.check_in", "Check-in")}: ${formatDate(booking.checkIn, t.locale)}`,
@@ -658,7 +661,10 @@ export async function notifyGuestBookingConfirmed(bookingId: string): Promise<vo
         { listing: booking.listing.title }
       ),
       eyebrow: t.t("email.booking.confirmed.eyebrow", "Booking confirmed"),
-      headline: t.t("email.booking.confirmed.headline", "You’re all set"),
+      headline: t.t(
+        "email.booking.confirmed.headline_accepted",
+        "Your booking has been accepted"
+      ),
       intro: t.ti(
         "email.booking.confirmed.intro",
         "{host} accepted your booking request.",
@@ -671,8 +677,8 @@ export async function notifyGuestBookingConfirmed(bookingId: string): Promise<vo
       location: bookingLocation(booking),
       details: bookingEmailDetails(booking, t),
       callout: t.ti(
-        "email.booking.confirmed.callout",
-        "Keep your messages and any payment arrangements inside {brand} for support and security.",
+        "email.booking.confirmed.callout_payment",
+        "Linger Homes does not collect or hold booking payments — the host will share payment instructions with you directly. Keep your messages inside {brand} for support and security.",
         { brand: COMMUNICATION_BRAND.name }
       ),
       buttons: [
@@ -693,9 +699,9 @@ export async function notifyGuestBookingRejected(bookingId: string): Promise<voi
   const links = bookingEmailLinks(booking);
 
   const t = getEmailT(booking.guestLocale ?? booking.guest.locale);
-  const noPaymentCallout = t.t(
-    "email.booking.no_payment_dates_free",
-    "No payment was collected. Your dates are free to use for another booking."
+  const datesFreeCallout = t.t(
+    "email.booking.dates_free",
+    "Your dates are free to use for another booking. This request was not accepted, and Linger Homes does not collect or hold booking payments."
   );
   const lines = [
     greeting(booking.guest.name, t),
@@ -718,7 +724,10 @@ export async function notifyGuestBookingRejected(bookingId: string): Promise<voi
         ]
       : []),
     ``,
-    t.t("email.booking.no_payment_was_collected", "No payment was collected for this request."),
+    t.t(
+      "email.booking.request_not_accepted",
+      "This booking request was not accepted. Linger Homes does not collect or hold booking payments."
+    ),
     ``,
     `— ${COMMUNICATION_BRAND.name}`,
   ];
@@ -749,7 +758,7 @@ export async function notifyGuestBookingRejected(bookingId: string): Promise<voi
       imageUrl: booking.listing.images[0]?.url,
       location: bookingLocation(booking),
       details: bookingEmailDetails(booking, t),
-      callout: noPaymentCallout,
+      callout: datesFreeCallout,
       buttons: [{ label: t.t("email.booking.view_request", "View request"), href: links.guest }],
     }),
   });
@@ -776,7 +785,10 @@ export async function notifyGuestBookingExpired(bookingId: string): Promise<void
         { listing: booking.listing.title }
       ),
       `${t.t("email.booking.reference", "Reference")}: ${booking.reference}`,
-      t.t("email.booking.no_payment_was_collected", "No payment was collected for this request."),
+      t.t(
+        "email.booking.request_not_accepted",
+        "This booking request was not accepted. Linger Homes does not collect or hold booking payments."
+      ),
       "",
       `${viewRequest}: ${links.guest}`,
       "",
@@ -801,8 +813,8 @@ export async function notifyGuestBookingExpired(bookingId: string): Promise<void
       location: bookingLocation(booking),
       details: bookingEmailDetails(booking, t),
       callout: t.t(
-        "email.booking.no_payment_dates_free",
-        "No payment was collected. Your dates are free to use for another booking."
+        "email.booking.dates_free",
+        "Your dates are free to use for another booking. This request was not accepted, and Linger Homes does not collect or hold booking payments."
       ),
       buttons: [{ label: viewRequest, href: links.guest }],
     }),
@@ -836,6 +848,11 @@ export async function notifyGuestBookingCancelled(bookingId: string): Promise<vo
         ]
       : []),
     ``,
+    t.t(
+      "email.booking.cancelled.payment_note",
+      "Linger Homes does not collect or hold booking payments, so there is nothing for us to refund. Settle anything you arranged directly with the host."
+    ),
+    ``,
     `— ${COMMUNICATION_BRAND.name}`,
   ];
 
@@ -863,8 +880,8 @@ export async function notifyGuestBookingCancelled(bookingId: string): Promise<vo
       location: bookingLocation(booking),
       details: bookingEmailDetails(booking, t),
       callout: t.t(
-        "email.booking.cancelled.callout",
-        "View the booking page for the current status and contact support if you need help."
+        "email.booking.cancelled.callout_payment",
+        "Linger Homes does not collect or hold booking payments, so there is nothing for us to refund — settle anything you arranged directly with the host. View the booking page for the current status and contact support if you need help."
       ),
       buttons: [{ label: t.t("email.booking.view_booking", "View booking"), href: links.guest }],
     }),
@@ -1163,8 +1180,8 @@ export async function notifyClaimReleased(input: {
       t.ti("email.booking.reason", "Reason: {reason}", { reason: claim.subject }),
       "",
       t.t(
-        "email.claim.released.rights",
-        "You can accept, counter, or reject after reviewing the evidence. You will not be silently charged for failing to respond."
+        "email.claim.released.rights_direct",
+        "You can accept, counter, or reject after reviewing the evidence. Linger Homes does not collect or hold payments, so nothing is taken from you either way."
       ),
       "",
       `${t.t("email.claim.respond_securely", "Respond securely")}: ${communicationAppUrl(`/account/support/${claim.id}`)}`,

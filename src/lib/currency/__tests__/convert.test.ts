@@ -39,8 +39,31 @@ describe("currency conversion", () => {
 
 describe("money formatting", () => {
   it("follows the reading locale's separators and symbol position", () => {
-    expect(formatMoney(1250, "EUR", "en")).toBe("€1,250.00");
-    expect(formatMoney(1250, "EUR", "de")).toBe(`1.250,00${NB}€`);
+    expect(formatMoney(1250.5, "EUR", "en")).toBe("€1,250.50");
+    expect(formatMoney(1250.5, "EUR", "de")).toBe(`1.250,50${NB}€`);
+  });
+
+  it("drops a fraction that would only print zeros", () => {
+    // A whole price says nothing with its minor digits, and the same amount must
+    // not read as "€180" in a calendar cell and "€180.00" in the widget above it.
+    expect(formatMoney(180, "EUR", "en")).toBe("€180");
+    expect(formatMoney(1250, "EUR", "de")).toBe(`1.250${NB}€`);
+  });
+
+  it("keeps a fraction that carries a value", () => {
+    expect(formatMoney(180.5, "EUR", "en")).toBe("€180.50");
+    expect(formatMoney(0.99, "EUR", "en")).toBe("€0.99");
+  });
+
+  it("keeps the minor units on whole amounts when asked to be exact", () => {
+    // The price-details table itemises a total rather than advertising a price.
+    expect(formatMoney(1260, "EUR", "en", { exact: true })).toBe("€1,260.00");
+    expect(formatMoney(1260.5, "EUR", "en", { exact: true })).toBe("€1,260.50");
+  });
+
+  it("rounds before deciding, so a near-whole amount is not printed as .00", () => {
+    // 179.999 renders as "180.00" at two decimals; those cents are gone either way.
+    expect(formatMoney(179.999, "EUR", "en")).toBe("€180");
   });
 
   it("omits decimals for currencies that have no minor unit", () => {
@@ -70,6 +93,14 @@ describe("money formatting", () => {
     expect(formatMoney(500.5, "EUR", "en", { converted: true })).toBe("€501");
   });
 
+  it("will not restate a converted approximation to the cent, even when exact", () => {
+    // `exact` is about trailing zeros, not about pretending a converted figure is
+    // precise. The official amount is disclosed separately.
+    expect(formatMoney(3945.87, "DKK", "en", { converted: true, exact: true })).toBe(
+      `kr${NB}3,946`,
+    );
+  });
+
   it("can render the code where a bare symbol would be ambiguous", () => {
     // AUD, CAD, USD and several others all narrow to "$".
     expect(formatMoney(100, "AUD", "en", { showCode: true })).toContain("AUD");
@@ -78,7 +109,8 @@ describe("money formatting", () => {
   it("never blanks a price out on input Intl refuses", () => {
     // Intl tolerates any three-letter code, so the throwing path needs a
     // structurally invalid one to reach it.
-    expect(formatMoney(100, "E", "en")).toBe("100.00 E");
+    expect(formatMoney(100, "E", "en")).toBe("100 E");
+    expect(formatMoney(100.5, "E", "en")).toBe("100.50 E");
   });
 });
 
@@ -95,15 +127,22 @@ describe("displayPrice", () => {
     // The story's explicit requirement: show the official price, never a broken,
     // zero or invented one.
     expect(displayPrice(100, "EUR", "en", null)).toEqual({
-      text: "€100.00",
+      text: "€100",
       currency: "EUR",
       converted: false,
     });
     expect(displayPrice(100, "EUR", "en", context("ZZZ"))).toEqual({
-      text: "€100.00",
+      text: "€100",
       currency: "EUR",
       converted: false,
     });
+  });
+
+  it("carries `exact` into the unconverted fallback, so the details still itemise", () => {
+    expect(displayPrice(100, "EUR", "en", context("EUR"), { exact: true }).text).toBe(
+      "€100.00",
+    );
+    expect(displayPrice(100, "EUR", "en", null, { exact: true }).text).toBe("€100.00");
   });
 
   it("reports no conversion when the guest already browses in the official currency", () => {

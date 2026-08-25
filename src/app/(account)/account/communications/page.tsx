@@ -58,7 +58,7 @@ export default async function CommunicationsPage() {
     <div className="mx-auto max-w-2xl">
       <h1 className="text-3xl font-semibold"><T t={translator} k="account.communications.heading" source="Communication preferences" /></h1>
       <p className="mt-3 text-muted-foreground">
-        <T t={translator} k="account.communications.intro" source="Promotional communication is optional. Essential security, payment, listing, and active-booking messages cannot be disabled while those services are in use." />
+        <T t={translator} k="account.communications.intro_booking" source="Promotional communication is optional. Essential account, security, listing, messaging, and active-booking messages cannot be disabled while those services are in use." />
       </p>
       <form action={saveCommunicationPreferences} className="mt-8 space-y-8">
         <section>

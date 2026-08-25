@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export function StartConversationButton({
   bookingId,
@@ -12,20 +13,29 @@ export function StartConversationButton({
   isAuthenticated = true,
   label = "Message",
   variant = "outline",
+  iconOnly = false,
+  className,
 }: {
   bookingId?: string;
   listingId?: string;
   isAuthenticated?: boolean;
   label?: string;
+  /** Icon-only renders a round icon button; `label` becomes its accessible name. */
+  iconOnly?: boolean;
   variant?: "default" | "outline" | "ghost";
+  className?: string;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
 
   async function start() {
     if (!isAuthenticated) {
+      // Search params come along: a guest sent to log in from a listing they had
+      // already picked dates on comes back to those dates, not to a bare listing.
       const callbackUrl =
-        typeof window === "undefined" ? "/" : window.location.pathname;
+        typeof window === "undefined"
+          ? "/"
+          : `${window.location.pathname}${window.location.search}`;
       router.push(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
       return;
     }
@@ -53,8 +63,31 @@ export function StartConversationButton({
     }
   }
 
+  if (iconOnly) {
+    return (
+      <Button
+        type="button"
+        variant={variant}
+        size="icon"
+        aria-label={label}
+        title={label}
+        disabled={pending}
+        onClick={() => void start()}
+        className={cn("shrink-0 rounded-full", className)}
+      >
+        <MessageCircle className="h-[18px] w-[18px]" />
+      </Button>
+    );
+  }
+
   return (
-    <Button type="button" variant={variant} disabled={pending} onClick={() => void start()}>
+    <Button
+      type="button"
+      variant={variant}
+      disabled={pending}
+      onClick={() => void start()}
+      className={className}
+    >
       <MessageCircle className="mr-2 h-4 w-4" />
       {pending ? "Opening..." : label}
     </Button>

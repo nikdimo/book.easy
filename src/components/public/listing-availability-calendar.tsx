@@ -8,7 +8,10 @@ import {
   parseLocalYmd,
   type StayPromotion,
 } from "@/lib/utils/stay-pricing";
-import { useListingDayPrices } from "./use-listing-day-prices";
+import {
+  useCellCurrencyNote,
+  useListingDayPrices,
+} from "./use-listing-day-prices";
 import {
   listablePromotions,
   resolvePromotionLabel,
@@ -54,6 +57,7 @@ export function ListingAvailabilityCalendar({
     boundedPromotionsOnly: true,
     showCurrencySymbol: true,
   });
+  const priceNote = useCellCurrencyNote(currency);
   const [{ checkIn, checkOut }, setStayRange] = useListingStayRange({
     checkIn: "",
     checkOut: "",
@@ -208,6 +212,7 @@ export function ListingAvailabilityCalendar({
           }
           disabledDateRanges={disabledDateRanges}
           dayMeta={dayPrice}
+          priceNote={priceNote}
           minimumStayNights={minNights}
           minimumStayMessage={minimumStayMessage}
           fitViewport

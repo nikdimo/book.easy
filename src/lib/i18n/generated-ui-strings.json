@@ -375,8 +375,8 @@
     "filePath": "src/app/(account)/account/communications/page.tsx"
   },
   {
-    "key": "account.communications.intro",
-    "sourceText": "Promotional communication is optional. Essential security, payment, listing, and active-booking messages cannot be disabled while those services are in use.",
+    "key": "account.communications.intro_booking",
+    "sourceText": "Promotional communication is optional. Essential account, security, listing, messaging, and active-booking messages cannot be disabled while those services are in use.",
     "filePath": "src/app/(account)/account/communications/page.tsx"
   },
   {
@@ -1295,8 +1295,8 @@
     "filePath": "src/components/auth/login-form.tsx"
   },
   {
-    "key": "booking_widget.reserve_tooltip",
-    "sourceText": "Send a booking request to the host — you won't be charged yet.",
+    "key": "booking_widget.request_to_book_tooltip",
+    "sourceText": "Send a booking request. The host will review it and share payment instructions if it is accepted.",
     "filePath": "src/app/(public)/properties/[slug]/page.tsx"
   },
   {
@@ -1485,6 +1485,16 @@
     "filePath": "src/app/(public)/bookings/confirm/page.tsx"
   },
   {
+    "key": "booking.hero.accepted_guest",
+    "sourceText": "Your booking has been accepted. The host will share payment instructions with you.",
+    "filePath": "src/components/booking/booking-status-hero.tsx"
+  },
+  {
+    "key": "booking.hero.accepted_host",
+    "sourceText": "The guest has been notified. Share your payment instructions with the guest directly. These dates remain blocked in your calendar.",
+    "filePath": "src/components/booking/booking-status-hero.tsx"
+  },
+  {
     "key": "booking.hero.cancelled",
     "sourceText": "Booking cancelled",
     "filePath": "src/components/booking/booking-status-hero.tsx"
@@ -1507,16 +1517,6 @@
   {
     "key": "booking.hero.confirmed",
     "sourceText": "Booking confirmed",
-    "filePath": "src/components/booking/booking-status-hero.tsx"
-  },
-  {
-    "key": "booking.hero.confirmed_guest",
-    "sourceText": "You're all set. Use this page for messages, stay details and support.",
-    "filePath": "src/components/booking/booking-status-hero.tsx"
-  },
-  {
-    "key": "booking.hero.confirmed_host",
-    "sourceText": "The guest has been notified. These dates remain blocked in your calendar.",
     "filePath": "src/components/booking/booking-status-hero.tsx"
   },
   {
@@ -1565,23 +1565,13 @@
     "filePath": "src/components/booking/booking-status-hero.tsx"
   },
   {
-    "key": "booking.house_rules_agree_and_reserve",
-    "sourceText": "I agree and reserve",
+    "key": "booking.host_review_notice",
+    "sourceText": "The host will review your request and share payment instructions if it is accepted.",
     "filePath": "src/components/public/booking-widget.tsx"
   },
   {
-    "key": "booking.house_rules_agreed",
-    "sourceText": "Agreed",
-    "filePath": "src/components/public/booking-widget.tsx"
-  },
-  {
-    "key": "booking.house_rules_required",
-    "sourceText": "Please agree to the house rules before you send your request.",
-    "filePath": "src/components/public/booking-widget.tsx"
-  },
-  {
-    "key": "booking.house_rules_review",
-    "sourceText": "Review and agree",
+    "key": "booking.house_rules_agreement_request",
+    "sourceText": "By sending this request you agree to the house rules above.",
     "filePath": "src/components/public/booking-widget.tsx"
   },
   {
@@ -1620,8 +1610,8 @@
     "filePath": "src/components/public/booking-widget.tsx"
   },
   {
-    "key": "booking.message_add",
-    "sourceText": "Add a note for the host",
+    "key": "booking.message_add_cta",
+    "sourceText": "Add a note",
     "filePath": "src/components/public/booking-widget.tsx"
   },
   {
@@ -1632,16 +1622,6 @@
   {
     "key": "booking.message_placeholder",
     "sourceText": "Introduce yourself and share your travel plans...",
-    "filePath": "src/components/public/booking-widget.tsx"
-  },
-  {
-    "key": "booking.message_row_label",
-    "sourceText": "Message",
-    "filePath": "src/components/public/booking-widget.tsx"
-  },
-  {
-    "key": "booking.message_save",
-    "sourceText": "Save message",
     "filePath": "src/components/public/booking-widget.tsx"
   },
   {
@@ -1715,14 +1695,14 @@
     "filePath": "src/app/(public)/bookings/confirm/page.tsx"
   },
   {
-    "key": "booking.no_charge_notice",
-    "sourceText": "You won't be charged yet. The host will approve or decline your request.",
-    "filePath": "src/components/public/booking-widget.tsx"
-  },
-  {
     "key": "booking.official_currency_notice",
     "sourceText": "Prices are displayed in {display} for convenience. The booking is agreed in {official}: {amount}.",
     "filePath": "src/components/shared/official-amount-notice.tsx"
+  },
+  {
+    "key": "booking.payment_arranged_with_host",
+    "sourceText": "Linger Homes does not collect or hold booking payments. Payment is arranged directly with the host after the booking is accepted.",
+    "filePath": "src/app/(account)/account/bookings/[id]/page.tsx"
   },
   {
     "key": "booking.pending",
@@ -1775,13 +1755,13 @@
     "filePath": "src/app/(public)/bookings/confirm/page.tsx"
   },
   {
-    "key": "booking.request_sent_description",
-    "sourceText": "Your booking request has been submitted. The host will review and respond.",
+    "key": "booking.request_sent_body",
+    "sourceText": "Your booking request has been sent. The host will accept or decline it.",
     "filePath": "src/app/(public)/bookings/confirm/page.tsx"
   },
   {
-    "key": "booking.reserve",
-    "sourceText": "Reserve",
+    "key": "booking.request_to_book",
+    "sourceText": "Request to book",
     "filePath": "src/components/public/booking-widget.tsx"
   },
   {
@@ -2385,8 +2365,8 @@
     "filePath": "src/components/communication/conversation-thread.tsx"
   },
   {
-    "key": "conversation.safety_notice",
-    "sourceText": "Keep payment and contact details inside Linger Homes until the booking is confirmed.",
+    "key": "conversation.safety_notice_direct_payment",
+    "sourceText": "Keep your conversation inside Linger Homes. If a booking is accepted, the host will share payment instructions directly; Linger Homes does not collect booking payments.",
     "filePath": "src/components/communication/conversation-thread.tsx"
   },
   {
@@ -2540,8 +2520,8 @@
     "filePath": "src/lib/email/index.ts"
   },
   {
-    "key": "email.booking.cancelled.callout",
-    "sourceText": "View the booking page for the current status and contact support if you need help.",
+    "key": "email.booking.cancelled.callout_payment",
+    "sourceText": "Linger Homes does not collect or hold booking payments, so there is nothing for us to refund — settle anything you arranged directly with the host. View the booking page for the current status and contact support if you need help.",
     "filePath": "src/lib/email/index.ts"
   },
   {
@@ -2557,6 +2537,11 @@
   {
     "key": "email.booking.cancelled.intro",
     "sourceText": "The booking has been cancelled.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.cancelled.payment_note",
+    "sourceText": "Linger Homes does not collect or hold booking payments, so there is nothing for us to refund. Settle anything you arranged directly with the host.",
     "filePath": "src/lib/email/index.ts"
   },
   {
@@ -2580,8 +2565,13 @@
     "filePath": "src/lib/email/index.ts"
   },
   {
-    "key": "email.booking.confirmed.callout",
-    "sourceText": "Keep your messages and any payment arrangements inside {brand} for support and security.",
+    "key": "email.booking.confirmed.accepted",
+    "sourceText": "Good news — your booking for \"{listing}\" has been accepted. The host will share payment instructions with you.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.confirmed.callout_payment",
+    "sourceText": "Linger Homes does not collect or hold booking payments — the host will share payment instructions with you directly. Keep your messages inside {brand} for support and security.",
     "filePath": "src/lib/email/index.ts"
   },
   {
@@ -2590,13 +2580,8 @@
     "filePath": "src/lib/email/index.ts"
   },
   {
-    "key": "email.booking.confirmed.good_news",
-    "sourceText": "Good news — your booking for \"{listing}\" has been confirmed.",
-    "filePath": "src/lib/email/index.ts"
-  },
-  {
-    "key": "email.booking.confirmed.headline",
-    "sourceText": "You’re all set",
+    "key": "email.booking.confirmed.headline_accepted",
+    "sourceText": "Your booking has been accepted",
     "filePath": "src/lib/email/index.ts"
   },
   {
@@ -2612,6 +2597,11 @@
   {
     "key": "email.booking.confirmed.subject",
     "sourceText": "Confirmed",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.dates_free",
+    "sourceText": "Your dates are free to use for another booking. This request was not accepted, and Linger Homes does not collect or hold booking payments.",
     "filePath": "src/lib/email/index.ts"
   },
   {
@@ -2815,18 +2805,8 @@
     "filePath": "src/lib/email/index.ts"
   },
   {
-    "key": "email.booking.no_payment_collected",
-    "sourceText": "No payment has been collected for this request.",
-    "filePath": "src/lib/email/index.ts"
-  },
-  {
-    "key": "email.booking.no_payment_dates_free",
-    "sourceText": "No payment was collected. Your dates are free to use for another booking.",
-    "filePath": "src/lib/email/index.ts"
-  },
-  {
-    "key": "email.booking.no_payment_was_collected",
-    "sourceText": "No payment was collected for this request.",
+    "key": "email.booking.payment_after_acceptance",
+    "sourceText": "Linger Homes does not collect or hold booking payments. If the host accepts, they will share payment instructions with you directly.",
     "filePath": "src/lib/email/index.ts"
   },
   {
@@ -2840,8 +2820,13 @@
     "filePath": "src/lib/email/index.ts"
   },
   {
-    "key": "email.booking.request_received.callout",
-    "sourceText": "The host has until {deadline} to accept or decline. No payment has been collected for this request.",
+    "key": "email.booking.request_not_accepted",
+    "sourceText": "This booking request was not accepted. Linger Homes does not collect or hold booking payments.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.request_received.callout_payment",
+    "sourceText": "The host has until {deadline} to accept or decline. If they accept, they will share payment instructions with you directly.",
     "filePath": "src/lib/email/index.ts"
   },
   {
@@ -2970,8 +2955,8 @@
     "filePath": "src/lib/email/index.ts"
   },
   {
-    "key": "email.claim.released.rights",
-    "sourceText": "You can accept, counter, or reject after reviewing the evidence. You will not be silently charged for failing to respond.",
+    "key": "email.claim.released.rights_direct",
+    "sourceText": "You can accept, counter, or reject after reviewing the evidence. Linger Homes does not collect or hold payments, so nothing is taken from you either way.",
     "filePath": "src/lib/email/index.ts"
   },
   {
@@ -3480,33 +3465,8 @@
     "filePath": "src/components/public/gallery-media.tsx"
   },
   {
-    "key": "gallery.show_all.few",
-    "sourceText": "Show all {n} items",
-    "filePath": "src/components/public/image-gallery.tsx"
-  },
-  {
-    "key": "gallery.show_all.many",
-    "sourceText": "Show all {n} items",
-    "filePath": "src/components/public/image-gallery.tsx"
-  },
-  {
-    "key": "gallery.show_all.one",
-    "sourceText": "Show all {n} item",
-    "filePath": "src/components/public/image-gallery.tsx"
-  },
-  {
-    "key": "gallery.show_all.other",
-    "sourceText": "Show all {n} items",
-    "filePath": "src/components/public/image-gallery.tsx"
-  },
-  {
-    "key": "gallery.show_all.two",
-    "sourceText": "Show all {n} items",
-    "filePath": "src/components/public/image-gallery.tsx"
-  },
-  {
-    "key": "gallery.show_all.zero",
-    "sourceText": "Show all {n} items",
+    "key": "gallery.see_all",
+    "sourceText": "See all ({n})",
     "filePath": "src/components/public/image-gallery.tsx"
   },
   {
@@ -3950,8 +3910,8 @@
     "filePath": "src/components/host/host-booking-actions.tsx"
   },
   {
-    "key": "host.booking.accept_body",
-    "sourceText": "The guest will be notified immediately and the reservation will become confirmed.",
+    "key": "host.booking.accept_body_direct_payment",
+    "sourceText": "The guest will be notified immediately and the booking will be accepted. Then share your payment instructions directly with the guest.",
     "filePath": "src/components/host/host-booking-actions.tsx"
   },
   {
@@ -8050,6 +8010,11 @@
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
+    "key": "host.preview.host_review_notice",
+    "sourceText": "The host will review your request and share payment instructions if it is accepted.",
+    "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
     "key": "host.preview.hosted_by",
     "sourceText": "Hosted by Linger Homes",
     "filePath": "src/components/host/listing-form.tsx"
@@ -8080,8 +8045,8 @@
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
-    "key": "host.preview.reserve",
-    "sourceText": "Reserve",
+    "key": "host.preview.request_to_book",
+    "sourceText": "Request to book",
     "filePath": "src/components/host/listing-form.tsx"
   },
   {
@@ -12985,8 +12950,8 @@
     "filePath": "src/components/host/v2/messages/reservation-rail.tsx"
   },
   {
-    "key": "host.v2.messages.official_total",
-    "sourceText": "Paid out as {amount}",
+    "key": "host.v2.messages.official_total_agreed",
+    "sourceText": "Agreed as {amount}",
     "filePath": "src/components/host/v2/messages/reservation-rail.tsx"
   },
   {
@@ -13025,8 +12990,8 @@
     "filePath": "src/components/host/v2/messages/inbox-conversation-list.tsx"
   },
   {
-    "key": "host.v2.messages.total",
-    "sourceText": "Total payout",
+    "key": "host.v2.messages.total_booking",
+    "sourceText": "Booking total",
     "filePath": "src/components/host/v2/messages/reservation-rail.tsx"
   },
   {
@@ -13615,8 +13580,8 @@
     "filePath": "src/components/host/v2/reservations/host-reservations-workspace.tsx"
   },
   {
-    "key": "host.v2.reservations.official_total",
-    "sourceText": "Charged and paid out as {amount}.",
+    "key": "host.v2.reservations.official_total_agreed",
+    "sourceText": "Agreed with the guest as {amount}.",
     "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
   },
   {
@@ -14368,6 +14333,11 @@
     "key": "listing.calendar_nights_in.zero",
     "sourceText": "{n} nights in {place}",
     "filePath": "src/components/public/listing-availability-calendar.tsx"
+  },
+  {
+    "key": "listing.calendar_prices_in",
+    "sourceText": "Prices in {currency}",
+    "filePath": "src/components/public/use-listing-day-prices.ts"
   },
   {
     "key": "listing.calendar_select_checkin",
@@ -17435,8 +17405,8 @@
     "filePath": "src/components/support/claim-response-controls.tsx"
   },
   {
-    "key": "support.acceptance_notice",
-    "sourceText": "Acceptance is recorded immediately. Linger Homes will confirm the secure payment step separately; this button does not silently charge your card.",
+    "key": "support.acceptance_notice_direct",
+    "sourceText": "Acceptance is recorded immediately. Linger Homes does not collect or hold payments — this button charges nothing, and the amount you agree is settled directly with the other party.",
     "filePath": "src/components/support/claim-response-controls.tsx"
   },
   {

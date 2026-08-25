@@ -8,7 +8,6 @@ import { toggleFavorite } from "@/lib/actions/favorite.actions";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Tx, useI18n } from "@/lib/i18n/client";
-import { StartConversationButton } from "@/components/communication/start-conversation-button";
 
 export function ListingActions({
   title,
@@ -61,19 +60,16 @@ export function ListingActions({
     }
   }
 
+  // Share, save and report on one row that never wraps: on a phone these used to
+  // break onto three lines under the title, with "Message host" — an action of a
+  // different weight entirely — leading them. That one moved next to the host.
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <StartConversationButton
-        listingId={listingId}
-        isAuthenticated={isAuthenticated}
-        label="Message host"
-        variant="outline"
-      />
+    <div className="flex shrink-0 items-center gap-0.5 sm:gap-2">
       <Button
         type="button"
         variant="ghost"
         size="sm"
-        className="rounded-full gap-2 font-medium underline-offset-4 hover:underline"
+        className="rounded-full gap-1.5 px-2 font-medium underline-offset-4 hover:underline sm:gap-2 sm:px-3"
         onClick={() => void share()}
       >
         <Share className="h-4 w-4" />
@@ -83,7 +79,7 @@ export function ListingActions({
         type="button"
         variant="ghost"
         size="sm"
-        className="rounded-full gap-2 font-medium underline-offset-4 hover:underline"
+        className="rounded-full gap-1.5 px-2 font-medium underline-offset-4 hover:underline sm:gap-2 sm:px-3"
         onClick={handleToggleSaved}
       >
         <Heart className={cn("h-4 w-4", saved && "fill-rose-600 text-rose-600")} />
@@ -93,7 +89,7 @@ export function ListingActions({
         type="button"
         variant="ghost"
         size="sm"
-        className="rounded-full gap-2 font-medium underline-offset-4 hover:underline"
+        className="rounded-full gap-1.5 px-2 font-medium underline-offset-4 hover:underline sm:gap-2 sm:px-3"
         onClick={() => {
           const target = `/account/support/new?type=REPORT&targetType=LISTING&listingId=${listingId}`;
           router.push(

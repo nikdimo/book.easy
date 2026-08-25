@@ -72,36 +72,54 @@ export default function TermsPage() {
               <li>Engage in fraudulent or illegal activity</li>
               <li>Harm other users or their property</li>
               <li>Violate our content policies</li>
-              <li>Fail to pay fees owed</li>
             </ul>
           </section>
 
           <section>
             <h2 className="text-2xl font-semibold mb-4">4. Booking & Guest Responsibilities</h2>
 
-            <h3 className="text-xl font-semibold mb-3">4.1 Making a Booking</h3>
+            <p className="rounded-lg border border-border bg-muted/40 p-4">
+              <strong>How payment works.</strong> Linger Homes does not collect or hold booking
+              payments. We do not charge you, process payments, verify or protect them, issue
+              refunds, or pay hosts out. Payment is arranged directly with the host after the
+              booking is accepted, on terms the two of you agree.
+            </p>
+
+            <h3 className="text-xl font-semibold mb-3">4.1 Requesting a Booking</h3>
             <p>
-              When you book a property through the Service:
+              The Service operates on a request-to-book basis. When you send a booking request
+              through the Service:
             </p>
             <ul className="list-disc pl-6 space-y-2">
-              <li>You are entering into a binding contract with the property host</li>
+              <li>Your request is not a confirmed booking until the host accepts it</li>
+              <li>
+                If the host accepts, you are entering into a binding contract with the property
+                host
+              </li>
               <li>You agree to the listed house rules and cancellation policy</li>
-              <li>The price displayed includes all fees and taxes</li>
+              <li>The price displayed is the price agreed with the host; we add no fees</li>
               <li>You are responsible for knowing check-in/check-out times</li>
-              <li>You authorize us to charge the payment method provided</li>
+              <li>
+                We do not charge you at any point. The host arranges payment with you directly
+                after accepting your request
+              </li>
             </ul>
 
-            <h3 className="text-xl font-semibold mb-3 mt-6">4.2 Cancellations & Refunds</h3>
+            <h3 className="text-xl font-semibold mb-3 mt-6">4.2 Cancellations</h3>
             <p>
               Cancellation terms are determined by the host's policy (Flexible, Moderate, or
-              Strict). Refunds are processed according to the policy in effect at the time of
-              booking.
+              Strict), as shown on the listing at the time you send your request.
             </p>
             <ul className="list-disc pl-6 space-y-2">
-              <li>Service fees are non-refundable</li>
               <li>Host must approve most cancellations within 48 hours</li>
-              <li>Refunds are issued to the original payment method</li>
-              <li>We are not responsible for host refund delays</li>
+              <li>
+                Because we never hold your money, we cannot issue a refund. Anything you paid
+                the host is returned, or not, by the host under their own policy
+              </li>
+              <li>
+                We are not a party to any payment between you and a host and are not responsible
+                for the outcome of one
+              </li>
             </ul>
 
             <h3 className="text-xl font-semibold mb-3 mt-6">4.3 Guest Conduct</h3>
@@ -150,18 +168,18 @@ export default function TermsPage() {
               <li>Honor confirmed bookings (cancellation requires justification)</li>
             </ul>
 
-            <h3 className="text-xl font-semibold mb-3 mt-6">5.3 Payment & Payouts</h3>
+            <h3 className="text-xl font-semibold mb-3 mt-6">5.3 Payment</h3>
             <p>
-              We charge a service fee on bookings. Hosts receive payouts minus:
+              We charge no service fee on bookings and we do not pay hosts out. After accepting a
+              request, the host arranges payment with the guest directly and receives it directly.
+              Hosts are responsible for:
             </p>
             <ul className="list-disc pl-6 space-y-2">
-              <li>Service fee (typically 3-10% depending on region)</li>
-              <li>Applicable taxes and transaction fees</li>
+              <li>Agreeing payment terms and a method with the guest</li>
+              <li>Issuing any receipt or invoice the guest is entitled to</li>
+              <li>Handling their own refunds under their stated cancellation policy</li>
+              <li>Applicable taxes on the amount they receive</li>
             </ul>
-            <p className="mt-3">
-              Payouts are processed within 5-7 business days. We reserve the right to hold funds
-              if suspicious activity is detected.
-            </p>
 
             <h3 className="text-xl font-semibold mb-3 mt-6">5.4 Host Liability</h3>
             <p>
@@ -186,7 +204,7 @@ export default function TermsPage() {
               <li>Harass, threaten, or discriminate against others</li>
               <li>Infringe on intellectual property rights</li>
               <li>Post illegal content or facilitate illegal activity</li>
-              <li>Bypass our payment or security systems</li>
+              <li>Bypass our security systems</li>
               <li>Interfere with the Service's operation</li>
               <li>Scrape or collect data without authorization</li>
               <li>Create fake accounts or impersonate others</li>
@@ -234,7 +252,7 @@ export default function TermsPage() {
           </section>
 
           <section>
-            <h2 className="text-2xl font-semibold mb-4">9. Dispute Resolution & Refund Policy</h2>
+            <h2 className="text-2xl font-semibold mb-4">9. Dispute Resolution</h2>
 
             <h3 className="text-xl font-semibold mb-3">9.1 Resolution Center</h3>
             <p>
@@ -243,15 +261,15 @@ export default function TermsPage() {
             </p>
             <ul className="list-disc pl-6 space-y-2">
               <li>Review all evidence provided</li>
-              <li>Make a binding determination based on our policies</li>
-              <li>Issue refunds or hold funds as warranted</li>
+              <li>Make a determination based on our policies</li>
+              <li>Record the outcome and act on the accounts involved where warranted</li>
             </ul>
 
-            <h3 className="text-xl font-semibold mb-3 mt-6">9.2 Chargeback & Payment Disputes</h3>
+            <h3 className="text-xl font-semibold mb-3 mt-6">9.2 Payment Disputes</h3>
             <p>
-              If you dispute a charge via your payment provider, we will investigate. If we
-              determine the charge was legitimate, your account may be suspended, and you may be
-              liable for chargeback fees.
+              We do not hold the money, so we cannot move it. A dispute about an amount paid to a
+              host is between you and that host, and any refund must come from them. We can record
+              the dispute, take account action, and provide what we hold about the booking.
             </p>
           </section>
 
@@ -282,11 +300,12 @@ export default function TermsPage() {
               <li>Damage to property or personal injury</li>
               <li>Host or guest conduct or violations of laws</li>
               <li>Unauthorized account access or data breaches</li>
-              <li>Third-party service failures (payment processors, email, hosting)</li>
+              <li>Third-party service failures (email, hosting, mapping)</li>
             </ul>
             <p className="mt-3">
-              <strong>Total Liability Cap:</strong> Our total liability shall not exceed the amount
-              you paid in fees in the past 12 months.
+              <strong>Total Liability Cap:</strong> Our total liability shall not exceed the total
+              amount, if any, you have paid us in the past 12 months. We currently charge no fees
+              for the Service.
             </p>
 
             <h3 className="text-xl font-semibold mb-3 mt-6">10.3 User Assumption of Risk</h3>
@@ -347,8 +366,10 @@ export default function TermsPage() {
             </p>
             <ul className="list-disc pl-6 space-y-2">
               <li>Your right to use the Service immediately ceases</li>
-              <li>Pending bookings may be cancelled</li>
-              <li>Outstanding balances become immediately due</li>
+              <li>Pending booking requests may be cancelled</li>
+              <li>
+                Anything you owe a host directly remains owed to that host and is unaffected
+              </li>
               <li>Your data is handled according to our Privacy Policy</li>
             </ul>
           </section>

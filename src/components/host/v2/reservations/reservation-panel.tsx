@@ -354,17 +354,18 @@ export function ReservationPanel({
           {/*
            * The figures above are converted into the currency the host reads prices
            * in, which makes them an approximation of today's rate. This line is the
-           * amount that is actually charged and settled, in the booking's own
-           * currency — it is what the host is paid, and it must be on the screen
-           * whenever the total above is not it.
+           * amount the booking is actually agreed at, in the booking's own currency
+           * — it is what the host collects from the guest, and it must be on the
+           * screen whenever the total above is not it. Linger Homes neither charges
+           * it nor pays it out, so the line must not say that it does.
            */}
           {isConvertedMoney(currency, data.formats) ? (
             <p className="pt-1 text-[0.75rem] leading-5 text-slate-500">
               {
                 interpolate(
                   i18n.resolve(
-                    "host.v2.reservations.official_total",
-                    "Charged and paid out as {amount}.",
+                    "host.v2.reservations.official_total_agreed",
+                    "Agreed with the guest as {amount}.",
                   ),
                   {
                     amount: officialMoney(reservation.total, currency, data.formats),

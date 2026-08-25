@@ -100,7 +100,7 @@ export function renderBookingEmail(input: BookingEmailTemplateInput): string {
           ${input.callout ? `<tr><td style="padding:0 28px 22px;"><div style="padding:14px 16px;border-radius:10px;background:#fafaf9;border-left:4px solid #292524;font-size:14px;line-height:21px;color:#44403c;">${escapeHtml(input.callout)}</div></td></tr>` : ""}
           <tr><td style="padding:0 28px 28px;">${buttons}</td></tr>
           <tr><td style="padding:20px 28px;background:#fafaf9;border-top:1px solid #e7e5e4;font-size:12px;line-height:18px;color:#78716c;">
-            For your security, keep booking communication and payments on ${escapeHtml(COMMUNICATION_BRAND.name)}.
+            For your security, keep booking communication on ${escapeHtml(COMMUNICATION_BRAND.name)}.
           </td></tr>
         </table>
       </td></tr>

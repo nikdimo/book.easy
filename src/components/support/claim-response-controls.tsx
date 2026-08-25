@@ -100,7 +100,7 @@ export function ClaimResponseControls({
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">
-          <Tx k="support.acceptance_notice" source="Acceptance is recorded immediately. Linger Homes will confirm the secure payment step separately; this button does not silently charge your card." />
+          <Tx k="support.acceptance_notice_direct" source="Acceptance is recorded immediately. Linger Homes does not collect or hold payments — this button charges nothing, and the amount you agree is settled directly with the other party." />
         </p>
       )}
       <div className="flex gap-2">

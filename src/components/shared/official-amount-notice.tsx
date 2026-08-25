@@ -42,7 +42,11 @@ export function OfficialAmountNotice({
     {
       display: display.currency,
       official: officialCurrency,
-      amount: formatMoney(value, officialCurrency, display.locale),
+      // The one figure on the page that is not a display convenience — it states
+      // what the host will be paid, so it keeps the currency's minor units.
+      amount: formatMoney(value, officialCurrency, display.locale, {
+        exact: true,
+      }),
     },
   );
 

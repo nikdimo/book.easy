@@ -37,7 +37,10 @@ import {
 } from "@/components/ui/tooltip";
 import type { Resolved } from "@/lib/i18n/t";
 import { Tx, useI18n } from "@/lib/i18n/client";
-import { useListingDayPrices } from "./use-listing-day-prices";
+import {
+  useCellCurrencyNote,
+  useListingDayPrices,
+} from "./use-listing-day-prices";
 import { resolvePromotionLabel } from "./promotion-label";
 import { useListingStayRange } from "./listing-stay-context";
 
@@ -58,7 +61,14 @@ interface BookingWidgetProps {
   initialGuests?: number;
   initialGuestDetails?: GuestDetails;
   hasExplicitSearchSelection?: boolean;
-  reserveTooltip: Resolved;
+  requestToBookTooltip: Resolved;
+  /**
+   * The "message host" button, already built by the server so this widget does not
+   * have to know who the host is. Rendered only in the phone's sticky bar — the
+   * page's own copy sits next to the host further up, out of reach once you have
+   * scrolled down to the price.
+   */
+  messageHost?: React.ReactNode;
   /**
    * The listing's house rules, already rendered by the server.
    *
@@ -81,14 +91,14 @@ type GuestDetails = {
 };
 
 /**
- * The panels the booking frame can show in place of its summary.
+ * The steps of the one overlay a booking is made in.
  *
- * Deliberately not a modal each: the frame's header (what a night costs) and its
- * footer (the total and the button) stay put while the middle changes, so the card
- * is one fixed height no matter which panel is open — the whole point of the
- * rewrite. A guest reading the rules can still see what they are about to pay.
+ * Dates, then who is coming, then the review the request is sent from — the house
+ * rules, the price and the two buttons under them. The card behind it never sends
+ * anything: it summarises the stay and opens this at whichever step is unfinished,
+ * so there is exactly one path to a booking however the guest arrived at the page.
  */
-type PanelView = "rules" | "message" | "price";
+type PickerStep = "dates" | "guests" | "review";
 
 /** Matches the horizon the card grid ranges over (pricing.service.ts), so the same
  * listing quotes the same span in search results and on its own page. */
@@ -97,15 +107,17 @@ const BOOKINGS_UNAVAILABLE_KEY = "mobile.bookings.unavailable";
 const BOOKINGS_UNAVAILABLE_SOURCE = "Bookings unavailable";
 
 /**
- * The guests row is only a trigger: the counts themselves live in the stay
- * picker's own guests step, so dates → guests → reserve is one uninterrupted
- * sheet instead of two dialogs animating past each other.
+ * The guests row is only a trigger: the counts themselves live in the stay picker's
+ * own guests step, so dates → guests → review → request is one uninterrupted overlay
+ * instead of a card and a dialog handing the guest back and forth.
  */
 function BookingGuestRow({
   summary,
+  detail,
   onOpen,
 }: {
   summary: Resolved;
+  detail?: Resolved | null;
   onOpen: () => void;
 }) {
   return (
@@ -127,6 +139,13 @@ function BookingGuestRow({
             {summary.text}
           </span>
         </span>
+        {detail ? (
+          <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+            <span className={detail.translated ? "notranslate" : undefined}>
+              {detail.text}
+            </span>
+          </span>
+        ) : null}
       </span>
       <ChevronDown
         className="size-4 shrink-0 text-foreground"
@@ -146,21 +165,21 @@ function Txt({ value }: { value: Resolved }) {
 }
 
 /**
- * A row in the summary stack that leads into a panel.
- *
- * Deliberately the same shape as the guests row above it: to a guest, the house rules
- * and the message to the host are the same kind of thing as the party size — one line
- * saying where they stand, and a way in. What used to be a rules table and an empty
- * textarea sitting open in the card is two of these.
+ * A row that says where one part of the stay stands and leads back to the step that
+ * sets it. Deliberately the same shape as the guests row: to a guest, the dates and
+ * the party are the same kind of thing — one line, and a way in.
  */
 function BookingSummaryRow({
   label,
   value,
+  detail,
   done = false,
   onOpen,
 }: {
   label: Resolved;
   value: Resolved;
+  /** A quieter second line, for what the value on its own leaves out. */
+  detail?: Resolved | null;
   done?: boolean;
   onOpen: () => void;
 }) {
@@ -170,22 +189,32 @@ function BookingSummaryRow({
       onClick={onOpen}
       className="flex w-full items-center justify-between gap-3 bg-background px-4 py-3 text-left text-sm transition-colors hover:bg-muted/30 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
     >
-      <span className="flex min-w-0 items-center gap-2">
+      <span className="flex min-w-0 items-start gap-2">
         {done ? (
-          <Check className="size-4 shrink-0 text-primary" aria-hidden="true" />
+          <Check
+            className="mt-0.5 size-4 shrink-0 text-primary"
+            aria-hidden="true"
+          />
         ) : null}
-        <span className="min-w-0 truncate">
-          <span className="font-medium text-foreground">
-            <Txt value={label} />
+        <span className="min-w-0">
+          <span className="block truncate">
+            <span className="font-medium text-foreground">
+              <Txt value={label} />
+            </span>
+            <span className="text-muted-foreground">
+              {" · "}
+              <Txt value={value} />
+            </span>
           </span>
-          <span className="text-muted-foreground">
-            {" · "}
-            <Txt value={value} />
-          </span>
+          {detail ? (
+            <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+              <Txt value={detail} />
+            </span>
+          ) : null}
         </span>
       </span>
       <ChevronRight
-        className="size-4 shrink-0 text-foreground"
+        className="mt-0.5 size-4 shrink-0 text-foreground"
         aria-hidden="true"
       />
     </button>
@@ -193,10 +222,10 @@ function BookingSummaryRow({
 }
 
 /**
- * The title strip of an open panel.
+ * The title strip of the card's price breakdown.
  *
- * The close control is a corner X rather than a row at the bottom: the frame is a
- * fixed height and a footer row is 40px of it. On phones the panel is a drawer that
+ * The close control is a corner X rather than a row at the bottom: the card is a fixed
+ * height and a footer row is 40px of it. On phones the breakdown is a drawer that
  * closes itself, so `onClose` is left off and the strip is only a title.
  */
 function BookingPanelHeader({
@@ -241,7 +270,8 @@ export function BookingWidget({
   initialCheckOut = "",
   initialGuests,
   initialGuestDetails = { adults: 0, children: 0, infants: 0, pets: 0 },
-  reserveTooltip,
+  requestToBookTooltip,
+  messageHost,
   houseRules,
   houseRulesVersion,
 }: BookingWidgetProps) {
@@ -252,10 +282,15 @@ export function BookingWidget({
     priceOverrides,
     promotions,
     boundedPromotionsOnly: true,
-    showCurrencySymbol: true,
+    // The picker in this widget is a dialog over a phone-width card, and its cells
+    // are half the listing page's: a symbol in front of every amount is the
+    // difference between "3,127" and a number with its tail cut off. The widget
+    // around it prices the stay in full, currency and all.
+    showCurrencySymbol: false,
   });
+  const priceNote = useCellCurrencyNote(currency);
   // `status` and not just the session: "not signed in" and "not known yet" have to
-  // be told apart, or the first press of reserve on a slow session fetch throws the
+  // be told apart, or the first press of the primary action on a slow session fetch throws the
   // guest at the login page they were already past.
   const { data: session, status: sessionStatus } = useSession();
   const router = useRouter();
@@ -265,9 +300,10 @@ export function BookingWidget({
   const isSmallScreen = useSheetEnabled();
   const [isPending, startTransition] = useTransition();
   const [datePickerOpen, setDatePickerOpen] = useState(false);
-  // Which step the picker opens on — the dates row and the guests row lead into
-  // the same sheet, they just start it in different places.
-  const [pickerStep, setPickerStep] = useState<"dates" | "guests">("dates");
+  // Which step the picker opens on. Every row of the card leads into the same
+  // overlay; they differ only in where they start it, and the last of them —
+  // request to book — starts it on the step the request is sent from.
+  const [pickerStep, setPickerStep] = useState<PickerStep>("dates");
   const [dateFlexibility, setDateFlexibility] = useState(0);
   // Shared with the page's inline availability calendar (and with this widget's
   // own second mount at the other breakpoint) when a provider is above.
@@ -299,23 +335,24 @@ export function BookingWidget({
         0,
   );
   const [note, setNote] = useState("");
-  /** Unticked every time. An agreement the guest did not actively give is not an
-   *  agreement, so this is never seeded from a previous visit or a query parameter. */
-  const [rulesAccepted, setRulesAccepted] = useState(false);
+  /** Whether the review step is showing its note editor. Opened by the second of the
+   *  two buttons under the rules, and never open on arrival: the note is optional and
+   *  a textarea in the way of the total does not say so. */
+  const [noteOpen, setNoteOpen] = useState(false);
+  const noteRef = useRef<HTMLTextAreaElement>(null);
   const [error, setError] = useState<string | null>(null);
   /**
-   * Which panel the frame is showing; `null` is the summary it rests on.
+   * Whether the card is showing its price breakdown in place of the summary.
    *
-   * One piece of state for both breakpoints, because it is one decision: the card
-   * swaps its middle to this panel, the phone slides the same panel up as a drawer.
-   * What the guest is looking at does not depend on how wide their screen is.
+   * The one thing the card still opens on its own, because it is the one thing a
+   * guest wants without committing to anything: what the total is made of. Everything
+   * else the card used to swap in — the rules, the note — now lives in the review
+   * step, next to the button that acts on it.
    */
-  const [panel, setPanel] = useState<PanelView | null>(null);
-  /** Phones only: the request summary the sticky bar opens. Panels stack over it. */
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  /** Edited in the message panel and committed to `note` on save, so leaving the
-   *  panel by any other route discards the draft rather than half-keeping it. */
-  const [noteDraft, setNoteDraft] = useState("");
+  const [priceOpen, setPriceOpen] = useState(false);
+  /** The review step's own breakdown, folded away until asked for: the row above it
+   *  already carries the number a guest came to check. */
+  const [reviewPriceOpen, setReviewPriceOpen] = useState(false);
   const hasSyncedSearchRef = useRef(false);
 
   useEffect(() => {
@@ -408,12 +445,28 @@ export function BookingWidget({
     guestDetails.pets > 0 &&
       i18n.plural("booking.pets", guestDetails.pets, "{n} pet", "{n} pets"),
   ].filter((part): part is Resolved => Boolean(part));
-  const guestSummary: Resolved = guestParts.length
-    ? {
-        text: guestParts.map((part) => part.text).join(", "),
-        translated: guestParts.every((part) => part.translated),
-      }
+  /**
+   * The party as one number, which is the number everything else in the app quotes:
+   * the search bar, the listing's capacity, the limit the server checks against.
+   */
+  const guestSummary: Resolved = guests
+    ? i18n.plural("booking.guests", guests, "{n} guest", "{n} guests")
     : i18n.resolve("booking.add_guests", "Add guests");
+  /**
+   * What that number leaves out, spelled out beneath it — but only when it leaves
+   * something out.
+   *
+   * Infants and pets are not guests for the purpose of capacity, so a party of two
+   * adults, an infant and a dog is "3 guests" and the host would never see the rest.
+   * A party that is only adults says the same thing twice, so it says nothing.
+   */
+  const guestBreakdownSummary: Resolved | null =
+    guestParts.length > 1
+      ? {
+          text: guestParts.map((part) => part.text).join(", "),
+          translated: guestParts.every((part) => part.translated),
+        }
+      : null;
   const nightLabel = i18n.plural(
     "booking.nights",
     nights,
@@ -457,36 +510,41 @@ export function BookingWidget({
           : selectDatesMessage;
   const blockingProblem: Resolved | null =
     selectionValidation.status === "incomplete" ? null : reserveProblem;
-  // Agreement is the last thing missing rather than a condition the button fails on:
-  // pressing reserve without it opens the rules, where agreeing and reserving are the
-  // same press. That is why there is no longer an error telling the guest to go back
-  // and tick something.
-  const reserveStep: "dates" | "guests" | "rules" | "reserve" =
+  /**
+   * The step of the overlay this stay is up to — which is also what the card's button
+   * offers to do next. A guest who arrived from a search carrying dates and a party is
+   * already at `review`, and presses request to book once.
+   */
+  const reserveStep: PickerStep =
     selectionValidation.status !== "valid"
       ? "dates"
       : // A party of nobody is not a party: infants and pets don't consume capacity,
         // so a selection made only of them has no one the booking is for. The server
         // refuses `guestCount: 0` outright, and this is what keeps the guest from
-        // meeting that refusal as a validation error after they pressed reserve.
+        // meeting that refusal as a validation error after they pressed request to book.
         !guestsConfirmed || guests < 1
         ? "guests"
-        : !rulesAccepted && houseRules
-          ? "rules"
-          : "reserve";
-  const reserveLabel = i18n.resolve("booking.reserve", "Reserve");
+        : "review";
+  // "Request to book" and not "Reserve": nothing is held and nothing is charged by
+  // pressing it. It sends a request the host still has to accept, and the line under
+  // the button says what happens if they do.
+  const requestToBookLabel = i18n.resolve(
+    "booking.request_to_book",
+    "Request to book",
+  );
   // Reuses the search catalog's existing key so the copy stays translated.
   const whosComingLabel = i18n.resolve("search.whos_coming", "Who's coming");
   /**
-   * What the picker's last press promises.
+   * What the guest step's button promises.
    *
-   * Not "Reserve", which is what it used to say: nothing is sent from inside the
-   * picker, and a button that says reserve while the guest is still counting heads
-   * either lies or — on a listing with no rules left to agree to — sends a request
-   * from a dialog that never showed them the total. It hands back to the summary,
+   * Not the request itself, which is what it used to offer while the guest was still counting
+   * heads — and which, on a listing whose rules were already agreed, really did send
+   * the request from a dialog that had never shown a total. It moves to the review,
    * and says so.
    */
   const continueLabel = i18n.resolve("mobile.generic.continue", "Continue");
   const datesRowLabel = i18n.resolve("booking.dates", "Dates");
+  const guestsRowLabel = i18n.resolve("booking.guests_label", "Guests");
   const addDatesLabel = i18n.resolve("search.add_dates", "Add dates");
   const stayRangeFormatter = useMemo(
     () =>
@@ -507,35 +565,38 @@ export function BookingWidget({
       ? i18n.resolve("booking.select_dates_cta", "Select dates")
       : reserveStep === "guests"
         ? i18n.resolve("booking.select_guests_cta", "Select guests")
-        : reserveLabel;
+        : requestToBookLabel;
   const pickerMessage =
     selectionValidation.status === "unavailable"
       ? unavailableDatesMessage
       : minimumStayMessage;
   const houseRulesTitle = i18n.resolve("booking.house_rules_title", "House rules");
-  const houseRulesState = rulesAccepted
-    ? i18n.resolve("booking.house_rules_agreed", "Agreed")
-    : i18n.resolve("booking.house_rules_review", "Review and agree");
-  const agreeAndReserveLabel = i18n.resolve(
-    "booking.house_rules_agree_and_reserve",
-    "I agree and reserve",
+  /**
+   * The disclosure that makes the request an acceptance.
+   *
+   * The rules are in this step, a finger's scroll above the button, and this says what
+   * pressing it means. It replaces a separate "I agree and reserve" panel of its
+   * own: same acceptance, same record on the server — `houseRulesAcceptedAt` and the
+   * version fingerprint are still written from this press — one fewer screen between a
+   * guest and the request they came to send.
+   */
+  const rulesAgreementNotice = i18n.resolve(
+    "booking.house_rules_agreement_request",
+    "By sending this request you agree to the house rules above.",
   );
   const messageTitle = i18n.resolve(
     "booking.message_optional",
     "Message to host (optional)",
   );
-  const messageRowLabel = i18n.resolve("booking.message_row_label", "Message");
-  // The host's own note back, not a label: once written, the row is the message.
-  const messageState: Resolved = note
-    ? { text: note, translated: false }
-    : i18n.resolve("booking.message_add", "Add a note for the host");
-  const saveMessageLabel = i18n.resolve("booking.message_save", "Save message");
+  // Short on purpose: this button sits beside request to book and must not out-weigh it.
+  // What the note is for is the heading over the box it opens.
+  const addNoteLabel = i18n.resolve("booking.message_add_cta", "Add a note");
   const priceDetailsLabel = i18n.resolve(
     "booking.price_details",
     "Price details",
   );
   const closePanelLabel = i18n.resolve("booking.close_panel", "Close");
-  const confirmTitle = i18n.resolve(
+  const reviewTitle = i18n.resolve(
     "booking.confirm_title",
     "Confirm your request",
   );
@@ -555,48 +616,38 @@ export function BookingWidget({
         : null;
 
   /**
-   * Opens a panel. One path for both breakpoints — the card renders `panel` in place
-   * of its summary, the phone renders it as a drawer — so nothing here has to know
-   * how wide the screen is. The media query this replaced was the only reason a
-   * guest could see the breakdown in two different shapes from one press.
+   * The price breakdown, in place of the card's summary or as a drawer on a phone.
+   * One path for both breakpoints, so a guest cannot meet the breakdown in two
+   * different shapes from one press.
    */
-  function openPanel(next: PanelView) {
-    if (next === "price" && !hasStayQuote) return;
-    if (next === "message") setNoteDraft(note);
-    setPanel(next);
+  function openPrice() {
+    if (!hasStayQuote) return;
+    setPriceOpen(true);
   }
 
-  function closePanel() {
-    setPanel(null);
+  function closePrice() {
+    setPriceOpen(false);
   }
 
-  function openPicker(step: "dates" | "guests") {
+  function openPicker(step: PickerStep) {
     setPickerStep(step);
     // Opening straight at guests counts as the confirmation the sticky button
     // was waiting for; the picker's own onStepChange covers the dates → guests path.
-    if (step === "guests") setGuestsConfirmed(true);
-    setDatePickerOpen(true);
-  }
-
-  /**
-   * The picker's last press. It never sends the request — it closes the picker and
-   * hands the guest back to the summary that shows what the stay costs, which on a
-   * phone is the confirm sheet the sticky bar opens and on desktop is the card the
-   * picker was opened from. Reserve lives there, next to the total, and nowhere else.
-   */
-  function handlePickerDone() {
+    if (step !== "dates") setGuestsConfirmed(true);
     setError(null);
-    if (isSmallScreen) setConfirmOpen(true);
+    // The overlay carries its own copy of the breakdown, so leaving the card's open
+    // underneath it would only be something to come back to and close.
+    setPriceOpen(false);
+    setDatePickerOpen(true);
   }
 
   /**
    * Sends the guest to sign in, with the stay on the URL so they come back to this
    * listing still holding it.
    *
-   * Called before the house rules rather than after them: an acceptance is never
-   * carried across a redirect — deliberately, see `rulesAccepted` — so collecting it
-   * from a guest who is about to be bounced to a login page only makes them give it
-   * twice.
+   * Called before the review step rather than from inside it: sending a guest to log
+   * in from under a button they have just read the house rules for makes them do the
+   * whole step twice.
    */
   function goToLogin() {
     const returnUrl = new URL(window.location.href);
@@ -612,19 +663,15 @@ export function BookingWidget({
   }
 
   /**
-   * The primary button never dead-ends: until the selection is complete it
-   * opens whichever step is missing, and only then does it reserve.
+   * The card's button, at both breakpoints. It never dead-ends and it never sends:
+   * whatever the stay is still missing, it opens the overlay on that step, and when
+   * nothing is missing it opens the step the request is sent from.
    */
   function handlePrimaryAction() {
     setError(null);
 
-    if (reserveStep === "dates") {
-      openPicker("dates");
-      return;
-    }
-
-    if (reserveStep === "guests") {
-      openPicker("guests");
+    if (reserveStep !== "review") {
+      openPicker(reserveStep);
       return;
     }
 
@@ -633,54 +680,14 @@ export function BookingWidget({
       return;
     }
 
-    // The rules are the last missing step, and the panel's own button both agrees
-    // and sends — so this opens it rather than refusing the press.
-    if (reserveStep === "rules") {
-      openPanel("rules");
-      return;
-    }
-
-    handleSubmit();
+    openPicker("review");
   }
 
   /**
-   * The sticky bar's button. It finishes the selection the same way the card's does,
-   * but once the selection is whole it opens the request summary rather than sending:
-   * on a phone the bar is all a guest can see of the booking, and nobody should send
-   * a request from a control that never showed them what is in it.
+   * Sends the request. Reachable from one control only — the review step's request to book —
+   * which is the same press that accepts the house rules printed above it.
    */
-  function handleBarAction() {
-    setError(null);
-
-    if (reserveStep === "dates") {
-      openPicker("dates");
-      return;
-    }
-
-    if (reserveStep === "guests") {
-      openPicker("guests");
-      return;
-    }
-
-    setConfirmOpen(true);
-  }
-
-  /** The rules panel's button: the agreement and the request are one press, because
-   *  the guest is looking at the rules as they make it. */
-  function acceptRulesAndSubmit() {
-    setRulesAccepted(true);
-    setPanel(null);
-    handleSubmit({ rulesAccepted: true });
-  }
-
-  function saveMessage() {
-    setNote(noteDraft);
-    setPanel(null);
-  }
-
-  /** `accepted` lets the rules panel submit in the same press it agrees in, without
-   *  waiting a render for the state it just set. */
-  function handleSubmit({ rulesAccepted: accepted = rulesAccepted } = {}) {
+  function handleSubmit() {
     setError(null);
 
     if (reserveProblem) {
@@ -688,21 +695,8 @@ export function BookingWidget({
       return;
     }
 
-    // Checked here as well as on the server. The server is the one that decides — it
-    // refuses a request that does not carry the acceptance — and this exists so the
-    // guest is told which control they missed instead of watching a request fail.
-    if (!accepted) {
-      const message = i18n.resolve(
-        "booking.house_rules_required",
-        "Please agree to the house rules before you send your request.",
-      ).text;
-      setError(message);
-      toast.error(message);
-      return;
-    }
-
-    // The backstop for the check `handlePrimaryAction` makes before the rules panel:
-    // a session that expired while the guest was reading them still lands here.
+    // The backstop for the check `handlePrimaryAction` makes before opening the
+    // review: a session that expired while the guest read the rules still lands here.
     if (!session) {
       goToLogin();
       return;
@@ -732,10 +726,9 @@ export function BookingWidget({
     setGuestDetails({ adults: 1, children: 0, infants: 0, pets: 0 });
     setGuestsConfirmed(false);
     setNote("");
-    setNoteDraft("");
-    setRulesAccepted(false);
+    setNoteOpen(false);
     setError(null);
-    setPanel(null);
+    setPriceOpen(false);
     updateActiveSearchState({
       checkIn: "",
       checkOut: "",
@@ -764,9 +757,11 @@ export function BookingWidget({
     if (!(nights > 0 && stayPricing)) return null;
     const breakdown = stayPricing.nightlyBreakdown;
     const uniqueRates = new Set(breakdown.map((n) => n.rate)).size;
-    const showEachNight =
-      breakdown.length <= 7 ||
-      (hasVariableRates && uniqueRates > 1 && breakdown.length <= 14);
+    // Nights are listed one by one only when they cost different things. A week at one
+    // rate used to print the same figure seven times over — the length test came first
+    // and short-circuited the grouping below, which had been written for exactly this
+    // and never ran on any stay short enough to reach it.
+    const showEachNight = uniqueRates > 1 && breakdown.length <= 14;
 
     let subtotalLine;
     if (showEachNight) {
@@ -774,6 +769,7 @@ export function BookingWidget({
         <div key={n.date} className="flex justify-between gap-2">
           <span className="text-muted-foreground truncate">{n.date}</span>
           <LocalizedPrice
+            exact
             amount={n.rate}
             currency={currency}
             locale={i18n.locale}
@@ -799,6 +795,7 @@ export function BookingWidget({
             })()}
           </span>
           <LocalizedPrice
+            exact
             amount={subtotal}
             currency={currency}
             locale={i18n.locale}
@@ -810,6 +807,7 @@ export function BookingWidget({
         <div className="flex justify-between">
           <span>
             <LocalizedPrice
+              exact
               amount={breakdown[0]?.rate ?? nightlyRate}
               currency={currency}
               locale={i18n.locale}
@@ -820,6 +818,7 @@ export function BookingWidget({
             </span>
           </span>
           <LocalizedPrice
+            exact
             amount={subtotal}
             currency={currency}
             locale={i18n.locale}
@@ -836,6 +835,7 @@ export function BookingWidget({
             <Tx k="booking.subtotal" source="Subtotal (stay)" />
           </span>
           <LocalizedPrice
+            exact
             amount={subtotal}
             currency={currency}
             locale={i18n.locale}
@@ -851,6 +851,7 @@ export function BookingWidget({
             <span>
               −
               <LocalizedPrice
+                exact
                 amount={stayPricing.accommodationDiscount}
                 currency={currency}
                 locale={i18n.locale}
@@ -866,12 +867,14 @@ export function BookingWidget({
             {stayPricing.cleaningDiscount > 0 ? (
               <span className="flex items-baseline gap-2">
                 <LocalizedPrice
+                  exact
                   amount={stayPricing.originalCleaningFee}
                   currency={currency}
                   locale={i18n.locale}
                   className="text-muted-foreground line-through"
                 />
                 <LocalizedPrice
+                  exact
                   amount={0}
                   currency={currency}
                   locale={i18n.locale}
@@ -879,6 +882,7 @@ export function BookingWidget({
               </span>
             ) : (
               <LocalizedPrice
+                exact
                 amount={stayPricing.cleaningFee}
                 currency={currency}
                 locale={i18n.locale}
@@ -894,6 +898,7 @@ export function BookingWidget({
             <span>
               −
               <LocalizedPrice
+                exact
                 amount={stayPricing.cleaningDiscount}
                 currency={currency}
                 locale={i18n.locale}
@@ -907,6 +912,7 @@ export function BookingWidget({
             <Tx k="booking.total" source="Total" />
           </span>
           <LocalizedPrice
+            exact
             amount={total}
             currency={currency}
             locale={i18n.locale}
@@ -918,43 +924,26 @@ export function BookingWidget({
   }
 
 
-  /**
-   * The button under the total belongs to whatever the frame is showing: it reserves
-   * from the summary, agrees and reserves from the rules, saves from the message. One
-   * button in one place, so the frame never grows a second one to hold a panel's action.
-   */
-  const footerAction =
-    panel === "rules"
-      ? { label: agreeAndReserveLabel, run: acceptRulesAndSubmit }
-      : panel === "message"
-        ? { label: saveMessageLabel, run: saveMessage }
-        : { label: primaryActionLabel, run: handlePrimaryAction };
-
   const hasSelection =
     Boolean(checkInStr) ||
     Boolean(checkOutStr) ||
     Boolean(note) ||
-    rulesAccepted ||
     guests !== 1 ||
     guestDetails.infants > 0 ||
     guestDetails.pets > 0;
 
   /**
-   * The stay, the party and the two things a guest still owes the host, as one stack
-   * of rows. The picker is a row of it rather than a section above it, so opening the
-   * calendar, the guest count, the rules or the message are all the same gesture.
+   * What the card rests on: the stay and the party, as two rows over one overlay.
    *
-   * `mountPicker` is false in exactly one place: the phone's confirm sheet, which
-   * shows the same rows over a card that is only hidden by CSS and therefore still
-   * mounted. Two mounts of the picker means two dialogs in the portal from one press
-   * — the same calendar drawn twice over itself — so the sheet's dates row opens the
-   * card's picker instead of bringing its own.
+   * The house rules and the note used to be rows here too. They are in the review step
+   * now, where the button that acts on them is — a row in a card that can only open a
+   * panel in that same card was a second place to do the same thing, and the guest had
+   * to find both before the request could be sent.
    */
-  function renderSummary({ mountPicker = true } = {}) {
+  function renderSummary() {
     return (
       <div className="space-y-2">
         <div className="overflow-hidden rounded-xl border border-border/50 bg-background">
-          {mountPicker ? (
             <MarketplaceStayDatePicker
               layout="compact"
               checkIn={checkInStr}
@@ -963,20 +952,26 @@ export function BookingWidget({
               onOpenChange={(next) => {
                 setDatePickerOpen(next);
                 // Otherwise the next open from a date field would land on the
-                // guests step this one was left on.
-                if (!next) setPickerStep("dates");
+                // step this one was left on.
+                if (!next) {
+                  setPickerStep("dates");
+                  setNoteOpen(false);
+                  setReviewPriceOpen(false);
+                }
               }}
               initialSegment={checkInStr && !checkOutStr ? "checkout" : "checkin"}
               dateFlexibility={dateFlexibility}
               showDateFlexibility
               onDateFlexibilityChange={setDateFlexibility}
               dayMeta={dayPrice}
+              priceNote={priceNote}
               dayVariant="booking"
               initialStep={pickerStep}
               onStepChange={(step) => {
                 // Reaching the guests step is the confirmation — the counts are
                 // always valid, so the step is about intent, not validity.
-                if (step === "guests") setGuestsConfirmed(true);
+                if (step !== "dates") setGuestsConfirmed(true);
+                setPickerStep(step);
               }}
               guestCounts={guestDetails}
               onGuestCountsChange={(next) => {
@@ -995,7 +990,8 @@ export function BookingWidget({
               // The guest step is a step, not a checkout: it gets the title and the way
               // back to the dates that the search pill's own version does without.
               showGuestStepChrome
-              onFinalAction={handlePickerDone}
+              reviewStepTitle={reviewTitle}
+              renderReviewStep={renderReviewStep}
               pagedCalendarOnDesktop
               searchPresentation
               showPillGuestAction
@@ -1008,36 +1004,11 @@ export function BookingWidget({
               }}
               className="w-full [&_button]:!rounded-none [&_button]:!border-0"
             />
-          ) : (
-            <BookingSummaryRow
-              label={datesRowLabel}
-              value={stayRangeSummary}
-              done={selectionValidation.status === "valid"}
-              onOpen={() => openPicker("dates")}
-            />
-          )}
           <div className="border-t border-border/50">
             <BookingGuestRow
               summary={guestSummary}
+              detail={guestBreakdownSummary}
               onOpen={() => openPicker("guests")}
-            />
-          </div>
-          {houseRules ? (
-            <div className="border-t border-border/50">
-              <BookingSummaryRow
-                label={houseRulesTitle}
-                value={houseRulesState}
-                done={rulesAccepted}
-                onOpen={() => openPanel("rules")}
-              />
-            </div>
-          ) : null}
-          <div className="border-t border-border/50">
-            <BookingSummaryRow
-              label={messageRowLabel}
-              value={messageState}
-              done={Boolean(note)}
-              onOpen={() => openPanel("message")}
             />
           </div>
         </div>
@@ -1062,78 +1033,204 @@ export function BookingWidget({
   }
 
   /**
-   * A panel's own content, without a button: the frame's footer supplies that.
+   * The breakdown, without a button: the card's footer supplies that.
    *
    * `dismissable` is the corner X, which the card needs and the drawer does not — a
-   * drawer closes itself. A panel scrolls inside its own box, so a host with a lot to
-   * say about their rules cannot push the button off the screen.
+   * drawer closes itself. It scrolls inside its own box, so a stay priced night by
+   * night cannot push the footer off the card.
    */
-  function renderPanel(dismissable: boolean) {
-    if (panel === "rules") {
-      return (
-        <div className="flex min-h-0 flex-1 flex-col gap-2">
-          <BookingPanelHeader
-            title={houseRulesTitle}
-            closeLabel={closePanelLabel}
-            onClose={dismissable ? closePanel : undefined}
-          />
-          {/* The listing's own rules, rendered by the server and shown here in full
-              rather than linked. A guest agreeing to rules they would have to scroll
-              away to read has not been shown them — which is why the button that
-              agrees to them sits under this panel and nowhere else. */}
-          <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-border/40 bg-muted/15 px-4">
-            {houseRules}
-          </div>
+  function renderPricePanel(dismissable: boolean) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col gap-2">
+        <BookingPanelHeader
+          title={priceDetailsLabel}
+          closeLabel={closePanelLabel}
+          onClose={dismissable ? closePrice : undefined}
+        />
+        <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-border/40 bg-muted/15 px-4 py-3">
+          {renderPriceBreakdown()}
         </div>
-      );
-    }
-
-    if (panel === "message") {
-      return (
-        <div className="flex min-h-0 flex-1 flex-col gap-2">
-          <BookingPanelHeader
-            title={messageTitle}
-            closeLabel={closePanelLabel}
-            onClose={dismissable ? closePanel : undefined}
-          />
-          <Textarea
-            autoFocus
-            placeholder={
-              i18n.resolve(
-                "booking.message_placeholder",
-                "Introduce yourself and share your travel plans...",
-              ).text
-            }
-            value={noteDraft}
-            onChange={(event) => setNoteDraft(event.target.value)}
-            className="min-h-0 flex-1 resize-none"
-          />
-        </div>
-      );
-    }
-
-    if (panel === "price") {
-      return (
-        <div className="flex min-h-0 flex-1 flex-col gap-2">
-          <BookingPanelHeader
-            title={priceDetailsLabel}
-            closeLabel={closePanelLabel}
-            onClose={dismissable ? closePanel : undefined}
-          />
-          <div className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-border/40 bg-muted/15 px-4 py-3">
-            {renderPriceBreakdown()}
-          </div>
-        </div>
-      );
-    }
-
-    return null;
+      </div>
+    );
   }
 
+  /**
+   * The last step of the overlay, and the only place a booking is sent from.
+   *
+   * Everything the request is made of, in the order a guest checks it: what they
+   * picked, what it costs, what the host asks of them, and — behind the second of the
+   * two buttons — the note they may want to send along. The rules are printed in full
+   * rather than linked, because the line above the button says that pressing it agrees to
+   * them, and that is only true of rules the guest was actually shown.
+   */
+  function renderReviewStep({
+    goToStep,
+  }: {
+    goToStep: (step: "dates" | "guests") => void;
+    close: () => void;
+  }) {
+    return (
+      <>
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 md:px-6">
+          {/* What the request is made of, in one stack: the two things a guest can go
+              back and change, and under them what it comes to. The rows navigate, the
+              price folds open in place — a press on the price should not cost the
+              guest their place in the step. */}
+          <div className="overflow-hidden rounded-xl border border-border/50">
+            <BookingSummaryRow
+              label={datesRowLabel}
+              value={stayRangeSummary}
+              done={selectionValidation.status === "valid"}
+              onOpen={() => goToStep("dates")}
+            />
+            <div className="border-t border-border/50">
+              <BookingSummaryRow
+                label={guestsRowLabel}
+                value={guestSummary}
+                detail={guestBreakdownSummary}
+                done={guests > 0}
+                onOpen={() => goToStep("guests")}
+              />
+            </div>
+            {hasStayQuote ? (
+              <div className="border-t border-border/50">
+                <button
+                  type="button"
+                  onClick={() => setReviewPriceOpen((open) => !open)}
+                  aria-expanded={reviewPriceOpen}
+                  className="flex w-full items-center justify-between gap-3 bg-muted/20 px-4 py-3 text-left text-sm transition-colors hover:bg-muted/30 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                >
+                  <span className="min-w-0 truncate">
+                    <span className="font-medium text-foreground">
+                      <Txt value={nightLabel} />
+                    </span>
+                    <span className="text-muted-foreground">{" · "}</span>
+                    <LocalizedPrice
+                      exact
+                      amount={total}
+                      currency={currency}
+                      locale={i18n.locale}
+                      className="font-medium text-foreground"
+                    />
+                  </span>
+                  {reviewPriceOpen ? (
+                    <ChevronUp
+                      className="size-4 shrink-0 text-foreground"
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <ChevronDown
+                      className="size-4 shrink-0 text-foreground"
+                      aria-hidden="true"
+                    />
+                  )}
+                </button>
+                {reviewPriceOpen ? (
+                  <div className="border-t border-border/50 bg-muted/20 px-4 py-3">
+                    {renderPriceBreakdown()}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+
+          {houseRules ? (
+            <div>
+              <p className="mb-2 text-sm font-semibold">
+                <Txt value={houseRulesTitle} />
+              </p>
+              <div className="rounded-xl border border-border/40 bg-muted/15 px-4">
+                {houseRules}
+              </div>
+            </div>
+          ) : null}
+
+          {noteOpen || note ? (
+            <div>
+              <p className="mb-2 text-sm font-semibold">
+                <Txt value={messageTitle} />
+              </p>
+              <Textarea
+                ref={noteRef}
+                autoFocus={noteOpen}
+                placeholder={
+                  i18n.resolve(
+                    "booking.message_placeholder",
+                    "Introduce yourself and share your travel plans...",
+                  ).text
+                }
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+                className="min-h-24 resize-none"
+              />
+            </div>
+          ) : null}
+        </div>
+
+        <div className="shrink-0 space-y-3 border-t border-border bg-background px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:px-6 md:pb-4">
+          {error ? (
+            <p
+              aria-live="polite"
+              className="rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground shadow-sm"
+            >
+              {error}
+            </p>
+          ) : null}
+
+          {houseRules ? (
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              <Txt value={rulesAgreementNotice} />
+            </p>
+          ) : null}
+
+          <div className="flex items-center gap-3">
+            {/* The note rides along with the request rather than opening a
+                conversation: the guest is one press from booking, and a thread is
+                where a guest goes when they are not. It takes only the width of its
+                own label — the request is what this step is for, and gets the rest. */}
+            <Button
+              type="button"
+              variant="outline"
+              className="shrink-0 rounded-full px-5"
+              onClick={() => {
+                setNoteOpen(true);
+                noteRef.current?.focus();
+              }}
+              disabled={isPending}
+            >
+              <Txt value={addNoteLabel} />
+            </Button>
+            <Button
+              type="button"
+              className="min-w-0 flex-1 rounded-full font-semibold"
+              onClick={handleSubmit}
+              disabled={isPending}
+            >
+              {isPending ? (
+                <Tx k="booking.sending_request" source="Sending request…" />
+              ) : (
+                requestToBookLabel.text
+              )}
+            </Button>
+          </div>
+
+          <p className="text-center text-xs leading-relaxed text-muted-foreground">
+            <Tx
+              k="booking.host_review_notice"
+              source="The host will review your request and share payment instructions if it is accepted."
+            />
+          </p>
+        </div>
+      </>
+    );
+  }
+
+  /** The card's one button. It opens the overlay on the step this stay is up to;
+   *  the request itself is sent from in there and never from here. */
   function renderFooterButton() {
     return (
       <Button
-        onClick={footerAction.run}
+        onClick={handlePrimaryAction}
         className="w-full rounded-lg py-6 text-base font-semibold disabled:bg-muted disabled:text-muted-foreground"
         size="lg"
         disabled={isPending}
@@ -1141,24 +1238,22 @@ export function BookingWidget({
         {isPending ? (
           <Tx k="booking.sending_request" source="Sending request…" />
         ) : (
-          footerAction.label.text
+          primaryActionLabel.text
         )}
       </Button>
     );
   }
 
-  /** The total and the button, pinned under every view so the price is never the
-   *  thing a guest has to leave a panel to check. */
+  /** The total and the button, pinned under both views of the card so the price is
+   *  never the thing a guest has to leave the breakdown to check. */
   function renderFooter() {
     return (
       <div className="mt-auto space-y-3 pt-3">
         {nights > 0 && stayPricing ? (
           <button
             type="button"
-            onClick={() =>
-              panel === "price" ? closePanel() : openPanel("price")
-            }
-            aria-expanded={panel === "price"}
+            onClick={() => (priceOpen ? closePrice() : openPrice())}
+            aria-expanded={priceOpen}
             className="flex w-full items-end justify-between gap-3 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <span>
@@ -1170,7 +1265,7 @@ export function BookingWidget({
               </span>
               <span className="mt-0.5 inline-flex items-center gap-1 text-xs text-muted-foreground underline underline-offset-2">
                 <Txt value={priceDetailsLabel} />
-                {panel === "price" ? (
+                {priceOpen ? (
                   <ChevronUp className="h-3.5 w-3.5" />
                 ) : (
                   <ChevronDown className="h-3.5 w-3.5" />
@@ -1180,6 +1275,7 @@ export function BookingWidget({
             <span className="flex flex-col items-end">
               {stayPricing.discountAmount > 0 ? (
                 <LocalizedPrice
+                  exact
                   amount={stayPricing.originalTotal}
                   currency={currency}
                   locale={i18n.locale}
@@ -1187,6 +1283,7 @@ export function BookingWidget({
                 />
               ) : null}
               <LocalizedPrice
+                exact
                 amount={total}
                 currency={currency}
                 locale={i18n.locale}
@@ -1196,7 +1293,7 @@ export function BookingWidget({
           </button>
         ) : null}
 
-        {bookingMessage && panel === null && (
+        {bookingMessage && !priceOpen && (
           <p
             aria-live="polite"
             className={
@@ -1209,27 +1306,27 @@ export function BookingWidget({
           </p>
         )}
 
-        {panel === null ? (
+        {priceOpen ? (
+          renderFooterButton()
+        ) : (
           <Tooltip>
             <TooltipTrigger asChild>{renderFooterButton()}</TooltipTrigger>
             <TooltipContent
               className={
-                (blockingProblem ?? reserveTooltip).translated
+                (blockingProblem ?? requestToBookTooltip).translated
                   ? "notranslate"
                   : undefined
               }
             >
-              {(blockingProblem ?? reserveTooltip).text}
+              {(blockingProblem ?? requestToBookTooltip).text}
             </TooltipContent>
           </Tooltip>
-        ) : (
-          renderFooterButton()
         )}
 
         <p className="text-center text-xs leading-relaxed text-muted-foreground">
           <Tx
-            k="booking.no_charge_notice"
-            source="You won't be charged yet. The host will approve or decline your request."
+            k="booking.host_review_notice"
+            source="The host will review your request and share payment instructions if it is accepted."
           />
         </p>
       </div>
@@ -1256,10 +1353,8 @@ export function BookingWidget({
             {hasStayQuote && stayPricing ? (
               <button
                 type="button"
-                onClick={() =>
-                  panel === "price" ? closePanel() : openPanel("price")
-                }
-                aria-expanded={panel === "price"}
+                onClick={() => (priceOpen ? closePrice() : openPrice())}
+                aria-expanded={priceOpen}
                 className="flex flex-col items-start gap-0.5 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <span className="flex items-baseline gap-1">
@@ -1326,11 +1421,15 @@ export function BookingWidget({
             ) : null}
           </CardTitle>
         </CardHeader>
-        {/* The frame: a middle the views take turns in, and a footer that never moves.
-            The minimum height is the tallest view's, so swapping panels does not
-            resize a card the page is already scrolled against. */}
+        {/* The frame: a middle that is either the summary or the breakdown, and a
+            footer that never moves. The minimum height is the taller of the two, so
+            opening the breakdown does not resize a card the page is scrolled against. */}
         <CardContent className="flex min-h-[21rem] flex-1 flex-col pt-0">
-          {panel === null ? renderSummary() : renderPanel(true)}
+          {/* Below `lg` this card is hidden and the breakdown is the drawer below, so
+              the swap is desktop's alone. It also keeps the summary — and with it the
+              one mount of the stay picker — in the tree at every width, which is what
+              lets the sticky bar open the picker over a drawer. */}
+          {priceOpen && !isSmallScreen ? renderPricePanel(true) : renderSummary()}
           {renderFooter()}
         </CardContent>
       </Card>
@@ -1340,7 +1439,7 @@ export function BookingWidget({
         translate="no"
         style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
       >
-        {bookingMessage && !confirmOpen && (
+        {bookingMessage && !datePickerOpen && (
           <p
             aria-live="polite"
             className={
@@ -1352,16 +1451,17 @@ export function BookingWidget({
             {bookingMessage.text}
           </p>
         )}
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center justify-between gap-3">
           <button
             type="button"
-            className="flex min-w-0 flex-col items-start text-left disabled:pointer-events-none"
-            onClick={() => openPanel("price")}
+            className="flex min-w-0 flex-1 flex-col items-start text-left disabled:pointer-events-none"
+            onClick={openPrice}
             disabled={!(nights > 0 && stayPricing)}
           >
             {nights > 0 && stayPricing ? (
               <>
                 <LocalizedPrice
+                  exact
                   amount={total}
                   currency={currency}
                   locale={i18n.locale}
@@ -1408,8 +1508,9 @@ export function BookingWidget({
               </>
             )}
           </button>
+          {messageHost}
           <Button
-            onClick={handleBarAction}
+            onClick={handlePrimaryAction}
             className="shrink-0 rounded-xl px-6 font-semibold disabled:bg-muted disabled:text-muted-foreground"
             size="lg"
             disabled={isPending}
@@ -1423,67 +1524,32 @@ export function BookingWidget({
         </div>
       </div>
 
-      {/* Phones show the same views as drawers rather than in place: there is no card
-          to swap the middle of, and a sheet that slides up from the bottom is what
-          this app already does with the map's results. Mounted only at the breakpoint
-          that uses them, so a panel opened in the card never also opens an overlay. */}
+      {/* The breakdown is a drawer on a phone rather than a swap in place: there is no
+          card here to swap the middle of. It is the only thing the bar opens on its
+          own — the booking itself is made in the picker's own overlay — and it is
+          mounted only at the breakpoint that uses it. */}
       {isSmallScreen ? (
-        <>
-          <Sheet
-            open={confirmOpen}
-            onOpenChange={(next) => {
-              setConfirmOpen(next);
-              if (!next) closePanel();
-            }}
+        <Sheet
+          open={priceOpen}
+          onOpenChange={(next) => {
+            if (!next) closePrice();
+          }}
+        >
+          <SheetContent
+            side="bottom"
+            className="notranslate flex h-[80vh] flex-col rounded-t-2xl px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(15,23,42,0.14)]"
+            translate="no"
           >
-            <SheetContent
-              side="bottom"
-              className="notranslate max-h-[88vh] rounded-t-2xl px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(15,23,42,0.14)]"
-              translate="no"
-            >
-              {drawerHandle}
-              <SheetHeader className="p-0">
-                <SheetTitle className="text-base">
-                  <Txt value={confirmTitle} />
-                </SheetTitle>
-              </SheetHeader>
-              <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-                {renderSummary({ mountPicker: false })}
-                {renderFooter()}
-              </div>
-            </SheetContent>
-          </Sheet>
-
-          <Sheet
-            open={panel !== null}
-            onOpenChange={(next) => {
-              if (!next) closePanel();
-            }}
-          >
-            <SheetContent
-              side="bottom"
-              className="notranslate flex h-[80vh] flex-col rounded-t-2xl px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(15,23,42,0.14)]"
-              translate="no"
-            >
-              {drawerHandle}
-              <SheetHeader className="sr-only">
-                <SheetTitle>
-                  <Txt
-                    value={
-                      panel === "rules"
-                        ? houseRulesTitle
-                        : panel === "message"
-                          ? messageTitle
-                          : priceDetailsLabel
-                    }
-                  />
-                </SheetTitle>
-              </SheetHeader>
-              {renderPanel(false)}
-              {renderFooter()}
-            </SheetContent>
-          </Sheet>
-        </>
+            {drawerHandle}
+            <SheetHeader className="sr-only">
+              <SheetTitle>
+                <Txt value={priceDetailsLabel} />
+              </SheetTitle>
+            </SheetHeader>
+            {renderPricePanel(false)}
+            {renderFooter()}
+          </SheetContent>
+        </Sheet>
       ) : null}
     </>
   );

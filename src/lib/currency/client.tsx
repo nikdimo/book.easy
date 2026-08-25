@@ -18,7 +18,13 @@ interface DisplayCurrencyValue {
   canConvert: boolean;
   ratesUpdatedAt: string | null;
   stale: boolean;
-  format(amount: number | string, officialCurrency: string): DisplayPrice;
+  /** `exact` keeps the currency's minor units on a whole amount, for the price
+   *  details; everything else drops a fraction that would only print zeros. */
+  format(
+    amount: number | string,
+    officialCurrency: string,
+    options?: { exact?: boolean },
+  ): DisplayPrice;
   /** The converted number without any formatting, for the few places that must lay a
    * price out themselves — a calendar cell drops the symbol to fit seven of them
    * across a phone. Null where `format` would have fallen back to the official
@@ -37,11 +43,12 @@ const FALLBACK: DisplayCurrencyValue = {
   canConvert: false,
   ratesUpdatedAt: null,
   stale: false,
-  format: (amount, officialCurrency) => ({
+  format: (amount, officialCurrency, options) => ({
     text: formatMoney(
       typeof amount === "string" ? Number.parseFloat(amount) : amount,
       officialCurrency,
       "en",
+      { exact: options?.exact ?? false },
     ),
     currency: officialCurrency,
     converted: false,
@@ -81,12 +88,13 @@ export function DisplayCurrencyProvider({
       canConvert: context !== null,
       ratesUpdatedAt,
       stale,
-      format: (amount, officialCurrency) =>
+      format: (amount, officialCurrency, options) =>
         displayPrice(
           typeof amount === "string" ? Number.parseFloat(amount) : amount,
           officialCurrency,
           locale,
           context,
+          { exact: options?.exact ?? false },
         ),
       convert: (amount, officialCurrency) =>
         context && context.display !== officialCurrency

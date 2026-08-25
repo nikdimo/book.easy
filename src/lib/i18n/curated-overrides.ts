@@ -99,9 +99,6 @@ export const CURATED_TRANSLATION_OVERRIDES: Record<string, Record<string, string
     tr: "Seçimi kaldır",
     bg: "Изчисти избора",
   },
-  "booking.no_charge_notice": {
-    sq: "Ende nuk do të tarifoheni. Pritësi do ta pranojë ose refuzojë kërkesën tuaj.",
-  },
   "booking.minimum_stay.few": {
     sq: "Qëndrimi minimal është {n} netë",
     sr: "Минимални боравак је {n} ноћи",
@@ -132,18 +129,12 @@ export const CURATED_TRANSLATION_OVERRIDES: Record<string, Record<string, string
     sr: "Минимални боравак је {n} ноћи",
     tr: "Minimum konaklama süresi {n} gecedir",
   },
-  "booking.request_sent_description": {
-    sq: "Kërkesa juaj për rezervim u dërgua. Pritësi do ta shqyrtojë dhe do t'ju përgjigjet.",
-  },
   "booking.select_dates_error": {
     sq: "Ju lutemi, zgjidhni datat e hyrjes dhe daljes.",
   },
   "booking.variable_rate_notice": {
     sr: "За изабране датуме могу важити посебне цене по ноћењу, приказане у обрачуну испод.",
     tr: "Seçilen tarihler için aşağıdaki dökümde gösterilen özel gecelik fiyatlar uygulanabilir.",
-  },
-  "booking_widget.reserve_tooltip": {
-    sq: "Dërgojini pritësit një kërkesë rezervimi — ende nuk do të tarifoheni.",
   },
   "carousel.scroll_left": {
     mk: "Прелистај налево",
@@ -178,10 +169,6 @@ export const CURATED_TRANSLATION_OVERRIDES: Record<string, Record<string, string
   },
   "gallery.back_all": {
     sq: "Kthehu te të gjitha materialet",
-  },
-  "gallery.show_all.one": {
-    sq: "Shfaq elementin ({n})",
-    bg: "Покажи елемента ({n})",
   },
   "listing.link_copied_clipboard": {
     mk: "Врската е копирана во меморијата",
