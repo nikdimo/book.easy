@@ -1300,6 +1300,11 @@
     "filePath": "src/app/(public)/properties/[slug]/page.tsx"
   },
   {
+    "key": "booking.accepted_payment_methods.snapshot_unavailable",
+    "sourceText": "Accepted payment methods were not recorded for this booking. Confirm the payment arrangement with the host.",
+    "filePath": "src/components/booking/accepted-payment-methods.tsx"
+  },
+  {
     "key": "booking.accommodation",
     "sourceText": "Accommodation",
     "filePath": "src/app/(public)/bookings/confirm/page.tsx"
@@ -1447,7 +1452,7 @@
   {
     "key": "booking.display_total_approx",
     "sourceText": "Approximately {amount} at the time of booking. The booking is agreed in {currency}.",
-    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+    "filePath": "src/app/(account)/account/bookings/[id]/after-stay/page.tsx"
   },
   {
     "key": "booking.guests_label",
@@ -1457,32 +1462,32 @@
   {
     "key": "booking.guests.few",
     "sourceText": "{n} guests",
-    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+    "filePath": "src/app/(account)/account/bookings/[id]/page.tsx"
   },
   {
     "key": "booking.guests.many",
     "sourceText": "{n} guests",
-    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+    "filePath": "src/app/(account)/account/bookings/[id]/page.tsx"
   },
   {
     "key": "booking.guests.one",
     "sourceText": "{n} guest",
-    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+    "filePath": "src/app/(account)/account/bookings/[id]/page.tsx"
   },
   {
     "key": "booking.guests.other",
     "sourceText": "{n} guests",
-    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+    "filePath": "src/app/(account)/account/bookings/[id]/page.tsx"
   },
   {
     "key": "booking.guests.two",
     "sourceText": "{n} guests",
-    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+    "filePath": "src/app/(account)/account/bookings/[id]/page.tsx"
   },
   {
     "key": "booking.guests.zero",
     "sourceText": "{n} guests",
-    "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+    "filePath": "src/app/(account)/account/bookings/[id]/page.tsx"
   },
   {
     "key": "booking.hero.accepted_guest",
@@ -1703,6 +1708,266 @@
     "key": "booking.payment_arranged_with_host",
     "sourceText": "Linger Homes does not collect or hold booking payments. Payment is arranged directly with the host after the booking is accepted.",
     "filePath": "src/app/(account)/account/bookings/[id]/page.tsx"
+  },
+  {
+    "key": "booking.payment_progress.confirm_deposit_return",
+    "sourceText": "Confirm deposit return",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.deposit",
+    "sourceText": "Deposit",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.deposit_status.awaiting_deposit",
+    "sourceText": "Awaiting deposit",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.deposit_status.deposit_confirmed",
+    "sourceText": "Deposit received",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.deposit_status.deposit_reported",
+    "sourceText": "Deposit reported",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.deposit_status.not_required",
+    "sourceText": "Not required",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.deposit_status.retained",
+    "sourceText": "Deposit retained",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.deposit_status.return_confirmed",
+    "sourceText": "Return confirmed",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.deposit_status.return_reported",
+    "sourceText": "Return reported",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.deposit_status.untracked",
+    "sourceText": "Not tracked",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.disclaimer",
+    "sourceText": "Reported by host/guest. Linger Homes has not verified or processed this.",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.event.guest_confirm_deposit_returned",
+    "sourceText": "Confirmed deposit return",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.event.guest_report_deposit_sent",
+    "sourceText": "Reported deposit sent",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.event.guest_report_payment_sent",
+    "sourceText": "Reported payment sent",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.event.host_confirm_deposit_received",
+    "sourceText": "Confirmed deposit received",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.event.host_confirm_payment_received",
+    "sourceText": "Confirmed payment received",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.event.host_mark_deposit_due",
+    "sourceText": "Marked deposit due",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.event.host_mark_deposit_retained",
+    "sourceText": "Marked deposit retained",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.event.host_mark_payment_due",
+    "sourceText": "Marked payment due",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.event.host_mark_payment_not_required",
+    "sourceText": "Marked payment not required",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.event.host_report_deposit_returned",
+    "sourceText": "Reported deposit returned",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.frozen_deposit",
+    "sourceText": "Frozen deposit amount",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.history",
+    "sourceText": "Status history",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.instructions_failed",
+    "sourceText": "Could not share payment instructions",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.instructions_label",
+    "sourceText": "Secure payment instructions",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.instructions_placeholder",
+    "sourceText": "Explain how and when the guest should pay.",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.instructions_private",
+    "sourceText": "This is sent only inside the Linger Homes conversation.",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.instructions_security",
+    "sourceText": "Never ask for or send a card number, CVV, PIN, password, seed phrase, or private key.",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.instructions_send",
+    "sourceText": "Share instructions",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.instructions_sending",
+    "sourceText": "Sending…",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.instructions_shared",
+    "sourceText": "Payment instructions shared in the conversation",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.mark_deposit_due",
+    "sourceText": "Mark deposit due",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.mark_deposit_received",
+    "sourceText": "Mark deposit received",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.mark_deposit_retained",
+    "sourceText": "Mark deposit retained",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.mark_deposit_returned",
+    "sourceText": "Mark deposit returned",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.mark_payment_due",
+    "sourceText": "Mark payment due",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.mark_payment_not_required",
+    "sourceText": "Mark payment not required",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.mark_payment_received",
+    "sourceText": "Mark payment received",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.payment",
+    "sourceText": "Payment",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.payment_status.awaiting_payment",
+    "sourceText": "Awaiting payment",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.payment_status.not_required",
+    "sourceText": "Not required",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.payment_status.payment_confirmed",
+    "sourceText": "Payment received",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.payment_status.payment_reported",
+    "sourceText": "Payment reported",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.payment_status.untracked",
+    "sourceText": "Not tracked",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.report_deposit_sent",
+    "sourceText": "Report deposit sent",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.report_payment_sent",
+    "sourceText": "Report payment sent",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.reported_by_guest",
+    "sourceText": "Reported by guest",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.reported_by_host",
+    "sourceText": "Reported by host",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.title",
+    "sourceText": "Payment progress",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.total",
+    "sourceText": "Payment total",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.update_failed",
+    "sourceText": "Could not update payment status",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.updated",
+    "sourceText": "Payment status updated",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
     "key": "booking.pending",
@@ -2352,6 +2617,11 @@
   {
     "key": "conversation.nights",
     "sourceText": "nights",
+    "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "conversation.payment_instructions",
+    "sourceText": "Private payment instructions",
     "filePath": "src/components/communication/conversation-thread.tsx"
   },
   {
@@ -3045,6 +3315,11 @@
     "filePath": "src/lib/email/index.ts"
   },
   {
+    "key": "email.message.payment_instructions",
+    "sourceText": "Payment instructions are available in {brand}",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
     "key": "email.message.privacy",
     "sourceText": "For your privacy, keep the conversation inside {brand}.",
     "filePath": "src/lib/email/index.ts"
@@ -3163,6 +3438,16 @@
     "key": "email.signin.subject",
     "sourceText": "Sign in to {product}",
     "filePath": "src/lib/auth.ts"
+  },
+  {
+    "key": "email.user_content.machine_translated",
+    "sourceText": "Automatically translated by Google.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.user_content.original",
+    "sourceText": "Original as written:",
+    "filePath": "src/lib/email/index.ts"
   },
   {
     "key": "email.view_status",
@@ -3322,6 +3607,11 @@
   {
     "key": "footer.become_a_host",
     "sourceText": "Become a host",
+    "filePath": "src/components/shared/footer.tsx"
+  },
+  {
+    "key": "footer.brand_tagline",
+    "sourceText": "Holiday homes and stays",
     "filePath": "src/components/shared/footer.tsx"
   },
   {
@@ -5130,6 +5420,116 @@
     "filePath": "src/lib/i18n/editor-label.ts"
   },
   {
+    "key": "host.editor.deposit.advance",
+    "sourceText": "Advance payment",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+  },
+  {
+    "key": "host.editor.deposit.after_acceptance",
+    "sourceText": "After booking acceptance",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+  },
+  {
+    "key": "host.editor.deposit.amount",
+    "sourceText": "Deposit amount",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+  },
+  {
+    "key": "host.editor.deposit.at_checkin",
+    "sourceText": "At check-in",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+  },
+  {
+    "key": "host.editor.deposit.before_checkin",
+    "sourceText": "Before check-in",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+  },
+  {
+    "key": "host.editor.deposit.damage",
+    "sourceText": "Refundable damage deposit",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+  },
+  {
+    "key": "host.editor.deposit.days_before",
+    "sourceText": "Days before check-in",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+  },
+  {
+    "key": "host.editor.deposit.due",
+    "sourceText": "When is it due?",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+  },
+  {
+    "key": "host.editor.deposit.fixed",
+    "sourceText": "Fixed amount",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+  },
+  {
+    "key": "host.editor.deposit.heading",
+    "sourceText": "Deposit policy",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+  },
+  {
+    "key": "host.editor.deposit.intro",
+    "sourceText": "Tell guests whether you require an advance payment or refundable damage deposit. Linger Homes records these terms but does not collect, hold, verify, or refund money.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+  },
+  {
+    "key": "host.editor.deposit.invalid",
+    "sourceText": "Check the deposit amount and timing before saving.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+  },
+  {
+    "key": "host.editor.deposit.none",
+    "sourceText": "No deposit",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+  },
+  {
+    "key": "host.editor.deposit.not_saved",
+    "sourceText": "Deposit policy needs review",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+  },
+  {
+    "key": "host.editor.deposit.percent_value",
+    "sourceText": "Percentage of booking total",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+  },
+  {
+    "key": "host.editor.deposit.percentage",
+    "sourceText": "Percentage",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+  },
+  {
+    "key": "host.editor.deposit.purpose",
+    "sourceText": "Purpose",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+  },
+  {
+    "key": "host.editor.deposit.required",
+    "sourceText": "Is a deposit required?",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+  },
+  {
+    "key": "host.editor.deposit.return_days",
+    "sourceText": "Return within days after checkout (optional)",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+  },
+  {
+    "key": "host.editor.deposit.save",
+    "sourceText": "Save deposit policy",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+  },
+  {
+    "key": "host.editor.deposit.save_error",
+    "sourceText": "The deposit policy was not saved. Try again.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+  },
+  {
+    "key": "host.editor.deposit.saved",
+    "sourceText": "Deposit policy saved",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+  },
+  {
     "key": "host.editor.house_rules.elsewhere_heading",
     "sourceText": "Rules kept somewhere else",
     "filePath": "src/components/host/v2/editor/house-rules/house-rules-elsewhere.tsx"
@@ -5505,6 +5905,11 @@
     "filePath": "src/lib/i18n/editor-label.ts"
   },
   {
+    "key": "host.editor.overview.attention.payment_arrangements",
+    "sourceText": "Choose accepted payment methods and whether a deposit is required.",
+    "filePath": "src/lib/i18n/editor-label.ts"
+  },
+  {
     "key": "host.editor.overview.attention.photos",
     "sourceText": "Add at least 3 photos before publishing.",
     "filePath": "src/lib/i18n/editor-label.ts"
@@ -5633,6 +6038,231 @@
     "key": "host.editor.overview.view_as_guest",
     "sourceText": "View as guest",
     "filePath": "src/components/host/v2/editor/overview/editor-overview.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.arrange_directly",
+    "sourceText": "Arrange directly after the booking request",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.arrange_directly_description",
+    "sourceText": "Use this when you do not want to name a method in advance. This option cannot be combined with another method.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.bank_international",
+    "sourceText": "International bank transfer",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.bank_international_description",
+    "sourceText": "For transfers between countries or banking regions.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.bank_local",
+    "sourceText": "Local or SEPA bank transfer",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.bank_local_description",
+    "sourceText": "For domestic or SEPA transfers.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.cash",
+    "sourceText": "Cash at the property",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.cash_description",
+    "sourceText": "The guest pays in person at the stay.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.heading",
+    "sourceText": "Payment arrangements",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.intro",
+    "sourceText": "Choose every payment method you accept. Guests see the method names only—never account details or payment instructions.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.method_required",
+    "sourceText": "Choose at least one payment method to complete this section.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.methods_hint",
+    "sourceText": "Select all that apply, or choose Arrange directly on its own.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.methods_legend",
+    "sourceText": "Accepted payment methods",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.other",
+    "sourceText": "Another payment method",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.other_description",
+    "sourceText": "Add a short public name for another method.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.other_hint",
+    "sourceText": "Use 2–40 characters for the method name only, such as MobilePay.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.other_instructions",
+    "sourceText": "Do not include payment instructions. Enter a method name only.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.other_label",
+    "sourceText": "Public method name",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.other_placeholder",
+    "sourceText": "MobilePay",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.other_required",
+    "sourceText": "Enter the public name of this payment method.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.other_sensitive",
+    "sourceText": "That looks like contact or payment details. Enter a method name only.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.other_too_long",
+    "sourceText": "Use no more than 40 characters.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.other_too_short",
+    "sourceText": "Use at least 2 characters.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.paypal",
+    "sourceText": "PayPal",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.paypal_description",
+    "sourceText": "PayPal is available for this listing.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.preview_heading",
+    "sourceText": "What guests will see",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.public_names_body",
+    "sourceText": "Only the selected method names appear publicly. You share any necessary instructions privately after accepting a request.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.public_names_title",
+    "sourceText": "Guests see names, not details",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.reviewed_explanation",
+    "sourceText": "The host will share payment instructions after accepting your request.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.revolut",
+    "sourceText": "Revolut",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.revolut_description",
+    "sourceText": "Revolut is available for this listing.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.safety_body",
+    "sourceText": "Do not enter account numbers, IBAN or SWIFT codes, payment handles, links, card details, phone numbers, or payment instructions.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.safety_title",
+    "sourceText": "Keep sensitive details out",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.save_button",
+    "sourceText": "Save payment methods",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.saving_button",
+    "sourceText": "Saving…",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.secure_card_link",
+    "sourceText": "Secure card payment link from host",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.secure_card_link_description",
+    "sourceText": "You provide your secure card payment option after acceptance.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.status_error",
+    "sourceText": "Not saved. Check your connection and try again.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.status_pending",
+    "sourceText": "Changes ready to save",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.status_saved",
+    "sourceText": "Payment methods saved",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.status_saving",
+    "sourceText": "Saving payment methods…",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.status_unanswered",
+    "sourceText": "Not answered yet",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.unanswered_fallback",
+    "sourceText": "Payment is arranged directly with the host after the booking request is accepted.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.wise",
+    "sourceText": "Wise",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.wise_description",
+    "sourceText": "Wise is available for this listing.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
   },
   {
     "key": "host.editor.photos.add_photo",
@@ -6278,6 +6908,11 @@
     "key": "host.editor.section.overview",
     "sourceText": "Listing overview",
     "filePath": "src/components/host/v2/editor/overview/editor-overview.tsx"
+  },
+  {
+    "key": "host.editor.section.payment_arrangements",
+    "sourceText": "Payment arrangements",
+    "filePath": "src/lib/i18n/editor-label.ts"
   },
   {
     "key": "host.editor.section.photos",
@@ -8967,6 +9602,16 @@
   {
     "key": "host.v2.attention.damage_reports",
     "sourceText": "Damage reports",
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+  },
+  {
+    "key": "host.v2.attention.payment_arrangements",
+    "sourceText": "Complete payment arrangements",
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+  },
+  {
+    "key": "host.v2.attention.payment_arrangements_copy",
+    "sourceText": "Tell guests how they can pay and whether a deposit is required for {title}.",
     "filePath": "src/app/(host-v2)/host/v2/page.tsx"
   },
   {
@@ -14200,6 +14845,66 @@
     "filePath": "src/app/(public)/properties/[slug]/page.tsx"
   },
   {
+    "key": "listing.accepted_payment_methods.arrange_directly",
+    "sourceText": "Payment is arranged directly with the host.",
+    "filePath": "src/components/booking/accepted-payment-methods.tsx"
+  },
+  {
+    "key": "listing.accepted_payment_methods.bank_transfer_international",
+    "sourceText": "International bank transfer",
+    "filePath": "src/components/booking/accepted-payment-methods.tsx"
+  },
+  {
+    "key": "listing.accepted_payment_methods.bank_transfer_local_sepa",
+    "sourceText": "Local or SEPA bank transfer",
+    "filePath": "src/components/booking/accepted-payment-methods.tsx"
+  },
+  {
+    "key": "listing.accepted_payment_methods.cash_at_property",
+    "sourceText": "Cash at the property",
+    "filePath": "src/components/booking/accepted-payment-methods.tsx"
+  },
+  {
+    "key": "listing.accepted_payment_methods.heading",
+    "sourceText": "Accepted payment methods",
+    "filePath": "src/components/booking/accepted-payment-methods.tsx"
+  },
+  {
+    "key": "listing.accepted_payment_methods.host_secure_card_link",
+    "sourceText": "Secure card payment link from the host",
+    "filePath": "src/components/booking/accepted-payment-methods.tsx"
+  },
+  {
+    "key": "listing.accepted_payment_methods.other",
+    "sourceText": "Other payment method",
+    "filePath": "src/components/booking/accepted-payment-methods.tsx"
+  },
+  {
+    "key": "listing.accepted_payment_methods.paypal",
+    "sourceText": "PayPal",
+    "filePath": "src/components/booking/accepted-payment-methods.tsx"
+  },
+  {
+    "key": "listing.accepted_payment_methods.reviewed_explanation",
+    "sourceText": "The host will share payment instructions after accepting your request.",
+    "filePath": "src/components/booking/accepted-payment-methods.tsx"
+  },
+  {
+    "key": "listing.accepted_payment_methods.revolut",
+    "sourceText": "Revolut",
+    "filePath": "src/components/booking/accepted-payment-methods.tsx"
+  },
+  {
+    "key": "listing.accepted_payment_methods.unanswered",
+    "sourceText": "Payment is arranged directly with the host after the booking request is accepted.",
+    "filePath": "src/components/booking/accepted-payment-methods.tsx"
+  },
+  {
+    "key": "listing.accepted_payment_methods.wise",
+    "sourceText": "Wise",
+    "filePath": "src/components/booking/accepted-payment-methods.tsx"
+  },
+  {
     "key": "listing.amenities_heading",
     "sourceText": "What this place offers",
     "filePath": "src/components/public/amenity-list.tsx"
@@ -14363,6 +15068,66 @@
     "key": "listing.cleaning_fee",
     "sourceText": "Cleaning fee",
     "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.deposit_policy.advance_payment",
+    "sourceText": "Purpose: advance payment.",
+    "filePath": "src/components/booking/deposit-policy-summary.tsx"
+  },
+  {
+    "key": "listing.deposit_policy.damage_security",
+    "sourceText": "Purpose: refundable damage/security deposit.",
+    "filePath": "src/components/booking/deposit-policy-summary.tsx"
+  },
+  {
+    "key": "listing.deposit_policy.direct_payment_disclaimer",
+    "sourceText": "Guests pay the host directly. Linger Homes does not collect, hold, verify, protect, or refund this payment.",
+    "filePath": "src/components/booking/deposit-policy-summary.tsx"
+  },
+  {
+    "key": "listing.deposit_policy.due_after_acceptance",
+    "sourceText": "Due after the booking request is accepted.",
+    "filePath": "src/components/booking/deposit-policy-summary.tsx"
+  },
+  {
+    "key": "listing.deposit_policy.due_at_check_in",
+    "sourceText": "Due at check-in.",
+    "filePath": "src/components/booking/deposit-policy-summary.tsx"
+  },
+  {
+    "key": "listing.deposit_policy.due_days_before_check_in",
+    "sourceText": "Due {days} days before check-in.",
+    "filePath": "src/components/booking/deposit-policy-summary.tsx"
+  },
+  {
+    "key": "listing.deposit_policy.heading",
+    "sourceText": "Deposit policy",
+    "filePath": "src/components/booking/deposit-policy-summary.tsx"
+  },
+  {
+    "key": "listing.deposit_policy.none",
+    "sourceText": "No deposit is required by the host.",
+    "filePath": "src/components/booking/deposit-policy-summary.tsx"
+  },
+  {
+    "key": "listing.deposit_policy.required_fixed_amount",
+    "sourceText": "Required deposit: {amount}.",
+    "filePath": "src/components/booking/deposit-policy-summary.tsx"
+  },
+  {
+    "key": "listing.deposit_policy.required_percentage",
+    "sourceText": "Required deposit: {value}% of the stay price.",
+    "filePath": "src/components/booking/deposit-policy-summary.tsx"
+  },
+  {
+    "key": "listing.deposit_policy.return_within_days",
+    "sourceText": "The host says this refundable security deposit will be returned within {days} days after check-out.",
+    "filePath": "src/components/booking/deposit-policy-summary.tsx"
+  },
+  {
+    "key": "listing.deposit_policy.unanswered",
+    "sourceText": "The host has not specified a deposit policy.",
+    "filePath": "src/components/booking/deposit-policy-summary.tsx"
   },
   {
     "key": "listing.guest_reviews",
@@ -16553,6 +17318,11 @@
     "key": "regional.tab_language",
     "sourceText": "Language and region",
     "filePath": "src/components/host/v2/host-v2-account-menu.tsx"
+  },
+  {
+    "key": "regional.translation_description",
+    "sourceText": "Automatically translate host-written descriptions and guest reviews.",
+    "filePath": "src/components/shared/regional-settings-dialog.tsx"
   },
   {
     "key": "regional.translation_title",

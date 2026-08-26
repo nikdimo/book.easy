@@ -76,9 +76,9 @@ export default async function MyBookingsPage() {
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-sm">
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        {formatDate(booking.checkIn)} – {formatDate(booking.checkOut)}
+                        {formatDate(booking.checkIn, t.locale)} – {formatDate(booking.checkOut, t.locale)}
                       </span>
-                      <span className="font-medium">{formatPrice(Number(booking.totalPrice), booking.currency)}</span>
+                      <span className="font-medium">{formatPrice(Number(booking.totalPrice), booking.currency, t.locale)}</span>
                     </div>
                   </div>
                 </CardContent>

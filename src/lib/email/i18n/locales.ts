@@ -2,20 +2,25 @@ import { DEFAULT_LOCALE, normalizeLocaleCode } from "@/lib/i18n/locale-preferenc
 import { REVIEWED_LANGUAGES, type ReviewedLocale } from "@/lib/i18n/reviewed-languages";
 
 /**
- * Deliberately narrower than the site's language list. A booking confirmation, a
- * sign-in link or an account-deletion link is a message where a bad translation
- * causes real harm, and only Macedonian has been read end to end by a native
- * speaker. Everything else falls back to English, which the recipient's mail
- * client will offer to translate for them — better than shipping machine output
- * nobody has reviewed.
- *
- * Adding a locale here is a commitment to review every template in it.
+ * Hand-reviewed inline catalog columns: the English source and the Macedonian that
+ * sits beside it in catalog.ts. Every other supported language lives in
+ * email-translations.json.
  */
-/** Hand-reviewed inline catalog columns. Other reviewed site languages come from
- * the generated, versioned translation snapshot. */
 export const EMAIL_LOCALES = [DEFAULT_LOCALE, "mk"] as const;
 
 export type EmailLocale = typeof DEFAULT_LOCALE | ReviewedLocale;
+
+/**
+ * Every language a system email can be sent in. A booking confirmation, a sign-in
+ * link or an account-deletion link is a message where falling back to English is a
+ * failure the recipient notices, so this list is a commitment: adding a language
+ * here means every current email key must be translated into it, and
+ * `src/lib/email/__tests__/email-translation-completeness.test.ts` fails until it is.
+ */
+export const SUPPORTED_EMAIL_LOCALES = [
+  DEFAULT_LOCALE,
+  ...REVIEWED_LANGUAGES.map((language) => language.code),
+] as const satisfies readonly EmailLocale[];
 
 export function isEmailLocale(value: string | null | undefined): value is EmailLocale {
   return value === DEFAULT_LOCALE || REVIEWED_LANGUAGES.some((language) => language.code === value);

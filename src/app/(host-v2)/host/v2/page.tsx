@@ -6,6 +6,7 @@ import {
   CalendarDays,
   Sparkles,
   MessageCircle,
+  WalletCards,
 } from "lucide-react";
 import { requireHostPage } from "@/lib/auth-helpers";
 import { getHostAttentionSummary } from "@/lib/services/attention.service";
@@ -34,6 +35,28 @@ export default async function HostV2TodayPage() {
       )
     : null;
   const attentionRows = [
+    ...(attention.incompletePaymentArrangements
+      ? [
+          {
+            label: t.resolve(
+              "host.v2.attention.payment_arrangements",
+              "Complete payment arrangements",
+            ),
+            detail: t
+              .resolve(
+                "host.v2.attention.payment_arrangements_copy",
+                "Tell guests how they can pay and whether a deposit is required for {title}.",
+              )
+              .text.replace(
+                "{title}",
+                attention.incompletePaymentArrangements.title,
+              ),
+            value: attention.incompletePaymentArrangementCount,
+            href: `/host/listings/${attention.incompletePaymentArrangements.id}/payment-arrangements`,
+            icon: WalletCards,
+          },
+        ]
+      : []),
     {
       label: t.resolve("host.v2.attention.booking_requests", "Booking requests"),
       value: attention.pendingBookings,
@@ -138,7 +161,14 @@ export default async function HostV2TodayPage() {
               <span className="grid size-10 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-700">
                 <item.icon className="size-5" strokeWidth={1.5} aria-hidden />
               </span>
-              <span className="min-w-0 flex-1 font-medium">{item.label.text}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium">{item.label.text}</span>
+                {"detail" in item ? (
+                  <span className="mt-0.5 block truncate text-sm text-slate-500">
+                    {item.detail}
+                  </span>
+                ) : null}
+              </span>
               <span className="rounded-full bg-slate-100 px-2.5 py-1 text-sm font-semibold tabular-nums text-slate-800">
                 {item.value}
               </span>

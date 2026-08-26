@@ -5,6 +5,9 @@ export {
   type PaymentArrangementsSaveState,
 } from "./payment-arrangements-editor";
 
+export { PaymentArrangementsWorkspace } from "./payment-arrangements-workspace";
+export { DepositPolicyEditor } from "./deposit-policy-editor";
+
 export {
   PAYMENT_METHOD_CODES,
   normalizePaymentArrangementsDraft,

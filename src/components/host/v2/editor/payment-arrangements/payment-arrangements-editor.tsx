@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import {
   Banknote,
   Check,
@@ -75,35 +75,21 @@ export function PaymentArrangementsEditor({
   errorMessage,
   disabled = false,
 }: PaymentArrangementsEditorProps) {
-  const initialDraft = useMemo(
-    () => normalizePaymentArrangementsDraft(initialValue),
-    [initialValue],
+  const [draft, setDraft] = useState<PaymentArrangementsDraft>(() =>
+    normalizePaymentArrangementsDraft(initialValue),
   );
-  const initialKey = `${initialValue.reviewedAt ?? "unreviewed"}:${initialDraft.methodCodes.join(
-    ",",
-  )}:${initialDraft.otherLabel ?? ""}`;
-  const [draft, setDraft] = useState<PaymentArrangementsDraft>(initialDraft);
+  const [confirmed, setConfirmed] = useState<PaymentArrangementsDraft>(() =>
+    normalizePaymentArrangementsDraft(initialValue),
+  );
   const [localSaveState, setLocalSaveState] = useState<PaymentArrangementsSaveState>(
     initialValue.reviewedAt ? "saved" : "idle",
   );
   const [reviewed, setReviewed] = useState(Boolean(initialValue.reviewedAt));
-  const confirmed = useRef(initialDraft);
-
-  useEffect(() => {
-    const next = normalizePaymentArrangementsDraft(initialValue);
-    confirmed.current = next;
-    setDraft(next);
-    setReviewed(Boolean(initialValue.reviewedAt));
-    setLocalSaveState(initialValue.reviewedAt ? "saved" : "idle");
-    // The primitive key intentionally controls synchronization. Route loaders often
-    // rebuild the value object on every render, which must not erase an in-progress edit.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialKey]);
 
   const effectiveSaveState = saveState ?? localSaveState;
   const busy = disabled || effectiveSaveState === "saving";
   const isComplete = paymentArrangementsAreComplete(draft);
-  const dirty = !samePaymentArrangementsDraft(draft, confirmed.current);
+  const dirty = !samePaymentArrangementsDraft(draft, confirmed);
   const otherIssue = draft.methodCodes.includes("OTHER")
     ? validateOtherPaymentLabel(draft.otherLabel ?? "")
     : null;
@@ -131,7 +117,7 @@ export function PaymentArrangementsEditor({
     setLocalSaveState("saving");
     try {
       await onSave(payload);
-      confirmed.current = payload;
+      setConfirmed(payload);
       setDraft(payload);
       setReviewed(true);
       setLocalSaveState("saved");

@@ -75,7 +75,16 @@ export const EMAIL_CATALOG: Record<string, EmailCatalogEntry> = {
   },
   // Macedonian splits on the final digit (1, 21, 31 → гостин), which is why the
   // category comes from Intl.PluralRules rather than a `=== 1` check.
+  //
+  // `few` and `many` exist because Intl asks for them: Polish never selects `other`
+  // for a whole number of guests at all, and Russian, Ukrainian, Serbian and
+  // Romanian all select `few` for two guests. Without these keys those languages
+  // fell back to the English "{n} guests" in every booking email. Macedonian selects
+  // only `one` and `other`, so its `few`/`many` columns are never read — they are
+  // filled to keep one shape for every entry.
   "email.booking.guest_count.one": { en: "{n} guest", mk: "{n} гостин" },
+  "email.booking.guest_count.few": { en: "{n} guests", mk: "{n} гости" },
+  "email.booking.guest_count.many": { en: "{n} guests", mk: "{n} гости" },
   "email.booking.guest_count.other": { en: "{n} guests", mk: "{n} гости" },
 
   // --------------------------------------------- booking: request received
@@ -333,6 +342,13 @@ export const EMAIL_CATALOG: Record<string, EmailCatalogEntry> = {
     en: "Reply securely in {brand}",
     mk: "Одговорете безбедно во {brand}",
   },
+  // Stands in for a payment-instructions message body, which never leaves the secure
+  // thread. Reviewed copy rather than machine translation: the redaction itself is a
+  // system sentence, and it must never be sent to an external translation service.
+  "email.message.payment_instructions": {
+    en: "Payment instructions are available in {brand}",
+    mk: "Упатствата за плаќање се достапни во {brand}",
+  },
   "email.message.privacy": {
     en: "For your privacy, keep the conversation inside {brand}.",
     mk: "Заради вашата приватност, задржете го разговорот во {brand}.",
@@ -498,4 +514,18 @@ export const EMAIL_CATALOG: Record<string, EmailCatalogEntry> = {
     mk: "Ова не може да се врати. Ако не сте го побарале ова, занемарете ја пораката — вашата сметка останува непроменета, а препорачуваме да се одјавите од сите уреди што не ги препознавате.",
   },
   "email.deletion.questions": { en: "Questions?", mk: "Прашања?" },
+
+  // ------------------------------------------- machine-translated user content
+  // Attached to anything a person wrote that Google translated for the recipient —
+  // a guest note, a decline reason, a message preview, a listing title. The original
+  // always travels with it: a dispute about what a host said is settled by what the
+  // host typed, never by a model's rendering of it.
+  "email.user_content.machine_translated": {
+    en: "Automatically translated by Google.",
+    mk: "Автоматски преведено од Google.",
+  },
+  "email.user_content.original": {
+    en: "Original as written:",
+    mk: "Оригинал, како што е напишан:",
+  },
 };

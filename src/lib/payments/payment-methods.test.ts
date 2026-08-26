@@ -81,6 +81,10 @@ describe("payment-method preference validation", () => {
     "Pay when accepted",
     "Send via private message",
     "Cash on arrival",
+    "Refund guaranteed",
+    "Payment protected",
+    "Already paid",
+    "MobilePay ✅",
     "After booking transfer",
     "line one\nline two",
     "12/29",
@@ -98,6 +102,18 @@ describe("payment-method preference validation", () => {
   it("enforces the 2–40 character OTHER bounds", () => {
     expect(otherPaymentMethodLabelIssue("X")).toBe("TOO_SHORT");
     expect(otherPaymentMethodLabelIssue("X".repeat(41))).toBe("TOO_LONG");
+  });
+
+  it("normalizes harmless repeated spaces before storage", () => {
+    expect(
+      validateListingPaymentMethods({
+        methods: ["OTHER"],
+        otherLabel: "Local   payment app",
+      }),
+    ).toEqual({
+      success: true,
+      value: { methods: ["OTHER"], otherLabel: "Local payment app" },
+    });
   });
 });
 

@@ -20,6 +20,12 @@ import {
 } from "@/components/public/expandable-description";
 import { AmenityList } from "@/components/public/amenity-list";
 import { HouseRulesList } from "@/components/public/house-rules-list";
+import {
+  AcceptedPaymentMethods,
+  toAcceptedPaymentMethodsPresentation,
+} from "@/components/booking/accepted-payment-methods";
+import { DepositPolicySummary } from "@/components/booking/deposit-policy-summary";
+import { createDepositPolicySnapshot } from "@/lib/payments/deposit-policy";
 import { houseRulesSnapshot } from "@/lib/host/v2/listing-house-rules";
 import { houseRulesVersion } from "@/lib/host/v2/house-rules-version.server";
 import { ListingLocationMap } from "@/components/public/listing-location-map";
@@ -40,7 +46,10 @@ import { auth } from "@/lib/auth";
 import { getFavoriteListingIdSet } from "@/lib/services/favorite.service";
 import { getT, T, ti, tPlural } from "@/lib/i18n/t";
 import { getPriceFormatter } from "@/lib/currency/price";
-import { listingSpaceTypeLabel } from "@/lib/types/listing-space-type";
+import {
+  resolveListingSpaceTypeLabel,
+  resolvePropertyTypeLabel,
+} from "@/lib/i18n/property-type-labels";
 import type { Metadata } from "next";
 import { getPublishedListingReviews } from "@/lib/services/review.service";
 
@@ -122,7 +131,7 @@ export default async function ListingDetailPage({
   // None of these depend on each other, so they run concurrently rather than as four
   // sequential round-trips (they were previously awaited one at a time, and each one's
   // latency added directly to this page's TTFB).
-  const [disabledDateRanges, priceRows, reviewSummary, typeLabel, t] =
+  const [disabledDateRanges, priceRows, reviewSummary, rawTypeLabel, t] =
     await Promise.all([
       getBlockedDateRangesForListing(listing.id),
       listing.pricingRule
@@ -246,7 +255,21 @@ export default async function ListingDetailPage({
     listing.property.area,
     listing.property.country,
   ].filter((value): value is string => Boolean(value));
-  const spaceTypeLabel = listingSpaceTypeLabel(listing.spaceType);
+  const typeLabel = resolvePropertyTypeLabel(
+    t,
+    listing.property.propertyType,
+    rawTypeLabel,
+  ).text;
+  const spaceTypeLabel = resolveListingSpaceTypeLabel(t, listing.spaceType).text;
+  // These are the exact validated public terms rendered both on this page and in
+  // the request review. No account destination, handle, URL, or instruction crosses
+  // the server/client boundary.
+  const acceptedPaymentMethods = toAcceptedPaymentMethodsPresentation({
+    reviewedAt: listing.paymentMethodsReviewedAt?.toISOString() ?? null,
+    methodCodes: listing.acceptedPaymentMethods,
+    otherLabel: listing.paymentMethodOther,
+  });
+  const depositPolicy = createDepositPolicySnapshot(listing);
   const bookingWidget = listing.pricingRule ? (
     <BookingWidget
       listingId={listing.id}
@@ -274,6 +297,8 @@ export default async function ListingDetailPage({
       initialGuestDetails={initialGuestDetails}
       hasExplicitSearchSelection={hasExplicitSearchSelection}
       requestToBookTooltip={requestToBookTooltip}
+      acceptedPaymentMethods={acceptedPaymentMethods}
+      depositPolicy={depositPolicy}
       messageHost={messageHostButton}
       houseRules={<HouseRulesList t={t} rules={houseRules} />}
       houseRulesVersion={renderedHouseRulesVersion}
@@ -488,6 +513,15 @@ export default async function ListingDetailPage({
             <Separator />
 
             <AmenityList amenities={listing.amenities} />
+
+            <Separator />
+
+            <AcceptedPaymentMethods
+              t={t}
+              data={acceptedPaymentMethods}
+            />
+
+            <DepositPolicySummary t={t} data={depositPolicy} />
 
             <Separator />
 

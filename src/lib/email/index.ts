@@ -15,7 +15,23 @@ import {
   communicationSupportEmail,
 } from "@/lib/communication-brand.server";
 import { renderBookingEmail } from "@/lib/email/booking-template";
+import {
+  translateEmailUserContent,
+  type TranslatedText,
+} from "@/lib/email/user-content-translation";
+import { PAYMENT_INSTRUCTIONS_PREVIEW } from "@/lib/services/payment-instructions";
 import { getEmailT, type EmailTranslator } from "@/lib/email/i18n";
+import { guestEmailLocale } from "@/lib/email/i18n/recipient-locale";
+import {
+  CASE_STATUS_LABELS,
+  CLAIM_KIND_LABELS,
+  CLAIM_RESPONSE_LABELS,
+  caseStatusKey,
+  claimKindKey,
+  claimResponseKey,
+  guestCountKey,
+  guestCountSource,
+} from "@/lib/email/i18n/dynamic-keys";
 
 export interface SendEmailParams {
   to: string;
@@ -99,10 +115,27 @@ export async function notifyConversationMessage(input: {
   await Promise.all(
     recipients
       .filter((recipient) => recipient.communicationPreference?.messageEmail !== false)
-      .map((recipient) => {
+      .map(async (recipient) => {
         // Recipients of one conversation can have different languages, so the body
         // is rendered per person rather than once for the whole list.
         const t = getEmailT(recipient.locale);
+        // A payment-instructions preview is a redaction, not a message: it stands in
+        // for a body that must never leave the thread. It is translated from the
+        // reviewed catalog like any other system sentence and is never sent to an
+        // external translation service.
+        const redacted = input.preview === PAYMENT_INSTRUCTIONS_PREVIEW;
+        const [listing, preview] = await translateEmailUserContent(
+          [conversation.listing.title, redacted ? null : input.preview],
+          t.locale
+        );
+        const previewLine = redacted
+          ? t.ti(
+              "email.message.payment_instructions",
+              "Payment instructions are available in {brand}",
+              { brand: COMMUNICATION_BRAND.name }
+            )
+          : preview.text;
+        const notice = translationNotice(t, listing, redacted ? null : preview);
         return sendTransactionalEmail({
           to: recipient.email,
           sender: input.supportSender ? "support" : "customer",
@@ -117,10 +150,10 @@ export async function notifyConversationMessage(input: {
             t.ti(
               "email.message.body",
               '{sender} sent you a message about "{listing}".',
-              { sender: senderName, listing: conversation.listing.title }
+              { sender: senderName, listing: listing.text }
             ),
             "",
-            input.preview,
+            previewLine,
             "",
             `${t.ti("email.message.reply_securely", "Reply securely in {brand}", {
               brand: COMMUNICATION_BRAND.name,
@@ -131,6 +164,7 @@ export async function notifyConversationMessage(input: {
               "For your privacy, keep the conversation inside {brand}.",
               { brand: COMMUNICATION_BRAND.name }
             ),
+            ...notice.lines,
           ].join("\n"),
         });
       })
@@ -142,44 +176,24 @@ export async function notifyConversationMessage(input: {
  * no translation to key off. Each status gets its own key instead; an unrecognised
  * value still degrades to the old formatting rather than showing nothing. */
 function caseStatusLabel(status: string, t: EmailTranslator): string {
-  const labels: Record<string, string> = {
-    SUBMITTED: "Submitted",
-    UNDER_REVIEW: "Under review",
-    AWAITING_INFORMATION: "Awaiting information",
-    RESOLVED: "Resolved",
-    REJECTED: "Rejected",
-  };
-  const source = labels[status];
+  const source = CASE_STATUS_LABELS[status];
   if (!source) return status.replaceAll("_", " ");
-  return t.t(`email.case.status.${status.toLowerCase()}`, source);
+  return t.t(caseStatusKey(status), source);
 }
 
 /** The claim kind appears mid-sentence ("a booking-related damage request"), so it
  * needs a translated noun rather than a lower-cased enum. */
 function claimKindLabel(kind: string | null | undefined, t: EmailTranslator): string {
-  const labels: Record<string, string> = {
-    EXPENSE: "expense",
-    DAMAGE: "damage",
-    REFUND: "refund",
-  };
-  const source = (kind && labels[kind]) || "payment";
-  return t.t(`email.claim.kind.${(kind ?? "PAYMENT").toLowerCase()}`, source);
+  const resolved = (kind && CLAIM_KIND_LABELS[kind] && kind) || "PAYMENT";
+  return t.t(claimKindKey(resolved), CLAIM_KIND_LABELS[resolved]);
 }
 
 /** Same treatment for the claim-response enum. */
 function claimResponseLabel(status: string | null | undefined, t: EmailTranslator): string {
-  const labels: Record<string, string> = {
-    AWAITING_ADMIN: "Awaiting admin",
-    AWAITING_RECIPIENT: "Awaiting recipient",
-    ACCEPTED: "Accepted",
-    COUNTERED: "Countered",
-    REJECTED: "Rejected",
-    ESCALATED: "Escalated",
-  };
   if (!status) return t.t("email.claim.response.updated", "Updated");
-  const source = labels[status];
+  const source = CLAIM_RESPONSE_LABELS[status];
   if (!source) return status.replaceAll("_", " ");
-  return t.t(`email.claim.response.${status.toLowerCase()}`, source);
+  return t.t(claimResponseKey(status), source);
 }
 
 export async function notifySafetyCaseSubmitted(input: {
@@ -197,6 +211,11 @@ export async function notifySafetyCaseSubmitted(input: {
   const t = getEmailT(safetyCase.reporter.locale);
   const isClaim = safetyCase.type === "CLAIM";
   const link = communicationAppUrl(`/account/support/${safetyCase.id}`);
+  const [caseSubject] = await translateEmailUserContent(
+    [safetyCase.subject],
+    t.locale,
+  );
+  const notice = translationNotice(t, caseSubject);
   await sendTransactionalEmail({
     to: safetyCase.reporter.email,
     sender: "support",
@@ -212,10 +231,10 @@ export async function notifySafetyCaseSubmitted(input: {
       // lower-casing the enum into an English sentence — Macedonian inflects it.
       isClaim
         ? t.ti("email.case.received_claim", 'We received your claim "{subject}".', {
-            subject: safetyCase.subject,
+            subject: caseSubject.text,
           })
         : t.ti("email.case.received_report", 'We received your report "{subject}".', {
-            subject: safetyCase.subject,
+            subject: caseSubject.text,
           }),
       `${t.t("email.booking.reference", "Reference")}: ${safetyCase.reference}`,
       `${t.t("email.case.status", "Status")}: ${caseStatusLabel(safetyCase.status, t)}`,
@@ -223,6 +242,7 @@ export async function notifySafetyCaseSubmitted(input: {
       `${t.t("email.case.follow", "Follow the case")}: ${link}`,
       "",
       COMMUNICATION_BRAND.supportName,
+      ...notice.lines,
     ].join("\n"),
   });
 
@@ -254,6 +274,8 @@ export async function notifySafetyCaseUpdated(input: {
   if (!safetyCase) return;
 
   const t = getEmailT(safetyCase.reporter.locale);
+  const [message] = await translateEmailUserContent([input.message], t.locale);
+  const notice = translationNotice(t, message);
   await sendTransactionalEmail({
     to: safetyCase.reporter.email,
     sender: "support",
@@ -261,13 +283,13 @@ export async function notifySafetyCaseUpdated(input: {
     text: [
       greeting(safetyCase.reporter.name, t),
       "",
-      // Admin-authored, so it stays in whatever language the admin wrote it in.
-      input.message,
+      message.text,
       `${t.t("email.case.current_status", "Current status")}: ${caseStatusLabel(safetyCase.status, t)}`,
       "",
       `${t.t("email.case.view_and_respond", "View and respond")}: ${communicationAppUrl(`/account/support/${safetyCase.id}`)}`,
       "",
       COMMUNICATION_BRAND.supportName,
+      ...notice.lines,
     ].join("\n"),
   });
 }
@@ -299,6 +321,59 @@ async function loadBookingEmailContext(bookingId: string) {
 type BookingEmailContext = NonNullable<
   Awaited<ReturnType<typeof loadBookingEmailContext>>
 >;
+
+/**
+ * The words a person wrote — a listing title, a decline reason, a guest's note —
+ * rendered in the recipient's language where Google could manage it, and left exactly
+ * as typed where it could not.
+ *
+ * One call per email covers every field, so a booking confirmation waits on at most
+ * one bounded round trip. The subject line deliberately keeps the original listing
+ * title: it is what the guest sees on the site and searches their inbox for.
+ */
+async function bookingUserContent(
+  booking: BookingEmailContext,
+  t: EmailTranslator,
+  // Only the fields this particular email renders. Translating a field the template
+  // never prints would bill for it and, worse, list the original underneath a
+  // "translated from" notice for text the recipient cannot see anywhere above it.
+  shows: { reason?: boolean; note?: boolean } = {},
+) {
+  const [title, reason, note] = await translateEmailUserContent(
+    [
+      booking.listing.title,
+      shows.reason ? booking.cancellationReason : null,
+      shows.note ? booking.guestNote : null,
+    ],
+    t.locale,
+  );
+  return { title, reason, note, notice: translationNotice(t, title, reason, note) };
+}
+
+/**
+ * The footnote that has to accompany anything machine-translated: what happened, and
+ * the untouched original underneath it. A host disputing what a guest asked for reads
+ * their guest's actual words here, not Google's reading of them.
+ */
+function translationNotice(
+  t: EmailTranslator,
+  ...values: (TranslatedText | null | undefined)[]
+) {
+  const originals = values
+    .filter((value): value is TranslatedText => Boolean(value?.machineTranslated))
+    .map((value) => value.original);
+  if (originals.length === 0) return { lines: [] as string[], note: undefined };
+
+  const notice = t.t(
+    "email.user_content.machine_translated",
+    "Automatically translated by Google."
+  );
+  const originalLabel = t.t("email.user_content.original", "Original as written:");
+  return {
+    lines: ["", notice, originalLabel, ...originals],
+    note: { notice, originalLabel, originals },
+  };
+}
 
 /** The English copy greets guests with "Hi" and hosts with "Hello". Two keys keep
  * that distinction available to translators, even where a language renders both the
@@ -388,12 +463,8 @@ function bookingEmailAmountLines(booking: BookingEmailContext, t: EmailTranslato
  * "exactly one" like English, so the category has to be chosen by Intl rather than
  * by a `=== 1` check. */
 function guestCountLabel(count: number, t: EmailTranslator): string {
-  const category = new Intl.PluralRules(t.locale).select(count);
-  return t.ti(
-    `email.booking.guest_count.${category}`,
-    category === "one" ? "{n} guest" : "{n} guests",
-    { n: count },
-  );
+  const key = guestCountKey(t.locale, count);
+  return t.ti(key, guestCountSource(key.split(".").pop()!), { n: count });
 }
 
 function bookingLocation(booking: BookingEmailContext) {
@@ -418,7 +489,8 @@ export async function notifyGuestBookingRequestReceived(bookingId: string): Prom
   const booking = await loadBookingEmailContext(bookingId);
   if (!booking) return;
   const links = bookingEmailLinks(booking);
-  const t = getEmailT(booking.guestLocale ?? booking.guest.locale);
+  const t = getEmailT(guestEmailLocale(booking));
+  const content = await bookingUserContent(booking, t);
   const deadline = bookingDeadline(booking, t.locale);
   const viewRequest = t.t("email.booking.view_request", "View request");
   const viewListing = t.t("email.booking.view_listing", "View listing");
@@ -439,7 +511,7 @@ export async function notifyGuestBookingRequestReceived(bookingId: string): Prom
       t.ti(
         "email.booking.request_received.sent",
         'Your request for "{listing}" has been sent to {host}.',
-        { listing: booking.listing.title, host: booking.listing.host.name }
+        { listing: content.title.text, host: booking.listing.host.name }
       ),
       t.ti(
         "email.booking.request_received.not_confirmed",
@@ -458,6 +530,7 @@ export async function notifyGuestBookingRequestReceived(bookingId: string): Prom
       `${viewListing}: ${links.listing}`,
       "",
       `— ${COMMUNICATION_BRAND.name}`,
+      ...content.notice.lines,
     ].join("\n"),
     html: renderBookingEmail({
       preheader: t.ti(
@@ -479,7 +552,8 @@ export async function notifyGuestBookingRequestReceived(bookingId: string): Prom
         "This is a booking request, not a confirmed reservation yet."
       ),
       reference: booking.reference,
-      listingTitle: booking.listing.title,
+      listingTitle: content.title.text,
+      translationNote: content.notice.note,
       listingHref: links.listing,
       imageUrl: booking.listing.images[0]?.url,
       location: bookingLocation(booking),
@@ -504,6 +578,7 @@ export async function notifyHostNewBookingRequest(bookingId: string): Promise<vo
 
   const links = bookingEmailLinks(booking);
   const t = getEmailT(booking.listing.host.locale);
+  const content = await bookingUserContent(booking, t, { note: true });
   const deadline = bookingDeadline(booking, t.locale);
   const hostEmail = booking.listing.host.email;
   const dates = `${formatDate(booking.checkIn, t.locale)}–${formatDate(booking.checkOut, t.locale)}`;
@@ -513,7 +588,7 @@ export async function notifyHostNewBookingRequest(bookingId: string): Promise<vo
     t.ti(
       "email.booking.host_request.requested",
       '{guest} requested a booking for "{listing}".',
-      { guest: booking.guest.name, listing: booking.listing.title }
+      { guest: booking.guest.name, listing: content.title.text }
     ),
     t.t(
       "email.booking.host_request.check_dashboard",
@@ -521,6 +596,7 @@ export async function notifyHostNewBookingRequest(bookingId: string): Promise<vo
     ),
     ``,
     `— ${COMMUNICATION_BRAND.name}`,
+    ...content.notice.lines,
   ];
 
   await sendTransactionalEmail({
@@ -544,14 +620,15 @@ export async function notifyHostNewBookingRequest(bookingId: string): Promise<vo
       ),
       intro: booking.guestNote
         ? t.ti("email.booking.host_request.guest_note", "Guest message: “{note}”", {
-            note: booking.guestNote,
+            note: content.note.text,
           })
         : t.t(
             "email.booking.host_request.intro",
             "Review the stay details and respond before the request expires."
           ),
       reference: booking.reference,
-      listingTitle: booking.listing.title,
+      listingTitle: content.title.text,
+      translationNote: content.notice.note,
       listingHref: links.listing,
       imageUrl: booking.listing.images[0]?.url,
       location: bookingLocation(booking),
@@ -578,6 +655,7 @@ export async function notifyHostBookingRequestReminder(bookingId: string): Promi
   if (!booking || booking.status !== "PENDING") return;
   const links = bookingEmailLinks(booking);
   const t = getEmailT(booking.listing.host.locale);
+  const content = await bookingUserContent(booking, t);
   const deadline = bookingDeadline(booking, t.locale);
   const reviewRequest = t.t("email.booking.review_request", "Review request");
 
@@ -599,6 +677,7 @@ export async function notifyHostBookingRequestReminder(bookingId: string): Promi
       `${reviewRequest}: ${links.host}`,
       "",
       `— ${COMMUNICATION_BRAND.name}`,
+      ...content.notice.lines,
     ].join("\n"),
     html: renderBookingEmail({
       preheader: t.ti(
@@ -614,7 +693,8 @@ export async function notifyHostBookingRequestReminder(bookingId: string): Promi
         { guest: booking.guest.name }
       ),
       reference: booking.reference,
-      listingTitle: booking.listing.title,
+      listingTitle: content.title.text,
+      translationNote: content.notice.note,
       listingHref: links.listing,
       imageUrl: booking.listing.images[0]?.url,
       location: bookingLocation(booking),
@@ -634,20 +714,22 @@ export async function notifyGuestBookingConfirmed(bookingId: string): Promise<vo
   if (!booking) return;
   const links = bookingEmailLinks(booking);
 
-  const t = getEmailT(booking.guestLocale ?? booking.guest.locale);
+  const t = getEmailT(guestEmailLocale(booking));
+  const content = await bookingUserContent(booking, t);
   const lines = [
     greeting(booking.guest.name, t),
     ``,
     t.ti(
       "email.booking.confirmed.accepted",
       'Good news — your booking for "{listing}" has been accepted. The host will share payment instructions with you.',
-      { listing: booking.listing.title }
+      { listing: content.title.text }
     ),
     `${t.t("email.booking.check_in", "Check-in")}: ${formatDate(booking.checkIn, t.locale)}`,
     `${t.t("email.booking.check_out", "Check-out")}: ${formatDate(booking.checkOut, t.locale)}`,
     ...bookingEmailAmountLines(booking, t),
     ``,
     `— ${COMMUNICATION_BRAND.name}`,
+    ...content.notice.lines,
   ];
 
   await sendTransactionalEmail({
@@ -658,7 +740,7 @@ export async function notifyGuestBookingConfirmed(bookingId: string): Promise<vo
       preheader: t.ti(
         "email.booking.confirmed.preheader",
         "Your stay at {listing} is confirmed.",
-        { listing: booking.listing.title }
+        { listing: content.title.text }
       ),
       eyebrow: t.t("email.booking.confirmed.eyebrow", "Booking confirmed"),
       headline: t.t(
@@ -671,7 +753,8 @@ export async function notifyGuestBookingConfirmed(bookingId: string): Promise<vo
         { host: booking.listing.host.name }
       ),
       reference: booking.reference,
-      listingTitle: booking.listing.title,
+      listingTitle: content.title.text,
+      translationNote: content.notice.note,
       listingHref: links.listing,
       imageUrl: booking.listing.images[0]?.url,
       location: bookingLocation(booking),
@@ -698,7 +781,8 @@ export async function notifyGuestBookingRejected(bookingId: string): Promise<voi
   if (!booking) return;
   const links = bookingEmailLinks(booking);
 
-  const t = getEmailT(booking.guestLocale ?? booking.guest.locale);
+  const t = getEmailT(guestEmailLocale(booking));
+  const content = await bookingUserContent(booking, t, { reason: true });
   const datesFreeCallout = t.t(
     "email.booking.dates_free",
     "Your dates are free to use for another booking. This request was not accepted, and Linger Homes does not collect or hold booking payments."
@@ -710,7 +794,7 @@ export async function notifyGuestBookingRejected(bookingId: string): Promise<voi
       "email.booking.declined.body",
       'Unfortunately your booking request for "{listing}" ({checkIn} – {checkOut}) was declined by the host.',
       {
-        listing: booking.listing.title,
+        listing: content.title.text,
         checkIn: formatDate(booking.checkIn, t.locale),
         checkOut: formatDate(booking.checkOut, t.locale),
       }
@@ -719,7 +803,7 @@ export async function notifyGuestBookingRejected(bookingId: string): Promise<voi
       ? [
           ``,
           t.ti("email.booking.reason", "Reason: {reason}", {
-            reason: booking.cancellationReason,
+            reason: content.reason.text,
           }),
         ]
       : []),
@@ -730,6 +814,7 @@ export async function notifyGuestBookingRejected(bookingId: string): Promise<voi
     ),
     ``,
     `— ${COMMUNICATION_BRAND.name}`,
+    ...content.notice.lines,
   ];
 
   await sendTransactionalEmail({
@@ -740,20 +825,21 @@ export async function notifyGuestBookingRejected(bookingId: string): Promise<voi
       preheader: t.ti(
         "email.booking.declined.preheader",
         "Your request for {listing} was not accepted.",
-        { listing: booking.listing.title }
+        { listing: content.title.text }
       ),
       eyebrow: t.t("email.booking.declined.eyebrow", "Booking request declined"),
       headline: t.t("email.booking.declined.headline", "This stay wasn’t confirmed"),
       intro: booking.cancellationReason
         ? t.ti("email.booking.declined.host_reason", "Host’s reason: {reason}", {
-            reason: booking.cancellationReason,
+            reason: content.reason.text,
           })
         : t.t(
             "email.booking.declined.intro",
             "The host was unable to accept this request."
           ),
       reference: booking.reference,
-      listingTitle: booking.listing.title,
+      listingTitle: content.title.text,
+      translationNote: content.notice.note,
       listingHref: links.listing,
       imageUrl: booking.listing.images[0]?.url,
       location: bookingLocation(booking),
@@ -770,7 +856,8 @@ export async function notifyGuestBookingExpired(bookingId: string): Promise<void
   if (!booking) return;
   const links = bookingEmailLinks(booking);
 
-  const t = getEmailT(booking.guestLocale ?? booking.guest.locale);
+  const t = getEmailT(guestEmailLocale(booking));
+  const content = await bookingUserContent(booking, t);
   const viewRequest = t.t("email.booking.view_request", "View request");
 
   await sendTransactionalEmail({
@@ -782,7 +869,7 @@ export async function notifyGuestBookingExpired(bookingId: string): Promise<void
       t.ti(
         "email.booking.expired.body",
         'The host did not respond in time to your request for "{listing}".',
-        { listing: booking.listing.title }
+        { listing: content.title.text }
       ),
       `${t.t("email.booking.reference", "Reference")}: ${booking.reference}`,
       t.t(
@@ -793,6 +880,7 @@ export async function notifyGuestBookingExpired(bookingId: string): Promise<void
       `${viewRequest}: ${links.guest}`,
       "",
       `— ${COMMUNICATION_BRAND.name}`,
+      ...content.notice.lines,
     ].join("\n"),
     html: renderBookingEmail({
       preheader: t.ti(
@@ -807,7 +895,8 @@ export async function notifyGuestBookingExpired(bookingId: string): Promise<void
         "This request expired and did not become a confirmed reservation."
       ),
       reference: booking.reference,
-      listingTitle: booking.listing.title,
+      listingTitle: content.title.text,
+      translationNote: content.notice.note,
       listingHref: links.listing,
       imageUrl: booking.listing.images[0]?.url,
       location: bookingLocation(booking),
@@ -826,7 +915,8 @@ export async function notifyGuestBookingCancelled(bookingId: string): Promise<vo
   if (!booking) return;
   const links = bookingEmailLinks(booking);
 
-  const t = getEmailT(booking.guest.locale);
+  const t = getEmailT(guestEmailLocale(booking));
+  const content = await bookingUserContent(booking, t, { reason: true });
   const lines = [
     greeting(booking.guest.name, t),
     ``,
@@ -834,7 +924,7 @@ export async function notifyGuestBookingCancelled(bookingId: string): Promise<vo
       "email.booking.cancelled.body",
       'Your booking for "{listing}" ({checkIn} – {checkOut}) has been cancelled.',
       {
-        listing: booking.listing.title,
+        listing: content.title.text,
         checkIn: formatDate(booking.checkIn, t.locale),
         checkOut: formatDate(booking.checkOut, t.locale),
       }
@@ -843,7 +933,7 @@ export async function notifyGuestBookingCancelled(bookingId: string): Promise<vo
       ? [
           ``,
           t.ti("email.booking.reason", "Reason: {reason}", {
-            reason: booking.cancellationReason,
+            reason: content.reason.text,
           }),
         ]
       : []),
@@ -854,6 +944,7 @@ export async function notifyGuestBookingCancelled(bookingId: string): Promise<vo
     ),
     ``,
     `— ${COMMUNICATION_BRAND.name}`,
+    ...content.notice.lines,
   ];
 
   await sendTransactionalEmail({
@@ -870,11 +961,12 @@ export async function notifyGuestBookingCancelled(bookingId: string): Promise<vo
       headline: t.t("email.booking.cancelled.headline", "This booking is no longer active"),
       intro: booking.cancellationReason
         ? t.ti("email.booking.reason", "Reason: {reason}", {
-            reason: booking.cancellationReason,
+            reason: content.reason.text,
           })
         : t.t("email.booking.cancelled.intro", "The booking has been cancelled."),
       reference: booking.reference,
-      listingTitle: booking.listing.title,
+      listingTitle: content.title.text,
+      translationNote: content.notice.note,
       listingHref: links.listing,
       imageUrl: booking.listing.images[0]?.url,
       location: bookingLocation(booking),
@@ -895,6 +987,7 @@ export async function notifyHostBookingCancelledByGuest(bookingId: string): Prom
   const links = bookingEmailLinks(booking);
 
   const t = getEmailT(booking.listing.host.locale);
+  const content = await bookingUserContent(booking, t);
   const lines = [
     greetingFormal(booking.listing.host.name, t),
     ``,
@@ -903,13 +996,14 @@ export async function notifyHostBookingCancelledByGuest(bookingId: string): Prom
       '{guest} cancelled their booking for "{listing}" ({checkIn} – {checkOut}). Those dates are available again.',
       {
         guest: booking.guest.name,
-        listing: booking.listing.title,
+        listing: content.title.text,
         checkIn: formatDate(booking.checkIn, t.locale),
         checkOut: formatDate(booking.checkOut, t.locale),
       }
     ),
     ``,
     `— ${COMMUNICATION_BRAND.name}`,
+    ...content.notice.lines,
   ];
 
   await sendTransactionalEmail({
@@ -933,7 +1027,8 @@ export async function notifyHostBookingCancelledByGuest(bookingId: string): Prom
         "The reserved dates have been released in your calendar."
       ),
       reference: booking.reference,
-      listingTitle: booking.listing.title,
+      listingTitle: content.title.text,
+      translationNote: content.notice.note,
       listingHref: links.listing,
       imageUrl: booking.listing.images[0]?.url,
       location: bookingLocation(booking),
@@ -970,7 +1065,12 @@ export async function notifyReviewReminder(input: {
   if (invitation.recipient.communicationPreference?.reviewEmail === false) return;
 
   const t = getEmailT(invitation.recipient.locale);
-  const listing = invitation.booking.listing.title;
+  const [translatedListing] = await translateEmailUserContent(
+    [invitation.booking.listing.title],
+    t.locale,
+  );
+  const listing = translatedListing.text;
+  const notice = translationNotice(t, translatedListing);
   const link = communicationAppUrl(
     `/account/bookings/${invitation.booking.id}/after-stay`
   );
@@ -1012,6 +1112,7 @@ export async function notifyReviewReminder(input: {
       `${t.t("email.review.deadline", "Deadline")}: ${formatDate(invitation.deadline, t.locale)}`,
       "",
       COMMUNICATION_BRAND.name,
+      ...notice.lines,
     ].join("\n"),
   });
 }
@@ -1030,6 +1131,8 @@ export async function notifyReviewSubmitted(input: {
   if (!review?.author) return;
 
   const t = getEmailT(review.author.locale);
+  const [listing] = await translateEmailUserContent([review.listing.title], t.locale);
+  const notice = translationNotice(t, listing);
   await Promise.allSettled([
     sendTransactionalEmail({
       to: review.author.email,
@@ -1040,7 +1143,7 @@ export async function notifyReviewSubmitted(input: {
         t.ti(
           "email.review.submitted.body",
           'We received your private rating for "{listing}".',
-          { listing: review.listing.title }
+          { listing: listing.text }
         ),
         t.t(
           "email.review.submitted.sealed",
@@ -1050,6 +1153,7 @@ export async function notifyReviewSubmitted(input: {
         `${t.t("email.review.status", "Review status")}: ${communicationAppUrl(`/account/bookings/${review.bookingId}/after-stay`)}`,
         "",
         COMMUNICATION_BRAND.name,
+        ...notice.lines,
       ].join("\n"),
     }),
     sendTransactionalEmail({
@@ -1088,8 +1192,13 @@ export async function notifyReviewsPublished(input: {
   const link = communicationAppUrl(`/account/bookings/${booking.id}/after-stay`);
   await Promise.allSettled(
     // Guest and host can have different languages — render once per recipient.
-    [booking.guest, booking.listing.host].map((recipient) => {
+    [booking.guest, booking.listing.host].map(async (recipient) => {
       const t = getEmailT(recipient.locale);
+      const [listing] = await translateEmailUserContent(
+        [booking.listing.title],
+        t.locale
+      );
+      const notice = translationNotice(t, listing);
       return sendTransactionalEmail({
         to: recipient.email,
         subject: `[${COMMUNICATION_BRAND.name}] ${t.t("email.review.published.subject", "Ratings are now available")}`,
@@ -1099,12 +1208,13 @@ export async function notifyReviewsPublished(input: {
           t.ti(
             "email.review.published.body",
             'The approved ratings for "{listing}" are now available.',
-            { listing: booking.listing.title }
+            { listing: listing.text }
           ),
           "",
           `${t.t("email.review.view_ratings", "View ratings")}: ${link}`,
           "",
           COMMUNICATION_BRAND.name,
+          ...notice.lines,
         ].join("\n"),
       });
     })
@@ -1126,6 +1236,11 @@ export async function notifyReviewRejected(input: {
   if (!review?.author) return;
 
   const t = getEmailT(review.author.locale);
+  const [listing, reason] = await translateEmailUserContent(
+    [review.listing.title, input.reason],
+    t.locale,
+  );
+  const notice = translationNotice(t, listing, reason);
   await sendTransactionalEmail({
     to: review.author.email,
     sender: "support",
@@ -1136,13 +1251,14 @@ export async function notifyReviewRejected(input: {
       t.ti(
         "email.review.rejected.body",
         'Your review for "{listing}" was not approved for publication.',
-        { listing: review.listing.title }
+        { listing: listing.text }
       ),
-      t.ti("email.booking.reason", "Reason: {reason}", { reason: input.reason }),
+      t.ti("email.booking.reason", "Reason: {reason}", { reason: reason.text }),
       "",
       `${t.t("email.view_status", "View status")}: ${communicationAppUrl(`/account/bookings/${review.bookingId}/after-stay`)}`,
       "",
       COMMUNICATION_BRAND.supportName,
+      ...notice.lines,
     ].join("\n"),
   });
 }
@@ -1161,6 +1277,8 @@ export async function notifyClaimReleased(input: {
   if (!claim?.reportedUser || !claim.requestedAmount) return;
 
   const t = getEmailT(claim.reportedUser.locale);
+  const [reason] = await translateEmailUserContent([claim.subject], t.locale);
+  const notice = translationNotice(t, reason);
   await sendTransactionalEmail({
     to: claim.reportedUser.email,
     sender: "support",
@@ -1177,7 +1295,7 @@ export async function notifyClaimReleased(input: {
         }
       ),
       `${t.t("email.claim.amount", "Amount")}: ${Number(claim.requestedAmount).toFixed(2)} ${claim.currency || "EUR"}`,
-      t.ti("email.booking.reason", "Reason: {reason}", { reason: claim.subject }),
+      t.ti("email.booking.reason", "Reason: {reason}", { reason: reason.text }),
       "",
       t.t(
         "email.claim.released.rights_direct",
@@ -1187,6 +1305,7 @@ export async function notifyClaimReleased(input: {
       `${t.t("email.claim.respond_securely", "Respond securely")}: ${communicationAppUrl(`/account/support/${claim.id}`)}`,
       "",
       COMMUNICATION_BRAND.supportName,
+      ...notice.lines,
     ].join("\n"),
   });
 }
@@ -1204,6 +1323,11 @@ export async function notifyClaimResponse(input: {
   if (!claim) return;
 
   const t = getEmailT(claim.reporter.locale);
+  const [responseNote] = await translateEmailUserContent(
+    [claim.responseNote],
+    t.locale,
+  );
+  const notice = translationNotice(t, responseNote);
   await Promise.allSettled([
     sendTransactionalEmail({
       to: claim.reporter.email,
@@ -1222,12 +1346,13 @@ export async function notifyClaimResponse(input: {
             ]
           : []),
         ...(claim.responseNote
-          ? [`${t.t("email.claim.note", "Note")}: ${claim.responseNote}`]
+          ? [`${t.t("email.claim.note", "Note")}: ${responseNote.text}`]
           : []),
         "",
         `${t.t("email.claim.view_case", "View the case")}: ${communicationAppUrl(`/account/support/${claim.id}`)}`,
         "",
         COMMUNICATION_BRAND.name,
+        ...notice.lines,
       ].join("\n"),
     }),
     sendTransactionalEmail({

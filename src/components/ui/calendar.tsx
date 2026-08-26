@@ -10,6 +10,8 @@ import {
 
 import { cn } from "@/lib/utils";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { useI18n } from "@/lib/i18n/client";
+import { dayPickerLocaleFor } from "@/lib/i18n/day-picker-locale";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -30,6 +32,8 @@ function Calendar({
   buttonVariant?: React.ComponentProps<typeof Button>["variant"];
 }) {
   const defaultClassNames = getDefaultClassNames();
+  const i18n = useI18n();
+  const resolvedLocale = locale ?? dayPickerLocaleFor(i18n.requestedLocale);
 
   return (
     <DayPicker
@@ -41,10 +45,10 @@ function Calendar({
         className,
       )}
       captionLayout={captionLayout}
-      locale={locale}
+      locale={resolvedLocale}
       formatters={{
         formatMonthDropdown: (date) =>
-          date.toLocaleString(locale?.code, { month: "short" }),
+          date.toLocaleString(resolvedLocale?.code, { month: "short" }),
         ...formatters,
       }}
       classNames={{

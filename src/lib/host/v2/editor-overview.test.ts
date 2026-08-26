@@ -10,6 +10,7 @@ const everything = editorCompletedSections({
   basicsComplete: true,
   propertyDetailsComplete: true,
   locationComplete: true,
+  paymentMethodsReviewed: true,
   houseRulesReviewed: true,
 });
 
@@ -26,6 +27,7 @@ describe("editorAttentionItems", () => {
       basicsComplete: true,
       propertyDetailsComplete: false,
       locationComplete: true,
+      paymentMethodsReviewed: true,
       houseRulesReviewed: true,
     });
 

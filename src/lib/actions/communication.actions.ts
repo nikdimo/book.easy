@@ -9,10 +9,11 @@ import type {
 } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
-import { requireAdmin } from "@/lib/auth-helpers";
+import { requireAdmin, requireHost } from "@/lib/auth-helpers";
 import {
   ensureInquiryConversation,
   joinConversationAsSupport,
+  shareBookingPaymentInstructions,
 } from "@/lib/services/chat.service";
 import {
   addUserSafetyCaseUpdate,
@@ -23,6 +24,7 @@ import {
   type SafetyCaseEvidenceInput,
 } from "@/lib/services/safety-case.service";
 import { createAuditLog } from "@/lib/services/audit.service";
+import { shareBookingPaymentInstructionsSchema } from "@/lib/validations/communication.schema";
 
 export async function startInquiryAction(listingId: string) {
   const session = await auth();
@@ -40,6 +42,46 @@ export async function startInquiryAction(listingId: string) {
           ? error.message
           : "Could not start the conversation",
     };
+  }
+}
+
+/**
+ * Hosts may send bank-transfer or payment-link instructions only after a booking is
+ * accepted and confirmed. The service re-checks ownership and booking state inside
+ * its transaction; this action deliberately returns and audits identifiers only.
+ */
+export async function shareBookingPaymentInstructionsAction(input: unknown) {
+  const parsed = shareBookingPaymentInstructionsSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: "Invalid payment instructions" };
+  }
+
+  try {
+    const host = await requireHost();
+    // `requireHost` intentionally lets administrators use host management tools. This
+    // payment surface is owner-host only; the service then also checks listing ownership.
+    if (!host.isHost) return { error: "Host access required" };
+
+    const message = await shareBookingPaymentInstructions({
+      ...parsed.data,
+      hostId: host.id,
+    });
+    await createAuditLog({
+      userId: host.id,
+      action: "booking.payment_instructions_shared",
+      entityType: "Message",
+      entityId: message.id,
+      metadata: { kind: "PAYMENT_INSTRUCTIONS" },
+    });
+    revalidatePath("/host/bookings");
+    revalidatePath(`/host/bookings/${parsed.data.bookingId}`);
+    revalidatePath(`/host/reservations/${parsed.data.bookingId}`);
+    revalidatePath("/messages");
+    revalidatePath(`/messages/${message.conversationId}`);
+    return { messageId: message.id, kind: "PAYMENT_INSTRUCTIONS" as const };
+  } catch {
+    // Keep action failures independent of the user-supplied payment text.
+    return { error: "Could not share payment instructions" };
   }
 }
 

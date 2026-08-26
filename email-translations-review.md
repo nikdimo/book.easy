@@ -1,13 +1,20 @@
 # System email — Macedonian review
 
-Every string below is sent to a real recipient. Please read the Macedonian column
-and correct anything that sounds machine-translated, overly formal, or wrong.
+Every string below is sent to a real recipient. Please read the Macedonian
+column and correct anything that sounds machine-translated, overly formal, or wrong.
+
+Editorial guidance for this language: Use standard, idiomatic Macedonian. Prefer polite plural imperatives for guest actions. Use оглас/огласете for listing a property, never изложба/изложете. Avoid Serbian or Bulgarian calques.
+
+This is transactional email, not interface copy. Booking status, payment and claim
+wording is read as a statement of fact: a request must not read as a confirmed
+reservation, and nothing may suggest that Linger Homes charges, holds, or refunds
+booking money — it never does.
 
 `{placeholders}` are substituted at send time and **must survive translation**
 with the same names — a dropped `{deadline}` produces a fluent sentence that is
 missing the only fact the recipient needed. A test enforces this.
 
-146 strings.
+154 strings.
 
 ## Sign-in link
 
@@ -29,7 +36,7 @@ missing the only fact the recipient needed. A test enforces this.
 | `email.booking.request_received.eyebrow` | Request sent · Awaiting host approval | Барањето е испратено · Се чека одобрување од домаќинот |
 | `email.booking.request_received.headline` | Your request has been sent to {host} | Вашето барање е испратено до {host} |
 | `email.booking.request_received.intro` | This is a booking request, not a confirmed reservation yet. | Ова е барање за резервација, сè уште не е потврдена резервација. |
-| `email.booking.request_received.callout` | The host has until {deadline} to accept or decline. No payment has been collected for this request. | Домаќинот има рок до {deadline} да прифати или одбие. За ова барање не е наплатено ништо. |
+| `email.booking.request_received.callout_payment` | The host has until {deadline} to accept or decline. If they accept, they will share payment instructions with you directly. | Домаќинот има рок до {deadline} да прифати или одбие. Ако прифати, непосредно ќе ви ги достави упатствата за плаќање. |
 
 ## Booking — new request (host)
 
@@ -64,12 +71,12 @@ missing the only fact the recipient needed. A test enforces this.
 | Key | English | Macedonian |
 | --- | --- | --- |
 | `email.booking.confirmed.subject` | Confirmed | Потврдено |
-| `email.booking.confirmed.good_news` | Good news — your booking for "{listing}" has been confirmed. | Добра вест — вашата резервација за „{listing}“ е потврдена. |
+| `email.booking.confirmed.accepted` | Good news — your booking for "{listing}" has been accepted. The host will share payment instructions with you. | Добра вест — вашата резервација за „{listing}“ е прифатена. Домаќинот ќе ви ги достави упатствата за плаќање. |
 | `email.booking.confirmed.preheader` | Your stay at {listing} is confirmed. | Вашиот престој во {listing} е потврден. |
 | `email.booking.confirmed.eyebrow` | Booking confirmed | Резервацијата е потврдена |
-| `email.booking.confirmed.headline` | You’re all set | Сè е подготвено |
+| `email.booking.confirmed.headline_accepted` | Your booking has been accepted | Вашата резервација е прифатена |
 | `email.booking.confirmed.intro` | {host} accepted your booking request. | {host} го прифати вашето барање за резервација. |
-| `email.booking.confirmed.callout` | Keep your messages and any payment arrangements inside {brand} for support and security. | Задржете ја преписката и сите договори за плаќање во {brand} заради поддршка и безбедност. |
+| `email.booking.confirmed.callout_payment` | Linger Homes does not collect or hold booking payments — the host will share payment instructions with you directly. Keep your messages inside {brand} for support and security. | Linger Homes не наплаќа ниту чува плаќања за резервации — домаќинот непосредно ќе ви ги достави упатствата за плаќање. Задржете ја преписката во {brand} заради поддршка и безбедност. |
 
 ## Booking — declined (guest)
 
@@ -104,7 +111,8 @@ missing the only fact the recipient needed. A test enforces this.
 | `email.booking.cancelled.eyebrow` | Booking cancelled | Резервацијата е откажана |
 | `email.booking.cancelled.headline` | This booking is no longer active | Оваа резервација повеќе не е активна |
 | `email.booking.cancelled.intro` | The booking has been cancelled. | Резервацијата е откажана. |
-| `email.booking.cancelled.callout` | View the booking page for the current status and contact support if you need help. | Погледнете ја страницата на резервацијата за тековниот статус и контактирајте ја поддршката ако ви треба помош. |
+| `email.booking.cancelled.payment_note` | Linger Homes does not collect or hold booking payments, so there is nothing for us to refund. Settle anything you arranged directly with the host. | Linger Homes не наплаќа ниту чува плаќања за резервации, па нема што да ви вратиме. Сè што сте договориле расчистете го непосредно со домаќинот. |
+| `email.booking.cancelled.callout_payment` | Linger Homes does not collect or hold booking payments, so there is nothing for us to refund — settle anything you arranged directly with the host. View the booking page for the current status and contact support if you need help. | Linger Homes не наплаќа ниту чува плаќања за резервации, па нема што да ви вратиме — сè што сте договориле расчистете го непосредно со домаќинот. Погледнете ја страницата на резервацијата за тековниот статус и контактирајте ја поддршката ако ви треба помош. |
 
 ## Booking — cancelled by guest (host)
 
@@ -127,15 +135,19 @@ missing the only fact the recipient needed. A test enforces this.
 | `email.booking.check_out` | Check-out | Заминување |
 | `email.booking.guests` | Guests | Гости |
 | `email.booking.total` | Total | Вкупно |
+| `email.booking.display_value_at_booking` | Guest display value at booking | Прикажана вредност за гостинот при резервирањето |
+| `email.booking.approximate_amount` | Approximately {amount} | Приближно {amount} |
 | `email.booking.reason` | Reason: {reason} | Причина: {reason} |
 | `email.booking.view_request` | View request | Погледнете го барањето |
 | `email.booking.view_listing` | View listing | Погледнете го огласот |
 | `email.booking.view_booking` | View booking | Погледнете ја резервацијата |
 | `email.booking.review_request` | Review request | Разгледајте го барањето |
-| `email.booking.no_payment_collected` | No payment has been collected for this request. | За ова барање не е наплатено ништо. |
-| `email.booking.no_payment_was_collected` | No payment was collected for this request. | За ова барање не беше наплатено ништо. |
-| `email.booking.no_payment_dates_free` | No payment was collected. Your dates are free to use for another booking. | Не беше наплатено ништо. Вашите датуми се слободни за друга резервација. |
+| `email.booking.payment_after_acceptance` | Linger Homes does not collect or hold booking payments. If the host accepts, they will share payment instructions with you directly. | Linger Homes не наплаќа ниту чува плаќања за резервации. Ако домаќинот го прифати барањето, непосредно ќе ви ги достави упатствата за плаќање. |
+| `email.booking.request_not_accepted` | This booking request was not accepted. Linger Homes does not collect or hold booking payments. | Ова барање за резервација не беше прифатено. Linger Homes не наплаќа ниту чува плаќања за резервации. |
+| `email.booking.dates_free` | Your dates are free to use for another booking. This request was not accepted, and Linger Homes does not collect or hold booking payments. | Вашите датуми се слободни за друга резервација. Ова барање не беше прифатено, а Linger Homes не наплаќа ниту чува плаќања за резервации. |
 | `email.booking.guest_count.one` | {n} guest | {n} гостин |
+| `email.booking.guest_count.few` | {n} guests | {n} гости |
+| `email.booking.guest_count.many` | {n} guests | {n} гости |
 | `email.booking.guest_count.other` | {n} guests | {n} гости |
 
 ## New message
@@ -145,6 +157,7 @@ missing the only fact the recipient needed. A test enforces this.
 | `email.message.subject` | New message about {listing} | Нова порака за {listing} |
 | `email.message.body` | {sender} sent you a message about "{listing}". | {sender} ви испрати порака за „{listing}“. |
 | `email.message.reply_securely` | Reply securely in {brand} | Одговорете безбедно во {brand} |
+| `email.message.payment_instructions` | Payment instructions are available in {brand} | Упатствата за плаќање се достапни во {brand} |
 | `email.message.privacy` | For your privacy, keep the conversation inside {brand}. | Заради вашата приватност, задржете го разговорот во {brand}. |
 
 ## Ratings and reviews
@@ -199,7 +212,7 @@ missing the only fact the recipient needed. A test enforces this.
 | `email.claim.respond_securely` | Respond securely | Одговорете безбедно |
 | `email.claim.released.subject` | Response required for {reference} | Потребен е одговор за {reference} |
 | `email.claim.released.body` | {reporter} submitted a booking-related {kind} request. | {reporter} поднесе барање за {kind} поврзано со резервација. |
-| `email.claim.released.rights` | You can accept, counter, or reject after reviewing the evidence. You will not be silently charged for failing to respond. | Откако ќе ги разгледате доказите, можете да прифатите, да дадете контрапонуда или да одбиете. Нема да ви биде наплатено ништо без ваше знаење ако не одговорите. |
+| `email.claim.released.rights_direct` | You can accept, counter, or reject after reviewing the evidence. Linger Homes does not collect or hold payments, so nothing is taken from you either way. | Откако ќе ги разгледате доказите, можете да прифатите, да дадете контрапонуда или да одбиете. Linger Homes не наплаќа ниту чува плаќања, па во ниту еден случај нема да ви биде земено ништо. |
 | `email.claim.kind.expense` | expense | трошок |
 | `email.claim.kind.damage` | damage | штета |
 | `email.claim.kind.refund` | refund | поврат на средства |
@@ -234,4 +247,6 @@ missing the only fact the recipient needed. A test enforces this.
 | `email.greeting.hi` | Hi {name}, | Здраво {name}, |
 | `email.greeting.hello` | Hello {name}, | Почитувани {name}, |
 | `email.view_status` | View status | Погледнете го статусот |
+| `email.user_content.machine_translated` | Automatically translated by Google. | Автоматски преведено од Google. |
+| `email.user_content.original` | Original as written: | Оригинал, како што е напишан: |
 

@@ -1,4 +1,6 @@
 const PLACEHOLDER_RE = /\{[A-Za-z][A-Za-z0-9_]*\}/g;
+const UNSUPPORTED_MESSAGE_FORMAT_RE =
+  /\{[A-Za-z][A-Za-z0-9_]*\s*,\s*(?:plural|select|selectordinal)\b/i;
 
 export function translationPlaceholders(value: string): string[] {
   return [...value.matchAll(PLACEHOLDER_RE)].map((match) => match[0]).sort();
@@ -30,6 +32,11 @@ export function validateTranslationMap(
     const value = result[key];
     if (typeof value !== "string" || value.trim().length === 0) {
       throw new Error(`Translation for "${key}" was not a non-empty string.`);
+    }
+    if (UNSUPPORTED_MESSAGE_FORMAT_RE.test(value)) {
+      throw new Error(
+        `Translation for "${key}" used unsupported ICU message syntax.`,
+      );
     }
     const expectedPlaceholders = translationPlaceholders(source);
     const actualPlaceholders = translationPlaceholders(value);

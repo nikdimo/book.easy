@@ -110,6 +110,10 @@ function sectionSummary(
       return overview.houseRulesReviewed
         ? text(t, "host.editor.overview.summary.rules_done", "Reviewed")
         : text(t, "host.editor.overview.summary.rules_todo", "Not reviewed yet");
+    case "payment-arrangements":
+      return overview.paymentMethodsReviewed
+        ? text(t, "host.editor.overview.summary.payment_done", "Reviewed")
+        : text(t, "host.editor.overview.summary.payment_todo", "Not answered yet");
     case "pricing":
       return overview.nightlyRate
         ? ti(t, "host.editor.overview.summary.nightly", "{price} per night", {

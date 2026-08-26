@@ -47,7 +47,8 @@ const overview: ListingEditorOverview = {
   nightlyRate: { amount: 45, currency: "EUR" },
   availabilityMode: "OPEN",
   houseRulesReviewed: true,
-  completeSections: ["photos", "basics", "rooms", "location", "house-rules"],
+  paymentMethodsReviewed: true,
+  completeSections: ["photos", "basics", "rooms", "location", "payment-arrangements", "house-rules"],
 };
 
 async function render() {
@@ -77,6 +78,7 @@ describe("the base listing editor route", () => {
     const html = await render();
     expect(html).toContain('href="/host/listings/listing-1/photos"');
     expect(html).toContain('href="/host/listings/listing-1/availability"');
+    expect(html).toContain('href="/host/listings/listing-1/payment-arrangements"');
     expect(html).toContain('href="/host/calendar?listing=listing-1"');
   });
 

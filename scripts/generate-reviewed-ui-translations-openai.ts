@@ -4,12 +4,21 @@ import {
   type ReviewedLanguage,
 } from "../src/lib/i18n/reviewed-languages";
 import { validateTranslationMap } from "../src/lib/i18n/translation-validation";
+import { EMAIL_TRANSLATION_GUIDANCE } from "../src/lib/i18n/email-translation-guidance";
 import { scanUiStrings } from "../src/lib/services/ui-translation.service";
 
 const API_KEY = process.env.OPENAI_API_KEY;
 const MODEL = process.env.OPENAI_TRANSLATION_MODEL || "gpt-4.1-mini";
-const BATCH_SIZE = 15;
+// Two locales and sixty short UI strings comfortably fit below the response
+// ceiling while substantially reducing round trips for a full catalog recovery.
+const BATCH_SIZE = 60;
 const LANGUAGE_GROUP_SIZE = 2;
+const REQUESTED_LOCALES = new Set(
+  (process.env.OPENAI_TRANSLATION_LOCALES || "")
+    .split(",")
+    .map((locale) => locale.trim())
+    .filter(Boolean)
+);
 
 interface CatalogEntry {
   key: string;
@@ -31,9 +40,14 @@ async function generateBatch(
   const prompt = [
     "Translate fixed user-interface copy for a vacation-rental marketplace.",
     'Return only JSON shaped as {"translations":{"locale":{"key":"value"}}}.',
-    "Translate naturally and concisely, using terminology familiar from booking websites.",
+    "Translate naturally and concisely, using terminology familiar from booking websites. UI space is limited: keep buttons, tabs, badges, labels, and headings as short as naturally possible; do not add explanatory wording.",
     "Preserve every {placeholder} exactly and preserve punctuation when it carries UI meaning.",
     "Do not translate brand names, currency codes, URLs, or placeholders.",
+    // Transactional email carries claims about money and travel that the rest of the
+    // catalog does not. Only add the extra rules when the batch actually contains one.
+    ...(entries.some((entry) => entry.key.startsWith("email."))
+      ? [EMAIL_TRANSLATION_GUIDANCE]
+      : []),
     "Follow this language-specific editorial guidance:",
     ...languages.map(
       (language) =>
@@ -135,6 +149,15 @@ async function generateWithRetry(
 
 async function main() {
   await scanUiStrings();
+  const languages = REQUESTED_LOCALES.size
+    ? REVIEWED_LANGUAGES.filter((language) => REQUESTED_LOCALES.has(language.code))
+    : REVIEWED_LANGUAGES;
+  const unknownLocales = [...REQUESTED_LOCALES].filter(
+    (locale) => !languages.some((language) => language.code === locale)
+  );
+  if (unknownLocales.length) {
+    throw new Error(`Unknown reviewed locale(s): ${unknownLocales.join(", ")}.`);
+  }
   const strings = await db.uiString.findMany({
     where: { isActive: true },
     orderBy: { key: "asc" },
@@ -142,7 +165,7 @@ async function main() {
   });
   const sourceByKey = new Map(strings.map((entry) => [entry.key, entry.sourceText]));
 
-  for (const languageGroup of chunks(REVIEWED_LANGUAGES, LANGUAGE_GROUP_SIZE)) {
+  for (const languageGroup of chunks(languages, LANGUAGE_GROUP_SIZE)) {
     const missingByLocale = new Map<string, CatalogEntry[]>();
     for (const language of languageGroup) {
       const existing = await db.uiTranslation.findMany({

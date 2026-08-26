@@ -12,7 +12,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { formatDate, formatPrice } from "@/lib/utils/format";
+import { formatMoney } from "@/lib/currency/convert";
 import { getT, T, TWithValues } from "@/lib/i18n/t";
+import { getBookingPaymentProgress } from "@/lib/services/booking-payment-status.service";
+import { parseDepositPolicySnapshot } from "@/lib/payments/deposit-policy";
+import { BookingPaymentProgress } from "@/components/booking/booking-payment-progress";
 
 export const metadata = { title: "Booking Request Details" };
 
@@ -26,6 +30,7 @@ export default async function HostBookingDetailPage({
   const { id } = await params;
   const booking = await getHostBookingWithGuest(id, session.user.id);
   if (!booking) notFound();
+  const paymentProgress = await getBookingPaymentProgress(booking.id, session.user.id);
 
   const t = await getT();
   const priceBreakdown = booking.priceBreakdown as {
@@ -104,7 +109,7 @@ export default async function HostBookingDetailPage({
               </p>
               <p className="mt-1 flex items-center gap-1 font-medium">
                 <Calendar className="h-3.5 w-3.5" />
-                {formatDate(booking.checkIn)}
+                {formatDate(booking.checkIn, t.locale)}
               </p>
             </div>
             <div>
@@ -113,7 +118,7 @@ export default async function HostBookingDetailPage({
               </p>
               <p className="mt-1 flex items-center gap-1 font-medium">
                 <Calendar className="h-3.5 w-3.5" />
-                {formatDate(booking.checkOut)}
+                {formatDate(booking.checkOut, t.locale)}
               </p>
             </div>
             <div>
@@ -157,14 +162,14 @@ export default async function HostBookingDetailPage({
                   values={{ nights: booking.numberOfNights }}
                 />
               </span>
-              <span>{formatPrice(accommodationSubtotal, booking.currency)}</span>
+              <span>{formatPrice(accommodationSubtotal, booking.currency, t.locale)}</span>
             </div>
             {Number(booking.cleaningFee) > 0 ? (
               <div className="flex justify-between gap-4">
                 <span>
                   <T t={t} k="host.booking_detail.cleaning_fee" source="Cleaning fee" />
                 </span>
-                <span>{formatPrice(Number(booking.cleaningFee), booking.currency)}</span>
+                <span>{formatPrice(Number(booking.cleaningFee), booking.currency, t.locale)}</span>
               </div>
             ) : null}
             <Separator />
@@ -172,8 +177,26 @@ export default async function HostBookingDetailPage({
               <span>
                 <T t={t} k="host.booking_detail.total" source="Booking total" />
               </span>
-              <span>{formatPrice(Number(booking.totalPrice), booking.currency)}</span>
+              <span>{formatPrice(Number(booking.totalPrice), booking.currency, t.locale)}</span>
             </div>
+            {booking.displayCurrency && booking.displayTotal ? (
+              <p className="text-right text-xs text-muted-foreground">
+                <TWithValues
+                  t={t}
+                  k="booking.display_total_approx"
+                  source="Approximately {amount} at the time of booking. The booking is agreed in {currency}."
+                  values={{
+                    amount: formatMoney(
+                      Number(booking.displayTotal),
+                      booking.displayCurrency,
+                      t.locale,
+                      { converted: true },
+                    ),
+                    currency: booking.currency,
+                  }}
+                />
+              </p>
+            ) : null}
           </section>
 
           <Separator />
@@ -208,6 +231,33 @@ export default async function HostBookingDetailPage({
           </div>
         </CardContent>
       </Card>
+
+      {paymentProgress ? (
+        <div className="mt-6">
+          <BookingPaymentProgress
+            actor="HOST"
+            progress={{
+              bookingId: paymentProgress.id,
+              status: paymentProgress.status,
+              currency: paymentProgress.currency,
+              total: Number(paymentProgress.totalPrice),
+              depositAmount:
+                paymentProgress.depositAmount === null
+                  ? null
+                  : Number(paymentProgress.depositAmount),
+              depositPolicy: parseDepositPolicySnapshot(paymentProgress.depositPolicySnapshot),
+              paymentStatus: paymentProgress.paymentStatus,
+              depositStatus: paymentProgress.depositStatus,
+              paymentStatusEvents: paymentProgress.paymentStatusEvents.map((event) => ({
+                id: event.id,
+                actor: event.eventType.startsWith("GUEST_") ? "GUEST" : "HOST",
+                eventType: event.eventType,
+                createdAt: event.createdAt.toISOString(),
+              })),
+            }}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

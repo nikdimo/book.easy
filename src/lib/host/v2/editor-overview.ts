@@ -48,6 +48,10 @@ const INCOMPLETE_REASON: Record<string, { key: string; source: string }> = {
     key: "host.editor.overview.attention.location",
     source: "The address or the map pin is incomplete.",
   },
+  "payment-arrangements": {
+    key: "host.editor.overview.attention.payment_arrangements",
+    source: "Choose accepted payment methods and whether a deposit is required.",
+  },
   "house-rules": {
     key: "host.editor.overview.attention.house_rules",
     source: "House rules have not been reviewed.",

@@ -14,10 +14,10 @@ import {
 describe("listing editor navigation", () => {
   it("keeps the final order, labels, and grouping", () => {
     expect(EDITOR_SECTIONS.map(({ slug }) => slug)).toEqual([
-      "availability", "pricing", "photos", "basics", "rooms", "location", "amenities", "house-rules", "arrival-guide",
+      "availability", "pricing", "photos", "basics", "rooms", "location", "amenities", "payment-arrangements", "house-rules", "arrival-guide",
     ]);
     expect(EDITOR_SECTIONS.map(({ source }) => source)).toEqual([
-      "Availability", "Pricing", "Photos", "Title & description", "Property details", "Location", "Amenities", "House rules", "Arrival guide",
+      "Availability", "Pricing", "Photos", "Title & description", "Property details", "Location", "Amenities", "Payment arrangements", "House rules", "Arrival guide",
     ]);
     expect(EDITOR_SECTIONS.filter((section) => section.group === "calendar").map(({ slug }) => slug)).toEqual(["availability", "pricing"]);
   });
@@ -47,6 +47,7 @@ describe("listing editor navigation", () => {
         "Property details",
         "Location",
         "Amenities",
+        "Payment arrangements",
         "House rules",
         "Arrival guide",
       ],
@@ -77,6 +78,7 @@ describe("listing editor navigation", () => {
       "Property details": "/host/listings/listing-1/rooms",
       Location: "/host/listings/listing-1/location",
       Amenities: "/host/listings/listing-1/amenities",
+      "Payment arrangements": "/host/listings/listing-1/payment-arrangements",
       "House rules": "/host/listings/listing-1/house-rules",
       "Arrival guide": "/host/listings/listing-1/arrival-guide",
     });
@@ -104,29 +106,30 @@ describe("listing editor navigation", () => {
     // is a stored fact rather than an inference from fields that always have values.
     // Arrival guide still has no such column.
     expect(EDITOR_COMPLETION_SECTIONS.map(({ slug }) => slug)).toEqual([
-      "photos", "basics", "rooms", "location", "house-rules",
+      "photos", "basics", "rooms", "location", "payment-arrangements", "house-rules",
     ]);
     expect(editorCompletionCount(["photos", "basics", "pricing", "availability"])).toBe(2);
   });
 
   it("keeps shared completion checks stable across routes", () => {
-    expect(editorCompletedSections({ photoCount: 3, basicsComplete: true, propertyDetailsComplete: true, locationComplete: true, houseRulesReviewed: true })).toEqual([
+    expect(editorCompletedSections({ photoCount: 3, basicsComplete: true, propertyDetailsComplete: true, locationComplete: true, paymentMethodsReviewed: true, houseRulesReviewed: true })).toEqual([
       "photos",
       "basics",
       "rooms",
       "location",
+      "payment-arrangements",
       "house-rules",
     ]);
-    expect(editorCompletedSections({ photoCount: 0, basicsComplete: false, propertyDetailsComplete: false, locationComplete: false, houseRulesReviewed: false })).toEqual([]);
+    expect(editorCompletedSections({ photoCount: 0, basicsComplete: false, propertyDetailsComplete: false, locationComplete: false, paymentMethodsReviewed: false, houseRulesReviewed: false })).toEqual([]);
   });
 
   it("can reach full completion without making optional amenities mandatory", () => {
-    const complete = editorCompletedSections({ photoCount: 3, basicsComplete: true, propertyDetailsComplete: true, locationComplete: true, houseRulesReviewed: true });
+    const complete = editorCompletedSections({ photoCount: 3, basicsComplete: true, propertyDetailsComplete: true, locationComplete: true, paymentMethodsReviewed: true, houseRulesReviewed: true });
     expect(editorCompletionCount(complete)).toBe(EDITOR_COMPLETION_SECTIONS.length);
   });
 
   it("requires the same photo minimum as publishing", () => {
-    const base = { basicsComplete: false, propertyDetailsComplete: false, locationComplete: false, houseRulesReviewed: false };
+    const base = { basicsComplete: false, propertyDetailsComplete: false, locationComplete: false, paymentMethodsReviewed: false, houseRulesReviewed: false };
     expect(editorCompletedSections({ ...base, photoCount: 2 })).toEqual([]);
     expect(editorCompletedSections({ ...base, photoCount: 3 })).toEqual(["photos"]);
   });
@@ -134,9 +137,15 @@ describe("listing editor navigation", () => {
   it("ticks House rules only for a host who actually saved it", () => {
     // Never inferred from the rules having values — a listing has a guest count and an
     // arrival time from the moment it exists, whether or not anyone reviewed them.
-    const base = { photoCount: 0, basicsComplete: false, propertyDetailsComplete: false, locationComplete: false };
+    const base = { photoCount: 0, basicsComplete: false, propertyDetailsComplete: false, locationComplete: false, paymentMethodsReviewed: false };
 
     expect(editorCompletedSections({ ...base, houseRulesReviewed: true })).toEqual(["house-rules"]);
     expect(editorCompletedSections({ ...base, houseRulesReviewed: false })).toEqual([]);
+  });
+
+  it("ticks Payment arrangements only after the host deliberately saves it", () => {
+    const base = { photoCount: 0, basicsComplete: false, propertyDetailsComplete: false, locationComplete: false, houseRulesReviewed: false };
+    expect(editorCompletedSections({ ...base, paymentMethodsReviewed: true })).toEqual(["payment-arrangements"]);
+    expect(editorCompletedSections({ ...base, paymentMethodsReviewed: false })).toEqual([]);
   });
 });

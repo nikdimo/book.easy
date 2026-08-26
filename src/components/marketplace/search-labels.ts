@@ -94,7 +94,10 @@ export function useSearchLabels(): SearchLabels {
 
   return useMemo<SearchLabels>(
     () => ({
-      locale: i18n.locale,
+      // Date/number formatting should follow the visitor's selected language. This is
+      // also correct for Google-only languages, where fixed catalog copy falls back
+      // to English but the surrounding page is translated in the browser.
+      locale: i18n.requestedLocale,
       where: i18n.resolve("search.where", "Where"),
       whereToPlaceholder: i18n.resolve("search.where_to", "Where to?"),
       searchDestinations: i18n.resolve("search.search_destinations", "Search destinations"),

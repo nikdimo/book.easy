@@ -14,6 +14,13 @@ export const sendMessageSchema = z.object({
   clientId: z.string().uuid("Invalid message ID"),
 });
 
+export const shareBookingPaymentInstructionsSchema = z.object({
+  bookingId: z.string().trim().min(1),
+  body: z.string().trim().min(1).max(2000),
+  sourceLocale: z.string().trim().min(1).max(35).optional(),
+  clientId: z.string().uuid("Invalid message ID").optional(),
+});
+
 export const markConversationReadSchema = z.object({
   lastMessageId: z.string().trim().min(1),
 });

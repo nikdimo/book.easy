@@ -2,6 +2,7 @@ import "server-only";
 
 import { BookingEmailDeliveryStatus } from "@prisma/client";
 import { db } from "@/lib/db";
+import { PAYMENT_INSTRUCTIONS_PREVIEW } from "@/lib/services/payment-instructions";
 
 const MAX_ATTEMPTS = 12;
 const LOCK_TIMEOUT_MS = 15 * 60 * 1000;
@@ -42,6 +43,7 @@ export async function processMessageEmailOutbox(options?: {
           conversationId: true,
           senderId: true,
           body: true,
+          kind: true,
           sender: { select: { id: true } },
           conversation: {
             select: {
@@ -92,7 +94,13 @@ export async function processMessageEmailOutbox(options?: {
         conversationId: candidate.message.conversationId,
         senderId: candidate.message.senderId,
         recipientIds: [candidate.recipientId],
-        preview: candidate.message.body.slice(0, 180),
+        // The durable row points to a sensitive message body, but email is an
+        // external transport. Always derive its preview from the kind at delivery
+        // time rather than trusting any earlier caller to have redacted it.
+        preview:
+          candidate.message.kind === "PAYMENT_INSTRUCTIONS"
+            ? PAYMENT_INSTRUCTIONS_PREVIEW
+            : candidate.message.body.slice(0, 180),
         supportSender: candidate.message.conversation.participants.some(
           ({ userId }) => userId === candidate.message.senderId
         ),

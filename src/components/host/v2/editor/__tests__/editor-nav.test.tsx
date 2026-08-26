@@ -38,6 +38,7 @@ describe("EditorNav rail", () => {
       "Property details",
       "Location",
       "Amenities",
+      "Payment arrangements",
       "House rules",
       "Arrival guide",
     ];
@@ -76,11 +77,11 @@ describe("EditorNav rail", () => {
   it("ticks the sections the shared completion set reports as done", () => {
     const html = render("photos", ["basics", "location"]);
     expect(html).toContain("lucide-check");
-    expect(html).toContain("2 of 5 complete");
+    expect(html).toContain("2 of 6 complete");
   });
 
   it("counts progress out of the completion sections only", () => {
     // Availability and Pricing are Calendar handoffs, so they never inflate the total.
-    expect(render("photos", ["pricing", "availability"])).toContain("0 of 5 complete");
+    expect(render("photos", ["pricing", "availability"])).toContain("0 of 6 complete");
   });
 });

@@ -57,6 +57,54 @@ enum ListingPaymentMethod {
   ARRANGE_DIRECTLY
 }
 
+/// A host-set deposit policy. Linger Homes records this policy and manual status
+/// updates only; it never collects, holds, routes, or refunds money.
+enum ListingDepositPolicy {
+  NONE
+  FIXED
+  PERCENTAGE
+}
+
+enum ListingDepositPurpose {
+  ADVANCE_PAYMENT
+  DAMAGE_SECURITY
+}
+
+enum ListingDepositDueTiming {
+  AFTER_ACCEPTANCE
+  DAYS_BEFORE_CHECK_IN
+  AT_CHECK_IN
+}
+
+/// Manual, declarative payment tracking. These values never assert that Linger
+/// Homes processed a transaction.
+enum BookingPaymentStatus {
+  UNTRACKED
+  NOT_REQUIRED
+  AWAITING_PAYMENT
+  PAYMENT_REPORTED
+  PAYMENT_CONFIRMED
+}
+
+/// Manual tracking for an advance payment or refundable security deposit. A
+/// separate return state keeps a received security deposit distinct from one that
+/// a host says has been returned.
+enum BookingDepositStatus {
+  UNTRACKED
+  NOT_REQUIRED
+  AWAITING_DEPOSIT
+  DEPOSIT_REPORTED
+  DEPOSIT_CONFIRMED
+  RETURN_REPORTED
+  RETURN_CONFIRMED
+  RETAINED
+}
+
+enum MessageKind {
+  CHAT
+  PAYMENT_INSTRUCTIONS
+}
+
 enum PromotionType {
   PERCENT_DISCOUNT
   FREE_CLEANING
@@ -94,9 +142,11 @@ enum BookingEmailDeliveryStatus {
 enum BlockType {
   MANUAL_BLOCK
   BOOKING_HOLD
-  /** Mirrored from an external calendar (Airbnb, Booking.com, …) by the iCal sync.
+  /**
+   * Mirrored from an external calendar (Airbnb, Booking.com, …) by the iCal sync.
    * Owned by the feed that created it: a re-sync deletes and recreates only these,
-   * so a host's own manual blocks are never touched by a remote calendar. */
+   * so a host's own manual blocks are never touched by a remote calendar.
+   */
   EXTERNAL_SYNC
 }
 
@@ -324,63 +374,64 @@ model ContactMessage {
 // ─── User & Profile ─────────────────────────────────────────────────────────────
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  image         String?
-  name          String
-  role          UserRole  @default(USER)
-  isHost        Boolean   @default(false)
-  isActive      Boolean   @default(true)
-  emailVerified DateTime?
+  id              String    @id @default(cuid())
+  email           String    @unique
+  image           String?
+  name            String
+  role            UserRole  @default(USER)
+  isHost          Boolean   @default(false)
+  isActive        Boolean   @default(true)
+  emailVerified   DateTime?
   /// Language for system email. Set when the visitor picks a language in the
   /// switcher; null means English. Emails are sent by background jobs hours after
   /// the fact, where the request-scoped locale cookie no longer exists — so the
   /// choice has to live on the account, not in `getLocale()`.
-  locale        String?
+  locale          String?
   /// Display currency for browsing, so the choice follows the account to another
   /// device. Purely presentational: prices are authored, charged and settled in the
   /// listing's official currency regardless of what this says. Null means the
   /// visitor has never chosen, and detection applies.
   displayCurrency String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  profile                 Profile?
-  properties              Property[]
-  listings                Listing[]
-  bookings                Booking[]
-  auditLogs               AuditLog[]
-  accounts                Account[]
-  sessions                Session[]
-  suggestions             Suggestion[]              @relation("SuggestionHost")
-  reviewedSuggestions     Suggestion[]              @relation("SuggestionReviewer")
-  listingDrafts           ListingDraft[]
-  listingReports          ListingReport[]           @relation("ListingReportReporter")
-  reviewedListingReports  ListingReport[]           @relation("ListingReportReviewer")
-  favorites               Favorite[]
-  userConsents            UserConsent[]
-  notifications           Notification[]
-  pushTokens              PushToken[]
-  conversationMemberships ConversationParticipant[]
-  sentMessages            Message[]                 @relation("MessageSender")
-  messageEmailDeliveries  MessageEmailDelivery[]    @relation("MessageEmailRecipient")
-  bookingTimelineEvents   BookingTimelineEvent[]    @relation("BookingTimelineActor")
-  damageReports           DamageReport[]            @relation("DamageReporter")
-  startedConversations    Conversation[]            @relation("ConversationStarter")
-  inquiryConversations    Conversation[]            @relation("ConversationInquiryGuest")
-  submittedSafetyCases    SafetyCase[]              @relation("SafetyCaseReporter")
-  reportedSafetyCases     SafetyCase[]              @relation("SafetyCaseReportedUser")
-  assignedSafetyCases     SafetyCase[]              @relation("SafetyCaseAssignedAdmin")
-  safetyCaseUpdates       SafetyCaseUpdate[]        @relation("SafetyCaseUpdateAuthor")
-  authoredReviews         Review[]                  @relation("ReviewAuthor")
-  receivedReviews         Review[]                  @relation("ReviewSubject")
-  moderatedReviews        Review[]                  @relation("ReviewModerator")
-  reviewInvitations       ReviewInvitation[]
-  reviewAdminReads        ReviewAdminRead[]
-  communicationPreference CommunicationPreference?
-  marketingContact        MarketingContact?
-  contactMessages         ContactMessage[]
-  deletionTokens          AccountDeletionToken[]
+  profile                    Profile?
+  properties                 Property[]
+  listings                   Listing[]
+  bookings                   Booking[]
+  auditLogs                  AuditLog[]
+  accounts                   Account[]
+  sessions                   Session[]
+  suggestions                Suggestion[]                @relation("SuggestionHost")
+  reviewedSuggestions        Suggestion[]                @relation("SuggestionReviewer")
+  listingDrafts              ListingDraft[]
+  listingReports             ListingReport[]             @relation("ListingReportReporter")
+  reviewedListingReports     ListingReport[]             @relation("ListingReportReviewer")
+  favorites                  Favorite[]
+  userConsents               UserConsent[]
+  notifications              Notification[]
+  pushTokens                 PushToken[]
+  conversationMemberships    ConversationParticipant[]
+  sentMessages               Message[]                   @relation("MessageSender")
+  messageEmailDeliveries     MessageEmailDelivery[]      @relation("MessageEmailRecipient")
+  bookingTimelineEvents      BookingTimelineEvent[]      @relation("BookingTimelineActor")
+  bookingPaymentStatusEvents BookingPaymentStatusEvent[] @relation("BookingPaymentStatusActor")
+  damageReports              DamageReport[]              @relation("DamageReporter")
+  startedConversations       Conversation[]              @relation("ConversationStarter")
+  inquiryConversations       Conversation[]              @relation("ConversationInquiryGuest")
+  submittedSafetyCases       SafetyCase[]                @relation("SafetyCaseReporter")
+  reportedSafetyCases        SafetyCase[]                @relation("SafetyCaseReportedUser")
+  assignedSafetyCases        SafetyCase[]                @relation("SafetyCaseAssignedAdmin")
+  safetyCaseUpdates          SafetyCaseUpdate[]          @relation("SafetyCaseUpdateAuthor")
+  authoredReviews            Review[]                    @relation("ReviewAuthor")
+  receivedReviews            Review[]                    @relation("ReviewSubject")
+  moderatedReviews           Review[]                    @relation("ReviewModerator")
+  reviewInvitations          ReviewInvitation[]
+  reviewAdminReads           ReviewAdminRead[]
+  communicationPreference    CommunicationPreference?
+  marketingContact           MarketingContact?
+  contactMessages            ContactMessage[]
+  deletionTokens             AccountDeletionToken[]
 
   @@index([email])
   @@index([role])
@@ -529,84 +580,108 @@ model Property {
 }
 
 model Listing {
-  id             String        @id @default(cuid())
-  propertyId     String
-  hostId         String
-  title          String
-  slug           String        @unique
-  description    String
-  /** What the guest exclusively books. Kept separate from Property.propertyType:
-   * a private room can be inside a house, apartment, villa, or hotel. */
-  spaceType      ListingSpaceType @default(ENTIRE_PLACE)
-  status         ListingStatus @default(DRAFT)
-  maxGuests      Int
-  bedrooms       Int
-  bathrooms      Int
-  beds           Int
+  id                             String                   @id @default(cuid())
+  propertyId                     String
+  hostId                         String
+  title                          String
+  slug                           String                   @unique
+  description                    String
+  /**
+   * What the guest exclusively books. Kept separate from Property.propertyType:
+   * a private room can be inside a house, apartment, villa, or hotel.
+   */
+  spaceType                      ListingSpaceType         @default(ENTIRE_PLACE)
+  status                         ListingStatus            @default(DRAFT)
+  maxGuests                      Int
+  bedrooms                       Int
+  bathrooms                      Int
+  beds                           Int
   /**
    * Wall-clock house rules ("15:00"), not instants — a check-in time is whatever the
    * clock on the wall says when the guest arrives, so storing it as DateTime would
    * attach a timezone that has no meaning here and shifts under the server's. Null
    * means the host is flexible and will agree arrival with the guest.
    */
-  checkInTime    String?
-  checkOutTime   String?
+  checkInTime                    String?
+  checkOutTime                   String?
   /**
    * Structured house rules the guest agrees to when they book.
-   *
    * Every policy is nullable and NULL means "the host has not answered" — deliberately
    * distinct from an explicit NOT_ALLOWED. Defaulting these to a refusal would tell
    * guests that thousands of listings ban smoking, pets and parties on the strength of
    * a migration nobody's host ever ran. The public page prints only the answered ones,
    * exactly the way it already treats a null `checkInTime`.
-   *
    * The multi-choice enums exist because a boolean cannot express the two policies
    * hosts most often actually have: smoking outdoors only, and pets on request.
    */
-  petPolicy      ListingPetPolicy?
-  smokingPolicy  ListingSmokingPolicy?
-  eventPolicy    ListingEventPolicy?
-  /** NONE is an explicit "no quiet hours"; SET means both times below are present.
-   *  NULL is unanswered, the same as every policy above. */
-  quietHoursPolicy ListingQuietHoursPolicy?
-  /** Wall-clock "HH:MM", same convention and reasoning as checkInTime. Both set or
-   *  both NULL, and 22:00–08:00 crosses midnight legitimately, so there is no
-   *  start-before-end rule to enforce. */
-  quietHoursStart String?
-  quietHoursEnd   String?
-  /** The host's own rules, in their own words. Guest-facing copy, so it gets the same
-   *  treatment as `description`: stored exactly as written, flagged for re-review on
-   *  edit, and never overwritten with a machine translation. */
-  additionalRules String?  @db.Text
+  petPolicy                      ListingPetPolicy?
+  smokingPolicy                  ListingSmokingPolicy?
+  eventPolicy                    ListingEventPolicy?
+  /**
+   * NONE is an explicit "no quiet hours"; SET means both times below are present.
+   * NULL is unanswered, the same as every policy above.
+   */
+  quietHoursPolicy               ListingQuietHoursPolicy?
+  /**
+   * Wall-clock "HH:MM", same convention and reasoning as checkInTime. Both set or
+   * both NULL, and 22:00–08:00 crosses midnight legitimately, so there is no
+   * start-before-end rule to enforce.
+   */
+  quietHoursStart                String?
+  quietHoursEnd                  String?
+  /**
+   * The host's own rules, in their own words. Guest-facing copy, so it gets the same
+   * treatment as `description`: stored exactly as written, flagged for re-review on
+   * edit, and never overwritten with a machine translation.
+   */
+  additionalRules                String?                  @db.Text
   /**
    * When the host last saved the House rules section.
-   *
    * The completion marker the editor needs. Every field this section edits already has
    * a value the moment a listing exists, so "has values" cannot distinguish a host who
    * reviewed the page from one who never opened it — only a recorded visit can.
    */
-  houseRulesReviewedAt DateTime?
-  /** Public method names only. Never account details, handles, links, card data, or
+  houseRulesReviewedAt           DateTime?
+  /**
+   * Public method names only. Never account details, handles, links, card data, or
    * payment instructions. An empty array with a null reviewed timestamp means this
-   * host has not answered; ARRANGE_DIRECTLY is the explicit reviewed alternative. */
-  acceptedPaymentMethods   ListingPaymentMethod[] @default([])
-  paymentMethodOther       String?
-  paymentMethodsReviewedAt DateTime?
-  moderationNote String?
+   * host has not answered; ARRANGE_DIRECTLY is the explicit reviewed alternative.
+   */
+  acceptedPaymentMethods         ListingPaymentMethod[]   @default([])
+  paymentMethodOther             String?
+  paymentMethodsReviewedAt       DateTime?
+  /**
+   * A public deposit policy only. It does not include destination details,
+   * payment links, account identifiers, or any funds handled by Linger Homes.
+   */
+  depositPolicy                  ListingDepositPolicy     @default(NONE)
+  depositPurpose                 ListingDepositPurpose?
+  depositValue                   Decimal?                 @db.Decimal(14, 3)
+  depositCurrency                String?
+  depositDueTiming               ListingDepositDueTiming  @default(AFTER_ACCEPTANCE)
+  depositDueDaysBeforeCheckIn    Int?
+  /**
+   * Present only when a DAMAGE_SECURITY deposit is refundable.
+   */
+  depositReturnDaysAfterCheckout Int?
+  depositPolicyReviewedAt        DateTime?
+  moderationNote                 String?
   /**
    * True whenever the live content was created/edited since an admin last looked at
    * it — drives the admin "Pending Review" queue independently of `status`, since
    * listings are published immediately rather than gated behind approval.
    */
-  needsReview    Boolean       @default(false)
-  approvedAt     DateTime?
-  publishedAt    DateTime?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  /** OPEN keeps the traditional "available unless blocked" calendar. CLOSED means
+  needsReview                    Boolean                  @default(false)
+  approvedAt                     DateTime?
+  publishedAt                    DateTime?
+  createdAt                      DateTime                 @default(now())
+  updatedAt                      DateTime                 @updatedAt
+  /**
+   * OPEN keeps the traditional "available unless blocked" calendar. CLOSED means
    * only explicit availability windows can be booked. The default preserves every
-   * listing created before selected-date hosting existed. */
-  availabilityMode ListingAvailabilityMode @default(OPEN)
+   * listing created before selected-date hosting existed.
+   */
+  availabilityMode               ListingAvailabilityMode  @default(OPEN)
 
   /**
    * Time-decayed demand signal (views + heavily-weighted bookings) recomputed by a
@@ -626,47 +701,53 @@ model Listing {
    * listings that never sync expose no feed at all, and rotatable from the calendar
    * screen when a host wants to cut an old subscriber off.
    */
-  calendarFeedToken   String?   @unique
+  calendarFeedToken String? @unique
 
-  property           Property            @relation(fields: [propertyId], references: [id])
-  host               User                @relation(fields: [hostId], references: [id])
-  images             ListingImage[]
-  rooms              ListingRoom[]
-  amenities          ListingAmenity[]
-  pricingRule        PricingRule?
-  datePrices         ListingDatePrice[]
-  availabilityBlocks AvailabilityBlock[]
+  property            Property                    @relation(fields: [propertyId], references: [id])
+  host                User                        @relation(fields: [hostId], references: [id])
+  images              ListingImage[]
+  rooms               ListingRoom[]
+  amenities           ListingAmenity[]
+  pricingRule         PricingRule?
+  datePrices          ListingDatePrice[]
+  availabilityBlocks  AvailabilityBlock[]
   availabilityWindows ListingAvailabilityWindow[]
-  calendarFeeds      ListingCalendarFeed[]
-  bookings           Booking[]
-  suggestions        Suggestion[]
-  reports            ListingReport[]
-  safetyCases        SafetyCase[]
-  favorites          Favorite[]
-  views              ListingView[]
-  conversations      Conversation[]
-  reviews            Review[]
-  promotions         ListingPromotion[]
+  calendarFeeds       ListingCalendarFeed[]
+  bookings            Booking[]
+  suggestions         Suggestion[]
+  reports             ListingReport[]
+  safetyCases         SafetyCase[]
+  favorites           Favorite[]
+  views               ListingView[]
+  conversations       Conversation[]
+  reviews             Review[]
+  promotions          ListingPromotion[]
 
   @@index([hostId])
   @@index([status])
   @@index([slug])
   @@index([status, popularityScore])
-  /** Guest search filters on the pet policy directly now that it is a column rather
-   *  than an amenity join. */
+  /**
+   * Guest search filters on the pet policy directly now that it is a column rather
+   * than an amenity join.
+   */
   @@index([petPolicy])
 }
 
-/** Pets need three answers, not two: "on request" is a real and common policy, and
- *  collapsing it into either boolean tells the guest something the host did not say. */
+/**
+ * Pets need three answers, not two: "on request" is a real and common policy, and
+ * collapsing it into either boolean tells the guest something the host did not say.
+ */
 enum ListingPetPolicy {
   ALLOWED
   NOT_ALLOWED
   ASK_HOST
 }
 
-/** Outdoors-only is the single most common real smoking rule, and it is neither
- *  "allowed" nor "not allowed". */
+/**
+ * Outdoors-only is the single most common real smoking rule, and it is neither
+ * "allowed" nor "not allowed".
+ */
 enum ListingSmokingPolicy {
   NOT_ALLOWED
   OUTDOORS_ONLY
@@ -678,8 +759,10 @@ enum ListingEventPolicy {
   NOT_ALLOWED
 }
 
-/** Whether quiet hours apply at all, kept separate from the two times so that "the
- *  host says there are none" and "the host has not answered" stay different facts. */
+/**
+ * Whether quiet hours apply at all, kept separate from the two times so that "the
+ * host says there are none" and "the host has not answered" stay different facts.
+ */
 enum ListingQuietHoursPolicy {
   NONE
   SET
@@ -736,20 +819,18 @@ model ListingDraft {
 
 /**
  * A managed upload whose owning row is gone and whose file still has to be unlinked.
- *
  * The queue exists because a file and a database row cannot be changed atomically. The
  * row is written in the *same transaction* as the deletion that orphaned the file, so a
  * crash between the commit and the unlink loses the file's bytes, never the knowledge
  * that they need removing — the sweep picks it up on the next run.
- *
  * `url` is unique, which makes enqueueing idempotent: the same file queued twice is one
  * row, and processing it twice is a no-op the second time.
  */
 model PendingUploadDeletion {
-  id String @id @default(cuid())
+  id          String    @id @default(cuid())
   /// Always a server-generated `/uploads/...` path — remote and unsafe values are
   /// rejected before they ever reach this table.
-  url String @unique
+  url         String    @unique
   /// What orphaned it ("listing-draft", "account-deletion", …). Diagnostics only; never
   /// shown to a user.
   reason      String
@@ -767,16 +848,22 @@ model ListingImage {
   url          String
   mediaType    ListingMediaType @default(IMAGE)
   alt          String?
-  /** Listing-level sequence: the order a guest sees in the gallery, and the order the
-   *  editor's All photos view shows. Independent of `roomOrder`. */
+  /**
+   * Listing-level sequence: the order a guest sees in the gallery, and the order the
+   * editor's All photos view shows. Independent of `roomOrder`.
+   */
   displayOrder Int              @default(0)
   isPrimary    Boolean          @default(false)
-  /** The space this photo belongs to, or null for Other / Unassigned. Photos are never
-   *  required to have one — a host uploads first and organises later — and deleting a
-   *  room nulls this rather than taking the photos down with it. */
+  /**
+   * The space this photo belongs to, or null for Other / Unassigned. Photos are never
+   * required to have one — a host uploads first and organises later — and deleting a
+   * room nulls this rather than taking the photos down with it.
+   */
   roomId       String?
-  /** Sequence within `room`, kept apart from `displayOrder` so reordering a room's
-   *  photo tour cannot silently rewrite the listing's gallery order. */
+  /**
+   * Sequence within `room`, kept apart from `displayOrder` so reordering a room's
+   * photo tour cannot silently rewrite the listing's gallery order.
+   */
   roomOrder    Int              @default(0)
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
@@ -798,12 +885,18 @@ model ListingImage {
  */
 model RoomTypeCategory {
   id        String   @id @default(cuid())
-  /** Stable slug used by the release snapshot and by `rooms.categories.<key>`. */
+  /**
+   * Stable slug used by the release snapshot and by `rooms.categories.<key>`.
+   */
   key       String   @unique
-  /** English label, and the source text every translation is measured against. */
+  /**
+   * English label, and the source text every translation is measured against.
+   */
   name      String   @unique
   icon      String?
-  /** Admin-defined display order, ascending, in every room picker. */
+  /**
+   * Admin-defined display order, ascending, in every room picker.
+   */
   sortOrder Int      @default(0)
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -815,16 +908,20 @@ model RoomTypeCategory {
   @@index([isActive])
 }
 
-/** One kind of space a property can have — "Bedroom", "Terrace", "Sauna". */
+/**
+ * One kind of space a property can have — "Bedroom", "Terrace", "Sauna".
+ */
 model RoomType {
-  id         String  @id @default(cuid())
-  name       String  @unique
-  /** Stable slug: survives renames, and matches `rooms.types.<key>` in the UI string
-   *  catalog so a catalog row and its reviewed translation stay linked. */
-  key        String  @unique
-  categoryId String
-  icon       String?
-  sortOrder  Int     @default(0)
+  id           String   @id @default(cuid())
+  name         String   @unique
+  /**
+   * Stable slug: survives renames, and matches `rooms.types.<key>` in the UI string
+   * catalog so a catalog row and its reviewed translation stay linked.
+   */
+  key          String   @unique
+  categoryId   String
+  icon         String?
+  sortOrder    Int      @default(0)
   /**
    * Whether one property can hold several of these. A repeatable type numbers its
    * instances ("Bedroom 1", "Bedroom 2"); a singular one stays unnumbered, because
@@ -842,7 +939,7 @@ model RoomType {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @default(now()) @updatedAt
 
-  category     RoomTypeCategory @relation(fields: [categoryId], references: [id])
+  category     RoomTypeCategory      @relation(fields: [categoryId], references: [id])
   rooms        ListingRoom[]
   translations RoomTypeTranslation[]
 
@@ -850,14 +947,18 @@ model RoomType {
   @@index([categoryId])
 }
 
-/** Admin-authored room type label per language, resolved ahead of the reviewed source
- *  catalog — same resolution order, and same reasoning, as AmenityTranslation. */
+/**
+ * Admin-authored room type label per language, resolved ahead of the reviewed source
+ * catalog — same resolution order, and same reasoning, as AmenityTranslation.
+ */
 model RoomTypeTranslation {
-  id         String @id @default(cuid())
-  roomTypeId String
-  locale     String
-  label      String
-  /** Typed by an admin rather than filled by the AI pass, so a re-fill leaves it. */
+  id               String   @id @default(cuid())
+  roomTypeId       String
+  locale           String
+  label            String
+  /**
+   * Typed by an admin rather than filled by the AI pass, so a re-fill leaves it.
+   */
   isManuallyEdited Boolean  @default(false)
   updatedAt        DateTime @default(now()) @updatedAt
 
@@ -869,10 +970,10 @@ model RoomTypeTranslation {
 }
 
 model RoomTypeCategoryTranslation {
-  id         String @id @default(cuid())
-  categoryId String
-  locale     String
-  label      String
+  id               String   @id @default(cuid())
+  categoryId       String
+  locale           String
+  label            String
   isManuallyEdited Boolean  @default(false)
   updatedAt        DateTime @default(now()) @updatedAt
 
@@ -885,7 +986,6 @@ model RoomTypeCategoryTranslation {
 
 /**
  * One space inside one listing — the "Bedroom 2" a host drags photos onto.
- *
  * The structured type stays in `roomTypeId` so a room can be grouped, translated and
  * counted whatever the host calls it; `displayName` is an optional override ("Master
  * bedroom") that never becomes the only way to tell what kind of room this is.
@@ -894,11 +994,15 @@ model ListingRoom {
   id          String   @id @default(cuid())
   listingId   String
   roomTypeId  String
-  /** 1-based position among this listing's rooms of the same type, and what the "2" in
-   *  "Bedroom 2" comes from. Always 1 for a type that is not repeatable. */
+  /**
+   * 1-based position among this listing's rooms of the same type, and what the "2" in
+   * "Bedroom 2" comes from. Always 1 for a type that is not repeatable.
+   */
   ordinal     Int      @default(1)
   displayName String?
-  /** Host-defined order of the photo tour, ascending. */
+  /**
+   * Host-defined order of the photo tour, ascending.
+   */
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -907,8 +1011,10 @@ model ListingRoom {
   roomType RoomType       @relation(fields: [roomTypeId], references: [id])
   images   ListingImage[]
 
-  /** One "Bedroom 2" per listing. Also what lets the first-open seeding insert with
-   *  skipDuplicates instead of racing itself when two requests arrive together. */
+  /**
+   * One "Bedroom 2" per listing. Also what lets the first-open seeding insert with
+   * skipDuplicates instead of racing itself when two requests arrive together.
+   */
   @@unique([listingId, roomTypeId, ordinal])
   @@index([listingId])
   @@index([roomTypeId])
@@ -922,13 +1028,19 @@ model ListingRoom {
  * a deploy.
  */
 model AmenityCategory {
-  id   String @id @default(cuid())
-  /** Stable slug used by the release snapshot and by `amenities.categories.<key>`. */
-  key  String @unique
-  /** English label, and the source text every translation is measured against. */
-  name String @unique
-  icon String?
-  /** Admin-defined display order, ascending, for every amenity picker. */
+  id        String   @id @default(cuid())
+  /**
+   * Stable slug used by the release snapshot and by `amenities.categories.<key>`.
+   */
+  key       String   @unique
+  /**
+   * English label, and the source text every translation is measured against.
+   */
+  name      String   @unique
+  icon      String?
+  /**
+   * Admin-defined display order, ascending, for every amenity picker.
+   */
   sortOrder Int      @default(0)
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -941,24 +1053,28 @@ model AmenityCategory {
 }
 
 model Amenity {
-  id         String @id @default(cuid())
-  name       String @unique
-  /** Stable slug: survives renames, and matches `amenities.items.<key>` in the UI
-   *  string catalog so a catalog row and its reviewed translation stay linked. */
-  key        String @unique
+  id         String   @id @default(cuid())
+  name       String   @unique
+  /**
+   * Stable slug: survives renames, and matches `amenities.items.<key>` in the UI
+   * string catalog so a catalog row and its reviewed translation stay linked.
+   */
+  key        String   @unique
   categoryId String
   icon       String?
-  /** Admin-defined display order within the category, ascending. */
-  sortOrder  Int     @default(0)
+  /**
+   * Admin-defined display order within the category, ascending.
+   */
+  sortOrder  Int      @default(0)
   /**
    * false = not offered in the general amenity picker, but still valid for any
    * listing already using it (e.g. a "this listing only" suggestion approval).
    */
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
 
-  category     AmenityCategory @relation(fields: [categoryId], references: [id])
+  category     AmenityCategory      @relation(fields: [categoryId], references: [id])
   listings     ListingAmenity[]
   aliases      AmenityAlias[]
   translations AmenityTranslation[]
@@ -969,18 +1085,19 @@ model Amenity {
 
 /**
  * Admin-authored amenity label per language.
- *
  * Deliberately separate from UiTranslation: those keys come from the AST scan over
  * source literals, so a row an admin creates at runtime could never appear there.
  * Resolution order is this table, then the reviewed source-literal catalog in
  * lib/i18n/amenity-labels.ts, then the English name.
  */
 model AmenityTranslation {
-  id        String   @id @default(cuid())
-  amenityId String
-  locale    String
-  label     String
-  /** Typed by an admin rather than filled by the AI pass, so a re-fill leaves it. */
+  id               String   @id @default(cuid())
+  amenityId        String
+  locale           String
+  label            String
+  /**
+   * Typed by an admin rather than filled by the AI pass, so a re-fill leaves it.
+   */
   isManuallyEdited Boolean  @default(false)
   updatedAt        DateTime @default(now()) @updatedAt
 
@@ -992,10 +1109,10 @@ model AmenityTranslation {
 }
 
 model AmenityCategoryTranslation {
-  id         String   @id @default(cuid())
-  categoryId String
-  locale     String
-  label      String
+  id               String   @id @default(cuid())
+  categoryId       String
+  locale           String
+  label            String
   isManuallyEdited Boolean  @default(false)
   updatedAt        DateTime @default(now()) @updatedAt
 
@@ -1006,7 +1123,9 @@ model AmenityCategoryTranslation {
   @@index([locale])
 }
 
-/** Provider-specific labels that resolve to one canonical Linger Homes amenity. */
+/**
+ * Provider-specific labels that resolve to one canonical Linger Homes amenity.
+ */
 model AmenityAlias {
   id             String   @id @default(cuid())
   provider       String
@@ -1169,15 +1288,17 @@ model AvailabilityBlock {
   endDate   DateTime  @db.Date
   blockType BlockType
   bookingId String?
-  /** Set only on EXTERNAL_SYNC rows — which imported calendar put this block here.
-   * Cascades, so disconnecting a feed frees every date it was holding. */
+  /**
+   * Set only on EXTERNAL_SYNC rows — which imported calendar put this block here.
+   * Cascades, so disconnecting a feed frees every date it was holding.
+   */
   feedId    String?
   reason    String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
-  listing Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
-  booking Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  listing Listing              @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  booking Booking?             @relation(fields: [bookingId], references: [id], onDelete: SetNull)
   feed    ListingCalendarFeed? @relation(fields: [feedId], references: [id], onDelete: Cascade)
 
   @@index([listingId, startDate, endDate])
@@ -1188,7 +1309,6 @@ model AvailabilityBlock {
 /**
  * An external iCal calendar mirrored into this listing — the import half of channel
  * sync, the export half being Listing.calendarFeedToken.
- *
  * Deliberately one row per remote calendar rather than a single "airbnbUrl" column on
  * Listing: a host with the same place on Airbnb, Booking.com and Vrbo needs all three,
  * and each has to report its own freshness. `lastStatus` and `lastError` are kept so a
@@ -1199,14 +1319,18 @@ model AvailabilityBlock {
 model ListingCalendarFeed {
   id                String             @id @default(cuid())
   listingId         String
-  /** Host-facing label ("Airbnb", "Booking.com"). Free text — the platform is not
-   *  something we can reliably detect from an opaque .ics URL. */
+  /**
+   * Host-facing label ("Airbnb", "Booking.com"). Free text — the platform is not
+   * something we can reliably detect from an opaque .ics URL.
+   */
   name              String
   url               String
   lastSyncedAt      DateTime?
   lastStatus        CalendarFeedStatus @default(PENDING)
   lastError         String?
-  /** Counters from the last successful sync, shown to the host as proof it worked. */
+  /**
+   * Counters from the last successful sync, shown to the host as proof it worked.
+   */
   lastEventCount    Int                @default(0)
   lastBlockedNights Int                @default(0)
   createdAt         DateTime           @default(now())
@@ -1220,8 +1344,10 @@ model ListingCalendarFeed {
   @@index([lastSyncedAt])
 }
 
-/** Bookable windows for listings whose calendar is CLOSED by default. Stored with an
- * exclusive end date, matching bookings and AvailabilityBlock ranges. */
+/**
+ * Bookable windows for listings whose calendar is CLOSED by default. Stored with an
+ * exclusive end date, matching bookings and AvailabilityBlock ranges.
+ */
 model ListingAvailabilityWindow {
   id        String   @id @default(cuid())
   listingId String
@@ -1238,70 +1364,82 @@ model ListingAvailabilityWindow {
 // ─── Booking ────────────────────────────────────────────────────────────────────
 
 model Booking {
-  id                    String         @id @default(cuid())
-  reference             String         @unique @default(cuid())
-  listingId             String
-  guestId               String
-  checkIn               DateTime       @db.Date
-  checkOut              DateTime       @db.Date
-  guestCount            Int
-  currency              String         @default("EUR")
-  nightlyRate           Decimal        @db.Decimal(14, 3)
-  cleaningFee           Decimal        @default(0) @db.Decimal(14, 3)
-  serviceFee            Decimal        @default(0) @db.Decimal(14, 3)
-  totalPrice            Decimal        @db.Decimal(14, 3)
-  originalTotal         Decimal?       @db.Decimal(14, 3)
-  discountAmount        Decimal        @default(0) @db.Decimal(14, 3)
-  promotionId           String?
-  promotionType         PromotionType?
-  priceBreakdown        Json?
-  priceBreakdownVersion Int?
+  id                     String               @id @default(cuid())
+  reference              String               @unique @default(cuid())
+  listingId              String
+  guestId                String
+  checkIn                DateTime             @db.Date
+  checkOut               DateTime             @db.Date
+  guestCount             Int
+  currency               String               @default("EUR")
+  nightlyRate            Decimal              @db.Decimal(14, 3)
+  cleaningFee            Decimal              @default(0) @db.Decimal(14, 3)
+  serviceFee             Decimal              @default(0) @db.Decimal(14, 3)
+  totalPrice             Decimal              @db.Decimal(14, 3)
+  originalTotal          Decimal?             @db.Decimal(14, 3)
+  discountAmount         Decimal              @default(0) @db.Decimal(14, 3)
+  promotionId            String?
+  promotionType          PromotionType?
+  priceBreakdown         Json?
+  priceBreakdownVersion  Int?
   /// What the guest was browsing in when they booked, plus the rate used to show it.
   /// Frozen at confirmation so the confirmation page and email keep showing the same
   /// approximate figure the guest saw, instead of silently re-converting at today's
   /// rate every time the page is opened. `currency` above remains the official,
   /// payable amount; these three are a record of a display, never of an obligation.
   /// Null when the guest was already browsing in the official currency.
-  displayCurrency       String?
-  displayRate           Decimal?       @db.Decimal(20, 10)
-  displayTotal          Decimal?       @db.Decimal(14, 3)
+  displayCurrency        String?
+  displayRate            Decimal?             @db.Decimal(20, 10)
+  displayTotal           Decimal?             @db.Decimal(14, 3)
   /// Language selected by the guest at booking time. Confirmation pages and
   /// transactional email use this snapshot, not a later account preference.
-  guestLocale           String?
-  numberOfNights        Int
-  status                BookingStatus  @default(PENDING)
-  responseDueAt         DateTime       @default(dbgenerated("(CURRENT_TIMESTAMP + INTERVAL '24 hours')"))
-  respondedAt           DateTime?
-  hostReminderSentAt    DateTime?
+  guestLocale            String?
+  numberOfNights         Int
+  status                 BookingStatus        @default(PENDING)
+  responseDueAt          DateTime             @default(dbgenerated("(CURRENT_TIMESTAMP + INTERVAL '24 hours')"))
+  respondedAt            DateTime?
+  hostReminderSentAt     DateTime?
   /// The listing's house rules exactly as they stood when this guest accepted them,
   /// plus the moment they did. Built on the server from the listing row — never from
   /// anything the client posted — and never rewritten afterwards: a host editing their
   /// rules changes what future guests agree to, not what this one already did. Null on
   /// every booking taken before acceptance was recorded, which is why it is nullable
   /// rather than defaulted. Same JSON-snapshot pattern as `priceBreakdown` above.
-  houseRulesSnapshot    Json?
-  houseRulesAcceptedAt  DateTime?
+  houseRulesSnapshot     Json?
+  houseRulesAcceptedAt   DateTime?
   /// The listing's accepted-payment-method answer as it stood when this request was
   /// created. Built server-side from the listing row, never from request input. Null
   /// only for bookings created before this snapshot was introduced.
   paymentMethodsSnapshot Json?
-  guestNote             String?
-  hostNote              String?
-  cancellationReason    String?
-  createdAt             DateTime       @default(now())
-  updatedAt             DateTime       @updatedAt
+  /// The listing's deposit answer exactly as it stood when this request was created.
+  /// It stays null on bookings created before manual payment tracking was introduced.
+  depositPolicySnapshot  Json?
+  /// Computed from the frozen snapshot in the listing currency; never a charge,
+  /// authorization, payout, or transfer processed by Linger Homes.
+  depositAmount          Decimal?             @db.Decimal(14, 3)
+  acceptedAt             DateTime?
+  paymentStatus          BookingPaymentStatus @default(UNTRACKED)
+  depositStatus          BookingDepositStatus @default(UNTRACKED)
+  paymentStatusUpdatedAt DateTime?
+  depositStatusUpdatedAt DateTime?
+  guestNote              String?
+  hostNote               String?
+  cancellationReason     String?
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
 
-  listing            Listing                @relation(fields: [listingId], references: [id])
-  guest              User                   @relation(fields: [guestId], references: [id])
-  promotion          ListingPromotion?      @relation(fields: [promotionId], references: [id], onDelete: SetNull)
-  availabilityBlocks AvailabilityBlock[]
-  conversation       Conversation?
-  safetyCases        SafetyCase[]
-  reviews            Review[]
-  reviewInvitations  ReviewInvitation[]
-  emailDeliveries    BookingEmailDelivery[]
-  timelineEvents     BookingTimelineEvent[]
-  damageReports      DamageReport[]
+  listing             Listing                     @relation(fields: [listingId], references: [id])
+  guest               User                        @relation(fields: [guestId], references: [id])
+  promotion           ListingPromotion?           @relation(fields: [promotionId], references: [id], onDelete: SetNull)
+  availabilityBlocks  AvailabilityBlock[]
+  conversation        Conversation?
+  safetyCases         SafetyCase[]
+  reviews             Review[]
+  reviewInvitations   ReviewInvitation[]
+  emailDeliveries     BookingEmailDelivery[]
+  timelineEvents      BookingTimelineEvent[]
+  paymentStatusEvents BookingPaymentStatusEvent[]
+  damageReports       DamageReport[]
 
   @@index([listingId, status])
   @@index([guestId])
@@ -1428,18 +1566,19 @@ model ConversationParticipant {
 }
 
 model Message {
-  id             String    @id @default(cuid())
-  clientId       String?   @unique
+  id             String      @id @default(cuid())
+  clientId       String?     @unique
   conversationId String
   senderId       String?
-  body           String    @db.Text
+  body           String      @db.Text
+  kind           MessageKind @default(CHAT)
   /// Locale chosen by the sender when this message was written. It lets the
   /// recipient see an honest "Google translated from …" disclosure when their
   /// reading language differs, without guessing from the text itself.
-  sourceLocale   String    @default("en")
+  sourceLocale   String      @default("en")
   editedAt       DateTime?
   deletedAt      DateTime?
-  createdAt      DateTime  @default(now())
+  createdAt      DateTime    @default(now())
 
   conversation    Conversation           @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender          User?                  @relation("MessageSender", fields: [senderId], references: [id], onDelete: SetNull)
@@ -1484,6 +1623,29 @@ model BookingTimelineEvent {
   actor   User?   @relation("BookingTimelineActor", fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([bookingId, createdAt])
+}
+
+/**
+ * Append-only manual-status audit trail. There is intentionally no note or free-text
+ * payload here: payment instructions and personal financial details must never be
+ * copied into a ledger owned by Linger Homes.
+ */
+model BookingPaymentStatusEvent {
+  id            String               @id @default(cuid())
+  bookingId     String
+  actorId       String?
+  /// The exact actor-labelled action (for example GUEST_REPORT_PAYMENT_SENT).
+  /// Status pairs alone cannot reveal which side changed on this event.
+  eventType     String
+  paymentStatus BookingPaymentStatus
+  depositStatus BookingDepositStatus
+  createdAt     DateTime             @default(now())
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  actor   User?   @relation("BookingPaymentStatusActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([bookingId, createdAt])
+  @@index([actorId])
 }
 
 model DamageReport {

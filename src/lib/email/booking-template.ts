@@ -22,6 +22,17 @@ export interface BookingEmailTemplateInput {
   details: Array<{ label: string; value: string }>;
   callout?: string;
   buttons: EmailButton[];
+  /**
+   * Present when something a person wrote — the listing title, a guest's note, a
+   * decline reason — reached this email through machine translation. Says so, and
+   * carries the untranslated original so the recipient can read what was actually
+   * typed. Never a place to summarise: `originals` are the words themselves.
+   */
+  translationNote?: {
+    notice: string;
+    originalLabel: string;
+    originals: string[];
+  };
 }
 
 function escapeHtml(value: string): string {
@@ -64,6 +75,21 @@ export function renderBookingEmail(input: BookingEmailTemplateInput): string {
     )
     .join("");
 
+  const translationNote = input.translationNote
+    ? `<tr><td style="padding:0 28px 22px;">
+            <div style="padding:12px 14px;border-radius:10px;background:#fafaf9;border:1px dashed #d6d3d1;font-size:13px;line-height:20px;color:#78716c;">
+              <div>${escapeHtml(input.translationNote.notice)}</div>
+              <div style="margin-top:8px;font-weight:700;color:#57534e;">${escapeHtml(input.translationNote.originalLabel)}</div>
+              ${input.translationNote.originals
+                .map(
+                  (original) =>
+                    `<div style="margin-top:3px;color:#57534e;">${escapeHtml(original)}</div>`
+                )
+                .join("")}
+            </div>
+          </td></tr>`
+    : "";
+
   return `<!doctype html>
 <html>
   <head>
@@ -98,6 +124,7 @@ export function renderBookingEmail(input: BookingEmailTemplateInput): string {
             <div style="margin-top:10px;font-size:12px;line-height:18px;color:#78716c;">Booking reference: <strong style="color:#44403c;">${escapeHtml(input.reference)}</strong></div>
           </td></tr>
           ${input.callout ? `<tr><td style="padding:0 28px 22px;"><div style="padding:14px 16px;border-radius:10px;background:#fafaf9;border-left:4px solid #292524;font-size:14px;line-height:21px;color:#44403c;">${escapeHtml(input.callout)}</div></td></tr>` : ""}
+          ${translationNote}
           <tr><td style="padding:0 28px 28px;">${buttons}</td></tr>
           <tr><td style="padding:20px 28px;background:#fafaf9;border-top:1px solid #e7e5e4;font-size:12px;line-height:18px;color:#78716c;">
             For your security, keep booking communication on ${escapeHtml(COMMUNICATION_BRAND.name)}.

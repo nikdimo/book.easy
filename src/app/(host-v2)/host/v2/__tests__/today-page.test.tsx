@@ -42,6 +42,8 @@ const calmDay: Attention = {
   damageReportConversationId: null,
   recentNotifications: [],
   firstActiveListing: null,
+  incompletePaymentArrangements: null,
+  incompletePaymentArrangementCount: 0,
   confirmedBookingCount: 0,
   upcomingStay: null,
 };
@@ -180,6 +182,48 @@ describe("the caught-up suggestion", () => {
 
     expect(html).toContain("Booking requests");
     expect(html).not.toContain("Explore promotions");
+  });
+});
+
+describe("the payment-arrangements task", () => {
+  it("takes priority as one actionable task and opens the unfinished listing", async () => {
+    mocks.getHostAttentionSummary.mockResolvedValue(
+      attention({
+        incompletePaymentArrangements: { id: "listing-payment", title: "Lake House" },
+        incompletePaymentArrangementCount: 2,
+      })
+    );
+
+    const html = await render();
+
+    expect(html).toContain("Complete payment arrangements");
+    expect(html).toContain(
+      "Tell guests how they can pay and whether a deposit is required for Lake House.",
+    );
+    expect(html).toContain('href="/host/listings/listing-payment/payment-arrangements"');
+    expect(html).toContain(">2<");
+  });
+
+  it("does not show the task after both payment answers were reviewed", async () => {
+    const html = await render();
+
+    expect(html).not.toContain("Complete payment arrangements");
+  });
+
+  it("keeps the payment task visible beside booking work", async () => {
+    mocks.getHostAttentionSummary.mockResolvedValue(
+      attention({
+        incompletePaymentArrangements: { id: "listing-payment", title: "Lake House" },
+        incompletePaymentArrangementCount: 1,
+        pendingBookings: 1,
+        total: 1,
+      })
+    );
+
+    const html = await render();
+
+    expect(html).toContain("Complete payment arrangements");
+    expect(html).toContain("Booking requests");
   });
 });
 

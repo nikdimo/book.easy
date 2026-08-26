@@ -25,7 +25,8 @@ const complete: ListingEditorOverview = {
   nightlyRate: { amount: 60, currency: "EUR" },
   availabilityMode: "OPEN",
   houseRulesReviewed: true,
-  completeSections: ["photos", "basics", "rooms", "location", "house-rules"],
+  paymentMethodsReviewed: true,
+  completeSections: ["photos", "basics", "rooms", "location", "payment-arrangements", "house-rules"],
 };
 
 const empty: ListingEditorOverview = {
@@ -41,6 +42,7 @@ const empty: ListingEditorOverview = {
   nightlyRate: null,
   availabilityMode: "CLOSED",
   houseRulesReviewed: false,
+  paymentMethodsReviewed: false,
   completeSections: [],
 };
 
@@ -84,8 +86,12 @@ describe("EditorOverview attention area", () => {
     expect(html).toContain("No nightly price is set, so no date can be booked.");
     expect(html).toContain("Add at least 3 photos before publishing.");
     expect(html).toContain("House rules have not been reviewed.");
+    expect(html).toContain(
+      "Choose accepted payment methods and whether a deposit is required.",
+    );
     expect(html).toContain('href="/host/listings/listing-2/photos"');
     expect(html).toContain('href="/host/listings/listing-2/house-rules"');
+    expect(html).toContain('href="/host/listings/listing-2/payment-arrangements"');
   });
 
   it("does not flag optional sections", () => {
@@ -117,6 +123,7 @@ describe("EditorOverview all-sections area", () => {
       "/host/listings/listing-1/rooms",
       "/host/listings/listing-1/location",
       "/host/listings/listing-1/amenities",
+      "/host/listings/listing-1/payment-arrangements",
       "/host/listings/listing-1/house-rules",
       "/host/listings/listing-1/arrival-guide",
     ]) {
@@ -139,7 +146,7 @@ describe("EditorOverview all-sections area", () => {
     expect(html).toContain("€60 per night");
     expect(html).toContain("Open by default");
     expect(html).toContain("Reviewed");
-    expect(html).toContain("5 of 5 complete");
+    expect(html).toContain("6 of 6 complete");
   });
 
   it("summarises the empty listing honestly", () => {
@@ -149,7 +156,7 @@ describe("EditorOverview all-sections area", () => {
     expect(html).toContain("Nothing selected yet");
     expect(html).toContain("No nightly price set");
     expect(html).toContain("Closed by default");
-    expect(html).toContain("0 of 5 complete");
+    expect(html).toContain("0 of 6 complete");
   });
 
   it("does not repeat itself as a section card", () => {

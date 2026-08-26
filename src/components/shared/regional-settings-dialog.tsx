@@ -562,7 +562,10 @@ export function RegionalSettingsDialog({
                   <Tx k="regional.translation_title" source="Translation" />
                 </p>
                 <p className="mt-px whitespace-normal text-xs font-normal leading-5 text-muted-foreground">
-                  Automatically translate host-written descriptions and guest reviews.
+                  <Tx
+                    k="regional.translation_description"
+                    source="Automatically translate host-written descriptions and guest reviews."
+                  />
                 </p>
               </div>
               <button
@@ -601,7 +604,9 @@ export function RegionalSettingsDialog({
                 className="relative z-10 h-11 w-11 shrink-0 justify-self-end rounded-full bg-primary px-0 text-primary-foreground shadow-none transition-all duration-200 hover:bg-primary/95 max-md:col-start-2 max-md:row-start-1 max-md:h-10 max-md:w-10"
               >
                 <X aria-hidden />
-                <span className="sr-only">Close</span>
+                <span className="sr-only">
+                  <Tx k="common.close" source="Close" />
+                </span>
               </Button>
             </DialogClose>
           </div>

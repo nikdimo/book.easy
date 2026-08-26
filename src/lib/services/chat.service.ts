@@ -8,6 +8,12 @@ import { COMMUNICATION_BRAND } from "@/lib/communication-brand";
 import { kickMessageEmailDelivery } from "@/lib/services/message-email-outbox.service";
 import { publishConversationChanged } from "@/lib/services/communication-realtime.service";
 import { normalizeLocaleCode } from "@/lib/i18n/locale-preference";
+import {
+  assertSafePaymentInstructions,
+  containsPaymentCoordinates,
+  containsUnsafePaymentCredentials,
+  PAYMENT_INSTRUCTIONS_PREVIEW,
+} from "@/lib/services/payment-instructions";
 
 const MESSAGE_MAX_LENGTH = 2000;
 const EMAIL_PATTERN = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i;
@@ -171,7 +177,7 @@ export async function listUserConversations(userId: string) {
         where: { deletedAt: null },
         orderBy: { createdAt: "desc" },
         take: 1,
-        select: { body: true, createdAt: true, senderId: true },
+        select: { body: true, kind: true, createdAt: true, senderId: true },
       },
     },
     orderBy: [{ lastMessageAt: "desc" }, { createdAt: "desc" }],
@@ -348,6 +354,7 @@ export async function getConversationMessages(
     messages: messages.map((message) => ({
       id: message.id,
       clientId: message.clientId,
+      kind: message.kind,
       body: message.deletedAt ? "Message removed" : message.body,
       sourceLocale: message.sourceLocale,
       sender: message.sender ?? { id: "", name: "Deleted user", image: null },
@@ -448,36 +455,34 @@ export async function markConversationRead(input: {
   );
 }
 
-export async function sendConversationMessage(input: {
+type ConversationMessageKind = "CHAT" | "PAYMENT_INSTRUCTIONS";
+
+type CreateConversationMessageInput = {
   conversationId: string;
   senderId: string;
   body: string;
   clientId?: string;
   sourceLocale?: string | null;
-}) {
+  kind: ConversationMessageKind;
+};
+
+function normalizeMessageInput(input: CreateConversationMessageInput) {
   const body = input.body.trim();
-  const clientId = input.clientId ?? randomUUID();
   if (!body) throw new Error("Message cannot be empty");
   if (body.length > MESSAGE_MAX_LENGTH) {
     throw new Error(`Messages can be up to ${MESSAGE_MAX_LENGTH} characters`);
   }
-  if (input.clientId) {
-    const existing = await db.message.findUnique({
-      where: { clientId },
-      include: {
-        sender: { select: { id: true, name: true, image: true } },
-      },
-    });
-    if (
-      existing?.conversationId === input.conversationId &&
-      existing.senderId === input.senderId
-    ) {
-      return existing;
-    }
-    if (existing) throw new Error("Invalid message ID");
+  if (input.kind === "PAYMENT_INSTRUCTIONS") {
+    assertSafePaymentInstructions(body);
   }
+  return { body, clientId: input.clientId ?? randomUUID() };
+}
 
-  const membership = await db.conversationParticipant.findUnique({
+async function createConversationMessageInTransaction(
+  tx: Prisma.TransactionClient,
+  input: CreateConversationMessageInput & { body: string; clientId: string }
+) {
+  const membership = await tx.conversationParticipant.findUnique({
     where: {
       conversationId_userId: {
         conversationId: input.conversationId,
@@ -490,6 +495,7 @@ export async function sendConversationMessage(input: {
         select: {
           kind: true,
           status: true,
+          booking: { select: { status: true } },
           listing: { select: { title: true } },
         },
       },
@@ -503,113 +509,151 @@ export async function sendConversationMessage(input: {
     throw new Error("This conversation is not accepting new messages");
   }
   if (
+    input.kind === "CHAT" &&
+    membership.role !== "SUPPORT" &&
+    (containsUnsafePaymentCredentials(input.body) ||
+      containsPaymentCoordinates(input.body))
+  ) {
+    throw new Error(
+      membership.conversation.booking?.status === "CONFIRMED"
+        ? "Use the private payment-instructions form for bank or payment details"
+        : "Payment details can only be shared privately after the booking is accepted",
+    );
+  }
+  if (
+    input.kind === "CHAT" &&
     membership.conversation.kind === "INQUIRY" &&
     membership.role !== "SUPPORT" &&
-    (EMAIL_PATTERN.test(body) || URL_PATTERN.test(body) || PHONE_PATTERN.test(body))
+    (EMAIL_PATTERN.test(input.body) ||
+      URL_PATTERN.test(input.body) ||
+      PHONE_PATTERN.test(input.body))
   ) {
     throw new Error(
       `Keep contact details and external links inside ${COMMUNICATION_BRAND.name} until a booking is confirmed`
     );
   }
 
+  const message = await tx.message.create({
+    data: {
+      clientId: input.clientId,
+      conversationId: input.conversationId,
+      senderId: input.senderId,
+      body: input.body,
+      kind: input.kind,
+      sourceLocale: normalizeLocaleCode(input.sourceLocale) ?? "en",
+    },
+    include: {
+      sender: { select: { id: true, name: true, image: true } },
+    },
+  });
+  const sensitive = input.kind === "PAYMENT_INSTRUCTIONS";
+  const preview = sensitive
+    ? PAYMENT_INSTRUCTIONS_PREVIEW
+    : input.body.slice(0, 180);
+
+  await tx.conversation.update({
+    where: { id: input.conversationId },
+    data: {
+      lastMessageAt: message.createdAt,
+      lastMessagePreview: preview,
+    },
+  });
+
+  const recipients = await tx.conversationParticipant.findMany({
+    where: {
+      conversationId: input.conversationId,
+      userId: { not: input.senderId },
+    },
+    select: { userId: true, role: true },
+  });
+
+  await tx.conversationParticipant.updateMany({
+    where: {
+      conversationId: input.conversationId,
+      userId: { not: input.senderId },
+    },
+    data: { unreadCount: { increment: 1 } },
+  });
+
+  const notifications = await Promise.all(
+    recipients.map(({ userId, role }) =>
+      tx.notification.create({
+        data: {
+          userId,
+          type:
+            membership.role === "SUPPORT"
+              ? "SUPPORT_MESSAGE"
+              : "CHAT_MESSAGE",
+          title:
+            membership.role === "SUPPORT"
+              ? COMMUNICATION_BRAND.supportName
+              : membership.user.name,
+          body: sensitive
+            ? PAYMENT_INSTRUCTIONS_PREVIEW
+            : `${membership.conversation.listing.title}: ${input.body.slice(0, 140)}`,
+          route: `/messages/${input.conversationId}`,
+          messageId: message.id,
+          data: {
+            conversationId: input.conversationId,
+            recipientRole: role,
+          } satisfies Prisma.InputJsonObject,
+        },
+        select: { id: true },
+      })
+    )
+  );
+  await tx.messageEmailDelivery.createMany({
+    data: recipients.map(({ userId }) => ({
+      messageId: message.id,
+      recipientId: userId,
+    })),
+    skipDuplicates: true,
+  });
+  return {
+    message,
+    notificationIds: notifications.map(({ id }) => id),
+  };
+}
+
+async function findIdempotentMessage(input: {
+  clientId?: string;
+  conversationId: string;
+  senderId: string;
+  kind: ConversationMessageKind;
+}) {
+  if (input.clientId) {
+    const existing = await db.message.findUnique({
+      where: { clientId: input.clientId },
+      include: {
+        sender: { select: { id: true, name: true, image: true } },
+      },
+    });
+    if (
+      existing?.conversationId === input.conversationId &&
+      existing.senderId === input.senderId &&
+      existing.kind === input.kind
+    ) {
+      return existing;
+    }
+    if (existing) throw new Error("Invalid message ID");
+  }
+  return null;
+}
+
+async function createConversationMessage(input: CreateConversationMessageInput) {
+  const { body, clientId } = normalizeMessageInput(input);
+  const existing = await findIdempotentMessage(input);
+  if (existing) return existing;
+
   let result;
   try {
-    result = await db.$transaction(async (tx) => {
-      const currentMembership = await tx.conversationParticipant.findUnique({
-        where: {
-          conversationId_userId: {
-            conversationId: input.conversationId,
-            userId: input.senderId,
-          },
-        },
-        include: {
-          conversation: { select: { status: true } },
-        },
-      });
-      if (!currentMembership) throw new Error("Conversation not found");
-      if (
-        currentMembership.conversation.status !== "OPEN" &&
-        currentMembership.role !== "SUPPORT"
-      ) {
-        throw new Error("This conversation is not accepting new messages");
-      }
-
-      const message = await tx.message.create({
-        data: {
-          clientId,
-          conversationId: input.conversationId,
-          senderId: input.senderId,
-          body,
-          sourceLocale: normalizeLocaleCode(input.sourceLocale) ?? "en",
-        },
-        include: {
-          sender: { select: { id: true, name: true, image: true } },
-        },
-      });
-
-      await tx.conversation.update({
-        where: { id: input.conversationId },
-        data: {
-          lastMessageAt: message.createdAt,
-          lastMessagePreview: body.slice(0, 180),
-        },
-      });
-
-      const recipients = await tx.conversationParticipant.findMany({
-        where: {
-          conversationId: input.conversationId,
-          userId: { not: input.senderId },
-        },
-        select: { userId: true, role: true },
-      });
-
-      await tx.conversationParticipant.updateMany({
-        where: {
-          conversationId: input.conversationId,
-          userId: { not: input.senderId },
-        },
-        data: { unreadCount: { increment: 1 } },
-      });
-
-      const notifications = await Promise.all(
-        recipients.map(({ userId, role }) =>
-          tx.notification.create({
-            data: {
-              userId,
-              type:
-                membership.role === "SUPPORT"
-                  ? "SUPPORT_MESSAGE"
-                  : "CHAT_MESSAGE",
-              title:
-                membership.role === "SUPPORT"
-                  ? COMMUNICATION_BRAND.supportName
-                  : membership.user.name,
-              body: `${membership.conversation.listing.title}: ${body.slice(0, 140)}`,
-              route: `/messages/${input.conversationId}`,
-              messageId: message.id,
-              data: {
-                conversationId: input.conversationId,
-                recipientRole: role,
-              } satisfies Prisma.InputJsonObject,
-            },
-            select: { id: true },
-          })
-        )
-      );
-      await tx.messageEmailDelivery.createMany({
-        data: recipients.map(({ userId }) => ({
-          messageId: message.id,
-          recipientId: userId,
-        })),
-        skipDuplicates: true,
-      });
-      return {
-        message,
-        recipients,
-        notificationIds: notifications.map(({ id }) => id),
-        created: true,
-      };
-    });
+    result = await db.$transaction((tx) =>
+      createConversationMessageInTransaction(tx, {
+        ...input,
+        body,
+        clientId,
+      })
+    );
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -623,7 +667,8 @@ export async function sendConversationMessage(input: {
       });
       if (
         existing?.conversationId === input.conversationId &&
-        existing.senderId === input.senderId
+        existing.senderId === input.senderId &&
+        existing.kind === input.kind
       ) {
         return existing;
       }
@@ -635,6 +680,115 @@ export async function sendConversationMessage(input: {
   kickMessageEmailDelivery(result.message.id);
   publishConversationChanged(input.conversationId);
 
+  return result.message;
+}
+
+export async function sendConversationMessage(input: {
+  conversationId: string;
+  senderId: string;
+  body: string;
+  clientId?: string;
+  sourceLocale?: string | null;
+}) {
+  return createConversationMessage({ ...input, kind: "CHAT" });
+}
+
+export async function shareBookingPaymentInstructions(input: {
+  bookingId: string;
+  hostId: string;
+  body: string;
+  sourceLocale?: string | null;
+  clientId?: string;
+}) {
+  const body = input.body.trim();
+  if (!body) throw new Error("Payment instructions cannot be empty");
+  if (body.length > MESSAGE_MAX_LENGTH) {
+    throw new Error(
+      `Payment instructions can be up to ${MESSAGE_MAX_LENGTH} characters`
+    );
+  }
+  assertSafePaymentInstructions(body);
+  const clientId = input.clientId ?? randomUUID();
+
+  if (input.clientId) {
+    const existing = await db.message.findUnique({
+      where: { clientId },
+      include: {
+        sender: { select: { id: true, name: true, image: true } },
+        conversation: { select: { bookingId: true } },
+      },
+    });
+    if (
+      existing?.senderId === input.hostId &&
+      existing.conversation.bookingId === input.bookingId &&
+      existing.kind === "PAYMENT_INSTRUCTIONS"
+    ) {
+      return existing;
+    }
+    if (existing) throw new Error("Invalid message ID");
+  }
+
+  let result;
+  try {
+    result = await db.$transaction(async (tx) => {
+      // The action only supplies IDs and text. Re-read every authorization fact in
+      // this transaction so a stale host UI cannot send after confirmation changes.
+      await tx.$queryRaw`SELECT "id" FROM "Booking" WHERE "id" = ${input.bookingId} FOR UPDATE`;
+      const booking = await tx.booking.findUnique({
+        where: { id: input.bookingId },
+        select: {
+          id: true,
+          status: true,
+          acceptedAt: true,
+          listing: { select: { hostId: true } },
+          conversation: { select: { id: true } },
+        },
+      });
+      if (!booking || booking.listing.hostId !== input.hostId) {
+        throw new Error("Booking not found");
+      }
+      if (!booking.acceptedAt || booking.status !== "CONFIRMED") {
+        throw new Error(
+          "Payment instructions can only be shared for accepted, confirmed bookings"
+        );
+      }
+      if (!booking.conversation) throw new Error("Booking conversation not found");
+
+      return createConversationMessageInTransaction(tx, {
+        conversationId: booking.conversation.id,
+        senderId: input.hostId,
+        body,
+        clientId,
+        sourceLocale: input.sourceLocale,
+        kind: "PAYMENT_INSTRUCTIONS",
+      });
+    });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      const existing = await db.message.findUnique({
+        where: { clientId },
+        include: {
+          sender: { select: { id: true, name: true, image: true } },
+          conversation: { select: { bookingId: true } },
+        },
+      });
+      if (
+        existing?.senderId === input.hostId &&
+        existing.conversation.bookingId === input.bookingId &&
+        existing.kind === "PAYMENT_INSTRUCTIONS"
+      ) {
+        return existing;
+      }
+    }
+    throw error;
+  }
+
+  void dispatchNotificationPushes(result.notificationIds);
+  kickMessageEmailDelivery(result.message.id);
+  publishConversationChanged(result.message.conversationId);
   return result.message;
 }
 

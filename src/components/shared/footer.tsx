@@ -1,6 +1,5 @@
 import Link from "next/link";
 import {
-  BRAND_TAGLINE,
   PRODUCT_FAMILY,
   PRODUCT_NAME,
   SITE_DOMAIN,
@@ -18,6 +17,11 @@ const MAX_FOOTER_CITIES = 5;
 export async function Footer() {
   const [t, cities] = await Promise.all([getT(), getAvailableCities()]);
   const footerCities = cities.slice(0, MAX_FOOTER_CITIES);
+  // Keep the English source literal here so the static catalog extractor can see it.
+  const brandTagline = t.resolve(
+    "footer.brand_tagline",
+    "Holiday homes and stays",
+  );
 
   const productDescription = ti(
     t,
@@ -62,7 +66,9 @@ export async function Footer() {
               <BrandLogo className="h-12" />
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              {BRAND_TAGLINE}{" "}
+              <span className={brandTagline.translated ? "notranslate" : undefined}>
+                {brandTagline.text}
+              </span>{" "}
               <span className={productDescription.translated ? "notranslate" : undefined}>
                 {productDescription.text}
               </span>

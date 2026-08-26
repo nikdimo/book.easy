@@ -15,8 +15,8 @@ import {
  *
  * So this pins the shape of the flow the new wording describes — a request that
  * arrives PENDING, an acceptance that the host makes, a decline that ends it — and
- * that nothing about money is recorded at any of those points, which is the fact the
- * whole change exists to state honestly.
+ * that no money is processed at any of those points. Manual status exists only to
+ * record participant reports; it is not evidence of a platform transaction.
  *
  * Integration test against the real local Postgres, like its neighbours in this
  * directory. Run `npm run db:docker` first if the container isn't up.
@@ -62,7 +62,8 @@ describe("request-to-book flow", () => {
     expect(Number(booking.serviceFee)).toBe(0);
     expect(Number(booking.totalPrice)).toBe(160);
     expect(booking).not.toHaveProperty("paidAt");
-    expect(booking).not.toHaveProperty("paymentStatus");
+    expect(booking.paymentStatus).toBe("UNTRACKED");
+    expect(booking.paymentStatusUpdatedAt).toBeNull();
   });
 
   it("moves PENDING to CONFIRMED when the host accepts, and no further", async () => {

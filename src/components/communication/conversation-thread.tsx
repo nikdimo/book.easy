@@ -14,6 +14,7 @@ import {
   Check,
   Clock3,
   Headphones,
+  LockKeyhole,
   RefreshCw,
   Send,
 } from "lucide-react";
@@ -33,6 +34,7 @@ type DeliveryState = "sending" | "failed" | "sent";
 interface ThreadMessage {
   id: string;
   clientId: string | null;
+  kind: "CHAT" | "PAYMENT_INSTRUCTIONS";
   body: string;
   sourceLocale: string;
   senderId: string | null;
@@ -277,6 +279,7 @@ export function ConversationThread({
         : {
             id: temporaryId,
             clientId,
+            kind: "CHAT",
             body,
             senderId: currentUserId,
             senderRole: role,
@@ -703,6 +706,7 @@ function MessageBubble({
     "conversation.google_translated_from",
     "Google translated from {language}",
   ).text.replace("{language}", languageName(sourceLocale, readerLocale));
+  const paymentInstructions = message.kind === "PAYMENT_INSTRUCTIONS";
   return (
     <div className={cn("flex", mine ? "justify-end" : "justify-start")}>
       <div className="max-w-[82%]">
@@ -716,7 +720,9 @@ function MessageBubble({
         <div
           className={cn(
             "rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap",
-            mine
+            paymentInstructions
+              ? "border border-amber-300 bg-amber-50 text-amber-950"
+              : mine
               ? "rounded-br-md bg-primary text-primary-foreground"
               : message.senderRole === "SUPPORT"
                 ? "rounded-bl-md border border-primary/20 bg-primary/10"
@@ -724,6 +730,12 @@ function MessageBubble({
             message.deliveryState === "failed" && "border-destructive"
           )}
         >
+          {paymentInstructions ? (
+            <span className="mb-2 flex items-center gap-2 border-b border-amber-200 pb-2 font-semibold">
+              <LockKeyhole className="size-4" aria-hidden />
+              <Tx k="conversation.payment_instructions" source="Private payment instructions" />
+            </span>
+          ) : null}
           <span data-user-generated-content translate="yes">{message.body}</span>
         </div>
         {translatedForReader ? (

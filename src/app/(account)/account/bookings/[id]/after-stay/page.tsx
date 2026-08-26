@@ -18,7 +18,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUserPage } from "@/lib/auth-helpers";
 import { getPostStayReviewContext } from "@/lib/services/review.service";
 import { formatDate, formatPrice } from "@/lib/utils/format";
-import { getT, T, t, ti, type Translator } from "@/lib/i18n/t";
+import { formatMoney } from "@/lib/currency/convert";
+import { getT, T, TWithValues, t, ti, type Translator } from "@/lib/i18n/t";
 
 export const metadata = { title: "After your stay" };
 
@@ -47,7 +48,7 @@ function StatusPanel({
             title: t(translator, "account.after_stay.approved_title", "Your rating was approved"),
             body: otherPartySubmitted
               ? t(translator, "account.after_stay.approved_both", "Both sides submitted. The ratings will unlock as soon as moderation is complete.")
-              : ti(translator, "account.after_stay.publish_deadline", "It will publish when the other party submits or after {date}.", { date: formatDate(deadline) }).text,
+              : ti(translator, "account.after_stay.publish_deadline", "It will publish when the other party submits or after {date}.", { date: formatDate(deadline, translator.locale) }).text,
             icon: CheckCircle2,
           }
         : status === "REJECTED"
@@ -116,7 +117,7 @@ export default async function AfterStayPage({
         <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
           <span className="flex items-center gap-1.5">
             <CalendarDays className="h-4 w-4" />
-            {formatDate(booking.checkIn)} – {formatDate(booking.checkOut)}
+            {formatDate(booking.checkIn, translator.locale)} – {formatDate(booking.checkOut, translator.locale)}
           </span>
           <span className="flex items-center gap-1.5">
             <MapPin className="h-4 w-4" />
@@ -226,16 +227,40 @@ export default async function AfterStayPage({
       </div>
 
       <Card>
-        <CardContent className="flex items-center justify-between gap-4 pt-1">
-          <div>
-            <p className="font-medium"><T t={translator} k="account.after_stay.final_total" source="Final booking total" /></p>
-            <p className="text-sm text-muted-foreground">
-              <T t={translator} k="account.after_stay.total_note" source="Extra requests remain separate until accepted and resolved." />
+        <CardContent className="pt-1">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="font-medium"><T t={translator} k="account.after_stay.final_total" source="Final booking total" /></p>
+              <p className="text-sm text-muted-foreground">
+                <T t={translator} k="account.after_stay.total_note" source="Extra requests remain separate until accepted and resolved." />
+              </p>
+            </div>
+            <p className="text-xl font-semibold">
+              {formatPrice(Number(booking.totalPrice), booking.currency, translator.locale)}
             </p>
           </div>
-          <p className="text-xl font-semibold">
-            {formatPrice(Number(booking.totalPrice))}
-          </p>
+          {/* The booking is agreed in the listing's currency. This mirrors the frozen
+              display-currency figure shown on the confirmation page — never
+              recalculated at today's rate, so reopening this page never changes what
+              it says. */}
+          {booking.displayCurrency && booking.displayTotal ? (
+            <p className="mt-2 text-right text-xs text-muted-foreground">
+              <TWithValues
+                t={translator}
+                k="booking.display_total_approx"
+                source="Approximately {amount} at the time of booking. The booking is agreed in {currency}."
+                values={{
+                  amount: formatMoney(
+                    Number(booking.displayTotal),
+                    booking.displayCurrency,
+                    translator.locale,
+                    { converted: true },
+                  ),
+                  currency: booking.currency,
+                }}
+              />
+            </p>
+          ) : null}
         </CardContent>
       </Card>
     </div>

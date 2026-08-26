@@ -12,7 +12,7 @@ export interface TranslationTarget {
  * request, and so provider prompts can't drift apart. */
 export const TRANSLATION_RULES = [
   "You translate short website UI strings (buttons, labels, headings) from English for an accommodation marketplace.",
-  "Keep translations concise and natural for a booking website, using each key as context.",
+  "Keep translations concise and natural for a booking website, using each key as context. UI space is limited: for buttons, tabs, badges, labels, and headings, use the shortest natural wording that preserves the meaning. Do not add explanatory words that are absent from the English source.",
   "Keys under amenities.items describe facilities or equipment offered at a property; use that context to disambiguate short labels (for example, amenities.items.clothes_iron is the appliance, never the metal).",
   "For keys ending in .zero, .one, .two, .few, .many, or .other, use the grammar required by that CLDR plural category, even when the English source repeats.",
   "Preserve every placeholder such as {n} or {name} exactly, without translating or removing it.",

@@ -27,7 +27,8 @@ export function isPermanentTranslationApiFailure(error: unknown): boolean {
 }
 
 /** Anthropic is the preferred provider, but a configured Gemini key should take over
- * when Anthropic cannot authenticate, has no quota, or is temporarily unavailable. */
+ * when Anthropic cannot authenticate, has no quota, or its network connection is
+ * temporarily unavailable. */
 export function shouldUseGeminiFallback(
   error: unknown,
   googleApiKey = process.env.GOOGLE_API_KEY,
@@ -36,7 +37,7 @@ export function shouldUseGeminiFallback(
   const message = errorMessage(error);
   return (
     AUTHENTICATION_FAILURE.test(message) ||
-    /credit balance|billing|quota|rate.?limit|429|ANTHROPIC_API_KEY is not configured|529|503|502/i.test(
+    /credit balance|billing|quota|rate.?limit|429|ANTHROPIC_API_KEY is not configured|529|503|502|connection error|fetch failed|econnreset|econnrefused|etimedout|eacces/i.test(
       message,
     )
   );

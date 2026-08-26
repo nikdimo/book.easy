@@ -35,6 +35,9 @@ export const EDITOR_SECTIONS: EditorSection[] = [
   // zero selected amenities cannot be distinguished from an unfinished section, so it
   // must not create a false warning or make 100% completion impossible.
   { slug: "amenities", key: "host.editor.section.amenities", source: "Amenities", completion: false, group: "details" },
+  // Payment arrangements has an explicit reviewed marker. It stays in attention until
+  // the host deliberately saves either accepted method names or Arrange directly.
+  { slug: "payment-arrangements", key: "host.editor.section.payment_arrangements", source: "Payment arrangements", completion: true, group: "details" },
   // House rules counts because it has a persisted "reviewed" state of its own
   // (`Listing.houseRulesReviewedAt`): the tick means the host opened the section and
   // saved it, which is a fact the database holds rather than an inference from fields
@@ -69,12 +72,15 @@ export function editorCompletedSections(input: {
   /** Whether the host has saved the House rules section — `houseRulesReviewedAt` is
    *  not null. Never inferred from the rules having values: they always do. */
   houseRulesReviewed: boolean;
+  /** Whether the host has deliberately saved Payment arrangements. */
+  paymentMethodsReviewed: boolean;
 }): string[] {
   return [
     ...(input.photoCount >= MIN_PUBLISH_PHOTOS ? ["photos"] : []),
     ...(input.basicsComplete ? ["basics"] : []),
     ...(input.propertyDetailsComplete ? ["rooms"] : []),
     ...(input.locationComplete ? ["location"] : []),
+    ...(input.paymentMethodsReviewed ? ["payment-arrangements"] : []),
     ...(input.houseRulesReviewed ? ["house-rules"] : []),
   ];
 }

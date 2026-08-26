@@ -88,6 +88,9 @@ async function getEligibleBooking(bookingId: string, userId: string) {
       checkIn: true,
       checkOut: true,
       totalPrice: true,
+      currency: true,
+      displayCurrency: true,
+      displayTotal: true,
       guest: { select: { id: true, name: true, email: true, image: true } },
       listing: {
         select: {

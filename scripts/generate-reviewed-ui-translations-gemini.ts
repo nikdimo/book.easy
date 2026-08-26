@@ -5,6 +5,7 @@ import {
   type ReviewedLanguage,
 } from "../src/lib/i18n/reviewed-languages";
 import { validateTranslationMap } from "../src/lib/i18n/translation-validation";
+import { EMAIL_TRANSLATION_GUIDANCE } from "../src/lib/i18n/email-translation-guidance";
 
 const MODEL = process.env.GEMINI_TRANSLATION_MODEL || "gemini-2.5-flash";
 const API_KEY = process.env.GOOGLE_API_KEY;
@@ -38,11 +39,16 @@ async function generateBatch(
   const prompt = [
     "Translate fixed user-interface copy for a vacation-rental marketplace.",
     "Return only JSON shaped as {\"translations\":{\"locale\":{\"key\":\"value\"}}}.",
-    "Translate naturally and concisely, using terminology familiar from booking websites.",
+    "Translate naturally and concisely, using terminology familiar from booking websites. UI space is limited: keep buttons, tabs, badges, labels, and headings as short as naturally possible; do not add explanatory wording.",
     "Preserve every {placeholder} exactly. Preserve punctuation when it carries UI meaning.",
     "Keys ending in .zero/.one/.two/.few/.many/.other are CLDR plural categories:",
     "write the grammatically correct form for that category, even when the English source repeats.",
     "Do not translate brand names, currency codes, URLs, or placeholders.",
+    // Transactional email carries claims about money and travel that the rest of the
+    // catalog does not. Only add the extra rules when the batch actually contains one.
+    ...(entries.some((entry) => entry.key.startsWith("email."))
+      ? [EMAIL_TRANSLATION_GUIDANCE]
+      : []),
     "Follow the language-specific editorial guidance below:",
     ...languages.map(
       (language) =>
@@ -86,9 +92,17 @@ async function generateBatch(
   for (const language of languages) {
     const translated = parsed.translations[language.code];
     if (!translated) throw new Error(`Gemini omitted locale ${language.code}.`);
+    // Models occasionally add a neighbouring plural key that was present in their
+    // broader context but not in this batch. Never persist or validate unrequested
+    // output; missing requested keys and placeholder damage still fail below.
+    const requestedOnly = Object.fromEntries(
+      entries
+        .filter((entry) => Object.hasOwn(translated, entry.key))
+        .map((entry) => [entry.key, translated[entry.key]]),
+    );
     parsed.translations[language.code] = validateTranslationMap(
       sourceByKey,
-      translated,
+      requestedOnly,
       `Gemini ${language.code} response`
     );
   }

@@ -13,6 +13,7 @@ import {
 import { getDisplayCurrency } from "@/lib/currency/server";
 import { getExchangeRates } from "@/lib/currency/rates";
 import { BASE_CURRENCY } from "@/lib/currency/currency-preference";
+import { parseDepositPolicySnapshot } from "@/lib/payments/deposit-policy";
 import type {
   HostReservation,
   HostReservationProperty,
@@ -81,6 +82,10 @@ export async function getHostReservations(
         serviceFee: true,
         discountAmount: true,
         totalPrice: true,
+        paymentStatus: true,
+        depositStatus: true,
+        depositAmount: true,
+        depositPolicySnapshot: true,
         guestNote: true,
         cancellationReason: true,
         createdAt: true,
@@ -106,6 +111,14 @@ export async function getHostReservations(
         reviews: {
           where: { direction: ReviewDirection.HOST_TO_GUEST },
           select: { id: true },
+        },
+        paymentStatusEvents: {
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            eventType: true,
+            createdAt: true,
+          },
         },
       },
     }),
@@ -146,6 +159,17 @@ export async function getHostReservations(
       serviceFee: Number(booking.serviceFee),
       discountAmount: Number(booking.discountAmount),
       total: Number(booking.totalPrice),
+      paymentStatus: booking.paymentStatus,
+      depositStatus: booking.depositStatus,
+      depositAmount:
+        booking.depositAmount === null ? null : Number(booking.depositAmount),
+      depositPolicy: parseDepositPolicySnapshot(booking.depositPolicySnapshot),
+      paymentStatusEvents: booking.paymentStatusEvents.map((event) => ({
+        id: event.id,
+        actor: event.eventType.startsWith("GUEST_") ? "GUEST" : "HOST",
+        eventType: event.eventType,
+        createdAt: event.createdAt.toISOString(),
+      })),
       guestNote: booking.guestNote,
       cancellationReason: booking.cancellationReason,
       createdAt: booking.createdAt.toISOString(),

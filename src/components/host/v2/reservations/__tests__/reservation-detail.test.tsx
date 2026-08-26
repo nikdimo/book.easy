@@ -19,6 +19,12 @@ vi.mock("@/lib/actions/booking.actions", () => ({
   rejectBookingAction: vi.fn(),
   hostCancelBookingAction: vi.fn(),
 }));
+vi.mock("@/lib/actions/booking-payment.actions", () => ({
+  recordBookingPaymentEventAction: vi.fn(),
+}));
+vi.mock("@/lib/actions/communication.actions", () => ({
+  shareBookingPaymentInstructionsAction: vi.fn(),
+}));
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn(), push: vi.fn(), replace: vi.fn() }),
@@ -45,6 +51,21 @@ const reservation: HostReservation = {
   serviceFee: 0,
   discountAmount: 0,
   total: 325,
+  paymentStatus: "AWAITING_PAYMENT",
+  depositStatus: "AWAITING_DEPOSIT",
+  depositAmount: 75,
+  depositPolicy: {
+    version: 1,
+    status: "REVIEWED",
+    policy: "FIXED",
+    purpose: "DAMAGE_SECURITY",
+    value: "75",
+    currency: "EUR",
+    dueTiming: "AFTER_ACCEPTANCE",
+    dueDaysBeforeCheckIn: null,
+    returnDaysAfterCheckout: 7,
+  },
+  paymentStatusEvents: [],
   guestNote: "Arriving late on the first night.",
   cancellationReason: null,
   createdAt: "2026-08-01T09:00:00.000Z",
@@ -116,6 +137,12 @@ describe("ReservationDetail", () => {
 
   it("still offers to cancel a confirmed stay", () => {
     expect(html).toContain("Cancel booking");
+  });
+
+  it("projects the confirmed booking's manual payment controls", () => {
+    expect(html).toContain("Payment progress");
+    expect(html).toContain("Frozen deposit amount");
+    expect(html).toContain("Mark payment received");
   });
 });
 

@@ -4,6 +4,8 @@ import snapshot from "../reviewed-ai-translations.json";
 import { REVIEWED_LANGUAGES } from "../reviewed-languages";
 
 const PLACEHOLDER_RE = /\{[A-Za-z][A-Za-z0-9_]*\}/g;
+const UNSUPPORTED_MESSAGE_FORMAT_RE =
+  /\{[A-Za-z][A-Za-z0-9_]*\s*,\s*(?:plural|select|selectordinal)\b/i;
 
 describe("reviewed AI translation snapshot", () => {
   it("fully covers the current catalog for every exported language", () => {
@@ -26,6 +28,10 @@ describe("reviewed AI translation snapshot", () => {
       );
       for (const [key, value] of Object.entries(language.translations)) {
         expect(value.trim(), `${language.code}:${key}`).not.toBe("");
+        expect(
+          UNSUPPORTED_MESSAGE_FORMAT_RE.test(value),
+          `${language.code}:${key} unsupported ICU syntax`,
+        ).toBe(false);
         const expected = [...snapshot.catalog[key as keyof typeof snapshot.catalog].matchAll(PLACEHOLDER_RE)]
           .map((match) => match[0])
           .sort();

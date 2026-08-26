@@ -12,6 +12,8 @@ export async function getHostAttentionSummary(hostId: string) {
     damageReports,
     recentNotifications,
     firstActiveListing,
+    incompletePaymentArrangements,
+    incompletePaymentArrangementCount,
     confirmedBookingCount,
     upcomingStay,
     latestDamageReport,
@@ -51,6 +53,35 @@ export async function getHostAttentionSummary(hostId: string) {
         where: { hostId, status: "APPROVED" },
         select: { id: true },
         orderBy: { createdAt: "asc" },
+      }),
+      // Payment methods and deposit policy each have their own reviewed marker. An
+      // explicit "arrange directly" method and an explicit "no deposit" answer both
+      // set those markers, so this finds only hosts who have not answered one of the
+      // two questions — never hosts who deliberately chose the empty-looking option.
+      // One oldest listing is enough for Today: showing a card for every property
+      // would turn a useful task into a noisy stack. Once it is answered, the next
+      // incomplete listing naturally becomes the task.
+      db.listing.findFirst({
+        where: {
+          hostId,
+          status: { not: "ARCHIVED" },
+          OR: [
+            { paymentMethodsReviewedAt: null },
+            { depositPolicyReviewedAt: null },
+          ],
+        },
+        select: { id: true, title: true },
+        orderBy: { createdAt: "asc" },
+      }),
+      db.listing.count({
+        where: {
+          hostId,
+          status: { not: "ARCHIVED" },
+          OR: [
+            { paymentMethodsReviewedAt: null },
+            { depositPolicyReviewedAt: null },
+          ],
+        },
       }),
       db.booking.count({
         where: {
@@ -95,6 +126,8 @@ export async function getHostAttentionSummary(hostId: string) {
     damageReportConversationId: latestDamageReport?.conversationId ?? null,
     recentNotifications,
     firstActiveListing,
+    incompletePaymentArrangements,
+    incompletePaymentArrangementCount,
     confirmedBookingCount,
     upcomingStay,
   };

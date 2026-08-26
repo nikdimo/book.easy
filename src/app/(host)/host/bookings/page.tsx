@@ -7,6 +7,9 @@ import {
   type HostActionCard,
 } from "@/components/host/host-booking-action-rail";
 import { formatDate, formatPrice } from "@/lib/utils/format";
+import { getDisplayCurrency } from "@/lib/currency/server";
+import { getExchangeRates } from "@/lib/currency/rates";
+import { summarizeUpcomingTotal } from "@/lib/host/upcoming-booking-total";
 import { BOOKING_STATUSES } from "@/lib/constants";
 import Link from "next/link";
 import Image from "next/image";
@@ -120,16 +123,29 @@ export default async function HostBookingsPage() {
       imageUrl: booking.listing.images[0]?.url ?? null,
       imageAlt: booking.listing.images[0]?.alt || booking.listing.title,
       guestName: booking.guest.name,
-      guestLine: `${booking.guest.name} · ${booking.guestCount} · ${formatDate(booking.checkIn)} – ${formatDate(booking.checkOut)} · ${formatPrice(Number(booking.totalPrice), booking.currency)}`,
+      guestLine: `${booking.guest.name} · ${booking.guestCount} · ${formatDate(booking.checkIn, t.locale)} – ${formatDate(booking.checkOut, t.locale)} · ${formatPrice(Number(booking.totalPrice), booking.currency, t.locale)}`,
       guestNote: booking.guestNote,
       unreadCount: unreadFor(booking),
       alsoNeeds: item.alsoNeeds,
     };
   });
 
-  const upcomingTotal = bookings
-    .filter((booking) => booking.status === "CONFIRMED" && booking.checkIn >= now)
-    .reduce((sum, booking) => sum + Number(booking.totalPrice), 0);
+  const upcomingBookings = bookings.filter(
+    (booking) => booking.status === "CONFIRMED" && booking.checkIn >= now,
+  );
+  const [displayCurrency, rateTable] = await Promise.all([
+    getDisplayCurrency(),
+    getExchangeRates(),
+  ]);
+  const upcomingSummary = summarizeUpcomingTotal(
+    upcomingBookings.map((booking) => ({
+      currency: booking.currency,
+      amount: Number(booking.totalPrice),
+    })),
+    displayCurrency,
+    t.locale,
+    rateTable ? { display: displayCurrency, rates: rateTable.rates } : null,
+  );
 
   return (
     <div>
@@ -140,7 +156,8 @@ export default async function HostBookingsPage() {
         <p className="text-sm text-muted-foreground">
           {bookings.length}{" "}
           <T t={t} k="host.bookings.count_suffix" source="bookings" /> ·{" "}
-          {formatPrice(upcomingTotal, bookings[0].currency)}{" "}
+          {upcomingSummary.approximate ? "~" : ""}
+          {upcomingSummary.text}{" "}
           <T t={t} k="host.bookings.upcoming_suffix" source="upcoming" />
         </p>
       </div>
@@ -212,10 +229,10 @@ export default async function HostBookingsPage() {
               >
                 <div className="w-11 shrink-0 text-center">
                   <p className="text-[11px] uppercase text-muted-foreground" translate="no">
-                    {new Intl.DateTimeFormat("en", { month: "short" }).format(booking.checkIn)}
+                    {new Intl.DateTimeFormat(t.locale, { month: "short" }).format(booking.checkIn)}
                   </p>
                   <p className="text-xl font-semibold leading-tight tabular-nums" translate="no">
-                    {new Intl.DateTimeFormat("en", { day: "2-digit" }).format(booking.checkIn)}
+                    {new Intl.DateTimeFormat(t.locale, { day: "2-digit" }).format(booking.checkIn)}
                   </p>
                 </div>
                 <span className="self-stretch border-l" aria-hidden="true" />
@@ -245,8 +262,8 @@ export default async function HostBookingsPage() {
                   <p className="mt-0.5 truncate pl-3.5 text-sm text-muted-foreground">
                     {isTerminal ? `${statusConfig.text} · ` : ""}
                     {booking.guest.name} · {booking.guestCount} ·{" "}
-                    {formatDate(booking.checkIn)} – {formatDate(booking.checkOut)} ·{" "}
-                    {formatPrice(Number(booking.totalPrice), booking.currency)}
+                    {formatDate(booking.checkIn, t.locale)} – {formatDate(booking.checkOut, t.locale)} ·{" "}
+                    {formatPrice(Number(booking.totalPrice), booking.currency, t.locale)}
                   </p>
                 </div>
                 {!isTerminal && daysToCheckIn >= 0 && daysToCheckIn <= 7 ? (

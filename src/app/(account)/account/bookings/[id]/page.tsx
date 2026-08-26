@@ -9,13 +9,21 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { CancelBookingButton } from "@/components/account/cancel-booking-button";
-import { formatDate, formatPrice, formatGuestCount } from "@/lib/utils/format";
+import { formatDate, formatPrice } from "@/lib/utils/format";
+import { formatMoney } from "@/lib/currency/convert";
 import { BOOKING_STATUSES } from "@/lib/constants";
 import { StartConversationButton } from "@/components/communication/start-conversation-button";
 import { BookingStatusHero } from "@/components/booking/booking-status-hero";
 import { BookingArrivalDetails } from "@/components/booking/booking-arrival-details";
-import { getT, T, t, ti } from "@/lib/i18n/t";
+import {
+  AcceptedPaymentMethods,
+  acceptedPaymentMethodsFromSnapshot,
+} from "@/components/booking/accepted-payment-methods";
+import { getT, T, TWithValues, t, ti, tPlural } from "@/lib/i18n/t";
 import { resolveBookingStatus } from "@/lib/i18n/status-labels";
+import { getBookingPaymentProgress } from "@/lib/services/booking-payment-status.service";
+import { parseDepositPolicySnapshot } from "@/lib/payments/deposit-policy";
+import { BookingPaymentProgress } from "@/components/booking/booking-payment-progress";
 
 interface BookingDetailProps {
   params: Promise<{ id: string }>;
@@ -32,15 +40,21 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
   const booking = await getGuestBookingWithHost(id, session.user.id);
 
   if (!booking) notFound();
+  const paymentProgress = await getBookingPaymentProgress(booking.id, session.user.id);
 
   const statusConfig = BOOKING_STATUSES.find((s) => s.value === booking.status);
   const canCancel = booking.status === "PENDING" || booking.status === "CONFIRMED";
+  const guests = tPlural(translator, "booking.guests", booking.guestCount, "{n} guest", "{n} guests");
   const priceBreakdown = booking.priceBreakdown as {
     accommodationSubtotal?: number;
   } | null;
   const accommodationSubtotal =
     priceBreakdown?.accommodationSubtotal ??
     Number(booking.nightlyRate) * booking.numberOfNights;
+  const paymentMethods = acceptedPaymentMethodsFromSnapshot(
+    booking.paymentMethodsSnapshot,
+    booking.createdAt,
+  );
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -116,15 +130,18 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-muted-foreground"><T t={translator} k="account.booking.check_in" source="Check-in" /></p>
-              <p className="font-medium flex items-center gap-1"><Calendar className="h-3 w-3" />{formatDate(booking.checkIn)}</p>
+              <p className="font-medium flex items-center gap-1"><Calendar className="h-3 w-3" />{formatDate(booking.checkIn, translator.locale)}</p>
             </div>
             <div>
               <p className="text-muted-foreground"><T t={translator} k="account.booking.check_out" source="Check-out" /></p>
-              <p className="font-medium flex items-center gap-1"><Calendar className="h-3 w-3" />{formatDate(booking.checkOut)}</p>
+              <p className="font-medium flex items-center gap-1"><Calendar className="h-3 w-3" />{formatDate(booking.checkOut, translator.locale)}</p>
             </div>
             <div>
               <p className="text-muted-foreground"><T t={translator} k="account.booking.guests" source="Guests" /></p>
-              <p className="font-medium flex items-center gap-1"><Users className="h-3 w-3" />{formatGuestCount(booking.guestCount)}</p>
+              <p className="font-medium flex items-center gap-1">
+                <Users className="h-3 w-3" />
+                <span className={guests.translated ? "notranslate" : undefined}>{guests.text}</span>
+              </p>
             </div>
             <div>
               <p className="text-muted-foreground"><T t={translator} k="account.booking.nights" source="Nights" /></p>
@@ -137,18 +154,18 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span>{ti(translator, "account.booking.accommodation_nights", "Accommodation · {count} nights", { count: booking.numberOfNights }).text}</span>
-              <span>{formatPrice(accommodationSubtotal, booking.currency)}</span>
+              <span>{formatPrice(accommodationSubtotal, booking.currency, translator.locale)}</span>
             </div>
             {Number(booking.cleaningFee) > 0 && (
               <div className="flex justify-between">
                 <span><T t={translator} k="account.booking.cleaning_fee" source="Cleaning fee" /></span>
-                <span>{formatPrice(Number(booking.cleaningFee), booking.currency)}</span>
+                <span>{formatPrice(Number(booking.cleaningFee), booking.currency, translator.locale)}</span>
               </div>
             )}
             {Number(booking.discountAmount) > 0 && (
               <div className="flex justify-between text-green-700">
                 <span>{booking.promotionType === "FREE_CLEANING" ? t(translator, "account.booking.free_cleaning", "Free cleaning") : t(translator, "account.booking.special_offer", "Special offer")}</span>
-                <span>−{formatPrice(Number(booking.discountAmount), booking.currency)}</span>
+                <span>−{formatPrice(Number(booking.discountAmount), booking.currency, translator.locale)}</span>
               </div>
             )}
             <Separator />
@@ -157,12 +174,30 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
               <span className="flex items-baseline gap-2">
                 {booking.originalTotal && Number(booking.discountAmount) > 0 ? (
                   <span className="text-sm font-normal text-muted-foreground line-through">
-                    {formatPrice(Number(booking.originalTotal), booking.currency)}
+                    {formatPrice(Number(booking.originalTotal), booking.currency, translator.locale)}
                   </span>
                 ) : null}
-                <span>{formatPrice(Number(booking.totalPrice), booking.currency)}</span>
+                <span>{formatPrice(Number(booking.totalPrice), booking.currency, translator.locale)}</span>
               </span>
             </div>
+            {booking.displayCurrency && booking.displayTotal ? (
+              <p className="text-right text-xs text-muted-foreground">
+                <TWithValues
+                  t={translator}
+                  k="booking.display_total_approx"
+                  source="Approximately {amount} at the time of booking. The booking is agreed in {currency}."
+                  values={{
+                    amount: formatMoney(
+                      Number(booking.displayTotal),
+                      booking.displayCurrency,
+                      translator.locale,
+                      { converted: true },
+                    ),
+                    currency: booking.currency,
+                  }}
+                />
+              </p>
+            ) : null}
           </div>
 
           {booking.guestNote && (
@@ -210,6 +245,41 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
           )}
         </CardContent>
       </Card>
+
+      {paymentProgress ? (
+        <div className="mt-6">
+          <BookingPaymentProgress
+            actor="GUEST"
+            progress={{
+              bookingId: paymentProgress.id,
+              status: paymentProgress.status,
+              currency: paymentProgress.currency,
+              total: Number(paymentProgress.totalPrice),
+              depositAmount:
+                paymentProgress.depositAmount === null
+                  ? null
+                  : Number(paymentProgress.depositAmount),
+              depositPolicy: parseDepositPolicySnapshot(paymentProgress.depositPolicySnapshot),
+              paymentStatus: paymentProgress.paymentStatus,
+              depositStatus: paymentProgress.depositStatus,
+              paymentStatusEvents: paymentProgress.paymentStatusEvents.map((event) => ({
+                id: event.id,
+                actor: event.eventType.startsWith("GUEST_") ? "GUEST" : "HOST",
+                eventType: event.eventType,
+                createdAt: event.createdAt.toISOString(),
+              })),
+            }}
+          />
+        </div>
+      ) : null}
+
+      <AcceptedPaymentMethods
+        t={translator}
+        data={paymentMethods}
+        appearance="card"
+        headingAs="h3"
+        className="mt-6"
+      />
 
       <BookingArrivalDetails
         booking={{ status: booking.status, checkIn: booking.checkIn }}

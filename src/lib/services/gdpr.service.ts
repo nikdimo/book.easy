@@ -27,6 +27,10 @@ export interface UserDataExport {
     guestCount: number;
     totalPrice: string;
     status: string;
+    paymentStatus: string;
+    depositStatus: string;
+    depositAmount?: string;
+    depositPolicySnapshot?: unknown;
     createdAt: Date;
   }>;
   listings?: Array<{
@@ -35,6 +39,10 @@ export interface UserDataExport {
     slug: string;
     status: string;
     views: number;
+    depositPolicy: string;
+    depositPurpose?: string;
+    depositValue?: string;
+    depositCurrency?: string;
     createdAt: Date;
   }>;
   favorites: Array<{
@@ -84,9 +92,18 @@ export interface UserDataExport {
   }>;
   messages: Array<{
     conversationId: string;
+    kind: string;
     body: string;
     editedAt?: Date;
     deletedAt?: Date;
+    createdAt: Date;
+  }>;
+  paymentStatusEvents: Array<{
+    bookingId: string;
+    listingTitle: string;
+    eventType: string;
+    paymentStatus: string;
+    depositStatus: string;
     createdAt: Date;
   }>;
 }
@@ -121,6 +138,11 @@ export async function exportUserData(userId: string): Promise<UserDataExport> {
       sentMessages: {
         orderBy: { createdAt: 'desc' },
         take: 1000,
+      },
+      bookingPaymentStatusEvents: {
+        orderBy: { createdAt: 'desc' },
+        take: 1000,
+        include: { booking: { include: { listing: true } } },
       },
     },
   });
@@ -181,6 +203,10 @@ export async function exportUserData(userId: string): Promise<UserDataExport> {
       guestCount: booking.guestCount,
       totalPrice: booking.totalPrice.toString(),
       status: booking.status,
+      paymentStatus: booking.paymentStatus,
+      depositStatus: booking.depositStatus,
+      depositAmount: booking.depositAmount?.toString(),
+      depositPolicySnapshot: booking.depositPolicySnapshot ?? undefined,
       createdAt: booking.createdAt,
     })),
     listings: user.listings
@@ -190,6 +216,10 @@ export async function exportUserData(userId: string): Promise<UserDataExport> {
           slug: listing.slug,
           status: listing.status,
           views: listing.views.length,
+          depositPolicy: listing.depositPolicy,
+          depositPurpose: listing.depositPurpose || undefined,
+          depositValue: listing.depositValue?.toString(),
+          depositCurrency: listing.depositCurrency || undefined,
           createdAt: listing.createdAt,
         }))
       : undefined,
@@ -244,10 +274,19 @@ export async function exportUserData(userId: string): Promise<UserDataExport> {
     })),
     messages: user.sentMessages.map((message) => ({
       conversationId: message.conversationId,
+      kind: message.kind,
       body: message.deletedAt ? 'Message removed' : message.body,
       editedAt: message.editedAt || undefined,
       deletedAt: message.deletedAt || undefined,
       createdAt: message.createdAt,
+    })),
+    paymentStatusEvents: user.bookingPaymentStatusEvents.map((event) => ({
+      bookingId: event.bookingId,
+      listingTitle: event.booking.listing.title,
+      eventType: event.eventType,
+      paymentStatus: event.paymentStatus,
+      depositStatus: event.depositStatus,
+      createdAt: event.createdAt,
     })),
   };
 }

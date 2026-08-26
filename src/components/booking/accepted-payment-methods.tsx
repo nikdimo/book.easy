@@ -1,24 +1,19 @@
 import { cn } from "@/lib/utils";
+import {
+  PAYMENT_METHOD_CODES,
+  normalizeOtherPaymentMethodLabel,
+  otherPaymentMethodLabelIssue,
+  parsePaymentMethodsSnapshot,
+  type PaymentMethodCode,
+} from "@/lib/payments/payment-methods";
 
 /**
  * The public Phase 2 vocabulary. Keep this presentation type independent from Prisma
  * so listing rows and frozen booking JSON can both be adapted without importing a
  * database enum into a public or client component.
  */
-export const ACCEPTED_PAYMENT_METHOD_CODES = [
-  "CASH_AT_PROPERTY",
-  "BANK_TRANSFER_LOCAL_SEPA",
-  "BANK_TRANSFER_INTERNATIONAL",
-  "PAYPAL",
-  "REVOLUT",
-  "WISE",
-  "HOST_SECURE_CARD_LINK",
-  "OTHER",
-  "ARRANGE_DIRECTLY",
-] as const;
-
-export type AcceptedPaymentMethodCode =
-  (typeof ACCEPTED_PAYMENT_METHOD_CODES)[number];
+export const ACCEPTED_PAYMENT_METHOD_CODES = PAYMENT_METHOD_CODES;
+export type AcceptedPaymentMethodCode = PaymentMethodCode;
 
 export interface AcceptedPaymentMethodsPresentation {
   /** A timestamp means the host deliberately reviewed this setting. */
@@ -33,6 +28,10 @@ export interface PaymentMethodLabelResolver {
     key: string,
     source: string,
   ): { text: string; translated: boolean };
+  /** The reading locale, for components that format a currency amount or a date
+   *  alongside the resolved copy. Both `Translator` and the client `useI18n()` hook
+   *  already carry this, so passing either as `t` satisfies it without change. */
+  locale?: string;
 }
 
 export interface AcceptedPaymentMethodsProps {
@@ -64,51 +63,28 @@ export function toAcceptedPaymentMethodsPresentation(input: {
   };
 }
 
+/** Adapts the frozen V1 JSON stored on a booking without trusting arbitrary JSON. */
+export function acceptedPaymentMethodsFromSnapshot(
+  value: unknown,
+  snapshotAt: Date | string,
+): AcceptedPaymentMethodsPresentation | null {
+  const snapshot = parsePaymentMethodsSnapshot(value);
+  if (!snapshot) return null;
+  return {
+    reviewedAt: snapshot.status === "REVIEWED" ? snapshotAt : null,
+    methodCodes: snapshot.methods,
+    otherLabel: snapshot.otherLabel,
+  };
+}
+
 /**
  * Returns the label guests may safely see, or null when the value resembles contact,
  * account, address or instruction data. Storage validation remains the source of truth;
  * this is a final display guard for old or malformed snapshots.
  */
 export function safeOtherPaymentMethodLabel(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  if (/[\r\n\t\u0000-\u001f\u007f]/u.test(value)) return null;
-
-  const label = value.trim().replace(/ {2,}/g, " ");
-  const length = Array.from(label).length;
-  if (length < 2 || length > 40) return null;
-
-  // A public label is intentionally much narrower than free-form text. These
-  // characters cover ordinary provider and regional method names without admitting
-  // URL, email, handle or key/value instruction syntax.
-  if (!/^[\p{L}\p{M}\p{N}][\p{L}\p{M}\p{N} &+'’.()-]*$/u.test(label)) {
-    return null;
-  }
-
-  if (
-    /(?:https?:\/\/|www\.)/iu.test(label) ||
-    /\b[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.[a-z]{2,}\b/iu.test(label) ||
-    /\b(?:send|pay|transfer|deposit|refund|payout|protected|protection|guarantee(?:d)?|paid|unpaid|pending|complete|completed|successful|failed|contact|message|call|email|visit|click|scan)\b/iu.test(
-      label,
-    ) ||
-    /(?:\+?\d[\s().-]*){7,}/u.test(label) ||
-    /^\d[\d\s().-]{3,}$/u.test(label) ||
-    /\d{6,}/u.test(label)
-  ) {
-    return null;
-  }
-
-  const compact = label.replace(/[\s().'-]/g, "");
-  if (
-    /^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/u.test(compact.toUpperCase()) ||
-    (/^[A-Z0-9]{8}(?:[A-Z0-9]{3})?$/u.test(compact) &&
-      /^[A-Z]{6}/u.test(compact)) ||
-    /^0x[a-f0-9]{40}$/iu.test(compact) ||
-    /^bc1[a-z0-9]{20,}$/iu.test(compact) ||
-    /^(?=.*\d)[1-9A-HJ-NP-Za-km-z]{26,44}$/u.test(compact)
-  ) {
-    return null;
-  }
-
+  const label = normalizeOtherPaymentMethodLabel(value);
+  if (!label || otherPaymentMethodLabelIssue(label)) return null;
   return label;
 }
 
@@ -171,19 +147,17 @@ export function AcceptedPaymentMethods({
   // ARRANGE_DIRECTLY is exclusive. If malformed legacy data combines it with another
   // code, rendering just this sentence avoids publishing a contradictory promise.
   const arrangedDirectly = methodCodes.includes("ARRANGE_DIRECTLY");
-  const visibleCodes = arrangedDirectly
-    ? (["ARRANGE_DIRECTLY"] as const)
-    : methodCodes.filter(
-        (
-          code,
-        ): code is Exclude<AcceptedPaymentMethodCode, "ARRANGE_DIRECTLY"> =>
-          code !== "ARRANGE_DIRECTLY",
-      );
+  const visibleCodes = methodCodes.filter(
+    (
+      code,
+    ): code is Exclude<AcceptedPaymentMethodCode, "ARRANGE_DIRECTLY"> =>
+      code !== "ARRANGE_DIRECTLY",
+  );
 
   // A reviewed timestamp with no recognized codes is invalid but still distinct from
   // an unanswered listing. Keep the truthful reviewed explanation and omit an empty
   // heading/list rather than inventing a method.
-  if (visibleCodes.length === 0) {
+  if (!arrangedDirectly && visibleCodes.length === 0) {
     return (
       <p
         data-payment-methods-state="reviewed-empty"

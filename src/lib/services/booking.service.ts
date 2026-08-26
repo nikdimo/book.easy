@@ -24,6 +24,10 @@ import {
 import { houseRulesSnapshot } from "@/lib/host/v2/listing-house-rules";
 import { houseRulesVersion } from "@/lib/host/v2/house-rules-version.server";
 import { paymentMethodsSnapshot } from "@/lib/payments/payment-methods";
+import {
+  calculateDepositAmount,
+  createDepositPolicySnapshot,
+} from "@/lib/payments/deposit-policy";
 
 export const BOOKING_RESPONSE_WINDOW_HOURS = 24;
 
@@ -318,6 +322,7 @@ export async function createBooking(input: CreateBookingInput) {
 
       const currentHouseRules = houseRulesSnapshot(listing);
       const currentPaymentMethods = paymentMethodsSnapshot(listing);
+      const currentDepositPolicy = createDepositPolicySnapshot(listing);
       if (houseRulesAcceptedAt) {
         if (
           !expectedHouseRulesVersion ||
@@ -406,6 +411,10 @@ export async function createBooking(input: CreateBookingInput) {
       const cleaningFee = quote.cleaningFee;
       const serviceFee = 0; // Placeholder for future platform fee
       const totalPrice = quote.total + Number(serviceFee);
+      const depositAmount =
+        currentDepositPolicy.status === "REVIEWED"
+          ? calculateDepositAmount(currentDepositPolicy, String(totalPrice))
+          : null;
       const appliedPromotion = quote.appliedPromotion;
       const serializedPromotion = (promotion: NonNullable<typeof appliedPromotion>) => ({
         id: promotion.id,
@@ -509,6 +518,17 @@ export async function createBooking(input: CreateBookingInput) {
           // bookings remain NULL because the additive migration performs no backfill.
           paymentMethodsSnapshot:
             currentPaymentMethods as unknown as Prisma.InputJsonObject,
+          // Like the method/rule snapshots above, deposit terms come only from the
+          // listing row read inside this transaction. The client can neither choose
+          // the terms nor submit an amount. Linger Homes records the host's policy;
+          // it does not collect or hold this money.
+          depositPolicySnapshot:
+            currentDepositPolicy as unknown as Prisma.InputJsonObject,
+          depositAmount,
+          depositStatus:
+            depositAmount !== null && Number(depositAmount) > 0
+              ? "AWAITING_DEPOSIT"
+              : "NOT_REQUIRED",
         },
       });
 
@@ -711,6 +731,10 @@ export async function confirmBooking(bookingId: string, hostId: string) {
       data: {
         status: BookingStatus.CONFIRMED,
         respondedAt: now,
+        acceptedAt: now,
+        paymentStatus: "AWAITING_PAYMENT",
+        paymentStatusUpdatedAt: now,
+        depositStatusUpdatedAt: now,
       },
     });
     if (confirmed.count === 0) {

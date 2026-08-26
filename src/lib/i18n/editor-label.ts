@@ -43,6 +43,7 @@ export function resolveEditorLabel(
     case "host.editor.section.rooms": return translator.resolve("host.editor.section.rooms", "Property details");
     case "host.editor.section.location": return translator.resolve("host.editor.section.location", "Location");
     case "host.editor.section.amenities": return translator.resolve("host.editor.section.amenities", "Amenities");
+    case "host.editor.section.payment_arrangements": return translator.resolve("host.editor.section.payment_arrangements", "Payment arrangements");
     case "host.editor.section.house_rules": return translator.resolve("host.editor.section.house_rules", "House rules");
     case "host.editor.section.arrival_guide": return translator.resolve("host.editor.section.arrival_guide", "Arrival guide");
 
@@ -52,6 +53,7 @@ export function resolveEditorLabel(
     case "host.editor.overview.attention.basics": return translator.resolve("host.editor.overview.attention.basics", "The title or the description still needs work.");
     case "host.editor.overview.attention.rooms": return translator.resolve("host.editor.overview.attention.rooms", "Property details are incomplete.");
     case "host.editor.overview.attention.location": return translator.resolve("host.editor.overview.attention.location", "The address or the map pin is incomplete.");
+    case "host.editor.overview.attention.payment_arrangements": return translator.resolve("host.editor.overview.attention.payment_arrangements", "Choose accepted payment methods and whether a deposit is required.");
     case "host.editor.overview.attention.house_rules": return translator.resolve("host.editor.overview.attention.house_rules", "House rules have not been reviewed.");
 
     default:

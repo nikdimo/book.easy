@@ -533,4 +533,14 @@ export const CURATED_TRANSLATION_OVERRIDES: Record<string, Record<string, string
     uk: "Звернення до служби підтримки",
     ru: "Обращения в службу поддержки",
   },
+  "booking.payment_progress.instructions_security": {
+    bg: "Никога не искайте и не изпращайте номер на карта, CVV, ПИН, парола, фраза за възстановяване или частен ключ.",
+    mk: "Никогаш не барајте или испраќајте број на картичка, CVV, PIN, лозинка, тајна фраза или приватен клуч.",
+  },
+  "host.editor.photos.cover": {
+    bg: "Корица",
+  },
+  "host.v2.reservations.booked_on": {
+    bg: "Заявена",
+  },
 };

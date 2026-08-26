@@ -21,9 +21,12 @@ function refresh(
   result: Extract<SaveListingPaymentMethodsResult, { changed: boolean }>,
 ) {
   const { id, slug, status } = result.listing;
-  revalidatePath(`/host/listings/${id}/payment-methods`);
+  revalidatePath(`/host/listings/${id}/payment-arrangements`);
   revalidatePath(`/host/listings/${id}`);
   revalidatePath(`/host/listings/${id}/edit`);
+  // Today carries the persistent post-listing payment task. Refresh it as soon as
+  // either answer changes so returning there cannot show a stale reminder.
+  revalidatePath("/host");
   if (result.changed && status === "APPROVED") {
     revalidatePath(`/properties/${slug}`);
     revalidatePublicListingCaches();

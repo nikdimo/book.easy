@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import {
   ACCEPTED_PAYMENT_METHOD_CODES,
   AcceptedPaymentMethods,
+  acceptedPaymentMethodsFromSnapshot,
   safeOtherPaymentMethodLabel,
   toAcceptedPaymentMethodsPresentation,
   type PaymentMethodLabelResolver,
@@ -213,5 +214,25 @@ describe("safeOtherPaymentMethodLabel", () => {
     expect(safeOtherPaymentMethodLabel("X")).toBeNull();
     expect(safeOtherPaymentMethodLabel("A".repeat(40))).toBe("A".repeat(40));
     expect(safeOtherPaymentMethodLabel("A".repeat(41))).toBeNull();
+  });
+
+  it("adapts reviewed, unanswered, and missing booking snapshots safely", () => {
+    expect(
+      acceptedPaymentMethodsFromSnapshot(
+        { version: 1, status: "REVIEWED", methods: ["PAYPAL"], otherLabel: null },
+        "2026-08-25T10:00:00.000Z",
+      ),
+    ).toEqual({
+      reviewedAt: "2026-08-25T10:00:00.000Z",
+      methodCodes: ["PAYPAL"],
+      otherLabel: null,
+    });
+    expect(
+      acceptedPaymentMethodsFromSnapshot(
+        { version: 1, status: "UNANSWERED", methods: [], otherLabel: null },
+        "2026-08-25T10:00:00.000Z",
+      )?.reviewedAt,
+    ).toBeNull();
+    expect(acceptedPaymentMethodsFromSnapshot(null, new Date())).toBeNull();
   });
 });

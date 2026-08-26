@@ -65,9 +65,9 @@ export function isPaymentMethodCode(value: unknown): value is PaymentMethodCode 
   return typeof value === "string" && PAYMENT_METHOD_SET.has(value);
 }
 
-function normalizeOtherLabel(value: unknown): string | null {
+export function normalizeOtherPaymentMethodLabel(value: unknown): string | null {
   if (typeof value !== "string") return null;
-  const trimmed = value.trim();
+  const trimmed = value.trim().replace(/ {2,}/g, " ");
   return trimmed === "" ? null : trimmed;
 }
 
@@ -86,6 +86,9 @@ export function otherPaymentMethodLabelIssue(
   const length = characterCount(value);
   if (length < PAYMENT_METHOD_OTHER_MIN_LENGTH) return "TOO_SHORT";
   if (length > PAYMENT_METHOD_OTHER_MAX_LENGTH) return "TOO_LONG";
+  if (!/^[\p{L}\p{M}\p{N}][\p{L}\p{M}\p{N} &+'’.()-]*$/u.test(value)) {
+    return "PRIVATE_OR_INSTRUCTIONAL_CONTENT";
+  }
 
   const compact = value.replace(/[\s-]/g, "");
   const upperCompact = compact.toUpperCase();
@@ -104,16 +107,18 @@ export function otherPaymentMethodLabelIssue(
     /\b(?:dm|message|contact)\s+(?:me|the host|host|us)\b/i,
     /\b(?:cash|card)\s+(?:at|on|to)\b/i,
     /\b(?:before arrival|after booking|after acceptance|on arrival|use reference)\b/i,
+    /\b(?:refund|payout|protected|protection|guarantee(?:d)?|paid|unpaid|pending|complete|completed|successful|failed)\b/i,
     /[\r\n\t\u0000-\u001f\u007f]/,
     // Phone/card/account-like digit runs, including common separators.
     /(?:\+?\d[\s().-]*){7,}/,
+    /^\d[\d\s().-]{3,}$/,
     /\b\d{6,}\b/,
     /\b(?:0[1-9]|1[0-2])\s*\/\s*\d{2,4}\b/,
     // Common cryptocurrency address families.
     /\b(?:bc1|tb1)[a-z0-9]{20,}\b/i,
     /\b0x[a-f0-9]{16,}\b/i,
     /\b[13][a-km-zA-HJ-NP-Z1-9]{25,34}\b/,
-    /\b[1-9A-HJ-NP-Za-km-z]{30,40}\b/,
+    /\b(?=[1-9A-HJ-NP-Za-km-z]{30,40}\b)(?=[1-9A-HJ-NP-Za-km-z]*\d)[1-9A-HJ-NP-Za-km-z]+\b/,
   ];
   if (sensitivePatterns.some((pattern) => pattern.test(value))) {
     return "PRIVATE_OR_INSTRUCTIONAL_CONTENT";
@@ -162,7 +167,7 @@ export function validateListingPaymentMethods(
     issues.methods = "ARRANGE_DIRECTLY_EXCLUSIVE";
   }
 
-  const otherLabel = normalizeOtherLabel(raw.otherLabel);
+  const otherLabel = normalizeOtherPaymentMethodLabel(raw.otherLabel);
   const includesOther = raw.methods.includes("OTHER");
   if (includesOther) {
     if (otherLabel === null) issues.otherLabel = "REQUIRED";
@@ -222,7 +227,7 @@ export function paymentMethodsFromRow(
   if (methods.includes("ARRANGE_DIRECTLY")) methods = ["ARRANGE_DIRECTLY"];
 
   let otherLabel = methods.includes("OTHER")
-    ? normalizeOtherLabel(row.paymentMethodOther)
+    ? normalizeOtherPaymentMethodLabel(row.paymentMethodOther)
     : null;
   if (
     methods.includes("OTHER") &&

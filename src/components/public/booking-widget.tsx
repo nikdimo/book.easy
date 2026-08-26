@@ -37,6 +37,9 @@ import {
 } from "@/components/ui/tooltip";
 import type { Resolved } from "@/lib/i18n/t";
 import { Tx, useI18n } from "@/lib/i18n/client";
+import { BookingReviewPaymentTerms } from "@/components/booking/booking-review-payment-terms";
+import type { AcceptedPaymentMethodsPresentation } from "@/components/booking/accepted-payment-methods";
+import type { DepositPolicySnapshotV1 } from "@/lib/payments/deposit-policy";
 import {
   useCellCurrencyNote,
   useListingDayPrices,
@@ -62,6 +65,10 @@ interface BookingWidgetProps {
   initialGuestDetails?: GuestDetails;
   hasExplicitSearchSelection?: boolean;
   requestToBookTooltip: Resolved;
+  /** Public method names only. Never payment instructions, account details or links. */
+  acceptedPaymentMethods: AcceptedPaymentMethodsPresentation;
+  /** Validated public terms only; no payment destination or operational payment data. */
+  depositPolicy: DepositPolicySnapshotV1;
   /**
    * The "message host" button, already built by the server so this widget does not
    * have to know who the host is. Rendered only in the phone's sticky bar — the
@@ -271,6 +278,8 @@ export function BookingWidget({
   initialGuests,
   initialGuestDetails = { adults: 0, children: 0, infants: 0, pets: 0 },
   requestToBookTooltip,
+  acceptedPaymentMethods,
+  depositPolicy,
   messageHost,
   houseRules,
   houseRulesVersion,
@@ -1165,6 +1174,12 @@ export function BookingWidget({
               />
             </div>
           ) : null}
+
+          <BookingReviewPaymentTerms
+            t={i18n}
+            acceptedPaymentMethods={acceptedPaymentMethods}
+            depositPolicy={depositPolicy}
+          />
         </div>
 
         <div className="shrink-0 space-y-3 border-t border-border bg-background px-4 py-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:px-6 md:pb-4">

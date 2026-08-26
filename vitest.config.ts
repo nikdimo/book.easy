@@ -10,8 +10,11 @@ export default defineConfig({
     // see docker-compose.yml) — there's no mocked DB layer in this codebase, and adding
     // one just for tests would diverge from what actually runs in production. Run
     // `npm run db:docker` first if the container isn't already up.
-    testTimeout: 15000,
-    hookTimeout: 15000,
+    // A full 200-file run creates substantially more Postgres contention than an
+    // individual integration file. Keep enough headroom for that real-DB workload;
+    // focused runs still complete in seconds and failures remain bounded.
+    testTimeout: 30000,
+    hookTimeout: 30000,
   },
   resolve: {
     alias: {

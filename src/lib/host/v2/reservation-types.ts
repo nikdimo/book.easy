@@ -1,4 +1,5 @@
 import type { CalendarFormats } from "@/lib/host/v2/calendar-format";
+import type { DepositPolicySnapshotV1 } from "@/lib/payments/deposit-policy";
 
 /**
  * The reservations panel's payload, as plain JSON.
@@ -41,6 +42,18 @@ export interface HostReservation {
   serviceFee: number;
   discountAmount: number;
   total: number;
+  /** Manual reports only; no Linger Homes payment processing is implied. */
+  paymentStatus: string;
+  depositStatus: string;
+  /** The booking-time amount, never recomputed from a later listing policy. */
+  depositAmount: number | null;
+  depositPolicy: DepositPolicySnapshotV1 | null;
+  paymentStatusEvents: Array<{
+    id: string;
+    actor: "HOST" | "GUEST";
+    eventType: string;
+    createdAt: string;
+  }>;
   guestNote: string | null;
   cancellationReason: string | null;
   createdAt: string;

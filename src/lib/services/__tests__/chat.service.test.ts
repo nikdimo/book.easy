@@ -5,8 +5,10 @@ import {
   ensureBookingConversation,
   getConversationMessages,
   markConversationRead,
+  shareBookingPaymentInstructions,
   sendConversationMessage,
 } from "@/lib/services/chat.service";
+import { PAYMENT_INSTRUCTIONS_PREVIEW } from "@/lib/services/payment-instructions";
 import {
   createConversationDamageReport,
   updateConversationDamageReport,
@@ -169,6 +171,112 @@ describe("booking conversation", () => {
         where: { messageId: first.id, recipientId: host.id },
       })
     ).toBe(1);
+  });
+
+  it("only lets the listing owner share safe instructions after acceptance and confirmation", async () => {
+    const { host, guest, outsider, booking } = await setup();
+    const conversation = await ensureBookingConversation(booking.id, guest.id);
+
+    await expect(
+      shareBookingPaymentInstructions({
+        bookingId: booking.id,
+        hostId: outsider.id,
+        body: "IBAN: MK07250120000058984",
+      })
+    ).rejects.toThrow("Booking not found");
+
+    await expect(
+      shareBookingPaymentInstructions({
+        bookingId: booking.id,
+        hostId: host.id,
+        body: "IBAN: MK07250120000058984",
+      })
+    ).rejects.toThrow("accepted, confirmed");
+
+    await db.booking.update({
+      where: { id: booking.id },
+      data: { status: "CONFIRMED", acceptedAt: new Date() },
+    });
+    const sensitiveBody =
+      "IBAN: MK07250120000058984 | SWIFT: KOBSMK2X | https://pay.example.test/invoice/42";
+    const paymentInput = {
+      bookingId: booking.id,
+      hostId: host.id,
+      body: sensitiveBody,
+      clientId: randomUUID(),
+    };
+    const message = await shareBookingPaymentInstructions(paymentInput);
+    const retry = await shareBookingPaymentInstructions(paymentInput);
+
+    expect(message.kind).toBe("PAYMENT_INSTRUCTIONS");
+    expect(message.body).toBe(sensitiveBody);
+    expect(retry.id).toBe(message.id);
+    const [updatedConversation, notification] = await Promise.all([
+      db.conversation.findUniqueOrThrow({ where: { id: conversation.id } }),
+      db.notification.findFirstOrThrow({
+        where: { messageId: message.id, userId: guest.id },
+      }),
+    ]);
+    expect(updatedConversation.lastMessagePreview).toBe(
+      PAYMENT_INSTRUCTIONS_PREVIEW
+    );
+    expect(notification.body).toBe(PAYMENT_INSTRUCTIONS_PREVIEW);
+    expect(updatedConversation.lastMessagePreview).not.toContain(sensitiveBody);
+    expect(notification.body).not.toContain(sensitiveBody);
+    expect(
+      (await getConversationMessages(conversation.id, guest.id)).messages.at(-1)
+        ?.kind
+    ).toBe("PAYMENT_INSTRUCTIONS");
+  });
+
+  it("rejects card and account-recovery credentials in payment instructions", async () => {
+    const { host, guest, booking } = await setup();
+    await ensureBookingConversation(booking.id, guest.id);
+    await db.booking.update({
+      where: { id: booking.id },
+      data: { status: "CONFIRMED", acceptedAt: new Date() },
+    });
+
+    await expect(
+      shareBookingPaymentInstructions({
+        bookingId: booking.id,
+        hostId: host.id,
+        body: "Card number 4242 4242 4242 4242",
+      })
+    ).rejects.toThrow("card or account-security credentials");
+    await expect(
+      shareBookingPaymentInstructions({
+        bookingId: booking.id,
+        hostId: host.id,
+        body: "My recovery code is 123456",
+      })
+    ).rejects.toThrow("card or account-security credentials");
+  });
+
+  it("keeps bank and payment coordinates out of ordinary chat previews", async () => {
+    const { host, guest, booking } = await setup();
+    const conversation = await ensureBookingConversation(booking.id, guest.id);
+
+    await expect(
+      sendConversationMessage({
+        conversationId: conversation.id,
+        senderId: host.id,
+        body: "Please transfer to IBAN MK07250120000058984",
+      }),
+    ).rejects.toThrow("after the booking is accepted");
+
+    await db.booking.update({
+      where: { id: booking.id },
+      data: { status: "CONFIRMED", acceptedAt: new Date() },
+    });
+    await expect(
+      sendConversationMessage({
+        conversationId: conversation.id,
+        senderId: host.id,
+        body: "Pay here: https://paypal.me/example-host",
+      }),
+    ).rejects.toThrow("private payment-instructions form");
+    expect(await db.message.count({ where: { conversationId: conversation.id } })).toBe(0);
   });
 
   it("returns the newest messages and paginates older history", async () => {

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { HostBookingActions } from "@/components/host/host-booking-actions";
 import { HostCancelBookingButton } from "@/components/host/host-cancel-booking-button";
 import { StartConversationButton } from "@/components/communication/start-conversation-button";
+import { BookingPaymentProgress } from "@/components/booking/booking-payment-progress";
 import type { HostActionItem } from "@/lib/host/booking-action-queue";
 import { formatLongDate } from "@/lib/host/v2/calendar-format";
 import { RESERVATION_ANCHOR, anchorProps } from "@/lib/host/v2/reservation-anchors";
@@ -376,6 +377,24 @@ export function ReservationPanel({
           ) : null}
         </div>
       </Section>
+
+      {reservation.status === "CONFIRMED" ? (
+        <BookingPaymentProgress
+          actor="HOST"
+          compact
+          progress={{
+            bookingId: reservation.id,
+            status: reservation.status,
+            currency: reservation.currency,
+            total: reservation.total,
+            depositAmount: reservation.depositAmount,
+            depositPolicy: reservation.depositPolicy,
+            paymentStatus: reservation.paymentStatus,
+            depositStatus: reservation.depositStatus,
+            paymentStatusEvents: reservation.paymentStatusEvents,
+          }}
+        />
+      ) : null}
 
       {reservation.cancellationReason ? (
         <Section

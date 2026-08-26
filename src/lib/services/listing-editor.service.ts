@@ -59,6 +59,8 @@ export async function getListingEditorData(
       beds: true,
       bathrooms: true,
       houseRulesReviewedAt: true,
+      paymentMethodsReviewedAt: true,
+      depositPolicyReviewedAt: true,
       property: {
         select: {
           propertyType: true,
@@ -181,6 +183,9 @@ export async function getListingEditorData(
           bathrooms: listing.bathrooms,
         }),
         locationComplete: listingLocationComplete(listing.property),
+        paymentMethodsReviewed:
+          listing.paymentMethodsReviewedAt !== null &&
+          listing.depositPolicyReviewedAt !== null,
         houseRulesReviewed: listing.houseRulesReviewedAt !== null,
       }),
     },
@@ -242,6 +247,8 @@ export async function getListingEditorHeader(listingId: string, hostId: string) 
       beds: true,
       bathrooms: true,
       houseRulesReviewedAt: true,
+      paymentMethodsReviewedAt: true,
+      depositPolicyReviewedAt: true,
       property: {
         select: {
           propertyType: true,
@@ -285,6 +292,9 @@ export async function getListingEditorHeader(listingId: string, hostId: string) 
         bathrooms: listing.bathrooms,
       }),
       locationComplete: listingLocationComplete(listing.property),
+      paymentMethodsReviewed:
+        listing.paymentMethodsReviewedAt !== null &&
+        listing.depositPolicyReviewedAt !== null,
       houseRulesReviewed: listing.houseRulesReviewedAt !== null,
     }),
   };
@@ -307,6 +317,8 @@ export interface ListingEditorOverview {
   availabilityMode: "OPEN" | "CLOSED";
   /** Whether the host has ever saved the House rules section. */
   houseRulesReviewed: boolean;
+  /** Whether the host has ever saved Payment arrangements. */
+  paymentMethodsReviewed: boolean;
   completeSections: string[];
 }
 
@@ -341,6 +353,8 @@ export async function getListingEditorOverview(
       bathrooms: true,
       availabilityMode: true,
       houseRulesReviewedAt: true,
+      paymentMethodsReviewedAt: true,
+      depositPolicyReviewedAt: true,
       property: {
         select: {
           propertyType: true,
@@ -393,6 +407,9 @@ export async function getListingEditorOverview(
       : null,
     availabilityMode: listing.availabilityMode === "CLOSED" ? "CLOSED" : "OPEN",
     houseRulesReviewed: listing.houseRulesReviewedAt !== null,
+    paymentMethodsReviewed:
+      listing.paymentMethodsReviewedAt !== null &&
+      listing.depositPolicyReviewedAt !== null,
     completeSections: editorCompletedSections({
       photoCount: listing._count.images,
       basicsComplete: listingBasicsComplete({
@@ -407,6 +424,9 @@ export async function getListingEditorOverview(
         bathrooms: listing.bathrooms,
       }),
       locationComplete: listingLocationComplete(listing.property),
+      paymentMethodsReviewed:
+        listing.paymentMethodsReviewedAt !== null &&
+        listing.depositPolicyReviewedAt !== null,
       houseRulesReviewed: listing.houseRulesReviewedAt !== null,
     }),
   };
