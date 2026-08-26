@@ -79,9 +79,9 @@ describe("AvailabilityStep", () => {
 });
 
 describe("AvailabilityStep — navigation", () => {
-  it("goes back to price carrying the flow's property and space type", () => {
+  it("goes back to payment arrangements carrying the flow's property and space type", () => {
     expect(step()).toContain(
-      'href="/host/start/price?propertyType=HOUSE&amp;spaceType=ENTIRE_PLACE"',
+      'href="/host/start/payment-arrangements?propertyType=HOUSE&amp;spaceType=ENTIRE_PLACE"',
     );
   });
 

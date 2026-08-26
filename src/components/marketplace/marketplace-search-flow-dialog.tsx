@@ -215,7 +215,7 @@ export function MarketplaceSearchFlowDialog({
   const stepTabs = [
     { key: "where" as const, label: labels.where },
     { key: "when" as const, label: labels.when },
-    { key: "who" as const, label: labels.who },
+    { key: "who" as const, label: labels.whosComing },
   ];
 
   return (
@@ -227,8 +227,8 @@ export function MarketplaceSearchFlowDialog({
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <div className="sr-only">
-            <DialogPrimitive.Title className={(step === "where" ? labels.where : step === "when" ? labels.when : labels.who).translated ? "notranslate" : undefined}>
-              {step === "where" ? labels.where.text : step === "when" ? labels.when.text : labels.who.text}
+            <DialogPrimitive.Title className={(step === "where" ? labels.where : step === "when" ? labels.when : labels.whosComing).translated ? "notranslate" : undefined}>
+              {step === "where" ? labels.where.text : step === "when" ? labels.when.text : labels.whosComing.text}
             </DialogPrimitive.Title>
             <DialogPrimitive.Description className={labels.searchSteps.translated ? "notranslate" : undefined}>
               {labels.searchSteps.text}

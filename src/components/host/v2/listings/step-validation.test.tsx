@@ -521,7 +521,7 @@ describe("PriceStep", () => {
     expect(draft.patches).toEqual([
       { baseNightlyRate: "90", cleaningFee: "0", currency: "EUR", currentStepId: "specialOffer" },
     ]);
-    expect(wentTo()).toEqual([`/host/start/availability?${QUERY}`]);
+    expect(wentTo()).toEqual([`/host/start/payment-arrangements?${QUERY}`]);
   });
 
   it("neither saves nor navigates on an empty amount", async () => {
@@ -772,6 +772,9 @@ describe("ReviewStep", () => {
       description: "A bright two-bedroom house a short walk from the old bazaar and the river.",
       currency: "EUR",
       baseNightlyRate: "60",
+      acceptedPaymentMethods: ["BANK_TRANSFER_LOCAL_SEPA", "PAYPAL"],
+      paymentMethodOther: null,
+      paymentInstructionTemplates: {},
       prePublishPlan: {
         availabilityStart: { mode: "now" },
         blocks: [],

@@ -15,6 +15,7 @@ import {
 import type { ListingDraftData } from "@/lib/types/listing-draft";
 import { parsePrePublishPlan } from "@/lib/types/listing-prepublish-plan";
 import { normalizePropertyType } from "@/lib/types/property-type";
+import { PAYMENT_METHOD_CODES } from "@/lib/payments/payment-methods";
 
 const draftString = z.string().max(5000);
 
@@ -43,6 +44,9 @@ const mobileListingDraftPatchSchema = z
     currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/).optional(),
     cleaningFee: draftString.optional(),
     minNights: draftString.optional(),
+    acceptedPaymentMethods: z.array(z.enum(PAYMENT_METHOD_CODES)).max(PAYMENT_METHOD_CODES.length).optional(),
+    paymentMethodOther: z.string().max(40).nullable().optional(),
+    paymentInstructionTemplates: z.record(z.enum(PAYMENT_METHOD_CODES), z.string().max(1200)).optional(),
     checkInTime: draftString.optional(),
     checkOutTime: draftString.optional(),
 

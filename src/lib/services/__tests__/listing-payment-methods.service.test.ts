@@ -41,10 +41,15 @@ describe("listing payment-method service", () => {
       otherLabel: null,
       reviewedAt: null,
     });
+    expect(initial?.instructionTemplates).toEqual({});
 
     const saved = await saveListingPaymentMethods(listing.id, host.id, {
       methods: ["OTHER", "PAYPAL"],
       otherLabel: "MobilePay",
+      instructionTemplates: {
+        PAYPAL: "PayPal: host@example.com",
+        OTHER: "MobilePay handle: 12345678",
+      },
     });
     expect(saved).toMatchObject({
       changed: true,
@@ -62,6 +67,7 @@ describe("listing payment-method service", () => {
         paymentMethodOther: true,
         paymentMethodsReviewedAt: true,
         needsReview: true,
+        paymentInstructionTemplates: true,
       },
     });
     expect(stored).toMatchObject({
@@ -70,6 +76,13 @@ describe("listing payment-method service", () => {
       needsReview: true,
     });
     expect(stored.paymentMethodsReviewedAt).toBeInstanceOf(Date);
+    expect(stored.paymentInstructionTemplates).toEqual({
+      version: 1,
+      templates: {
+        PAYPAL: "PayPal: host@example.com",
+        OTHER: "MobilePay handle: 12345678",
+      },
+    });
   });
 
   it("scopes reads and writes to the owning host", async () => {

@@ -61,6 +61,8 @@ import { promotionWizardIssues } from "@/lib/host/listing-wizard-validation";
 import { validateAvailabilityStartForPublish } from "@/lib/types/listing-availability-start";
 import { allowedListingSpaceTypes } from "@/lib/types/listing-space-type";
 import type { ListingDraftData } from "@/lib/types/listing-draft";
+import { validateListingPaymentMethods } from "@/lib/payments/payment-methods";
+import { validatePaymentInstructionTemplates } from "@/lib/payments/payment-instruction-templates";
 
 /** The screens of the create flow a blocker can send a host back to. */
 export const FLOW_STEPS = [
@@ -73,6 +75,7 @@ export const FLOW_STEPS = [
   "photos",
   "description",
   "price",
+  "payment-arrangements",
   "availability",
   "house-rules",
 ] as const;
@@ -284,6 +287,29 @@ export function publishBlockers(
     data.promotionFreeCleaning === "true" || data.promotionType === "FREE_CLEANING";
   if (freeCleaning && (!Number.isFinite(cleaningFee) || cleaningFee <= 0)) {
     add("price", "Add a cleaning fee before offering free cleaning.");
+  }
+
+  // --- Payment arrangements -------------------------------------------------------------
+  const paymentMethods = validateListingPaymentMethods({
+    methods: data.acceptedPaymentMethods ?? [],
+    otherLabel: data.paymentMethodOther ?? null,
+  });
+  if (!paymentMethods.success) {
+    add(
+      "payment-arrangements",
+      "Choose at least one payment method guests can select.",
+    );
+  } else {
+    const templates = validatePaymentInstructionTemplates(
+      data.paymentInstructionTemplates ?? {},
+      paymentMethods.value.methods,
+    );
+    if (!templates.success) {
+      add(
+        "payment-arrangements",
+        "Review or shorten the saved private payment instructions.",
+      );
+    }
   }
 
   // --- Availability -----------------------------------------------------------------------

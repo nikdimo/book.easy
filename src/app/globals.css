@@ -310,6 +310,15 @@ font.goog-text-highlight,
   will-change: left, top, width, height;
 }
 
+/* First placement has nothing to slide from: the capsule would otherwise animate
+   in from wherever the previous segment left it, sitting over a neighbouring
+   field while its panel is already open. Snap it onto the field instead. */
+.desktop-search-active-capsule[data-instant="true"] {
+  transition:
+    opacity 120ms ease-out,
+    box-shadow 200ms ease-out;
+}
+
 @keyframes desktop-search-content-in {
   from {
     opacity: 0;

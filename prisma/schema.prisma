@@ -52,6 +52,7 @@ enum ListingPaymentMethod {
   PAYPAL
   REVOLUT
   WISE
+  BITCOIN
   HOST_SECURE_CARD_LINK
   OTHER
   ARRANGE_DIRECTLY
@@ -84,6 +85,15 @@ enum BookingPaymentStatus {
   AWAITING_PAYMENT
   PAYMENT_REPORTED
   PAYMENT_CONFIRMED
+}
+
+/// Whether an accepted booking still needs the host to send private payment
+/// instructions. This is workflow state only: it never claims that money moved.
+enum BookingPaymentInstructionsStatus {
+  NOT_DECIDED
+  PENDING
+  SENT
+  NOT_NEEDED
 }
 
 /// Manual tracking for an advance payment or refundable security deposit. A
@@ -650,6 +660,11 @@ model Listing {
   acceptedPaymentMethods         ListingPaymentMethod[]   @default([])
   paymentMethodOther             String?
   paymentMethodsReviewedAt       DateTime?
+  /**
+   * Private, reusable host-authored instructions. Never expose this field through a
+   * public listing or booking DTO; it only prefills the host's post-acceptance message.
+   */
+  paymentInstructionTemplates    Json?
   /**
    * A public deposit policy only. It does not include destination details,
    * payment links, account identifiers, or any funds handled by Linger Homes.
@@ -1364,69 +1379,75 @@ model ListingAvailabilityWindow {
 // ─── Booking ────────────────────────────────────────────────────────────────────
 
 model Booking {
-  id                     String               @id @default(cuid())
-  reference              String               @unique @default(cuid())
-  listingId              String
-  guestId                String
-  checkIn                DateTime             @db.Date
-  checkOut               DateTime             @db.Date
-  guestCount             Int
-  currency               String               @default("EUR")
-  nightlyRate            Decimal              @db.Decimal(14, 3)
-  cleaningFee            Decimal              @default(0) @db.Decimal(14, 3)
-  serviceFee             Decimal              @default(0) @db.Decimal(14, 3)
-  totalPrice             Decimal              @db.Decimal(14, 3)
-  originalTotal          Decimal?             @db.Decimal(14, 3)
-  discountAmount         Decimal              @default(0) @db.Decimal(14, 3)
-  promotionId            String?
-  promotionType          PromotionType?
-  priceBreakdown         Json?
-  priceBreakdownVersion  Int?
+  id                        String                           @id @default(cuid())
+  reference                 String                           @unique @default(cuid())
+  listingId                 String
+  guestId                   String
+  checkIn                   DateTime                         @db.Date
+  checkOut                  DateTime                         @db.Date
+  guestCount                Int
+  currency                  String                           @default("EUR")
+  nightlyRate               Decimal                          @db.Decimal(14, 3)
+  cleaningFee               Decimal                          @default(0) @db.Decimal(14, 3)
+  serviceFee                Decimal                          @default(0) @db.Decimal(14, 3)
+  totalPrice                Decimal                          @db.Decimal(14, 3)
+  originalTotal             Decimal?                         @db.Decimal(14, 3)
+  discountAmount            Decimal                          @default(0) @db.Decimal(14, 3)
+  promotionId               String?
+  promotionType             PromotionType?
+  priceBreakdown            Json?
+  priceBreakdownVersion     Int?
   /// What the guest was browsing in when they booked, plus the rate used to show it.
   /// Frozen at confirmation so the confirmation page and email keep showing the same
   /// approximate figure the guest saw, instead of silently re-converting at today's
   /// rate every time the page is opened. `currency` above remains the official,
   /// payable amount; these three are a record of a display, never of an obligation.
   /// Null when the guest was already browsing in the official currency.
-  displayCurrency        String?
-  displayRate            Decimal?             @db.Decimal(20, 10)
-  displayTotal           Decimal?             @db.Decimal(14, 3)
+  displayCurrency           String?
+  displayRate               Decimal?                         @db.Decimal(20, 10)
+  displayTotal              Decimal?                         @db.Decimal(14, 3)
   /// Language selected by the guest at booking time. Confirmation pages and
   /// transactional email use this snapshot, not a later account preference.
-  guestLocale            String?
-  numberOfNights         Int
-  status                 BookingStatus        @default(PENDING)
-  responseDueAt          DateTime             @default(dbgenerated("(CURRENT_TIMESTAMP + INTERVAL '24 hours')"))
-  respondedAt            DateTime?
-  hostReminderSentAt     DateTime?
+  guestLocale               String?
+  numberOfNights            Int
+  status                    BookingStatus                    @default(PENDING)
+  responseDueAt             DateTime                         @default(dbgenerated("(CURRENT_TIMESTAMP + INTERVAL '24 hours')"))
+  respondedAt               DateTime?
+  hostReminderSentAt        DateTime?
   /// The listing's house rules exactly as they stood when this guest accepted them,
   /// plus the moment they did. Built on the server from the listing row — never from
   /// anything the client posted — and never rewritten afterwards: a host editing their
   /// rules changes what future guests agree to, not what this one already did. Null on
   /// every booking taken before acceptance was recorded, which is why it is nullable
   /// rather than defaulted. Same JSON-snapshot pattern as `priceBreakdown` above.
-  houseRulesSnapshot     Json?
-  houseRulesAcceptedAt   DateTime?
+  houseRulesSnapshot        Json?
+  houseRulesAcceptedAt      DateTime?
   /// The listing's accepted-payment-method answer as it stood when this request was
   /// created. Built server-side from the listing row, never from request input. Null
   /// only for bookings created before this snapshot was introduced.
-  paymentMethodsSnapshot Json?
+  paymentMethodsSnapshot    Json?
+  /// The method the guest chose from the frozen list above. Null only for legacy or
+  /// unanswered listings; a host cannot silently replace it during acceptance.
+  selectedPaymentMethod     ListingPaymentMethod?
   /// The listing's deposit answer exactly as it stood when this request was created.
   /// It stays null on bookings created before manual payment tracking was introduced.
-  depositPolicySnapshot  Json?
+  depositPolicySnapshot     Json?
   /// Computed from the frozen snapshot in the listing currency; never a charge,
   /// authorization, payout, or transfer processed by Linger Homes.
-  depositAmount          Decimal?             @db.Decimal(14, 3)
-  acceptedAt             DateTime?
-  paymentStatus          BookingPaymentStatus @default(UNTRACKED)
-  depositStatus          BookingDepositStatus @default(UNTRACKED)
-  paymentStatusUpdatedAt DateTime?
-  depositStatusUpdatedAt DateTime?
-  guestNote              String?
-  hostNote               String?
-  cancellationReason     String?
-  createdAt              DateTime             @default(now())
-  updatedAt              DateTime             @updatedAt
+  depositAmount             Decimal?                         @db.Decimal(14, 3)
+  acceptedAt                DateTime?
+  paymentStatus             BookingPaymentStatus             @default(UNTRACKED)
+  paymentInstructionsStatus BookingPaymentInstructionsStatus @default(NOT_DECIDED)
+  paymentInstructionsSentAt DateTime?
+  paymentInstructionsDueAt  DateTime?                        @db.Date
+  depositStatus             BookingDepositStatus             @default(UNTRACKED)
+  paymentStatusUpdatedAt    DateTime?
+  depositStatusUpdatedAt    DateTime?
+  guestNote                 String?
+  hostNote                  String?
+  cancellationReason        String?
+  createdAt                 DateTime                         @default(now())
+  updatedAt                 DateTime                         @updatedAt
 
   listing             Listing                     @relation(fields: [listingId], references: [id])
   guest               User                        @relation(fields: [guestId], references: [id])
@@ -1446,6 +1467,7 @@ model Booking {
   @@index([status, responseDueAt])
   @@index([promotionId])
   @@index([listingId, checkIn, checkOut])
+  @@index([status, paymentInstructionsStatus])
 }
 
 model BookingEmailDelivery {

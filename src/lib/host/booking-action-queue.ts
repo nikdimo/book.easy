@@ -19,6 +19,8 @@ export const HOST_ACTION_KINDS = [
   // No deadline, but a person is waiting on a reply and response time is a public
   // quality signal — it outranks anything the host can still do tomorrow.
   "REPLY_TO_GUEST",
+  // The host accepted but deliberately postponed the private payment request.
+  "SEND_PAYMENT_INSTRUCTIONS",
   // Operational prep for an imminent arrival. Time-boxed but not lossy.
   "PREPARE_CHECK_IN",
   // Soft two-week window, and nothing breaks if it slips a day.
@@ -39,6 +41,7 @@ export type HostActionBooking = {
   unreadCount: number;
   /** Deadline of an outstanding HOST_TO_GUEST review invitation, if one is open. */
   ratingDueAt: Date | null;
+  paymentInstructionsStatus?: string;
 };
 
 export type HostActionItem = {
@@ -80,6 +83,12 @@ function reasonsFor(booking: HostActionBooking, now: Date): HostActionKind[] {
   if (booking.unreadCount > 0) {
     reasons.push("REPLY_TO_GUEST");
   }
+  if (
+    booking.status === "CONFIRMED" &&
+    booking.paymentInstructionsStatus === "PENDING"
+  ) {
+    reasons.push("SEND_PAYMENT_INSTRUCTIONS");
+  }
   if (booking.status === "CONFIRMED") {
     const days = daysUntil(booking.checkIn, now);
     if (days >= 0 && days <= CHECK_IN_HORIZON_DAYS) reasons.push("PREPARE_CHECK_IN");
@@ -111,6 +120,7 @@ function urgencyFor(
     return hoursLeft <= CRITICAL_HOURS ? "critical" : "soon";
   }
   if (kind === "REPLY_TO_GUEST") return "soon";
+  if (kind === "SEND_PAYMENT_INSTRUCTIONS") return "soon";
   if (kind === "PREPARE_CHECK_IN") {
     return daysUntil(booking.checkIn, now) === 0 ? "soon" : "planned";
   }

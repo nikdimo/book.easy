@@ -264,6 +264,8 @@ export function ManageCalendarPanel({
   function menuValue(candidate: WorkbenchEditor): {
     text: string;
     attention?: boolean;
+    /** The value names an absence, so the row shows it without a pill. */
+    empty?: boolean;
   } {
     if (candidate === "availability" && selection) {
       const counts = summarizeSelectionAvailability(
@@ -301,6 +303,7 @@ export function ManageCalendarPanel({
     if (candidate === "promotions" && selection) {
       const count = selectionPromotionSummaries(listing, selection).length;
       return {
+        empty: count === 0,
         text: interpolate(
           i18n.plural(
             "host.v2.calendar.menu.promotions_count",
@@ -330,7 +333,10 @@ export function ManageCalendarPanel({
       (promotion) =>
         !promotion.endDate || compareYmd(promotion.endDate, today) > 0,
     );
-    return { text: promotionSummary(i18n, activeOrUpcoming).text };
+    return {
+      text: promotionSummary(i18n, activeOrUpcoming).text,
+      empty: activeOrUpcoming.length === 0,
+    };
   }
 
   /**
@@ -507,12 +513,18 @@ export function ManageCalendarPanel({
                   </p>
                 ) : (
                   /* An empty panel used to say only what it was for. Saying how to fill it
-                     is the part a host opening the calendar for the first time is missing. */
+                     is the part a host opening the calendar for the first time is missing.
+
+                     It used to say only "Pick dates on the calendar", which reads as a
+                     precondition — as if the rows below were locked until a date was
+                     picked. They are not: with no selection they are the listing-wide
+                     editors and work right now. Naming both ways in stops a host who
+                     wants the base price from hunting the grid for permission. */
                   <p className="mt-0.5 truncate text-[0.6875rem] text-slate-400">
                     {
                       i18n.resolve(
-                        "host.v2.calendar.pick_dates_hint",
-                        "Pick dates on the calendar",
+                        "host.v2.calendar.menu_start_hint",
+                        "Choose a setting below, or pick dates first",
                       ).text
                     }
                   </p>
@@ -520,10 +532,11 @@ export function ManageCalendarPanel({
               </div>
               {selection ? <ClearDatesChip onClick={onClearSelection} /> : null}
             </div>
-            {/* Hairlines, not cards: they group the three into one list of
-                destinations and give each row an edge at rest, which is the thing a
-                hover-only affordance could never do on a phone. */}
-            <div className="divide-y divide-slate-100">
+            {/* Cards, not hairlines: a hairline gives a row an edge, but not a
+                surface, and a row with no surface reads as a line in a summary table
+                rather than as somewhere to go. The gap between them is what separates
+                these three destinations from the quiet list underneath. */}
+            <div className="flex flex-col gap-2">
               {WORKBENCH_MENU[scope].map((candidate, rowIndex) => {
                 const value = menuValue(candidate);
                 return (
@@ -532,6 +545,7 @@ export function ManageCalendarPanel({
                     label={workbenchEditorLabel(i18n, candidate).text}
                     value={value.text}
                     attention={value.attention}
+                    emptyValue={value.empty}
                     reveal={selectionAttention}
                     revealIndex={rowIndex}
                     onClick={() => {

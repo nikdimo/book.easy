@@ -211,11 +211,12 @@ describe("booking conversation", () => {
     expect(message.kind).toBe("PAYMENT_INSTRUCTIONS");
     expect(message.body).toBe(sensitiveBody);
     expect(retry.id).toBe(message.id);
-    const [updatedConversation, notification] = await Promise.all([
+    const [updatedConversation, notification, updatedBooking] = await Promise.all([
       db.conversation.findUniqueOrThrow({ where: { id: conversation.id } }),
       db.notification.findFirstOrThrow({
         where: { messageId: message.id, userId: guest.id },
       }),
+      db.booking.findUniqueOrThrow({ where: { id: booking.id } }),
     ]);
     expect(updatedConversation.lastMessagePreview).toBe(
       PAYMENT_INSTRUCTIONS_PREVIEW
@@ -223,6 +224,8 @@ describe("booking conversation", () => {
     expect(notification.body).toBe(PAYMENT_INSTRUCTIONS_PREVIEW);
     expect(updatedConversation.lastMessagePreview).not.toContain(sensitiveBody);
     expect(notification.body).not.toContain(sensitiveBody);
+    expect(updatedBooking.paymentInstructionsStatus).toBe("SENT");
+    expect(updatedBooking.paymentInstructionsSentAt).not.toBeNull();
     expect(
       (await getConversationMessages(conversation.id, guest.id)).messages.at(-1)
         ?.kind

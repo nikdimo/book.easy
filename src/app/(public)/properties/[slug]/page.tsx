@@ -45,7 +45,7 @@ import { getPropertyTypeLabel } from "@/lib/services/property-type.service";
 import { auth } from "@/lib/auth";
 import { getFavoriteListingIdSet } from "@/lib/services/favorite.service";
 import { getT, T, ti, tPlural } from "@/lib/i18n/t";
-import { getPriceFormatter } from "@/lib/currency/price";
+import { LocalizedPrice } from "@/components/shared/localized-price";
 import {
   resolveListingSpaceTypeLabel,
   resolvePropertyTypeLabel,
@@ -85,10 +85,7 @@ export default async function ListingDetailPage({
 }: ListingPageProps) {
   const { slug } = await params;
   const search = await searchParams;
-  const [listing, price] = await Promise.all([
-    getListingBySlug(slug),
-    getPriceFormatter(),
-  ]);
+  const listing = await getListingBySlug(slug);
 
   if (!listing) notFound();
 
@@ -460,12 +457,11 @@ export default async function ListingDetailPage({
                       >
                         {cleaningFeeLabel.text}
                       </span>{" "}
-                      {
-                        price.format(
-                          Number(listing.pricingRule.cleaningFee),
-                          listing.pricingRule.currency,
-                        ).text
-                      }
+                      <LocalizedPrice
+                        amount={Number(listing.pricingRule.cleaningFee)}
+                        currency={listing.pricingRule.currency}
+                        locale={t.locale}
+                      />
                     </span>
                   </span>
                 </>

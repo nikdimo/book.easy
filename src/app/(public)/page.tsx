@@ -21,7 +21,6 @@ import { CompactHomeSearch } from "@/components/public/compact-home-search";
 import { MarketplaceSearchBar } from "@/components/marketplace/marketplace-search-bar";
 import type { MapPin } from "@/components/marketplace/properties-map";
 import { getMapCoordinatesForListing } from "@/lib/utils/listing-map-coords";
-import { getPriceFormatter } from "@/lib/currency/price";
 import type { ListingCardSerialized } from "@/lib/serializers/listing-card";
 import { getT, T, type Translator } from "@/lib/i18n/t";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
@@ -102,13 +101,12 @@ async function loadHeroSearchData(): Promise<{
   }
 }
 
-/** Map markers for the home page's map view. No search dates here, so the marker label
+/** Map markers for the home page's map view. No search dates here, so the marker price
  * is the nightly rate rather than a stay total (see /properties, which has both).
+ * The amount travels in the listing's own currency and the marker converts it from the
+ * display currency in context, so the map never disagrees with the cards beside it.
  * Listings without coordinates simply don't get a pin. */
-function toMapPins(
-  listings: ListingCardSerialized[],
-  price: Awaited<ReturnType<typeof getPriceFormatter>>,
-): MapPin[] {
+function toMapPins(listings: ListingCardSerialized[]): MapPin[] {
   return listings.flatMap((listing) => {
     const coordinates = getMapCoordinatesForListing(listing);
     if (!coordinates) return [];
@@ -119,12 +117,12 @@ function toMapPins(
         slug: listing.slug,
         lat: coordinates.lat,
         lng: coordinates.lng,
-        label: listing.pricingRule
-          ? price.format(
-              listing.pricingRule.baseNightlyRate,
-              listing.pricingRule.currency,
-            ).text
-          : "—",
+        price: listing.pricingRule
+          ? {
+              amount: Number(listing.pricingRule.baseNightlyRate),
+              currency: listing.pricingRule.currency,
+            }
+          : null,
         title: listing.title,
         location: [listing.property.area, listing.property.city]
           .filter(Boolean)
@@ -267,10 +265,9 @@ function OwnerGrowthHero({
 
 export default async function HomePage() {
   const t = await getT();
-  const [homeData, heroSearchData, price] = await Promise.all([
+  const [homeData, heroSearchData] = await Promise.all([
     loadHomeData(),
     loadHeroSearchData(),
-    getPriceFormatter(),
   ]);
   const { totalListings, popularListings, listings, dbError } = homeData;
   const isLowInventory = totalListings > 0 && totalListings <= LOW_INVENTORY_THRESHOLD;
@@ -297,7 +294,7 @@ export default async function HomePage() {
           <HomeListingsView
             heading={<T t={t} k="home.featured_stays" source="Featured stays" />}
             defaultView="detailed"
-            pins={toMapPins(listings, price)}
+            pins={toMapPins(listings)}
             detailed={<SpotlightGrid listings={listings} />}
             compact={<CompactGrid listings={listings} />}
             mapSearch={
@@ -350,7 +347,7 @@ export default async function HomePage() {
             }
             defaultView="compact"
             // Everything on screen, so the map matches the page rather than one section.
-            pins={toMapPins([...popularListings, ...listings], price)}
+            pins={toMapPins([...popularListings, ...listings])}
             compact={<CompactGrid listings={listings} />}
             detailed={<SpotlightGrid listings={listings} />}
             mapSearch={

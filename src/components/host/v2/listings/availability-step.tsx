@@ -302,7 +302,7 @@ export function AvailabilityStep({
       </main>
 
       <ListingFlowFooter
-        backHref={`/host/start/price?${query}`}
+        backHref={`/host/start/payment-arrangements?${query}`}
         // Next is a link only once the answer holds; until then it is a button that
         // reveals what is missing, so the host is never navigated away from an
         // unanswered question and never meets a dead disabled control either.

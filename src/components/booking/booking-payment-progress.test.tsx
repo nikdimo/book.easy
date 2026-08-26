@@ -5,8 +5,8 @@ import { BookingPaymentProgress, type BookingPaymentProgressView } from "./booki
 vi.mock("@/lib/actions/booking-payment.actions", () => ({
   recordBookingPaymentEventAction: vi.fn(),
 }));
-vi.mock("@/lib/actions/communication.actions", () => ({
-  shareBookingPaymentInstructionsAction: vi.fn(),
+vi.mock("@/lib/actions/booking.actions", () => ({
+  sendBookingPaymentRequestAction: vi.fn(),
 }));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: vi.fn() }),
@@ -15,6 +15,7 @@ vi.mock("next/navigation", () => ({
 const confirmed: BookingPaymentProgressView = {
   bookingId: "booking-1",
   status: "CONFIRMED",
+  checkIn: "2027-01-10",
   currency: "EUR",
   total: 325,
   depositAmount: 75,
@@ -30,6 +31,8 @@ const confirmed: BookingPaymentProgressView = {
     returnDaysAfterCheckout: 7,
   },
   paymentStatus: "AWAITING_PAYMENT",
+  paymentInstructionsStatus: "PENDING",
+  selectedPaymentMethod: "BANK_TRANSFER_LOCAL_SEPA",
   depositStatus: "RETURN_REPORTED",
   paymentStatusEvents: [
     {
@@ -57,6 +60,28 @@ describe("BookingPaymentProgress", () => {
     expect(html).toContain('data-payment-event="HOST_REPORT_DEPOSIT_RETURNED"');
     expect(html).toContain("Reported by host");
     expect(html).not.toContain("IBAN:");
+  });
+
+  it("prefills saved instructions for the host to review but never for the guest", () => {
+    const savedPaymentInstructionTemplates = [{
+      methodCode: "BANK_TRANSFER_INTERNATIONAL" as const,
+      body: "IBAN: DK5000400440116243",
+    }];
+    const hostHtml = renderToStaticMarkup(
+      <BookingPaymentProgress
+        progress={{ ...confirmed, savedPaymentInstructionTemplates }}
+        actor="HOST"
+      />,
+    );
+    const guestHtml = renderToStaticMarkup(
+      <BookingPaymentProgress
+        progress={{ ...confirmed, savedPaymentInstructionTemplates }}
+        actor="GUEST"
+      />,
+    );
+
+    expect(hostHtml).toContain("IBAN: DK5000400440116243");
+    expect(guestHtml).not.toContain("IBAN: DK5000400440116243");
   });
 
   it("does not offer post-acceptance mutations before confirmation", () => {

@@ -402,6 +402,10 @@ function MarketplaceSearchBarInner({
   const whereFieldRef = useRef<HTMLDivElement>(null);
   const whenFieldRef = useRef<HTMLDivElement>(null);
   const whoFieldRef = useRef<HTMLDivElement>(null);
+  // Who / reset / submit share a shrink-0 group whose width changes when the submit
+  // button grows its label. That slides the Who field without resizing it, so the
+  // group is what the capsule has to watch to stay on the field.
+  const trailingGroupRef = useRef<HTMLDivElement>(null);
   const pendingDatePickerCloseFrameRef = useRef<number | null>(null);
   const [capsuleGeometry, setCapsuleGeometry] =
     useState<CapsuleGeometry | null>(null);
@@ -410,9 +414,23 @@ function MarketplaceSearchBarInner({
   const [desktopShellVisible, setDesktopShellVisible] = useState(false);
   const [popoverGeometry, setPopoverGeometry] =
     useState<PopoverGeometry | null>(null);
+  // The capsule keeps its last box while hidden, so a fresh open would otherwise
+  // slide it in from whichever segment was active last — reading, for 260ms, as a
+  // white pill parked over a neighbouring field while its panel is already open.
+  // Opening also widens the submit button over 200ms, which shifts every segment
+  // sideways under a capsule that is still easing towards the old position. Snap
+  // during both, and only animate once the pill has settled on a segment.
+  const [capsuleSettled, setCapsuleSettled] = useState(false);
   const visualDesktopPanel =
     activeDesktopPanel ??
     (desktopShellVisible ? renderedDesktopPanel : null);
+  const capsuleSnap = !visualDesktopPanel || !capsuleSettled;
+
+  useEffect(() => {
+    if (!visualDesktopPanel) return;
+    const settle = setTimeout(() => setCapsuleSettled(true), 260);
+    return () => clearTimeout(settle);
+  }, [visualDesktopPanel]);
 
   useEffect(
     () => () => {
@@ -439,6 +457,8 @@ function MarketplaceSearchBarInner({
       // enough for the next trigger to claim it, avoiding a one-frame flash.
       hideTimer = setTimeout(() => {
         setDesktopShellVisible(false);
+        // The capsule is hidden from here on, so the next open starts snapped.
+        setCapsuleSettled(false);
         removeTimer = setTimeout(() => setRenderedDesktopPanel(null), 180);
       }, 80);
     }
@@ -513,11 +533,14 @@ function MarketplaceSearchBarInner({
     updateGeometry();
     const resizeObserver = new ResizeObserver(updateGeometry);
     resizeObserver.observe(form);
-    [whereFieldRef.current, whenFieldRef.current, whoFieldRef.current].forEach(
-      (node) => {
-        if (node) resizeObserver.observe(node);
-      }
-    );
+    [
+      whereFieldRef.current,
+      whenFieldRef.current,
+      whoFieldRef.current,
+      trailingGroupRef.current,
+    ].forEach((node) => {
+      if (node) resizeObserver.observe(node);
+    });
     window.addEventListener("resize", updateGeometry);
     window.addEventListener("scroll", updateGeometry, true);
 
@@ -858,6 +881,7 @@ function MarketplaceSearchBarInner({
           <span
             aria-hidden
             className="desktop-search-active-capsule pointer-events-none absolute z-0 rounded-full border border-black/[0.04] bg-white shadow-[0_2px_10px_rgba(15,23,42,0.12)]"
+            data-instant={capsuleSnap ? "true" : undefined}
             style={
               capsuleGeometry
                 ? {
@@ -948,7 +972,10 @@ function MarketplaceSearchBarInner({
             />
           </div>
 
-          <div className="relative z-10 flex min-w-0 shrink-0 items-center pl-0.5 pr-0.5">
+          <div
+            ref={trailingGroupRef}
+            className="relative z-10 flex min-w-0 shrink-0 items-center pl-0.5 pr-0.5"
+          >
             <div ref={whoFieldRef} className="flex min-w-0 self-stretch">
               <MarketplaceGuestSelector
                 layout="pill"

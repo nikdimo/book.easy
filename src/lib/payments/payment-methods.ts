@@ -11,6 +11,7 @@ export const PAYMENT_METHOD_CODES = [
   "PAYPAL",
   "REVOLUT",
   "WISE",
+  "BITCOIN",
   "HOST_SECURE_CARD_LINK",
   "OTHER",
   "ARRANGE_DIRECTLY",
@@ -63,6 +64,26 @@ const ISO_COUNTRY_CODES = new Set(
 
 export function isPaymentMethodCode(value: unknown): value is PaymentMethodCode {
   return typeof value === "string" && PAYMENT_METHOD_SET.has(value);
+}
+
+/** Stable English source label for server-authored audit/message copy. Guest-facing
+ * UI resolves the same sources through i18n at render time. */
+export function paymentMethodSourceLabel(
+  code: PaymentMethodCode,
+  otherLabel?: string | null,
+): string {
+  switch (code) {
+    case "CASH_AT_PROPERTY": return "Cash at the property";
+    case "BANK_TRANSFER_LOCAL_SEPA": return "Local or SEPA bank transfer";
+    case "BANK_TRANSFER_INTERNATIONAL": return "International bank transfer";
+    case "PAYPAL": return "PayPal";
+    case "REVOLUT": return "Revolut";
+    case "WISE": return "Wise";
+    case "BITCOIN": return "Bitcoin";
+    case "HOST_SECURE_CARD_LINK": return "Secure card payment link from the host";
+    case "OTHER": return otherLabel?.trim() || "Other payment method";
+    case "ARRANGE_DIRECTLY": return "Arrange payment directly";
+  }
 }
 
 export function normalizeOtherPaymentMethodLabel(value: unknown): string | null {

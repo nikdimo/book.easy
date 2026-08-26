@@ -40,6 +40,7 @@ export function PaymentArrangementsWorkspace({
       const result = await updateListingPaymentMethods(listingId, {
         methods: draft.methodCodes,
         otherLabel: draft.otherLabel,
+        instructionTemplates: draft.instructionTemplates ?? {},
       });
       if ("error" in result || "issues" in result) {
         throw new Error("Payment arrangements were rejected.");

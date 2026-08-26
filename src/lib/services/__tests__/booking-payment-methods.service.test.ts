@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { db } from "@/lib/db";
 import { parsePaymentMethodsSnapshot } from "@/lib/payments/payment-methods";
-import { createBooking } from "@/lib/services/booking.service";
+import { confirmBooking, createBooking } from "@/lib/services/booking.service";
 import {
   cleanupTestFixtures,
   createTestGuest,
@@ -55,6 +55,8 @@ describe("payment methods on a booking request", () => {
       checkIn,
       checkOut,
       guestCount: 2,
+      // The host now accepts two methods, so the guest has to pick one.
+      selectedPaymentMethod: "PAYPAL",
       ...({
         paymentMethodsSnapshot: {
           version: 1,
@@ -72,6 +74,7 @@ describe("payment methods on a booking request", () => {
       methods: ["PAYPAL", "OTHER"],
       otherLabel: "MobilePay",
     });
+    expect(stored.selectedPaymentMethod).toBe("PAYPAL");
   });
 
   it("snapshots UNANSWERED for a new request and leaves it immutable", async () => {
@@ -99,5 +102,73 @@ describe("payment methods on a booking request", () => {
       methods: [],
       otherLabel: null,
     });
+  });
+
+  it("requires the guest to choose when the host offers multiple methods", async () => {
+    const { listing, guest, checkIn, checkOut } = await setup(650);
+    await db.listing.update({
+      where: { id: listing.id },
+      data: {
+        acceptedPaymentMethods: ["PAYPAL", "BITCOIN"],
+        paymentMethodsReviewedAt: new Date(),
+      },
+    });
+
+    await expect(
+      createBooking({
+        listingId: listing.id,
+        guestId: guest.id,
+        checkIn,
+        checkOut,
+        guestCount: 2,
+      }),
+    ).rejects.toThrow("Choose a payment method");
+  });
+
+  it("rejects a stale choice that the host no longer accepts", async () => {
+    const { listing, guest, checkIn, checkOut } = await setup(660);
+    await db.listing.update({
+      where: { id: listing.id },
+      data: {
+        acceptedPaymentMethods: ["PAYPAL"],
+        paymentMethodsReviewedAt: new Date(),
+      },
+    });
+
+    await expect(
+      createBooking({
+        listingId: listing.id,
+        guestId: guest.id,
+        checkIn,
+        checkOut,
+        guestCount: 2,
+        selectedPaymentMethod: "BITCOIN",
+      }),
+    ).rejects.toThrow("accepted payment methods changed");
+  });
+
+  it("creates the host's send-payment-information task after accepting a remote method", async () => {
+    const { listing, guest, checkIn, checkOut } = await setup(670);
+    const storedListing = await db.listing.update({
+      where: { id: listing.id },
+      data: {
+        acceptedPaymentMethods: ["BANK_TRANSFER_INTERNATIONAL"],
+        paymentMethodsReviewedAt: new Date(),
+      },
+      select: { hostId: true },
+    });
+    const booking = await createBooking({
+      listingId: listing.id,
+      guestId: guest.id,
+      checkIn,
+      checkOut,
+      guestCount: 2,
+      selectedPaymentMethod: "BANK_TRANSFER_INTERNATIONAL",
+    });
+
+    await confirmBooking(booking.id, storedListing.hostId);
+
+    const accepted = await db.booking.findUniqueOrThrow({ where: { id: booking.id } });
+    expect(accepted.paymentInstructionsStatus).toBe("PENDING");
   });
 });

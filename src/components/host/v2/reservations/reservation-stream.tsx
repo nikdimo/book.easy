@@ -9,6 +9,7 @@ import {
   Clock,
   DoorOpen,
   MessageCircle,
+  Send,
   Search,
   Star,
 } from "lucide-react";
@@ -76,6 +77,7 @@ import {
 const KIND_ICONS: Record<HostActionKind, typeof Clock> = {
   RESPOND_TO_REQUEST: Clock,
   REPLY_TO_GUEST: MessageCircle,
+  SEND_PAYMENT_INSTRUCTIONS: Send,
   PREPARE_CHECK_IN: DoorOpen,
   RATE_GUEST: Star,
 };
@@ -337,6 +339,11 @@ function ActionCard({
                 ).text
               }
             />
+          ) : item.kind === "SEND_PAYMENT_INSTRUCTIONS" ? (
+            <Button type="button" size="sm" onClick={onSelect}>
+              <Send className="size-3.5" aria-hidden />
+              {i18n.resolve("host.v2.reservations.send_payment", "Send payment request").text}
+            </Button>
           ) : (
             <>
               <Button type="button" size="sm" onClick={onSelect}>

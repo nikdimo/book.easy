@@ -3,14 +3,18 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { recordBookingPaymentEventAction } from "@/lib/actions/booking-payment.actions";
-import { shareBookingPaymentInstructionsAction } from "@/lib/actions/communication.actions";
+import { sendBookingPaymentRequestAction } from "@/lib/actions/booking.actions";
 import type { DepositPolicySnapshotV1 } from "@/lib/payments/deposit-policy";
+import type { SavedPaymentInstructionTemplate } from "@/lib/payments/payment-instruction-templates";
+import type { PaymentMethodCode } from "@/lib/payments/payment-methods";
 import { DepositPolicySummary } from "./deposit-policy-summary";
+import { PaymentMethodName } from "./accepted-payment-methods";
 import { useI18n } from "@/lib/i18n/client";
 
 type PaymentEvent =
@@ -28,11 +32,15 @@ type PaymentEvent =
 export interface BookingPaymentProgressView {
   bookingId: string;
   status: string;
+  checkIn: string;
   currency: string;
   total: number;
   depositAmount: number | null;
   depositPolicy: DepositPolicySnapshotV1 | null;
   paymentStatus: string;
+  paymentInstructionsStatus: string;
+  selectedPaymentMethod: PaymentMethodCode | null;
+  paymentMethodOtherLabel?: string | null;
   depositStatus: string;
   paymentStatusEvents: Array<{
     id: string;
@@ -40,6 +48,8 @@ export interface BookingPaymentProgressView {
     eventType: string;
     createdAt: string;
   }>;
+  /** Host-only prefill; this component never receives it for a guest. */
+  savedPaymentInstructionTemplates?: SavedPaymentInstructionTemplate[];
 }
 
 const PAYMENT_LABELS: Record<string, string> = {
@@ -230,10 +240,22 @@ function ProgressControls({
   );
 }
 
-function PaymentInstructionsForm({ bookingId }: { bookingId: string }) {
-  const { requestedLocale, resolve } = useI18n();
+function PaymentInstructionsForm({
+  bookingId,
+  checkIn,
+  initialTemplates,
+}: {
+  bookingId: string;
+  checkIn: string;
+  initialTemplates?: SavedPaymentInstructionTemplate[];
+}) {
+  const { resolve } = useI18n();
   const router = useRouter();
-  const [body, setBody] = useState("");
+  const [body, setBody] = useState(() =>
+    formatSavedInstructionTemplates(initialTemplates ?? []),
+  );
+  const [dueDate, setDueDate] = useState(checkIn);
+  const [saveForFuture, setSaveForFuture] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -241,18 +263,19 @@ function PaymentInstructionsForm({ bookingId }: { bookingId: string }) {
     if (!body.trim()) return;
     startTransition(async () => {
       try {
-        const result = await shareBookingPaymentInstructionsAction({
+        const result = await sendBookingPaymentRequestAction({
           bookingId,
-          body,
-          sourceLocale: requestedLocale,
+          instructions: body,
+          dueDate,
+          saveForFuture,
         });
         if (result?.error) {
           // This is deliberately generic: never reflect payment text in a toast or error.
           toast.error(resolve("booking.payment_progress.instructions_failed", "Could not share payment instructions").text);
           return;
         }
-        setBody("");
-        toast.success(resolve("booking.payment_progress.instructions_shared", "Payment instructions shared in the conversation").text);
+        if (result.warning) toast.warning(result.warning);
+        else toast.success(resolve("booking.payment_progress.instructions_shared", "Payment request shared in the conversation").text);
         router.refresh();
       } catch {
         toast.error(resolve("booking.payment_progress.instructions_failed", "Could not share payment instructions").text);
@@ -262,6 +285,20 @@ function PaymentInstructionsForm({ bookingId }: { bookingId: string }) {
 
   return (
     <form onSubmit={submit} className="space-y-3">
+      <div className="space-y-1.5">
+        <Label htmlFor={`payment-due-${bookingId}`}>
+          {resolve("booking.payment_progress.due_date", "Payment due").text}
+        </Label>
+        <input
+          id={`payment-due-${bookingId}`}
+          type="date"
+          value={dueDate}
+          max={checkIn}
+          onChange={(event) => setDueDate(event.currentTarget.value)}
+          required
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+        />
+      </div>
       <div className="space-y-1.5">
         <Label htmlFor={`payment-instructions-${bookingId}`}>
           {resolve("booking.payment_progress.instructions_label", "Secure payment instructions").text}
@@ -273,7 +310,7 @@ function PaymentInstructionsForm({ bookingId }: { bookingId: string }) {
           maxLength={2000}
           rows={5}
           required
-          placeholder={resolve("booking.payment_progress.instructions_placeholder", "Explain how and when the guest should pay.").text}
+          placeholder={resolve("booking.payment_progress.instructions_placeholder", "Add the private account, payment link, handle, wallet address, or other details the guest needs.").text}
         />
       </div>
       <p className="text-xs leading-5 text-muted-foreground">
@@ -282,13 +319,28 @@ function PaymentInstructionsForm({ bookingId }: { bookingId: string }) {
       <p className="text-xs leading-5 text-destructive">
         {resolve("booking.payment_progress.instructions_security", "Never ask for or send a card number, CVV, PIN, password, seed phrase, or private key.").text}
       </p>
-      <Button type="submit" size="sm" disabled={isPending || !body.trim()}>
+      <label className="flex cursor-pointer items-start gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={saveForFuture}
+          onChange={(event) => setSaveForFuture(event.currentTarget.checked)}
+          className="mt-1 size-4 accent-primary"
+        />
+        <span>{resolve("booking.payment_progress.save_for_future", "Save these private details for future bookings using this method").text}</span>
+      </label>
+      <Button type="submit" size="sm" disabled={isPending || !body.trim() || !dueDate}>
         {isPending
           ? resolve("booking.payment_progress.instructions_sending", "Sending…").text
-          : resolve("booking.payment_progress.instructions_send", "Share instructions").text}
+          : resolve("booking.payment_progress.instructions_send", "Send payment request").text}
       </Button>
     </form>
   );
+}
+
+function formatSavedInstructionTemplates(
+  templates: SavedPaymentInstructionTemplate[],
+) {
+  return templates.map(({ body }) => body.trim()).join("\n\n");
 }
 
 /** Participant-facing manual payment progress. It never receives payment instruction text. */
@@ -315,6 +367,12 @@ export function BookingPaymentProgress({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-2 text-sm sm:grid-cols-2">
+          {progress.selectedPaymentMethod ? (
+            <p>
+              <span className="text-muted-foreground">{i18n.resolve("booking.payment_progress.chosen_method", "Chosen method").text}: </span>
+              <span className="font-medium"><PaymentMethodName t={i18n} code={progress.selectedPaymentMethod} otherLabel={progress.paymentMethodOtherLabel ?? null} /></span>
+            </p>
+          ) : null}
           <p><span className="text-muted-foreground">{i18n.resolve("booking.payment_progress.total", "Payment total").text}: </span><span className="font-medium">{money(progress.total, progress.currency, i18n.locale)}</span></p>
           <p><span className="text-muted-foreground">{i18n.resolve("booking.payment_progress.payment", "Payment").text}: </span><span className="font-medium">{statusCopy(i18n.resolve, "payment", progress.paymentStatus)}</span></p>
           {depositAmount !== null ? (
@@ -325,7 +383,30 @@ export function BookingPaymentProgress({
 
         {progress.depositPolicy ? <DepositPolicySummary t={i18n} data={progress.depositPolicy} headingAs="h3" /> : null}
 
-        {actor === "HOST" && confirmed ? <PaymentInstructionsForm bookingId={progress.bookingId} /> : null}
+        {confirmed && progress.paymentInstructionsStatus === "PENDING" ? (
+          <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+            <p>
+              {actor === "HOST"
+                ? i18n.resolve("booking.payment_progress.instructions_pending_host", "Payment instructions still need to be sent. This booking remains in your action list until you send them.").text
+                : i18n.resolve("booking.payment_progress.instructions_pending_guest", "The host has accepted your booking and will send payment instructions privately.").text}
+            </p>
+          </div>
+        ) : null}
+
+        {confirmed && progress.paymentInstructionsStatus === "SENT" ? (
+          <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900">
+            {i18n.resolve("booking.payment_progress.instructions_sent", "Payment instructions were sent in the private conversation.").text}
+          </p>
+        ) : null}
+
+        {actor === "HOST" && confirmed && progress.paymentInstructionsStatus === "PENDING" ? (
+          <PaymentInstructionsForm
+            bookingId={progress.bookingId}
+            checkIn={progress.checkIn}
+            initialTemplates={progress.savedPaymentInstructionTemplates}
+          />
+        ) : null}
         {confirmed ? <ProgressControls progress={progress} actor={actor} /> : null}
         <StatusHistory progress={progress} />
       </CardContent>

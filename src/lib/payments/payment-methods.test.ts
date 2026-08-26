@@ -24,7 +24,7 @@ describe("payment-method preference validation", () => {
         otherLabel: "MobilePay",
       },
     });
-    expect(PAYMENT_METHOD_CODES).toHaveLength(9);
+    expect(PAYMENT_METHOD_CODES).toHaveLength(10);
   });
 
   it.each([

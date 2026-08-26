@@ -102,8 +102,8 @@ describe("request and acceptance states", () => {
     );
     // The shared confirmation dialog is the action every web host uses, so the
     // instruction must be present before acceptance as well as afterwards.
-    expect(sourceByKey.get("host.booking.accept_body_direct_payment")).toContain(
-      "share your payment instructions directly with the guest",
+    expect(sourceByKey.get("host.booking.accept_payment_body")).toContain(
+      "Nothing is sent until you confirm",
     );
   });
 

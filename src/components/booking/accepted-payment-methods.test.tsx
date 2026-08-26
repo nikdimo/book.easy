@@ -32,6 +32,7 @@ describe("AcceptedPaymentMethods", () => {
       "PAYPAL",
       "REVOLUT",
       "WISE",
+      "BITCOIN",
       "HOST_SECURE_CARD_LINK",
       "OTHER",
       "ARRANGE_DIRECTLY",
@@ -52,6 +53,7 @@ describe("AcceptedPaymentMethods", () => {
     expect(html).toContain("PayPal");
     expect(html).toContain("Revolut");
     expect(html).toContain("Wise");
+    expect(html).toContain("Bitcoin");
     expect(html).toContain("Secure card payment link from the host");
     expect(html).toContain("Other payment method: <span");
     expect(html).toContain("MobilePay");

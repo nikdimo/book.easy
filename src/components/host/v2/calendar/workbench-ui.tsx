@@ -24,11 +24,22 @@ import { cn } from "@/lib/utils";
  * becomes a full-height drawer on a phone, where every row here is thumb-operated.
  */
 
-/** A row in the summary menu: what it is, where it stands, and a way in. */
+/**
+ * A row in the summary menu: what it is, where it stands, and a way in.
+ *
+ * These three rows were a hairline list on white, and hosts read them as a spec sheet
+ * about the listing rather than as three things to press — label left, value right, a
+ * grey chevron, and no resting surface at all is the shape of a read-only table. The
+ * left rail was the only part of the screen that obviously took a click, because it is
+ * the only part with a filled surface. So each row now takes one too, and the chevron
+ * sits in a chip: containment is what reads as a button, which is why the chip needs
+ * no border — the row is tinted, so a white circle separates from it on its own.
+ */
 export function SummaryRow({
   label,
   value,
   attention,
+  emptyValue,
   reveal,
   revealIndex = 0,
   onClick,
@@ -37,8 +48,15 @@ export function SummaryRow({
   label: string;
   /** The truthful current state, in a word or a short phrase. */
   value: string;
-  /** Amber value text. Reserved for a state the host has to deal with. */
+  /** Amber value. Reserved for a state the host has to deal with. */
   attention?: boolean;
+  /**
+   * The value is a word for "nothing set" — `None`, `0 promotions`.
+   *
+   * It loses the pill. A chip around `None` looks like a setting that holds a value,
+   * which is the opposite of what it says; plain muted text reads as the absence it is.
+   */
+  emptyValue?: boolean;
   /**
    * Play the arrival: the row settles in from the right as the dates become live.
    *
@@ -60,9 +78,9 @@ export function SummaryRow({
       {...(anchor ? { id: anchor, "data-linger-anchor": anchor } : {})}
       style={reveal ? { animationDelay: `${revealIndex * 70}ms` } : undefined}
       className={cn(
-        "flex min-h-11 w-full items-center gap-3 rounded-lg px-2 py-2 text-left",
-        "transition-colors duration-150 hover:bg-slate-50 active:bg-slate-100 motion-reduce:transition-none",
-        "focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0f172a]",
+        "group flex min-h-12 w-full items-center gap-3 rounded-xl bg-slate-100 px-3 py-2.5 text-left",
+        "transition-colors duration-150 hover:bg-slate-200/70 active:bg-slate-200 motion-reduce:transition-none",
+        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]",
         reveal && "calendar-menu-row-reveal",
       )}
     >
@@ -76,13 +94,32 @@ export function SummaryRow({
       <span
         title={value}
         className={cn(
-          "min-w-0 max-w-[60%] truncate text-right text-[0.8125rem]",
-          attention ? "font-medium text-amber-700" : "text-slate-500",
+          "min-w-0 max-w-[55%] truncate text-right text-[0.8125rem]",
+          /* A pill for a value the host has set, nothing for one they have not. The
+             amber case keeps its own tint: colour is spent here only on the exception,
+             so making the ordinary value green or coral would leave the exception with
+             nothing left to be. */
+          emptyValue
+            ? "text-slate-400"
+            : attention
+              ? "rounded-full bg-amber-50 px-2 py-0.5 font-medium text-amber-700"
+              : "rounded-full bg-white px-2 py-0.5 text-slate-600",
         )}
       >
         {value}
       </span>
-      <ChevronRight className="size-4 shrink-0 text-slate-400" aria-hidden />
+      {/* Inverts under the thumb rather than at rest: a solid dark disc on all three
+          rows at once outweighs the labels it points at, but as a press state the
+          weight is momentary and confirms the tap on a screen with no hover. */}
+      <span
+        className={cn(
+          "grid size-7 shrink-0 place-items-center rounded-full bg-white text-slate-900",
+          "transition-colors duration-150 group-active:bg-slate-900 group-active:text-white motion-reduce:transition-none",
+        )}
+        aria-hidden
+      >
+        <ChevronRight className="size-4" />
+      </span>
     </button>
   );
 }

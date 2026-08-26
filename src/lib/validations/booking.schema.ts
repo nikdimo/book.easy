@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { format } from "date-fns";
 import { compareYmd } from "@/lib/utils/date-only";
+import { PAYMENT_METHOD_CODES } from "@/lib/payments/payment-methods";
 
 export const createBookingSchema = z
   .object({
@@ -9,6 +10,7 @@ export const createBookingSchema = z
     checkOut: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format"),
     guestCount: z.coerce.number().int().min(1).max(20),
     guestNote: z.string().max(1000).optional(),
+    selectedPaymentMethod: z.enum(PAYMENT_METHOD_CODES).optional(),
     /**
      * The guest's explicit acceptance of the listing's house rules.
      *
@@ -36,3 +38,23 @@ export const createBookingSchema = z
   });
 
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
+
+export const acceptBookingWithPaymentSchema = z.object({
+  bookingId: z.string().trim().min(1),
+  decision: z.enum(["SEND_NOW", "SEND_LATER", "NO_INSTRUCTIONS"]),
+  instructions: z.string().trim().max(1200).optional(),
+  dueDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a valid payment deadline")
+    .optional(),
+  saveForFuture: z.boolean().optional().default(false),
+});
+
+export const sendBookingPaymentRequestSchema = z.object({
+  bookingId: z.string().trim().min(1),
+  instructions: z.string().trim().min(1).max(1200),
+  dueDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a valid payment deadline"),
+  saveForFuture: z.boolean().optional().default(false),
+});

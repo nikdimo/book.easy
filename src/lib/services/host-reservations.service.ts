@@ -14,12 +14,20 @@ import { getDisplayCurrency } from "@/lib/currency/server";
 import { getExchangeRates } from "@/lib/currency/rates";
 import { BASE_CURRENCY } from "@/lib/currency/currency-preference";
 import { parseDepositPolicySnapshot } from "@/lib/payments/deposit-policy";
+import {
+  parsePaymentInstructionTemplates,
+  savedPaymentInstructionTemplateEntries,
+} from "@/lib/payments/payment-instruction-templates";
 import type {
   HostReservation,
   HostReservationProperty,
   HostReservationsData,
 } from "@/lib/host/v2/reservation-types";
 import { dbDateToYmd, todayYmd } from "@/lib/utils/date-only";
+import {
+  isPaymentMethodCode,
+  parsePaymentMethodsSnapshot,
+} from "@/lib/payments/payment-methods";
 
 /**
  * Everything the v2 reservations panel shows, for every property the host owns.
@@ -55,6 +63,7 @@ export async function getHostReservations(
         title: true,
         checkInTime: true,
         checkOutTime: true,
+        paymentInstructionTemplates: true,
         property: { select: { city: true } },
         images: {
           where: { mediaType: "IMAGE" },
@@ -83,6 +92,9 @@ export async function getHostReservations(
         discountAmount: true,
         totalPrice: true,
         paymentStatus: true,
+        paymentInstructionsStatus: true,
+        selectedPaymentMethod: true,
+        paymentMethodsSnapshot: true,
         depositStatus: true,
         depositAmount: true,
         depositPolicySnapshot: true,
@@ -124,10 +136,16 @@ export async function getHostReservations(
     }),
   ]);
 
-  const houseTimes = new Map(
+  const listingDetails = new Map(
     listings.map((listing) => [
       listing.id,
-      { checkIn: listing.checkInTime, checkOut: listing.checkOutTime },
+      {
+        checkIn: listing.checkInTime,
+        checkOut: listing.checkOutTime,
+        savedPaymentInstructionTemplates: savedPaymentInstructionTemplateEntries(
+          parsePaymentInstructionTemplates(listing.paymentInstructionTemplates),
+        ),
+      },
     ]),
   );
 
@@ -140,7 +158,7 @@ export async function getHostReservations(
   }));
 
   const reservations: HostReservation[] = bookings.map((booking) => {
-    const times = houseTimes.get(booking.listingId);
+    const details = listingDetails.get(booking.listingId);
     return {
       id: booking.id,
       reference: booking.reference,
@@ -160,6 +178,13 @@ export async function getHostReservations(
       discountAmount: Number(booking.discountAmount),
       total: Number(booking.totalPrice),
       paymentStatus: booking.paymentStatus,
+      paymentInstructionsStatus: booking.paymentInstructionsStatus,
+      selectedPaymentMethod: isPaymentMethodCode(booking.selectedPaymentMethod)
+        ? booking.selectedPaymentMethod
+        : null,
+      paymentMethodOtherLabel:
+        parsePaymentMethodsSnapshot(booking.paymentMethodsSnapshot)?.otherLabel ??
+        null,
       depositStatus: booking.depositStatus,
       depositAmount:
         booking.depositAmount === null ? null : Number(booking.depositAmount),
@@ -182,8 +207,15 @@ export async function getHostReservations(
           : (booking.reviewInvitations[0]?.deadline?.toISOString() ?? null),
       unreadCount: booking.conversation?.participants[0]?.unreadCount ?? 0,
       conversationId: booking.conversation?.id ?? null,
-      checkInTime: times?.checkIn ?? null,
-      checkOutTime: times?.checkOut ?? null,
+      checkInTime: details?.checkIn ?? null,
+      checkOutTime: details?.checkOut ?? null,
+      savedPaymentInstructionTemplates:
+        booking.status === "CONFIRMED"
+          ? (details?.savedPaymentInstructionTemplates ?? []).filter(
+              (template) =>
+                template.methodCode === booking.selectedPaymentMethod,
+            )
+          : [],
     };
   });
 

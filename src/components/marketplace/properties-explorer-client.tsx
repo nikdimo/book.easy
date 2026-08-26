@@ -35,7 +35,8 @@ import {
   resolvePriceRange,
 } from "@/lib/search-filter-config";
 import { cn } from "@/lib/utils";
-import { PropertiesMap, type MapPin } from "@/components/marketplace/properties-map";
+import { PropertiesMap } from "@/components/marketplace/properties-map";
+import { usePinLabel, type MapPin } from "@/components/marketplace/map-pin";
 import {
   ResultsSheet,
   SHEET_PEEK_HEIGHT,
@@ -240,6 +241,7 @@ function SelectedPinCard({
   onClose: () => void;
 }) {
   const i18n = useI18n();
+  const pinLabel = usePinLabel();
 
   return (
     <div
@@ -268,8 +270,12 @@ function SelectedPinCard({
           <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
             {pin.title}
           </p>
-          <p className="notranslate mt-1 text-sm font-semibold" translate="no">
-            {pin.label}
+          <p
+            className="notranslate mt-1 text-sm font-semibold"
+            translate="no"
+            suppressHydrationWarning
+          >
+            {pinLabel(pin)}
           </p>
         </div>
       </a>

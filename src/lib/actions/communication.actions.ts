@@ -63,7 +63,13 @@ export async function shareBookingPaymentInstructionsAction(input: unknown) {
     if (!host.isHost) return { error: "Host access required" };
 
     const message = await shareBookingPaymentInstructions({
-      ...parsed.data,
+      bookingId: parsed.data.bookingId,
+      body: parsed.data.body,
+      sourceLocale: parsed.data.sourceLocale,
+      clientId: parsed.data.clientId,
+      dueAt: parsed.data.dueDate
+        ? new Date(`${parsed.data.dueDate}T00:00:00.000Z`)
+        : null,
       hostId: host.id,
     });
     await createAuditLog({

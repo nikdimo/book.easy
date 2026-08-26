@@ -385,13 +385,19 @@ export function ReservationPanel({
           progress={{
             bookingId: reservation.id,
             status: reservation.status,
+            checkIn: reservation.checkIn,
             currency: reservation.currency,
             total: reservation.total,
             depositAmount: reservation.depositAmount,
             depositPolicy: reservation.depositPolicy,
             paymentStatus: reservation.paymentStatus,
+            paymentInstructionsStatus: reservation.paymentInstructionsStatus,
+            selectedPaymentMethod: reservation.selectedPaymentMethod,
+            paymentMethodOtherLabel: reservation.paymentMethodOtherLabel,
             depositStatus: reservation.depositStatus,
             paymentStatusEvents: reservation.paymentStatusEvents,
+            savedPaymentInstructionTemplates:
+              reservation.savedPaymentInstructionTemplates ?? [],
           }}
         />
       ) : null}

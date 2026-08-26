@@ -8,6 +8,7 @@ import {
   Clock,
   DoorOpen,
   MessageCircle,
+  Send,
   MoreHorizontal,
   Star,
 } from "lucide-react";
@@ -75,6 +76,7 @@ const URGENCY_STYLES: Record<
 const KIND_ICONS: Record<HostActionKind, typeof Clock> = {
   RESPOND_TO_REQUEST: Clock,
   REPLY_TO_GUEST: MessageCircle,
+  SEND_PAYMENT_INSTRUCTIONS: Send,
   PREPARE_CHECK_IN: DoorOpen,
   RATE_GUEST: Star,
 };
@@ -111,6 +113,8 @@ function KindChip({ kind }: { kind: HostActionKind }) {
         <Tx k="host.action.chip.message" source="Unread message" />
       ) : kind === "PREPARE_CHECK_IN" ? (
         <Tx k="host.action.chip.check_in" source="Arriving soon" />
+      ) : kind === "SEND_PAYMENT_INSTRUCTIONS" ? (
+        <Tx k="host.action.chip.payment" source="Payment instructions missing" />
       ) : (
         <Tx k="host.action.chip.rate" source="Rating open" />
       )}
@@ -141,6 +145,8 @@ function ActionCard({ card }: { card: HostActionCard }) {
               <Tx k="host.action.unread" source="Guest is waiting for a reply" />
             ) : card.kind === "PREPARE_CHECK_IN" ? (
               <Tx k="host.action.checking_in" source="Checking in soon" />
+            ) : card.kind === "SEND_PAYMENT_INSTRUCTIONS" ? (
+              <Tx k="host.action.payment_missing" source="Send payment instructions" />
             ) : (
               <Tx k="host.action.rate_open" source="Rate your guest" />
             )}
@@ -198,6 +204,13 @@ function ActionCard({ card }: { card: HostActionCard }) {
                     {card.unreadCount}
                   </span>
                 ) : null}
+              </Link>
+            </Button>
+          ) : card.kind === "SEND_PAYMENT_INSTRUCTIONS" ? (
+            <Button asChild>
+              <Link href={`/host/bookings/${card.bookingId}`}>
+                <Send className="mr-1 h-4 w-4" />
+                <Tx k="host.action.send_payment" source="Send payment request" />
               </Link>
             </Button>
           ) : card.kind === "RATE_GUEST" ? (

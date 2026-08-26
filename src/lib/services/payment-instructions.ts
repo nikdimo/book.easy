@@ -26,8 +26,17 @@ function luhnIsValid(digits: string) {
 
 /** Detect 13–19 digit PAN candidates even when conventional separators are used. */
 function containsPaymentCardPan(value: string) {
-  const candidates = value.matchAll(/(?:^|[^\d])((?:\d[ -]?){12,18}\d)(?!\d)/g);
+  const candidates = value.matchAll(
+    /(?:^|[^A-Za-z0-9])((?:\d[ -]?){12,18}\d)(?![A-Za-z0-9])/g,
+  );
   for (const candidate of candidates) {
+    const candidateStart = (candidate.index ?? 0) + candidate[0].indexOf(candidate[1]);
+    const nearbyLabel = value.slice(Math.max(0, candidateStart - 32), candidateStart);
+    // Bank account identifiers can contain a Luhn-valid digit run by coincidence.
+    // Explicit IBAN/account context is allowed; card coordinates remain blocked.
+    if (/(?:iban|account\s*(?:number|no\.?))[^\n]{0,24}$/i.test(nearbyLabel)) {
+      continue;
+    }
     const digits = candidate[1].replace(/\D/g, "");
     if (digits.length >= 13 && digits.length <= 19 && luhnIsValid(digits)) {
       return true;

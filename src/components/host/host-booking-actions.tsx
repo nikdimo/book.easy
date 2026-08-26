@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Loader2, X } from "lucide-react";
+import { Check, Clock3, Loader2, Send, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,52 +14,137 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  confirmBookingAction,
+  acceptBookingWithPaymentAction,
+  getBookingAcceptancePaymentDataAction,
   rejectBookingAction,
 } from "@/lib/actions/booking.actions";
+import { PaymentMethodName } from "@/components/booking/accepted-payment-methods";
+import type { PaymentMethodCode } from "@/lib/payments/payment-methods";
+import {
+  paymentMethodCanNeedNoInstructions,
+  type BookingPaymentDecision,
+} from "@/lib/payments/booking-payment-request";
 import { Tx, useI18n } from "@/lib/i18n/client";
+import { cn } from "@/lib/utils";
+
+type AcceptanceData = {
+  bookingId: string;
+  listingId: string;
+  reference: string;
+  guestName: string | null;
+  currency: string;
+  total: number;
+  checkIn: string;
+  selectedPaymentMethod: PaymentMethodCode | null;
+  otherLabel: string | null;
+  savedInstructions: string;
+};
+
+function amount(value: number, currency: string, locale: string) {
+  try {
+    return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }).format(value)} ${currency}`;
+  } catch {
+    return `${value} ${currency}`;
+  }
+}
 
 export function HostBookingActions({ bookingId }: { bookingId: string }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [decision, setDecision] = useState<"accept" | "decline" | null>(null);
   const [reason, setReason] = useState("");
-  const { resolve } = useI18n();
+  const [payment, setPayment] = useState<AcceptanceData | null>(null);
+  const [loadingPayment, setLoadingPayment] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [paymentDecision, setPaymentDecision] =
+    useState<BookingPaymentDecision>("SEND_NOW");
+  const [instructions, setInstructions] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [saveForFuture, setSaveForFuture] = useState(false);
+  const { locale, resolve } = useI18n();
+
+  async function openAccept() {
+    setDecision("accept");
+    setPayment(null);
+    setPaymentError(null);
+    setLoadingPayment(true);
+    const result = await getBookingAcceptancePaymentDataAction(bookingId);
+    setLoadingPayment(false);
+    if ("error" in result) {
+      setPaymentError(result.error ?? "Could not load booking details");
+      return;
+    }
+    const next = result.data as AcceptanceData;
+    setPayment(next);
+    setInstructions(next.savedInstructions);
+    setDueDate(next.checkIn);
+    setSaveForFuture(false);
+    setPaymentDecision(
+      paymentMethodCanNeedNoInstructions(next.selectedPaymentMethod)
+        ? "NO_INSTRUCTIONS"
+        : "SEND_NOW",
+    );
+  }
+
+  function close() {
+    setDecision(null);
+    setPayment(null);
+    setPaymentError(null);
+    setReason("");
+  }
 
   function submit() {
     if (!decision) return;
     startTransition(async () => {
       const result =
         decision === "accept"
-          ? await confirmBookingAction(bookingId)
+          ? await acceptBookingWithPaymentAction({
+              bookingId,
+              decision: paymentDecision,
+              instructions,
+              dueDate: paymentDecision === "SEND_NOW" ? dueDate : undefined,
+              saveForFuture:
+                paymentDecision === "SEND_NOW" && saveForFuture,
+            })
           : await rejectBookingAction(bookingId, reason.trim());
       if (result.error) {
         toast.error(result.error);
         return;
       }
-      toast.success(
-        decision === "accept"
-          ? resolve("host.booking.confirmed_toast", "Booking confirmed").text
-          : resolve("host.booking.declined_toast", "Request declined").text,
-      );
-      setDecision(null);
-      setReason("");
+      if ("warning" in result && result.warning) toast.warning(result.warning);
+      else {
+        toast.success(
+          decision === "accept"
+            ? paymentDecision === "SEND_NOW"
+              ? resolve(
+                  "host.booking.accepted_and_payment_sent_toast",
+                  "Booking accepted and payment request sent",
+                ).text
+              : resolve("host.booking.confirmed_toast", "Booking confirmed").text
+            : resolve("host.booking.declined_toast", "Request declined").text,
+        );
+      }
+      close();
       router.refresh();
     });
   }
 
+  const canSubmitAccept = Boolean(
+    payment &&
+      !loadingPayment &&
+      !paymentError &&
+      (paymentDecision !== "SEND_NOW" || (instructions.trim() && dueDate)),
+  );
+
   return (
     <>
-      {/* Accept is the only green control in the host app, and declining is the only
-          thing here that destroys a booking — so they are deliberately unequal. A
-          filled red "Decline" sitting beside a filled green "Accept" would make the
-          destructive half of an irreversible pair just as easy to hit as the safe
-          half. */}
       <div className="flex flex-wrap items-center gap-1">
         <Button
-          onClick={() => setDecision("accept")}
+          onClick={() => void openAccept()}
           className="bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500"
         >
           <Check className="mr-1 h-4 w-4" />
@@ -75,18 +160,22 @@ export function HostBookingActions({ bookingId }: { bookingId: string }) {
         </Button>
       </div>
 
-      <Dialog open={decision !== null} onOpenChange={(open) => !open && setDecision(null)}>
-        <DialogContent variant="sheet" className="md:max-w-md">
+      <Dialog open={decision !== null} onOpenChange={(open) => !open && close()}>
+        <DialogContent
+          variant="sheet"
+          className={cn(
+            "max-h-[92dvh] overflow-y-auto",
+            decision === "accept" ? "md:max-w-2xl" : "md:max-w-md",
+          )}
+        >
           <DialogHeader>
-            {/* Accepting and declining are one keystroke apart and irreversible, so
-                the panel leads with a colour-coded mark: the host should know which
-                of the two they opened before reading a word. */}
             <span
-              className={`mb-1 grid size-10 place-items-center rounded-full ${
+              className={cn(
+                "mb-1 grid size-10 place-items-center rounded-full",
                 decision === "decline"
                   ? "bg-destructive/10 text-destructive"
-                  : "bg-emerald-600/10 text-emerald-700 dark:text-emerald-400"
-              }`}
+                  : "bg-emerald-600/10 text-emerald-700 dark:text-emerald-400",
+              )}
             >
               {decision === "decline" ? (
                 <X className="h-5 w-5" />
@@ -96,7 +185,7 @@ export function HostBookingActions({ bookingId }: { bookingId: string }) {
             </span>
             <DialogTitle>
               {decision === "accept" ? (
-                <Tx k="host.booking.accept_title" source="Confirm this booking?" />
+                <Tx k="host.booking.accept_title" source="Accept this booking" />
               ) : (
                 <Tx k="host.booking.decline_title" source="Decline this request?" />
               )}
@@ -104,8 +193,8 @@ export function HostBookingActions({ bookingId }: { bookingId: string }) {
             <DialogDescription>
               {decision === "accept" ? (
                 <Tx
-                  k="host.booking.accept_body_direct_payment"
-                  source="The guest will be notified immediately and the booking will be accepted. Then share your payment instructions directly with the guest."
+                  k="host.booking.accept_payment_body"
+                  source="Review the guest's payment choice and decide whether to send instructions now or later. Nothing is sent until you confirm below."
                 />
               ) : (
                 <Tx
@@ -115,7 +204,206 @@ export function HostBookingActions({ bookingId }: { bookingId: string }) {
               )}
             </DialogDescription>
           </DialogHeader>
-          {decision === "decline" ? (
+
+          {decision === "accept" ? (
+            loadingPayment ? (
+              <div className="grid min-h-44 place-items-center text-muted-foreground">
+                <Loader2
+                  className="size-6 animate-spin"
+                  aria-label={
+                    resolve(
+                      "host.booking.loading_payment",
+                      "Loading payment details",
+                    ).text
+                  }
+                />
+              </div>
+            ) : paymentError ? (
+              <p
+                role="alert"
+                className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive"
+              >
+                {paymentError}
+              </p>
+            ) : payment ? (
+              <div className="space-y-5">
+                <section className="rounded-xl border bg-muted/25 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    <Tx k="host.booking.guest_payment_choice" source="Guest chose" />
+                  </p>
+                  <div className="mt-1 flex flex-wrap items-baseline justify-between gap-2">
+                    <p className="font-semibold">
+                      {payment.selectedPaymentMethod ? (
+                        <PaymentMethodName
+                          t={{ resolve, locale }}
+                          code={payment.selectedPaymentMethod}
+                          otherLabel={payment.otherLabel}
+                        />
+                      ) : (
+                        <Tx
+                          k="host.booking.payment_choice_missing"
+                          source="Payment method not recorded"
+                        />
+                      )}
+                    </p>
+                    <p
+                      className="text-sm font-medium tabular-nums"
+                      translate="no"
+                    >
+                      {amount(payment.total, payment.currency, locale)}
+                    </p>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground" translate="no">
+                    {payment.reference}
+                  </p>
+                </section>
+
+                <fieldset className="space-y-2">
+                  <legend className="text-sm font-semibold">
+                    <Tx
+                      k="host.booking.payment_next_step"
+                      source="Payment instructions"
+                    />
+                  </legend>
+                  <PaymentDecisionOption
+                    value="SEND_NOW"
+                    current={paymentDecision}
+                    icon={Send}
+                    title={
+                      resolve(
+                        "host.booking.payment_send_now",
+                        "Accept and send payment request",
+                      ).text
+                    }
+                    description={
+                      resolve(
+                        "host.booking.payment_send_now_hint",
+                        "Review the private details below and send them with the booking total and reference.",
+                      ).text
+                    }
+                    onChange={setPaymentDecision}
+                  />
+                  <PaymentDecisionOption
+                    value="SEND_LATER"
+                    current={paymentDecision}
+                    icon={Clock3}
+                    title={
+                      resolve(
+                        "host.booking.payment_send_later",
+                        "Accept and send later",
+                      ).text
+                    }
+                    description={
+                      resolve(
+                        "host.booking.payment_send_later_hint",
+                        "The booking is accepted now and remains in your action list until instructions are sent.",
+                      ).text
+                    }
+                    onChange={setPaymentDecision}
+                  />
+                  {paymentMethodCanNeedNoInstructions(
+                    payment.selectedPaymentMethod,
+                  ) ? (
+                    <PaymentDecisionOption
+                      value="NO_INSTRUCTIONS"
+                      current={paymentDecision}
+                      icon={Check}
+                      title={
+                        resolve(
+                          "host.booking.payment_no_instructions",
+                          "No instructions needed",
+                        ).text
+                      }
+                      description={
+                        resolve(
+                          "host.booking.payment_no_instructions_hint",
+                          "Use this for cash at the property or an arrangement you will make directly.",
+                        ).text
+                      }
+                      onChange={setPaymentDecision}
+                    />
+                  ) : null}
+                </fieldset>
+
+                {paymentDecision === "SEND_NOW" ? (
+                  <section className="space-y-4 rounded-xl border p-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`payment-due-${bookingId}`}>
+                        <Tx k="host.booking.payment_due" source="Payment due" />
+                      </Label>
+                      <Input
+                        id={`payment-due-${bookingId}`}
+                        type="date"
+                        value={dueDate}
+                        max={payment.checkIn}
+                        onChange={(event) =>
+                          setDueDate(event.currentTarget.value)
+                        }
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`payment-details-${bookingId}`}>
+                        <Tx
+                          k="host.booking.payment_private_details"
+                          source="Private payment details"
+                        />
+                      </Label>
+                      <Textarea
+                        id={`payment-details-${bookingId}`}
+                        value={instructions}
+                        onChange={(event) =>
+                          setInstructions(event.currentTarget.value)
+                        }
+                        rows={6}
+                        maxLength={1200}
+                        required
+                        autoComplete="off"
+                        spellCheck={false}
+                        translate="no"
+                        placeholder={
+                          resolve(
+                            "host.booking.payment_private_details_placeholder",
+                            "Add the account, payment link, handle, wallet address, or other instructions the guest needs.",
+                          ).text
+                        }
+                      />
+                    </div>
+                    <p className="text-xs leading-5 text-muted-foreground">
+                      <Tx
+                        k="host.booking.payment_request_prepared"
+                        source="The booking reference, selected method, total, currency, and deadline are added automatically. Only the private details above can be saved for future bookings."
+                      />
+                    </p>
+                    {payment.selectedPaymentMethod ? (
+                      <label className="flex cursor-pointer items-start gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={saveForFuture}
+                          onChange={(event) =>
+                            setSaveForFuture(event.currentTarget.checked)
+                          }
+                          className="mt-1 size-4 accent-primary"
+                        />
+                        <span>
+                          <Tx
+                            k="host.booking.payment_save_future"
+                            source="Save these private details for future bookings using this method"
+                          />
+                        </span>
+                      </label>
+                    ) : null}
+                    <p className="text-xs leading-5 text-destructive">
+                      <Tx
+                        k="host.booking.payment_security"
+                        source="Never send card numbers, CVV, PINs, passwords, seed phrases, private keys, or recovery information."
+                      />
+                    </p>
+                  </section>
+                ) : null}
+              </div>
+            ) : null
+          ) : (
             <div className="flex flex-col gap-1.5">
               <Textarea
                 autoFocus
@@ -139,7 +427,8 @@ export function HostBookingActions({ bookingId }: { bookingId: string }) {
                 {reason.length}/500
               </span>
             </div>
-          ) : null}
+          )}
+
           <DialogFooter>
             <DialogClose asChild>
               <Button variant="outline" size="lg" className="sm:w-auto">
@@ -149,30 +438,91 @@ export function HostBookingActions({ bookingId }: { bookingId: string }) {
             <Button
               size="lg"
               variant={decision === "decline" ? "destructive" : "default"}
-              disabled={isPending || (decision === "decline" && !reason.trim())}
+              disabled={
+                isPending ||
+                (decision === "decline" && !reason.trim()) ||
+                (decision === "accept" && !canSubmitAccept)
+              }
               onClick={submit}
               className={
                 decision === "decline"
                   ? "sm:w-auto"
-                  : "bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto dark:bg-emerald-600 dark:hover:bg-emerald-500"
+                  : "bg-emerald-600 text-white hover:bg-emerald-700 sm:w-auto"
               }
             >
               {isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : decision === "decline" ? (
                 <X className="h-4 w-4" />
+              ) : paymentDecision === "SEND_NOW" ? (
+                <Send className="h-4 w-4" />
               ) : (
                 <Check className="h-4 w-4" />
               )}
               {isPending
                 ? resolve("host.booking.saving", "Saving…").text
-                : decision === "accept"
-                  ? resolve("host.booking.confirm_action", "Confirm booking").text
-                  : resolve("host.booking.decline_action", "Decline request").text}
+                : decision === "decline"
+                  ? resolve(
+                      "host.booking.decline_action",
+                      "Decline request",
+                    ).text
+                  : paymentDecision === "SEND_NOW"
+                    ? resolve(
+                        "host.booking.accept_send_action",
+                        "Accept booking and send payment request",
+                      ).text
+                    : resolve(
+                        "host.booking.confirm_action",
+                        "Accept booking",
+                      ).text}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+function PaymentDecisionOption({
+  value,
+  current,
+  icon: Icon,
+  title,
+  description,
+  onChange,
+}: {
+  value: BookingPaymentDecision;
+  current: BookingPaymentDecision;
+  icon: typeof Send;
+  title: string;
+  description: string;
+  onChange: (value: BookingPaymentDecision) => void;
+}) {
+  const checked = value === current;
+  return (
+    <label
+      className={cn(
+        "flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-colors",
+        checked
+          ? "border-primary bg-primary/5 ring-1 ring-primary"
+          : "hover:bg-muted/40",
+      )}
+    >
+      <input
+        type="radio"
+        name="payment-acceptance-decision"
+        value={value}
+        checked={checked}
+        onChange={() => onChange(value)}
+        className="mt-1 size-4 accent-primary"
+      />
+      <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
+      <span>
+        <span className="block text-sm font-semibold">{title}</span>
+        <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">
+          {description}
+        </span>
+      </span>
+    </label>
   );
 }

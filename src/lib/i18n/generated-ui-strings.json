@@ -1710,6 +1710,26 @@
     "filePath": "src/app/(account)/account/bookings/[id]/page.tsx"
   },
   {
+    "key": "booking.payment_method_choice.explanation",
+    "sourceText": "Choose one method accepted by the host. You will not pay now. If the host accepts, they will send any payment instructions privately.",
+    "filePath": "src/components/booking/booking-review-payment-terms.tsx"
+  },
+  {
+    "key": "booking.payment_method_choice.heading",
+    "sourceText": "How would you like to pay?",
+    "filePath": "src/components/booking/booking-review-payment-terms.tsx"
+  },
+  {
+    "key": "booking.payment_method_choice.required",
+    "sourceText": "Choose how you would like to pay before sending your request.",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.payment_progress.chosen_method",
+    "sourceText": "Chosen method",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
     "key": "booking.payment_progress.confirm_deposit_return",
     "sourceText": "Confirm deposit return",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
@@ -1762,6 +1782,11 @@
   {
     "key": "booking.payment_progress.disclaimer",
     "sourceText": "Reported by host/guest. Linger Homes has not verified or processed this.",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.due_date",
+    "sourceText": "Payment due",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
@@ -1835,8 +1860,18 @@
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
+    "key": "booking.payment_progress.instructions_pending_guest",
+    "sourceText": "The host has accepted your booking and will send payment instructions privately.",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.instructions_pending_host",
+    "sourceText": "Payment instructions still need to be sent. This booking remains in your action list until you send them.",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
     "key": "booking.payment_progress.instructions_placeholder",
-    "sourceText": "Explain how and when the guest should pay.",
+    "sourceText": "Add the private account, payment link, handle, wallet address, or other details the guest needs.",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
@@ -1851,7 +1886,7 @@
   },
   {
     "key": "booking.payment_progress.instructions_send",
-    "sourceText": "Share instructions",
+    "sourceText": "Send payment request",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
@@ -1860,8 +1895,13 @@
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
+    "key": "booking.payment_progress.instructions_sent",
+    "sourceText": "Payment instructions were sent in the private conversation.",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
     "key": "booking.payment_progress.instructions_shared",
-    "sourceText": "Payment instructions shared in the conversation",
+    "sourceText": "Payment request shared in the conversation",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
@@ -1947,6 +1987,11 @@
   {
     "key": "booking.payment_progress.reported_by_host",
     "sourceText": "Reported by host",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.save_for_future",
+    "sourceText": "Save these private details for future bookings using this method",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
@@ -4005,6 +4050,11 @@
     "filePath": "src/components/host/host-booking-action-rail.tsx"
   },
   {
+    "key": "host.action.chip.payment",
+    "sourceText": "Payment instructions missing",
+    "filePath": "src/components/host/host-booking-action-rail.tsx"
+  },
+  {
     "key": "host.action.chip.rate",
     "sourceText": "Rating open",
     "filePath": "src/components/host/host-booking-action-rail.tsx"
@@ -4040,6 +4090,11 @@
     "filePath": "src/components/host/host-booking-action-rail.tsx"
   },
   {
+    "key": "host.action.payment_missing",
+    "sourceText": "Send payment instructions",
+    "filePath": "src/components/host/host-booking-action-rail.tsx"
+  },
+  {
     "key": "host.action.rate_open",
     "sourceText": "Rate your guest",
     "filePath": "src/components/host/host-booking-action-rail.tsx"
@@ -4047,6 +4102,11 @@
   {
     "key": "host.action.review_arrival",
     "sourceText": "Review arrival",
+    "filePath": "src/components/host/host-booking-action-rail.tsx"
+  },
+  {
+    "key": "host.action.send_payment",
+    "sourceText": "Send payment request",
     "filePath": "src/components/host/host-booking-action-rail.tsx"
   },
   {
@@ -4200,18 +4260,28 @@
     "filePath": "src/components/host/host-booking-actions.tsx"
   },
   {
-    "key": "host.booking.accept_body_direct_payment",
-    "sourceText": "The guest will be notified immediately and the booking will be accepted. Then share your payment instructions directly with the guest.",
+    "key": "host.booking.accept_payment_body",
+    "sourceText": "Review the guest's payment choice and decide whether to send instructions now or later. Nothing is sent until you confirm below.",
+    "filePath": "src/components/host/host-booking-actions.tsx"
+  },
+  {
+    "key": "host.booking.accept_send_action",
+    "sourceText": "Accept booking and send payment request",
     "filePath": "src/components/host/host-booking-actions.tsx"
   },
   {
     "key": "host.booking.accept_title",
-    "sourceText": "Confirm this booking?",
+    "sourceText": "Accept this booking",
+    "filePath": "src/components/host/host-booking-actions.tsx"
+  },
+  {
+    "key": "host.booking.accepted_and_payment_sent_toast",
+    "sourceText": "Booking accepted and payment request sent",
     "filePath": "src/components/host/host-booking-actions.tsx"
   },
   {
     "key": "host.booking.confirm_action",
-    "sourceText": "Confirm booking",
+    "sourceText": "Accept booking",
     "filePath": "src/components/host/host-booking-actions.tsx"
   },
   {
@@ -4252,6 +4322,86 @@
   {
     "key": "host.booking.go_back",
     "sourceText": "Go back",
+    "filePath": "src/components/host/host-booking-actions.tsx"
+  },
+  {
+    "key": "host.booking.guest_payment_choice",
+    "sourceText": "Guest chose",
+    "filePath": "src/components/host/host-booking-actions.tsx"
+  },
+  {
+    "key": "host.booking.loading_payment",
+    "sourceText": "Loading payment details",
+    "filePath": "src/components/host/host-booking-actions.tsx"
+  },
+  {
+    "key": "host.booking.payment_choice_missing",
+    "sourceText": "Payment method not recorded",
+    "filePath": "src/components/host/host-booking-actions.tsx"
+  },
+  {
+    "key": "host.booking.payment_due",
+    "sourceText": "Payment due",
+    "filePath": "src/components/host/host-booking-actions.tsx"
+  },
+  {
+    "key": "host.booking.payment_next_step",
+    "sourceText": "Payment instructions",
+    "filePath": "src/components/host/host-booking-actions.tsx"
+  },
+  {
+    "key": "host.booking.payment_no_instructions",
+    "sourceText": "No instructions needed",
+    "filePath": "src/components/host/host-booking-actions.tsx"
+  },
+  {
+    "key": "host.booking.payment_no_instructions_hint",
+    "sourceText": "Use this for cash at the property or an arrangement you will make directly.",
+    "filePath": "src/components/host/host-booking-actions.tsx"
+  },
+  {
+    "key": "host.booking.payment_private_details",
+    "sourceText": "Private payment details",
+    "filePath": "src/components/host/host-booking-actions.tsx"
+  },
+  {
+    "key": "host.booking.payment_private_details_placeholder",
+    "sourceText": "Add the account, payment link, handle, wallet address, or other instructions the guest needs.",
+    "filePath": "src/components/host/host-booking-actions.tsx"
+  },
+  {
+    "key": "host.booking.payment_request_prepared",
+    "sourceText": "The booking reference, selected method, total, currency, and deadline are added automatically. Only the private details above can be saved for future bookings.",
+    "filePath": "src/components/host/host-booking-actions.tsx"
+  },
+  {
+    "key": "host.booking.payment_save_future",
+    "sourceText": "Save these private details for future bookings using this method",
+    "filePath": "src/components/host/host-booking-actions.tsx"
+  },
+  {
+    "key": "host.booking.payment_security",
+    "sourceText": "Never send card numbers, CVV, PINs, passwords, seed phrases, private keys, or recovery information.",
+    "filePath": "src/components/host/host-booking-actions.tsx"
+  },
+  {
+    "key": "host.booking.payment_send_later",
+    "sourceText": "Accept and send later",
+    "filePath": "src/components/host/host-booking-actions.tsx"
+  },
+  {
+    "key": "host.booking.payment_send_later_hint",
+    "sourceText": "The booking is accepted now and remains in your action list until instructions are sent.",
+    "filePath": "src/components/host/host-booking-actions.tsx"
+  },
+  {
+    "key": "host.booking.payment_send_now",
+    "sourceText": "Accept and send payment request",
+    "filePath": "src/components/host/host-booking-actions.tsx"
+  },
+  {
+    "key": "host.booking.payment_send_now_hint",
+    "sourceText": "Review the private details below and send them with the booking total and reference.",
     "filePath": "src/components/host/host-booking-actions.tsx"
   },
   {
@@ -6060,6 +6210,11 @@
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
   },
   {
+    "key": "host.editor.payment_arrangements.bank_international_placeholder",
+    "sourceText": "Account holder, bank name and address, IBAN/account number, SWIFT/BIC, and payment reference",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
     "key": "host.editor.payment_arrangements.bank_local",
     "sourceText": "Local or SEPA bank transfer",
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
@@ -6067,6 +6222,31 @@
   {
     "key": "host.editor.payment_arrangements.bank_local_description",
     "sourceText": "For domestic or SEPA transfers.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.bank_local_placeholder",
+    "sourceText": "Account holder, bank name, IBAN or local account number, and payment reference",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.bitcoin",
+    "sourceText": "Bitcoin",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.bitcoin_description",
+    "sourceText": "Accept Bitcoin to a public wallet address you provide after acceptance.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.bitcoin_placeholder",
+    "sourceText": "Bitcoin network, public wallet address, amount instructions, and payment reference",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.bitcoin_security_hint",
+    "sourceText": "Enter only a public Bitcoin address. Never enter a seed phrase or private key.",
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
   },
   {
@@ -6086,7 +6266,7 @@
   },
   {
     "key": "host.editor.payment_arrangements.intro",
-    "sourceText": "Choose every payment method you accept. Guests see the method names only—never account details or payment instructions.",
+    "sourceText": "Choose every payment method you accept. You can also save private instructions to reuse after accepting a booking.",
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
   },
   {
@@ -6170,8 +6350,38 @@
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
   },
   {
+    "key": "host.editor.payment_arrangements.private_details_description",
+    "sourceText": "Optional. Save the information you normally send for each method. It will prefill your private message after you accept a booking, and you can review or edit it before sending.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.private_details_heading",
+    "sourceText": "Saved private payment instructions",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.private_details_hint",
+    "sourceText": "Guests cannot see this while browsing or while the request is pending.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.private_details_too_long",
+    "sourceText": "Shorten the saved instructions before continuing.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.private_details_unsafe",
+    "sourceText": "Remove card details, passwords, PINs, seed phrases, private keys, or recovery information.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.provider_placeholder",
+    "sourceText": "Payment handle or secure payment link, plus any reference the guest should use",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
     "key": "host.editor.payment_arrangements.public_names_body",
-    "sourceText": "Only the selected method names appear publicly. You share any necessary instructions privately after accepting a request.",
+    "sourceText": "Only selected method names appear publicly. Saved account or wallet details stay private until you choose to send them after accepting a request.",
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
   },
   {
@@ -6196,7 +6406,7 @@
   },
   {
     "key": "host.editor.payment_arrangements.safety_body",
-    "sourceText": "Do not enter account numbers, IBAN or SWIFT codes, payment handles, links, card details, phone numbers, or payment instructions.",
+    "sourceText": "Never enter card numbers, CVV, PIN, passwords, seed phrases, private keys, or recovery information.",
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
   },
   {
@@ -12090,6 +12300,11 @@
     "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
   },
   {
+    "key": "host.v2.calendar.menu_start_hint",
+    "sourceText": "Choose a setting below, or pick dates first",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
     "key": "host.v2.calendar.menu.listing_defaults",
     "sourceText": "Default price and stay rules",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
@@ -12198,11 +12413,6 @@
     "key": "host.v2.calendar.past_rejected",
     "sourceText": "Past dates cannot be changed.",
     "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
-  },
-  {
-    "key": "host.v2.calendar.pick_dates_hint",
-    "sourceText": "Pick dates on the calendar",
-    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
   },
   {
     "key": "host.v2.calendar.previous_month",
@@ -13990,6 +14200,16 @@
     "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
   },
   {
+    "key": "host.v2.reservations.action.payment",
+    "sourceText": "Payment instructions still need to be sent",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.action.payment_consequence",
+    "sourceText": "The guest is waiting for the private information needed to pay.",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
     "key": "host.v2.reservations.action.rate",
     "sourceText": "Rate your guest",
     "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
@@ -14047,6 +14267,11 @@
   {
     "key": "host.v2.reservations.chip.check_in",
     "sourceText": "Arriving soon",
+    "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.chip.payment",
+    "sourceText": "Payment instructions missing",
     "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
   },
   {
@@ -14375,6 +14600,11 @@
     "filePath": "src/components/host/v2/reservations/reservation-stream.tsx"
   },
   {
+    "key": "host.v2.reservations.send_payment",
+    "sourceText": "Send payment request",
+    "filePath": "src/components/host/v2/reservations/reservation-stream.tsx"
+  },
+  {
     "key": "host.v2.reservations.service_fee",
     "sourceText": "Service fee",
     "filePath": "src/components/host/v2/reservations/reservation-panel.tsx"
@@ -14540,6 +14770,11 @@
     "filePath": "src/components/host/v2/listings/review-step.tsx"
   },
   {
+    "key": "host.v2.review.payment_methods_selected",
+    "sourceText": "selected",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
     "key": "host.v2.review.photos_value",
     "sourceText": "{count} photos",
     "filePath": "src/components/host/v2/listings/review-step.tsx"
@@ -14592,6 +14827,11 @@
   {
     "key": "host.v2.review.row_location",
     "sourceText": "Location",
+    "filePath": "src/components/host/v2/listings/review-step.tsx"
+  },
+  {
+    "key": "host.v2.review.row_payment_methods",
+    "sourceText": "Payment methods",
     "filePath": "src/components/host/v2/listings/review-step.tsx"
   },
   {
@@ -14855,6 +15095,11 @@
     "filePath": "src/components/booking/accepted-payment-methods.tsx"
   },
   {
+    "key": "listing.accepted_payment_methods.arrange_directly_choice",
+    "sourceText": "Arrange payment directly with the host",
+    "filePath": "src/components/booking/accepted-payment-methods.tsx"
+  },
+  {
     "key": "listing.accepted_payment_methods.bank_transfer_international",
     "sourceText": "International bank transfer",
     "filePath": "src/components/booking/accepted-payment-methods.tsx"
@@ -14862,6 +15107,11 @@
   {
     "key": "listing.accepted_payment_methods.bank_transfer_local_sepa",
     "sourceText": "Local or SEPA bank transfer",
+    "filePath": "src/components/booking/accepted-payment-methods.tsx"
+  },
+  {
+    "key": "listing.accepted_payment_methods.bitcoin",
+    "sourceText": "Bitcoin",
     "filePath": "src/components/booking/accepted-payment-methods.tsx"
   },
   {
@@ -18107,11 +18357,6 @@
   {
     "key": "search.where_to",
     "sourceText": "Where to?",
-    "filePath": "src/components/marketplace/search-labels.ts"
-  },
-  {
-    "key": "search.who",
-    "sourceText": "Who",
     "filePath": "src/components/marketplace/search-labels.ts"
   },
   {

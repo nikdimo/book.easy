@@ -10,7 +10,11 @@ import { revalidatePublicListingCaches } from "@/lib/utils/revalidate-public-lis
 
 export type UpdateListingPaymentMethodsResult =
   | { error: string }
-  | { issues: import("@/lib/payments/payment-methods").ListingPaymentMethodsIssues }
+  | {
+      issues: import("@/lib/payments/payment-methods").ListingPaymentMethodsIssues & {
+        instructionTemplates?: import("@/lib/payments/payment-instruction-templates").PaymentInstructionTemplateIssue;
+      };
+    }
   | {
       methods: import("@/lib/payments/payment-methods").PaymentMethodCode[];
       otherLabel: string | null;

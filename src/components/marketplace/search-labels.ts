@@ -56,7 +56,6 @@ export interface SearchLabels {
   flexible7: Resolved;
   flexible14: Resolved;
 
-  who: Resolved;
   addGuests: Resolved;
   adults: Resolved;
   adultsHint: Resolved;
@@ -171,7 +170,6 @@ export function useSearchLabels(): SearchLabels {
         "+- {n} days"
       ),
 
-      who: i18n.resolve("search.who", "Who"),
       addGuests: i18n.resolve("search.add_guests", "Add guests"),
       adults: i18n.resolve("search.adults", "Adults"),
       adultsHint: i18n.resolve("search.adults_hint", "Ages 13 or above"),

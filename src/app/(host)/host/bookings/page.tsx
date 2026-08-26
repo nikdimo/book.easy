@@ -101,6 +101,7 @@ export default async function HostBookingsPage() {
       checkIn: booking.checkIn,
       responseDueAt: booking.responseDueAt,
       unreadCount: unreadFor(booking),
+      paymentInstructionsStatus: booking.paymentInstructionsStatus,
       ratingDueAt: ratingDueAtFor(booking),
     })),
     now,

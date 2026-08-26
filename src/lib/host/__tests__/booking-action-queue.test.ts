@@ -121,6 +121,21 @@ describe("buildHostActionQueue", () => {
     ).map((item) => item.bookingId);
     expect(ids).toEqual(["today", "tomorrow"]);
   });
+
+  it("keeps an accepted send-later payment request in the action queue", () => {
+    const queue = buildHostActionQueue(
+      [booking({ paymentInstructionsStatus: "PENDING" })],
+      NOW,
+    );
+
+    expect(queue).toMatchObject([
+      {
+        bookingId: "b1",
+        kind: "SEND_PAYMENT_INSTRUCTIONS",
+        urgency: "soon",
+      },
+    ]);
+  });
 });
 
 describe("daysUntil", () => {

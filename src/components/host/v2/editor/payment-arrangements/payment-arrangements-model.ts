@@ -3,6 +3,13 @@ import {
   PAYMENT_METHOD_CODES as SHARED_PAYMENT_METHOD_CODES,
   type PaymentMethodCode as SharedPaymentMethodCode,
 } from "@/lib/payments/payment-methods";
+import {
+  normalizePaymentInstructionTemplates,
+  samePaymentInstructionTemplates,
+  validatePaymentInstructionTemplates,
+  type PaymentInstructionTemplateIssue,
+  type PaymentInstructionTemplates,
+} from "@/lib/payments/payment-instruction-templates";
 
 /** Re-export the shared domain vocabulary so the editor cannot drift from the server. */
 export const PAYMENT_METHOD_CODES = SHARED_PAYMENT_METHOD_CODES;
@@ -11,6 +18,7 @@ export type PaymentMethodCode = SharedPaymentMethodCode;
 export type PaymentArrangementsDraft = {
   methodCodes: PaymentMethodCode[];
   otherLabel: string | null;
+  instructionTemplates?: PaymentInstructionTemplates;
 };
 
 export type PaymentArrangementsValue = PaymentArrangementsDraft & {
@@ -47,6 +55,11 @@ export function normalizePaymentArrangementsDraft(
   return {
     methodCodes,
     otherLabel: methodCodes.includes("OTHER") ? (draft.otherLabel ?? "").trim() : null,
+    instructionTemplates: Object.fromEntries(
+      Object.entries(normalizePaymentInstructionTemplates(draft.instructionTemplates)).filter(
+        ([code]) => methodCodes.includes(code as PaymentMethodCode),
+      ),
+    ),
   };
 }
 
@@ -81,9 +94,24 @@ export function paymentArrangementsAreComplete(draft: PaymentArrangementsDraft):
   const methodCodes = normalizePaymentMethodCodes(draft.methodCodes);
   if (methodCodes.length === 0) return false;
   if (methodCodes.includes("OTHER")) {
-    return validateOtherPaymentLabel(draft.otherLabel ?? "") === null;
+    if (validateOtherPaymentLabel(draft.otherLabel ?? "") !== null) return false;
   }
-  return true;
+  const normalized = normalizePaymentArrangementsDraft(draft);
+  return validatePaymentInstructionTemplates(
+    normalized.instructionTemplates ?? {},
+    methodCodes,
+  ).success;
+}
+
+export function paymentInstructionTemplateIssue(
+  draft: PaymentArrangementsDraft,
+): PaymentInstructionTemplateIssue | null {
+  const normalized = normalizePaymentArrangementsDraft(draft);
+  const result = validatePaymentInstructionTemplates(
+    normalized.instructionTemplates ?? {},
+    normalized.methodCodes,
+  );
+  return result.success ? null : result.issue;
 }
 
 export function samePaymentArrangementsDraft(
@@ -94,6 +122,10 @@ export function samePaymentArrangementsDraft(
   const normalizedRight = normalizePaymentArrangementsDraft(right);
   return (
     normalizedLeft.otherLabel === normalizedRight.otherLabel &&
+    samePaymentInstructionTemplates(
+      normalizedLeft.instructionTemplates ?? {},
+      normalizedRight.instructionTemplates ?? {},
+    ) &&
     normalizedLeft.methodCodes.length === normalizedRight.methodCodes.length &&
     normalizedLeft.methodCodes.every((code, index) => code === normalizedRight.methodCodes[index])
   );

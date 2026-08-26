@@ -1,5 +1,7 @@
 import type { CalendarFormats } from "@/lib/host/v2/calendar-format";
 import type { DepositPolicySnapshotV1 } from "@/lib/payments/deposit-policy";
+import type { SavedPaymentInstructionTemplate } from "@/lib/payments/payment-instruction-templates";
+import type { PaymentMethodCode } from "@/lib/payments/payment-methods";
 
 /**
  * The reservations panel's payload, as plain JSON.
@@ -44,6 +46,9 @@ export interface HostReservation {
   total: number;
   /** Manual reports only; no Linger Homes payment processing is implied. */
   paymentStatus: string;
+  paymentInstructionsStatus: string;
+  selectedPaymentMethod: PaymentMethodCode | null;
+  paymentMethodOtherLabel: string | null;
   depositStatus: string;
   /** The booking-time amount, never recomputed from a later listing policy. */
   depositAmount: number | null;
@@ -67,6 +72,8 @@ export interface HostReservation {
   /** The listing's house times, shown beside the dates. */
   checkInTime: string | null;
   checkOutTime: string | null;
+  /** Owner-only saved copy used to prefill, never sent until the host submits it. */
+  savedPaymentInstructionTemplates?: SavedPaymentInstructionTemplate[];
 }
 
 export interface HostReservationsData {

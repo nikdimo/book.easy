@@ -17,21 +17,11 @@ import "leaflet/dist/leaflet.css";
 import { Maximize2, Minimize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Tx, useI18n } from "@/lib/i18n/client";
+import { usePinLabel, type MapPin } from "@/components/marketplace/map-pin";
 import type { MapBounds } from "@/lib/map-bounds";
 
-export type MapPin = {
-  id: string;
-  slug: string;
-  lat: number;
-  lng: number;
-  label: string;
-  title: string;
-  location: string;
-  imageUrl?: string;
-  imageAlt?: string;
-  /** Query string (no leading "?") carrying the current search's dates/guests to the listing page. */
-  query?: string;
-};
+export type { MapPin };
+
 
 const MAP_MAX_ZOOM = 18;
 
@@ -413,6 +403,7 @@ function useMapViewport(map: L.Map) {
 
 function ListingPreview({ pin }: { pin: MapPin }) {
   const i18n = useI18n();
+  const pinLabel = usePinLabel();
 
   return (
     <a
@@ -446,8 +437,9 @@ function ListingPreview({ pin }: { pin: MapPin }) {
           <span
             className="notranslate shrink-0 text-sm font-semibold"
             translate="no"
+            suppressHydrationWarning
           >
-            {pin.label}
+            {pinLabel(pin)}
           </span>
         </div>
         <p className="line-clamp-2 text-sm text-muted-foreground">{pin.title}</p>
@@ -458,6 +450,7 @@ function ListingPreview({ pin }: { pin: MapPin }) {
 
 function GroupedListingPreview({ pins }: { pins: MapPin[] }) {
   const i18n = useI18n();
+  const pinLabel = usePinLabel();
   const countLabel = i18n.plural(
     "properties.results",
     pins.length,
@@ -507,8 +500,9 @@ function GroupedListingPreview({ pins }: { pins: MapPin[] }) {
               <p
                 className="notranslate mt-1 text-sm font-semibold"
                 translate="no"
+                suppressHydrationWarning
               >
-                {pin.label}
+                {pinLabel(pin)}
               </p>
             </div>
           </a>
@@ -532,10 +526,11 @@ function PriceMarker({
   onSelected: (id: string | null) => void;
   onHovered: (id: string | null) => void;
 }) {
+  const pinLabel = usePinLabel();
   return (
     <Marker
       position={[pin.lat, pin.lng]}
-      icon={priceDivIcon(pin.label, active)}
+      icon={priceDivIcon(pinLabel(pin), active)}
       zIndexOffset={active ? 1000 : 0}
       eventHandlers={{
         click: () => onSelected(pin.id),

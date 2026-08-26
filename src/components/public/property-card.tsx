@@ -1,6 +1,5 @@
 import { Badge } from "@/components/ui/badge";
 import { formatDateShort } from "@/lib/utils/format";
-import { getPriceFormatter } from "@/lib/currency/price";
 import { getPropertyTypeLabel } from "@/lib/services/property-type.service";
 import { resolveListingSpaceTypeLabel, resolvePropertyTypeLabel } from "@/lib/i18n/property-type-labels";
 import { parseISO, isValid } from "date-fns";
@@ -66,8 +65,6 @@ export async function PropertyCard({
   mapListingId,
 }: PropertyCardProps) {
   const t = await getT();
-  // Request-scoped: a grid of two hundred cards resolves the rate table once.
-  const price = await getPriceFormatter();
   const { slug, title, property, images, video, pricingRule, promotions } =
     listing;
   const displayImages = images.filter((img) => img.url?.trim());
@@ -147,30 +144,22 @@ export async function PropertyCard({
     "{n} guest",
     "{n} guests",
   );
-  // Converted into the guest's display currency where a rate exists, and left in the
-  // listing's official currency where it does not. Conversion happens here, after
-  // `computeStayQuote` has already applied promotions and fees in the official
-  // currency — never before, and never as a second pricing calculation.
-  const totalPrice =
-    pricingRule && tripTotal != null
-      ? ti(t, "property_card.price_total", "{price} total", {
-          price: price.format(tripTotal, pricingRule.currency).text,
-        })
-      : null;
+  // The amounts stay in the listing's official currency all the way into the markup;
+  // `LocalizedPrice` is what converts them, on the client, from the display currency
+  // in context. Formatting them here instead froze the currency the card was first
+  // rendered in — a card served from the router cache then disagreed with the rest of
+  // the page after the visitor changed currency. The maths is unchanged: conversion
+  // still happens after `computeStayQuote` has applied promotions and fees in the
+  // official currency, never before and never as a second pricing calculation.
+  const showTotalPrice = pricingRule != null && tripTotal != null;
   // The stay's own average, not the base rate: the total beside it already reflects
   // custom nightly rates and any promotion, so quoting the base rate here would print
   // two numbers that don't multiply out.
-  const nightlyPrice =
-    pricingRule && quote && tripTotal != null
-      ? ti(t, "property_card.price_per_night", "{price} per night", {
-          price: price.format(quote.effectiveAverageNightly, pricingRule.currency)
-            .text,
-        })
-      : null;
-  const originalTotalPrice =
-    pricingRule && quote?.promotionEligible && quote.discountAmount > 0
-      ? price.format(quote.originalTotal, pricingRule.currency).text
-      : null;
+  const showNightlyPrice = showTotalPrice && quote != null;
+  const showOriginalTotal =
+    pricingRule != null &&
+    quote?.promotionEligible === true &&
+    quote.discountAmount > 0;
   const promotionMinimum = promotion?.minimumNights;
   const promotionLabel = promotion
     ? promotion.type === "PERCENT_DISCOUNT"
@@ -271,27 +260,50 @@ export async function PropertyCard({
           </p>
         ) : null}
 
-        {pricingRule && tripTotal != null ? (
+        {showTotalPrice && pricingRule && tripTotal != null ? (
           <div className="mt-1 flex flex-col items-start leading-5">
             <span className="text-[0.85rem] text-muted-foreground">
-              <span
-                className={nightlyPrice?.translated ? "notranslate" : undefined}
-              >
-                {nightlyPrice?.text}
-              </span>
+              {showNightlyPrice && quote ? (
+                <TWithValues
+                  t={t}
+                  k="property_card.price_per_night"
+                  source="{price} per night"
+                  values={{
+                    price: (
+                      <LocalizedPrice
+                        amount={quote.effectiveAverageNightly}
+                        currency={pricingRule.currency}
+                        locale={t.locale}
+                      />
+                    ),
+                  }}
+                />
+              ) : null}
             </span>
             <div className="flex items-baseline gap-2">
-            {promotion?.type === "PERCENT_DISCOUNT" && originalTotalPrice ? (
-              <span className="text-[0.9rem] text-muted-foreground line-through">
-                {originalTotalPrice}
-              </span>
+            {promotion?.type === "PERCENT_DISCOUNT" && showOriginalTotal && quote ? (
+              <LocalizedPrice
+                amount={quote.originalTotal}
+                currency={pricingRule.currency}
+                locale={t.locale}
+                className="text-[0.9rem] text-muted-foreground line-through"
+              />
             ) : null}
             <span className="text-[0.95rem] font-semibold text-foreground underline decoration-1 underline-offset-2">
-              <span
-                className={totalPrice?.translated ? "notranslate" : undefined}
-              >
-                {totalPrice?.text}
-              </span>
+              <TWithValues
+                t={t}
+                k="property_card.price_total"
+                source="{price} total"
+                values={{
+                  price: (
+                    <LocalizedPrice
+                      amount={tripTotal}
+                      currency={pricingRule.currency}
+                      locale={t.locale}
+                    />
+                  ),
+                }}
+              />
             </span>
             </div>
           </div>

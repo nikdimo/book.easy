@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Check, ChevronDown, ChevronUp, Coins, Globe, Languages, Search, X } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Globe, Languages, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,6 +24,7 @@ import { Tx, useI18n } from "@/lib/i18n/client";
 import { recordLanguageSelection } from "@/lib/actions/language.actions";
 import { setDisplayCurrency } from "@/lib/actions/currency.actions";
 import { REGIONAL_SETTINGS_OPEN_EVENT } from "@/components/shared/regional-settings-event";
+import { CurrencyMark } from "@/components/shared/currency-mark";
 import { DEFAULT_LOCALE, normalizeLocaleCode } from "@/lib/i18n/locale-preference";
 import {
   getActiveLocale,
@@ -633,7 +634,7 @@ export function RegionalSettingsDialog({
               aria-label={i18n.resolve("regional.open_currency", "Change currency").text}
               onClick={() => openSettings("currency")}
             >
-              <Coins className="size-[18px] lg:size-5" />
+              <CurrencyMark currency={currentCurrency} size="header" />
               <span>{currentCurrency}</span>
             </Button>
           </TooltipTrigger>

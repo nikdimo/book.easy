@@ -162,6 +162,16 @@ function appendDraftToFormData(formData: FormData, data: ListingDraftData) {
   for (const amenityId of data.amenityIds ?? []) {
     formData.append("amenityIds", amenityId);
   }
+  for (const method of data.acceptedPaymentMethods ?? []) {
+    formData.append("acceptedPaymentMethods", method);
+  }
+  if (data.paymentMethodOther) {
+    formData.set("paymentMethodOther", data.paymentMethodOther);
+  }
+  formData.set(
+    "paymentInstructionTemplates",
+    JSON.stringify(data.paymentInstructionTemplates ?? {}),
+  );
   for (const item of data.mediaItems ?? []) {
     formData.append("mediaItems", JSON.stringify(item));
   }

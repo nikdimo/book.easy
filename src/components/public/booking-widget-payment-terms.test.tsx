@@ -11,6 +11,8 @@ describe("BookingReviewPaymentTerms", () => {
     const html = renderToStaticMarkup(
       <BookingReviewPaymentTerms
         t={t}
+        selectedPaymentMethod={null}
+        onSelectedPaymentMethodChange={() => {}}
         acceptedPaymentMethods={{
           reviewedAt: "2026-08-25T10:00:00.000Z",
           methodCodes: ["PAYPAL", "OTHER"],
@@ -30,7 +32,7 @@ describe("BookingReviewPaymentTerms", () => {
       />,
     );
 
-    expect(html).toContain("Accepted payment methods");
+    expect(html).toContain("How would you like to pay?");
     expect(html).toContain("PayPal");
     expect(html).toContain("MobilePay");
     expect(html).toContain("Deposit policy");
@@ -47,6 +49,8 @@ describe("BookingReviewPaymentTerms", () => {
     const html = renderToStaticMarkup(
       <BookingReviewPaymentTerms
         t={t}
+        selectedPaymentMethod={null}
+        onSelectedPaymentMethodChange={() => {}}
         acceptedPaymentMethods={{
           reviewedAt: "2026-08-25T10:00:00.000Z",
           methodCodes: ["PAYPAL"],
@@ -86,6 +90,8 @@ describe("BookingReviewPaymentTerms", () => {
     const html = renderToStaticMarkup(
       <BookingReviewPaymentTerms
         t={de}
+        selectedPaymentMethod={null}
+        onSelectedPaymentMethodChange={() => {}}
         acceptedPaymentMethods={{
           reviewedAt: "2026-08-25T10:00:00.000Z",
           methodCodes: ["CASH_AT_PROPERTY"],

@@ -77,6 +77,9 @@ function publishableForm(overrides: Record<string, string> = {}): FormData {
     ...overrides,
   };
   for (const [key, value] of Object.entries(fields)) formData.set(key, value);
+  formData.append("acceptedPaymentMethods", "BANK_TRANSFER_LOCAL_SEPA");
+  formData.append("acceptedPaymentMethods", "PAYPAL");
+  formData.set("paymentInstructionTemplates", "{}");
   for (let index = 0; index < MIN_PUBLISH_PHOTOS; index += 1) {
     formData.append(
       "mediaItems",
@@ -117,6 +120,19 @@ describe("submitNewListing — the happy path still publishes", () => {
     await submitNewListing(publishableForm({ currency: "USD" }));
 
     expect(mocks.listingCreate.mock.calls[0][0].data.pricingRule.create.currency).toBe("USD");
+  });
+
+  it("keeps an older publisher usable and leaves payment setup unanswered", async () => {
+    const formData = publishableForm();
+    formData.delete("acceptedPaymentMethods");
+    formData.delete("paymentInstructionTemplates");
+
+    const result = await submitNewListing(formData);
+
+    expect(result).toEqual({ success: true, listingId: "listing-1", slug: "sunny-house" });
+    expect(mocks.listingCreate.mock.calls[0][0].data).not.toHaveProperty(
+      "paymentMethodsReviewedAt",
+    );
   });
 });
 

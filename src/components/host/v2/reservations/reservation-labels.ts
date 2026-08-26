@@ -264,6 +264,11 @@ export function actionHeadline(
         "host.v2.reservations.action.reply",
         "Guest is waiting for a reply",
       );
+    case "SEND_PAYMENT_INSTRUCTIONS":
+      return i18n.resolve(
+        "host.v2.reservations.action.payment",
+        "Payment instructions still need to be sent",
+      );
     case "PREPARE_CHECK_IN":
       return daysFromToday(reservation.checkIn, today) === 0
         ? i18n.resolve("host.v2.reservations.action.arrives_today", "Arrives today")
@@ -292,6 +297,11 @@ export function actionConsequence(
         "host.v2.reservations.action.reply_consequence",
         "How fast you reply is shown to guests on your listings.",
       );
+    case "SEND_PAYMENT_INSTRUCTIONS":
+      return i18n.resolve(
+        "host.v2.reservations.action.payment_consequence",
+        "The guest is waiting for the private information needed to pay.",
+      );
     case "PREPARE_CHECK_IN":
       return i18n.resolve(
         "host.v2.reservations.action.check_in_consequence",
@@ -315,6 +325,11 @@ export function actionChipLabel(
       );
     case "REPLY_TO_GUEST":
       return i18n.resolve("host.v2.reservations.chip.reply", "Unread message");
+    case "SEND_PAYMENT_INSTRUCTIONS":
+      return i18n.resolve(
+        "host.v2.reservations.chip.payment",
+        "Payment instructions missing",
+      );
     case "PREPARE_CHECK_IN":
       return i18n.resolve("host.v2.reservations.chip.check_in", "Arriving soon");
     case "RATE_GUEST":

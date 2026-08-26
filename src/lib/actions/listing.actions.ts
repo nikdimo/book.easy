@@ -35,6 +35,11 @@ import {
 } from "@/lib/types/listing-availability-start";
 import { getExchangeRates } from "@/lib/currency/rates";
 import { MIN_PUBLISH_PHOTOS } from "@/lib/host/v2/photo-draft";
+import { validateListingPaymentMethods } from "@/lib/payments/payment-methods";
+import {
+  paymentInstructionTemplatesSnapshot,
+  validatePaymentInstructionTemplates,
+} from "@/lib/payments/payment-instruction-templates";
 
 async function currencyIsCurrentlyQuotable(currency: string): Promise<boolean> {
   const rates = await getExchangeRates();
@@ -322,6 +327,39 @@ export async function submitNewListing(
   }
 
   const data = parsed.data;
+  const paymentMethodValues = formData.getAll("acceptedPaymentMethods");
+  // The current host-start wizard always sends this field and requires an answer.
+  // Older web/mobile publishers do not know about the payment step yet, so keep
+  // their listing publishable and let the existing "missing payment setup" task
+  // collect the answer afterward.
+  const hasPaymentMethodAnswer = formData.has("acceptedPaymentMethods");
+  const paymentMethods = hasPaymentMethodAnswer
+    ? validateListingPaymentMethods({
+        methods: paymentMethodValues,
+        otherLabel: formData.get("paymentMethodOther"),
+      })
+    : null;
+  if (paymentMethods && !paymentMethods.success) {
+    return { error: "Choose at least one accepted payment method before publishing." };
+  }
+  let validatedTemplates: ReturnType<typeof validatePaymentInstructionTemplates> | null = null;
+  if (paymentMethods?.success) {
+    let instructionTemplates: unknown = {};
+    try {
+      instructionTemplates = JSON.parse(
+        String(formData.get("paymentInstructionTemplates") ?? "{}"),
+      );
+    } catch {
+      return { error: "Review the saved private payment instructions." };
+    }
+    validatedTemplates = validatePaymentInstructionTemplates(
+      instructionTemplates,
+      paymentMethods.value.methods,
+    );
+    if (!validatedTemplates.success) {
+      return { error: "Review the saved private payment instructions." };
+    }
+  }
   if (!(await currencyIsCurrentlyQuotable(data.currency))) {
     return { error: "That currency is not currently available. Choose another currency." };
   }
@@ -497,6 +535,16 @@ export async function submitNewListing(
       bedrooms: data.bedrooms,
       bathrooms: data.bathrooms,
       beds: data.beds,
+      ...(paymentMethods?.success && validatedTemplates?.success
+        ? {
+            acceptedPaymentMethods: paymentMethods.value.methods,
+            paymentMethodOther: paymentMethods.value.otherLabel,
+            paymentMethodsReviewedAt: new Date(),
+            paymentInstructionTemplates: paymentInstructionTemplatesSnapshot(
+              validatedTemplates.value,
+            ),
+          }
+        : {}),
       // "" is the host choosing to stay flexible; null is how that reads everywhere it
       // is displayed, so the empty string never reaches the database.
       checkInTime: data.checkInTime || null,

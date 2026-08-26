@@ -35,6 +35,7 @@ export default async function ListingPaymentArrangementsPage({
         initialValue={{
           methodCodes: data.preferences.methods,
           otherLabel: data.preferences.otherLabel,
+          instructionTemplates: data.instructionTemplates,
           reviewedAt: data.preferences.reviewedAt?.toISOString() ?? null,
         }}
         initialDeposit={deposit.policy}

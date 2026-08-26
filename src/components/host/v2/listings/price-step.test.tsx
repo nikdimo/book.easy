@@ -116,13 +116,13 @@ describe("PriceStep", () => {
 
   it("accepts the floor the pricing service enforces", () => {
     expect(step({ initialPrice: String(NIGHTLY_PRICE_MIN) })).toContain(
-      "/host/start/availability",
+      "/host/start/payment-arrangements",
     );
   });
 
-  it("goes on to availability with the flow's query parameters", () => {
+  it("goes on to payment arrangements with the flow's query parameters", () => {
     expect(step({ initialPrice: "120" })).toContain(
-      'href="/host/start/availability?propertyType=HOUSE&amp;spaceType=ENTIRE_PLACE"',
+      'href="/host/start/payment-arrangements?propertyType=HOUSE&amp;spaceType=ENTIRE_PLACE"',
     );
   });
 

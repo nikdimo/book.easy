@@ -23,7 +23,17 @@ import {
 } from "@/lib/services/booking-email-outbox.service";
 import { houseRulesSnapshot } from "@/lib/host/v2/listing-house-rules";
 import { houseRulesVersion } from "@/lib/host/v2/house-rules-version.server";
-import { paymentMethodsSnapshot } from "@/lib/payments/payment-methods";
+import {
+  isPaymentMethodCode,
+  parsePaymentMethodsSnapshot,
+  paymentMethodsSnapshot,
+  type PaymentMethodCode,
+} from "@/lib/payments/payment-methods";
+import {
+  parsePaymentInstructionTemplates,
+  paymentInstructionTemplatesSnapshot,
+  validatePaymentInstructionTemplates,
+} from "@/lib/payments/payment-instruction-templates";
 import {
   calculateDepositAmount,
   createDepositPolicySnapshot,
@@ -236,6 +246,8 @@ interface CreateBookingInput {
   checkOut: Date;
   guestCount: number;
   guestNote?: string;
+  /** The guest's choice from the listing methods loaded in the booking transaction. */
+  selectedPaymentMethod?: PaymentMethodCode | null;
   /** Guest language at request time. Notifications and confirmation use this frozen
    * value even if the account or browser preference changes later. */
   guestLocale?: string | null;
@@ -273,6 +285,7 @@ export async function createBooking(input: CreateBookingInput) {
     checkOut,
     guestCount,
     guestNote,
+    selectedPaymentMethod,
     guestLocale,
     display,
     houseRulesAcceptedAt,
@@ -322,6 +335,29 @@ export async function createBooking(input: CreateBookingInput) {
 
       const currentHouseRules = houseRulesSnapshot(listing);
       const currentPaymentMethods = paymentMethodsSnapshot(listing);
+      let frozenSelectedPaymentMethod: PaymentMethodCode | null = null;
+      if (currentPaymentMethods.status === "REVIEWED") {
+        if (currentPaymentMethods.methods.length === 1) {
+          frozenSelectedPaymentMethod =
+            selectedPaymentMethod ?? currentPaymentMethods.methods[0];
+        } else {
+          frozenSelectedPaymentMethod = selectedPaymentMethod ?? null;
+        }
+        if (!frozenSelectedPaymentMethod) {
+          throw new Error(
+            "Choose a payment method accepted by the host before sending your request.",
+          );
+        }
+        if (!currentPaymentMethods.methods.includes(frozenSelectedPaymentMethod)) {
+          throw new Error(
+            "The host's accepted payment methods changed. Reload the page and choose again.",
+          );
+        }
+      } else if (selectedPaymentMethod) {
+        throw new Error(
+          "The host's accepted payment methods changed. Reload the page and choose again.",
+        );
+      }
       const currentDepositPolicy = createDepositPolicySnapshot(listing);
       if (houseRulesAcceptedAt) {
         if (
@@ -518,6 +554,7 @@ export async function createBooking(input: CreateBookingInput) {
           // bookings remain NULL because the additive migration performs no backfill.
           paymentMethodsSnapshot:
             currentPaymentMethods as unknown as Prisma.InputJsonObject,
+          selectedPaymentMethod: frozenSelectedPaymentMethod,
           // Like the method/rule snapshots above, deposit terms come only from the
           // listing row read inside this transaction. The client can neither choose
           // the terms nor submit an amount. Linger Homes records the host's policy;
@@ -683,7 +720,108 @@ export async function cancelBooking(
     });
 }
 
-export async function confirmBooking(bookingId: string, hostId: string) {
+export async function getBookingAcceptancePaymentData(
+  bookingId: string,
+  hostId: string,
+) {
+  const booking = await db.booking.findFirst({
+    where: { id: bookingId, listing: { hostId } },
+    select: {
+      id: true,
+      status: true,
+      reference: true,
+      currency: true,
+      totalPrice: true,
+      checkIn: true,
+      selectedPaymentMethod: true,
+      paymentMethodsSnapshot: true,
+      guest: { select: { name: true } },
+      listing: {
+        select: {
+          id: true,
+          paymentInstructionTemplates: true,
+        },
+      },
+    },
+  });
+  if (!booking) throw new Error("Booking not found");
+  const snapshot = parsePaymentMethodsSnapshot(booking.paymentMethodsSnapshot);
+  const selectedPaymentMethod = isPaymentMethodCode(booking.selectedPaymentMethod)
+    ? booking.selectedPaymentMethod
+    : snapshot?.status === "REVIEWED" && snapshot.methods.length === 1
+      ? snapshot.methods[0]
+      : null;
+  const templates = parsePaymentInstructionTemplates(
+    booking.listing.paymentInstructionTemplates,
+  );
+
+  return {
+    bookingId: booking.id,
+    status: booking.status,
+    listingId: booking.listing.id,
+    reference: booking.reference,
+    guestName: booking.guest.name,
+    currency: booking.currency,
+    total: Number(booking.totalPrice),
+    checkIn: booking.checkIn.toISOString().slice(0, 10),
+    selectedPaymentMethod,
+    otherLabel: snapshot?.otherLabel ?? null,
+    savedInstructions: selectedPaymentMethod
+      ? (templates[selectedPaymentMethod] ?? "")
+      : "",
+  };
+}
+
+export async function saveBookingPaymentInstructionTemplate(input: {
+  bookingId: string;
+  hostId: string;
+  method: PaymentMethodCode;
+  body: string;
+}) {
+  const booking = await db.booking.findFirst({
+    where: { id: input.bookingId, listing: { hostId: input.hostId } },
+    select: {
+      selectedPaymentMethod: true,
+      listing: {
+        select: {
+          id: true,
+          acceptedPaymentMethods: true,
+          paymentInstructionTemplates: true,
+        },
+      },
+    },
+  });
+  if (!booking || booking.selectedPaymentMethod !== input.method) {
+    throw new Error("Booking not found");
+  }
+
+  const current = parsePaymentInstructionTemplates(
+    booking.listing.paymentInstructionTemplates,
+  );
+  const next = { ...current, [input.method]: input.body.trim() };
+  const validated = validatePaymentInstructionTemplates(
+    next,
+    booking.listing.acceptedPaymentMethods,
+  );
+  if (!validated.success) throw new Error("Payment instructions could not be saved");
+
+  await db.listing.update({
+    where: { id: booking.listing.id },
+    data: {
+      paymentInstructionTemplates: paymentInstructionTemplatesSnapshot(
+        validated.value,
+      ),
+    },
+  });
+}
+
+export async function confirmBooking(
+  bookingId: string,
+  hostId: string,
+  options: {
+    paymentInstructionsStatus?: "PENDING" | "NOT_NEEDED";
+  } = {},
+) {
   const now = new Date();
   const result = await db.$transaction(async (tx) => {
     const booking = await tx.booking.findUnique({
@@ -733,6 +871,13 @@ export async function confirmBooking(bookingId: string, hostId: string) {
         respondedAt: now,
         acceptedAt: now,
         paymentStatus: "AWAITING_PAYMENT",
+        paymentInstructionsStatus:
+          options.paymentInstructionsStatus ??
+          (booking.selectedPaymentMethod === null ||
+          booking.selectedPaymentMethod === "CASH_AT_PROPERTY" ||
+          booking.selectedPaymentMethod === "ARRANGE_DIRECTLY"
+            ? "NOT_NEEDED"
+            : "PENDING"),
         paymentStatusUpdatedAt: now,
         depositStatusUpdatedAt: now,
       },

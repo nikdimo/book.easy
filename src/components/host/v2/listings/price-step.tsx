@@ -299,7 +299,7 @@ export function PriceStep({
         },
       }
     : {
-        nextHref: `/host/start/availability?${query}`,
+        nextHref: `/host/start/payment-arrangements?${query}`,
         onNext: async () => {
           if (
             await save({
@@ -311,7 +311,7 @@ export function PriceStep({
               currentStepId: "specialOffer",
             })
           ) {
-            window.location.assign(`/host/start/availability?${query}`);
+            window.location.assign(`/host/start/payment-arrangements?${query}`);
           }
         },
       };

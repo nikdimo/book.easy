@@ -12,6 +12,7 @@ import {
   PencilLine,
   Sparkles,
   Tag,
+  WalletCards,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -222,6 +223,24 @@ export function ReviewStep({
                   : unavailable
               }
               editHref={`/host/start/price?${query}`}
+            />
+            <ReviewRow
+              icon={WalletCards}
+              label={
+                resolve(
+                  "host.v2.review.row_payment_methods",
+                  "Payment methods",
+                ).text
+              }
+              value={
+                data.acceptedPaymentMethods?.length
+                  ? `${data.acceptedPaymentMethods.length} ${resolve(
+                      "host.v2.review.payment_methods_selected",
+                      "selected",
+                    ).text}`
+                  : unavailable
+              }
+              editHref={`/host/start/payment-arrangements?${query}`}
             />
             <ReviewRow
               icon={CalendarRange}

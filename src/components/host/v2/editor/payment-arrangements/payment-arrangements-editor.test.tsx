@@ -36,6 +36,7 @@ describe("payment arrangement selection model", () => {
       "PAYPAL",
       "REVOLUT",
       "WISE",
+      "BITCOIN",
       "HOST_SECURE_CARD_LINK",
       "OTHER",
       "ARRANGE_DIRECTLY",
@@ -143,9 +144,10 @@ describe("PaymentArrangementsEditor", () => {
     const html = renderEditor();
 
     expect(html).toContain("Guests see names, not details");
-    expect(html).toContain("Only the selected method names appear publicly.");
-    expect(html).toContain("Do not enter account numbers, IBAN or SWIFT codes");
-    expect(html).toContain("payment handles, links, card details, phone numbers");
+    expect(html).toContain("Only selected method names appear publicly.");
+    expect(html).toContain("Saved account or wallet details stay private");
+    expect(html).toContain("Never enter card numbers, CVV, PIN, passwords");
+    expect(html).toContain("seed phrases, private keys, or recovery information");
   });
 
   it("distinguishes an unanswered listing and shows the required public fallback", () => {
@@ -200,6 +202,34 @@ describe("PaymentArrangementsEditor", () => {
     expect(withOther).toContain('minLength="2"');
     expect(withOther).toContain('maxLength="40"');
     expect(withOther).toContain('value="MobilePay"');
+  });
+
+  it("shows and preserves private reusable instructions for selected methods", () => {
+    const html = renderEditor({
+      methodCodes: ["BANK_TRANSFER_INTERNATIONAL", "BITCOIN"],
+      instructionTemplates: {
+        BANK_TRANSFER_INTERNATIONAL: "IBAN DK5000400440116243\nSWIFT DABADKKK",
+        BITCOIN: "bc1qar0srr7xfkvy5l643lydnw9re59gtzzwf5mdq",
+      },
+      reviewedAt: "2026-08-24T10:00:00.000Z",
+    });
+
+    expect(html).toContain("Saved private payment instructions");
+    expect(html).toContain("IBAN DK5000400440116243");
+    expect(html).toContain("SWIFT DABADKKK");
+    expect(html).toContain("bc1qar0srr7xfkvy5l643lydnw9re59gtzzwf5mdq");
+    expect(html).toContain("Guests cannot see this while browsing");
+  });
+
+  it("blocks unsafe saved credentials before they reach the server", () => {
+    const html = renderEditor({
+      methodCodes: ["BITCOIN"],
+      instructionTemplates: { BITCOIN: "Seed phrase: one two three four" },
+      reviewedAt: "2026-08-24T10:00:00.000Z",
+    });
+
+    expect(html).toContain("Remove card details, passwords, PINs, seed phrases");
+    expect(html).toMatch(/type="submit"[^>]*disabled/);
   });
 
   it("visibly blocks a sensitive OTHER label and disables saving", () => {

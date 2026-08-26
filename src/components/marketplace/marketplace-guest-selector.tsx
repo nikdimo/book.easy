@@ -42,7 +42,7 @@ export function formatGuestSummary(c: GuestCounts, labels: SearchLabels): Resolv
 }
 
 /**
- * Just the "Who" trigger — clicking it opens the same dialog/step that
+ * Just the "Who's coming?" trigger — clicking it opens the same dialog/step that
  * MarketplaceStayDatePicker uses for its own guests step (via onOpenRequest), so there is
  * only one guest-editing surface instead of a second, separately-shelled popover.
  */
@@ -102,10 +102,10 @@ export function MarketplaceGuestSelector({
           <span
           className={cn(
             "block text-[0.72rem] font-semibold leading-4 text-foreground",
-            labels.who.translated && "notranslate"
+            labels.whosComing.translated && "notranslate"
           )}
         >
-          {labels.who.text}
+          {labels.whosComing.text}
         </span>
         <span
           className={cn(
@@ -132,10 +132,10 @@ export function MarketplaceGuestSelector({
         <span
           className={cn(
             "text-xs font-semibold tracking-wide block",
-            labels.who.translated && "notranslate"
+            labels.whosComing.translated && "notranslate"
           )}
         >
-          {labels.who.text}
+          {labels.whosComing.text}
         </span>
         <span
           className={cn(

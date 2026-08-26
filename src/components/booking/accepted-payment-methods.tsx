@@ -122,7 +122,7 @@ export function AcceptedPaymentMethods({
     );
   }
 
-  if (!hasReviewedTimestamp(data.reviewedAt)) {
+  if (!hasReviewedPaymentMethods(data.reviewedAt)) {
     return (
       <p
         data-payment-methods-state="unanswered"
@@ -224,14 +224,14 @@ export function AcceptedPaymentMethods({
   );
 }
 
-function acceptedPaymentMethodCodes(
+export function acceptedPaymentMethodCodes(
   methodCodes: readonly string[] | null | undefined,
 ): AcceptedPaymentMethodCode[] {
   const supplied = new Set(methodCodes ?? []);
   return ACCEPTED_PAYMENT_METHOD_CODES.filter((code) => supplied.has(code));
 }
 
-function hasReviewedTimestamp(value: Date | string | null): boolean {
+export function hasReviewedPaymentMethods(value: Date | string | null): boolean {
   if (value instanceof Date) return !Number.isNaN(value.getTime());
   return typeof value === "string" && !Number.isNaN(Date.parse(value));
 }
@@ -255,13 +255,13 @@ function MethodCheck() {
   );
 }
 
-function PaymentMethodName({
+export function PaymentMethodName({
   t,
   code,
   otherLabel,
 }: {
   t: PaymentMethodLabelResolver;
-  code: Exclude<AcceptedPaymentMethodCode, "ARRANGE_DIRECTLY">;
+  code: AcceptedPaymentMethodCode;
   otherLabel: string | null;
 }) {
   switch (code) {
@@ -319,6 +319,15 @@ function PaymentMethodName({
           )}
         />
       );
+    case "BITCOIN":
+      return (
+        <ResolvedCopy
+          value={t.resolve(
+            "listing.accepted_payment_methods.bitcoin",
+            "Bitcoin",
+          )}
+        />
+      );
     case "HOST_SECURE_CARD_LINK":
       return (
         <ResolvedCopy
@@ -347,6 +356,15 @@ function PaymentMethodName({
         </>
       );
     }
+    case "ARRANGE_DIRECTLY":
+      return (
+        <ResolvedCopy
+          value={t.resolve(
+            "listing.accepted_payment_methods.arrange_directly_choice",
+            "Arrange payment directly with the host",
+          )}
+        />
+      );
   }
 }
 

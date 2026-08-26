@@ -55,6 +55,8 @@ describe("share payment instructions action", () => {
       body,
       sourceLocale: "mk",
       hostId: "host-1",
+      clientId: undefined,
+      dueAt: null,
     });
     expect(mocks.createAuditLog).toHaveBeenCalledWith({
       userId: "host-1",

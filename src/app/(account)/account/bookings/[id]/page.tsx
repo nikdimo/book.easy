@@ -253,6 +253,7 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
             progress={{
               bookingId: paymentProgress.id,
               status: paymentProgress.status,
+              checkIn: paymentProgress.checkIn.toISOString().slice(0, 10),
               currency: paymentProgress.currency,
               total: Number(paymentProgress.totalPrice),
               depositAmount:
@@ -261,6 +262,9 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
                   : Number(paymentProgress.depositAmount),
               depositPolicy: parseDepositPolicySnapshot(paymentProgress.depositPolicySnapshot),
               paymentStatus: paymentProgress.paymentStatus,
+              paymentInstructionsStatus: paymentProgress.paymentInstructionsStatus,
+              selectedPaymentMethod: paymentProgress.selectedPaymentMethod,
+              paymentMethodOtherLabel: paymentMethods?.otherLabel ?? null,
               depositStatus: paymentProgress.depositStatus,
               paymentStatusEvents: paymentProgress.paymentStatusEvents.map((event) => ({
                 id: event.id,

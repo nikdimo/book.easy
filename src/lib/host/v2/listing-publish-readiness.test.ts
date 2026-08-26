@@ -32,6 +32,9 @@ function completeDraft(overrides: Partial<ListingDraftData> = {}): ListingDraftD
     description: "A bright two-bedroom house a short walk from the old bazaar and the river.",
     currency: "EUR",
     baseNightlyRate: "60",
+    acceptedPaymentMethods: ["BANK_TRANSFER_LOCAL_SEPA", "PAYPAL"],
+    paymentMethodOther: null,
+    paymentInstructionTemplates: {},
     checkInTime: "15:00",
     checkOutTime: "11:00",
     // The house rules the step refuses to move on without. A draft that walked the flow
@@ -75,6 +78,7 @@ describe("legacy and imported drafts get useful blockers", () => {
       "photos",
       "description",
       "price",
+      "payment-arrangements",
       "availability",
     ] satisfies FlowStepId[]) {
       expect(found).toContain(step);

@@ -2268,7 +2268,7 @@ export function MarketplaceStayDatePicker({
   // The button that leaves the dates step should name where it goes; a bare "Next"
   // gives no reason to press it.
   const resolvedNextActionLabel = nextActionLabel ?? labels.whosComing;
-  const resolvedGuestStepTitle = guestStepTitle ?? labels.who;
+  const resolvedGuestStepTitle = guestStepTitle ?? labels.whosComing;
   const resolvedReviewStepTitle = reviewStepTitle ?? resolvedGuestStepTitle;
   const isPillLayout = layout === "pill";
   const [isDesktopViewport, setIsDesktopViewport] = React.useState(false);

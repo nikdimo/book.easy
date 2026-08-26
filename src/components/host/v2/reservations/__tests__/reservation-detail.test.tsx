@@ -52,6 +52,9 @@ const reservation: HostReservation = {
   discountAmount: 0,
   total: 325,
   paymentStatus: "AWAITING_PAYMENT",
+  paymentInstructionsStatus: "PENDING",
+  selectedPaymentMethod: "BANK_TRANSFER_LOCAL_SEPA",
+  paymentMethodOtherLabel: null,
   depositStatus: "AWAITING_DEPOSIT",
   depositAmount: 75,
   depositPolicy: {

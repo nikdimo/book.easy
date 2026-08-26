@@ -1,6 +1,8 @@
 import type { ListingMediaItem } from "@/lib/types/listing-media";
 import type { PrePublishPlan } from "@/lib/types/listing-prepublish-plan";
 import type { ImportedPriceQuote } from "@/lib/listing-import/types";
+import type { PaymentMethodCode } from "@/lib/payments/payment-methods";
+import type { PaymentInstructionTemplates } from "@/lib/payments/payment-instruction-templates";
 
 /** Shape of ListingDraft.data — a new listing's in-progress form state, autosaved on
  * blur before it's complete enough to become a real Listing/Property row. Every field
@@ -37,6 +39,9 @@ export interface ListingDraftData {
   importedPriceQuote?: ImportedPriceQuote;
   cleaningFee?: string;
   minNights?: string;
+  acceptedPaymentMethods?: PaymentMethodCode[];
+  paymentMethodOther?: string | null;
+  paymentInstructionTemplates?: PaymentInstructionTemplates;
   checkInTime?: string;
   checkOutTime?: string;
   /**

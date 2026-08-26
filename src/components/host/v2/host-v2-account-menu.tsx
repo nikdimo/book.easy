@@ -6,7 +6,6 @@ import { signOut, useSession } from "next-auth/react";
 import {
   ArrowLeftRight,
   CalendarDays,
-  Coins,
   Globe,
   Heart,
   Home,
@@ -26,8 +25,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { REGIONAL_SETTINGS_OPEN_EVENT } from "@/components/shared/regional-settings-event";
 import { Tx, useI18n } from "@/lib/i18n/client";
+import { CurrencyMark } from "@/components/shared/currency-mark";
 import { useDisplayCurrency } from "@/lib/currency/client";
-import { currencyDisplayName, currencySymbol } from "@/lib/currency/currencies";
+import { currencyDisplayName } from "@/lib/currency/currencies";
 import { normalizeLocaleCode } from "@/lib/i18n/locale-preference";
 import { cn } from "@/lib/utils";
 
@@ -162,14 +162,14 @@ export function HostV2AccountMenu({
           aria-label={`${i18n.resolve("regional.tab_currency", "Currency").text}: ${currencyDisplayName(display.currency, i18n.locale)}`}
           onSelect={() => openRegionalSettings("currency")}
         >
-          <Coins className="mr-2 h-4 w-4" />
+          <CurrencyMark currency={display.currency} className="mr-2" />
           <Tx k="regional.tab_currency" source="Currency" />
           <span
             aria-hidden
             translate="no"
             className="notranslate ml-auto pl-3 text-xs text-muted-foreground"
           >
-            {display.currency} {currencySymbol(display.currency, i18n.locale)}
+            {display.currency}
           </span>
         </DropdownMenuItem>
 

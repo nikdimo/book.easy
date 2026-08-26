@@ -19,6 +19,7 @@ export const shareBookingPaymentInstructionsSchema = z.object({
   body: z.string().trim().min(1).max(2000),
   sourceLocale: z.string().trim().min(1).max(35).optional(),
   clientId: z.string().uuid("Invalid message ID").optional(),
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 });
 
 export const markConversationReadSchema = z.object({

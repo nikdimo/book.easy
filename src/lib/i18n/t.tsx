@@ -1,5 +1,5 @@
 import "server-only";
-import { cache } from "react";
+import { cache, type ReactNode } from "react";
 import { cookies } from "next/headers";
 import { getLocaleCatalog } from "@/lib/i18n/translation-cache";
 import {
@@ -201,7 +201,11 @@ export function TWithValues({
   t: Translator;
   k: string;
   source: string;
-  values: Record<string, string | number>;
+  /** Nodes are allowed so a placeholder can be a live component rather than a
+   * pre-formatted string — a price, for instance, has to re-render from the display
+   * currency the visitor is browsing in rather than be frozen into this sentence at
+   * render time. */
+  values: Record<string, ReactNode>;
   /** Placeholder values that are proper names or identifiers and must not be
    * machine-translated (for example a city name such as "Bitola"). */
   protectedValues?: readonly string[];

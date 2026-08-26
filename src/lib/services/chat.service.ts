@@ -699,6 +699,7 @@ export async function shareBookingPaymentInstructions(input: {
   body: string;
   sourceLocale?: string | null;
   clientId?: string;
+  dueAt?: Date | null;
 }) {
   const body = input.body.trim();
   if (!body) throw new Error("Payment instructions cannot be empty");
@@ -754,7 +755,7 @@ export async function shareBookingPaymentInstructions(input: {
       }
       if (!booking.conversation) throw new Error("Booking conversation not found");
 
-      return createConversationMessageInTransaction(tx, {
+      const message = await createConversationMessageInTransaction(tx, {
         conversationId: booking.conversation.id,
         senderId: input.hostId,
         body,
@@ -762,6 +763,15 @@ export async function shareBookingPaymentInstructions(input: {
         sourceLocale: input.sourceLocale,
         kind: "PAYMENT_INSTRUCTIONS",
       });
+      await tx.booking.update({
+        where: { id: booking.id },
+        data: {
+          paymentInstructionsStatus: "SENT",
+          paymentInstructionsSentAt: new Date(),
+          paymentInstructionsDueAt: input.dueAt ?? null,
+        },
+      });
+      return message;
     });
   } catch (error) {
     if (

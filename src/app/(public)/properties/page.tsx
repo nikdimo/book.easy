@@ -21,7 +21,6 @@ import {
 import { getMapCoordinatesForListing } from "@/lib/utils/listing-map-coords";
 import { MAP_BOUNDS_PARAM, parseMapBounds } from "@/lib/map-bounds";
 import { getNightCount } from "@/lib/utils/format";
-import { getPriceFormatter } from "@/lib/currency/price";
 import type { MapPin } from "@/components/marketplace/properties-map";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { getT, T, ti, tPlural } from "@/lib/i18n/t";
@@ -192,14 +191,13 @@ export default async function PropertiesPage({
   );
   const listingQueryString = listingQuery.toString();
 
-  // Marker labels are converted alongside the cards, so a map and the grid beside it
-  // never disagree about what a stay costs.
-  const price = await getPriceFormatter();
-
+  // Markers carry the same official amount the cards do and convert it from the same
+  // display currency in context, so a map and the grid beside it never disagree about
+  // what a stay costs — including after the visitor changes currency.
   const mapPins: MapPin[] = results.listings.flatMap((l) => {
     const coordinates = getMapCoordinatesForListing(l);
     if (!coordinates) return [];
-    let label = "—";
+    let pinPrice: MapPin["price"] = null;
     if (l.pricingRule) {
       const nightly = Number(l.pricingRule.baseNightlyRate);
       const cur = l.pricingRule.currency;
@@ -216,9 +214,7 @@ export default async function PropertiesPage({
               promotions: l.promotions,
             })
           : null;
-      label = quote
-        ? price.format(quote.total, cur).text
-        : price.format(nightly, cur).text;
+      pinPrice = { amount: quote ? quote.total : nightly, currency: cur };
     }
     return [
       {
@@ -226,7 +222,7 @@ export default async function PropertiesPage({
         slug: l.slug,
         lat: coordinates.lat,
         lng: coordinates.lng,
-        label,
+        price: pinPrice,
         title: l.title,
         location: [l.property.area, l.property.city].filter(Boolean).join(", "),
         imageUrl: l.images.find((image) => image.url?.trim())?.url,

@@ -17,6 +17,7 @@ import { getT, T, TWithValues } from "@/lib/i18n/t";
 import { getBookingPaymentProgress } from "@/lib/services/booking-payment-status.service";
 import { parseDepositPolicySnapshot } from "@/lib/payments/deposit-policy";
 import { BookingPaymentProgress } from "@/components/booking/booking-payment-progress";
+import { acceptedPaymentMethodsFromSnapshot } from "@/components/booking/accepted-payment-methods";
 
 export const metadata = { title: "Booking Request Details" };
 
@@ -31,6 +32,10 @@ export default async function HostBookingDetailPage({
   const booking = await getHostBookingWithGuest(id, session.user.id);
   if (!booking) notFound();
   const paymentProgress = await getBookingPaymentProgress(booking.id, session.user.id);
+  const paymentMethods = acceptedPaymentMethodsFromSnapshot(
+    booking.paymentMethodsSnapshot,
+    booking.createdAt,
+  );
 
   const t = await getT();
   const priceBreakdown = booking.priceBreakdown as {
@@ -239,6 +244,7 @@ export default async function HostBookingDetailPage({
             progress={{
               bookingId: paymentProgress.id,
               status: paymentProgress.status,
+              checkIn: paymentProgress.checkIn.toISOString().slice(0, 10),
               currency: paymentProgress.currency,
               total: Number(paymentProgress.totalPrice),
               depositAmount:
@@ -247,6 +253,9 @@ export default async function HostBookingDetailPage({
                   : Number(paymentProgress.depositAmount),
               depositPolicy: parseDepositPolicySnapshot(paymentProgress.depositPolicySnapshot),
               paymentStatus: paymentProgress.paymentStatus,
+              paymentInstructionsStatus: paymentProgress.paymentInstructionsStatus,
+              selectedPaymentMethod: paymentProgress.selectedPaymentMethod,
+              paymentMethodOtherLabel: paymentMethods?.otherLabel ?? null,
               depositStatus: paymentProgress.depositStatus,
               paymentStatusEvents: paymentProgress.paymentStatusEvents.map((event) => ({
                 id: event.id,

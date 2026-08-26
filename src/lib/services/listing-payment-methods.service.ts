@@ -6,6 +6,14 @@ import {
   type ListingPaymentMethodsIssues,
   type ListingPaymentMethodsPreferences,
 } from "@/lib/payments/payment-methods";
+import {
+  parsePaymentInstructionTemplates,
+  paymentInstructionTemplatesSnapshot,
+  samePaymentInstructionTemplates,
+  validatePaymentInstructionTemplates,
+  type PaymentInstructionTemplateIssue,
+  type PaymentInstructionTemplates,
+} from "@/lib/payments/payment-instruction-templates";
 
 export const LISTING_PAYMENT_METHODS_SELECT = {
   id: true,
@@ -14,6 +22,7 @@ export const LISTING_PAYMENT_METHODS_SELECT = {
   acceptedPaymentMethods: true,
   paymentMethodOther: true,
   paymentMethodsReviewedAt: true,
+  paymentInstructionTemplates: true,
 } as const;
 
 export interface ListingPaymentMethodsData {
@@ -23,6 +32,8 @@ export interface ListingPaymentMethodsData {
     status: string;
   };
   preferences: ListingPaymentMethodsPreferences;
+  /** Owner-only data. Never reuse this service in a public listing response. */
+  instructionTemplates: PaymentInstructionTemplates;
 }
 
 /** Ownership-scoped read shape shared by the future host editor integration. */
@@ -39,11 +50,18 @@ export async function getListingPaymentMethodsData(
   return {
     listing: { id: listing.id, slug: listing.slug, status: listing.status },
     preferences: paymentMethodsFromRow(listing),
+    instructionTemplates: parsePaymentInstructionTemplates(
+      listing.paymentInstructionTemplates,
+    ),
   };
 }
 export type SaveListingPaymentMethodsResult =
   | { error: string }
-  | { issues: ListingPaymentMethodsIssues }
+  | {
+      issues: ListingPaymentMethodsIssues & {
+        instructionTemplates?: PaymentInstructionTemplateIssue;
+      };
+    }
   | (ListingPaymentMethodsData & { changed: boolean });
 
 function sameMethods(left: readonly string[], right: readonly string[]): boolean {
@@ -74,11 +92,29 @@ export async function saveListingPaymentMethods(
   const validation = validateListingPaymentMethods(input);
   if (!validation.success) return { issues: validation.issues };
 
+  const raw = input as Record<string, unknown>;
+  const templateValidation = validatePaymentInstructionTemplates(
+    raw.instructionTemplates,
+    validation.value.methods,
+  );
+  if (!templateValidation.success) {
+    return { issues: { instructionTemplates: templateValidation.issue } };
+  }
+
   const current = paymentMethodsFromRow(listing);
-  const changed =
+  const currentTemplates = parsePaymentInstructionTemplates(
+    listing.paymentInstructionTemplates,
+  );
+  const publicChanged =
     current.status !== "REVIEWED" ||
     !sameMethods(current.methods, validation.value.methods) ||
     current.otherLabel !== validation.value.otherLabel;
+  const changed =
+    publicChanged ||
+    !samePaymentInstructionTemplates(
+      currentTemplates,
+      templateValidation.value,
+    );
   const reviewedAt = new Date();
 
   const saved = await db.listing.update({
@@ -87,9 +123,12 @@ export async function saveListingPaymentMethods(
       acceptedPaymentMethods: validation.value.methods,
       paymentMethodOther: validation.value.otherLabel,
       paymentMethodsReviewedAt: reviewedAt,
+      paymentInstructionTemplates: paymentInstructionTemplatesSnapshot(
+        templateValidation.value,
+      ),
       // Method names and OTHER labels are public listing content. A real change to a
       // live listing follows the same review-queue rule as title and house rules.
-      ...(changed && listing.status === "APPROVED" ? { needsReview: true } : {}),
+      ...(publicChanged && listing.status === "APPROVED" ? { needsReview: true } : {}),
     },
     select: LISTING_PAYMENT_METHODS_SELECT,
   });
@@ -97,6 +136,9 @@ export async function saveListingPaymentMethods(
   return {
     listing: { id: saved.id, slug: saved.slug, status: saved.status },
     preferences: paymentMethodsFromRow(saved),
+    instructionTemplates: parsePaymentInstructionTemplates(
+      saved.paymentInstructionTemplates,
+    ),
     changed,
   };
 }

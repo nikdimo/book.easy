@@ -38,7 +38,12 @@ import {
 import type { Resolved } from "@/lib/i18n/t";
 import { Tx, useI18n } from "@/lib/i18n/client";
 import { BookingReviewPaymentTerms } from "@/components/booking/booking-review-payment-terms";
-import type { AcceptedPaymentMethodsPresentation } from "@/components/booking/accepted-payment-methods";
+import {
+  acceptedPaymentMethodCodes,
+  hasReviewedPaymentMethods,
+  type AcceptedPaymentMethodCode,
+  type AcceptedPaymentMethodsPresentation,
+} from "@/components/booking/accepted-payment-methods";
 import type { DepositPolicySnapshotV1 } from "@/lib/payments/deposit-policy";
 import {
   useCellCurrencyNote,
@@ -344,6 +349,20 @@ export function BookingWidget({
         0,
   );
   const [note, setNote] = useState("");
+  const selectablePaymentMethods = useMemo(
+    () =>
+      hasReviewedPaymentMethods(acceptedPaymentMethods.reviewedAt)
+        ? acceptedPaymentMethodCodes(acceptedPaymentMethods.methodCodes)
+        : [],
+    [acceptedPaymentMethods],
+  );
+  const [selectedPaymentMethod, setSelectedPaymentMethod] =
+    useState<AcceptedPaymentMethodCode | null>(() => {
+      const methods = hasReviewedPaymentMethods(acceptedPaymentMethods.reviewedAt)
+        ? acceptedPaymentMethodCodes(acceptedPaymentMethods.methodCodes)
+        : [];
+      return methods.length === 1 ? methods[0] : null;
+    });
   /** Whether the review step is showing its note editor. Opened by the second of the
    *  two buttons under the rules, and never open on arrival: the note is optional and
    *  a textarea in the way of the total does not say so. */
@@ -707,6 +726,16 @@ export function BookingWidget({
       return;
     }
 
+    if (selectablePaymentMethods.length > 0 && !selectedPaymentMethod) {
+      setError(
+        i18n.resolve(
+          "booking.payment_method_choice.required",
+          "Choose how you would like to pay before sending your request.",
+        ).text,
+      );
+      return;
+    }
+
     // The backstop for the check `handlePrimaryAction` makes before opening the
     // review: a session that expired while the guest read the rules still lands here.
     if (!session) {
@@ -722,6 +751,9 @@ export function BookingWidget({
       formData.set("guestCount", String(guests));
       formData.set("houseRulesAccepted", "true");
       formData.set("houseRulesVersion", houseRulesVersion);
+      if (selectedPaymentMethod) {
+        formData.set("selectedPaymentMethod", selectedPaymentMethod);
+      }
       if (note) formData.set("guestNote", note);
 
       const result = await createBookingAction(formData);
@@ -1182,6 +1214,11 @@ export function BookingWidget({
             t={i18n}
             acceptedPaymentMethods={acceptedPaymentMethods}
             depositPolicy={depositPolicy}
+            selectedPaymentMethod={selectedPaymentMethod}
+            onSelectedPaymentMethodChange={(method) => {
+              setSelectedPaymentMethod(method);
+              setError(null);
+            }}
           />
         </div>
 

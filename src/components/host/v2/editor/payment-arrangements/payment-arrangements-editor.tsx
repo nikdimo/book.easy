@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import {
+  Bitcoin,
   Banknote,
   Check,
   CircleAlert,
@@ -19,6 +20,12 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  PAYMENT_INSTRUCTION_TEMPLATE_MAX_LENGTH,
+  PAYMENT_INSTRUCTION_TEMPLATES_TOTAL_MAX_LENGTH,
+  type PaymentInstructionTemplateIssue,
+} from "@/lib/payments/payment-instruction-templates";
 import { Tx, useI18n } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
 import {
@@ -26,6 +33,7 @@ import {
   normalizePaymentArrangementsDraft,
   normalizePaymentMethodCodes,
   paymentArrangementsAreComplete,
+  paymentInstructionTemplateIssue,
   samePaymentArrangementsDraft,
   togglePaymentMethod,
   validateOtherPaymentLabel,
@@ -59,6 +67,9 @@ export type PaymentArrangementsEditorProps = {
   /** A safe, user-facing error. Raw server or provider errors should not be passed here. */
   errorMessage?: string;
   disabled?: boolean;
+  /** Listing creation owns navigation in its fixed footer, so it reuses the fields
+   * without rendering this editor's standalone save row. */
+  showSubmit?: boolean;
 };
 
 type MethodPresentation = {
@@ -74,6 +85,7 @@ export function PaymentArrangementsEditor({
   saveState,
   errorMessage,
   disabled = false,
+  showSubmit = true,
 }: PaymentArrangementsEditorProps) {
   const [draft, setDraft] = useState<PaymentArrangementsDraft>(() =>
     normalizePaymentArrangementsDraft(initialValue),
@@ -93,6 +105,7 @@ export function PaymentArrangementsEditor({
   const otherIssue = draft.methodCodes.includes("OTHER")
     ? validateOtherPaymentLabel(draft.otherLabel ?? "")
     : null;
+  const privateDetailsIssue = paymentInstructionTemplateIssue(draft);
   const canSubmit = isComplete && (dirty || !reviewed);
 
   function publishChange(next: PaymentArrangementsDraft) {
@@ -106,6 +119,9 @@ export function PaymentArrangementsEditor({
     publishChange({
       methodCodes,
       otherLabel: methodCodes.includes("OTHER") ? (draft.otherLabel ?? "") : null,
+      // Keep unsaved text while a host toggles a method off and back on. The save
+      // normalizer removes templates for methods that remain unselected.
+      instructionTemplates: draft.instructionTemplates ?? {},
     });
   }
 
@@ -138,7 +154,7 @@ export function PaymentArrangementsEditor({
         <p className="text-sm leading-6 text-slate-600">
           <Tx
             k="host.editor.payment_arrangements.intro"
-            source="Choose every payment method you accept. Guests see the method names only—never account details or payment instructions."
+            source="Choose every payment method you accept. You can also save private instructions to reuse after accepting a booking."
           />
         </p>
       </header>
@@ -155,7 +171,7 @@ export function PaymentArrangementsEditor({
         >
           <Tx
             k="host.editor.payment_arrangements.public_names_body"
-            source="Only the selected method names appear publicly. You share any necessary instructions privately after accepting a request."
+            source="Only selected method names appear publicly. Saved account or wallet details stay private until you choose to send them after accepting a request."
           />
         </InfoCard>
         <InfoCard
@@ -170,7 +186,7 @@ export function PaymentArrangementsEditor({
         >
           <Tx
             k="host.editor.payment_arrangements.safety_body"
-            source="Do not enter account numbers, IBAN or SWIFT codes, payment handles, links, card details, phone numbers, or payment instructions."
+            source="Never enter card numbers, CVV, PIN, passwords, seed phrases, private keys, or recovery information."
           />
         </InfoCard>
       </div>
@@ -259,6 +275,21 @@ export function PaymentArrangementsEditor({
           />
         ) : null}
 
+        <PrivateInstructionFields
+          draft={draft}
+          disabled={busy}
+          issue={privateDetailsIssue}
+          onChange={(code, value) =>
+            publishChange({
+              ...draft,
+              instructionTemplates: {
+                ...(draft.instructionTemplates ?? {}),
+                [code]: value,
+              },
+            })
+          }
+        />
+
         <GuestPreview
           draft={draft}
           showMethods={(reviewed || dirty) && draft.methodCodes.length > 0}
@@ -273,7 +304,7 @@ export function PaymentArrangementsEditor({
           </p>
         ) : null}
 
-        <div className="mt-6 flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
+        {showSubmit ? <div className="mt-6 flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
           <SaveStatus
             state={effectiveSaveState}
             reviewed={reviewed}
@@ -300,9 +331,150 @@ export function PaymentArrangementsEditor({
               />
             )}
           </Button>
-        </div>
+        </div> : null}
       </form>
     </div>
+  );
+}
+
+const PRIVATE_DETAIL_METHODS: readonly PaymentMethodCode[] = [
+  "BANK_TRANSFER_LOCAL_SEPA",
+  "BANK_TRANSFER_INTERNATIONAL",
+  "PAYPAL",
+  "REVOLUT",
+  "WISE",
+  "BITCOIN",
+  "HOST_SECURE_CARD_LINK",
+  "OTHER",
+];
+
+function PrivateInstructionFields({
+  draft,
+  disabled,
+  issue,
+  onChange,
+}: {
+  draft: PaymentArrangementsDraft;
+  disabled: boolean;
+  issue: PaymentInstructionTemplateIssue | null;
+  onChange: (code: PaymentMethodCode, value: string) => void;
+}) {
+  const i18n = useI18n();
+  const selected = PRIVATE_DETAIL_METHODS.filter((code) =>
+    draft.methodCodes.includes(code),
+  );
+  const totalLength = selected.reduce(
+    (total, code) =>
+      total + [...(draft.instructionTemplates?.[code] ?? "").trim()].length,
+    0,
+  );
+  if (!selected.length) return null;
+
+  return (
+    <section className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+      <h2 className="text-sm font-semibold text-slate-900">
+        <Tx
+          k="host.editor.payment_arrangements.private_details_heading"
+          source="Saved private payment instructions"
+        />
+      </h2>
+      <p className="mt-1 text-xs leading-5 text-slate-600">
+        <Tx
+          k="host.editor.payment_arrangements.private_details_description"
+          source="Optional. Save the information you normally send for each method. It will prefill your private message after you accept a booking, and you can review or edit it before sending."
+        />
+      </p>
+      <p className="mt-1 text-right text-xs tabular-nums text-slate-500">
+        {totalLength}/{PAYMENT_INSTRUCTION_TEMPLATES_TOTAL_MAX_LENGTH}
+      </p>
+      <div className="mt-4 space-y-4">
+        {selected.map((code) => {
+          const id = `payment-instructions-${code.toLowerCase().replaceAll("_", "-")}`;
+          const value = draft.instructionTemplates?.[code] ?? "";
+          return (
+            <div key={code} className="space-y-1.5">
+              <label htmlFor={id} className="block text-sm font-medium text-slate-900">
+                <MethodLabel code={code} otherLabel={draft.otherLabel} />
+              </label>
+              <Textarea
+                id={id}
+                value={value}
+                onChange={(event) => onChange(code, event.currentTarget.value)}
+                disabled={disabled}
+                maxLength={PAYMENT_INSTRUCTION_TEMPLATE_MAX_LENGTH}
+                rows={code.startsWith("BANK_TRANSFER") ? 5 : 3}
+                autoComplete="off"
+                spellCheck={false}
+                translate="no"
+                placeholder={privateInstructionPlaceholder(code, i18n.resolve)}
+                className="bg-white"
+              />
+              <p className="text-xs leading-5 text-slate-500">
+                {privateInstructionHint(code)}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+      {issue ? (
+        <p role="alert" className="mt-3 flex items-start gap-2 text-sm text-rose-700">
+          <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+          {issue === "UNSAFE_CREDENTIALS" ? (
+            <Tx
+              k="host.editor.payment_arrangements.private_details_unsafe"
+              source="Remove card details, passwords, PINs, seed phrases, private keys, or recovery information."
+            />
+          ) : (
+            <Tx
+              k="host.editor.payment_arrangements.private_details_too_long"
+              source="Shorten the saved instructions before continuing."
+            />
+          )}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+function privateInstructionPlaceholder(
+  code: PaymentMethodCode,
+  resolve: ReturnType<typeof useI18n>["resolve"],
+) {
+  switch (code) {
+    case "BANK_TRANSFER_LOCAL_SEPA":
+      return resolve(
+        "host.editor.payment_arrangements.bank_local_placeholder",
+        "Account holder, bank name, IBAN or local account number, and payment reference",
+      ).text;
+    case "BANK_TRANSFER_INTERNATIONAL":
+      return resolve(
+        "host.editor.payment_arrangements.bank_international_placeholder",
+        "Account holder, bank name and address, IBAN/account number, SWIFT/BIC, and payment reference",
+      ).text;
+    case "BITCOIN":
+      return resolve(
+        "host.editor.payment_arrangements.bitcoin_placeholder",
+        "Bitcoin network, public wallet address, amount instructions, and payment reference",
+      ).text;
+    default:
+      return resolve(
+        "host.editor.payment_arrangements.provider_placeholder",
+        "Payment handle or secure payment link, plus any reference the guest should use",
+      ).text;
+  }
+}
+
+function privateInstructionHint(code: PaymentMethodCode) {
+  return code === "BITCOIN" ? (
+    <Tx
+      k="host.editor.payment_arrangements.bitcoin_security_hint"
+      source="Enter only a public Bitcoin address. Never enter a seed phrase or private key."
+    />
+  ) : (
+    <Tx
+      k="host.editor.payment_arrangements.private_details_hint"
+      source="Guests cannot see this while browsing or while the request is pending."
+    />
   );
 }
 
@@ -644,6 +816,17 @@ function methodPresentation(code: PaymentMethodCode): MethodPresentation {
           <Tx
             k="host.editor.payment_arrangements.wise_description"
             source="Wise is available for this listing."
+          />
+        ),
+      };
+    case "BITCOIN":
+      return {
+        icon: Bitcoin,
+        label: <Tx k="host.editor.payment_arrangements.bitcoin" source="Bitcoin" />,
+        description: (
+          <Tx
+            k="host.editor.payment_arrangements.bitcoin_description"
+            source="Accept Bitcoin to a public wallet address you provide after acceptance."
           />
         ),
       };

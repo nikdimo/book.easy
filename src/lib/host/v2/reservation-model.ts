@@ -357,6 +357,7 @@ export function buildActionQueue(
       checkIn: ymdToDbDate(reservation.checkIn),
       responseDueAt: new Date(reservation.responseDueAt),
       unreadCount: reservation.unreadCount,
+      paymentInstructionsStatus: reservation.paymentInstructionsStatus,
       ratingDueAt: reservation.ratingDueAt
         ? new Date(reservation.ratingDueAt)
         : null,
