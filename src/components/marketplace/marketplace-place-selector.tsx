@@ -308,7 +308,7 @@ export function MarketplacePlaceSelector({
             !city && "text-muted-foreground",
             (city || labels.searchDestinations.translated) && "notranslate"
           )}
-          translate="no"
+          translate={city || labels.searchDestinations.translated ? "no" : undefined}
           suppressHydrationWarning
         >
           {currentLabel}

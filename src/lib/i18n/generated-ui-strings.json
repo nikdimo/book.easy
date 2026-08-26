@@ -14795,8 +14795,13 @@
     "filePath": "src/components/host/listing-bottom-nav.tsx"
   },
   {
-    "key": "languages.automatic_badge",
-    "sourceText": "Automatic",
+    "key": "languages.google_automatic_badge",
+    "sourceText": "Automatic · Google",
+    "filePath": "src/components/shared/regional-settings-dialog.tsx"
+  },
+  {
+    "key": "languages.google_badge",
+    "sourceText": "Google",
     "filePath": "src/components/shared/google-translate-widget.tsx"
   },
   {
@@ -17250,9 +17255,19 @@
     "filePath": "src/components/shared/currency-picker-panel.tsx"
   },
   {
-    "key": "regional.all_languages",
-    "sourceText": "Choose a language and region",
+    "key": "regional.automatic_languages",
+    "sourceText": "More languages — automatic translation",
+    "filePath": "src/components/shared/google-translate-widget.tsx"
+  },
+  {
+    "key": "regional.automatic_languages_description",
+    "sourceText": "Public pages are translated automatically by Google and may contain mistakes.",
     "filePath": "src/components/shared/regional-settings-dialog.tsx"
+  },
+  {
+    "key": "regional.automatic_unavailable_here",
+    "sourceText": "Automatic Google translation is available on public pages. Host, booking, payment, and admin tools use supported languages for accuracy.",
+    "filePath": "src/components/shared/google-translate-widget.tsx"
   },
   {
     "key": "regional.currency_failed",
@@ -17262,6 +17277,11 @@
   {
     "key": "regional.dialog_description",
     "sourceText": "Choose the language you read the site in and the currency prices are shown in. They are separate settings.",
+    "filePath": "src/components/shared/regional-settings-dialog.tsx"
+  },
+  {
+    "key": "regional.hide_automatic_languages",
+    "sourceText": "Hide automatic languages",
     "filePath": "src/components/shared/regional-settings-dialog.tsx"
   },
   {
@@ -17300,13 +17320,23 @@
     "filePath": "src/components/shared/regional-settings-dialog.tsx"
   },
   {
+    "key": "regional.show_automatic_languages",
+    "sourceText": "Show automatic languages",
+    "filePath": "src/components/shared/regional-settings-dialog.tsx"
+  },
+  {
     "key": "regional.suggested_currencies",
     "sourceText": "Suggested currencies",
     "filePath": "src/components/shared/currency-picker-panel.tsx"
   },
   {
-    "key": "regional.suggested_languages",
-    "sourceText": "Suggested languages and regions",
+    "key": "regional.supported_languages",
+    "sourceText": "Supported languages",
+    "filePath": "src/components/shared/google-translate-widget.tsx"
+  },
+  {
+    "key": "regional.supported_languages_description",
+    "sourceText": "Menus, booking steps, and payment information are translated and maintained by Linger Homes.",
     "filePath": "src/components/shared/regional-settings-dialog.tsx"
   },
   {
@@ -17320,23 +17350,23 @@
     "filePath": "src/components/host/v2/host-v2-account-menu.tsx"
   },
   {
-    "key": "regional.translation_description",
-    "sourceText": "Automatically translate host-written descriptions and guest reviews.",
-    "filePath": "src/components/shared/regional-settings-dialog.tsx"
-  },
-  {
-    "key": "regional.translation_title",
-    "sourceText": "Translation",
-    "filePath": "src/components/shared/regional-settings-dialog.tsx"
-  },
-  {
-    "key": "regional.translation_toggle_label",
-    "sourceText": "Automatically translate descriptions and reviews",
-    "filePath": "src/components/shared/regional-settings-dialog.tsx"
-  },
-  {
     "key": "regional.trigger_label",
     "sourceText": "Language and currency",
+    "filePath": "src/components/shared/regional-settings-dialog.tsx"
+  },
+  {
+    "key": "regional.user_content_translation_description",
+    "sourceText": "Translate descriptions written by hosts and reviews written by guests.",
+    "filePath": "src/components/shared/regional-settings-dialog.tsx"
+  },
+  {
+    "key": "regional.user_content_translation_title",
+    "sourceText": "Translate listing content",
+    "filePath": "src/components/shared/regional-settings-dialog.tsx"
+  },
+  {
+    "key": "regional.user_content_translation_toggle_label",
+    "sourceText": "Translate descriptions and reviews",
     "filePath": "src/components/shared/regional-settings-dialog.tsx"
   },
   {

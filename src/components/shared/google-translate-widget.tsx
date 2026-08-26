@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore } from "react";
+import { usePathname } from "next/navigation";
 import { Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +35,7 @@ import {
   reviewedLanguageSearchText,
 } from "@/lib/i18n/reviewed-languages";
 import { sortLanguagePickerRows } from "@/lib/i18n/language-picker-order";
+import { automaticTranslationAllowedForPath } from "@/lib/i18n/translation-experience";
 
 interface LanguageOption {
   code: string;
@@ -81,6 +83,8 @@ export function GoogleTranslateWidget({
   currentLocale?: string;
 }) {
   const i18n = useI18n();
+  const pathname = usePathname();
+  const automaticAllowed = automaticTranslationAllowedForPath(pathname);
   const [open, setOpen] = useState(false);
   const automaticLanguages = useSyncExternalStore(
     subscribeAutomaticLanguages,
@@ -99,7 +103,7 @@ export function GoogleTranslateWidget({
   // (Google-only) selection. Host and admin mount four selectors between them with no
   // prop to pass, so that last fallback is what they actually render from: getting it
   // wrong showed "English" in both panels while the visitor was reading Portuguese.
-  const current =
+  const selected =
     normalizeLocaleCode(activeLocale) ??
     normalizeLocaleCode(currentLocale) ??
     normalizeLocaleCode(i18n.requestedLocale) ??
@@ -109,23 +113,34 @@ export function GoogleTranslateWidget({
     (language) => language.isDefault || language.useAiTranslation,
   );
   const reviewedCodes = new Set(reviewed.map((language) => language.code));
+  const current =
+    automaticAllowed || reviewedCodes.has(selected) ? selected : i18n.locale;
   const availableAutomaticLanguages =
     automaticLanguages.length > 0
       ? automaticLanguages
       : getFallbackAutomaticLanguages(i18n.requestedLocale);
-  const automatic = availableAutomaticLanguages.filter(
-    (language) => !reviewedCodes.has(language.code),
-  );
-  const languageOptions = sortLanguagePickerRows(
-    [
-      ...reviewed.map((language) => ({
+  const automatic = automaticAllowed
+    ? availableAutomaticLanguages.filter(
+        (language) => !reviewedCodes.has(language.code),
+      )
+    : [];
+  const reviewedOptions = sortLanguagePickerRows(
+    reviewed.map((language) => ({
         code: language.code,
         name: language.name,
         searchTerms: reviewedLanguageSearchText(language.code, language.name),
         automatic: false,
+        key: language.code,
+        title: language.name,
       })),
-      ...automatic.map((language) => ({ ...language, automatic: true })),
-    ].map((language) => ({ ...language, key: language.code, title: language.name })),
+  );
+  const automaticOptions = sortLanguagePickerRows(
+    automatic.map((language) => ({
+      ...language,
+      automatic: true,
+      key: language.code,
+      title: language.name,
+    })),
   );
   const currentLabel =
     reviewed.find((language) => language.code === current)?.name ??
@@ -164,8 +179,12 @@ export function GoogleTranslateWidget({
             <CommandEmpty>
               <Tx k="languages.no_results" source="No languages found" />
             </CommandEmpty>
-            <CommandGroup>
-              {languageOptions.map((language) => (
+            <CommandGroup
+              heading={
+                <Tx k="regional.supported_languages" source="Supported languages" />
+              }
+            >
+              {reviewedOptions.map((language) => (
                 <CommandItem
                   key={language.code}
                   value={language.searchTerms}
@@ -176,14 +195,44 @@ export function GoogleTranslateWidget({
                   }}
                 >
                   <span className="flex-1">{language.name}</span>
-                  {language.automatic ? (
-                    <span className="text-[0.68rem] text-muted-foreground">
-                      <Tx k="languages.automatic_badge" source="Automatic" />
-                    </span>
-                  ) : null}
                 </CommandItem>
               ))}
             </CommandGroup>
+            {automaticAllowed && automaticOptions.length > 0 ? (
+              <CommandGroup
+                heading={
+                  <Tx
+                    k="regional.automatic_languages"
+                    source="More languages — automatic translation"
+                  />
+                }
+              >
+                {automaticOptions.map((language) => (
+                  <CommandItem
+                    key={language.code}
+                    value={language.searchTerms}
+                    data-checked={language.code === current}
+                    onSelect={() => {
+                      setOpen(false);
+                      void setLanguage(language.code);
+                    }}
+                  >
+                    <span className="flex-1">{language.name}</span>
+                    <span className="text-[0.68rem] text-muted-foreground">
+                      <Tx k="languages.google_badge" source="Google" />
+                    </span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            ) : null}
+            {!automaticAllowed ? (
+              <p className="border-t px-3 py-3 text-xs leading-5 text-muted-foreground">
+                <Tx
+                  k="regional.automatic_unavailable_here"
+                  source="Automatic Google translation is available on public pages. Host, booking, payment, and admin tools use supported languages for accuracy."
+                />
+              </p>
+            ) : null}
           </CommandList>
         </Command>
       </PopoverContent>

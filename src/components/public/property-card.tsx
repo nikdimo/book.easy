@@ -97,7 +97,7 @@ export async function PropertyCard({
     isValid(parseISO(checkOut));
   const dateLine =
     showTrip &&
-    `${formatDateShort(parseISO(checkIn!), t.locale)} – ${formatDateShort(parseISO(checkOut!), t.locale)}`;
+    `${formatDateShort(parseISO(checkIn!), t.requestedLocale)} – ${formatDateShort(parseISO(checkOut!), t.requestedLocale)}`;
 
   const nightly = pricingRule ? Number(pricingRule.baseNightlyRate) : 0;
   // A listing that charges one rate all year has nothing to span, so it keeps the
@@ -254,7 +254,9 @@ export async function PropertyCard({
         </div>
 
         <p
-          data-user-generated-content translate="yes"
+          data-user-generated-content
+          data-translatable-user-content
+          translate="yes"
           className="truncate text-[0.9rem] leading-5 text-muted-foreground"
         >
           {title}

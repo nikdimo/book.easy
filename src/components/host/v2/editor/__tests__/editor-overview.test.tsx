@@ -8,6 +8,8 @@ import type { Translator } from "@/lib/i18n/t";
  *  what an untranslated request renders with. */
 const t: Translator = {
   locale: "en",
+  requestedLocale: "en",
+  catalogReady: true,
   messages: {},
   resolve: (_key, source) => ({ text: source, translated: false }),
 };

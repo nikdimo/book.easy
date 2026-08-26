@@ -123,6 +123,8 @@ export interface AutomaticLanguage {
   searchTerms: string;
 }
 
+export type GoogleTranslationScope = "page" | "user-content";
+
 const NO_AUTOMATIC_LANGUAGES: readonly AutomaticLanguage[] = [];
 
 /**
@@ -150,12 +152,14 @@ const GOOGLE_LANGUAGE_CODES = [
 export function getFallbackAutomaticLanguages(
   displayLocale: string,
 ): readonly AutomaticLanguage[] {
-  return GOOGLE_LANGUAGE_CODES.map((code) => {
+  return GOOGLE_LANGUAGE_CODES.map((code): AutomaticLanguage | null => {
     const name =
       languageDisplayName(code, displayLocale) ??
       languageDisplayName(code, code) ??
-      languageDisplayName(code, "en") ??
-      code;
+      languageDisplayName(code, "en");
+    // A raw ISO code is implementation data, not a language name. If this runtime
+    // cannot name an entry, omit it instead of presenting "aa" or "alz" to guests.
+    if (!name) return null;
     const englishName = languageDisplayName(code, "en");
     const nativeName = languageDisplayName(code, code);
     return {
@@ -165,7 +169,7 @@ export function getFallbackAutomaticLanguages(
         .filter((value): value is string => Boolean(value))
         .join(" "),
     };
-  });
+  }).filter((language): language is AutomaticLanguage => language !== null);
 }
 
 let automaticLanguages: readonly AutomaticLanguage[] = NO_AUTOMATIC_LANGUAGES;
@@ -236,9 +240,22 @@ function publishActiveLocale(locale: string) {
   for (const listener of localeListeners) listener();
 }
 
+function isRawLanguageCodeLabel(name: string, code: string): boolean {
+  const normalizedName = name.trim().toLocaleLowerCase();
+  const normalizedCode = code.trim().replaceAll("_", "-").toLocaleLowerCase();
+  const baseCode = normalizedCode.split("-")[0] ?? normalizedCode;
+  return (
+    normalizedName === normalizedCode ||
+    normalizedName === baseCode ||
+    normalizedName.startsWith(`${normalizedCode} (`) ||
+    normalizedName.startsWith(`${baseCode} (`)
+  );
+}
+
 function languageDisplayName(code: string, locale: string): string | null {
   try {
-    return new Intl.DisplayNames([locale], { type: "language" }).of(code) ?? null;
+    const name = new Intl.DisplayNames([locale], { type: "language" }).of(code);
+    return name && !isRawLanguageCodeLabel(name, code) ? name : null;
   } catch {
     return null;
   }
@@ -263,7 +280,11 @@ function collectLanguages(displayLocale: string) {
         const nativeName = languageDisplayName(code, code);
         return {
           code,
-          name: localizedName ?? englishName ?? googleName,
+          name:
+            localizedName ??
+            englishName ??
+            nativeName ??
+            (!isRawLanguageCodeLabel(googleName, code) ? googleName : ""),
           searchTerms: [googleName, localizedName, englishName, nativeName]
             .filter((name): name is string => Boolean(name))
             .join(" "),
@@ -319,20 +340,50 @@ function isInOpaqueContext(node: Element): boolean {
   return false;
 }
 
-function hasUnofferedText(root: Element): boolean {
-  if (isInOpaqueContext(root)) return false;
-  const walker = sourceTextWalker(root);
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    if (!offeredText.has(offeredKey(node.nodeValue))) return true;
+function translationRoots(
+  root: Element,
+  scope: GoogleTranslationScope,
+): Element[] {
+  if (scope === "page") return [root];
+  return [
+    ...(root.matches('[data-translatable-user-content][translate="yes"]')
+      ? [root]
+      : []),
+    ...root.querySelectorAll<Element>(
+      '[data-translatable-user-content][translate="yes"]',
+    ),
+  ];
+}
+
+function hasUnofferedText(
+  root: Element,
+  scope: GoogleTranslationScope,
+): boolean {
+  for (const translationRoot of translationRoots(root, scope)) {
+    if (isInOpaqueContext(translationRoot) || isOpaqueSubtree(translationRoot)) {
+      continue;
+    }
+    const walker = sourceTextWalker(translationRoot);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (!offeredText.has(offeredKey(node.nodeValue))) return true;
+    }
   }
   return false;
 }
 
-function recordOfferedText(root: Element = document.body): void {
+function recordOfferedText(
+  root: Element = document.body,
+  scope: GoogleTranslationScope = "page",
+): void {
   if (offeredText.size > MAX_OFFERED_ENTRIES) offeredText.clear();
-  const walker = sourceTextWalker(root);
-  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    offeredText.add(offeredKey(node.nodeValue));
+  for (const translationRoot of translationRoots(root, scope)) {
+    if (isInOpaqueContext(translationRoot) || isOpaqueSubtree(translationRoot)) {
+      continue;
+    }
+    const walker = sourceTextWalker(translationRoot);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      offeredText.add(offeredKey(node.nodeValue));
+    }
   }
 }
 
@@ -345,7 +396,10 @@ function passCooldown(now: number): number {
   return Math.max(0, lastPassAt + MIN_PASS_INTERVAL_MS - now);
 }
 
-function retranslate(locale: string): boolean {
+function retranslate(
+  locale: string,
+  scope: GoogleTranslationScope,
+): boolean {
   const select = translateSelect();
   if (!select) return false;
 
@@ -360,13 +414,13 @@ function retranslate(locale: string): boolean {
   // marked `notranslate`, which means most interactions — opening a popover, closing a
   // dialog, committing a route whose content is fully covered — introduce no source
   // text at all and must not dispatch.
-  if (!hasUnofferedText(document.body)) return true;
+  if (!hasUnofferedText(document.body, scope)) return true;
 
   // Record before dispatching, not after. Recording afterwards only ever captured the
   // text Google had declined to translate, because anything it did translate sits inside
   // a `<font>` the walker rejects — so every string Google handled successfully stayed
   // unrecorded and re-dispatched the moment its component remounted.
-  recordOfferedText();
+  recordOfferedText(document.body, scope);
   lastPassAt = Date.now();
   passSuppressedUntil = lastPassAt + PASS_SETTLE_MS;
 
@@ -380,7 +434,10 @@ function retranslate(locale: string): boolean {
   // again once they settle picks up anything the application rendered mid-pass, so that
   // content does not dispatch a second pass on the next click.
   window.clearTimeout(pendingRecord);
-  pendingRecord = window.setTimeout(() => recordOfferedText(), PASS_SETTLE_MS);
+  pendingRecord = window.setTimeout(
+    () => recordOfferedText(document.body, scope),
+    PASS_SETTLE_MS,
+  );
   return true;
 }
 
@@ -392,7 +449,11 @@ let pendingDelay = Number.POSITIVE_INFINITY;
  *  cooldown is applied by *deferring* rather than dropping, so a request that arrives
  *  too soon after the previous pass still runs — a dropped one would leave genuinely new
  *  content untranslated. */
-function schedulePass(locale: string, delay: number) {
+function schedulePass(
+  locale: string,
+  scope: GoogleTranslationScope,
+  delay: number,
+) {
   const effectiveDelay = Math.max(delay, passCooldown(Date.now()));
   if (pendingPass !== undefined && effectiveDelay >= pendingDelay) return;
   window.clearTimeout(pendingPass);
@@ -400,7 +461,7 @@ function schedulePass(locale: string, delay: number) {
   pendingPass = window.setTimeout(() => {
     pendingPass = undefined;
     pendingDelay = Number.POSITIVE_INFINITY;
-    retranslate(locale);
+    retranslate(locale, scope);
   }, effectiveDelay);
 }
 
@@ -469,10 +530,13 @@ let teardown: (() => void) | undefined;
  * Starts the shared runtime. Reference-counted rather than a boolean flag so React's
  * development double-invoke (mount → cleanup → mount) does not leave it stopped.
  */
-export function startGoogleTranslateRuntime(locale: string): () => void {
+export function startGoogleTranslateRuntime(
+  locale: string,
+  scope: GoogleTranslationScope,
+): () => void {
   mountCount += 1;
   if (mountCount === 1) {
-    teardown = install(locale);
+    teardown = install(locale, scope);
   }
 
   return () => {
@@ -484,7 +548,7 @@ export function startGoogleTranslateRuntime(locale: string): () => void {
   };
 }
 
-function install(locale: string): () => void {
+function install(locale: string, scope: GoogleTranslationScope): () => void {
   // Normalize legacy or duplicate Google cookies before its script reads them.
   syncBrowserLanguageCookies(locale);
 
@@ -496,7 +560,7 @@ function install(locale: string): () => void {
     // leave host-authored content in its source language for the whole page. Retry when
     // the option list arrives; the offered-text gate keeps this from causing extra
     // document passes once the target is active.
-    schedulePass(locale, 0);
+    schedulePass(locale, scope, 0);
   });
   languageObserver.observe(container, { childList: true, subtree: true });
 
@@ -509,7 +573,7 @@ function install(locale: string): () => void {
       );
     }
     collectLanguages(locale);
-    retranslate(locale);
+    retranslate(locale, scope);
   };
 
   // Radix renders dialogs and popovers into body-level portals, which Google's own
@@ -526,8 +590,8 @@ function install(locale: string): () => void {
     for (const mutation of mutations) {
       for (const node of mutation.addedNodes) {
         if (node.nodeType !== Node.ELEMENT_NODE) continue;
-        if (hasUnofferedText(node as Element)) {
-          schedulePass(locale, OVERLAY_DELAY_MS);
+        if (hasUnofferedText(node as Element, scope)) {
+          schedulePass(locale, scope, OVERLAY_DELAY_MS);
           return;
         }
       }
@@ -555,6 +619,9 @@ function install(locale: string): () => void {
 }
 
 /** Requests a pass after a committed client navigation. */
-export function retranslateAfterNavigation(locale: string) {
-  schedulePass(locale, ROUTE_DELAY_MS);
+export function retranslateAfterNavigation(
+  locale: string,
+  scope: GoogleTranslationScope,
+) {
+  schedulePass(locale, scope, ROUTE_DELAY_MS);
 }

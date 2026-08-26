@@ -557,8 +557,11 @@ export function BookingWidget({
   const addDatesLabel = i18n.resolve("search.add_dates", "Add dates");
   const stayRangeFormatter = useMemo(
     () =>
-      new Intl.DateTimeFormat(i18n.locale, { month: "short", day: "numeric" }),
-    [i18n.locale],
+      new Intl.DateTimeFormat(i18n.requestedLocale, {
+        month: "short",
+        day: "numeric",
+      }),
+    [i18n.requestedLocale],
   );
   const stayRangeSummary: Resolved =
     checkIn && checkOut

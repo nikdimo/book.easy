@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Check, CircleDollarSign, Globe, Languages, Search, X } from "lucide-react";
+import { Check, ChevronDown, ChevronUp, Coins, Globe, Languages, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -50,6 +50,7 @@ import {
   writeAutoTranslateUserContentPreference,
 } from "@/lib/i18n/user-content-translation";
 import { sortLanguagePickerRows } from "@/lib/i18n/language-picker-order";
+import { automaticTranslationAllowedForPath } from "@/lib/i18n/translation-experience";
 
 export interface LanguageOption {
   code: string;
@@ -116,10 +117,11 @@ function PickerGrid({ rows, emptyLabel }: { rows: PickerRow[]; emptyLabel: strin
           onClick={row.onSelect}
           aria-current={row.selected ? "true" : undefined}
           className={cn(
-            "flex items-start gap-2 rounded-lg border px-2.5 py-2 text-left transition-colors",
+            "notranslate flex items-start gap-2 rounded-lg border px-2.5 py-2 text-left transition-colors",
             "hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             row.selected ? "border-foreground" : "border-transparent",
           )}
+          translate="no"
         >
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm leading-5">{row.title}</span>
@@ -132,6 +134,137 @@ function PickerGrid({ rows, emptyLabel }: { rows: PickerRow[]; emptyLabel: strin
           )}
         </button>
       ))}
+    </div>
+  );
+}
+
+/** The language selector deliberately exposes the quality boundary. Built-in copy is
+ * stable and versioned; Google's much larger list is an optional fallback and stays
+ * collapsed until someone asks for it or searches for a language. */
+function LanguagePickerPanel({
+  supportedRows,
+  automaticRows,
+  automaticAllowed,
+  searchPlaceholder,
+  searchLabel,
+  emptyLabel,
+}: {
+  supportedRows: PickerRow[];
+  automaticRows: PickerRow[];
+  automaticAllowed: boolean;
+  searchPlaceholder: string;
+  searchLabel: string;
+  emptyLabel: string;
+}) {
+  const i18n = useI18n();
+  const [query, setQuery] = useState("");
+  const [showAutomatic, setShowAutomatic] = useState(() =>
+    automaticRows.some((row) => row.selected),
+  );
+  const matches = (row: PickerRow) =>
+    tokenContainmentScore(row.searchText, query) === 1;
+  const supported = supportedRows.filter(matches);
+  const automatic = automaticRows.filter(matches);
+  const searching = query.trim().length > 0;
+  const hasResults = supported.length > 0 || automatic.length > 0;
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-3 md:gap-4">
+      <div className="relative">
+        <Search
+          className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+          aria-hidden
+        />
+        <Input
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder={searchPlaceholder}
+          aria-label={searchLabel}
+          className="pr-10"
+        />
+      </div>
+
+      <div className="min-h-0 flex-1 space-y-7 overflow-y-auto pr-1">
+        {!hasResults ? (
+          <p className="px-1 py-8 text-sm text-muted-foreground">{emptyLabel}</p>
+        ) : null}
+
+        {supported.length > 0 ? (
+          <section>
+            <h3 className="px-1 text-sm font-semibold">
+              <Tx k="regional.supported_languages" source="Supported languages" />
+            </h3>
+            <p className="mb-2 mt-1 px-1 text-xs leading-5 text-muted-foreground">
+              <Tx
+                k="regional.supported_languages_description"
+                source="Menus, booking steps, and payment information are translated and maintained by Linger Homes."
+              />
+            </p>
+            <PickerGrid rows={supported} emptyLabel={emptyLabel} />
+          </section>
+        ) : null}
+
+        {automaticAllowed && automatic.length > 0 ? (
+          <section className="border-t pt-5">
+            <h3 className="px-1 text-sm font-semibold">
+              <Tx
+                k="regional.automatic_languages"
+                source="More languages — automatic translation"
+              />
+            </h3>
+            <p className="mb-2 mt-1 px-1 text-xs leading-5 text-muted-foreground">
+              <Tx
+                k="regional.automatic_languages_description"
+                source="Public pages are translated automatically by Google and may contain mistakes."
+              />
+            </p>
+            {searching || showAutomatic ? (
+              <>
+                <PickerGrid rows={automatic} emptyLabel={emptyLabel} />
+                {!searching ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="mt-2 gap-1.5"
+                    onClick={() => setShowAutomatic(false)}
+                  >
+                    <ChevronUp className="size-4" aria-hidden />
+                    {i18n.resolve(
+                      "regional.hide_automatic_languages",
+                      "Hide automatic languages",
+                    ).text}
+                  </Button>
+                ) : null}
+              </>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="ml-1 gap-1.5"
+                onClick={() => setShowAutomatic(true)}
+              >
+                <ChevronDown className="size-4" aria-hidden />
+                {i18n.resolve(
+                  "regional.show_automatic_languages",
+                  "Show automatic languages",
+                ).text}
+              </Button>
+            )}
+          </section>
+        ) : null}
+
+        {!automaticAllowed && !searching ? (
+          <p className="rounded-xl border bg-muted/40 px-4 py-3 text-xs leading-5 text-muted-foreground">
+            <Tx
+              k="regional.automatic_unavailable_here"
+              source="Automatic Google translation is available on public pages. Host, booking, payment, and admin tools use supported languages for accuracy."
+            />
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -224,7 +357,6 @@ export function RegionalSettingsDialog({
   currentLocale,
   currencies,
   currentCurrency,
-  suggestedLocale,
   suggestedCurrency,
   ratesUnavailable = false,
   hideTrigger = false,
@@ -234,8 +366,6 @@ export function RegionalSettingsDialog({
   /** Currencies the rate provider can actually quote right now. */
   currencies: string[];
   currentCurrency: string;
-  /** From the detected country — a hint, never applied on its own. */
-  suggestedLocale?: string | null;
   suggestedCurrency?: string | null;
   /** True when conversion is down and everything is showing official prices. */
   ratesUnavailable?: boolean;
@@ -245,11 +375,14 @@ export function RegionalSettingsDialog({
 }) {
   const i18n = useI18n();
   const router = useRouter();
+  const pathname = usePathname();
   const { update } = useSession();
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"language" | "currency">("language");
   const [announcement, setAnnouncement] = useState("");
   const [autoTranslateUserContent, setAutoTranslateUserContent] = useState(true);
+  const automaticAllowed = automaticTranslationAllowedForPath(pathname);
+  const translationControlAvailable = i18n.catalogReady || automaticAllowed;
 
   function openSettings(tab: "language" | "currency") {
     setActiveTab(tab);
@@ -299,11 +432,7 @@ export function RegionalSettingsDialog({
     getServerActiveLocale,
   );
 
-  // The runtime is authoritative once started — it owns the cookies and Google's
-  // target. Before hydration it has nothing, so this falls back to the prop and then
-  // to `requestedLocale`, never to `i18n.locale`, which is the *catalog* locale and
-  // reads "en" for a Google-only selection.
-  const locale =
+  const selectedLocale =
     normalizeLocaleCode(activeLocale) ??
     normalizeLocaleCode(currentLocale) ??
     normalizeLocaleCode(i18n.requestedLocale) ??
@@ -348,7 +477,7 @@ export function RegionalSettingsDialog({
 
   async function selectCurrency(code: string) {
     setAnnouncement(
-      `${currencyDisplayName(code, i18n.locale)} (${code})`,
+      `${currencyDisplayName(code, i18n.requestedLocale)} (${code})`,
     );
     try {
       const result = await setDisplayCurrency(code);
@@ -383,6 +512,12 @@ export function RegionalSettingsDialog({
     (language) => language.isDefault || language.useAiTranslation,
   );
   const reviewedCodes = new Set(reviewed.map((language) => language.code));
+  // Operational pages do not pretend an automatic language is active when their
+  // fixed interface intentionally falls back to a supported catalog language.
+  const locale =
+    automaticAllowed || reviewedCodes.has(selectedLocale)
+      ? selectedLocale
+      : i18n.locale;
   const availableAutomaticLanguages =
     automaticLanguages.length > 0
       ? automaticLanguages
@@ -391,8 +526,8 @@ export function RegionalSettingsDialog({
     (language) => !reviewedCodes.has(language.code),
   );
 
-  const languageRows = sortLanguagePickerRows<PickerRow>([
-    ...reviewed.map((language) => ({
+  const reviewedLanguageRows = sortLanguagePickerRows<PickerRow>(
+    reviewed.map((language) => ({
       key: language.code,
       title: language.name,
       subtitle: languageRegionLabel(language.code, language.name),
@@ -403,10 +538,15 @@ export function RegionalSettingsDialog({
         void selectLanguage(language.code);
       },
     })),
-    ...automatic.map((language) => ({
+  );
+  const automaticLanguageRows = sortLanguagePickerRows<PickerRow>(
+    automatic.map((language) => ({
       key: language.code,
       title: language.name,
-      subtitle: i18n.resolve("languages.automatic_badge", "Automatic").text,
+      subtitle: i18n.resolve(
+        "languages.google_automatic_badge",
+        "Automatic · Google",
+      ).text,
       searchText: `${language.name} ${language.searchTerms} ${language.code}`,
       selected: language.code === locale,
       onSelect: () => {
@@ -414,13 +554,14 @@ export function RegionalSettingsDialog({
         void selectLanguage(language.code);
       },
     })),
-  ]);
+  );
+  const languageRows = [...reviewedLanguageRows, ...automaticLanguageRows];
 
   const currencyRows: PickerRow[] = currencies.map((code) => ({
     key: code,
-    title: currencyDisplayName(code, i18n.locale),
-    subtitle: `${code} – ${currencySymbol(code, i18n.locale)}`,
-    searchText: currencySearchText(code, i18n.locale),
+    title: currencyDisplayName(code, i18n.requestedLocale),
+    subtitle: `${code} – ${currencySymbol(code, i18n.requestedLocale)}`,
+    searchText: currencySearchText(code, i18n.requestedLocale),
     selected: code === currentCurrency,
     onSelect: () => {
       setOpen(false);
@@ -428,9 +569,6 @@ export function RegionalSettingsDialog({
     },
   }));
 
-  const suggestedLanguageRows = languageRows.filter(
-    (row) => row.key === suggestedLocale,
-  );
   const suggestedCurrencyRows = currencyRows.filter(
     (row) => row.key === suggestedCurrency,
   );
@@ -495,19 +633,19 @@ export function RegionalSettingsDialog({
               aria-label={i18n.resolve("regional.open_currency", "Change currency").text}
               onClick={() => openSettings("currency")}
             >
-              <CircleDollarSign className="size-[18px] lg:size-5" />
+              <Coins className="size-[18px] lg:size-5" />
               <span>{currentCurrency}</span>
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            {currencyDisplayName(currentCurrency, i18n.locale)}
+            {currencyDisplayName(currentCurrency, i18n.requestedLocale)}
           </TooltipContent>
         </Tooltip>
       </div>
 
       <DialogContent
         showCloseButton={false}
-        className="notranslate flex h-[90vh] max-h-[52rem] w-[calc(100vw-1.5rem)] max-w-none flex-col gap-5 overflow-hidden p-4 max-md:h-[calc(100dvh-1rem)] max-md:max-h-none max-md:w-[calc(100vw-1rem)] max-md:gap-3 max-md:rounded-3xl max-md:p-3 sm:w-[calc(100vw-3rem)] sm:max-w-[78rem] sm:p-6 lg:p-7"
+        className="flex h-[90vh] max-h-[52rem] w-[calc(100vw-1.5rem)] max-w-none flex-col gap-5 overflow-hidden p-4 max-md:h-[calc(100dvh-1rem)] max-md:max-h-none max-md:w-[calc(100vw-1rem)] max-md:gap-3 max-md:rounded-3xl max-md:p-3 sm:w-[calc(100vw-3rem)] sm:max-w-[78rem] sm:p-6 lg:p-7"
       >
         <DialogTitle className="sr-only">{triggerLabel.text}</DialogTitle>
         <DialogDescription className="sr-only">
@@ -559,12 +697,15 @@ export function RegionalSettingsDialog({
               <Languages className="h-5 w-5 shrink-0 text-muted-foreground" aria-hidden />
               <div className="min-w-0 flex-1 leading-tight">
                 <p className="truncate text-sm font-semibold leading-5 text-foreground">
-                  <Tx k="regional.translation_title" source="Translation" />
+                  <Tx
+                    k="regional.user_content_translation_title"
+                    source="Translate listing content"
+                  />
                 </p>
                 <p className="mt-px whitespace-normal text-xs font-normal leading-5 text-muted-foreground">
                   <Tx
-                    k="regional.translation_description"
-                    source="Automatically translate host-written descriptions and guest reviews."
+                    k="regional.user_content_translation_description"
+                    source="Translate descriptions written by hosts and reviews written by guests."
                   />
                 </p>
               </div>
@@ -572,15 +713,16 @@ export function RegionalSettingsDialog({
                 type="button"
                 role="switch"
                 aria-checked={autoTranslateUserContent}
+                disabled={!translationControlAvailable}
                 aria-label={
                   i18n.resolve(
-                    "regional.translation_toggle_label",
-                    "Automatically translate descriptions and reviews",
+                    "regional.user_content_translation_toggle_label",
+                    "Translate descriptions and reviews",
                   ).text
                 }
                 onClick={toggleUserContentTranslation}
                 className={cn(
-                  "relative ml-3 h-9 w-14 shrink-0 rounded-full border-2 transition-colors",
+                  "relative ml-3 h-9 w-14 shrink-0 rounded-full border-2 transition-colors disabled:cursor-not-allowed disabled:opacity-45",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                   autoTranslateUserContent
                     ? "border-foreground bg-foreground"
@@ -615,27 +757,16 @@ export function RegionalSettingsDialog({
             value="language"
             className="mt-3 flex min-h-0 flex-1 flex-col md:mt-4"
           >
-            <PickerPanel
-              rows={languageRows}
-              suggested={suggestedLanguageRows}
+            <LanguagePickerPanel
+              supportedRows={reviewedLanguageRows}
+              automaticRows={automaticLanguageRows}
+              automaticAllowed={automaticAllowed}
               searchPlaceholder={
                 i18n.resolve("languages.search_placeholder", "Search languages").text
               }
               searchLabel={
                 i18n.resolve("regional.search_languages_label", "Search languages")
                   .text
-              }
-              suggestedHeading={
-                <Tx
-                  k="regional.suggested_languages"
-                  source="Suggested languages and regions"
-                />
-              }
-              allHeading={
-                <Tx
-                  k="regional.all_languages"
-                  source="Choose a language and region"
-                />
               }
               emptyLabel={
                 i18n.resolve("languages.no_results", "No languages found").text

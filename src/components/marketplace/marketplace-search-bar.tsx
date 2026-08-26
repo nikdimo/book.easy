@@ -758,15 +758,21 @@ function MarketplaceSearchBarInner({
                 "block truncate text-sm font-semibold text-foreground",
                 (city || labels.whereToPlaceholder.translated) && "notranslate"
               )}
-              translate="no"
+              translate={city || labels.whereToPlaceholder.translated ? "no" : undefined}
               suppressHydrationWarning
             >
               {primarySummary}
             </span>
             <span className="mt-1 block truncate text-xs text-muted-foreground">
               <span
-                className="notranslate"
-                translate="no"
+                className={
+                  checkIn || checkOut || dateSummary.translated
+                    ? "notranslate"
+                    : undefined
+                }
+                translate={
+                  checkIn || checkOut || dateSummary.translated ? "no" : undefined
+                }
                 suppressHydrationWarning
               >
                 {dateSummary.text}

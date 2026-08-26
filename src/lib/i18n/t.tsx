@@ -35,6 +35,12 @@ export interface Resolved {
 
 export interface Translator {
   locale: string;
+  /** What the visitor selected, even when fixed UI falls back to English and Google
+   * provides an automatic public-page translation. */
+  requestedLocale: string;
+  /** True only when fixed interface copy is supplied by the versioned catalog (or
+   * English source). Google must never translate that interface a second time. */
+  catalogReady: boolean;
   messages: TranslationMessages;
   /** Resolves a key to its translated value, falling back to `source` when the
    *  locale has no AI translation enabled, or this specific key isn't translated
@@ -55,6 +61,8 @@ export const getTForLocale = cache(async (requestedLocale: string): Promise<Tran
   if (locale === SOURCE_LANGUAGE) {
     return {
       locale,
+      requestedLocale: locale,
+      catalogReady: true,
       messages: {},
       resolve: (_key, source) => ({ text: source, translated: false }),
     };
@@ -65,6 +73,8 @@ export const getTForLocale = cache(async (requestedLocale: string): Promise<Tran
   if (!catalog.enabled) {
     return {
       locale: SOURCE_LANGUAGE,
+      requestedLocale: locale,
+      catalogReady: false,
       messages: {},
       resolve: (_key, source) => ({ text: source, translated: false }),
     };
@@ -72,6 +82,8 @@ export const getTForLocale = cache(async (requestedLocale: string): Promise<Tran
   if (!catalog.active) {
     return {
       locale,
+      requestedLocale: locale,
+      catalogReady: false,
       messages: {},
       resolve: (_key, source) => ({ text: source, translated: false }),
     };
@@ -79,6 +91,8 @@ export const getTForLocale = cache(async (requestedLocale: string): Promise<Tran
 
   return {
     locale,
+    requestedLocale: locale,
+    catalogReady: true,
     messages: catalog.clientMessages,
     resolve: (key, source) => {
       // Server-side resolution still compares against the stored snapshot, so this

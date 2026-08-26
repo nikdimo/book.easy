@@ -5,6 +5,8 @@ import { TWithValues, type Translator } from "@/lib/i18n/t";
 function translator(text: string, translated: boolean): Translator {
   return {
     locale: "en",
+    requestedLocale: "en",
+    catalogReady: true,
     messages: {},
     resolve: () => ({ text, translated }),
   };

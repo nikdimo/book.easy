@@ -1,6 +1,5 @@
 import { getEnabledLanguages } from "@/lib/services/language.service";
 import { getLocale } from "@/lib/i18n/t";
-import { localeFromCountry } from "@/lib/i18n/locale-preference";
 import { getDetectedCountry } from "@/lib/geo/detected-country";
 import { getDisplayCurrency } from "@/lib/currency/server";
 import { currencyFromCountry } from "@/lib/currency/currency-preference";
@@ -45,7 +44,6 @@ export async function RegionalSettingsLauncher({
       currentLocale={locale}
       currencies={quotableCurrencies(rates)}
       currentCurrency={currency}
-      suggestedLocale={localeFromCountry(country)}
       suggestedCurrency={currencyFromCountry(country)}
       ratesUnavailable={rates === null}
       hideTrigger={hideTrigger}

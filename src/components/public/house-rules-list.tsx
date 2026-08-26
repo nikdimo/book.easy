@@ -53,6 +53,7 @@ export function HouseRulesList({
           <dt className="sr-only">{additionalRulesLabel(t)}</dt>
           <dd
             data-user-generated-content
+            data-translatable-user-content
             translate="yes"
             className="whitespace-pre-line text-sm leading-6 text-muted-foreground"
           >

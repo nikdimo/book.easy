@@ -93,10 +93,16 @@ export default async function RootLayout({
       dir={localeDirection(requestedLocale)}
       className={`${manrope.variable} ${inter.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body
+        className="min-h-full flex flex-col"
+        // In a catalog language Google may translate explicitly opted-in user
+        // content, but the interface itself is already complete and immutable.
+        translate={translator.catalogReady ? "no" : undefined}
+      >
         <TranslateDomGuard />
         <GoogleTranslateController
           locale={requestedLocale}
+          catalogReady={translator.catalogReady}
           disabled={
             process.env.NODE_ENV !== "production" &&
             process.env.LOCAL_UI_FAST === "1"
@@ -105,6 +111,7 @@ export default async function RootLayout({
         <I18nProvider
           locale={translator.locale}
           requestedLocale={requestedLocale}
+          catalogReady={translator.catalogReady}
           messages={translator.messages}
         >
           <DisplayCurrencyProvider

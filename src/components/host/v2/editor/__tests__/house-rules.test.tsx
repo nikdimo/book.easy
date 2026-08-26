@@ -18,6 +18,8 @@ import {
 /** Untranslated English, which is what every locale falls back to before review. */
 const t: Translator = {
   locale: "en",
+  requestedLocale: "en",
+  catalogReady: true,
   messages: {},
   resolve: (_key, source) => ({ text: source, translated: false }),
 };

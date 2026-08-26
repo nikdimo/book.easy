@@ -6,7 +6,7 @@ import { signOut, useSession } from "next-auth/react";
 import {
   ArrowLeftRight,
   CalendarDays,
-  CircleDollarSign,
+  Coins,
   Globe,
   Heart,
   Home,
@@ -162,7 +162,7 @@ export function HostV2AccountMenu({
           aria-label={`${i18n.resolve("regional.tab_currency", "Currency").text}: ${currencyDisplayName(display.currency, i18n.locale)}`}
           onSelect={() => openRegionalSettings("currency")}
         >
-          <CircleDollarSign className="mr-2 h-4 w-4" />
+          <Coins className="mr-2 h-4 w-4" />
           <Tx k="regional.tab_currency" source="Currency" />
           <span
             aria-hidden

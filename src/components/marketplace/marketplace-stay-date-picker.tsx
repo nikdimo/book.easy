@@ -56,6 +56,7 @@ import { interpolate, pluralText, useI18n } from "@/lib/i18n/client";
 import { useSearchLabels } from "@/components/marketplace/search-labels";
 import type { SearchLabels } from "@/components/marketplace/search-labels";
 import type { Resolved } from "@/lib/i18n/t";
+import { dayPickerLocaleFor } from "@/lib/i18n/day-picker-locale";
 
 function parseLocalYmd(s: string): Date | undefined {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return undefined;
@@ -1143,6 +1144,7 @@ export function DateRangeCalendarStep({
 }) {
   const labels = useSearchLabels();
   const calendarLocale = locale ?? labels.locale;
+  const resolvedCalendarLocale = dayPickerLocaleFor(calendarLocale);
   const [isMobile, setIsMobile] = React.useState(false);
   const [visibleMonthCount, setVisibleMonthCount] = React.useState(
     INITIAL_DESKTOP_MONTH_COUNT,
@@ -1896,8 +1898,9 @@ export function DateRangeCalendarStep({
             ) : null}
           </div>
         ) : null}
-        <div className="notranslate mx-auto w-full" translate="no">
+        <div className="mx-auto w-full">
           <Calendar
+            locale={resolvedCalendarLocale}
             mode="range"
             required={false}
             resetOnSelect
@@ -1930,17 +1933,23 @@ export function DateRangeCalendarStep({
             showOutsideDays={false}
             formatters={{
               formatCaption: (date) =>
-                new Intl.DateTimeFormat(calendarLocale, {
-                  month: "long",
-                  year: "numeric",
-                }).format(date),
+                resolvedCalendarLocale
+                  ? format(date, "LLLL yyyy", { locale: resolvedCalendarLocale })
+                  : new Intl.DateTimeFormat(calendarLocale, {
+                      month: "long",
+                      year: "numeric",
+                    }).format(date),
               // Single letters on the guest picker: the header is a rhythm cue, not
               // something anyone reads, and dropping "SUN"→"S" lets the cells breathe.
               // The host availability grid has room for the unambiguous short form.
               formatWeekdayName: (date) =>
-                new Intl.DateTimeFormat(calendarLocale, {
-                  weekday: dayVariant === "default" ? "narrow" : "short",
-                }).format(date),
+                resolvedCalendarLocale
+                  ? format(date, dayVariant === "default" ? "EEEEE" : "EEE", {
+                      locale: resolvedCalendarLocale,
+                    })
+                  : new Intl.DateTimeFormat(calendarLocale, {
+                      weekday: dayVariant === "default" ? "narrow" : "short",
+                    }).format(date),
             }}
             modifiers={calendarModifiers}
             modifiersClassNames={dateModifiersClassNames}
@@ -2087,7 +2096,14 @@ export function DateRangeCalendarStep({
               outside: "opacity-0 pointer-events-none",
               hidden: "invisible",
             }}
-            components={{ DayButton: MarketplaceRangeDayButton }}
+            components={{
+              DayButton: (props) => (
+                <MarketplaceRangeDayButton
+                  {...props}
+                  locale={resolvedCalendarLocale}
+                />
+              ),
+            }}
           />
           {priceNote ? (
             <p
@@ -2547,11 +2563,14 @@ export function MarketplaceStayDatePicker({
           <CalendarRange className="h-4 w-4 shrink-0 text-muted-foreground" />
           <span
             className={cn(
-              "notranslate truncate text-sm font-medium",
+              "truncate text-sm font-medium",
               !(checkIn && checkOut) && "text-muted-foreground",
-              mobileDatesLabel.translated && "notranslate",
+              ((checkIn && checkOut) || mobileDatesLabel.translated) &&
+                "notranslate",
             )}
-            translate="no"
+            translate={
+              (checkIn && checkOut) || mobileDatesLabel.translated ? "no" : undefined
+            }
             suppressHydrationWarning
           >
             {mobileDatesLabel.text}
@@ -2577,11 +2596,13 @@ export function MarketplaceStayDatePicker({
             </span>
             <span
               className={cn(
-                "notranslate mt-px block truncate text-sm leading-5 font-normal",
+                "mt-px block truncate text-sm leading-5 font-normal",
                 !hasFullDateRange && "text-muted-foreground",
-                mobileDatesLabel.translated && "notranslate",
+                (hasFullDateRange || mobileDatesLabel.translated) && "notranslate",
               )}
-              translate="no"
+              translate={
+                hasFullDateRange || mobileDatesLabel.translated ? "no" : undefined
+              }
               suppressHydrationWarning
             >
               {mobileDatesLabel.text}
@@ -2611,11 +2632,13 @@ export function MarketplaceStayDatePicker({
             </span>
             <span
               className={cn(
-                "notranslate mt-px block truncate text-sm leading-5 font-normal",
+                "mt-px block truncate text-sm leading-5 font-normal",
                 !hasDateSelection && "text-muted-foreground",
-                summaryText.translated && "notranslate",
+                (hasDateSelection || summaryText.translated) && "notranslate",
               )}
-              translate="no"
+              translate={
+                hasDateSelection || summaryText.translated ? "no" : undefined
+              }
               suppressHydrationWarning
             >
               {summaryText.text}
@@ -2649,11 +2672,11 @@ export function MarketplaceStayDatePicker({
               </span>
               <span
                 className={cn(
-                  "notranslate text-sm font-medium md:text-base",
+                  "text-sm font-medium md:text-base",
                   !checkIn && "text-muted-foreground",
-                  checkInLabel.translated && "notranslate",
+                  (checkIn || checkInLabel.translated) && "notranslate",
                 )}
-                translate="no"
+                translate={checkIn || checkInLabel.translated ? "no" : undefined}
                 suppressHydrationWarning
               >
                 {checkInLabel.text}
@@ -2679,11 +2702,11 @@ export function MarketplaceStayDatePicker({
               </span>
               <span
                 className={cn(
-                  "notranslate text-sm font-medium md:text-base",
+                  "text-sm font-medium md:text-base",
                   !checkOut && "text-muted-foreground",
-                  checkOutLabel.translated && "notranslate",
+                  (checkOut || checkOutLabel.translated) && "notranslate",
                 )}
-                translate="no"
+                translate={checkOut || checkOutLabel.translated ? "no" : undefined}
                 suppressHydrationWarning
               >
                 {checkOutLabel.text}
@@ -2711,7 +2734,7 @@ export function MarketplaceStayDatePicker({
        * resolves supported-language copy before rendering, so keep the interactive
        * picker tree under React's exclusive ownership.
        */}
-      <div className={cn("notranslate min-w-0", className)} translate="no">
+      <div className={cn("min-w-0", className)}>
         {triggers}
       </div>
 
@@ -2728,9 +2751,7 @@ export function MarketplaceStayDatePicker({
           id={dialogContentId}
           ref={desktopContentRef}
           style={desktopContentStyle}
-          translate="no"
           className={cn(
-            "notranslate",
             useSharedDesktopShell
               ? "fixed z-[52] flex h-auto flex-col overflow-hidden rounded-[2rem] border border-border/60 bg-background text-popover-foreground shadow-[0_10px_32px_rgba(0,0,0,0.16)] outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2 data-[state=open]:duration-150 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-2 data-[state=closed]:duration-100"
               : "fixed z-50 flex flex-col overflow-hidden border border-border/60 bg-background text-popover-foreground shadow-[0_10px_32px_rgba(0,0,0,0.16)] outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:slide-in-from-top-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:slide-out-to-top-2",
@@ -2847,10 +2868,12 @@ export function MarketplaceStayDatePicker({
                       </span>
                       <span
                         className={cn(
-                          "notranslate mt-1 block truncate text-[0.9rem] font-semibold leading-tight text-foreground md:text-base",
-                          checkInLabel.translated && "notranslate",
+                          "mt-1 block truncate text-[0.9rem] font-semibold leading-tight text-foreground md:text-base",
+                          (checkIn || checkInLabel.translated) && "notranslate",
                         )}
-                        translate="no"
+                        translate={
+                          checkIn || checkInLabel.translated ? "no" : undefined
+                        }
                         suppressHydrationWarning
                       >
                         {checkInLabel.text}
@@ -2876,10 +2899,12 @@ export function MarketplaceStayDatePicker({
                       </span>
                       <span
                         className={cn(
-                          "notranslate mt-1 block truncate text-[0.9rem] font-semibold leading-tight text-foreground md:text-base",
-                          checkOutLabel.translated && "notranslate",
+                          "mt-1 block truncate text-[0.9rem] font-semibold leading-tight text-foreground md:text-base",
+                          (checkOut || checkOutLabel.translated) && "notranslate",
                         )}
-                        translate="no"
+                        translate={
+                          checkOut || checkOutLabel.translated ? "no" : undefined
+                        }
                         suppressHydrationWarning
                       >
                         {checkOutLabel.text}
@@ -2901,10 +2926,12 @@ export function MarketplaceStayDatePicker({
                       </p>
                       <p
                         className={cn(
-                          "notranslate mt-1 text-base font-semibold text-foreground md:text-lg",
-                          summaryText.translated && "notranslate",
+                          "mt-1 text-base font-semibold text-foreground md:text-lg",
+                          (hasDateSelection || summaryText.translated) && "notranslate",
                         )}
-                        translate="no"
+                        translate={
+                          hasDateSelection || summaryText.translated ? "no" : undefined
+                        }
                         suppressHydrationWarning
                       >
                         {summaryText.text}

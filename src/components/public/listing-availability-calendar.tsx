@@ -85,20 +85,23 @@ export function ListingAvailabilityCalendar({
 
   const dayFormatter = React.useMemo(
     () =>
-      new Intl.DateTimeFormat(i18n.locale, {
+      new Intl.DateTimeFormat(i18n.requestedLocale, {
         month: "short",
         day: "numeric",
         year: "numeric",
       }),
-    [i18n.locale],
+    [i18n.requestedLocale],
   );
 
   /** An offer window is read at a glance next to its label, so it drops the year the
    * stay dates above spell out. */
   const windowFormatter = React.useMemo(
     () =>
-      new Intl.DateTimeFormat(i18n.locale, { month: "short", day: "numeric" }),
-    [i18n.locale],
+      new Intl.DateTimeFormat(i18n.requestedLocale, {
+        month: "short",
+        day: "numeric",
+      }),
+    [i18n.requestedLocale],
   );
 
   const minimumStayMessage = i18n.plural(

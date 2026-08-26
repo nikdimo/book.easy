@@ -133,7 +133,7 @@ export default async function BookingConfirmPage({ searchParams }: ConfirmPagePr
                 translate="no"
               >
                 <Calendar className="h-3 w-3" />
-                {formatDate(booking.checkIn, t.locale)}
+                {formatDate(booking.checkIn, t.requestedLocale)}
               </p>
             </div>
             <div>
@@ -143,7 +143,7 @@ export default async function BookingConfirmPage({ searchParams }: ConfirmPagePr
                 translate="no"
               >
                 <Calendar className="h-3 w-3" />
-                {formatDate(booking.checkOut, t.locale)}
+                {formatDate(booking.checkOut, t.requestedLocale)}
               </p>
             </div>
             <div>

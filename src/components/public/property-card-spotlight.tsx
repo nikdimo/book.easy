@@ -153,7 +153,9 @@ export async function PropertyCardSpotlight({
           />
         </h3>
         <p
-          data-user-generated-content translate="yes"
+          data-user-generated-content
+          data-translatable-user-content
+          translate="yes"
           className="text-muted-foreground text-sm line-clamp-3"
         >
           {descriptionPreview.landing}
