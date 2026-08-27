@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { requireHostPage } from "@/lib/auth-helpers";
 import { getListingEditorHeader } from "@/lib/services/listing-editor.service";
 import { getListingPaymentMethodsData } from "@/lib/services/listing-payment-methods.service";
-import { getListingDepositPolicyData } from "@/lib/services/listing-deposit-policy.service";
+import { getListingDepositPoliciesData } from "@/lib/services/listing-deposit-policies.service";
 import { EditorFrame } from "@/components/host/v2/editor/editor-frame";
 import { PaymentArrangementsWorkspace } from "@/components/host/v2/editor/payment-arrangements";
 
@@ -18,7 +18,7 @@ export default async function ListingPaymentArrangementsPage({
   const [header, data, deposit] = await Promise.all([
     getListingEditorHeader(id, user.id),
     getListingPaymentMethodsData(id, user.id),
-    getListingDepositPolicyData(id, user.id),
+    getListingDepositPoliciesData(id, user.id),
   ]);
   if (!header || !data || !deposit) notFound();
 
@@ -26,7 +26,7 @@ export default async function ListingPaymentArrangementsPage({
     <EditorFrame
       listingId={id}
       section="payment-arrangements"
-      complete={header.completeSections}
+      attention={header.attention}
       previewSlug={header.slug}
       previewStatus={header.status}
     >
@@ -38,7 +38,7 @@ export default async function ListingPaymentArrangementsPage({
           instructionTemplates: data.instructionTemplates,
           reviewedAt: data.preferences.reviewedAt?.toISOString() ?? null,
         }}
-        initialDeposit={deposit.policy}
+        initialDeposit={deposit.policies}
         listingCurrency={deposit.listingCurrency}
       />
     </EditorFrame>

@@ -6,7 +6,6 @@ import {
   EDITOR_OVERVIEW_SLUG,
   EDITOR_SECTIONS,
   editorCompletedSections,
-  editorCompletionCount,
   editorSectionHref,
   findEditorSection,
 } from "./editor-sections";
@@ -101,14 +100,13 @@ describe("listing editor navigation", () => {
     expect(findEditorSection(EDITOR_OVERVIEW_SLUG)).toBeUndefined();
   });
 
-  it("excludes Calendar-managed sections from completion totals", () => {
-    // House rules counts: `Listing.houseRulesReviewedAt` records the visit, so the tick
-    // is a stored fact rather than an inference from fields that always have values.
-    // Arrival guide still has no such column.
+  it("excludes Calendar-managed sections from the completable set", () => {
+    // House rules counts: `Listing.houseRulesReviewedAt` records the visit, so
+    // "unanswered" is a stored fact rather than an inference from fields that always
+    // have values. Arrival guide still has no such column.
     expect(EDITOR_COMPLETION_SECTIONS.map(({ slug }) => slug)).toEqual([
       "photos", "basics", "rooms", "location", "payment-arrangements", "house-rules",
     ]);
-    expect(editorCompletionCount(["photos", "basics", "pricing", "availability"])).toBe(2);
   });
 
   it("keeps shared completion checks stable across routes", () => {
@@ -123,9 +121,9 @@ describe("listing editor navigation", () => {
     expect(editorCompletedSections({ photoCount: 0, basicsComplete: false, propertyDetailsComplete: false, locationComplete: false, paymentMethodsReviewed: false, houseRulesReviewed: false })).toEqual([]);
   });
 
-  it("can reach full completion without making optional amenities mandatory", () => {
+  it("can finish every completable section without making optional amenities mandatory", () => {
     const complete = editorCompletedSections({ photoCount: 3, basicsComplete: true, propertyDetailsComplete: true, locationComplete: true, paymentMethodsReviewed: true, houseRulesReviewed: true });
-    expect(editorCompletionCount(complete)).toBe(EDITOR_COMPLETION_SECTIONS.length);
+    expect(complete).toHaveLength(EDITOR_COMPLETION_SECTIONS.length);
   });
 
   it("requires the same photo minimum as publishing", () => {
@@ -134,7 +132,7 @@ describe("listing editor navigation", () => {
     expect(editorCompletedSections({ ...base, photoCount: 3 })).toEqual(["photos"]);
   });
 
-  it("ticks House rules only for a host who actually saved it", () => {
+  it("clears House rules only for a host who actually saved it", () => {
     // Never inferred from the rules having values — a listing has a guest count and an
     // arrival time from the moment it exists, whether or not anyone reviewed them.
     const base = { photoCount: 0, basicsComplete: false, propertyDetailsComplete: false, locationComplete: false, paymentMethodsReviewed: false };
@@ -143,7 +141,7 @@ describe("listing editor navigation", () => {
     expect(editorCompletedSections({ ...base, houseRulesReviewed: false })).toEqual([]);
   });
 
-  it("ticks Payment arrangements only after the host deliberately saves it", () => {
+  it("clears Payment arrangements only after the host deliberately saves it", () => {
     const base = { photoCount: 0, basicsComplete: false, propertyDetailsComplete: false, locationComplete: false, houseRulesReviewed: false };
     expect(editorCompletedSections({ ...base, paymentMethodsReviewed: true })).toEqual(["payment-arrangements"]);
     expect(editorCompletedSections({ ...base, paymentMethodsReviewed: false })).toEqual([]);

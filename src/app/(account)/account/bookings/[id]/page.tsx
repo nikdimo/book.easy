@@ -22,7 +22,7 @@ import {
 import { getT, T, TWithValues, t, ti, tPlural } from "@/lib/i18n/t";
 import { resolveBookingStatus } from "@/lib/i18n/status-labels";
 import { getBookingPaymentProgress } from "@/lib/services/booking-payment-status.service";
-import { parseDepositPolicySnapshot } from "@/lib/payments/deposit-policy";
+import { parseDepositPoliciesSnapshot } from "@/lib/payments/deposit-policies";
 import { BookingPaymentProgress } from "@/components/booking/booking-payment-progress";
 
 interface BookingDetailProps {
@@ -256,16 +256,21 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
               checkIn: paymentProgress.checkIn.toISOString().slice(0, 10),
               currency: paymentProgress.currency,
               total: Number(paymentProgress.totalPrice),
-              depositAmount:
-                paymentProgress.depositAmount === null
+              advancePaymentAmount:
+                paymentProgress.advancePaymentAmount === null
                   ? null
-                  : Number(paymentProgress.depositAmount),
-              depositPolicy: parseDepositPolicySnapshot(paymentProgress.depositPolicySnapshot),
+                  : Number(paymentProgress.advancePaymentAmount),
+              damageDepositAmount:
+                paymentProgress.damageDepositAmount === null
+                  ? null
+                  : Number(paymentProgress.damageDepositAmount),
+              depositPolicies: parseDepositPoliciesSnapshot(paymentProgress.depositPolicySnapshot),
               paymentStatus: paymentProgress.paymentStatus,
               paymentInstructionsStatus: paymentProgress.paymentInstructionsStatus,
               selectedPaymentMethod: paymentProgress.selectedPaymentMethod,
               paymentMethodOtherLabel: paymentMethods?.otherLabel ?? null,
-              depositStatus: paymentProgress.depositStatus,
+              advancePaymentStatus: paymentProgress.advancePaymentStatus,
+              damageDepositStatus: paymentProgress.damageDepositStatus,
               paymentStatusEvents: paymentProgress.paymentStatusEvents.map((event) => ({
                 id: event.id,
                 actor: event.eventType.startsWith("GUEST_") ? "GUEST" : "HOST",

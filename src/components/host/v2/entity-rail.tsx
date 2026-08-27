@@ -303,8 +303,14 @@ export function AllEntitiesCard({
  *
  * Each surface passes its own key: collapsing the rail to read a month of the calendar
  * is not a statement about how the host wants to read their reservations.
+ *
+ * The store holds three states, not two. `defaultCompact` lets a surface start the rail
+ * collapsed on a view where it has nothing to add — the all-listings overview already
+ * names every property — while an explicit `"expanded"` still outranks that default and
+ * follows the host across views. Without the third state a host who opened the rail on
+ * the overview would have it close again on their next visit.
  */
-export function useRailPreference(storageKey: string) {
+export function useRailPreference(storageKey: string, defaultCompact = false) {
   const eventName = `bookeasy:host-rail:${storageKey}`;
 
   const subscribe = useCallback(
@@ -321,14 +327,19 @@ export function useRailPreference(storageKey: string) {
 
   const read = useCallback(() => {
     try {
-      return window.localStorage.getItem(storageKey) === "compact";
+      const stored = window.localStorage.getItem(storageKey);
+      if (stored === "compact") return true;
+      if (stored === "expanded") return false;
+      return defaultCompact;
     } catch {
       // A browser refusing storage is not a reason to fail the rail.
-      return false;
+      return defaultCompact;
     }
-  }, [storageKey]);
+  }, [defaultCompact, storageKey]);
 
-  const compact = useSyncExternalStore(subscribe, read, () => false);
+  const serverSnapshot = useCallback(() => defaultCompact, [defaultCompact]);
+
+  const compact = useSyncExternalStore(subscribe, read, serverSnapshot);
 
   const setCompact = useCallback(
     (next: boolean) => {

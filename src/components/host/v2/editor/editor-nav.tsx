@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, CircleAlert } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,15 +10,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  EDITOR_COMPLETION_SECTIONS,
   EDITOR_NAV_GROUPS,
   EDITOR_NAV_ITEMS,
-  editorCompletionCount,
-  findEditorSection,
   type EditorNavItem,
 } from "@/lib/host/v2/editor-sections";
 import { resolveEditorLabel } from "@/lib/i18n/editor-label";
-import { interpolate, useI18n } from "@/lib/i18n/client";
+import { pluralForms, pluralText, useI18n } from "@/lib/i18n/client";
 
 /** How many chips the small-screen row shows before the rest go under "More".
  *  Three is what fits a 360px screen without the longest label wrapping. */
@@ -40,19 +37,23 @@ const VISIBLE_CHIPS = 3;
 export function EditorNav({
   listingId,
   current,
-  complete,
+  attention,
 }: {
   listingId: string;
   current: string;
-  /** Section slugs that have enough filled in to count as done. */
-  complete: string[];
+  /** Section slugs with an open task, from `editorAttentionSlugs`. */
+  attention: string[];
 }) {
-  const { resolve } = useI18n();
-  const done = new Set(
-    complete.filter((slug) => findEditorSection(slug)?.completion === true),
+  const t = useI18n();
+  const { resolve } = t;
+  const open = new Set(attention);
+  const openCount = open.size;
+  const attentionForms = pluralForms(
+    t,
+    "host.editor.attention_count",
+    "{n} thing needs your attention",
+    "{n} things need your attention",
   );
-  const total = EDITOR_COMPLETION_SECTIONS.length;
-  const completedCount = editorCompletionCount(complete);
 
   // Clamp so the window is always full and always contains the current item, even at
   // either end of the list.
@@ -92,8 +93,8 @@ export function EditorNav({
               }`}
             >
               <span className="truncate">{text.text}</span>
-              {done.has(item.slug) && !active && (
-                <Check className="size-3 shrink-0 text-emerald-600" aria-hidden />
+              {open.has(item.slug) && !active && (
+                <CircleAlert className="size-3 shrink-0 text-amber-600" aria-hidden />
               )}
             </Link>
           );
@@ -128,8 +129,8 @@ export function EditorNav({
                         >
                           {text.text}
                         </span>
-                        {done.has(item.slug) && (
-                          <Check className="size-3.5 shrink-0 text-emerald-600" aria-hidden />
+                        {open.has(item.slug) && (
+                          <CircleAlert className="size-3.5 shrink-0 text-amber-600" aria-hidden />
                         )}
                       </Link>
                     </DropdownMenuItem>
@@ -172,10 +173,13 @@ export function EditorNav({
                         }`}
                       >
                         <span className="min-w-0 flex-1 truncate">{text.text}</span>
-                        {/* Only completion is marked. A dot on every unfinished row
-                            would put ten indicators on screen to say nothing. */}
-                        {done.has(item.slug) && (
-                          <Check className="size-3.5 shrink-0 text-emerald-600" aria-hidden />
+                        {/* Only an open task is marked, never a finished section. A
+                            tick could not distinguish "done" from "nothing to do here"
+                            — Amenities and Arrival guide have no reviewed state to tick
+                            — so an unmarked row had two meanings and the host had to
+                            know which. A flag has one: this row wants something. */}
+                        {open.has(item.slug) && (
+                          <CircleAlert className="size-3.5 shrink-0 text-amber-600" aria-hidden />
                         )}
                       </Link>
                     </li>
@@ -186,28 +190,23 @@ export function EditorNav({
           ))}
         </div>
 
+        {/* What is left, not how far along: a count of open tasks is the same fact the
+            rows above are marked with, and it does not need a denominator the host
+            cannot see. Clear is stated positively — it is the state to aim at. */}
         <div className="mt-4 shrink-0 px-3">
-          <p className="text-xs text-slate-500">
-            {
-              interpolate(
-                resolve("host.editor.progress", "{done} of {total} complete"),
-                { done: completedCount, total },
-              ).text
-            }
-          </p>
-          <div
-            className="mt-1.5 h-0.5 overflow-hidden rounded-full bg-slate-100"
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={total}
-            aria-valuenow={completedCount}
-          >
-            <div
-              className="h-full rounded-full bg-slate-800 transition-[width] duration-300"
-              style={{ width: `${(completedCount / total) * 100}%` }}
-            />
-          </div>
+          {openCount === 0 ? (
+            <p className="flex items-center gap-1.5 text-xs text-emerald-700">
+              <Check className="size-3.5 shrink-0" aria-hidden />
+              {resolve("host.editor.attention_clear", "Nothing needs attention").text}
+            </p>
+          ) : (
+            <p className="flex items-center gap-1.5 text-xs text-slate-600">
+              <CircleAlert className="size-3.5 shrink-0 text-amber-600" aria-hidden />
+              {pluralText(attentionForms, openCount, t.locale).text}
+            </p>
+          )}
         </div>
+
       </nav>
     </>
   );

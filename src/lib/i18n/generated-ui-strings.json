@@ -1725,58 +1725,98 @@
     "filePath": "src/components/public/booking-widget.tsx"
   },
   {
+    "key": "booking.payment_progress.advance_note",
+    "sourceText": "Counts toward the payment total above.",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.advance_status.awaiting",
+    "sourceText": "Awaiting advance payment",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.advance_status.confirmed",
+    "sourceText": "Host confirmed receiving it",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.advance_status.not_required",
+    "sourceText": "Not required",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.advance_status.reported",
+    "sourceText": "Guest reported sending it",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.advance_status.untracked",
+    "sourceText": "Not tracked",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.advance_title",
+    "sourceText": "Advance payment",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
     "key": "booking.payment_progress.chosen_method",
     "sourceText": "Chosen method",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
-    "key": "booking.payment_progress.confirm_deposit_return",
-    "sourceText": "Confirm deposit return",
+    "key": "booking.payment_progress.confirm_damage_return",
+    "sourceText": "Confirm damage deposit return",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
-    "key": "booking.payment_progress.deposit",
-    "sourceText": "Deposit",
+    "key": "booking.payment_progress.damage_note",
+    "sourceText": "Additional to the payment total above, and returned by the host.",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
-    "key": "booking.payment_progress.deposit_status.awaiting_deposit",
-    "sourceText": "Awaiting deposit",
+    "key": "booking.payment_progress.damage_status.awaiting",
+    "sourceText": "Awaiting damage deposit",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
-    "key": "booking.payment_progress.deposit_status.deposit_confirmed",
-    "sourceText": "Deposit received",
+    "key": "booking.payment_progress.damage_status.confirmed",
+    "sourceText": "Host confirmed receiving it",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
-    "key": "booking.payment_progress.deposit_status.deposit_reported",
-    "sourceText": "Deposit reported",
-    "filePath": "src/components/booking/booking-payment-progress.tsx"
-  },
-  {
-    "key": "booking.payment_progress.deposit_status.not_required",
+    "key": "booking.payment_progress.damage_status.not_required",
     "sourceText": "Not required",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
-    "key": "booking.payment_progress.deposit_status.retained",
-    "sourceText": "Deposit retained",
+    "key": "booking.payment_progress.damage_status.reported",
+    "sourceText": "Guest reported sending it",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
-    "key": "booking.payment_progress.deposit_status.return_confirmed",
-    "sourceText": "Return confirmed",
+    "key": "booking.payment_progress.damage_status.retained",
+    "sourceText": "Host marked it retained",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
-    "key": "booking.payment_progress.deposit_status.return_reported",
-    "sourceText": "Return reported",
+    "key": "booking.payment_progress.damage_status.return_confirmed",
+    "sourceText": "Guest confirmed its return",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
-    "key": "booking.payment_progress.deposit_status.untracked",
+    "key": "booking.payment_progress.damage_status.return_reported",
+    "sourceText": "Host reported returning it",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.damage_status.untracked",
     "sourceText": "Not tracked",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.damage_title",
+    "sourceText": "Refundable damage deposit",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
@@ -1790,13 +1830,18 @@
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
-    "key": "booking.payment_progress.event.guest_confirm_deposit_returned",
-    "sourceText": "Confirmed deposit return",
+    "key": "booking.payment_progress.event.guest_confirm_damage_returned",
+    "sourceText": "Confirmed the damage deposit was returned",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
-    "key": "booking.payment_progress.event.guest_report_deposit_sent",
-    "sourceText": "Reported deposit sent",
+    "key": "booking.payment_progress.event.guest_report_advance_sent",
+    "sourceText": "Reported sending the advance payment",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.event.guest_report_damage_sent",
+    "sourceText": "Reported sending the damage deposit",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
@@ -1805,8 +1850,13 @@
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
-    "key": "booking.payment_progress.event.host_confirm_deposit_received",
-    "sourceText": "Confirmed deposit received",
+    "key": "booking.payment_progress.event.host_confirm_advance_received",
+    "sourceText": "Confirmed receiving the advance payment",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.event.host_confirm_damage_received",
+    "sourceText": "Confirmed receiving the damage deposit",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
@@ -1815,13 +1865,18 @@
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
-    "key": "booking.payment_progress.event.host_mark_deposit_due",
-    "sourceText": "Marked deposit due",
+    "key": "booking.payment_progress.event.host_mark_advance_due",
+    "sourceText": "Marked the advance payment due",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
-    "key": "booking.payment_progress.event.host_mark_deposit_retained",
-    "sourceText": "Marked deposit retained",
+    "key": "booking.payment_progress.event.host_mark_damage_due",
+    "sourceText": "Marked the damage deposit due",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.event.host_mark_damage_retained",
+    "sourceText": "Marked the damage deposit retained",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
@@ -1835,13 +1890,13 @@
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
-    "key": "booking.payment_progress.event.host_report_deposit_returned",
-    "sourceText": "Reported deposit returned",
+    "key": "booking.payment_progress.event.host_report_damage_returned",
+    "sourceText": "Reported returning the damage deposit",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
-    "key": "booking.payment_progress.frozen_deposit",
-    "sourceText": "Frozen deposit amount",
+    "key": "booking.payment_progress.frozen_amount",
+    "sourceText": "Agreed amount",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
@@ -1905,23 +1960,33 @@
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
-    "key": "booking.payment_progress.mark_deposit_due",
-    "sourceText": "Mark deposit due",
+    "key": "booking.payment_progress.mark_advance_due",
+    "sourceText": "Mark advance payment due",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
-    "key": "booking.payment_progress.mark_deposit_received",
-    "sourceText": "Mark deposit received",
+    "key": "booking.payment_progress.mark_advance_received",
+    "sourceText": "Mark advance payment received",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
-    "key": "booking.payment_progress.mark_deposit_retained",
-    "sourceText": "Mark deposit retained",
+    "key": "booking.payment_progress.mark_damage_due",
+    "sourceText": "Mark damage deposit due",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
-    "key": "booking.payment_progress.mark_deposit_returned",
-    "sourceText": "Mark deposit returned",
+    "key": "booking.payment_progress.mark_damage_received",
+    "sourceText": "Mark damage deposit received",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.mark_damage_retained",
+    "sourceText": "Mark damage deposit retained",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.mark_damage_returned",
+    "sourceText": "Mark damage deposit returned",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
@@ -1970,8 +2035,13 @@
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
-    "key": "booking.payment_progress.report_deposit_sent",
-    "sourceText": "Report deposit sent",
+    "key": "booking.payment_progress.report_advance_sent",
+    "sourceText": "Report advance payment sent",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.report_damage_sent",
+    "sourceText": "Report damage deposit sent",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
@@ -2002,6 +2072,11 @@
   {
     "key": "booking.payment_progress.total",
     "sourceText": "Payment total",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.track_status",
+    "sourceText": "Status",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
@@ -5305,6 +5380,41 @@
     "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-workspace.tsx"
   },
   {
+    "key": "host.editor.attention_clear",
+    "sourceText": "Nothing needs attention",
+    "filePath": "src/components/host/v2/editor/editor-nav.tsx"
+  },
+  {
+    "key": "host.editor.attention_count.few",
+    "sourceText": "{n} things need your attention",
+    "filePath": "src/components/host/v2/editor/editor-nav.tsx"
+  },
+  {
+    "key": "host.editor.attention_count.many",
+    "sourceText": "{n} things need your attention",
+    "filePath": "src/components/host/v2/editor/editor-nav.tsx"
+  },
+  {
+    "key": "host.editor.attention_count.one",
+    "sourceText": "{n} thing needs your attention",
+    "filePath": "src/components/host/v2/editor/editor-nav.tsx"
+  },
+  {
+    "key": "host.editor.attention_count.other",
+    "sourceText": "{n} things need your attention",
+    "filePath": "src/components/host/v2/editor/editor-nav.tsx"
+  },
+  {
+    "key": "host.editor.attention_count.two",
+    "sourceText": "{n} things need your attention",
+    "filePath": "src/components/host/v2/editor/editor-nav.tsx"
+  },
+  {
+    "key": "host.editor.attention_count.zero",
+    "sourceText": "{n} things need your attention",
+    "filePath": "src/components/host/v2/editor/editor-nav.tsx"
+  },
+  {
     "key": "host.editor.availability.blocked_empty",
     "sourceText": "Nothing is blocked. Confirmed reservations are shown in Reservations, not here.",
     "filePath": "src/components/host/v2/editor/availability-summary.tsx"
@@ -5570,114 +5680,114 @@
     "filePath": "src/lib/i18n/editor-label.ts"
   },
   {
-    "key": "host.editor.deposit.advance",
-    "sourceText": "Advance payment",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+    "key": "host.editor.deposit.advance.description",
+    "sourceText": "Part of the booking price, paid early. It counts toward what the guest owes for the stay — it is not a refundable damage deposit.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policies-editor.tsx"
+  },
+  {
+    "key": "host.editor.deposit.advance.title",
+    "sourceText": "Advance payment toward the booking",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policies-editor.tsx"
   },
   {
     "key": "host.editor.deposit.after_acceptance",
     "sourceText": "After booking acceptance",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policies-editor.tsx"
   },
   {
     "key": "host.editor.deposit.amount",
-    "sourceText": "Deposit amount",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+    "sourceText": "Amount",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policies-editor.tsx"
+  },
+  {
+    "key": "host.editor.deposit.amount_type",
+    "sourceText": "Amount type",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policies-editor.tsx"
   },
   {
     "key": "host.editor.deposit.at_checkin",
     "sourceText": "At check-in",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policies-editor.tsx"
   },
   {
     "key": "host.editor.deposit.before_checkin",
-    "sourceText": "Before check-in",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+    "sourceText": "A number of days before check-in",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policies-editor.tsx"
   },
   {
-    "key": "host.editor.deposit.damage",
+    "key": "host.editor.deposit.damage.description",
+    "sourceText": "Separate from the booking price. Security against damage that you give back to the guest afterwards.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policies-editor.tsx"
+  },
+  {
+    "key": "host.editor.deposit.damage.title",
     "sourceText": "Refundable damage deposit",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policies-editor.tsx"
   },
   {
     "key": "host.editor.deposit.days_before",
     "sourceText": "Days before check-in",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policies-editor.tsx"
   },
   {
     "key": "host.editor.deposit.due",
     "sourceText": "When is it due?",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policies-editor.tsx"
   },
   {
     "key": "host.editor.deposit.fixed",
     "sourceText": "Fixed amount",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policies-editor.tsx"
   },
   {
     "key": "host.editor.deposit.heading",
-    "sourceText": "Deposit policy",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+    "sourceText": "Advance payment and damage deposit",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policies-editor.tsx"
   },
   {
     "key": "host.editor.deposit.intro",
-    "sourceText": "Tell guests whether you require an advance payment or refundable damage deposit. Linger Homes records these terms but does not collect, hold, verify, or refund money.",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+    "sourceText": "Set these two independently. You can ask for neither, either, or both. Linger Homes records these terms but does not collect, hold, verify, or refund money.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policies-editor.tsx"
   },
   {
     "key": "host.editor.deposit.invalid",
-    "sourceText": "Check the deposit amount and timing before saving.",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
-  },
-  {
-    "key": "host.editor.deposit.none",
-    "sourceText": "No deposit",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+    "sourceText": "Check the amounts and timing before saving.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policies-editor.tsx"
   },
   {
     "key": "host.editor.deposit.not_saved",
-    "sourceText": "Deposit policy needs review",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+    "sourceText": "Deposit settings need review",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policies-editor.tsx"
   },
   {
     "key": "host.editor.deposit.percent_value",
     "sourceText": "Percentage of booking total",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policies-editor.tsx"
   },
   {
     "key": "host.editor.deposit.percentage",
-    "sourceText": "Percentage",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
-  },
-  {
-    "key": "host.editor.deposit.purpose",
-    "sourceText": "Purpose",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
-  },
-  {
-    "key": "host.editor.deposit.required",
-    "sourceText": "Is a deposit required?",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+    "sourceText": "Percentage of booking total",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policies-editor.tsx"
   },
   {
     "key": "host.editor.deposit.return_days",
     "sourceText": "Return within days after checkout (optional)",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policies-editor.tsx"
   },
   {
     "key": "host.editor.deposit.save",
-    "sourceText": "Save deposit policy",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+    "sourceText": "Save deposit settings",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policies-editor.tsx"
   },
   {
     "key": "host.editor.deposit.save_error",
-    "sourceText": "The deposit policy was not saved. Try again.",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+    "sourceText": "The deposit settings were not saved. Try again.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policies-editor.tsx"
   },
   {
     "key": "host.editor.deposit.saved",
-    "sourceText": "Deposit policy saved",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policy-editor.tsx"
+    "sourceText": "Deposit settings saved",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policies-editor.tsx"
   },
   {
     "key": "host.editor.house_rules.elsewhere_heading",
@@ -7023,11 +7133,6 @@
     "key": "host.editor.pricing.promotions_none",
     "sourceText": "No promotions are running or scheduled.",
     "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
-  },
-  {
-    "key": "host.editor.progress",
-    "sourceText": "{done} of {total} complete",
-    "filePath": "src/components/host/v2/editor/editor-nav.tsx"
   },
   {
     "key": "host.editor.rooms.add",
@@ -15325,64 +15430,89 @@
     "filePath": "src/app/(public)/properties/[slug]/page.tsx"
   },
   {
-    "key": "listing.deposit_policy.advance_payment",
-    "sourceText": "Purpose: advance payment.",
-    "filePath": "src/components/booking/deposit-policy-summary.tsx"
+    "key": "listing.deposit_policies.advance.explanation",
+    "sourceText": "This counts toward the price of your stay. It is part of the booking total, not an extra cost, and it is not a refundable damage deposit.",
+    "filePath": "src/components/booking/deposit-policies-summary.tsx"
   },
   {
-    "key": "listing.deposit_policy.damage_security",
-    "sourceText": "Purpose: refundable damage/security deposit.",
-    "filePath": "src/components/booking/deposit-policy-summary.tsx"
+    "key": "listing.deposit_policies.advance.fixed",
+    "sourceText": "Advance payment: {amount}.",
+    "filePath": "src/components/booking/deposit-policies-summary.tsx"
+  },
+  {
+    "key": "listing.deposit_policies.advance.percentage",
+    "sourceText": "Advance payment: {value}% of the booking total.",
+    "filePath": "src/components/booking/deposit-policies-summary.tsx"
+  },
+  {
+    "key": "listing.deposit_policies.advance.title",
+    "sourceText": "Advance payment toward the booking",
+    "filePath": "src/components/booking/deposit-policies-summary.tsx"
+  },
+  {
+    "key": "listing.deposit_policies.both_note",
+    "sourceText": "These are two separate amounts and are not added together. The advance payment is part of what your stay costs; the damage deposit is extra money the host expects to give back.",
+    "filePath": "src/components/booking/deposit-policies-summary.tsx"
+  },
+  {
+    "key": "listing.deposit_policies.damage.explanation",
+    "sourceText": "This is separate from the price of your stay and is held as security against damage. It is additional money on top of the booking total, and the host returns it if nothing is damaged.",
+    "filePath": "src/components/booking/deposit-policies-summary.tsx"
+  },
+  {
+    "key": "listing.deposit_policies.damage.fixed",
+    "sourceText": "Damage deposit: {amount}.",
+    "filePath": "src/components/booking/deposit-policies-summary.tsx"
+  },
+  {
+    "key": "listing.deposit_policies.damage.percentage",
+    "sourceText": "Damage deposit: {value}% of the booking total.",
+    "filePath": "src/components/booking/deposit-policies-summary.tsx"
+  },
+  {
+    "key": "listing.deposit_policies.damage.return_within_days",
+    "sourceText": "The host says they expect to return it within {days} days after check-out.",
+    "filePath": "src/components/booking/deposit-policies-summary.tsx"
+  },
+  {
+    "key": "listing.deposit_policies.damage.title",
+    "sourceText": "Refundable damage deposit",
+    "filePath": "src/components/booking/deposit-policies-summary.tsx"
+  },
+  {
+    "key": "listing.deposit_policies.heading",
+    "sourceText": "Advance payment and damage deposit",
+    "filePath": "src/components/booking/deposit-policies-summary.tsx"
+  },
+  {
+    "key": "listing.deposit_policies.none",
+    "sourceText": "The host does not ask for an advance payment or a refundable damage deposit.",
+    "filePath": "src/components/booking/deposit-policies-summary.tsx"
+  },
+  {
+    "key": "listing.deposit_policies.unanswered",
+    "sourceText": "The host has not said whether they ask for an advance payment or a damage deposit.",
+    "filePath": "src/components/booking/deposit-policies-summary.tsx"
   },
   {
     "key": "listing.deposit_policy.direct_payment_disclaimer",
     "sourceText": "Guests pay the host directly. Linger Homes does not collect, hold, verify, protect, or refund this payment.",
-    "filePath": "src/components/booking/deposit-policy-summary.tsx"
+    "filePath": "src/components/booking/deposit-policies-summary.tsx"
   },
   {
     "key": "listing.deposit_policy.due_after_acceptance",
     "sourceText": "Due after the booking request is accepted.",
-    "filePath": "src/components/booking/deposit-policy-summary.tsx"
+    "filePath": "src/components/booking/deposit-policies-summary.tsx"
   },
   {
     "key": "listing.deposit_policy.due_at_check_in",
     "sourceText": "Due at check-in.",
-    "filePath": "src/components/booking/deposit-policy-summary.tsx"
+    "filePath": "src/components/booking/deposit-policies-summary.tsx"
   },
   {
     "key": "listing.deposit_policy.due_days_before_check_in",
     "sourceText": "Due {days} days before check-in.",
-    "filePath": "src/components/booking/deposit-policy-summary.tsx"
-  },
-  {
-    "key": "listing.deposit_policy.heading",
-    "sourceText": "Deposit policy",
-    "filePath": "src/components/booking/deposit-policy-summary.tsx"
-  },
-  {
-    "key": "listing.deposit_policy.none",
-    "sourceText": "No deposit is required by the host.",
-    "filePath": "src/components/booking/deposit-policy-summary.tsx"
-  },
-  {
-    "key": "listing.deposit_policy.required_fixed_amount",
-    "sourceText": "Required deposit: {amount}.",
-    "filePath": "src/components/booking/deposit-policy-summary.tsx"
-  },
-  {
-    "key": "listing.deposit_policy.required_percentage",
-    "sourceText": "Required deposit: {value}% of the stay price.",
-    "filePath": "src/components/booking/deposit-policy-summary.tsx"
-  },
-  {
-    "key": "listing.deposit_policy.return_within_days",
-    "sourceText": "The host says this refundable security deposit will be returned within {days} days after check-out.",
-    "filePath": "src/components/booking/deposit-policy-summary.tsx"
-  },
-  {
-    "key": "listing.deposit_policy.unanswered",
-    "sourceText": "The host has not specified a deposit policy.",
-    "filePath": "src/components/booking/deposit-policy-summary.tsx"
+    "filePath": "src/components/booking/deposit-policies-summary.tsx"
   },
   {
     "key": "listing.guest_reviews",

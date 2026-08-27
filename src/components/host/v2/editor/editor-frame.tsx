@@ -13,7 +13,7 @@ import { listingPreviewable } from "@/lib/host/v2/listing-status";
 export function EditorFrame({
   listingId,
   section,
-  complete,
+  attention,
   previewSlug,
   previewStatus,
   sectionFooter = true,
@@ -21,7 +21,8 @@ export function EditorFrame({
 }: {
   listingId: string;
   section: string;
-  complete: string[];
+  /** Section slugs with an open task, from `editorAttentionSlugs`. */
+  attention: string[];
   /** Public slug, so the footer can offer a real preview. Omitted only by callers that
    *  have not loaded the listing header. */
   previewSlug?: string;
@@ -43,14 +44,14 @@ export function EditorFrame({
     // horizontal scroller — laid the chip row out as a flex column beside the content and
     // pushed the page into horizontal overflow.
     <div className="mx-auto flex w-full min-w-0 max-w-[1600px] flex-1 flex-col px-4 sm:px-5 lg:min-h-0 lg:flex-row lg:gap-6 lg:px-6">
-      <EditorNav listingId={listingId} current={section} complete={complete} />
+      <EditorNav listingId={listingId} current={section} attention={attention} />
       <main className="flex min-w-0 flex-1 flex-col pb-16 lg:min-h-0 lg:overflow-y-auto lg:pb-6">
         {children}
         {sectionFooter && (
           <EditorSectionFooter
             listingId={listingId}
             current={section}
-            complete={complete}
+            attention={attention}
             previewSlug={canPreview ? previewSlug : undefined}
           />
         )}

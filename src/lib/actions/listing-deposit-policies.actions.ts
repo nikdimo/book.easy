@@ -2,12 +2,15 @@
 
 import { revalidatePath } from "next/cache";
 import { requireHost } from "@/lib/auth-helpers";
-import { saveListingDepositPolicy } from "@/lib/services/listing-deposit-policy.service";
+import { saveListingDepositPolicies } from "@/lib/services/listing-deposit-policies.service";
 import { revalidatePublicListingCaches } from "@/lib/utils/revalidate-public-listing-caches";
 
-export async function updateListingDepositPolicy(listingId: string, input: unknown) {
+export async function updateListingDepositPolicies(
+  listingId: string,
+  input: unknown,
+) {
   const host = await requireHost();
-  const result = await saveListingDepositPolicy(listingId, host.id, input);
+  const result = await saveListingDepositPolicies(listingId, host.id, input);
   if ("error" in result) return { error: result.error };
   if ("issues" in result) return { issues: result.issues };
 
@@ -20,12 +23,8 @@ export async function updateListingDepositPolicy(listingId: string, input: unkno
     revalidatePublicListingCaches();
   }
   return {
-    policy: result.policy.policy,
-    purpose: result.policy.purpose,
-    value: result.policy.value,
-    dueTiming: result.policy.dueTiming,
-    dueDaysBeforeCheckIn: result.policy.dueDaysBeforeCheckIn,
-    returnDaysAfterCheckout: result.policy.returnDaysAfterCheckout,
-    reviewedAt: result.policy.reviewedAt.toISOString(),
+    advancePayment: result.policies.advancePayment,
+    damageDeposit: result.policies.damageDeposit,
+    reviewedAt: result.policies.reviewedAt.toISOString(),
   };
 }

@@ -1,5 +1,5 @@
 import type { CalendarFormats } from "@/lib/host/v2/calendar-format";
-import type { DepositPolicySnapshotV1 } from "@/lib/payments/deposit-policy";
+import type { DepositPoliciesSnapshotV2 } from "@/lib/payments/deposit-policies";
 import type { SavedPaymentInstructionTemplate } from "@/lib/payments/payment-instruction-templates";
 import type { PaymentMethodCode } from "@/lib/payments/payment-methods";
 
@@ -49,10 +49,13 @@ export interface HostReservation {
   paymentInstructionsStatus: string;
   selectedPaymentMethod: PaymentMethodCode | null;
   paymentMethodOtherLabel: string | null;
-  depositStatus: string;
-  /** The booking-time amount, never recomputed from a later listing policy. */
-  depositAmount: number | null;
-  depositPolicy: DepositPolicySnapshotV1 | null;
+  advancePaymentStatus: string;
+  damageDepositStatus: string;
+  /** The booking-time amounts, never recomputed from a later listing policy and never
+   *  summed: the advance payment is part of `total`, the damage deposit is on top. */
+  advancePaymentAmount: number | null;
+  damageDepositAmount: number | null;
+  depositPolicies: DepositPoliciesSnapshotV2 | null;
   paymentStatusEvents: Array<{
     id: string;
     actor: "HOST" | "GUEST";

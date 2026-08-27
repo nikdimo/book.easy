@@ -33,7 +33,7 @@ export default async function LocationPage({
     <EditorFrame
       listingId={id}
       section="location"
-      complete={header.completeSections} previewSlug={header.slug} previewStatus={header.status}
+      attention={header.attention} previewSlug={header.slug} previewStatus={header.status}
     >
       <LocationWorkspace listingId={id} stored={location.stored} />
     </EditorFrame>

@@ -29,6 +29,7 @@ const complete: ListingEditorOverview = {
   houseRulesReviewed: true,
   paymentMethodsReviewed: true,
   completeSections: ["photos", "basics", "rooms", "location", "payment-arrangements", "house-rules"],
+  attention: [],
 };
 
 const empty: ListingEditorOverview = {
@@ -46,6 +47,17 @@ const empty: ListingEditorOverview = {
   houseRulesReviewed: false,
   paymentMethodsReviewed: false,
   completeSections: [],
+  // Everything the shared attention set flags for a listing with nothing filled in,
+  // price first. Pricing appears here and never could as a checkmark.
+  attention: [
+    "pricing",
+    "photos",
+    "basics",
+    "rooms",
+    "location",
+    "payment-arrangements",
+    "house-rules",
+  ],
 };
 
 const render = (overview: ListingEditorOverview) =>
@@ -148,7 +160,7 @@ describe("EditorOverview all-sections area", () => {
     expect(html).toContain("€60 per night");
     expect(html).toContain("Open by default");
     expect(html).toContain("Reviewed");
-    expect(html).toContain("6 of 6 complete");
+    expect(html).toContain("Nothing needs attention");
   });
 
   it("summarises the empty listing honestly", () => {
@@ -158,7 +170,7 @@ describe("EditorOverview all-sections area", () => {
     expect(html).toContain("Nothing selected yet");
     expect(html).toContain("No nightly price set");
     expect(html).toContain("Closed by default");
-    expect(html).toContain("0 of 6 complete");
+    expect(html).toContain("7 things need your attention");
   });
 
   it("does not repeat itself as a section card", () => {

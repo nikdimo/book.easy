@@ -10,10 +10,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { recordBookingPaymentEventAction } from "@/lib/actions/booking-payment.actions";
 import { sendBookingPaymentRequestAction } from "@/lib/actions/booking.actions";
-import type { DepositPolicySnapshotV1 } from "@/lib/payments/deposit-policy";
+import type { DepositPoliciesSnapshotV2 } from "@/lib/payments/deposit-policies";
 import type { SavedPaymentInstructionTemplate } from "@/lib/payments/payment-instruction-templates";
 import type { PaymentMethodCode } from "@/lib/payments/payment-methods";
-import { DepositPolicySummary } from "./deposit-policy-summary";
+import { DepositPoliciesSummary } from "./deposit-policies-summary";
 import { PaymentMethodName } from "./accepted-payment-methods";
 import { useI18n } from "@/lib/i18n/client";
 
@@ -22,12 +22,15 @@ type PaymentEvent =
   | "GUEST_REPORT_PAYMENT_SENT"
   | "HOST_CONFIRM_PAYMENT_RECEIVED"
   | "HOST_MARK_PAYMENT_NOT_REQUIRED"
-  | "HOST_MARK_DEPOSIT_DUE"
-  | "GUEST_REPORT_DEPOSIT_SENT"
-  | "HOST_CONFIRM_DEPOSIT_RECEIVED"
-  | "HOST_REPORT_DEPOSIT_RETURNED"
-  | "GUEST_CONFIRM_DEPOSIT_RETURNED"
-  | "HOST_MARK_DEPOSIT_RETAINED";
+  | "HOST_MARK_ADVANCE_PAYMENT_DUE"
+  | "GUEST_REPORT_ADVANCE_PAYMENT_SENT"
+  | "HOST_CONFIRM_ADVANCE_PAYMENT_RECEIVED"
+  | "HOST_MARK_DAMAGE_DEPOSIT_DUE"
+  | "GUEST_REPORT_DAMAGE_DEPOSIT_SENT"
+  | "HOST_CONFIRM_DAMAGE_DEPOSIT_RECEIVED"
+  | "HOST_REPORT_DAMAGE_DEPOSIT_RETURNED"
+  | "GUEST_CONFIRM_DAMAGE_DEPOSIT_RETURNED"
+  | "HOST_MARK_DAMAGE_DEPOSIT_RETAINED";
 
 export interface BookingPaymentProgressView {
   bookingId: string;
@@ -35,13 +38,16 @@ export interface BookingPaymentProgressView {
   checkIn: string;
   currency: string;
   total: number;
-  depositAmount: number | null;
-  depositPolicy: DepositPolicySnapshotV1 | null;
+  /** The two frozen amounts, each on its own. Never render their sum. */
+  advancePaymentAmount: number | null;
+  damageDepositAmount: number | null;
+  depositPolicies: DepositPoliciesSnapshotV2 | null;
   paymentStatus: string;
   paymentInstructionsStatus: string;
   selectedPaymentMethod: PaymentMethodCode | null;
   paymentMethodOtherLabel?: string | null;
-  depositStatus: string;
+  advancePaymentStatus: string;
+  damageDepositStatus: string;
   paymentStatusEvents: Array<{
     id: string;
     actor: "HOST" | "GUEST";
@@ -52,25 +58,6 @@ export interface BookingPaymentProgressView {
   savedPaymentInstructionTemplates?: SavedPaymentInstructionTemplate[];
 }
 
-const PAYMENT_LABELS: Record<string, string> = {
-  UNTRACKED: "Not tracked",
-  NOT_REQUIRED: "Not required",
-  AWAITING_PAYMENT: "Awaiting payment",
-  PAYMENT_REPORTED: "Payment reported",
-  PAYMENT_CONFIRMED: "Payment received",
-};
-
-const DEPOSIT_LABELS: Record<string, string> = {
-  UNTRACKED: "Not tracked",
-  NOT_REQUIRED: "Not required",
-  AWAITING_DEPOSIT: "Awaiting deposit",
-  DEPOSIT_REPORTED: "Deposit reported",
-  DEPOSIT_CONFIRMED: "Deposit received",
-  RETURN_REPORTED: "Return reported",
-  RETURN_CONFIRMED: "Return confirmed",
-  RETAINED: "Deposit retained",
-};
-
 function money(value: number, currency: string, locale: string) {
   try {
     return new Intl.NumberFormat(locale, { style: "currency", currency }).format(value);
@@ -79,32 +66,61 @@ function money(value: number, currency: string, locale: string) {
   }
 }
 
-function statusCopy(
+/** Whether this booking froze a policy of each kind. Mirrors the server's own test. */
+function frozenPolicies(progress: BookingPaymentProgressView) {
+  return {
+    advancePayment:
+      progress.depositPolicies?.advancePayment != null ||
+      (progress.advancePaymentAmount ?? 0) > 0,
+    damageDeposit:
+      progress.depositPolicies?.damageDeposit != null ||
+      (progress.damageDepositAmount ?? 0) > 0,
+  };
+}
+
+function paymentStatusCopy(
   resolve: ReturnType<typeof useI18n>["resolve"],
-  category: "payment" | "deposit",
   value: string,
 ) {
-  if (category === "payment") {
-    switch (value) {
-      case "UNTRACKED": return resolve("booking.payment_progress.payment_status.untracked", "Not tracked").text;
-      case "NOT_REQUIRED": return resolve("booking.payment_progress.payment_status.not_required", "Not required").text;
-      case "AWAITING_PAYMENT": return resolve("booking.payment_progress.payment_status.awaiting_payment", "Awaiting payment").text;
-      case "PAYMENT_REPORTED": return resolve("booking.payment_progress.payment_status.payment_reported", "Payment reported").text;
-      case "PAYMENT_CONFIRMED": return resolve("booking.payment_progress.payment_status.payment_confirmed", "Payment received").text;
-    }
-  } else {
-    switch (value) {
-      case "UNTRACKED": return resolve("booking.payment_progress.deposit_status.untracked", "Not tracked").text;
-      case "NOT_REQUIRED": return resolve("booking.payment_progress.deposit_status.not_required", "Not required").text;
-      case "AWAITING_DEPOSIT": return resolve("booking.payment_progress.deposit_status.awaiting_deposit", "Awaiting deposit").text;
-      case "DEPOSIT_REPORTED": return resolve("booking.payment_progress.deposit_status.deposit_reported", "Deposit reported").text;
-      case "DEPOSIT_CONFIRMED": return resolve("booking.payment_progress.deposit_status.deposit_confirmed", "Deposit received").text;
-      case "RETURN_REPORTED": return resolve("booking.payment_progress.deposit_status.return_reported", "Return reported").text;
-      case "RETURN_CONFIRMED": return resolve("booking.payment_progress.deposit_status.return_confirmed", "Return confirmed").text;
-      case "RETAINED": return resolve("booking.payment_progress.deposit_status.retained", "Deposit retained").text;
-    }
+  switch (value) {
+    case "UNTRACKED": return resolve("booking.payment_progress.payment_status.untracked", "Not tracked").text;
+    case "NOT_REQUIRED": return resolve("booking.payment_progress.payment_status.not_required", "Not required").text;
+    case "AWAITING_PAYMENT": return resolve("booking.payment_progress.payment_status.awaiting_payment", "Awaiting payment").text;
+    case "PAYMENT_REPORTED": return resolve("booking.payment_progress.payment_status.payment_reported", "Payment reported").text;
+    case "PAYMENT_CONFIRMED": return resolve("booking.payment_progress.payment_status.payment_confirmed", "Payment received").text;
+    default: return value;
   }
-  return (category === "payment" ? PAYMENT_LABELS : DEPOSIT_LABELS)[value] ?? value;
+}
+
+function advanceStatusCopy(
+  resolve: ReturnType<typeof useI18n>["resolve"],
+  value: string,
+) {
+  switch (value) {
+    case "UNTRACKED": return resolve("booking.payment_progress.advance_status.untracked", "Not tracked").text;
+    case "NOT_REQUIRED": return resolve("booking.payment_progress.advance_status.not_required", "Not required").text;
+    case "AWAITING_PAYMENT": return resolve("booking.payment_progress.advance_status.awaiting", "Awaiting advance payment").text;
+    case "PAYMENT_REPORTED": return resolve("booking.payment_progress.advance_status.reported", "Guest reported sending it").text;
+    case "PAYMENT_CONFIRMED": return resolve("booking.payment_progress.advance_status.confirmed", "Host confirmed receiving it").text;
+    default: return value;
+  }
+}
+
+function damageStatusCopy(
+  resolve: ReturnType<typeof useI18n>["resolve"],
+  value: string,
+) {
+  switch (value) {
+    case "UNTRACKED": return resolve("booking.payment_progress.damage_status.untracked", "Not tracked").text;
+    case "NOT_REQUIRED": return resolve("booking.payment_progress.damage_status.not_required", "Not required").text;
+    case "AWAITING_DEPOSIT": return resolve("booking.payment_progress.damage_status.awaiting", "Awaiting damage deposit").text;
+    case "DEPOSIT_REPORTED": return resolve("booking.payment_progress.damage_status.reported", "Guest reported sending it").text;
+    case "DEPOSIT_CONFIRMED": return resolve("booking.payment_progress.damage_status.confirmed", "Host confirmed receiving it").text;
+    case "RETURN_REPORTED": return resolve("booking.payment_progress.damage_status.return_reported", "Host reported returning it").text;
+    case "RETURN_CONFIRMED": return resolve("booking.payment_progress.damage_status.return_confirmed", "Guest confirmed its return").text;
+    case "RETAINED": return resolve("booking.payment_progress.damage_status.retained", "Host marked it retained").text;
+    default: return value;
+  }
 }
 
 function ActorLabel({ actor }: { actor: "HOST" | "GUEST" }) {
@@ -113,19 +129,6 @@ function ActorLabel({ actor }: { actor: "HOST" | "GUEST" }) {
     ? resolve("booking.payment_progress.reported_by_host", "Reported by host").text
     : resolve("booking.payment_progress.reported_by_guest", "Reported by guest").text;
 }
-
-const EVENT_LABELS: Record<string, string> = {
-  HOST_MARK_PAYMENT_DUE: "Marked payment due",
-  GUEST_REPORT_PAYMENT_SENT: "Reported payment sent",
-  HOST_CONFIRM_PAYMENT_RECEIVED: "Confirmed payment received",
-  HOST_MARK_PAYMENT_NOT_REQUIRED: "Marked payment not required",
-  HOST_MARK_DEPOSIT_DUE: "Marked deposit due",
-  GUEST_REPORT_DEPOSIT_SENT: "Reported deposit sent",
-  HOST_CONFIRM_DEPOSIT_RECEIVED: "Confirmed deposit received",
-  HOST_REPORT_DEPOSIT_RETURNED: "Reported deposit returned",
-  GUEST_CONFIRM_DEPOSIT_RETURNED: "Confirmed deposit return",
-  HOST_MARK_DEPOSIT_RETAINED: "Marked deposit retained",
-};
 
 function eventCopy(
   resolve: ReturnType<typeof useI18n>["resolve"],
@@ -136,13 +139,16 @@ function eventCopy(
     case "GUEST_REPORT_PAYMENT_SENT": return resolve("booking.payment_progress.event.guest_report_payment_sent", "Reported payment sent").text;
     case "HOST_CONFIRM_PAYMENT_RECEIVED": return resolve("booking.payment_progress.event.host_confirm_payment_received", "Confirmed payment received").text;
     case "HOST_MARK_PAYMENT_NOT_REQUIRED": return resolve("booking.payment_progress.event.host_mark_payment_not_required", "Marked payment not required").text;
-    case "HOST_MARK_DEPOSIT_DUE": return resolve("booking.payment_progress.event.host_mark_deposit_due", "Marked deposit due").text;
-    case "GUEST_REPORT_DEPOSIT_SENT": return resolve("booking.payment_progress.event.guest_report_deposit_sent", "Reported deposit sent").text;
-    case "HOST_CONFIRM_DEPOSIT_RECEIVED": return resolve("booking.payment_progress.event.host_confirm_deposit_received", "Confirmed deposit received").text;
-    case "HOST_REPORT_DEPOSIT_RETURNED": return resolve("booking.payment_progress.event.host_report_deposit_returned", "Reported deposit returned").text;
-    case "GUEST_CONFIRM_DEPOSIT_RETURNED": return resolve("booking.payment_progress.event.guest_confirm_deposit_returned", "Confirmed deposit return").text;
-    case "HOST_MARK_DEPOSIT_RETAINED": return resolve("booking.payment_progress.event.host_mark_deposit_retained", "Marked deposit retained").text;
-    default: return EVENT_LABELS[eventType] ?? eventType;
+    case "HOST_MARK_ADVANCE_PAYMENT_DUE": return resolve("booking.payment_progress.event.host_mark_advance_due", "Marked the advance payment due").text;
+    case "GUEST_REPORT_ADVANCE_PAYMENT_SENT": return resolve("booking.payment_progress.event.guest_report_advance_sent", "Reported sending the advance payment").text;
+    case "HOST_CONFIRM_ADVANCE_PAYMENT_RECEIVED": return resolve("booking.payment_progress.event.host_confirm_advance_received", "Confirmed receiving the advance payment").text;
+    case "HOST_MARK_DAMAGE_DEPOSIT_DUE": return resolve("booking.payment_progress.event.host_mark_damage_due", "Marked the damage deposit due").text;
+    case "GUEST_REPORT_DAMAGE_DEPOSIT_SENT": return resolve("booking.payment_progress.event.guest_report_damage_sent", "Reported sending the damage deposit").text;
+    case "HOST_CONFIRM_DAMAGE_DEPOSIT_RECEIVED": return resolve("booking.payment_progress.event.host_confirm_damage_received", "Confirmed receiving the damage deposit").text;
+    case "HOST_REPORT_DAMAGE_DEPOSIT_RETURNED": return resolve("booking.payment_progress.event.host_report_damage_returned", "Reported returning the damage deposit").text;
+    case "GUEST_CONFIRM_DAMAGE_DEPOSIT_RETURNED": return resolve("booking.payment_progress.event.guest_confirm_damage_returned", "Confirmed the damage deposit was returned").text;
+    case "HOST_MARK_DAMAGE_DEPOSIT_RETAINED": return resolve("booking.payment_progress.event.host_mark_damage_retained", "Marked the damage deposit retained").text;
+    default: return eventType;
   }
 }
 
@@ -182,9 +188,9 @@ function ProgressControls({
   const { resolve } = useI18n();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const hasDeposit = (progress.depositAmount ?? 0) > 0;
-  const hasSecurityDeposit =
-    hasDeposit && progress.depositPolicy?.purpose === "DAMAGE_SECURITY";
+  const frozen = frozenPolicies(progress);
+  const advance = progress.advancePaymentStatus;
+  const damage = progress.damageDepositStatus;
 
   const send = (event: PaymentEvent) => {
     startTransition(async () => {
@@ -208,15 +214,18 @@ function ProgressControls({
     { event: "HOST_MARK_PAYMENT_DUE", label: resolve("booking.payment_progress.mark_payment_due", "Mark payment due").text, allowed: progress.paymentStatus === "UNTRACKED" },
     { event: "HOST_MARK_PAYMENT_NOT_REQUIRED", label: resolve("booking.payment_progress.mark_payment_not_required", "Mark payment not required").text, allowed: progress.paymentStatus === "UNTRACKED" || progress.paymentStatus === "AWAITING_PAYMENT" },
     { event: "HOST_CONFIRM_PAYMENT_RECEIVED", label: resolve("booking.payment_progress.mark_payment_received", "Mark payment received").text, allowed: progress.paymentStatus !== "NOT_REQUIRED" && progress.paymentStatus !== "PAYMENT_CONFIRMED" },
-    { event: "HOST_MARK_DEPOSIT_DUE", label: resolve("booking.payment_progress.mark_deposit_due", "Mark deposit due").text, allowed: hasDeposit && progress.depositStatus === "UNTRACKED" },
-    { event: "HOST_CONFIRM_DEPOSIT_RECEIVED", label: resolve("booking.payment_progress.mark_deposit_received", "Mark deposit received").text, allowed: hasDeposit && (progress.depositStatus === "AWAITING_DEPOSIT" || progress.depositStatus === "DEPOSIT_REPORTED") },
-    { event: "HOST_REPORT_DEPOSIT_RETURNED", label: resolve("booking.payment_progress.mark_deposit_returned", "Mark deposit returned").text, allowed: hasSecurityDeposit && progress.depositStatus === "DEPOSIT_CONFIRMED" },
-    { event: "HOST_MARK_DEPOSIT_RETAINED", label: resolve("booking.payment_progress.mark_deposit_retained", "Mark deposit retained").text, allowed: hasSecurityDeposit && progress.depositStatus === "DEPOSIT_CONFIRMED" },
+    { event: "HOST_MARK_ADVANCE_PAYMENT_DUE", label: resolve("booking.payment_progress.mark_advance_due", "Mark advance payment due").text, allowed: frozen.advancePayment && advance === "UNTRACKED" },
+    { event: "HOST_CONFIRM_ADVANCE_PAYMENT_RECEIVED", label: resolve("booking.payment_progress.mark_advance_received", "Mark advance payment received").text, allowed: frozen.advancePayment && advance !== "NOT_REQUIRED" && advance !== "PAYMENT_CONFIRMED" },
+    { event: "HOST_MARK_DAMAGE_DEPOSIT_DUE", label: resolve("booking.payment_progress.mark_damage_due", "Mark damage deposit due").text, allowed: frozen.damageDeposit && damage === "UNTRACKED" },
+    { event: "HOST_CONFIRM_DAMAGE_DEPOSIT_RECEIVED", label: resolve("booking.payment_progress.mark_damage_received", "Mark damage deposit received").text, allowed: frozen.damageDeposit && (damage === "UNTRACKED" || damage === "AWAITING_DEPOSIT" || damage === "DEPOSIT_REPORTED") },
+    { event: "HOST_REPORT_DAMAGE_DEPOSIT_RETURNED", label: resolve("booking.payment_progress.mark_damage_returned", "Mark damage deposit returned").text, allowed: frozen.damageDeposit && damage === "DEPOSIT_CONFIRMED" },
+    { event: "HOST_MARK_DAMAGE_DEPOSIT_RETAINED", label: resolve("booking.payment_progress.mark_damage_retained", "Mark damage deposit retained").text, allowed: frozen.damageDeposit && damage === "DEPOSIT_CONFIRMED" },
   ];
   const guestControls: Array<{ event: PaymentEvent; label: string; allowed: boolean }> = [
     { event: "GUEST_REPORT_PAYMENT_SENT", label: resolve("booking.payment_progress.report_payment_sent", "Report payment sent").text, allowed: progress.paymentStatus === "UNTRACKED" || progress.paymentStatus === "AWAITING_PAYMENT" },
-    { event: "GUEST_REPORT_DEPOSIT_SENT", label: resolve("booking.payment_progress.report_deposit_sent", "Report deposit sent").text, allowed: hasDeposit && progress.depositStatus === "AWAITING_DEPOSIT" },
-    { event: "GUEST_CONFIRM_DEPOSIT_RETURNED", label: resolve("booking.payment_progress.confirm_deposit_return", "Confirm deposit return").text, allowed: hasSecurityDeposit && progress.depositStatus === "RETURN_REPORTED" },
+    { event: "GUEST_REPORT_ADVANCE_PAYMENT_SENT", label: resolve("booking.payment_progress.report_advance_sent", "Report advance payment sent").text, allowed: frozen.advancePayment && advance !== "NOT_REQUIRED" && advance !== "PAYMENT_CONFIRMED" },
+    { event: "GUEST_REPORT_DAMAGE_DEPOSIT_SENT", label: resolve("booking.payment_progress.report_damage_sent", "Report damage deposit sent").text, allowed: frozen.damageDeposit && (damage === "UNTRACKED" || damage === "AWAITING_DEPOSIT") },
+    { event: "GUEST_CONFIRM_DAMAGE_DEPOSIT_RETURNED", label: resolve("booking.payment_progress.confirm_damage_return", "Confirm damage deposit return").text, allowed: frozen.damageDeposit && damage === "RETURN_REPORTED" },
   ];
   const controls = (actor === "HOST" ? hostControls : guestControls).filter((control) => control.allowed);
   if (controls.length === 0) return null;
@@ -343,6 +352,61 @@ function formatSavedInstructionTemplates(
   return templates.map(({ body }) => body.trim()).join("\n\n");
 }
 
+/**
+ * One frozen amount with its own status line.
+ *
+ * Each track gets its own row rather than a shared "deposit" line, so a booking with
+ * both never shows one figure or one state standing for two different pots of money.
+ */
+function TrackRow({
+  kind,
+  title,
+  note,
+  amount,
+  status,
+  currency,
+  locale,
+}: {
+  kind: "advance-payment" | "damage-deposit";
+  title: string;
+  note: string;
+  amount: number | null;
+  status: string;
+  currency: string;
+  locale: string;
+}) {
+  const { resolve } = useI18n();
+  return (
+    <div
+      data-payment-track={kind}
+      className="rounded-lg border border-border/80 p-3 text-sm"
+    >
+      <p className="font-semibold text-foreground">{title}</p>
+      <p className="mt-0.5 text-xs leading-5 text-muted-foreground">{note}</p>
+      <dl className="mt-2 grid gap-1 sm:grid-cols-2">
+        {amount !== null ? (
+          <div className="flex gap-1">
+            <dt className="text-muted-foreground">
+              {resolve("booking.payment_progress.frozen_amount", "Agreed amount").text}:
+            </dt>
+            <dd className="font-medium" data-payment-track-amount={kind}>
+              {money(amount, currency, locale)}
+            </dd>
+          </div>
+        ) : null}
+        <div className="flex gap-1">
+          <dt className="text-muted-foreground">
+            {resolve("booking.payment_progress.track_status", "Status").text}:
+          </dt>
+          <dd className="font-medium" data-payment-track-status={kind}>
+            {status}
+          </dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
 /** Participant-facing manual payment progress. It never receives payment instruction text. */
 export function BookingPaymentProgress({
   progress,
@@ -355,7 +419,7 @@ export function BookingPaymentProgress({
 }) {
   const i18n = useI18n();
   const confirmed = progress.status === "CONFIRMED";
-  const depositAmount = progress.depositAmount;
+  const frozen = frozenPolicies(progress);
 
   return (
     <Card size={compact ? "sm" : "default"} data-payment-progress={actor.toLowerCase()}>
@@ -374,14 +438,34 @@ export function BookingPaymentProgress({
             </p>
           ) : null}
           <p><span className="text-muted-foreground">{i18n.resolve("booking.payment_progress.total", "Payment total").text}: </span><span className="font-medium">{money(progress.total, progress.currency, i18n.locale)}</span></p>
-          <p><span className="text-muted-foreground">{i18n.resolve("booking.payment_progress.payment", "Payment").text}: </span><span className="font-medium">{statusCopy(i18n.resolve, "payment", progress.paymentStatus)}</span></p>
-          {depositAmount !== null ? (
-            <p><span className="text-muted-foreground">{i18n.resolve("booking.payment_progress.frozen_deposit", "Frozen deposit amount").text}: </span><span className="font-medium">{money(depositAmount, progress.currency, i18n.locale)}</span></p>
-          ) : null}
-          <p><span className="text-muted-foreground">{i18n.resolve("booking.payment_progress.deposit", "Deposit").text}: </span><span className="font-medium">{statusCopy(i18n.resolve, "deposit", progress.depositStatus)}</span></p>
+          <p><span className="text-muted-foreground">{i18n.resolve("booking.payment_progress.payment", "Payment").text}: </span><span className="font-medium">{paymentStatusCopy(i18n.resolve, progress.paymentStatus)}</span></p>
         </div>
 
-        {progress.depositPolicy ? <DepositPolicySummary t={i18n} data={progress.depositPolicy} headingAs="h3" /> : null}
+        {frozen.advancePayment ? (
+          <TrackRow
+            kind="advance-payment"
+            title={i18n.resolve("booking.payment_progress.advance_title", "Advance payment").text}
+            note={i18n.resolve("booking.payment_progress.advance_note", "Counts toward the payment total above.").text}
+            amount={progress.advancePaymentAmount}
+            status={advanceStatusCopy(i18n.resolve, progress.advancePaymentStatus)}
+            currency={progress.currency}
+            locale={i18n.locale}
+          />
+        ) : null}
+
+        {frozen.damageDeposit ? (
+          <TrackRow
+            kind="damage-deposit"
+            title={i18n.resolve("booking.payment_progress.damage_title", "Refundable damage deposit").text}
+            note={i18n.resolve("booking.payment_progress.damage_note", "Additional to the payment total above, and returned by the host.").text}
+            amount={progress.damageDepositAmount}
+            status={damageStatusCopy(i18n.resolve, progress.damageDepositStatus)}
+            currency={progress.currency}
+            locale={i18n.locale}
+          />
+        ) : null}
+
+        {progress.depositPolicies ? <DepositPoliciesSummary t={i18n} data={progress.depositPolicies} headingAs="h3" /> : null}
 
         {confirmed && progress.paymentInstructionsStatus === "PENDING" ? (
           <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">

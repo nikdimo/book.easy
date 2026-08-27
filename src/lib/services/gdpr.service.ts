@@ -28,8 +28,10 @@ export interface UserDataExport {
     totalPrice: string;
     status: string;
     paymentStatus: string;
-    depositStatus: string;
-    depositAmount?: string;
+    advancePaymentStatus: string;
+    damageDepositStatus: string;
+    advancePaymentAmount?: string;
+    damageDepositAmount?: string;
     depositPolicySnapshot?: unknown;
     createdAt: Date;
   }>;
@@ -39,10 +41,13 @@ export interface UserDataExport {
     slug: string;
     status: string;
     views: number;
-    depositPolicy: string;
-    depositPurpose?: string;
-    depositValue?: string;
-    depositCurrency?: string;
+    advancePaymentEnabled: boolean;
+    advancePaymentType?: string;
+    advancePaymentValue?: string;
+    damageDepositEnabled: boolean;
+    damageDepositType?: string;
+    damageDepositValue?: string;
+    depositPoliciesCurrency?: string;
     createdAt: Date;
   }>;
   favorites: Array<{
@@ -103,7 +108,8 @@ export interface UserDataExport {
     listingTitle: string;
     eventType: string;
     paymentStatus: string;
-    depositStatus: string;
+    advancePaymentStatus?: string;
+    damageDepositStatus?: string;
     createdAt: Date;
   }>;
 }
@@ -204,8 +210,10 @@ export async function exportUserData(userId: string): Promise<UserDataExport> {
       totalPrice: booking.totalPrice.toString(),
       status: booking.status,
       paymentStatus: booking.paymentStatus,
-      depositStatus: booking.depositStatus,
-      depositAmount: booking.depositAmount?.toString(),
+      advancePaymentStatus: booking.advancePaymentStatus,
+      damageDepositStatus: booking.damageDepositStatus,
+      advancePaymentAmount: booking.advancePaymentAmount?.toString(),
+      damageDepositAmount: booking.damageDepositAmount?.toString(),
       depositPolicySnapshot: booking.depositPolicySnapshot ?? undefined,
       createdAt: booking.createdAt,
     })),
@@ -216,10 +224,13 @@ export async function exportUserData(userId: string): Promise<UserDataExport> {
           slug: listing.slug,
           status: listing.status,
           views: listing.views.length,
-          depositPolicy: listing.depositPolicy,
-          depositPurpose: listing.depositPurpose || undefined,
-          depositValue: listing.depositValue?.toString(),
-          depositCurrency: listing.depositCurrency || undefined,
+          advancePaymentEnabled: listing.advancePaymentEnabled,
+          advancePaymentType: listing.advancePaymentType || undefined,
+          advancePaymentValue: listing.advancePaymentValue?.toString(),
+          damageDepositEnabled: listing.damageDepositEnabled,
+          damageDepositType: listing.damageDepositType || undefined,
+          damageDepositValue: listing.damageDepositValue?.toString(),
+          depositPoliciesCurrency: listing.depositPoliciesCurrency || undefined,
           createdAt: listing.createdAt,
         }))
       : undefined,
@@ -285,7 +296,8 @@ export async function exportUserData(userId: string): Promise<UserDataExport> {
       listingTitle: event.booking.listing.title,
       eventType: event.eventType,
       paymentStatus: event.paymentStatus,
-      depositStatus: event.depositStatus,
+      advancePaymentStatus: event.advancePaymentStatus ?? undefined,
+      damageDepositStatus: event.damageDepositStatus ?? undefined,
       createdAt: event.createdAt,
     })),
   };

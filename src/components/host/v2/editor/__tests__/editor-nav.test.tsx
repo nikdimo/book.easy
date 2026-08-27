@@ -4,16 +4,16 @@ import { EditorNav } from "@/components/host/v2/editor/editor-nav";
 
 /** No I18nProvider: `useI18n` falls back to the English source literals, which is what
  *  an untranslated request renders with. */
-const render = (current: string, complete: string[] = []) =>
+const render = (current: string, attention: string[] = []) =>
   renderToStaticMarkup(
-    <EditorNav listingId="listing-1" current={current} complete={complete} />,
+    <EditorNav listingId="listing-1" current={current} attention={attention} />,
   );
 
 /** Just the desktop rail. The markup also contains the small-screen chip row, which
  *  shows a moving window of the same list, so ordering has to be read from the one
  *  shape that renders every item exactly once. */
-const rail = (current: string, complete: string[] = []) => {
-  const parts = render(current, complete).split("<nav");
+const rail = (current: string, attention: string[] = []) => {
+  const parts = render(current, attention).split("<nav");
   return parts[parts.length - 1];
 };
 
@@ -74,14 +74,39 @@ describe("EditorNav rail", () => {
     expect(render("open-calendar")).not.toContain("aria-current=\"page\"");
   });
 
-  it("ticks the sections the shared completion set reports as done", () => {
+  it("flags the sections the shared attention set reports as open", () => {
     const html = render("photos", ["basics", "location"]);
-    expect(html).toContain("lucide-check");
-    expect(html).toContain("2 of 6 complete");
+    expect(html).toContain("lucide-circle-alert");
+    expect(html).toContain("2 things need your attention");
   });
 
-  it("counts progress out of the completion sections only", () => {
-    // Availability and Pricing are Calendar handoffs, so they never inflate the total.
-    expect(render("photos", ["pricing", "availability"])).toContain("0 of 6 complete");
+  it("says so plainly when nothing is outstanding", () => {
+    const html = render("photos", []);
+    expect(html).toContain("Nothing needs attention");
+    expect(html).not.toContain("lucide-circle-alert");
+  });
+
+  it("can flag Pricing, which no checkmark could ever mark", () => {
+    // Pricing is not a completion section — it has no tick — but a listing without a
+    // nightly price cannot be booked, which is the most serious open task there is.
+    const html = render("photos", ["pricing"]);
+    expect(html).toContain("lucide-circle-alert");
+    expect(html).toContain("1 thing needs your attention");
+  });
+
+  it("never marks a section that is merely optional", () => {
+    // Amenities and Arrival guide have no persisted reviewed state, so they are never
+    // in the attention set and an unmarked row means only "nothing to do here".
+    const html = rail("photos", ["basics"]);
+    // Each row's own markup ends at its closing </a>; the footer below carries the
+    // count's icon and is not part of either row.
+    const row = (label: string) => {
+      const start = html.indexOf(label);
+      return html.slice(start, html.indexOf("</a>", start));
+    };
+    expect(row("Amenities")).not.toContain("lucide-circle-alert");
+    expect(row("Arrival guide")).not.toContain("lucide-circle-alert");
+    // The one section that is flagged still is, so the assertion above is not vacuous.
+    expect(row("Title &amp; description")).toContain("lucide-circle-alert");
   });
 });

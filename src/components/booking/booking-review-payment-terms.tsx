@@ -7,21 +7,21 @@ import {
   type AcceptedPaymentMethodCode,
   type AcceptedPaymentMethodsPresentation,
 } from "./accepted-payment-methods";
-import { DepositPolicySummary } from "./deposit-policy-summary";
-import type { DepositPolicySnapshotV1 } from "@/lib/payments/deposit-policy";
+import { DepositPoliciesSummary } from "./deposit-policies-summary";
+import type { DepositPoliciesSnapshotV2 } from "@/lib/payments/deposit-policies";
 import { cn } from "@/lib/utils";
 
 /** Public payment terms shown in the final request review, immediately above its controls. */
 export function BookingReviewPaymentTerms({
   t,
   acceptedPaymentMethods,
-  depositPolicy,
+  depositPolicies,
   selectedPaymentMethod,
   onSelectedPaymentMethodChange,
 }: {
   t: Parameters<typeof AcceptedPaymentMethods>[0]["t"];
   acceptedPaymentMethods: AcceptedPaymentMethodsPresentation;
-  depositPolicy: DepositPolicySnapshotV1;
+  depositPolicies: DepositPoliciesSnapshotV2;
   selectedPaymentMethod: AcceptedPaymentMethodCode | null;
   onSelectedPaymentMethodChange: (method: AcceptedPaymentMethodCode) => void;
 }) {
@@ -92,9 +92,9 @@ export function BookingReviewPaymentTerms({
           headingAs="h3"
         />
       )}
-      <DepositPolicySummary
+      <DepositPoliciesSummary
         t={t}
-        data={depositPolicy}
+        data={depositPolicies}
         appearance="card"
         headingAs="h3"
       />

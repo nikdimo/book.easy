@@ -31,7 +31,7 @@ export default async function ArrivalGuidePage({
     <EditorFrame
       listingId={id}
       section="arrival-guide"
-      complete={header.completeSections} previewSlug={header.slug} previewStatus={header.status}
+      attention={header.attention} previewSlug={header.slug} previewStatus={header.status}
     >
       <ArrivalGuideWorkspace
         listingId={id}

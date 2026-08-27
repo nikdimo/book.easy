@@ -44,7 +44,7 @@ import {
   type AcceptedPaymentMethodCode,
   type AcceptedPaymentMethodsPresentation,
 } from "@/components/booking/accepted-payment-methods";
-import type { DepositPolicySnapshotV1 } from "@/lib/payments/deposit-policy";
+import type { DepositPoliciesSnapshotV2 } from "@/lib/payments/deposit-policies";
 import {
   useCellCurrencyNote,
   useListingDayPrices,
@@ -73,7 +73,7 @@ interface BookingWidgetProps {
   /** Public method names only. Never payment instructions, account details or links. */
   acceptedPaymentMethods: AcceptedPaymentMethodsPresentation;
   /** Validated public terms only; no payment destination or operational payment data. */
-  depositPolicy: DepositPolicySnapshotV1;
+  depositPolicies: DepositPoliciesSnapshotV2;
   /**
    * The "message host" button, already built by the server so this widget does not
    * have to know who the host is. Rendered only in the phone's sticky bar — the
@@ -284,7 +284,7 @@ export function BookingWidget({
   initialGuestDetails = { adults: 0, children: 0, infants: 0, pets: 0 },
   requestToBookTooltip,
   acceptedPaymentMethods,
-  depositPolicy,
+  depositPolicies,
   messageHost,
   houseRules,
   houseRulesVersion,
@@ -1213,7 +1213,7 @@ export function BookingWidget({
           <BookingReviewPaymentTerms
             t={i18n}
             acceptedPaymentMethods={acceptedPaymentMethods}
-            depositPolicy={depositPolicy}
+            depositPolicies={depositPolicies}
             selectedPaymentMethod={selectedPaymentMethod}
             onSelectedPaymentMethodChange={(method) => {
               setSelectedPaymentMethod(method);

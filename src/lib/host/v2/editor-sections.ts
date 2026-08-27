@@ -20,6 +20,9 @@ export interface EditorSection {
   key: string;
   /** English source text, and the fallback when nothing is translated. */
   source: string;
+  /** Whether this section can be finished at all — that is, whether the database holds
+   *  a fact that says so. Only such a section can be reported as an open task; one
+   *  without a stored answer (Amenities, Arrival guide) is never chased. */
   completion: boolean;
   group: "calendar" | "details";
 }
@@ -33,16 +36,15 @@ export const EDITOR_SECTIONS: EditorSection[] = [
   { slug: "location", key: "host.editor.section.location", source: "Location", completion: true, group: "details" },
   // Amenities are optional at publish time. Without a persisted "reviewed" marker,
   // zero selected amenities cannot be distinguished from an unfinished section, so it
-  // must not create a false warning or make 100% completion impossible.
+  // must not create a false warning the host has no way to clear.
   { slug: "amenities", key: "host.editor.section.amenities", source: "Amenities", completion: false, group: "details" },
   // Payment arrangements has an explicit reviewed marker. It stays in attention until
   // the host deliberately saves either accepted method names or Arrange directly.
   { slug: "payment-arrangements", key: "host.editor.section.payment_arrangements", source: "Payment arrangements", completion: true, group: "details" },
   // House rules counts because it has a persisted "reviewed" state of its own
-  // (`Listing.houseRulesReviewedAt`): the tick means the host opened the section and
-  // saved it, which is a fact the database holds rather than an inference from fields
-  // that always have values. Arrival guide still has no such column, and counting it
-  // would make 100% completion impossible even when every stored value is valid.
+  // (`Listing.houseRulesReviewedAt`): "unanswered" is a fact the database holds rather
+  // than an inference from fields that always have values. Arrival guide still has no
+  // such column, so it could never be cleared and is never flagged.
   { slug: "house-rules", key: "host.editor.section.house_rules", source: "House rules", completion: true, group: "details" },
   { slug: "arrival-guide", key: "host.editor.section.arrival_guide", source: "Arrival guide", completion: false, group: "details" },
 ];
@@ -52,18 +54,8 @@ export const EDITOR_OVERVIEW_SLUG = "overview";
 
 export const EDITOR_COMPLETION_SECTIONS = EDITOR_SECTIONS.filter((section) => section.completion);
 
-const EDITOR_COMPLETION_SLUGS = new Set(
-  EDITOR_COMPLETION_SECTIONS.map((section) => section.slug),
-);
-
-/** Counts only real listing tasks, even if a caller accidentally includes one of the
- * Calendar handoff pages in its completed-slug payload. */
-export function editorCompletionCount(completedSlugs: readonly string[]): number {
-  return new Set(completedSlugs.filter((slug) => EDITOR_COMPLETION_SLUGS.has(slug))).size;
-}
-
 /** Completion facts shared by every route. Keeping this pure prevents a section's
- * checkmark from disappearing merely because the host navigated elsewhere. */
+ * mark from appearing or vanishing merely because the host navigated elsewhere. */
 export function editorCompletedSections(input: {
   photoCount: number;
   basicsComplete: boolean;

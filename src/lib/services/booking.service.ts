@@ -35,9 +35,10 @@ import {
   validatePaymentInstructionTemplates,
 } from "@/lib/payments/payment-instruction-templates";
 import {
-  calculateDepositAmount,
-  createDepositPolicySnapshot,
-} from "@/lib/payments/deposit-policy";
+  calculateDepositAmounts,
+  createDepositPoliciesSnapshot,
+  parseDepositPoliciesSnapshot,
+} from "@/lib/payments/deposit-policies";
 
 export const BOOKING_RESPONSE_WINDOW_HOURS = 24;
 
@@ -358,7 +359,7 @@ export async function createBooking(input: CreateBookingInput) {
           "The host's accepted payment methods changed. Reload the page and choose again.",
         );
       }
-      const currentDepositPolicy = createDepositPolicySnapshot(listing);
+      const currentDepositPolicies = createDepositPoliciesSnapshot(listing);
       if (houseRulesAcceptedAt) {
         if (
           !expectedHouseRulesVersion ||
@@ -447,10 +448,13 @@ export async function createBooking(input: CreateBookingInput) {
       const cleaningFee = quote.cleaningFee;
       const serviceFee = 0; // Placeholder for future platform fee
       const totalPrice = quote.total + Number(serviceFee);
-      const depositAmount =
-        currentDepositPolicy.status === "REVIEWED"
-          ? calculateDepositAmount(currentDepositPolicy, String(totalPrice))
-          : null;
+      // Two amounts, each resolved on its own against the same booking total and never
+      // added together: the advance payment is a part of `totalPrice`, while the damage
+      // deposit is separate security money the host expects to give back.
+      const { advancePaymentAmount, damageDepositAmount } =
+        currentDepositPolicies.status === "REVIEWED"
+          ? calculateDepositAmounts(currentDepositPolicies, String(totalPrice))
+          : { advancePaymentAmount: null, damageDepositAmount: null };
       const appliedPromotion = quote.appliedPromotion;
       const serializedPromotion = (promotion: NonNullable<typeof appliedPromotion>) => ({
         id: promotion.id,
@@ -559,12 +563,22 @@ export async function createBooking(input: CreateBookingInput) {
           // listing row read inside this transaction. The client can neither choose
           // the terms nor submit an amount. Linger Homes records the host's policy;
           // it does not collect or hold this money.
+          //
+          // Frozen as V2, which carries both policies independently. Bookings frozen
+          // before the split keep their V1 object and are read through the same parser.
           depositPolicySnapshot:
-            currentDepositPolicy as unknown as Prisma.InputJsonObject,
-          depositAmount,
-          depositStatus:
-            depositAmount !== null && Number(depositAmount) > 0
-              ? "AWAITING_DEPOSIT"
+            currentDepositPolicies as unknown as Prisma.InputJsonObject,
+          advancePaymentAmount,
+          damageDepositAmount,
+          // Each track opens only if its own policy asked for something. "Not required"
+          // is a settled answer, distinct from a track nobody has started yet.
+          advancePaymentStatus:
+            advancePaymentAmount !== null && Number(advancePaymentAmount) > 0
+              ? "UNTRACKED"
+              : "NOT_REQUIRED",
+          damageDepositStatus:
+            damageDepositAmount !== null && Number(damageDepositAmount) > 0
+              ? "UNTRACKED"
               : "NOT_REQUIRED",
         },
       });
@@ -860,6 +874,24 @@ export async function confirmBooking(
       return { outcome: "expired" as const, bookingId };
     }
 
+    const frozenDepositPolicies = parseDepositPoliciesSnapshot(
+      booking.depositPolicySnapshot,
+    );
+    const advancePaymentStatus = frozenDepositPolicies?.advancePayment
+      ? frozenDepositPolicies.advancePayment.dueTiming === "AFTER_ACCEPTANCE"
+        ? "AWAITING_PAYMENT"
+        : "UNTRACKED"
+      : Number(booking.advancePaymentAmount ?? 0) > 0
+        ? booking.advancePaymentStatus
+        : "NOT_REQUIRED";
+    const damageDepositStatus = frozenDepositPolicies?.damageDeposit
+      ? frozenDepositPolicies.damageDeposit.dueTiming === "AFTER_ACCEPTANCE"
+        ? "AWAITING_DEPOSIT"
+        : "UNTRACKED"
+      : Number(booking.damageDepositAmount ?? 0) > 0
+        ? booking.damageDepositStatus
+        : "NOT_REQUIRED";
+
     const confirmed = await tx.booking.updateMany({
       where: {
         id: bookingId,
@@ -879,7 +911,12 @@ export async function confirmBooking(
             ? "NOT_NEEDED"
             : "PENDING"),
         paymentStatusUpdatedAt: now,
-        depositStatusUpdatedAt: now,
+        advancePaymentStatus,
+        damageDepositStatus,
+        advancePaymentStatusUpdatedAt:
+          advancePaymentStatus === "AWAITING_PAYMENT" ? now : null,
+        damageDepositStatusUpdatedAt:
+          damageDepositStatus === "AWAITING_DEPOSIT" ? now : null,
       },
     });
     if (confirmed.count === 0) {

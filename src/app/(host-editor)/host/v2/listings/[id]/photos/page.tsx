@@ -20,7 +20,7 @@ export default async function ListingPhotosPage({
     <EditorFrame
       listingId={id}
       section="photos"
-      complete={data.listing.completeSections}
+      attention={data.listing.attention}
       previewSlug={data.listing.slug}
       previewStatus={data.listing.status}
     >

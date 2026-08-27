@@ -5,9 +5,9 @@ import {
   endSave,
 } from "@/components/host/v2/editor/save-state";
 import { updateListingPaymentMethods } from "@/lib/actions/listing-payment-methods.actions";
-import { updateListingDepositPolicy } from "@/lib/actions/listing-deposit-policy.actions";
+import { updateListingDepositPolicies } from "@/lib/actions/listing-deposit-policies.actions";
 import { useI18n } from "@/lib/i18n/client";
-import type { DepositPolicySnapshotV1 } from "@/lib/payments/deposit-policy";
+import type { DepositPoliciesSnapshotV2 } from "@/lib/payments/deposit-policies";
 import {
   PaymentArrangementsEditor,
 } from "./payment-arrangements-editor";
@@ -16,9 +16,10 @@ import type {
   PaymentArrangementsValue,
 } from "./payment-arrangements-model";
 import {
-  DepositPolicyEditor,
-  type DepositPolicyDraft,
-} from "./deposit-policy-editor";
+  DepositPoliciesEditor,
+  toPayload,
+  type DepositPoliciesDraft,
+} from "./deposit-policies-editor";
 
 /** Connects the reusable editor to the authenticated, owner-scoped Server Action. */
 export function PaymentArrangementsWorkspace({
@@ -29,7 +30,7 @@ export function PaymentArrangementsWorkspace({
 }: {
   listingId: string;
   initialValue: PaymentArrangementsValue;
-  initialDeposit: DepositPolicySnapshotV1;
+  initialDeposit: DepositPoliciesSnapshotV2;
   listingCurrency: string;
 }) {
   const { resolve } = useI18n();
@@ -52,12 +53,17 @@ export function PaymentArrangementsWorkspace({
     }
   }
 
-  async function saveDeposit(draft: DepositPolicyDraft) {
+  async function saveDeposit(draft: DepositPoliciesDraft) {
     beginSave();
     try {
-      const result = await updateListingDepositPolicy(listingId, draft);
+      // The currency on the wire is only a hint: the Server Action re-reads the
+      // listing's own pricing currency and quotes that instead.
+      const result = await updateListingDepositPolicies(
+        listingId,
+        toPayload(draft, listingCurrency),
+      );
       if ("error" in result || "issues" in result) {
-        throw new Error("Deposit policy was rejected.");
+        throw new Error("Deposit settings were rejected.");
       }
       endSave();
     } catch (error) {
@@ -79,7 +85,7 @@ export function PaymentArrangementsWorkspace({
           ).text
         }
       />
-      <DepositPolicyEditor
+      <DepositPoliciesEditor
         initialValue={initialDeposit}
         listingCurrency={listingCurrency}
         onSave={saveDeposit}

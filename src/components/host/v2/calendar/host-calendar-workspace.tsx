@@ -143,7 +143,13 @@ export function HostCalendarWorkspace({
   const [focusedDate, setFocusedDate] = useState(data.today);
   const streamRef = useRef<HTMLDivElement>(null);
   const manageDrawerRef = useRef<HTMLElement>(null);
-  const [railCompact, setRailCompact] = useRailPreference(RAIL_PREFERENCE_KEY);
+  // Collapsed by default on the overview: that view is itself a list of every
+  // property, so an expanded rail states each title, photo and bookability line a
+  // second time. An explicit toggle still wins — see `useRailPreference`.
+  const [railCompact, setRailCompact] = useRailPreference(
+    RAIL_PREFERENCE_KEY,
+    selectedId === ALL_LISTINGS,
+  );
   const [chooserOpen, setChooserOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [change, setChange] = useState<DateChange | null>(null);

@@ -88,7 +88,11 @@ export function AllListingsTimeline({
       </header>
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
-        <table className="w-full min-w-[46rem] border-collapse text-left">
+        {/* `table-fixed`, or automatic layout sizes each day column to its own header
+            and the single-digit days of a month render as slivers between the
+            two-digit ones. The day columns carry no width of their own so they split
+            what the property column leaves evenly. */}
+        <table className="w-full min-w-[46rem] table-fixed border-collapse text-left">
           <caption className="sr-only">
             {
               i18n.resolve(
@@ -101,7 +105,7 @@ export function AllListingsTimeline({
             <tr>
               <th
                 scope="col"
-                className="sticky left-0 z-10 bg-white px-3 py-2 text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400"
+                className="sticky left-0 z-10 w-[13rem] bg-white px-3 py-2 text-[0.6875rem] font-bold uppercase tracking-wider text-slate-400"
               >
                 {i18n.resolve("host.v2.calendar.timeline_property", "Property").text}
               </th>
@@ -123,7 +127,7 @@ export function AllListingsTimeline({
                 <tr key={listing.id} className="border-t border-slate-100">
                   <th
                     scope="row"
-                    className="sticky left-0 z-10 max-w-[13rem] bg-white px-3 py-2 font-normal"
+                    className="sticky left-0 z-10 bg-white px-3 py-2 font-normal"
                   >
                     <button
                       type="button"

@@ -12,10 +12,8 @@ import {
 import { formatMoney } from "@/lib/currency/convert";
 import { editorAttentionItems } from "@/lib/host/v2/editor-overview";
 import {
-  EDITOR_COMPLETION_SECTIONS,
   EDITOR_NAV_GROUPS,
   EDITOR_OVERVIEW_SLUG,
-  editorCompletionCount,
   editorSectionHref,
   findEditorSection,
   type EditorNavItem,
@@ -152,8 +150,7 @@ function SectionCard({
 }) {
   const label = resolveEditorLabel(t, item.key, item.source);
   const summary = sectionSummary(item.slug, overview, t);
-  const done = overview.completeSections.includes(item.slug);
-  const counts = findEditorSection(item.slug)?.completion ?? false;
+  const needsAttention = overview.attention.includes(item.slug);
 
   return (
     <li>
@@ -167,8 +164,10 @@ function SectionCard({
             translate={label.translated ? "no" : undefined}
           >
             <span className="min-w-0 truncate">{label.text}</span>
-            {counts && done && (
-              <CheckCircle2 className="size-3.5 shrink-0 text-emerald-600" aria-hidden />
+            {/* The same mark the rail carries, so a card and a rail row never say
+                different things about one section. */}
+            {needsAttention && (
+              <CircleAlert className="size-3.5 shrink-0 text-amber-600" aria-hidden />
             )}
           </span>
           {summary && (
@@ -198,8 +197,6 @@ export function EditorOverview({
     completeSections: overview.completeSections,
     hasPricing: overview.nightlyRate !== null,
   });
-  const done = editorCompletionCount(overview.completeSections);
-  const total = EDITOR_COMPLETION_SECTIONS.length;
 
   return (
     <div className="mx-auto w-full max-w-3xl py-6 md:py-10">
@@ -337,12 +334,15 @@ export function EditorOverview({
             <T t={t} k="host.editor.overview.sections_title" source="All sections" />
           </h3>
           <p className="text-sm text-slate-500">
-            {
-              ti(t, "host.editor.progress", "{done} of {total} complete", {
-                done,
-                total,
-              }).text
-            }
+            {attention.length === 0
+              ? text(t, "host.editor.attention_clear", "Nothing needs attention")
+              : tPlural(
+                  t,
+                  "host.editor.attention_count",
+                  attention.length,
+                  "{n} thing needs your attention",
+                  "{n} things need your attention",
+                ).text}
           </p>
         </div>
 

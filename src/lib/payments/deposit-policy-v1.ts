@@ -1,8 +1,22 @@
 /**
- * Deposit-policy domain rules, deliberately independent of Prisma and transport
- * code. Linger Homes does not process money: this module describes a host's public
- * policy and the amount to record against a booking in that policy's currency.
+ * The frozen V1 deposit model.
+ *
+ * V1 allowed a host exactly one deposit with a `purpose` discriminator: either an
+ * ADVANCE_PAYMENT toward the stay or a refundable DAMAGE_SECURITY deposit, never both.
+ * The live model (`deposit-policies.ts`) replaced it with two independent policies.
+ *
+ * Nothing writes V1 any more. This module exists so bookings frozen under V1 stay
+ * readable exactly as they were agreed: a host who reconfigures their listing today
+ * changes terms for their next guest, not for a guest who already sent a request.
+ * Treat everything here as immutable history — extend `deposit-policies.ts` instead.
  */
+
+import {
+  decimalAtMost,
+  decimalIsPositive,
+  normalizeDepositValue,
+  type DecimalLike,
+} from "@/lib/payments/deposit-money";
 
 export const DEPOSIT_POLICY_CODES = ["NONE", "FIXED", "PERCENTAGE"] as const;
 export const DEPOSIT_PURPOSE_CODES = [
@@ -71,29 +85,10 @@ const POLICY_SET = new Set<string>(DEPOSIT_POLICY_CODES);
 const PURPOSE_SET = new Set<string>(DEPOSIT_PURPOSE_CODES);
 const DUE_TIMING_SET = new Set<string>(DEPOSIT_DUE_TIMING_CODES);
 
-type DecimalLike = string | number | { toString(): string };
-
 function normalizeCode(value: unknown): string | null {
   return typeof value === "string" && value.trim() !== ""
     ? value.trim().toUpperCase()
     : null;
-}
-
-/** Converts harmless user/Prisma decimal representations to one stable string. */
-export function normalizeDepositValue(value: unknown): string | null {
-  if (value === null || value === undefined || value === "") return null;
-  const raw =
-    typeof value === "string" || typeof value === "number"
-      ? String(value).trim()
-      : value && typeof (value as DecimalLike).toString === "function"
-        ? (value as DecimalLike).toString().trim()
-        : "";
-  const match = raw.match(/^\+?(\d+)(?:\.(\d+))?$/);
-  if (!match) return null;
-
-  const whole = match[1].replace(/^0+(?=\d)/, "");
-  const fraction = (match[2] ?? "").replace(/0+$/, "");
-  return fraction === "" ? whole : `${whole}.${fraction}`;
 }
 
 function normalizeNullableWholeNumber(value: unknown): number | null {
@@ -110,22 +105,10 @@ function isSupplied(value: unknown): boolean {
   return value !== null && value !== undefined && value !== "";
 }
 
-function decimalIsPositive(value: string): boolean {
-  return /[1-9]/.test(value);
-}
-
-function decimalAtMost(value: string, maximum: string): boolean {
-  const [leftWhole, leftFraction = ""] = value.split(".");
-  const [rightWhole, rightFraction = ""] = maximum.split(".");
-  const scale = Math.max(leftFraction.length, rightFraction.length);
-  const left = BigInt(`${leftWhole}${leftFraction.padEnd(scale, "0")}`);
-  const right = BigInt(`${rightWhole}${rightFraction.padEnd(scale, "0")}`);
-  return left <= right;
-}
-
 /**
- * Strictly validates a complete host policy. Conditional fields are forbidden when
- * inapplicable so a later policy switch cannot leave stale values in a snapshot.
+ * Strictly validates a complete V1 policy. Conditional fields are forbidden when
+ * inapplicable so a historical snapshot carrying a stale value is rejected rather than
+ * half-read, and so no extra key on the JSON can smuggle itself into a rendered term.
  */
 export function validateDepositPolicy(input: unknown): DepositPolicyValidation {
   if (!input || typeof input !== "object" || Array.isArray(input)) {
@@ -221,17 +204,6 @@ export function validateDepositPolicy(input: unknown): DepositPolicyValidation {
   };
 }
 
-export interface ListingDepositPolicyRow {
-  depositPolicy: string;
-  depositPurpose: string | null;
-  depositValue: DecimalLike | null;
-  depositCurrency: string | null;
-  depositDueTiming: string;
-  depositDueDaysBeforeCheckIn: number | null;
-  depositReturnDaysAfterCheckout: number | null;
-  depositPolicyReviewedAt: Date | null;
-}
-
 export interface DepositPolicySnapshotV1 extends DepositPolicyConfig {
   version: 1;
   status: "REVIEWED" | "UNANSWERED";
@@ -247,26 +219,11 @@ const UNANSWERED_DEPOSIT_POLICY: DepositPolicyConfig = {
   returnDaysAfterCheckout: null,
 };
 
-/** Builds a safe V1 JSON snapshot from a persisted Listing row. */
-export function createDepositPolicySnapshot(
-  row: ListingDepositPolicyRow,
-): DepositPolicySnapshotV1 {
-  const validation = validateDepositPolicy({
-    policy: row.depositPolicy,
-    purpose: row.depositPurpose,
-    value: row.depositValue,
-    currency: row.depositCurrency,
-    dueTiming: row.depositDueTiming,
-    dueDaysBeforeCheckIn: row.depositDueDaysBeforeCheckIn,
-    returnDaysAfterCheckout: row.depositReturnDaysAfterCheckout,
-  });
-  if (row.depositPolicyReviewedAt === null || !validation.success) {
-    return { version: 1, status: "UNANSWERED", ...UNANSWERED_DEPOSIT_POLICY };
-  }
-  return { version: 1, status: "REVIEWED", ...validation.value };
-}
-
-/** Safely reads a nullable, backwards-compatible booking snapshot. */
+/**
+ * Safely reads a historical V1 booking snapshot. Returns null for anything that is not
+ * a well-formed V1 object, including a V2 snapshot, so callers can try each version in
+ * turn rather than guessing from a partially-read object.
+ */
 export function parseDepositPolicySnapshot(
   value: unknown,
 ): DepositPolicySnapshotV1 | null {
@@ -292,79 +249,4 @@ export function parseDepositPolicySnapshot(
   return null;
 }
 
-interface ParsedDecimal {
-  coefficient: bigint;
-  scale: number;
-}
-
-function parseNonNegativeDecimal(value: unknown): ParsedDecimal | null {
-  const normalized = normalizeDepositValue(value);
-  if (normalized === null) return null;
-  const [whole, fraction = ""] = normalized.split(".");
-  return { coefficient: BigInt(`${whole}${fraction}`), scale: fraction.length };
-}
-
-function currencyFractionDigits(currency: string): number {
-  try {
-    return (
-      new Intl.NumberFormat("en", { style: "currency", currency })
-        .resolvedOptions().maximumFractionDigits ?? 2
-    );
-  } catch {
-    return 2;
-  }
-}
-
-function powerOfTen(exponent: number): bigint {
-  let result = BigInt(1);
-  for (let index = 0; index < exponent; index += 1) result *= BigInt(10);
-  return result;
-}
-
-function roundToCurrency(decimal: ParsedDecimal, fractionDigits: number): string {
-  let coefficient = decimal.coefficient;
-  if (decimal.scale > fractionDigits) {
-    const divisor = powerOfTen(decimal.scale - fractionDigits);
-    const quotient = coefficient / divisor;
-    const remainder = coefficient % divisor;
-    // Half-up is deterministic and matches the ordinary monetary expectation for
-    // a positive amount; no binary floating-point value participates.
-    coefficient =
-      quotient +
-      (remainder * BigInt(2) >= divisor ? BigInt(1) : BigInt(0));
-  } else if (decimal.scale < fractionDigits) {
-    coefficient *= powerOfTen(fractionDigits - decimal.scale);
-  }
-
-  if (fractionDigits === 0) return coefficient.toString();
-  const digits = coefficient.toString().padStart(fractionDigits + 1, "0");
-  return `${digits.slice(0, -fractionDigits)}.${digits.slice(-fractionDigits)}`;
-}
-
-/**
- * Computes the amount from an already validated, frozen policy and a booking total
- * in the policy's currency. The result is a Decimal-safe string, or null for NONE.
- */
-export function calculateDepositAmount(
-  policy: DepositPolicyConfig,
-  bookingTotal: DecimalLike,
-): string | null {
-  if (policy.policy === "NONE") return null;
-  if (policy.value === null || policy.currency === null) return null;
-  const value = parseNonNegativeDecimal(policy.value);
-  if (value === null) return null;
-
-  const rawAmount =
-    policy.policy === "FIXED"
-      ? value
-      : (() => {
-          const total = parseNonNegativeDecimal(bookingTotal);
-          if (total === null) return null;
-          return {
-            coefficient: total.coefficient * value.coefficient,
-            scale: total.scale + value.scale + 2,
-          };
-        })();
-  if (rawAmount === null) return null;
-  return roundToCurrency(rawAmount, currencyFractionDigits(policy.currency));
-}
+export type { DecimalLike };

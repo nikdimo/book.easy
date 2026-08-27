@@ -42,7 +42,7 @@ describe("host payment-arrangements attention", () => {
 
     await db.listing.update({
       where: { id: listing.id },
-      data: { depositPolicyReviewedAt: new Date() },
+      data: { depositPoliciesReviewedAt: new Date() },
     });
     expect(await getHostAttentionSummary(host.id)).toMatchObject({
       incompletePaymentArrangements: null,

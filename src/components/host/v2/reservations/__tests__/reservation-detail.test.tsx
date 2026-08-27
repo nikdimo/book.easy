@@ -55,18 +55,28 @@ const reservation: HostReservation = {
   paymentInstructionsStatus: "PENDING",
   selectedPaymentMethod: "BANK_TRANSFER_LOCAL_SEPA",
   paymentMethodOtherLabel: null,
-  depositStatus: "AWAITING_DEPOSIT",
-  depositAmount: 75,
-  depositPolicy: {
-    version: 1,
+  advancePaymentStatus: "AWAITING_PAYMENT",
+  damageDepositStatus: "AWAITING_DEPOSIT",
+  advancePaymentAmount: 40,
+  damageDepositAmount: 75,
+  depositPolicies: {
+    version: 2,
     status: "REVIEWED",
-    policy: "FIXED",
-    purpose: "DAMAGE_SECURITY",
-    value: "75",
-    currency: "EUR",
-    dueTiming: "AFTER_ACCEPTANCE",
-    dueDaysBeforeCheckIn: null,
-    returnDaysAfterCheckout: 7,
+    advancePayment: {
+      amountType: "FIXED",
+      value: "40",
+      currency: "EUR",
+      dueTiming: "AFTER_ACCEPTANCE",
+      dueDaysBeforeCheckIn: null,
+    },
+    damageDeposit: {
+      amountType: "FIXED",
+      value: "75",
+      currency: "EUR",
+      dueTiming: "AFTER_ACCEPTANCE",
+      dueDaysBeforeCheckIn: null,
+      returnDaysAfterCheckout: 7,
+    },
   },
   paymentStatusEvents: [],
   guestNote: "Arriving late on the first night.",
@@ -144,7 +154,8 @@ describe("ReservationDetail", () => {
 
   it("projects the confirmed booking's manual payment controls", () => {
     expect(html).toContain("Payment progress");
-    expect(html).toContain("Frozen deposit amount");
+    expect(html).toContain('data-payment-track="advance-payment"');
+    expect(html).toContain('data-payment-track="damage-deposit"');
     expect(html).toContain("Mark payment received");
   });
 });

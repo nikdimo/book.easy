@@ -8,6 +8,7 @@ import { listingBasicsComplete } from "@/lib/host/v2/listing-basics";
 import { listingLocationComplete } from "@/lib/host/v2/listing-location";
 import { listingPropertyDetailsComplete } from "@/lib/host/v2/listing-property-details";
 import { editorCompletedSections } from "@/lib/host/v2/editor-sections";
+import { editorAttentionSlugs } from "@/lib/host/v2/editor-overview";
 import type { CatalogRoomType, ListingRoomSummary } from "@/lib/types/room-catalog";
 import type { ListingMediaTypeValue } from "@/lib/types/listing-media";
 
@@ -30,6 +31,9 @@ export interface ListingEditorData {
     slug: string;
     coverUrl: string | null;
     completeSections: string[];
+    /** Sections with an open task, for the navigation. Includes Pricing, which is not a
+     *  completion section and so never carried a checkmark. */
+    attention: string[];
   };
   photos: EditorPhoto[];
   rooms: ListingRoomSummary[];
@@ -60,7 +64,7 @@ export async function getListingEditorData(
       bathrooms: true,
       houseRulesReviewedAt: true,
       paymentMethodsReviewedAt: true,
-      depositPolicyReviewedAt: true,
+      depositPoliciesReviewedAt: true,
       property: {
         select: {
           propertyType: true,
@@ -95,6 +99,7 @@ export async function getListingEditorData(
         },
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
       },
+      pricingRule: { select: { id: true } },
       _count: {
         select: { images: { where: { mediaType: "IMAGE" } } },
       },
@@ -162,6 +167,30 @@ export async function getListingEditorData(
     listing.rooms.map((room) => room.roomTypeId),
   );
 
+  const completeSections = editorCompletedSections({
+      photoCount: listing._count.images,
+      basicsComplete: listingBasicsComplete({
+        title: listing.title,
+        description: listing.description,
+      }),
+      propertyDetailsComplete: listingPropertyDetailsComplete({
+        propertyType: listing.property.propertyType,
+        spaceType: listing.spaceType,
+        bedrooms: listing.bedrooms,
+        beds: listing.beds,
+        bathrooms: listing.bathrooms,
+      }),
+      locationComplete: listingLocationComplete(listing.property),
+      paymentMethodsReviewed:
+        listing.paymentMethodsReviewedAt !== null &&
+        listing.depositPoliciesReviewedAt !== null,
+      houseRulesReviewed: listing.houseRulesReviewedAt !== null,
+    });
+const attention = editorAttentionSlugs({
+  completeSections,
+  hasPricing: listing.pricingRule !== null,
+  });
+
   return {
     listing: {
       id: listing.id,
@@ -169,25 +198,8 @@ export async function getListingEditorData(
       status: listing.status,
       slug: listing.slug,
       coverUrl: photos.find((photo) => photo.isPrimary)?.url ?? photos[0]?.url ?? null,
-      completeSections: editorCompletedSections({
-        photoCount: listing._count.images,
-        basicsComplete: listingBasicsComplete({
-          title: listing.title,
-          description: listing.description,
-        }),
-        propertyDetailsComplete: listingPropertyDetailsComplete({
-          propertyType: listing.property.propertyType,
-          spaceType: listing.spaceType,
-          bedrooms: listing.bedrooms,
-          beds: listing.beds,
-          bathrooms: listing.bathrooms,
-        }),
-        locationComplete: listingLocationComplete(listing.property),
-        paymentMethodsReviewed:
-          listing.paymentMethodsReviewedAt !== null &&
-          listing.depositPolicyReviewedAt !== null,
-        houseRulesReviewed: listing.houseRulesReviewedAt !== null,
-      }),
+      completeSections,
+      attention,
     },
     photos,
     rooms,
@@ -248,7 +260,7 @@ export async function getListingEditorHeader(listingId: string, hostId: string) 
       bathrooms: true,
       houseRulesReviewedAt: true,
       paymentMethodsReviewedAt: true,
-      depositPolicyReviewedAt: true,
+      depositPoliciesReviewedAt: true,
       property: {
         select: {
           propertyType: true,
@@ -265,12 +277,37 @@ export async function getListingEditorHeader(listingId: string, hostId: string) 
         orderBy: [{ isPrimary: "desc" }, { displayOrder: "asc" }],
         take: 1,
       },
+      pricingRule: { select: { id: true } },
       _count: {
         select: { images: { where: { mediaType: "IMAGE" } } },
       },
     },
   });
   if (!listing) return null;
+  const completeSections = editorCompletedSections({
+    photoCount: listing._count.images,
+    basicsComplete: listingBasicsComplete({
+      title: listing.title,
+      description: listing.description,
+    }),
+    propertyDetailsComplete: listingPropertyDetailsComplete({
+      propertyType: listing.property.propertyType,
+      spaceType: listing.spaceType,
+      bedrooms: listing.bedrooms,
+      beds: listing.beds,
+      bathrooms: listing.bathrooms,
+    }),
+    locationComplete: listingLocationComplete(listing.property),
+    paymentMethodsReviewed:
+      listing.paymentMethodsReviewedAt !== null &&
+      listing.depositPoliciesReviewedAt !== null,
+    houseRulesReviewed: listing.houseRulesReviewedAt !== null,
+  });
+const attention = editorAttentionSlugs({
+  completeSections,
+  hasPricing: listing.pricingRule !== null,
+  });
+
   return {
     id: listing.id,
     title: listing.title,
@@ -278,25 +315,8 @@ export async function getListingEditorHeader(listingId: string, hostId: string) 
     slug: listing.slug,
     coverUrl: listing.images[0]?.url ?? null,
     photoCount: listing._count.images,
-    completeSections: editorCompletedSections({
-      photoCount: listing._count.images,
-      basicsComplete: listingBasicsComplete({
-        title: listing.title,
-        description: listing.description,
-      }),
-      propertyDetailsComplete: listingPropertyDetailsComplete({
-        propertyType: listing.property.propertyType,
-        spaceType: listing.spaceType,
-        bedrooms: listing.bedrooms,
-        beds: listing.beds,
-        bathrooms: listing.bathrooms,
-      }),
-      locationComplete: listingLocationComplete(listing.property),
-      paymentMethodsReviewed:
-        listing.paymentMethodsReviewedAt !== null &&
-        listing.depositPolicyReviewedAt !== null,
-      houseRulesReviewed: listing.houseRulesReviewedAt !== null,
-    }),
+    completeSections,
+    attention,
   };
 }
 
@@ -320,6 +340,9 @@ export interface ListingEditorOverview {
   /** Whether the host has ever saved Payment arrangements. */
   paymentMethodsReviewed: boolean;
   completeSections: string[];
+  /** Sections with an open task. Pricing can appear here; it has no checkmark of its
+   *  own because it is not a completion section. */
+  attention: string[];
 }
 
 /**
@@ -354,7 +377,7 @@ export async function getListingEditorOverview(
       availabilityMode: true,
       houseRulesReviewedAt: true,
       paymentMethodsReviewedAt: true,
-      depositPolicyReviewedAt: true,
+      depositPoliciesReviewedAt: true,
       property: {
         select: {
           propertyType: true,
@@ -388,6 +411,30 @@ export async function getListingEditorOverview(
     .map((part) => part?.trim())
     .filter((part): part is string => Boolean(part));
 
+  const completeSections = editorCompletedSections({
+    photoCount: listing._count.images,
+    basicsComplete: listingBasicsComplete({
+      title: listing.title,
+      description: listing.description,
+    }),
+    propertyDetailsComplete: listingPropertyDetailsComplete({
+      propertyType: listing.property.propertyType,
+      spaceType: listing.spaceType,
+      bedrooms: listing.bedrooms,
+      beds: listing.beds,
+      bathrooms: listing.bathrooms,
+    }),
+    locationComplete: listingLocationComplete(listing.property),
+    paymentMethodsReviewed:
+      listing.paymentMethodsReviewedAt !== null &&
+      listing.depositPoliciesReviewedAt !== null,
+    houseRulesReviewed: listing.houseRulesReviewedAt !== null,
+  });
+const attention = editorAttentionSlugs({
+  completeSections,
+  hasPricing: listing.pricingRule !== null,
+  });
+
   return {
     id: listing.id,
     title: listing.title,
@@ -409,25 +456,8 @@ export async function getListingEditorOverview(
     houseRulesReviewed: listing.houseRulesReviewedAt !== null,
     paymentMethodsReviewed:
       listing.paymentMethodsReviewedAt !== null &&
-      listing.depositPolicyReviewedAt !== null,
-    completeSections: editorCompletedSections({
-      photoCount: listing._count.images,
-      basicsComplete: listingBasicsComplete({
-        title: listing.title,
-        description: listing.description,
-      }),
-      propertyDetailsComplete: listingPropertyDetailsComplete({
-        propertyType: listing.property.propertyType,
-        spaceType: listing.spaceType,
-        bedrooms: listing.bedrooms,
-        beds: listing.beds,
-        bathrooms: listing.bathrooms,
-      }),
-      locationComplete: listingLocationComplete(listing.property),
-      paymentMethodsReviewed:
-        listing.paymentMethodsReviewedAt !== null &&
-        listing.depositPolicyReviewedAt !== null,
-      houseRulesReviewed: listing.houseRulesReviewedAt !== null,
-    }),
+      listing.depositPoliciesReviewedAt !== null,
+    completeSections,
+    attention,
   };
 }

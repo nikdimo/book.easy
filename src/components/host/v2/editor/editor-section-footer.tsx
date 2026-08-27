@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Check, ExternalLink } from "lucide-react";
+import { ArrowLeft, CircleAlert, ExternalLink } from "lucide-react";
 import { EDITOR_SECTIONS } from "@/lib/host/v2/editor-sections";
 import { resolveEditorLabel } from "@/lib/i18n/editor-label";
 import { useI18n } from "@/lib/i18n/client";
@@ -18,16 +18,17 @@ import { useI18n } from "@/lib/i18n/client";
 export function EditorSectionFooter({
   listingId,
   current,
-  complete,
+  attention,
   previewSlug,
 }: {
   listingId: string;
   current: string;
-  complete: string[];
+  /** Section slugs with an open task — the same marks the rail carries. */
+  attention: string[];
   previewSlug?: string;
 }) {
   const { resolve } = useI18n();
-  const done = new Set(complete);
+  const open = new Set(attention);
   const rest = EDITOR_SECTIONS.filter((section) => section.slug !== current);
 
   return (
@@ -49,8 +50,8 @@ export function EditorSectionFooter({
                 className="flex min-h-11 items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 focus-visible:bg-slate-50 focus-visible:outline-none"
               >
                 <span className="min-w-0 flex-1 truncate">{label.text}</span>
-                {done.has(section.slug) && (
-                  <Check className="size-3.5 shrink-0 text-emerald-600" aria-hidden />
+                {open.has(section.slug) && (
+                  <CircleAlert className="size-3.5 shrink-0 text-amber-600" aria-hidden />
                 )}
               </Link>
             </li>

@@ -49,6 +49,7 @@ const overview: ListingEditorOverview = {
   houseRulesReviewed: true,
   paymentMethodsReviewed: true,
   completeSections: ["photos", "basics", "rooms", "location", "payment-arrangements", "house-rules"],
+  attention: [],
 };
 
 async function render() {

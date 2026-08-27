@@ -87,3 +87,17 @@ export function editorAttentionItems(
 
   return items;
 }
+
+/**
+ * The same open tasks, as bare slugs — what the navigation marks.
+ *
+ * The rail flags a section that wants something rather than ticking one that is
+ * finished, so "no mark" carries a single meaning: nothing to do here. Ticks could not
+ * say that, because a section with no persisted reviewed state (Amenities, Arrival
+ * guide) is untickable and looked identical to one the host still owed an answer.
+ * It also lets Pricing be marked at all: a listing with no nightly price cannot be
+ * booked, and no checkmark could ever have shown that.
+ */
+export function editorAttentionSlugs(facts: EditorOverviewFacts): string[] {
+  return editorAttentionItems(facts).map((item) => item.slug);
+}

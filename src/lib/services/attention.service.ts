@@ -67,7 +67,7 @@ export async function getHostAttentionSummary(hostId: string) {
           status: { not: "ARCHIVED" },
           OR: [
             { paymentMethodsReviewedAt: null },
-            { depositPolicyReviewedAt: null },
+            { depositPoliciesReviewedAt: null },
           ],
         },
         select: { id: true, title: true },
@@ -79,7 +79,7 @@ export async function getHostAttentionSummary(hostId: string) {
           status: { not: "ARCHIVED" },
           OR: [
             { paymentMethodsReviewedAt: null },
-            { depositPolicyReviewedAt: null },
+            { depositPoliciesReviewedAt: null },
           ],
         },
       }),

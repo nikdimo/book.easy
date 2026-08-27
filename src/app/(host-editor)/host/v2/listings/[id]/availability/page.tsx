@@ -13,8 +13,8 @@ import { AvailabilitySummary } from "@/components/host/v2/editor/availability-su
  * rather than a page that tells them it exists. Nothing on this route mutates anything:
  * every change to availability is made in Calendar, which is the one place that owns it.
  *
- * `complete` deliberately never mentions this section — it is not a listing task, and
- * `editorCompletionCount` would ignore it even if it were passed.
+ * `attention` never names this section — it is not a listing task, so there is nothing
+ * here for the rail to flag.
  */
 export default async function AvailabilityPage({
   params,
@@ -33,7 +33,7 @@ export default async function AvailabilityPage({
     <EditorFrame
       listingId={id}
       section="availability"
-      complete={listing.completeSections}
+      attention={listing.attention}
       previewSlug={listing.slug}
       previewStatus={listing.status}
     >

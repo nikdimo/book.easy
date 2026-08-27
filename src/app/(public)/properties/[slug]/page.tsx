@@ -24,8 +24,8 @@ import {
   AcceptedPaymentMethods,
   toAcceptedPaymentMethodsPresentation,
 } from "@/components/booking/accepted-payment-methods";
-import { DepositPolicySummary } from "@/components/booking/deposit-policy-summary";
-import { createDepositPolicySnapshot } from "@/lib/payments/deposit-policy";
+import { DepositPoliciesSummary } from "@/components/booking/deposit-policies-summary";
+import { createDepositPoliciesSnapshot } from "@/lib/payments/deposit-policies";
 import { houseRulesSnapshot } from "@/lib/host/v2/listing-house-rules";
 import { houseRulesVersion } from "@/lib/host/v2/house-rules-version.server";
 import { ListingLocationMap } from "@/components/public/listing-location-map";
@@ -266,7 +266,7 @@ export default async function ListingDetailPage({
     methodCodes: listing.acceptedPaymentMethods,
     otherLabel: listing.paymentMethodOther,
   });
-  const depositPolicy = createDepositPolicySnapshot(listing);
+  const depositPolicies = createDepositPoliciesSnapshot(listing);
   const bookingWidget = listing.pricingRule ? (
     <BookingWidget
       listingId={listing.id}
@@ -295,7 +295,7 @@ export default async function ListingDetailPage({
       hasExplicitSearchSelection={hasExplicitSearchSelection}
       requestToBookTooltip={requestToBookTooltip}
       acceptedPaymentMethods={acceptedPaymentMethods}
-      depositPolicy={depositPolicy}
+      depositPolicies={depositPolicies}
       messageHost={messageHostButton}
       houseRules={<HouseRulesList t={t} rules={houseRules} />}
       houseRulesVersion={renderedHouseRulesVersion}
@@ -519,7 +519,7 @@ export default async function ListingDetailPage({
               data={acceptedPaymentMethods}
             />
 
-            <DepositPolicySummary t={t} data={depositPolicy} />
+            <DepositPoliciesSummary t={t} data={depositPolicies} />
 
             <Separator />
 

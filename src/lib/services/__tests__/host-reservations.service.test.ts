@@ -53,8 +53,11 @@ describe("getHostReservations payment projection", () => {
         discountAmount: "0",
         totalPrice: "225",
         paymentStatus: "PAYMENT_REPORTED",
-        depositStatus: "DEPOSIT_CONFIRMED",
-        depositAmount: "75",
+        advancePaymentStatus: "PAYMENT_CONFIRMED",
+        damageDepositStatus: "DEPOSIT_CONFIRMED",
+        advancePaymentAmount: "40",
+        damageDepositAmount: "75",
+        // A booking frozen under V1, to prove the projection still reads it.
         depositPolicySnapshot: {
           version: 1,
           status: "REVIEWED",
@@ -85,7 +88,7 @@ describe("getHostReservations payment projection", () => {
           {
             id: "event-host",
             actorId: "host-1",
-            eventType: "HOST_CONFIRM_DEPOSIT_RECEIVED",
+            eventType: "HOST_CONFIRM_DAMAGE_DEPOSIT_RECEIVED",
             createdAt: new Date("2026-08-02T13:00:00.000Z"),
           },
         ],
@@ -98,12 +101,20 @@ describe("getHostReservations payment projection", () => {
 
     expect(result.reservations[0]).toMatchObject({
       paymentStatus: "PAYMENT_REPORTED",
-      depositStatus: "DEPOSIT_CONFIRMED",
-      depositAmount: 75,
-      depositPolicy: expect.objectContaining({ status: "REVIEWED", value: "75" }),
+      advancePaymentStatus: "PAYMENT_CONFIRMED",
+      damageDepositStatus: "DEPOSIT_CONFIRMED",
+      advancePaymentAmount: 40,
+      damageDepositAmount: 75,
+      // The V1 snapshot is projected onto the damage-deposit slot, unchanged.
+      depositPolicies: expect.objectContaining({
+        version: 2,
+        status: "REVIEWED",
+        advancePayment: null,
+        damageDeposit: expect.objectContaining({ value: "75", returnDaysAfterCheckout: 7 }),
+      }),
       paymentStatusEvents: [
         expect.objectContaining({ actor: "GUEST", eventType: "GUEST_REPORT_PAYMENT_SENT" }),
-        expect.objectContaining({ actor: "HOST", eventType: "HOST_CONFIRM_DEPOSIT_RECEIVED" }),
+        expect.objectContaining({ actor: "HOST", eventType: "HOST_CONFIRM_DAMAGE_DEPOSIT_RECEIVED" }),
       ],
     });
   });

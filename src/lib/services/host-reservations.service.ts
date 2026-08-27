@@ -13,7 +13,7 @@ import {
 import { getDisplayCurrency } from "@/lib/currency/server";
 import { getExchangeRates } from "@/lib/currency/rates";
 import { BASE_CURRENCY } from "@/lib/currency/currency-preference";
-import { parseDepositPolicySnapshot } from "@/lib/payments/deposit-policy";
+import { parseDepositPoliciesSnapshot } from "@/lib/payments/deposit-policies";
 import {
   parsePaymentInstructionTemplates,
   savedPaymentInstructionTemplateEntries,
@@ -95,8 +95,10 @@ export async function getHostReservations(
         paymentInstructionsStatus: true,
         selectedPaymentMethod: true,
         paymentMethodsSnapshot: true,
-        depositStatus: true,
-        depositAmount: true,
+        advancePaymentStatus: true,
+        damageDepositStatus: true,
+        advancePaymentAmount: true,
+        damageDepositAmount: true,
         depositPolicySnapshot: true,
         guestNote: true,
         cancellationReason: true,
@@ -185,10 +187,17 @@ export async function getHostReservations(
       paymentMethodOtherLabel:
         parsePaymentMethodsSnapshot(booking.paymentMethodsSnapshot)?.otherLabel ??
         null,
-      depositStatus: booking.depositStatus,
-      depositAmount:
-        booking.depositAmount === null ? null : Number(booking.depositAmount),
-      depositPolicy: parseDepositPolicySnapshot(booking.depositPolicySnapshot),
+      advancePaymentStatus: booking.advancePaymentStatus,
+      damageDepositStatus: booking.damageDepositStatus,
+      advancePaymentAmount:
+        booking.advancePaymentAmount === null
+          ? null
+          : Number(booking.advancePaymentAmount),
+      damageDepositAmount:
+        booking.damageDepositAmount === null
+          ? null
+          : Number(booking.damageDepositAmount),
+      depositPolicies: parseDepositPoliciesSnapshot(booking.depositPolicySnapshot),
       paymentStatusEvents: booking.paymentStatusEvents.map((event) => ({
         id: event.id,
         actor: event.eventType.startsWith("GUEST_") ? "GUEST" : "HOST",

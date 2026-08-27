@@ -9,7 +9,7 @@ const CYRILLIC_LOCALES = new Set(["mk", "sr", "bg", "uk", "ru"]);
 const UNSUPPORTED_MESSAGE_FORMAT_RE =
   /\{[A-Za-z][A-Za-z0-9_]*\s*,\s*(?:plural|select|selectordinal)\b/i;
 const ALLOWED_LATIN =
-  /lingerhomes\.com|Linger Homes|Airbnb|Booking(?:\.com)?|Vrbo|Facebook|Google|Maps|Street View|API|HTTPS?|EUR|Alt\+T|SMS|URL|Wi-?Fi|JPEG|JPG|PNG|WebP|HEIC|PDF|JSON|MP4|MOV|WebM|MB|push|X{1,3}|CVV|PIN|Ctrl|SEPA|IBAN|SWIFT|MobilePay|PayPal|Revolut|Wise|e-?mail|cookie/gi;
+  /lingerhomes\.com|Linger Homes|Airbnb|Booking(?:\.com)?|Vrbo|Facebook|Google|Maps|Street View|API|HTTPS?|EUR|Alt\+T|SMS|URL|Wi-?Fi|JPEG|JPG|PNG|WebP|HEIC|PDF|JSON|MP4|MOV|WebM|MB|push|X{1,3}|CVV|PIN|Ctrl|SEPA|IBAN|SWIFT|BIC|Bitcoin|seed|MobilePay|PayPal|Revolut|Wise|e-?mail|cookie/gi;
 
 async function main() {
   const rows = await db.uiTranslation.findMany({
