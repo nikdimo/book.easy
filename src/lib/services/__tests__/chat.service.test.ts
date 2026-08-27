@@ -232,6 +232,119 @@ describe("booking conversation", () => {
     ).toBe("PAYMENT_INSTRUCTIONS");
   });
 
+  it("freezes the structured details it sent onto the booking", async () => {
+    const { host, guest, booking } = await setup();
+    await ensureBookingConversation(booking.id, guest.id);
+    await db.booking.update({
+      where: { id: booking.id },
+      data: {
+        status: "CONFIRMED",
+        acceptedAt: new Date(),
+        selectedPaymentMethod: "BANK_TRANSFER_INTERNATIONAL",
+      },
+    });
+
+    const detailsSnapshot = {
+      version: 2 as const,
+      method: "BANK_TRANSFER_INTERNATIONAL" as const,
+      otherLabel: null,
+      fields: {
+        accountHolder: "Nikola Dimovski",
+        bankName: "Komercijalna Banka",
+        accountIdentifier: "DK5000400440116243",
+        swiftBic: "DABADKKK",
+      },
+      sentAt: "2026-08-27T10:00:00.000Z",
+    };
+    await shareBookingPaymentInstructions({
+      bookingId: booking.id,
+      hostId: host.id,
+      body: "Account holder: Nikola Dimovski\nIBAN or account number: DK5000400440116243",
+      detailsSnapshot,
+    });
+
+    const updated = await db.booking.findUniqueOrThrow({
+      where: { id: booking.id },
+      select: {
+        paymentInstructionsSnapshot: true,
+        conversation: { select: { lastMessagePreview: true } },
+      },
+    });
+    expect(updated.paymentInstructionsSnapshot).toEqual(detailsSnapshot);
+    // The preview stays generic even when the send carried structured coordinates.
+    expect(updated.conversation?.lastMessagePreview).toBe(PAYMENT_INSTRUCTIONS_PREVIEW);
+    expect(updated.conversation?.lastMessagePreview).not.toContain(
+      "DK5000400440116243",
+    );
+  });
+
+  it("clears any frozen details when a later send is plain text", async () => {
+    const { host, guest, booking } = await setup();
+    await ensureBookingConversation(booking.id, guest.id);
+    await db.booking.update({
+      where: { id: booking.id },
+      data: {
+        status: "CONFIRMED",
+        acceptedAt: new Date(),
+        selectedPaymentMethod: "PAYPAL",
+        paymentInstructionsSnapshot: {
+          version: 2,
+          method: "PAYPAL",
+          otherLabel: null,
+          fields: { providerIdentifier: "old@example.com" },
+          sentAt: "2026-08-01T10:00:00.000Z",
+        },
+      },
+    });
+
+    await shareBookingPaymentInstructions({
+      bookingId: booking.id,
+      hostId: host.id,
+      body: "Send it to my PayPal, details to follow",
+    });
+
+    const updated = await db.booking.findUniqueOrThrow({
+      where: { id: booking.id },
+      select: { paymentInstructionsSnapshot: true },
+    });
+    // The card must never outlive the message it came from.
+    expect(updated.paymentInstructionsSnapshot).toBeNull();
+  });
+
+  it("refuses a send whose method no longer matches the booking", async () => {
+    const { host, guest, booking } = await setup();
+    await ensureBookingConversation(booking.id, guest.id);
+    await db.booking.update({
+      where: { id: booking.id },
+      data: {
+        status: "CONFIRMED",
+        acceptedAt: new Date(),
+        selectedPaymentMethod: "PAYPAL",
+      },
+    });
+
+    // A host tab opened before the guest's choice was recorded, now stale.
+    await expect(
+      shareBookingPaymentInstructions({
+        bookingId: booking.id,
+        hostId: host.id,
+        body: "IBAN or account number: DK5000400440116243",
+        detailsSnapshot: {
+          version: 2,
+          method: "BANK_TRANSFER_INTERNATIONAL",
+          otherLabel: null,
+          fields: {
+            accountHolder: "Nikola Dimovski",
+            bankName: "Komercijalna Banka",
+            accountIdentifier: "DK5000400440116243",
+            swiftBic: "DABADKKK",
+          },
+          sentAt: "2026-08-27T10:00:00.000Z",
+        },
+      }),
+    ).rejects.toThrow("payment method has changed");
+  });
+
   it("rejects card and account-recovery credentials in payment instructions", async () => {
     const { host, guest, booking } = await setup();
     await ensureBookingConversation(booking.id, guest.id);

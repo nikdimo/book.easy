@@ -253,6 +253,49 @@ describe("house rules in the mobile draft contract", () => {
     ).toEqual({ data: { petPolicy: "", quietHoursPolicy: "" } });
   });
 
+  it("accepts payment methods with only the selected private instruction entries", () => {
+    expect(
+      parseMobileListingDraftPatch({
+        acceptedPaymentMethods: [
+          "CASH_AT_PROPERTY",
+          "BANK_TRANSFER_LOCAL_SEPA",
+          "PAYPAL",
+        ],
+        paymentMethodOther: null,
+        paymentInstructionTemplates: {
+          BANK_TRANSFER_LOCAL_SEPA: "IBAN shared after acceptance",
+        },
+        currentStepId: "specialOffer",
+      }),
+    ).toEqual({
+      data: {
+        acceptedPaymentMethods: [
+          "CASH_AT_PROPERTY",
+          "BANK_TRANSFER_LOCAL_SEPA",
+          "PAYPAL",
+        ],
+        paymentMethodOther: null,
+        paymentInstructionTemplates: {
+          BANK_TRANSFER_LOCAL_SEPA: "IBAN shared after acceptance",
+        },
+        currentStep: 10,
+        currentStepId: "specialOffer",
+      },
+    });
+
+    expect(
+      parseMobileListingDraftPatch({
+        acceptedPaymentMethods: ["CASH_AT_PROPERTY"],
+        paymentInstructionTemplates: {},
+      }),
+    ).toEqual({
+      data: {
+        acceptedPaymentMethods: ["CASH_AT_PROPERTY"],
+        paymentInstructionTemplates: {},
+      },
+    });
+  });
+
   it("refuses a policy outside the closed set rather than storing it", () => {
     // A value that could never be published is better refused here than carried to a
     // screen further along that has to fail on it instead.

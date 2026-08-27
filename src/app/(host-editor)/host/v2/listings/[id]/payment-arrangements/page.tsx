@@ -5,6 +5,7 @@ import { getListingPaymentMethodsData } from "@/lib/services/listing-payment-met
 import { getListingDepositPoliciesData } from "@/lib/services/listing-deposit-policies.service";
 import { EditorFrame } from "@/components/host/v2/editor/editor-frame";
 import { PaymentArrangementsWorkspace } from "@/components/host/v2/editor/payment-arrangements";
+import { detailsMapToDraft } from "@/components/host/v2/editor/payment-arrangements/payment-arrangements-model";
 
 export const metadata = { title: "Payment arrangements" };
 
@@ -36,6 +37,7 @@ export default async function ListingPaymentArrangementsPage({
           methodCodes: data.preferences.methods,
           otherLabel: data.preferences.otherLabel,
           instructionTemplates: data.instructionTemplates,
+          details: detailsMapToDraft(data.instructionDetails),
           reviewedAt: data.preferences.reviewedAt?.toISOString() ?? null,
         }}
         initialDeposit={deposit.policies}

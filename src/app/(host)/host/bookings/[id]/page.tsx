@@ -15,6 +15,8 @@ import { formatDate, formatPrice } from "@/lib/utils/format";
 import { formatMoney } from "@/lib/currency/convert";
 import { getT, T, TWithValues } from "@/lib/i18n/t";
 import { getBookingPaymentProgress } from "@/lib/services/booking-payment-status.service";
+import { getBookingPaymentRequestPrefill } from "@/lib/services/booking.service";
+import { parseBookingPaymentDetailsSnapshot } from "@/lib/payments/booking-payment-request";
 import { parseDepositPoliciesSnapshot } from "@/lib/payments/deposit-policies";
 import { BookingPaymentProgress } from "@/components/booking/booking-payment-progress";
 import { acceptedPaymentMethodsFromSnapshot } from "@/components/booking/accepted-payment-methods";
@@ -32,6 +34,12 @@ export default async function HostBookingDetailPage({
   const booking = await getHostBookingWithGuest(id, session.user.id);
   if (!booking) notFound();
   const paymentProgress = await getBookingPaymentProgress(booking.id, session.user.id);
+  // Owner-scoped: this returns the saved details for this booking's method only, and
+  // only because the viewer is the listing's host.
+  const paymentPrefill = await getBookingPaymentRequestPrefill(
+    booking.id,
+    session.user.id,
+  );
   const paymentMethods = acceptedPaymentMethodsFromSnapshot(
     booking.paymentMethodsSnapshot,
     booking.createdAt,
@@ -258,6 +266,15 @@ export default async function HostBookingDetailPage({
               depositPolicies: parseDepositPoliciesSnapshot(paymentProgress.depositPolicySnapshot),
               paymentStatus: paymentProgress.paymentStatus,
               paymentInstructionsStatus: paymentProgress.paymentInstructionsStatus,
+              paymentInstructionsDueAt:
+                paymentProgress.paymentInstructionsDueAt?.toISOString() ?? null,
+              reference: paymentProgress.reference,
+              sentPaymentDetails: parseBookingPaymentDetailsSnapshot(
+                paymentProgress.paymentInstructionsSnapshot,
+              ),
+              // Host-only: the saved details for this booking's method, so the send
+              // form opens filled in rather than blank.
+              paymentRequestPrefill: paymentPrefill ?? undefined,
               selectedPaymentMethod: paymentProgress.selectedPaymentMethod,
               paymentMethodOtherLabel: paymentMethods?.otherLabel ?? null,
               advancePaymentStatus: paymentProgress.advancePaymentStatus,

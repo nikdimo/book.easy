@@ -28,6 +28,7 @@
     "amenities:dedupe": "node --conditions=react-server --import tsx scripts/dedupe-amenities.ts",
     "rooms:export": "node --conditions=react-server --import tsx scripts/export-room-type-catalog.ts",
     "rooms:import": "node --conditions=react-server --import tsx scripts/import-room-type-catalog.ts",
+    "rooms:backfill": "node --conditions=react-server --import tsx scripts/backfill-listing-rooms.ts",
     "uploads:process-deletions": "node --conditions=react-server --import tsx scripts/process-upload-deletions.ts",
     "uploads:reconcile": "node --conditions=react-server --import tsx scripts/reconcile-uploads.ts",
     "popularity:recompute": "node --conditions=react-server --import tsx scripts/recompute-popularity.ts",

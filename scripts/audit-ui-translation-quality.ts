@@ -2,6 +2,10 @@ import { db } from "../src/lib/db";
 
 const PLACEHOLDER_RE = /\{[A-Za-z][A-Za-z0-9_]*\}/g;
 const URL_RE = /https?:\/\/[^\s]+/gi;
+const EMAIL_RE = /[^\s@]+@[^\s@]+\.[A-Za-z]{2,}/gi;
+const PAYMENT_CODE_RE = /\b[A-Z]{2}[A-Z0-9 ]{6,}\b/g;
+const PAYMENT_HANDLE_RE = /@[A-Za-z0-9._-]+/g;
+const CRYPTO_ADDRESS_EXAMPLE_RE = /\bbc1(?:[A-Za-z0-9]+|…)/gi;
 const CYRILLIC_LOCALES = new Set(["mk", "sr", "bg", "uk", "ru"]);
 // Runtime UI interpolation supports simple {name} placeholders, not ICU message
 // expressions. An ICU expression can pass the simple placeholder comparison while
@@ -9,7 +13,7 @@ const CYRILLIC_LOCALES = new Set(["mk", "sr", "bg", "uk", "ru"]);
 const UNSUPPORTED_MESSAGE_FORMAT_RE =
   /\{[A-Za-z][A-Za-z0-9_]*\s*,\s*(?:plural|select|selectordinal)\b/i;
 const ALLOWED_LATIN =
-  /lingerhomes\.com|Linger Homes|Airbnb|Booking(?:\.com)?|Vrbo|Facebook|Google|Maps|Street View|API|HTTPS?|EUR|Alt\+T|SMS|URL|Wi-?Fi|JPEG|JPG|PNG|WebP|HEIC|PDF|JSON|MP4|MOV|WebM|MB|push|X{1,3}|CVV|PIN|Ctrl|SEPA|IBAN|SWIFT|BIC|Bitcoin|seed|MobilePay|PayPal|Revolut|Wise|e-?mail|cookie/gi;
+  /lingerhomes\.com|Linger Homes|Airbnb|Booking(?:\.com)?|Vrbo|Facebook|Google|Maps|Street View|API|HTTPS?|EUR|Alt\+T|SMS|URL|Wi-?Fi|JPEG|JPG|PNG|WebP|HEIC|PDF|JSON|MP4|MOV|WebM|MB|push|X{1,3}|CVV|PIN|Ctrl|SEPA|IBAN|SWIFT|BIC|Bitcoin|Lightning|on-chain|seed|MobilePay|PayPal|Revolut|Revtag|Wise|e-?mail|cookie/gi;
 
 async function main() {
   const rows = await db.uiTranslation.findMany({
@@ -32,6 +36,10 @@ async function main() {
       const prose = row.value
         .replace(PLACEHOLDER_RE, "")
         .replace(URL_RE, "")
+        .replace(EMAIL_RE, "")
+        .replace(PAYMENT_CODE_RE, "")
+        .replace(PAYMENT_HANDLE_RE, "")
+        .replace(CRYPTO_ADDRESS_EXAMPLE_RE, "")
         .replace(ALLOWED_LATIN, "");
       if (/[A-Za-z]/.test(prose)) {
         issues.push({ locale: row.locale, key: row.key, issue: "Latin text in Cyrillic locale", value: row.value });

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import Link from "next/link";
 import {
   ArrowDownUp,
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { interpolate, useI18n } from "@/lib/i18n/client";
+import { useTypeToSearch } from "@/lib/hooks/use-type-to-search";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -528,6 +530,8 @@ export function ReservationStream({
   onSelect: (id: string) => void;
 }) {
   const i18n = useI18n();
+  const searchRef = useRef<HTMLInputElement>(null);
+  useTypeToSearch(searchRef);
   const empty = sections.length === 0 && actionCards.length === 0;
 
   return (
@@ -545,6 +549,7 @@ export function ReservationStream({
         <label className="flex h-10 min-w-0 flex-1 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 transition-colors focus-within:border-[#0f172a] md:h-7">
           <Search className="size-3.5 shrink-0 text-slate-400" aria-hidden />
           <input
+            ref={searchRef}
             type="search"
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}

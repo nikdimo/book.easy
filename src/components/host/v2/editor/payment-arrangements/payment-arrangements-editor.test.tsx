@@ -140,14 +140,18 @@ describe("PaymentArrangementsEditor", () => {
     expect(html).toContain("Arrange directly after the booking request");
   });
 
-  it("plainly limits public content and warns against sensitive details", () => {
+  it("states the privacy rule once instead of warning under every method", () => {
     const html = renderEditor();
 
-    expect(html).toContain("Guests see names, not details");
-    expect(html).toContain("Only selected method names appear publicly.");
-    expect(html).toContain("Saved account or wallet details stay private");
-    expect(html).toContain("Never enter card numbers, CVV, PIN, passwords");
-    expect(html).toContain("seed phrases, private keys, or recovery information");
+    expect(html).toContain(
+      "Guests see only the payment method names while browsing. Private details are shared only after you accept a booking.",
+    );
+    // The old design repeated a standing warning under every field. One notice, once.
+    expect(html).not.toContain("Guests see names, not details");
+    expect(
+      (html.match(/Private details are shared only after you accept a booking/g) ?? [])
+        .length,
+    ).toBe(1);
   });
 
   it("distinguishes an unanswered listing and shows the required public fallback", () => {
@@ -204,31 +208,96 @@ describe("PaymentArrangementsEditor", () => {
     expect(withOther).toContain('value="MobilePay"');
   });
 
-  it("shows and preserves private reusable instructions for selected methods", () => {
+  it("collapses every method's details until one is opened", () => {
     const html = renderEditor({
-      methodCodes: ["BANK_TRANSFER_INTERNATIONAL", "BITCOIN"],
-      instructionTemplates: {
-        BANK_TRANSFER_INTERNATIONAL: "IBAN DK5000400440116243\nSWIFT DABADKKK",
-        BITCOIN: "bc1qar0srr7xfkvy5l643lydnw9re59gtzzwf5mdq",
+      methodCodes: ["BANK_TRANSFER_INTERNATIONAL", "PAYPAL"],
+      details: {
+        BANK_TRANSFER_INTERNATIONAL: {
+          accountHolder: "Nikola Dimovski",
+          bankName: "Komercijalna Banka",
+          accountIdentifier: "DK5000400440116243",
+          swiftBic: "DABADKKK",
+        },
       },
       reviewedAt: "2026-08-24T10:00:00.000Z",
     });
 
-    expect(html).toContain("Saved private payment instructions");
+    // Both rows are collapsed on first paint, so no panel is expanded.
+    expect(html).not.toContain('aria-expanded="true"');
+    expect((html.match(/aria-expanded="false"/g) ?? []).length).toBe(2);
+    // Every details panel is hidden, one per selected method that has fields.
+    expect((html.match(/id="payment-details-[a-z-]+"/g) ?? []).length).toBe(2);
+    expect((html.match(/hidden=""/g) ?? []).length).toBe(2);
+    // What the collapsed row itself shows is masked down to a recognisable tail.
+    expect(html).toContain("DK50 •••• 6243");
+  });
+
+  it("labels each row Ready or Missing details without calling it an error", () => {
+    const html = renderEditor({
+      methodCodes: ["BANK_TRANSFER_INTERNATIONAL", "PAYPAL"],
+      details: {
+        BANK_TRANSFER_INTERNATIONAL: {
+          accountHolder: "Nikola Dimovski",
+          bankName: "Komercijalna Banka",
+          accountIdentifier: "DK5000400440116243",
+          swiftBic: "DABADKKK",
+        },
+      },
+      reviewedAt: "2026-08-24T10:00:00.000Z",
+    });
+
+    expect(html).toContain("Ready");
+    expect(html).toContain("Missing details");
+    expect(html).toContain("Edit details");
+    expect(html).toContain("Add details");
+    expect(html).not.toContain("Not ready");
+    // A selected method with no details yet is a normal state, not a validation
+    // failure: nothing is flagged as an error and nothing demands a value.
+    expect(html).not.toContain('role="alert"');
+    expect(html).not.toContain("Fill this in");
+  });
+
+  it("keeps the checkbox and the disclosure button as separate controls", () => {
+    const html = renderEditor({
+      methodCodes: ["PAYPAL"],
+      reviewedAt: "2026-08-24T10:00:00.000Z",
+    });
+
+    // The label wraps text only — no button is nested inside it.
+    expect(html).not.toMatch(/<label[^>]*>(?:(?!<\/label>)[\s\S])*<button/);
+    expect(html).toContain('aria-controls="payment-details-paypal"');
+    expect(html).toContain('for="payment-method-paypal"');
+  });
+
+  it("offers a legacy paragraph for deliberate conversion instead of parsing it", () => {
+    const html = renderEditor({
+      methodCodes: ["BANK_TRANSFER_INTERNATIONAL"],
+      instructionTemplates: {
+        BANK_TRANSFER_INTERNATIONAL: "IBAN DK5000400440116243\nSWIFT DABADKKK",
+      },
+      reviewedAt: "2026-08-24T10:00:00.000Z",
+    });
+
+    expect(html).toContain("Legacy saved instructions");
+    expect(html).toContain("Convert to structured fields");
+    // The legacy text is shown verbatim, never split across the structured fields.
     expect(html).toContain("IBAN DK5000400440116243");
-    expect(html).toContain("SWIFT DABADKKK");
-    expect(html).toContain("bc1qar0srr7xfkvy5l643lydnw9re59gtzzwf5mdq");
-    expect(html).toContain("Guests cannot see this while browsing");
+    expect(html).not.toContain('value="DK5000400440116243"');
   });
 
   it("blocks unsafe saved credentials before they reach the server", () => {
     const html = renderEditor({
       methodCodes: ["BITCOIN"],
-      instructionTemplates: { BITCOIN: "Seed phrase: one two three four" },
+      details: {
+        BITCOIN: {
+          network: "BITCOIN",
+          walletAddress: "Seed phrase: one two three four",
+        },
+      },
       reviewedAt: "2026-08-24T10:00:00.000Z",
     });
 
-    expect(html).toContain("Remove card details, passwords, PINs, seed phrases");
+    expect(html).toContain("not a valid address for the network you chose");
     expect(html).toMatch(/type="submit"[^>]*disabled/);
   });
 

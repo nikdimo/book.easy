@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Check, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Tx, useI18n } from "@/lib/i18n/client";
@@ -10,6 +10,7 @@ import {
   currencySymbol,
 } from "@/lib/currency/currencies";
 import { tokenContainmentScore } from "@/lib/utils/search-score";
+import { useTypeToSearch } from "@/lib/hooks/use-type-to-search";
 import { cn } from "@/lib/utils";
 
 interface CurrencyRow {
@@ -81,6 +82,8 @@ export function CurrencyPickerPanel({
 }) {
   const i18n = useI18n();
   const [query, setQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
+  useTypeToSearch(searchRef);
   const rows = useMemo(
     () =>
       currencies.map((code) => ({
@@ -105,6 +108,7 @@ export function CurrencyPickerPanel({
           aria-hidden
         />
         <Input
+          ref={searchRef}
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}

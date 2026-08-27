@@ -66,9 +66,8 @@ describe("BookingPaymentProgress", () => {
       />,
     );
 
-    expect(html).toContain("Secure payment instructions");
-    expect(html).toContain("This is sent only inside the Linger Homes conversation.");
-    expect(html).toContain("Never ask for or send a card number, CVV, PIN, password, seed phrase, or private key.");
+    expect(html).toContain("Payment due");
+    expect(html).toContain("Send payment request");
     expect(html).not.toContain('data-payment-event="HOST_MARK_PAYMENT_DUE"');
     expect(html).toContain('data-payment-event="HOST_REPORT_DAMAGE_DEPOSIT_RETURNED"');
     expect(html).toContain("Reported by host");
@@ -106,20 +105,31 @@ describe("BookingPaymentProgress", () => {
     expect(html).toContain("Awaiting damage deposit");
   });
 
-  it("prefills saved instructions for the host to review but never for the guest", () => {
+  it("prefills legacy saved instructions for the host to review but never for the guest", () => {
     const savedPaymentInstructionTemplates = [{
       methodCode: "BANK_TRANSFER_INTERNATIONAL" as const,
       body: "IBAN: DK5000400440116243",
     }];
+    const paymentRequestPrefill = {
+      method: "BANK_TRANSFER_INTERNATIONAL" as const,
+      methodSource: "GUEST" as const,
+      availableMethods: ["BANK_TRANSFER_INTERNATIONAL" as const],
+      otherLabel: null,
+      savedDetailsKind: "LEGACY_TEXT" as const,
+      savedDetailFields: {},
+      savedInstructions: "IBAN: DK5000400440116243",
+    };
     const hostHtml = renderToStaticMarkup(
       <BookingPaymentProgress
-        progress={{ ...confirmed, savedPaymentInstructionTemplates }}
+        progress={{ ...confirmed, savedPaymentInstructionTemplates, paymentRequestPrefill }}
         actor="HOST"
       />,
     );
+    // A guest never receives the prefill prop at all; passing it here proves the
+    // component would still not render it on the guest's side of the same booking.
     const guestHtml = renderToStaticMarkup(
       <BookingPaymentProgress
-        progress={{ ...confirmed, savedPaymentInstructionTemplates }}
+        progress={{ ...confirmed, savedPaymentInstructionTemplates, paymentRequestPrefill }}
         actor="GUEST"
       />,
     );
@@ -128,12 +138,101 @@ describe("BookingPaymentProgress", () => {
     expect(guestHtml).not.toContain("IBAN: DK5000400440116243");
   });
 
+  it("prefills structured details as a reviewable preview for the host only", () => {
+    const paymentRequestPrefill = {
+      method: "BANK_TRANSFER_INTERNATIONAL" as const,
+      methodSource: "GUEST" as const,
+      availableMethods: ["BANK_TRANSFER_INTERNATIONAL" as const],
+      otherLabel: null,
+      savedDetailsKind: "STRUCTURED" as const,
+      savedDetailFields: {
+        accountHolder: "Nikola Dimovski",
+        bankName: "Komercijalna Banka",
+        accountIdentifier: "DK5000400440116243",
+        swiftBic: "KOBSMK2X",
+      },
+      savedInstructions: "",
+    };
+    const hostHtml = renderToStaticMarkup(
+      <BookingPaymentProgress
+        progress={{ ...confirmed, paymentRequestPrefill }}
+        actor="HOST"
+      />,
+    );
+    const guestHtml = renderToStaticMarkup(
+      <BookingPaymentProgress
+        progress={{ ...confirmed, paymentRequestPrefill }}
+        actor="GUEST"
+      />,
+    );
+
+    expect(hostHtml).toContain("What the guest will receive");
+    expect(hostHtml).toContain("DK5000400440116243");
+    expect(hostHtml).toContain("KOBSMK2X");
+    expect(hostHtml).toContain("Edit for this booking");
+    expect(guestHtml).not.toContain("DK5000400440116243");
+    expect(guestHtml).not.toContain("KOBSMK2X");
+  });
+
+  it("renders the guest's structured card with copy controls once details are sent", () => {
+    const html = renderToStaticMarkup(
+      <BookingPaymentProgress
+        progress={{
+          ...confirmed,
+          paymentInstructionsStatus: "SENT",
+          reference: "BE-4417",
+          paymentInstructionsDueAt: "2026-09-14T00:00:00.000Z",
+          sentPaymentDetails: {
+            version: 2,
+            method: "BANK_TRANSFER_INTERNATIONAL",
+            otherLabel: null,
+            fields: {
+              accountHolder: "Nikola Dimovski",
+              bankName: "Komercijalna Banka",
+              accountIdentifier: "DK5000400440116243",
+              swiftBic: "KOBSMK2X",
+            },
+            sentAt: "2026-08-27T10:00:00.000Z",
+          },
+        }}
+        actor="GUEST"
+      />,
+    );
+
+    expect(html).toContain("How to pay the host");
+    expect(html).toContain("DK5000400440116243");
+    expect(html).toContain("BE-4417");
+    // One copy button per copyable value, and the booking reference.
+    expect(html.match(/>Copy</g)?.length).toBeGreaterThanOrEqual(4);
+    expect(html).toContain(
+      "You pay the host directly. Linger Homes does not collect, hold, verify, protect, or refund this payment.",
+    );
+  });
+
+  it("keeps a legacy free-text send rendering as the conversation message only", () => {
+    const html = renderToStaticMarkup(
+      <BookingPaymentProgress
+        progress={{
+          ...confirmed,
+          paymentInstructionsStatus: "SENT",
+          sentPaymentDetails: null,
+        }}
+        actor="GUEST"
+      />,
+    );
+
+    expect(html).toContain(
+      "Payment instructions were sent in the private conversation.",
+    );
+    expect(html).not.toContain("How to pay the host");
+  });
+
   it("does not offer post-acceptance mutations before confirmation", () => {
     const html = renderToStaticMarkup(
       <BookingPaymentProgress progress={{ ...confirmed, status: "PENDING" }} actor="HOST" />,
     );
 
-    expect(html).not.toContain("Secure payment instructions");
+    expect(html).not.toContain("Send payment request");
     expect(html).not.toContain("data-payment-event");
   });
 
@@ -149,7 +248,7 @@ describe("BookingPaymentProgress", () => {
     expect(html).toContain('data-payment-event="GUEST_REPORT_ADVANCE_PAYMENT_SENT"');
     expect(html).toContain('data-payment-event="GUEST_REPORT_DAMAGE_DEPOSIT_SENT"');
     expect(html).not.toContain('data-payment-event="GUEST_CONFIRM_DAMAGE_DEPOSIT_RETURNED"');
-    expect(html).not.toContain("Secure payment instructions");
+    expect(html).not.toContain("Send payment request");
     expect(html).toContain("Reported by host/guest. Linger Homes has not verified or processed this.");
   });
 

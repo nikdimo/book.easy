@@ -7,6 +7,7 @@ import { listingFormSchema, type ListingFormInput } from "@/lib/validations/list
 import { generateUniqueSlug, archiveOrDeleteListing } from "@/lib/services/listing.service";
 import { enqueueUploadDeletions, sweepUploads } from "@/lib/storage/upload-cleanup";
 import { deleteOwnedListingDraftWithCleanup } from "@/lib/listing-draft-cleanup";
+import { seedListingRooms } from "@/lib/rooms/counted-rooms";
 import { revalidatePublicListingCaches } from "@/lib/utils/revalidate-public-listing-caches";
 import { revalidatePath } from "next/cache";
 import { firstZodMessage } from "@/lib/utils/zod-error";
@@ -37,8 +38,9 @@ import { getExchangeRates } from "@/lib/currency/rates";
 import { MIN_PUBLISH_PHOTOS } from "@/lib/host/v2/photo-draft";
 import { validateListingPaymentMethods } from "@/lib/payments/payment-methods";
 import {
-  paymentInstructionTemplatesSnapshot,
+  paymentInstructionStoreSnapshot,
   validatePaymentInstructionTemplates,
+  validatePaymentMethodDetailsMap,
 } from "@/lib/payments/payment-instruction-templates";
 
 async function currencyIsCurrentlyQuotable(currency: string): Promise<boolean> {
@@ -343,6 +345,7 @@ export async function submitNewListing(
     return { error: "Choose at least one accepted payment method before publishing." };
   }
   let validatedTemplates: ReturnType<typeof validatePaymentInstructionTemplates> | null = null;
+  let validatedDetails: ReturnType<typeof validatePaymentMethodDetailsMap> | null = null;
   if (paymentMethods?.success) {
     let instructionTemplates: unknown = {};
     try {
@@ -358,6 +361,22 @@ export async function submitNewListing(
     );
     if (!validatedTemplates.success) {
       return { error: "Review the saved private payment instructions." };
+    }
+
+    let paymentDetails: unknown = {};
+    try {
+      paymentDetails = JSON.parse(String(formData.get("paymentDetails") ?? "{}"));
+    } catch {
+      return { error: "Review the saved private payment details." };
+    }
+    validatedDetails = validatePaymentMethodDetailsMap(
+      paymentDetails,
+      paymentMethods.value.methods,
+    );
+    if (!validatedDetails.success) {
+      // Deliberately generic: this string can be rendered and logged, and the values
+      // behind the failure are private financial data.
+      return { error: "Review the saved private payment details." };
     }
   }
   if (!(await currencyIsCurrentlyQuotable(data.currency))) {
@@ -535,14 +554,17 @@ export async function submitNewListing(
       bedrooms: data.bedrooms,
       bathrooms: data.bathrooms,
       beds: data.beds,
-      ...(paymentMethods?.success && validatedTemplates?.success
+      ...(paymentMethods?.success &&
+      validatedTemplates?.success &&
+      validatedDetails?.success
         ? {
             acceptedPaymentMethods: paymentMethods.value.methods,
             paymentMethodOther: paymentMethods.value.otherLabel,
             paymentMethodsReviewedAt: new Date(),
-            paymentInstructionTemplates: paymentInstructionTemplatesSnapshot(
-              validatedTemplates.value,
-            ),
+            paymentInstructionTemplates: paymentInstructionStoreSnapshot({
+              templates: validatedTemplates.value,
+              details: validatedDetails.value,
+            }) as unknown as Prisma.InputJsonObject,
           }
         : {}),
       // "" is the host choosing to stay flexible; null is how that reads everywhere it
@@ -590,6 +612,20 @@ export async function submitNewListing(
       },
     },
   });
+
+  // The wizard asks for bedroom and bathroom counts as numbers; the editor works in
+  // rooms. Turning the answer into real rooms here is what stops a freshly published
+  // listing from opening Photos with an empty rail and no sign that rooms exist.
+  try {
+    await seedListingRooms(db, listing.id, {
+      bedrooms: data.bedrooms,
+      bathrooms: data.bathrooms,
+    });
+  } catch (error) {
+    // A missing or renamed room type must not fail a publish that has already written
+    // the listing. The host can still add rooms by hand, and the backfill picks it up.
+    console.error("[listing] room seeding failed", listing.id, error);
+  }
 
   if (draftId) {
     // The listing now owns the photos the draft was holding, so the reference check keeps

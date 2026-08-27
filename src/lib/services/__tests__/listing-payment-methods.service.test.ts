@@ -76,12 +76,15 @@ describe("listing payment-method service", () => {
       needsReview: true,
     });
     expect(stored.paymentMethodsReviewedAt).toBeInstanceOf(Date);
+    // Saves now write the V2 container. Free text keeps its own `templates` slot
+    // untouched; `details` is where structured fields go when a host adds them.
     expect(stored.paymentInstructionTemplates).toEqual({
-      version: 1,
+      version: 2,
       templates: {
         PAYPAL: "PayPal: host@example.com",
         OTHER: "MobilePay handle: 12345678",
       },
+      details: {},
     });
   });
 

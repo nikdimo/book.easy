@@ -27,7 +27,12 @@ import type { PaymentMethodCode } from "@/lib/payments/payment-methods";
 import {
   paymentMethodCanNeedNoInstructions,
   type BookingPaymentDecision,
+  type BookingPaymentRequestPrefill,
 } from "@/lib/payments/booking-payment-request";
+import {
+  PaymentRequestComposer,
+  type PaymentRequestValue,
+} from "@/components/booking/payment-request-composer";
 import { Tx, useI18n } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
 
@@ -40,9 +45,26 @@ type AcceptanceData = {
   total: number;
   checkIn: string;
   selectedPaymentMethod: PaymentMethodCode | null;
+  methodSource: "GUEST" | "HOST_FALLBACK";
+  availableMethods: PaymentMethodCode[];
   otherLabel: string | null;
   savedInstructions: string;
+  savedDetailsKind: "STRUCTURED" | "LEGACY_TEXT" | "NONE";
+  savedDetailFields: Record<string, string>;
 };
+
+/** The acceptance payload, in the shape the shared composer expects. */
+function prefillFrom(payment: AcceptanceData): BookingPaymentRequestPrefill {
+  return {
+    method: payment.selectedPaymentMethod,
+    methodSource: payment.methodSource,
+    availableMethods: payment.availableMethods,
+    otherLabel: payment.otherLabel,
+    savedDetailsKind: payment.savedDetailsKind,
+    savedDetailFields: payment.savedDetailFields,
+    savedInstructions: payment.savedInstructions,
+  };
+}
 
 function amount(value: number, currency: string, locale: string) {
   try {
@@ -62,9 +84,15 @@ export function HostBookingActions({ bookingId }: { bookingId: string }) {
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [paymentDecision, setPaymentDecision] =
     useState<BookingPaymentDecision>("SEND_NOW");
-  const [instructions, setInstructions] = useState("");
+  const [request, setRequest] = useState<PaymentRequestValue>({
+    method: null,
+    mode: "FREE_TEXT",
+    fields: {},
+    instructions: "",
+    saveForFuture: false,
+    isReady: false,
+  });
   const [dueDate, setDueDate] = useState("");
-  const [saveForFuture, setSaveForFuture] = useState(false);
   const { locale, resolve } = useI18n();
 
   async function openAccept() {
@@ -80,9 +108,15 @@ export function HostBookingActions({ bookingId }: { bookingId: string }) {
     }
     const next = result.data as AcceptanceData;
     setPayment(next);
-    setInstructions(next.savedInstructions);
+    setRequest({
+      method: next.selectedPaymentMethod,
+      mode: "FREE_TEXT",
+      fields: {},
+      instructions: next.savedInstructions,
+      saveForFuture: false,
+      isReady: false,
+    });
     setDueDate(next.checkIn);
-    setSaveForFuture(false);
     setPaymentDecision(
       paymentMethodCanNeedNoInstructions(next.selectedPaymentMethod)
         ? "NO_INSTRUCTIONS"
@@ -105,10 +139,20 @@ export function HostBookingActions({ bookingId }: { bookingId: string }) {
           ? await acceptBookingWithPaymentAction({
               bookingId,
               decision: paymentDecision,
-              instructions,
-              dueDate: paymentDecision === "SEND_NOW" ? dueDate : undefined,
-              saveForFuture:
-                paymentDecision === "SEND_NOW" && saveForFuture,
+              ...(paymentDecision === "SEND_NOW"
+                ? {
+                    ...(request.mode === "STRUCTURED"
+                      ? { detailFields: request.fields }
+                      : { instructions: request.instructions }),
+                    // Only offered, and only accepted by the server, for a booking
+                    // whose guest never recorded a choice.
+                    ...(payment?.methodSource === "HOST_FALLBACK" && request.method
+                      ? { method: request.method }
+                      : {}),
+                    dueDate,
+                    saveForFuture: request.saveForFuture,
+                  }
+                : {}),
             })
           : await rejectBookingAction(bookingId, reason.trim());
       if (result.error) {
@@ -137,7 +181,7 @@ export function HostBookingActions({ bookingId }: { bookingId: string }) {
     payment &&
       !loadingPayment &&
       !paymentError &&
-      (paymentDecision !== "SEND_NOW" || (instructions.trim() && dueDate)),
+      (paymentDecision !== "SEND_NOW" || (request.isReady && dueDate)),
   );
 
   return (
@@ -164,7 +208,11 @@ export function HostBookingActions({ bookingId }: { bookingId: string }) {
         <DialogContent
           variant="sheet"
           className={cn(
-            "max-h-[92dvh] overflow-y-auto",
+            // The sheet variant drops its height cap at `md`, so a long accept panel
+            // runs off the top and bottom of the window. Cap it in both shapes and
+            // scroll the body between a pinned header and footer.
+            "max-h-[92dvh] overflow-hidden md:max-h-[85dvh]",
+            "grid-rows-[auto_minmax(0,1fr)_auto]",
             decision === "accept" ? "md:max-w-2xl" : "md:max-w-md",
           )}
         >
@@ -205,6 +253,7 @@ export function HostBookingActions({ bookingId }: { bookingId: string }) {
             </DialogDescription>
           </DialogHeader>
 
+          <div className="min-h-0 overflow-y-auto px-[var(--dialog-inset)] -mx-[var(--dialog-inset)]">
           {decision === "accept" ? (
             loadingPayment ? (
               <div className="grid min-h-44 place-items-center text-muted-foreground">
@@ -342,61 +391,16 @@ export function HostBookingActions({ bookingId }: { bookingId: string }) {
                         required
                       />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor={`payment-details-${bookingId}`}>
-                        <Tx
-                          k="host.booking.payment_private_details"
-                          source="Private payment details"
-                        />
-                      </Label>
-                      <Textarea
-                        id={`payment-details-${bookingId}`}
-                        value={instructions}
-                        onChange={(event) =>
-                          setInstructions(event.currentTarget.value)
-                        }
-                        rows={6}
-                        maxLength={1200}
-                        required
-                        autoComplete="off"
-                        spellCheck={false}
-                        translate="no"
-                        placeholder={
-                          resolve(
-                            "host.booking.payment_private_details_placeholder",
-                            "Add the account, payment link, handle, wallet address, or other instructions the guest needs.",
-                          ).text
-                        }
-                      />
-                    </div>
+                    <PaymentRequestComposer
+                      prefill={prefillFrom(payment)}
+                      idPrefix={`accept-payment-${bookingId}`}
+                      disabled={isPending}
+                      onChange={setRequest}
+                    />
                     <p className="text-xs leading-5 text-muted-foreground">
                       <Tx
                         k="host.booking.payment_request_prepared"
-                        source="The booking reference, selected method, total, currency, and deadline are added automatically. Only the private details above can be saved for future bookings."
-                      />
-                    </p>
-                    {payment.selectedPaymentMethod ? (
-                      <label className="flex cursor-pointer items-start gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={saveForFuture}
-                          onChange={(event) =>
-                            setSaveForFuture(event.currentTarget.checked)
-                          }
-                          className="mt-1 size-4 accent-primary"
-                        />
-                        <span>
-                          <Tx
-                            k="host.booking.payment_save_future"
-                            source="Save these private details for future bookings using this method"
-                          />
-                        </span>
-                      </label>
-                    ) : null}
-                    <p className="text-xs leading-5 text-destructive">
-                      <Tx
-                        k="host.booking.payment_security"
-                        source="Never send card numbers, CVV, PINs, passwords, seed phrases, private keys, or recovery information."
+                        source="The booking reference, selected method, total, currency, and deadline are added automatically."
                       />
                     </p>
                   </section>
@@ -428,6 +432,7 @@ export function HostBookingActions({ bookingId }: { bookingId: string }) {
               </span>
             </div>
           )}
+          </div>
 
           <DialogFooter>
             <DialogClose asChild>

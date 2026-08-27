@@ -5,6 +5,7 @@ import {
   Bitcoin,
   Banknote,
   Check,
+  ChevronDown,
   CircleAlert,
   Clock3,
   Eye,
@@ -14,26 +15,32 @@ import {
   LoaderCircle,
   MessageCircleMore,
   MoreHorizontal,
-  ShieldAlert,
+  ShieldCheck,
   WalletCards,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  PAYMENT_INSTRUCTION_TEMPLATE_MAX_LENGTH,
-  PAYMENT_INSTRUCTION_TEMPLATES_TOTAL_MAX_LENGTH,
-  type PaymentInstructionTemplateIssue,
-} from "@/lib/payments/payment-instruction-templates";
 import { Tx, useI18n } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
+import {
+  PAYMENT_DETAIL_FIELDS,
+  maskedPaymentDetailsSummary,
+  methodSupportsPaymentDetails,
+  type PaymentDetailFieldValues,
+  type PaymentDetailIssues,
+} from "@/lib/payments/payment-details";
+import {
+  PaymentDetailFields,
+  FieldIssueMessage,
+} from "./payment-detail-fields";
 import {
   PAYMENT_METHOD_CODES,
   normalizePaymentArrangementsDraft,
   normalizePaymentMethodCodes,
   paymentArrangementsAreComplete,
-  paymentInstructionTemplateIssue,
+  paymentDetailIssues,
+  paymentMethodDetailsStatus,
   samePaymentArrangementsDraft,
   togglePaymentMethod,
   validateOtherPaymentLabel,
@@ -78,6 +85,10 @@ type MethodPresentation = {
   description: React.ReactNode;
 };
 
+function rowId(code: PaymentMethodCode) {
+  return code.toLowerCase().replaceAll("_", "-");
+}
+
 export function PaymentArrangementsEditor({
   initialValue,
   onSave,
@@ -97,6 +108,14 @@ export function PaymentArrangementsEditor({
     initialValue.reviewedAt ? "saved" : "idle",
   );
   const [reviewed, setReviewed] = useState(Boolean(initialValue.reviewedAt));
+  /**
+   * Exactly one method's details are open at a time. Selecting a method is a separate
+   * act from opening it: the checkbox says "I accept this", the disclosure button says
+   * "show me its fields", and a host can do either without the other.
+   */
+  const [expanded, setExpanded] = useState<PaymentMethodCode | null>(null);
+  /** Methods whose legacy paragraph the host chose to replace with structured fields. */
+  const [converting, setConverting] = useState<PaymentMethodCode[]>([]);
 
   const effectiveSaveState = saveState ?? localSaveState;
   const busy = disabled || effectiveSaveState === "saving";
@@ -105,7 +124,7 @@ export function PaymentArrangementsEditor({
   const otherIssue = draft.methodCodes.includes("OTHER")
     ? validateOtherPaymentLabel(draft.otherLabel ?? "")
     : null;
-  const privateDetailsIssue = paymentInstructionTemplateIssue(draft);
+  const detailIssues = paymentDetailIssues(draft);
   const canSubmit = isComplete && (dirty || !reviewed);
 
   function publishChange(next: PaymentArrangementsDraft) {
@@ -120,8 +139,26 @@ export function PaymentArrangementsEditor({
       methodCodes,
       otherLabel: methodCodes.includes("OTHER") ? (draft.otherLabel ?? "") : null,
       // Keep unsaved text while a host toggles a method off and back on. The save
-      // normalizer removes templates for methods that remain unselected.
+      // normalizer removes anything left against a method that stays unselected.
       instructionTemplates: draft.instructionTemplates ?? {},
+      details: draft.details ?? {},
+    });
+    // Selecting a method opens it, so its fields are one click away rather than
+    // somewhere further down the page. Clearing one closes it again.
+    if (checked && methodSupportsPaymentDetails(code)) setExpanded(code);
+    else if (!checked && expanded === code) setExpanded(null);
+  }
+
+  function changeDetailField(
+    code: PaymentMethodCode,
+    key: string,
+    value: string,
+  ) {
+    const current = draft.details?.[code] ?? {};
+    const nextValues: PaymentDetailFieldValues = { ...current, [key]: value };
+    publishChange({
+      ...draft,
+      details: { ...(draft.details ?? {}), [code]: nextValues },
     });
   }
 
@@ -137,6 +174,7 @@ export function PaymentArrangementsEditor({
       setDraft(payload);
       setReviewed(true);
       setLocalSaveState("saved");
+      setConverting([]);
     } catch {
       setLocalSaveState("error");
     }
@@ -154,44 +192,22 @@ export function PaymentArrangementsEditor({
         <p className="text-sm leading-6 text-slate-600">
           <Tx
             k="host.editor.payment_arrangements.intro"
-            source="Choose every payment method you accept. You can also save private instructions to reuse after accepting a booking."
+            source="Choose every payment method you accept. You can also save private details to reuse after accepting a booking."
           />
         </p>
       </header>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-2">
-        <InfoCard
-          icon={Eye}
-          title={
-            <Tx
-              k="host.editor.payment_arrangements.public_names_title"
-              source="Guests see names, not details"
-            />
-          }
-        >
-          <Tx
-            k="host.editor.payment_arrangements.public_names_body"
-            source="Only selected method names appear publicly. Saved account or wallet details stay private until you choose to send them after accepting a request."
-          />
-        </InfoCard>
-        <InfoCard
-          icon={ShieldAlert}
-          tone="warning"
-          title={
-            <Tx
-              k="host.editor.payment_arrangements.safety_title"
-              source="Keep sensitive details out"
-            />
-          }
-        >
-          <Tx
-            k="host.editor.payment_arrangements.safety_body"
-            source="Never enter card numbers, CVV, PIN, passwords, seed phrases, private keys, or recovery information."
-          />
-        </InfoCard>
-      </div>
+      {/* One notice, once. Repeating a warning under every field trains hosts to
+          skip it; the field-level messages below appear only when they apply. */}
+      <p className="mt-4 flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3.5 text-xs leading-5 text-slate-600">
+        <ShieldCheck className="mt-0.5 size-4 shrink-0 text-slate-500" aria-hidden />
+        <Tx
+          k="host.editor.payment_arrangements.privacy_notice"
+          source="Guests see only the payment method names while browsing. Private details are shared only after you accept a booking."
+        />
+      </p>
 
-      <form onSubmit={submit} noValidate className="mt-8">
+      <form onSubmit={submit} noValidate className="mt-6">
         <fieldset
           disabled={busy}
           aria-invalid={!isComplete && draft.methodCodes.length === 0}
@@ -214,56 +230,29 @@ export function PaymentArrangementsEditor({
             />
           </p>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {PAYMENT_METHOD_CODES.map((code) => {
-              const checked = draft.methodCodes.includes(code);
-              const presentation = methodPresentation(code);
-              const Icon = presentation.icon;
-              const isDirect = code === "ARRANGE_DIRECTLY";
-              const id = `payment-method-${code.toLowerCase().replaceAll("_", "-")}`;
-
-              return (
-                <label
-                  key={code}
-                  htmlFor={id}
-                  className={cn(
-                    "group flex min-h-20 cursor-pointer items-start gap-3 rounded-xl border bg-white p-4 transition-colors",
-                    "hover:border-slate-400 hover:bg-slate-50/70 focus-within:border-slate-500 focus-within:ring-2 focus-within:ring-slate-200",
-                    "has-disabled:cursor-not-allowed has-disabled:opacity-60",
-                    checked
-                      ? "border-slate-900 bg-slate-50 ring-1 ring-slate-900"
-                      : "border-slate-200",
-                    isDirect && "sm:col-span-2",
-                  )}
-                >
-                  <input
-                    id={id}
-                    name="payment-methods"
-                    type="checkbox"
-                    value={code}
-                    checked={checked}
-                    onChange={(event) => changeMethod(code, event.currentTarget.checked)}
-                    className="mt-0.5 size-5 shrink-0 cursor-pointer accent-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed"
-                  />
-                  <Icon
-                    className={cn(
-                      "mt-0.5 size-5 shrink-0",
-                      checked ? "text-slate-900" : "text-slate-400",
-                    )}
-                    aria-hidden
-                  />
-                  <span className="min-w-0">
-                    <span className="block text-sm font-semibold text-slate-900">
-                      {presentation.label}
-                    </span>
-                    <span className="mt-1 block text-xs leading-5 text-slate-500">
-                      {presentation.description}
-                    </span>
-                  </span>
-                </label>
-              );
-            })}
-          </div>
+          <ul className="mt-4 divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white">
+            {PAYMENT_METHOD_CODES.map((code) => (
+              <MethodRow
+                key={code}
+                code={code}
+                draft={draft}
+                checked={draft.methodCodes.includes(code)}
+                expanded={expanded === code}
+                converting={converting.includes(code)}
+                issues={detailIssues[code]}
+                disabled={busy}
+                onToggle={(checked) => changeMethod(code, checked)}
+                onExpandedChange={(open) => setExpanded(open ? code : null)}
+                onFieldChange={(key, value) => changeDetailField(code, key, value)}
+                onConvert={() => {
+                  setConverting((current) =>
+                    current.includes(code) ? current : [...current, code],
+                  );
+                  setExpanded(code);
+                }}
+              />
+            ))}
+          </ul>
         </fieldset>
 
         {draft.methodCodes.includes("OTHER") ? (
@@ -274,21 +263,6 @@ export function PaymentArrangementsEditor({
             onChange={(otherLabel) => publishChange({ ...draft, otherLabel })}
           />
         ) : null}
-
-        <PrivateInstructionFields
-          draft={draft}
-          disabled={busy}
-          issue={privateDetailsIssue}
-          onChange={(code, value) =>
-            publishChange({
-              ...draft,
-              instructionTemplates: {
-                ...(draft.instructionTemplates ?? {}),
-                [code]: value,
-              },
-            })
-          }
-        />
 
         <GuestPreview
           draft={draft}
@@ -337,180 +311,253 @@ export function PaymentArrangementsEditor({
   );
 }
 
-const PRIVATE_DETAIL_METHODS: readonly PaymentMethodCode[] = [
-  "BANK_TRANSFER_LOCAL_SEPA",
-  "BANK_TRANSFER_INTERNATIONAL",
-  "PAYPAL",
-  "REVOLUT",
-  "WISE",
-  "BITCOIN",
-  "HOST_SECURE_CARD_LINK",
-  "OTHER",
-];
-
-function PrivateInstructionFields({
+/**
+ * One method: a checkbox that selects it, and a disclosure button that opens its fields.
+ *
+ * The two controls are deliberately separate and are never nested inside one another —
+ * the label wraps text only, so clicking the name toggles the checkbox and nothing else
+ * competes for the same click.
+ */
+function MethodRow({
+  code,
   draft,
+  checked,
+  expanded,
+  converting,
+  issues,
   disabled,
-  issue,
-  onChange,
+  onToggle,
+  onExpandedChange,
+  onFieldChange,
+  onConvert,
 }: {
+  code: PaymentMethodCode;
   draft: PaymentArrangementsDraft;
+  checked: boolean;
+  expanded: boolean;
+  converting: boolean;
+  issues: PaymentDetailIssues | undefined;
   disabled: boolean;
-  issue: PaymentInstructionTemplateIssue | null;
-  onChange: (code: PaymentMethodCode, value: string) => void;
+  onToggle: (checked: boolean) => void;
+  onExpandedChange: (expanded: boolean) => void;
+  onFieldChange: (key: string, value: string) => void;
+  onConvert: () => void;
 }) {
   const i18n = useI18n();
-  const selected = PRIVATE_DETAIL_METHODS.filter((code) =>
-    draft.methodCodes.includes(code),
-  );
-  const totalLength = selected.reduce(
-    (total, code) =>
-      total + [...(draft.instructionTemplates?.[code] ?? "").trim()].length,
-    0,
-  );
-  if (!selected.length) return null;
+  const presentation = methodPresentation(code);
+  const Icon = presentation.icon;
+  const base = rowId(code);
+  const checkboxId = `payment-method-${base}`;
+  const panelId = `payment-details-${base}`;
+  const statusId = `payment-status-${base}`;
+
+  const supportsDetails = methodSupportsPaymentDetails(code);
+  const values = draft.details?.[code] ?? {};
+  const legacyText = draft.instructionTemplates?.[code]?.trim() ?? "";
+  const showLegacy = Boolean(legacyText) && !converting;
+  const status = paymentMethodDetailsStatus(draft, code);
+  const summary = maskedPaymentDetailsSummary(code, values);
+  const methodName = methodSourceName(code, draft.otherLabel, i18n.resolve);
+  const hasIssues = Boolean(issues && Object.keys(issues).length > 0);
 
   return (
-    <section className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
-      <h2 className="text-sm font-semibold text-slate-900">
-        <Tx
-          k="host.editor.payment_arrangements.private_details_heading"
-          source="Saved private payment instructions"
+    <li className={cn(checked && "bg-slate-50/60")}>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 p-4">
+        <input
+          id={checkboxId}
+          name="payment-methods"
+          type="checkbox"
+          value={code}
+          checked={checked}
+          disabled={disabled}
+          onChange={(event) => onToggle(event.currentTarget.checked)}
+          aria-describedby={checked && supportsDetails ? statusId : undefined}
+          className="size-5 shrink-0 cursor-pointer accent-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed"
         />
-      </h2>
-      <p className="mt-1 text-xs leading-5 text-slate-600">
-        <Tx
-          k="host.editor.payment_arrangements.private_details_description"
-          source="Optional. Save the information you normally send for each method. It will prefill your private message after you accept a booking, and you can review or edit it before sending."
+        <Icon
+          className={cn(
+            "size-5 shrink-0",
+            checked ? "text-slate-900" : "text-slate-400",
+          )}
+          aria-hidden
         />
-      </p>
-      <p className="mt-1 text-right text-xs tabular-nums text-slate-500">
-        {totalLength}/{PAYMENT_INSTRUCTION_TEMPLATES_TOTAL_MAX_LENGTH}
-      </p>
-      <div className="mt-4 space-y-4">
-        {selected.map((code) => {
-          const id = `payment-instructions-${code.toLowerCase().replaceAll("_", "-")}`;
-          const value = draft.instructionTemplates?.[code] ?? "";
-          return (
-            <div key={code} className="space-y-1.5">
-              <label htmlFor={id} className="block text-sm font-medium text-slate-900">
-                <MethodLabel code={code} otherLabel={draft.otherLabel} />
-              </label>
-              <Textarea
-                id={id}
-                value={value}
-                onChange={(event) => onChange(code, event.currentTarget.value)}
-                disabled={disabled}
-                maxLength={PAYMENT_INSTRUCTION_TEMPLATE_MAX_LENGTH}
-                rows={code.startsWith("BANK_TRANSFER") ? 5 : 3}
-                autoComplete="off"
-                spellCheck={false}
+        <label htmlFor={checkboxId} className="min-w-0 flex-1 cursor-pointer">
+          <span className="block text-sm font-semibold text-slate-900">
+            {presentation.label}
+          </span>
+          <span className="mt-0.5 block text-xs leading-5 text-slate-500">
+            {presentation.description}
+          </span>
+        </label>
+
+        {checked && supportsDetails ? (
+          <div className="flex items-center gap-2">
+            <span
+              id={statusId}
+              className={cn(
+                "rounded-full px-2.5 py-1 text-xs font-medium",
+                status === "READY"
+                  ? "bg-emerald-50 text-emerald-800"
+                  : "bg-slate-100 text-slate-600",
+              )}
+            >
+              {status === "READY" ? (
+                <Tx k="host.editor.payment_arrangements.status_ready" source="Ready" />
+              ) : (
+                <Tx
+                  k="host.editor.payment_arrangements.status_missing"
+                  source="Missing details"
+                />
+              )}
+            </span>
+            {summary ? (
+              <span
+                className="hidden font-mono text-xs text-slate-500 sm:inline"
                 translate="no"
-                placeholder={privateInstructionPlaceholder(code, i18n.resolve)}
-                className="bg-white"
+              >
+                {summary}
+              </span>
+            ) : null}
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => onExpandedChange(!expanded)}
+              aria-expanded={expanded}
+              aria-controls={panelId}
+              className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {status === "READY" ? (
+                <Tx
+                  k="host.editor.payment_arrangements.edit_details"
+                  source="Edit details"
+                />
+              ) : (
+                <Tx
+                  k="host.editor.payment_arrangements.add_details"
+                  source="Add details"
+                />
+              )}
+              <span className="sr-only"> — {methodName}</span>
+              <ChevronDown
+                className={cn(
+                  "size-3.5 transition-transform",
+                  expanded && "rotate-180",
+                )}
+                aria-hidden
               />
-              <p className="text-xs leading-5 text-slate-500">
-                {privateInstructionHint(code)}
-              </p>
-            </div>
-          );
-        })}
+            </button>
+          </div>
+        ) : null}
       </div>
-      {issue ? (
-        <p role="alert" className="mt-3 flex items-start gap-2 text-sm text-rose-700">
-          <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
-          {issue === "UNSAFE_CREDENTIALS" ? (
-            <Tx
-              k="host.editor.payment_arrangements.private_details_unsafe"
-              source="Remove card details, passwords, PINs, seed phrases, private keys, or recovery information."
+
+      {checked && supportsDetails ? (
+        // The panel stays mounted and is hidden rather than unmounted, so a host who
+        // collapses a row mid-edit keeps their cursor position and their unsaved text,
+        // and `aria-controls` always resolves to a real element.
+        <div
+          id={panelId}
+          role="group"
+          aria-label={methodName}
+          hidden={!expanded}
+          className={cn(!expanded && "hidden", "border-t border-slate-200 bg-white p-4 sm:p-5")}
+        >
+          {showLegacy ? (
+            <LegacyInstructions
+              text={legacyText}
+              disabled={disabled}
+              onConvert={onConvert}
             />
           ) : (
-            <Tx
-              k="host.editor.payment_arrangements.private_details_too_long"
-              source="Shorten the saved instructions before continuing."
-            />
+            <>
+              {legacyText ? (
+                <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+                  <Tx
+                    k="host.editor.payment_arrangements.convert_pending"
+                    source="Your previous saved text is still in place. It is replaced only when you save these fields."
+                  />
+                </p>
+              ) : null}
+              <PaymentDetailFields
+                code={code}
+                values={values}
+                issues={issues}
+                disabled={disabled}
+                idPrefix={`payment-field-${base}`}
+                onChange={onFieldChange}
+              />
+              {issues?._ ? (
+                <p role="alert" className="mt-3 flex items-start gap-2 text-sm text-rose-700">
+                  <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
+                  <FieldIssueMessage issue={issues._} />
+                </p>
+              ) : null}
+              {!hasIssues && PAYMENT_DETAIL_FIELDS[code].some((f) => f.required) ? (
+                <p className="mt-3 text-xs leading-5 text-slate-500">
+                  <Tx
+                    k="host.editor.payment_arrangements.details_optional_now"
+                    source="You can leave these blank and share the details when you accept a booking."
+                  />
+                </p>
+              ) : null}
+            </>
           )}
-        </p>
+        </div>
       ) : null}
-    </section>
+    </li>
   );
 }
 
-function privateInstructionPlaceholder(
-  code: PaymentMethodCode,
-  resolve: ReturnType<typeof useI18n>["resolve"],
-) {
-  switch (code) {
-    case "BANK_TRANSFER_LOCAL_SEPA":
-      return resolve(
-        "host.editor.payment_arrangements.bank_local_placeholder",
-        "Account holder, bank name, IBAN or local account number, and payment reference",
-      ).text;
-    case "BANK_TRANSFER_INTERNATIONAL":
-      return resolve(
-        "host.editor.payment_arrangements.bank_international_placeholder",
-        "Account holder, bank name and address, IBAN/account number, SWIFT/BIC, and payment reference",
-      ).text;
-    case "BITCOIN":
-      return resolve(
-        "host.editor.payment_arrangements.bitcoin_placeholder",
-        "Bitcoin network, public wallet address, amount instructions, and payment reference",
-      ).text;
-    default:
-      return resolve(
-        "host.editor.payment_arrangements.provider_placeholder",
-        "Payment handle or secure payment link, plus any reference the guest should use",
-      ).text;
-  }
-}
-
-function privateInstructionHint(code: PaymentMethodCode) {
-  return code === "BITCOIN" ? (
-    <Tx
-      k="host.editor.payment_arrangements.bitcoin_security_hint"
-      source="Enter only a public Bitcoin address. Never enter a seed phrase or private key."
-    />
-  ) : (
-    <Tx
-      k="host.editor.payment_arrangements.private_details_hint"
-      source="Guests cannot see this while browsing or while the request is pending."
-    />
-  );
-}
-
-function InfoCard({
-  icon: Icon,
-  title,
-  tone = "neutral",
-  children,
+/**
+ * A host's V1 paragraph, shown as it was written.
+ *
+ * It is never parsed into the structured fields. Splitting a paragraph into an IBAN and
+ * a SWIFT code by pattern-matching is exactly how money ends up sent to the wrong place,
+ * so the host re-enters the values themselves and the old text stays visible while
+ * they do.
+ */
+function LegacyInstructions({
+  text,
+  disabled,
+  onConvert,
 }: {
-  icon: LucideIcon;
-  title: React.ReactNode;
-  tone?: "neutral" | "warning";
-  children: React.ReactNode;
+  text: string;
+  disabled: boolean;
+  onConvert: () => void;
 }) {
   return (
-    <section
-      className={cn(
-        "rounded-xl border p-4",
-        tone === "warning"
-          ? "border-amber-200 bg-amber-50 text-amber-950"
-          : "border-slate-200 bg-slate-50 text-slate-900",
-      )}
-    >
-      <h2 className="flex items-center gap-2 text-sm font-semibold">
-        <Icon className="size-4 shrink-0" aria-hidden />
-        {title}
-      </h2>
-      <p
-        className={cn(
-          "mt-1.5 text-xs leading-5",
-          tone === "warning" ? "text-amber-900" : "text-slate-600",
-        )}
-      >
-        {children}
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+      <h3 className="text-sm font-semibold text-slate-900">
+        <Tx
+          k="host.editor.payment_arrangements.legacy_heading"
+          source="Legacy saved instructions"
+        />
+      </h3>
+      <p className="mt-1 text-xs leading-5 text-slate-600">
+        <Tx
+          k="host.editor.payment_arrangements.legacy_description"
+          source="These still work and will prefill your message when you accept a booking. Convert them to fields to get checks on the IBAN and payment links."
+        />
       </p>
-    </section>
+      <pre
+        className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap rounded-md border border-slate-200 bg-white p-3 font-sans text-xs leading-5 text-slate-800"
+        translate="no"
+      >
+        {text}
+      </pre>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={disabled}
+        onClick={onConvert}
+        className="mt-3"
+      >
+        <Tx
+          k="host.editor.payment_arrangements.legacy_convert"
+          source="Convert to structured fields"
+        />
+      </Button>
+    </div>
   );
 }
 
@@ -741,12 +788,70 @@ function SaveStatus({
   );
 }
 
+function MethodLabel({
+  code,
+  otherLabel,
+}: {
+  code: PaymentMethodCode;
+  otherLabel: string | null;
+}) {
+  if (code === "OTHER") {
+    const trimmed = (otherLabel ?? "").trim();
+    if (trimmed) return <span translate="no">{trimmed}</span>;
+    return (
+      <Tx
+        k="host.editor.payment_arrangements.other"
+        source="Another payment method"
+      />
+    );
+  }
+  return <>{methodPresentation(code).label}</>;
+}
+
+/** Plain-text method name, for an accessible label or an aria-label. */
+function methodSourceName(
+  code: PaymentMethodCode,
+  otherLabel: string | null,
+  resolve: ReturnType<typeof useI18n>["resolve"],
+): string {
+  switch (code) {
+    case "CASH_AT_PROPERTY":
+      return resolve("host.editor.payment_arrangements.cash", "Cash at the property").text;
+    case "BANK_TRANSFER_LOCAL_SEPA":
+      return resolve("host.editor.payment_arrangements.bank_local", "Local or SEPA bank transfer").text;
+    case "BANK_TRANSFER_INTERNATIONAL":
+      return resolve("host.editor.payment_arrangements.bank_international", "International bank transfer").text;
+    case "PAYPAL":
+      return resolve("host.editor.payment_arrangements.paypal", "PayPal").text;
+    case "REVOLUT":
+      return resolve("host.editor.payment_arrangements.revolut", "Revolut").text;
+    case "WISE":
+      return resolve("host.editor.payment_arrangements.wise", "Wise").text;
+    case "BITCOIN":
+      return resolve("host.editor.payment_arrangements.bitcoin", "Bitcoin").text;
+    case "HOST_SECURE_CARD_LINK":
+      return resolve("host.editor.payment_arrangements.secure_card_link", "Secure card payment link from host").text;
+    case "OTHER":
+      return (
+        (otherLabel ?? "").trim() ||
+        resolve("host.editor.payment_arrangements.other", "Another payment method").text
+      );
+    case "ARRANGE_DIRECTLY":
+      return resolve("host.editor.payment_arrangements.arrange_directly", "Arrange directly after the booking request").text;
+  }
+}
+
 function methodPresentation(code: PaymentMethodCode): MethodPresentation {
   switch (code) {
     case "CASH_AT_PROPERTY":
       return {
         icon: Banknote,
-        label: <Tx k="host.editor.payment_arrangements.cash" source="Cash at the property" />,
+        label: (
+          <Tx
+            k="host.editor.payment_arrangements.cash"
+            source="Cash at the property"
+          />
+        ),
         description: (
           <Tx
             k="host.editor.payment_arrangements.cash_description"
@@ -789,7 +894,9 @@ function methodPresentation(code: PaymentMethodCode): MethodPresentation {
     case "PAYPAL":
       return {
         icon: WalletCards,
-        label: <Tx k="host.editor.payment_arrangements.paypal" source="PayPal" />,
+        label: (
+          <Tx k="host.editor.payment_arrangements.paypal" source="PayPal" />
+        ),
         description: (
           <Tx
             k="host.editor.payment_arrangements.paypal_description"
@@ -800,7 +907,9 @@ function methodPresentation(code: PaymentMethodCode): MethodPresentation {
     case "REVOLUT":
       return {
         icon: WalletCards,
-        label: <Tx k="host.editor.payment_arrangements.revolut" source="Revolut" />,
+        label: (
+          <Tx k="host.editor.payment_arrangements.revolut" source="Revolut" />
+        ),
         description: (
           <Tx
             k="host.editor.payment_arrangements.revolut_description"
@@ -822,7 +931,9 @@ function methodPresentation(code: PaymentMethodCode): MethodPresentation {
     case "BITCOIN":
       return {
         icon: Bitcoin,
-        label: <Tx k="host.editor.payment_arrangements.bitcoin" source="Bitcoin" />,
+        label: (
+          <Tx k="host.editor.payment_arrangements.bitcoin" source="Bitcoin" />
+        ),
         description: (
           <Tx
             k="host.editor.payment_arrangements.bitcoin_description"
@@ -879,21 +990,4 @@ function methodPresentation(code: PaymentMethodCode): MethodPresentation {
         ),
       };
   }
-}
-
-function MethodLabel({
-  code,
-  otherLabel,
-}: {
-  code: PaymentMethodCode;
-  otherLabel: string | null;
-}) {
-  if (code === "OTHER" && otherLabel?.trim()) {
-    return (
-      <span className="notranslate" translate="no">
-        {otherLabel.trim()}
-      </span>
-    );
-  }
-  return <>{methodPresentation(code).label}</>;
 }

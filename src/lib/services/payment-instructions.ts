@@ -49,6 +49,24 @@ export function containsUnsafePaymentCredentials(value: string) {
   return SECURITY_CREDENTIAL_PATTERN.test(value) || containsPaymentCardPan(value);
 }
 
+/**
+ * Whether a value, taken on its own, is a payment card number.
+ *
+ * `containsPaymentCardPan` scans prose and needs surrounding words to tell an account
+ * identifier from a card. A structured field has no prose around it, so the whole value
+ * is the candidate: 13–19 digits that satisfy Luhn is a card, wherever it was typed.
+ */
+export function looksLikePaymentCardNumber(value: string) {
+  const digits = value.replace(/[\s-]/g, "");
+  if (!/^\d{13,19}$/.test(digits)) return false;
+  return luhnIsValid(digits);
+}
+
+/** Account-security credentials named in plain language, for single-value fields. */
+export function mentionsSecurityCredential(value: string) {
+  return SECURITY_CREDENTIAL_PATTERN.test(value);
+}
+
 /** Details that belong only in the redacted payment-instructions channel. */
 export function containsPaymentCoordinates(value: string) {
   return (

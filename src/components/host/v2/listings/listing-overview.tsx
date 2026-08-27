@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { CalendarDays, ImageIcon, LayoutGrid, List } from "lucide-react";
@@ -9,6 +9,7 @@ import {
   AddListingMenu,
 } from "@/components/host/v2/listings/add-listing-menu";
 import { ListingActionsMenu } from "@/components/host/v2/listings/listing-actions-menu";
+import { useTypeToSearch } from "@/lib/hooks/use-type-to-search";
 import {
   ListingModerationNotice,
   isModerationBlocked,
@@ -113,6 +114,8 @@ export function ListingOverview({
   const label = useListingStateLabel();
   const view = useSyncExternalStore(subscribeView, getStoredView, getServerView);
   const [query, setQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
+  useTypeToSearch(searchRef);
   const [showArchived, setShowArchived] = useState(false);
 
   // Archiving is how a host gets a listing out of the way, so an archived row sitting in
@@ -149,6 +152,7 @@ export function ListingOverview({
       <div className="flex items-center gap-3 py-4">
         {showSearch ? (
           <input
+            ref={searchRef}
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}

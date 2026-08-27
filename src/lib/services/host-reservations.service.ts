@@ -15,9 +15,15 @@ import { getExchangeRates } from "@/lib/currency/rates";
 import { BASE_CURRENCY } from "@/lib/currency/currency-preference";
 import { parseDepositPoliciesSnapshot } from "@/lib/payments/deposit-policies";
 import {
+  parsePaymentInstructionStore,
   parsePaymentInstructionTemplates,
+  resolvePaymentInstructionsForMethod,
   savedPaymentInstructionTemplateEntries,
 } from "@/lib/payments/payment-instruction-templates";
+import {
+  parseBookingPaymentDetailsSnapshot,
+  type BookingPaymentRequestPrefill,
+} from "@/lib/payments/booking-payment-request";
 import type {
   HostReservation,
   HostReservationProperty,
@@ -27,6 +33,7 @@ import { dbDateToYmd, todayYmd } from "@/lib/utils/date-only";
 import {
   isPaymentMethodCode,
   parsePaymentMethodsSnapshot,
+  type PaymentMethodCode,
 } from "@/lib/payments/payment-methods";
 
 /**
@@ -63,6 +70,7 @@ export async function getHostReservations(
         title: true,
         checkInTime: true,
         checkOutTime: true,
+        acceptedPaymentMethods: true,
         paymentInstructionTemplates: true,
         property: { select: { city: true } },
         images: {
@@ -93,6 +101,7 @@ export async function getHostReservations(
         totalPrice: true,
         paymentStatus: true,
         paymentInstructionsStatus: true,
+        paymentInstructionsSnapshot: true,
         selectedPaymentMethod: true,
         paymentMethodsSnapshot: true,
         advancePaymentStatus: true,
@@ -146,6 +155,11 @@ export async function getHostReservations(
         checkOut: listing.checkOutTime,
         savedPaymentInstructionTemplates: savedPaymentInstructionTemplateEntries(
           parsePaymentInstructionTemplates(listing.paymentInstructionTemplates),
+        ),
+        acceptedPaymentMethods:
+          listing.acceptedPaymentMethods.filter(isPaymentMethodCode),
+        instructionStore: parsePaymentInstructionStore(
+          listing.paymentInstructionTemplates,
         ),
       },
     ]),
@@ -225,6 +239,15 @@ export async function getHostReservations(
                 template.methodCode === booking.selectedPaymentMethod,
             )
           : [],
+      // Prefill is built only for a booking the host can actually send against, and
+      // only for that booking's own method.
+      paymentRequestPrefill:
+        booking.status === "CONFIRMED" && details
+          ? buildPrefill(booking, details)
+          : undefined,
+      sentPaymentDetails: parseBookingPaymentDetailsSnapshot(
+        booking.paymentInstructionsSnapshot,
+      ),
     };
   });
 
@@ -240,6 +263,46 @@ export async function getHostReservations(
     ),
     properties,
     reservations,
+  };
+}
+
+/**
+ * The saved details for one booking's method, ready to open a prefilled send form.
+ *
+ * The guest's recorded choice decides the method. When a booking has none — it predates
+ * the choice — the host is offered the listing's own accepted methods and picks one
+ * explicitly; nothing is guessed on their behalf.
+ */
+function buildPrefill(
+  booking: {
+    selectedPaymentMethod: string | null;
+    paymentMethodsSnapshot: unknown;
+  },
+  details: {
+    acceptedPaymentMethods: PaymentMethodCode[];
+    instructionStore: ReturnType<typeof parsePaymentInstructionStore>;
+  },
+): BookingPaymentRequestPrefill {
+  const snapshot = parsePaymentMethodsSnapshot(booking.paymentMethodsSnapshot);
+  const method = isPaymentMethodCode(booking.selectedPaymentMethod)
+    ? booking.selectedPaymentMethod
+    : null;
+  const availableMethods =
+    snapshot?.status === "REVIEWED" && snapshot.methods.length > 0
+      ? snapshot.methods
+      : details.acceptedPaymentMethods;
+  const resolved = method
+    ? resolvePaymentInstructionsForMethod(details.instructionStore, method)
+    : ({ kind: "NONE" } as const);
+
+  return {
+    method,
+    methodSource: method ? "GUEST" : "HOST_FALLBACK",
+    availableMethods,
+    otherLabel: snapshot?.otherLabel ?? null,
+    savedDetailsKind: resolved.kind,
+    savedDetailFields: resolved.kind === "STRUCTURED" ? resolved.details.fields : {},
+    savedInstructions: resolved.kind === "LEGACY_TEXT" ? resolved.text : "",
   };
 }
 

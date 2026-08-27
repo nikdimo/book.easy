@@ -22,6 +22,7 @@ import {
 import { getT, T, TWithValues, t, ti, tPlural } from "@/lib/i18n/t";
 import { resolveBookingStatus } from "@/lib/i18n/status-labels";
 import { getBookingPaymentProgress } from "@/lib/services/booking-payment-status.service";
+import { parseBookingPaymentDetailsSnapshot } from "@/lib/payments/booking-payment-request";
 import { parseDepositPoliciesSnapshot } from "@/lib/payments/deposit-policies";
 import { BookingPaymentProgress } from "@/components/booking/booking-payment-progress";
 
@@ -267,6 +268,12 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
               depositPolicies: parseDepositPoliciesSnapshot(paymentProgress.depositPolicySnapshot),
               paymentStatus: paymentProgress.paymentStatus,
               paymentInstructionsStatus: paymentProgress.paymentInstructionsStatus,
+              paymentInstructionsDueAt:
+                paymentProgress.paymentInstructionsDueAt?.toISOString() ?? null,
+              reference: paymentProgress.reference,
+              sentPaymentDetails: parseBookingPaymentDetailsSnapshot(
+                paymentProgress.paymentInstructionsSnapshot,
+              ),
               selectedPaymentMethod: paymentProgress.selectedPaymentMethod,
               paymentMethodOtherLabel: paymentMethods?.otherLabel ?? null,
               advancePaymentStatus: paymentProgress.advancePaymentStatus,

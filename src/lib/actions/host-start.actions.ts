@@ -172,6 +172,7 @@ function appendDraftToFormData(formData: FormData, data: ListingDraftData) {
     "paymentInstructionTemplates",
     JSON.stringify(data.paymentInstructionTemplates ?? {}),
   );
+  formData.set("paymentDetails", JSON.stringify(data.paymentDetails ?? {}));
   for (const item of data.mediaItems ?? []) {
     formData.append("mediaItems", JSON.stringify(item));
   }

@@ -13,6 +13,13 @@ export type UpdateListingPaymentMethodsResult =
   | {
       issues: import("@/lib/payments/payment-methods").ListingPaymentMethodsIssues & {
         instructionTemplates?: import("@/lib/payments/payment-instruction-templates").PaymentInstructionTemplateIssue;
+        instructionDetails?: import("@/lib/payments/payment-instruction-templates").PaymentDetailsMapIssue;
+        detailFields?: Partial<
+          Record<
+            import("@/lib/payments/payment-methods").PaymentMethodCode,
+            import("@/lib/payments/payment-details").PaymentDetailIssues
+          >
+        >;
       };
     }
   | {

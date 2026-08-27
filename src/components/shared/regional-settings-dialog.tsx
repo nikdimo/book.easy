@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Check, ChevronDown, ChevronUp, Globe, Languages, Search, X } from "lucide-react";
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { Tx, useI18n } from "@/lib/i18n/client";
+import { useTypeToSearch } from "@/lib/hooks/use-type-to-search";
 import { recordLanguageSelection } from "@/lib/actions/language.actions";
 import { setDisplayCurrency } from "@/lib/actions/currency.actions";
 import { REGIONAL_SETTINGS_OPEN_EVENT } from "@/components/shared/regional-settings-event";
@@ -159,6 +160,8 @@ function LanguagePickerPanel({
 }) {
   const i18n = useI18n();
   const [query, setQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
+  useTypeToSearch(searchRef);
   const [showAutomatic, setShowAutomatic] = useState(() =>
     automaticRows.some((row) => row.selected),
   );
@@ -177,6 +180,7 @@ function LanguagePickerPanel({
           aria-hidden
         />
         <Input
+          ref={searchRef}
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -290,6 +294,8 @@ function PickerPanel({
   emptyLabel: string;
 }) {
   const [query, setQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
+  useTypeToSearch(searchRef);
 
   const filtered = useMemo(
     () => rows.filter((row) => tokenContainmentScore(row.searchText, query) === 1),
@@ -304,6 +310,7 @@ function PickerPanel({
           aria-hidden
         />
         <Input
+          ref={searchRef}
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}

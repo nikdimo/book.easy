@@ -1,12 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronUp, Search, X } from "lucide-react";
 import {
   AMENITY_GRID_CLASS,
   AmenityPickerCard,
 } from "@/components/host/v2/amenities/amenity-picker-card";
 import { groupAmenitiesByCategory } from "@/lib/host/v2/amenity-groups";
+import { useTypeToSearch } from "@/lib/hooks/use-type-to-search";
 import {
   displayableAmenities,
   toggleAmenitySelection,
@@ -67,6 +68,8 @@ export function AmenitiesStep({
   );
   const [expanded, setExpanded] = useState(initialExpanded);
   const [search, setSearch] = useState(initialSearch);
+  const searchRef = useRef<HTMLInputElement>(null);
+  useTypeToSearch(searchRef);
   const [chip, setChip] = useState<AmenityChipFilter>(initialChip);
   const query = `propertyType=${encodeURIComponent(propertyType.value)}&spaceType=${encodeURIComponent(spaceType)}`;
 
@@ -185,6 +188,7 @@ export function AmenitiesStep({
                     aria-hidden
                   />
                   <input
+                    ref={searchRef}
                     type="search"
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}

@@ -30,10 +30,17 @@ import {
   type PaymentMethodCode,
 } from "@/lib/payments/payment-methods";
 import {
-  parsePaymentInstructionTemplates,
-  paymentInstructionTemplatesSnapshot,
+  parsePaymentInstructionStore,
+  paymentInstructionStoreSnapshot,
+  resolvePaymentInstructionsForMethod,
   validatePaymentInstructionTemplates,
+  validatePaymentMethodDetailsMap,
 } from "@/lib/payments/payment-instruction-templates";
+import {
+  methodSupportsPaymentDetails,
+  type PaymentDetailFieldValues,
+} from "@/lib/payments/payment-details";
+import type { BookingPaymentRequestPrefill } from "@/lib/payments/booking-payment-request";
 import {
   calculateDepositAmounts,
   createDepositPoliciesSnapshot,
@@ -188,6 +195,9 @@ export async function getGuestBookings(guestId: string) {
     where: { guestId },
     include: {
       listing: {
+        // Never hand a guest the host's private reusable payment details; see
+        // `getGuestBookingWithHost` for why `include` alone would.
+        omit: { paymentInstructionTemplates: true },
         include: {
           property: true,
           images: { where: { isPrimary: true }, take: 1 },
@@ -208,6 +218,12 @@ export async function getGuestBookingWithHost(
     where: { id: bookingId, guestId },
     include: {
       listing: {
+        // `include` returns every scalar on the listing, and one of them is the host's
+        // private reusable payment details. A guest is entitled to the listing they
+        // booked, never to the coordinates their host saved for other bookings — what
+        // this guest may see is only what was actually sent to them, which travels on
+        // the booking's own frozen snapshot.
+        omit: { paymentInstructionTemplates: true },
         include: {
           property: true,
           host: { include: { profile: true } },
@@ -231,6 +247,9 @@ export async function getGuestBookingForConfirmation(
     where: { id: bookingId, guestId },
     include: {
       listing: {
+        // Never hand a guest the host's private reusable payment details; see
+        // `getGuestBookingWithHost` for why `include` alone would.
+        omit: { paymentInstructionTemplates: true },
         include: {
           property: true,
           images: { where: { isPrimary: true }, take: 1 },
@@ -753,6 +772,7 @@ export async function getBookingAcceptancePaymentData(
       listing: {
         select: {
           id: true,
+          acceptedPaymentMethods: true,
           paymentInstructionTemplates: true,
         },
       },
@@ -760,14 +780,30 @@ export async function getBookingAcceptancePaymentData(
   });
   if (!booking) throw new Error("Booking not found");
   const snapshot = parsePaymentMethodsSnapshot(booking.paymentMethodsSnapshot);
-  const selectedPaymentMethod = isPaymentMethodCode(booking.selectedPaymentMethod)
+  const guestChosenMethod = isPaymentMethodCode(booking.selectedPaymentMethod)
     ? booking.selectedPaymentMethod
     : snapshot?.status === "REVIEWED" && snapshot.methods.length === 1
       ? snapshot.methods[0]
       : null;
-  const templates = parsePaymentInstructionTemplates(
+  const store = parsePaymentInstructionStore(
     booking.listing.paymentInstructionTemplates,
   );
+
+  /**
+   * What this booking may still be paid by.
+   *
+   * The frozen snapshot is the authority: it is the list the guest actually saw. Only a
+   * booking with no usable snapshot — one taken before the snapshot existed — falls back
+   * to the listing's current answer, and even then the host must choose explicitly.
+   */
+  const availableMethods =
+    snapshot?.status === "REVIEWED" && snapshot.methods.length > 0
+      ? snapshot.methods
+      : booking.listing.acceptedPaymentMethods.filter(isPaymentMethodCode);
+
+  const resolved = guestChosenMethod
+    ? resolvePaymentInstructionsForMethod(store, guestChosenMethod)
+    : ({ kind: "NONE" } as const);
 
   return {
     bookingId: booking.id,
@@ -778,24 +814,93 @@ export async function getBookingAcceptancePaymentData(
     currency: booking.currency,
     total: Number(booking.totalPrice),
     checkIn: booking.checkIn.toISOString().slice(0, 10),
-    selectedPaymentMethod,
+    selectedPaymentMethod: guestChosenMethod,
+    /**
+     * Whether the method above came from the guest or still has to be chosen. A guest's
+     * choice is never replaced; this only distinguishes "the guest picked this" from
+     * "this booking predates the choice and the host must pick one".
+     */
+    methodSource: guestChosenMethod ? ("GUEST" as const) : ("HOST_FALLBACK" as const),
+    availableMethods,
     otherLabel: snapshot?.otherLabel ?? null,
-    savedInstructions: selectedPaymentMethod
-      ? (templates[selectedPaymentMethod] ?? "")
-      : "",
+    /** Legacy V1 free text for the chosen method, if that is what the host has saved. */
+    savedInstructions: resolved.kind === "LEGACY_TEXT" ? resolved.text : "",
+    savedDetailsKind: resolved.kind,
+    savedDetailFields:
+      resolved.kind === "STRUCTURED"
+        ? resolved.details.fields
+        : ({} as PaymentDetailFieldValues),
   };
 }
 
+/**
+ * The prefill for a host's payment-request form on one booking.
+ *
+ * Ownership is part of the query, so another host's booking is indistinguishable from a
+ * missing one, and the result carries the saved details for this booking's method only —
+ * never the host's other templates, and never anything a guest-facing page could reuse.
+ */
+export async function getBookingPaymentRequestPrefill(
+  bookingId: string,
+  hostId: string,
+): Promise<BookingPaymentRequestPrefill | null> {
+  const booking = await db.booking.findFirst({
+    where: { id: bookingId, listing: { hostId } },
+    select: {
+      selectedPaymentMethod: true,
+      paymentMethodsSnapshot: true,
+      listing: {
+        select: { acceptedPaymentMethods: true, paymentInstructionTemplates: true },
+      },
+    },
+  });
+  if (!booking) return null;
+
+  const snapshot = parsePaymentMethodsSnapshot(booking.paymentMethodsSnapshot);
+  const method = isPaymentMethodCode(booking.selectedPaymentMethod)
+    ? booking.selectedPaymentMethod
+    : null;
+  const availableMethods =
+    snapshot?.status === "REVIEWED" && snapshot.methods.length > 0
+      ? snapshot.methods
+      : booking.listing.acceptedPaymentMethods.filter(isPaymentMethodCode);
+  const resolved = method
+    ? resolvePaymentInstructionsForMethod(
+        parsePaymentInstructionStore(booking.listing.paymentInstructionTemplates),
+        method,
+      )
+    : ({ kind: "NONE" } as const);
+
+  return {
+    method,
+    methodSource: method ? "GUEST" : "HOST_FALLBACK",
+    availableMethods,
+    otherLabel: snapshot?.otherLabel ?? null,
+    savedDetailsKind: resolved.kind,
+    savedDetailFields: resolved.kind === "STRUCTURED" ? resolved.details.fields : {},
+    savedInstructions: resolved.kind === "LEGACY_TEXT" ? resolved.text : "",
+  };
+}
+
+/**
+ * Saves what the host just sent as the reusable template for that one method.
+ *
+ * Only ever reached when the host ticks "save for future bookings". Every other method's
+ * saved data — legacy text and structured fields alike — is read, kept, and written back
+ * untouched, so saving one booking's PayPal details can never disturb a bank transfer.
+ */
 export async function saveBookingPaymentInstructionTemplate(input: {
   bookingId: string;
   hostId: string;
   method: PaymentMethodCode;
-  body: string;
+  body?: string;
+  fields?: PaymentDetailFieldValues;
 }) {
   const booking = await db.booking.findFirst({
     where: { id: input.bookingId, listing: { hostId: input.hostId } },
     select: {
       selectedPaymentMethod: true,
+      paymentMethodsSnapshot: true,
       listing: {
         select: {
           id: true,
@@ -805,14 +910,53 @@ export async function saveBookingPaymentInstructionTemplate(input: {
       },
     },
   });
-  if (!booking || booking.selectedPaymentMethod !== input.method) {
+  if (!booking) throw new Error("Booking not found");
+  // A recorded guest choice is the only method this booking may write back.
+  if (
+    booking.selectedPaymentMethod !== null &&
+    booking.selectedPaymentMethod !== input.method
+  ) {
     throw new Error("Booking not found");
   }
+  if (booking.selectedPaymentMethod === null) {
+    const snapshot = parsePaymentMethodsSnapshot(booking.paymentMethodsSnapshot);
+    const allowed =
+      snapshot?.status === "REVIEWED" && snapshot.methods.length > 0
+        ? snapshot.methods
+        : booking.listing.acceptedPaymentMethods.filter(isPaymentMethodCode);
+    if (!allowed.includes(input.method)) throw new Error("Booking not found");
+  }
 
-  const current = parsePaymentInstructionTemplates(
+  const current = parsePaymentInstructionStore(
     booking.listing.paymentInstructionTemplates,
   );
-  const next = { ...current, [input.method]: input.body.trim() };
+
+  if (input.fields) {
+    if (!methodSupportsPaymentDetails(input.method)) {
+      throw new Error("Payment instructions could not be saved");
+    }
+    const details = validatePaymentMethodDetailsMap(
+      { ...current.details, [input.method]: { fields: input.fields } },
+      booking.listing.acceptedPaymentMethods.filter(isPaymentMethodCode),
+      current.details,
+    );
+    if (!details.success) throw new Error("Payment instructions could not be saved");
+    await db.listing.update({
+      where: { id: booking.listing.id },
+      data: {
+        paymentInstructionTemplates: paymentInstructionStoreSnapshot({
+          // Structured details supersede this method's legacy paragraph, and only this
+          // method's: the host reviewed and sent these exact fields, which is the
+          // deliberate act that retires the old text.
+          templates: { ...current.templates, [input.method]: "" },
+          details: details.value,
+        }) as unknown as Prisma.InputJsonObject,
+      },
+    });
+    return;
+  }
+
+  const next = { ...current.templates, [input.method]: (input.body ?? "").trim() };
   const validated = validatePaymentInstructionTemplates(
     next,
     booking.listing.acceptedPaymentMethods,
@@ -822,9 +966,10 @@ export async function saveBookingPaymentInstructionTemplate(input: {
   await db.listing.update({
     where: { id: booking.listing.id },
     data: {
-      paymentInstructionTemplates: paymentInstructionTemplatesSnapshot(
-        validated.value,
-      ),
+      paymentInstructionTemplates: paymentInstructionStoreSnapshot({
+        templates: validated.value,
+        details: current.details,
+      }) as unknown as Prisma.InputJsonObject,
     },
   });
 }

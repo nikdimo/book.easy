@@ -339,6 +339,7 @@ export async function getBookingPaymentProgress(bookingId: string, userId: strin
     select: {
       id: true,
       status: true,
+      reference: true,
       checkIn: true,
       acceptedAt: true,
       currency: true,
@@ -348,6 +349,11 @@ export async function getBookingPaymentProgress(bookingId: string, userId: strin
       damageDepositAmount: true,
       paymentStatus: true,
       paymentInstructionsStatus: true,
+      paymentInstructionsDueAt: true,
+      // The structured details this booking was sent. Owned by both participants: the
+      // guest needs them to pay, and they are the host's own data. Never the listing's
+      // reusable templates, which stay host-only.
+      paymentInstructionsSnapshot: true,
       selectedPaymentMethod: true,
       advancePaymentStatus: true,
       damageDepositStatus: true,

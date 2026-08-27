@@ -46,7 +46,21 @@ const mobileListingDraftPatchSchema = z
     minNights: draftString.optional(),
     acceptedPaymentMethods: z.array(z.enum(PAYMENT_METHOD_CODES)).max(PAYMENT_METHOD_CODES.length).optional(),
     paymentMethodOther: z.string().max(40).nullable().optional(),
-    paymentInstructionTemplates: z.record(z.enum(PAYMENT_METHOD_CODES), z.string().max(1200)).optional(),
+    // Only selected methods have an entry. In Zod 4, `z.record(z.enum(...), ...)`
+    // requires every enum key, which made an ordinary partial template object (and
+    // even `{}` when the host saved no private details) fail as invalid draft data.
+    paymentInstructionTemplates: z
+      .partialRecord(z.enum(PAYMENT_METHOD_CODES), z.string().max(1200))
+      .optional(),
+    // V2 structured details, same partial-record reasoning as the templates above.
+    // Field names and values are only shaped here; what a field means and whether its
+    // value is a real IBAN is decided by the payment-details validator on publish.
+    paymentDetails: z
+      .partialRecord(
+        z.enum(PAYMENT_METHOD_CODES),
+        z.record(z.string().trim().min(1).max(40), z.string().max(500)),
+      )
+      .optional(),
     checkInTime: draftString.optional(),
     checkOutTime: draftString.optional(),
 

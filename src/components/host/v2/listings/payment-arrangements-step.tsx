@@ -8,6 +8,7 @@ import {
   normalizePaymentArrangementsDraft,
   paymentArrangementsAreComplete,
   type PaymentArrangementsDraft,
+  type PaymentDetailsDraftMap,
 } from "@/components/host/v2/editor/payment-arrangements/payment-arrangements-model";
 import type { ListingSpaceTypeValue } from "@/lib/types/listing-space-type";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
@@ -30,6 +31,7 @@ export function PaymentArrangementsStep({
       methodCodes: data.acceptedPaymentMethods ?? [],
       otherLabel: data.paymentMethodOther ?? null,
       instructionTemplates: data.paymentInstructionTemplates ?? {},
+      details: (data.paymentDetails ?? {}) as PaymentDetailsDraftMap,
     }),
   );
   const complete = paymentArrangementsAreComplete(draft);
@@ -56,6 +58,7 @@ export function PaymentArrangementsStep({
                     paymentMethodOther: normalized.otherLabel,
                     paymentInstructionTemplates:
                       normalized.instructionTemplates ?? {},
+                    paymentDetails: normalized.details ?? {},
                     currentStepId: "specialOffer",
                   })
                 ) {

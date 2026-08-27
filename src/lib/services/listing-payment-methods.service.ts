@@ -1,4 +1,5 @@
 import "server-only";
+import type { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
 import {
   paymentMethodsFromRow,
@@ -7,13 +8,21 @@ import {
   type ListingPaymentMethodsPreferences,
 } from "@/lib/payments/payment-methods";
 import {
-  parsePaymentInstructionTemplates,
-  paymentInstructionTemplatesSnapshot,
+  parsePaymentInstructionStore,
+  paymentInstructionStoreSnapshot,
   samePaymentInstructionTemplates,
   validatePaymentInstructionTemplates,
+  validatePaymentMethodDetailsMap,
+  type PaymentDetailsMapIssue,
   type PaymentInstructionTemplateIssue,
   type PaymentInstructionTemplates,
 } from "@/lib/payments/payment-instruction-templates";
+import {
+  samePaymentMethodDetailsMap,
+  type PaymentDetailIssues,
+  type PaymentMethodDetailsMap,
+} from "@/lib/payments/payment-details";
+import type { PaymentMethodCode } from "@/lib/payments/payment-methods";
 
 export const LISTING_PAYMENT_METHODS_SELECT = {
   id: true,
@@ -34,6 +43,8 @@ export interface ListingPaymentMethodsData {
   preferences: ListingPaymentMethodsPreferences;
   /** Owner-only data. Never reuse this service in a public listing response. */
   instructionTemplates: PaymentInstructionTemplates;
+  /** Owner-only V2 structured details, keyed by method. Equally never public. */
+  instructionDetails: PaymentMethodDetailsMap;
 }
 
 /** Ownership-scoped read shape shared by the future host editor integration. */
@@ -47,12 +58,12 @@ export async function getListingPaymentMethodsData(
   });
   if (!listing) return null;
 
+  const store = parsePaymentInstructionStore(listing.paymentInstructionTemplates);
   return {
     listing: { id: listing.id, slug: listing.slug, status: listing.status },
     preferences: paymentMethodsFromRow(listing),
-    instructionTemplates: parsePaymentInstructionTemplates(
-      listing.paymentInstructionTemplates,
-    ),
+    instructionTemplates: store.templates,
+    instructionDetails: store.details,
   };
 }
 export type SaveListingPaymentMethodsResult =
@@ -60,6 +71,9 @@ export type SaveListingPaymentMethodsResult =
   | {
       issues: ListingPaymentMethodsIssues & {
         instructionTemplates?: PaymentInstructionTemplateIssue;
+        instructionDetails?: PaymentDetailsMapIssue;
+        /** Per-method, per-field problems the editor renders beside the field. */
+        detailFields?: Partial<Record<PaymentMethodCode, PaymentDetailIssues>>;
       };
     }
   | (ListingPaymentMethodsData & { changed: boolean });
@@ -93,18 +107,46 @@ export async function saveListingPaymentMethods(
   if (!validation.success) return { issues: validation.issues };
 
   const raw = input as Record<string, unknown>;
+  const currentStore = parsePaymentInstructionStore(
+    listing.paymentInstructionTemplates,
+  );
+
+  // Legacy V1 free text is only ever carried forward from what is already stored, or
+  // pruned for a method the host converted. The editor no longer authors it, so a
+  // request that omits `instructionTemplates` keeps every legacy paragraph intact.
+  const templateInput =
+    raw.instructionTemplates === undefined
+      ? currentStore.templates
+      : raw.instructionTemplates;
   const templateValidation = validatePaymentInstructionTemplates(
-    raw.instructionTemplates,
+    templateInput,
     validation.value.methods,
   );
   if (!templateValidation.success) {
     return { issues: { instructionTemplates: templateValidation.issue } };
   }
 
-  const current = paymentMethodsFromRow(listing);
-  const currentTemplates = parsePaymentInstructionTemplates(
-    listing.paymentInstructionTemplates,
+  const detailsValidation = validatePaymentMethodDetailsMap(
+    raw.instructionDetails === undefined
+      ? currentStore.details
+      : raw.instructionDetails,
+    validation.value.methods,
+    currentStore.details,
   );
+  if (!detailsValidation.success) {
+    return {
+      issues: {
+        ...(detailsValidation.issue
+          ? { instructionDetails: detailsValidation.issue }
+          : {}),
+        ...(detailsValidation.fieldIssues
+          ? { detailFields: detailsValidation.fieldIssues }
+          : {}),
+      },
+    };
+  }
+
+  const current = paymentMethodsFromRow(listing);
   const publicChanged =
     current.status !== "REVIEWED" ||
     !sameMethods(current.methods, validation.value.methods) ||
@@ -112,9 +154,10 @@ export async function saveListingPaymentMethods(
   const changed =
     publicChanged ||
     !samePaymentInstructionTemplates(
-      currentTemplates,
+      currentStore.templates,
       templateValidation.value,
-    );
+    ) ||
+    !samePaymentMethodDetailsMap(currentStore.details, detailsValidation.value);
   const reviewedAt = new Date();
 
   const saved = await db.listing.update({
@@ -123,9 +166,10 @@ export async function saveListingPaymentMethods(
       acceptedPaymentMethods: validation.value.methods,
       paymentMethodOther: validation.value.otherLabel,
       paymentMethodsReviewedAt: reviewedAt,
-      paymentInstructionTemplates: paymentInstructionTemplatesSnapshot(
-        templateValidation.value,
-      ),
+      paymentInstructionTemplates: paymentInstructionStoreSnapshot({
+        templates: templateValidation.value,
+        details: detailsValidation.value,
+      }) as unknown as Prisma.InputJsonObject,
       // Method names and OTHER labels are public listing content. A real change to a
       // live listing follows the same review-queue rule as title and house rules.
       ...(publicChanged && listing.status === "APPROVED" ? { needsReview: true } : {}),
@@ -133,12 +177,12 @@ export async function saveListingPaymentMethods(
     select: LISTING_PAYMENT_METHODS_SELECT,
   });
 
+  const savedStore = parsePaymentInstructionStore(saved.paymentInstructionTemplates);
   return {
     listing: { id: saved.id, slug: saved.slug, status: saved.status },
     preferences: paymentMethodsFromRow(saved),
-    instructionTemplates: parsePaymentInstructionTemplates(
-      saved.paymentInstructionTemplates,
-    ),
+    instructionTemplates: savedStore.templates,
+    instructionDetails: savedStore.details,
     changed,
   };
 }

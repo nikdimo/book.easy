@@ -7,11 +7,19 @@ import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { recordBookingPaymentEventAction } from "@/lib/actions/booking-payment.actions";
 import { sendBookingPaymentRequestAction } from "@/lib/actions/booking.actions";
 import type { DepositPoliciesSnapshotV2 } from "@/lib/payments/deposit-policies";
 import type { SavedPaymentInstructionTemplate } from "@/lib/payments/payment-instruction-templates";
+import type {
+  BookingPaymentDetailsSnapshotV2,
+  BookingPaymentRequestPrefill,
+} from "@/lib/payments/booking-payment-request";
+import {
+  PaymentRequestComposer,
+  type PaymentRequestValue,
+} from "./payment-request-composer";
+import { GuestPaymentCard } from "./guest-payment-card";
 import type { PaymentMethodCode } from "@/lib/payments/payment-methods";
 import { DepositPoliciesSummary } from "./deposit-policies-summary";
 import { PaymentMethodName } from "./accepted-payment-methods";
@@ -56,6 +64,32 @@ export interface BookingPaymentProgressView {
   }>;
   /** Host-only prefill; this component never receives it for a guest. */
   savedPaymentInstructionTemplates?: SavedPaymentInstructionTemplate[];
+  /**
+   * Host-only prefill for the payment request, carrying the saved details for this
+   * booking's method only. Never populated for a guest.
+   */
+  paymentRequestPrefill?: BookingPaymentRequestPrefill;
+  /**
+   * The structured details already sent for this booking. Both participants see this:
+   * the guest needs it to pay, and it is the host's own data.
+   */
+  sentPaymentDetails?: BookingPaymentDetailsSnapshotV2 | null;
+  /** When payment is due, as sent. Rendered on the guest's card. */
+  paymentInstructionsDueAt?: string | null;
+  /** The booking reference the guest quotes on the transfer. */
+  reference?: string;
+}
+
+/** The sent deadline as a plain date, or null when none was recorded. */
+function formatDueDate(value: string | null | undefined, locale: string) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  try {
+    return new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(date);
+  } catch {
+    return value.slice(0, 10);
+  }
 }
 
 function money(value: number, currency: string, locale: string) {
@@ -249,34 +283,60 @@ function ProgressControls({
   );
 }
 
+/**
+ * The host's send-later form: review the prefilled details, choose a deadline, send.
+ *
+ * A booking whose host has no prefill at all still gets the composer — it opens on
+ * empty fields for the guest's method rather than a blank paragraph box.
+ */
 function PaymentInstructionsForm({
   bookingId,
   checkIn,
+  prefill,
   initialTemplates,
 }: {
   bookingId: string;
   checkIn: string;
+  prefill?: BookingPaymentRequestPrefill;
   initialTemplates?: SavedPaymentInstructionTemplate[];
 }) {
   const { resolve } = useI18n();
   const router = useRouter();
-  const [body, setBody] = useState(() =>
-    formatSavedInstructionTemplates(initialTemplates ?? []),
-  );
+  const effectivePrefill: BookingPaymentRequestPrefill = prefill ?? {
+    method: null,
+    methodSource: "HOST_FALLBACK",
+    availableMethods: [],
+    otherLabel: null,
+    savedDetailsKind: "NONE",
+    savedDetailFields: {},
+    savedInstructions: formatSavedInstructionTemplates(initialTemplates ?? []),
+  };
+  const [request, setRequest] = useState<PaymentRequestValue>({
+    method: effectivePrefill.method,
+    mode: "FREE_TEXT",
+    fields: {},
+    instructions: effectivePrefill.savedInstructions,
+    saveForFuture: false,
+    isReady: false,
+  });
   const [dueDate, setDueDate] = useState(checkIn);
-  const [saveForFuture, setSaveForFuture] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!body.trim()) return;
+    if (!request.isReady) return;
     startTransition(async () => {
       try {
         const result = await sendBookingPaymentRequestAction({
           bookingId,
-          instructions: body,
+          ...(request.mode === "STRUCTURED"
+            ? { detailFields: request.fields }
+            : { instructions: request.instructions }),
+          ...(effectivePrefill.methodSource === "HOST_FALLBACK" && request.method
+            ? { method: request.method }
+            : {}),
           dueDate,
-          saveForFuture,
+          saveForFuture: request.saveForFuture,
         });
         if (result?.error) {
           // This is deliberately generic: never reflect payment text in a toast or error.
@@ -308,36 +368,13 @@ function PaymentInstructionsForm({
           className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
         />
       </div>
-      <div className="space-y-1.5">
-        <Label htmlFor={`payment-instructions-${bookingId}`}>
-          {resolve("booking.payment_progress.instructions_label", "Secure payment instructions").text}
-        </Label>
-        <Textarea
-          id={`payment-instructions-${bookingId}`}
-          value={body}
-          onChange={(event) => setBody(event.target.value)}
-          maxLength={2000}
-          rows={5}
-          required
-          placeholder={resolve("booking.payment_progress.instructions_placeholder", "Add the private account, payment link, handle, wallet address, or other details the guest needs.").text}
-        />
-      </div>
-      <p className="text-xs leading-5 text-muted-foreground">
-        {resolve("booking.payment_progress.instructions_private", "This is sent only inside the Linger Homes conversation.").text}
-      </p>
-      <p className="text-xs leading-5 text-destructive">
-        {resolve("booking.payment_progress.instructions_security", "Never ask for or send a card number, CVV, PIN, password, seed phrase, or private key.").text}
-      </p>
-      <label className="flex cursor-pointer items-start gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={saveForFuture}
-          onChange={(event) => setSaveForFuture(event.currentTarget.checked)}
-          className="mt-1 size-4 accent-primary"
-        />
-        <span>{resolve("booking.payment_progress.save_for_future", "Save these private details for future bookings using this method").text}</span>
-      </label>
-      <Button type="submit" size="sm" disabled={isPending || !body.trim() || !dueDate}>
+      <PaymentRequestComposer
+        prefill={effectivePrefill}
+        idPrefix={`payment-request-${bookingId}`}
+        disabled={isPending}
+        onChange={setRequest}
+      />
+      <Button type="submit" size="sm" disabled={isPending || !request.isReady || !dueDate}>
         {isPending
           ? resolve("booking.payment_progress.instructions_sending", "Sending…").text
           : resolve("booking.payment_progress.instructions_send", "Send payment request").text}
@@ -479,15 +516,27 @@ export function BookingPaymentProgress({
         ) : null}
 
         {confirmed && progress.paymentInstructionsStatus === "SENT" ? (
-          <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900">
-            {i18n.resolve("booking.payment_progress.instructions_sent", "Payment instructions were sent in the private conversation.").text}
-          </p>
+          progress.sentPaymentDetails ? (
+            <GuestPaymentCard
+              details={progress.sentPaymentDetails}
+              amount={money(progress.total, progress.currency, i18n.locale)}
+              dueDate={formatDueDate(progress.paymentInstructionsDueAt, i18n.locale)}
+              reference={progress.reference ?? ""}
+            />
+          ) : (
+            // A free-text or pre-V2 send has no structured record to render. The
+            // private conversation message stays the whole record, exactly as before.
+            <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900">
+              {i18n.resolve("booking.payment_progress.instructions_sent", "Payment instructions were sent in the private conversation.").text}
+            </p>
+          )
         ) : null}
 
         {actor === "HOST" && confirmed && progress.paymentInstructionsStatus === "PENDING" ? (
           <PaymentInstructionsForm
             bookingId={progress.bookingId}
             checkIn={progress.checkIn}
+            prefill={progress.paymentRequestPrefill}
             initialTemplates={progress.savedPaymentInstructionTemplates}
           />
         ) : null}

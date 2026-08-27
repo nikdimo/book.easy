@@ -39,10 +39,26 @@ export const createBookingSchema = z
 
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
 
+/**
+ * The structured fields a host reviewed before sending.
+ *
+ * Deliberately loose here — keys and values are only shaped enough to be safe to carry.
+ * What a field means, whether it is required, and whether its value is a real IBAN is
+ * decided by the payment-details validator on the server, against the method this
+ * booking actually uses. A client cannot shortcut that by posting a tidy-looking object.
+ */
+const paymentDetailFieldsSchema = z.record(
+  z.string().trim().min(1).max(40),
+  z.string().max(500),
+);
+
 export const acceptBookingWithPaymentSchema = z.object({
   bookingId: z.string().trim().min(1),
   decision: z.enum(["SEND_NOW", "SEND_LATER", "NO_INSTRUCTIONS"]),
   instructions: z.string().trim().max(1200).optional(),
+  detailFields: paymentDetailFieldsSchema.optional(),
+  /** Only honoured for a booking whose guest never chose a method. */
+  method: z.enum(PAYMENT_METHOD_CODES).optional(),
   dueDate: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a valid payment deadline")
@@ -50,11 +66,20 @@ export const acceptBookingWithPaymentSchema = z.object({
   saveForFuture: z.boolean().optional().default(false),
 });
 
-export const sendBookingPaymentRequestSchema = z.object({
-  bookingId: z.string().trim().min(1),
-  instructions: z.string().trim().min(1).max(1200),
-  dueDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a valid payment deadline"),
-  saveForFuture: z.boolean().optional().default(false),
-});
+export const sendBookingPaymentRequestSchema = z
+  .object({
+    bookingId: z.string().trim().min(1),
+    instructions: z.string().trim().max(1200).optional(),
+    detailFields: paymentDetailFieldsSchema.optional(),
+    method: z.enum(PAYMENT_METHOD_CODES).optional(),
+    dueDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a valid payment deadline"),
+    saveForFuture: z.boolean().optional().default(false),
+  })
+  .refine(
+    (data) =>
+      Boolean(data.instructions?.trim()) ||
+      Object.values(data.detailFields ?? {}).some((value) => value.trim() !== ""),
+    { message: "Add the payment details before sending.", path: ["instructions"] },
+  );

@@ -32,6 +32,8 @@ describe("getHostReservations payment projection", () => {
         title: "Loft",
         checkInTime: "15:00",
         checkOutTime: "11:00",
+        acceptedPaymentMethods: [],
+        paymentInstructionTemplates: null,
         property: { city: "Ohrid" },
         images: [],
       },

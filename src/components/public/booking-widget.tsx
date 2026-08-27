@@ -50,7 +50,10 @@ import {
   useListingDayPrices,
 } from "./use-listing-day-prices";
 import { resolvePromotionLabel } from "./promotion-label";
-import { useListingStayRange } from "./listing-stay-context";
+import {
+  useListingStayRange,
+  usePublishListingBooking,
+} from "./listing-stay-context";
 
 interface BookingWidgetProps {
   listingId: string;
@@ -597,6 +600,21 @@ export function BookingWidget({
       : reserveStep === "guests"
         ? i18n.resolve("booking.select_guests_cta", "Select guests")
         : requestToBookLabel;
+  // The page's inline availability calendar sits below this card, past the end of the
+  // sticky column, so a guest who picks dates down there has no button in sight. It
+  // borrows this one — same label, same total, same press — rather than growing a
+  // second booking flow of its own.
+  usePublishListingBooking(
+    {
+      label: primaryActionLabel.text,
+      labelTranslated: primaryActionLabel.translated,
+      nights: hasStayQuote ? nights : 0,
+      total,
+      currency,
+      busy: isPending,
+    },
+    handlePrimaryAction,
+  );
   const pickerMessage =
     selectionValidation.status === "unavailable"
       ? unavailableDatesMessage

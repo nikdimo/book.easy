@@ -5,6 +5,7 @@ import { requireHost } from "@/lib/auth-helpers";
 import { revalidatePath } from "next/cache";
 import { revalidatePublicListingCaches } from "@/lib/utils/revalidate-public-listing-caches";
 import { nextOrdinal } from "@/lib/rooms/room-name";
+import { syncListingCountsFromRooms } from "@/lib/rooms/counted-rooms";
 import { enqueueUploadDeletions, sweepUploads } from "@/lib/storage/upload-cleanup";
 import type { ListingMediaTypeValue } from "@/lib/types/listing-media";
 
@@ -30,7 +31,6 @@ async function ownedListing(listingId: string) {
   });
   return listing;
 }
-
 function refresh(listingId: string, slug: string, status: string) {
   revalidatePath(`/host/listings/${listingId}/photos`);
   revalidatePath(`/host/listings/${listingId}/rooms`);
@@ -383,6 +383,7 @@ export async function addListingRoom(
     select: { id: true },
   });
 
+  await syncListingCountsFromRooms(listingId);
   await flagRoomChangeForReview(listing);
   refresh(listingId, listing.slug, listing.status);
   return { roomId: room.id };
@@ -466,6 +467,7 @@ export async function deleteListingRoom(
 
   await db.listingRoom.delete({ where: { id: roomId } });
 
+  await syncListingCountsFromRooms(listingId);
   await flagRoomChangeForReview(listing);
   refresh(listingId, listing.slug, listing.status);
   return { releasedPhotos: room._count.images };

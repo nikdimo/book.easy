@@ -1507,6 +1507,17 @@ model Booking {
   paymentInstructionsStatus     BookingPaymentInstructionsStatus @default(NOT_DECIDED)
   paymentInstructionsSentAt     DateTime?
   paymentInstructionsDueAt      DateTime?                        @db.Date
+  /// The structured payment details this guest was actually sent, frozen at send time.
+  ///
+  /// Written server-side from the host's reviewed input — never read back from the
+  /// listing's reusable templates — so a host who later edits or deletes a template
+  /// cannot change what a guest was already told to pay. Only structured (V2) sends
+  /// write here: a free-text send leaves it null and the private conversation message
+  /// remains the whole record, which is what keeps legacy bookings rendering as before.
+  ///
+  /// Private financial data. It belongs to the two booking participants and appears in
+  /// no public listing DTO, notification preview, email body, audit entry, or log line.
+  paymentInstructionsSnapshot   Json?
   /// DEPRECATED (V1): the single deposit track, shared by whichever purpose the listing
   /// had. The migration copied it into whichever of the two tracks below its frozen
   /// snapshot names, and nothing writes it again.

@@ -22,9 +22,18 @@ import { rateLimit } from "@/lib/rate-limit";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import {
+  bookingPaymentDetailsSnapshot,
   buildBookingPaymentRequest,
+  buildStructuredBookingPaymentRequest,
   paymentMethodCanNeedNoInstructions,
 } from "@/lib/payments/booking-payment-request";
+import {
+  methodSupportsPaymentDetails,
+  paymentDetailsAreComplete,
+  validatePaymentMethodDetails,
+  type PaymentDetailFieldValues,
+} from "@/lib/payments/payment-details";
+import type { PaymentMethodCode } from "@/lib/payments/payment-methods";
 import {
   ensureBookingConversation,
   shareBookingPaymentInstructions,
@@ -164,6 +173,59 @@ function revalidateAcceptedBooking(bookingId: string) {
   revalidatePath(`/account/bookings/${bookingId}`);
 }
 
+type AcceptancePaymentData = Awaited<
+  ReturnType<typeof getBookingAcceptancePaymentData>
+>;
+
+/**
+ * Which method this request is actually for.
+ *
+ * A guest's recorded choice is returned unchanged and a posted `method` is ignored — the
+ * host cannot silently swap it. Only a booking with no recorded choice consults the
+ * posted value, and only if it is on that booking's own frozen list.
+ */
+function resolveRequestMethod(
+  payment: AcceptancePaymentData,
+  posted: PaymentMethodCode | undefined,
+): PaymentMethodCode | null {
+  if (payment.selectedPaymentMethod) return payment.selectedPaymentMethod;
+  if (!posted) return null;
+  return payment.availableMethods.includes(posted) ? posted : null;
+}
+
+type ResolvedStructuredDetails =
+  | { fields: PaymentDetailFieldValues }
+  | { error: string };
+
+/**
+ * Validates the structured fields the host reviewed, against the method in play.
+ *
+ * Returns null when the request carries no structured data at all, which is what routes
+ * a legacy free-text send down the original path. Errors are generic on purpose: an
+ * action's error string can be surfaced in a toast or a log, and payment values must
+ * never reach either.
+ */
+function resolveStructuredDetails(
+  method: PaymentMethodCode,
+  detailFields: Record<string, string> | undefined,
+): ResolvedStructuredDetails | null {
+  if (!detailFields) return null;
+  const hasValue = Object.values(detailFields).some((value) => value.trim() !== "");
+  if (!hasValue) return null;
+  if (!methodSupportsPaymentDetails(method)) {
+    return { error: "This payment method does not take saved details." };
+  }
+
+  const validated = validatePaymentMethodDetails(method, detailFields);
+  if (!validated.success) {
+    return { error: "Check the payment details and try again." };
+  }
+  if (!paymentDetailsAreComplete(method, validated.value)) {
+    return { error: "Fill in every required payment detail before sending." };
+  }
+  return { fields: validated.value };
+}
+
 /** One deliberate host decision: accept, then either send reviewed private instructions,
  * keep a visible send-later task, or record that no instructions are needed. */
 export async function acceptBookingWithPaymentAction(input: unknown) {
@@ -186,17 +248,25 @@ export async function acceptBookingWithPaymentAction(input: unknown) {
     if (payment.status !== "PENDING") {
       return { error: "Only pending bookings can be accepted." } as const;
     }
+    // The guest's own choice always wins. A `method` on the wire is only consulted for
+    // a booking that never recorded one, and only against that booking's own list.
+    const method = resolveRequestMethod(payment, parsed.data.method);
     if (decision === "NO_INSTRUCTIONS" &&
-        !paymentMethodCanNeedNoInstructions(payment.selectedPaymentMethod)) {
+        !paymentMethodCanNeedNoInstructions(method)) {
       return {
         error: "Choose send now or send later for this payment method.",
       } as const;
     }
+    let structured: ResolvedStructuredDetails | null = null;
     if (decision === "SEND_NOW") {
-      if (!payment.selectedPaymentMethod) {
-        return { error: "The guest's payment method was not recorded." } as const;
+      if (!method) {
+        return { error: "Choose the payment method for this booking." } as const;
       }
-      if (!instructions) {
+      structured = resolveStructuredDetails(method, parsed.data.detailFields);
+      if (structured && "error" in structured) {
+        return { error: structured.error } as const;
+      }
+      if (!structured && !instructions) {
         return { error: "Add the payment details before accepting and sending." } as const;
       }
       if (!dueDate) {
@@ -208,7 +278,7 @@ export async function acceptBookingWithPaymentAction(input: unknown) {
           error: "Choose a payment deadline between today and check-in.",
         } as const;
       }
-      assertSafePaymentInstructions(instructions);
+      if (!structured) assertSafePaymentInstructions(instructions);
     }
 
     await confirmBooking(bookingId, session.user.id, {
@@ -218,22 +288,40 @@ export async function acceptBookingWithPaymentAction(input: unknown) {
 
     let instructionsSent = false;
     let warning: string | undefined;
-    if (decision === "SEND_NOW" && payment.selectedPaymentMethod && dueDate) {
+    if (decision === "SEND_NOW" && method && dueDate) {
       try {
         await ensureBookingConversation(bookingId);
+        const fields = structured && "fields" in structured ? structured.fields : null;
         const message = await shareBookingPaymentInstructions({
           bookingId,
           hostId: session.user.id,
-          body: buildBookingPaymentRequest({
-            reference: payment.reference,
-            method: payment.selectedPaymentMethod,
-            otherLabel: payment.otherLabel,
-            total: payment.total,
-            currency: payment.currency,
-            dueDate,
-            instructions,
-          }),
+          body: fields
+            ? buildStructuredBookingPaymentRequest({
+                reference: payment.reference,
+                method,
+                otherLabel: payment.otherLabel,
+                total: payment.total,
+                currency: payment.currency,
+                dueDate,
+                fields,
+              })
+            : buildBookingPaymentRequest({
+                reference: payment.reference,
+                method,
+                otherLabel: payment.otherLabel,
+                total: payment.total,
+                currency: payment.currency,
+                dueDate,
+                instructions,
+              }),
           dueAt: new Date(`${dueDate}T00:00:00.000Z`),
+          detailsSnapshot: fields
+            ? bookingPaymentDetailsSnapshot({
+                method,
+                otherLabel: payment.otherLabel,
+                fields,
+              })
+            : null,
         });
         instructionsSent = true;
         await createAuditLog({
@@ -241,15 +329,21 @@ export async function acceptBookingWithPaymentAction(input: unknown) {
           action: "booking.payment_instructions_shared",
           entityType: "Message",
           entityId: message.id,
-          metadata: { kind: "PAYMENT_INSTRUCTIONS", duringAcceptance: true },
+          // Metadata records that a send happened and in which format — never a field,
+          // a label, or a value from the instructions themselves.
+          metadata: {
+            kind: "PAYMENT_INSTRUCTIONS",
+            duringAcceptance: true,
+            format: fields ? "STRUCTURED" : "FREE_TEXT",
+          },
         });
         if (saveForFuture) {
           try {
             await saveBookingPaymentInstructionTemplate({
               bookingId,
               hostId: session.user.id,
-              method: payment.selectedPaymentMethod,
-              body: instructions,
+              method,
+              ...(fields ? { fields } : { body: instructions }),
             });
           } catch {
             warning =
@@ -296,9 +390,15 @@ export async function sendBookingPaymentRequestAction(input: unknown) {
       parsed.data.bookingId,
       session.user.id,
     );
-    if (payment.status !== "CONFIRMED" || !payment.selectedPaymentMethod) {
+    if (payment.status !== "CONFIRMED") {
       return {
-        error: "Payment instructions can only be sent for an accepted booking with a recorded payment method.",
+        error: "Payment instructions can only be sent for an accepted booking.",
+      } as const;
+    }
+    const method = resolveRequestMethod(payment, parsed.data.method);
+    if (!method) {
+      return {
+        error: "Choose the payment method for this booking.",
       } as const;
     }
     const today = new Date().toISOString().slice(0, 10);
@@ -307,21 +407,48 @@ export async function sendBookingPaymentRequestAction(input: unknown) {
         error: "Choose a payment deadline between today and check-in.",
       } as const;
     }
-    assertSafePaymentInstructions(parsed.data.instructions);
+    const structured = resolveStructuredDetails(method, parsed.data.detailFields);
+    if (structured && "error" in structured) {
+      return { error: structured.error } as const;
+    }
+    const instructions = parsed.data.instructions?.trim() ?? "";
+    if (!structured && !instructions) {
+      return { error: "Add the payment details before sending." } as const;
+    }
+    if (!structured) assertSafePaymentInstructions(instructions);
+
     await ensureBookingConversation(parsed.data.bookingId);
+    const fields = structured ? structured.fields : null;
     const message = await shareBookingPaymentInstructions({
       bookingId: parsed.data.bookingId,
       hostId: session.user.id,
-      body: buildBookingPaymentRequest({
-        reference: payment.reference,
-        method: payment.selectedPaymentMethod,
-        otherLabel: payment.otherLabel,
-        total: payment.total,
-        currency: payment.currency,
-        dueDate: parsed.data.dueDate,
-        instructions: parsed.data.instructions,
-      }),
+      body: fields
+        ? buildStructuredBookingPaymentRequest({
+            reference: payment.reference,
+            method,
+            otherLabel: payment.otherLabel,
+            total: payment.total,
+            currency: payment.currency,
+            dueDate: parsed.data.dueDate,
+            fields,
+          })
+        : buildBookingPaymentRequest({
+            reference: payment.reference,
+            method,
+            otherLabel: payment.otherLabel,
+            total: payment.total,
+            currency: payment.currency,
+            dueDate: parsed.data.dueDate,
+            instructions,
+          }),
       dueAt: new Date(`${parsed.data.dueDate}T00:00:00.000Z`),
+      detailsSnapshot: fields
+        ? bookingPaymentDetailsSnapshot({
+            method,
+            otherLabel: payment.otherLabel,
+            fields,
+          })
+        : null,
     });
     let warning: string | undefined;
     if (parsed.data.saveForFuture) {
@@ -329,8 +456,8 @@ export async function sendBookingPaymentRequestAction(input: unknown) {
         await saveBookingPaymentInstructionTemplate({
           bookingId: parsed.data.bookingId,
           hostId: session.user.id,
-          method: payment.selectedPaymentMethod,
-          body: parsed.data.instructions,
+          method,
+          ...(fields ? { fields } : { body: instructions }),
         });
       } catch {
         warning =
@@ -342,7 +469,11 @@ export async function sendBookingPaymentRequestAction(input: unknown) {
       action: "booking.payment_instructions_shared",
       entityType: "Message",
       entityId: message.id,
-      metadata: { kind: "PAYMENT_INSTRUCTIONS", fromReminder: true },
+      metadata: {
+        kind: "PAYMENT_INSTRUCTIONS",
+        fromReminder: true,
+        format: fields ? "STRUCTURED" : "FREE_TEXT",
+      },
     });
     revalidateAcceptedBooking(parsed.data.bookingId);
     revalidatePath("/messages");

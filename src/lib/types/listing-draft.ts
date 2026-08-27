@@ -42,6 +42,8 @@ export interface ListingDraftData {
   acceptedPaymentMethods?: PaymentMethodCode[];
   paymentMethodOther?: string | null;
   paymentInstructionTemplates?: PaymentInstructionTemplates;
+  /** Raw V2 field text per method, exactly as the wizard's inputs hold it. */
+  paymentDetails?: Partial<Record<PaymentMethodCode, Record<string, string>>>;
   checkInTime?: string;
   checkOutTime?: string;
   /**

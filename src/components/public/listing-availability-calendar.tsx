@@ -17,9 +17,14 @@ import {
   resolvePromotionLabel,
 } from "./promotion-label";
 import { Tag } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { LocalizedPrice } from "@/components/shared/localized-price";
 import { interpolate, useI18n } from "@/lib/i18n/client";
 import type { Resolved } from "@/lib/i18n/t";
-import { useListingStayRange } from "./listing-stay-context";
+import {
+  useListingBooking,
+  useListingStayRange,
+} from "./listing-stay-context";
 
 interface ListingAvailabilityCalendarProps {
   /** City the listing is in — the heading names it, the way a search result would. */
@@ -62,6 +67,11 @@ export function ListingAvailabilityCalendar({
     checkIn: "",
     checkOut: "",
   });
+  // The booking widget's own primary action, lent to this section. On desktop the
+  // widget is a sticky card in a column that has already ended by the time this
+  // calendar scrolls into view, so the dates picked here would otherwise have
+  // nothing to press.
+  const { booking, startBooking } = useListingBooking();
 
   const selected = React.useMemo<DateRange | undefined>(() => {
     if (!checkIn) return undefined;
@@ -153,6 +163,15 @@ export function ListingAvailabilityCalendar({
             "listing.calendar_select_checkin",
             "Select a check-in date",
           );
+
+  /** The same two strings the widget prints over its own total, from the same keys. */
+  const stayLabel = i18n.plural(
+    "booking.nights",
+    booking?.nights ?? 0,
+    "{n} night",
+    "{n} nights",
+  );
+  const totalLabel = i18n.resolve("booking.total", "Total");
 
   const subheading: Resolved =
     checkIn && checkOut
@@ -268,6 +287,46 @@ export function ListingAvailabilityCalendar({
           </ul>
         </div>
       )}
+
+      {/* Desktop only. Below `lg` the widget is a sticky bar already on screen, and
+          a second button saying the same thing would be the louder of two. */}
+      {booking && booking.nights > 0 ? (
+        <div className="mt-6 hidden flex-wrap items-center justify-between gap-4 rounded-xl border border-border/70 bg-muted/20 px-4 py-3 lg:flex">
+          <div className="min-w-0">
+            <p className="text-sm font-medium">
+              <span
+                className={stayLabel.translated ? "notranslate" : undefined}
+              >
+                {stayLabel.text}
+              </span>{" "}
+              <span
+                className={`text-muted-foreground ${
+                  totalLabel.translated ? "notranslate" : ""
+                }`}
+              >
+                {totalLabel.text}
+              </span>
+            </p>
+            <LocalizedPrice
+              exact
+              amount={booking.total}
+              currency={booking.currency}
+              locale={i18n.locale}
+              className="text-lg font-semibold"
+            />
+          </div>
+          <Button
+            onClick={startBooking}
+            disabled={booking.busy}
+            size="lg"
+            className={`rounded-lg font-semibold ${
+              booking.labelTranslated ? "notranslate" : ""
+            }`}
+          >
+            {booking.label}
+          </Button>
+        </div>
+      ) : null}
     </section>
   );
 }

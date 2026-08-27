@@ -15,6 +15,13 @@ describe("property details action", () => {
     await updateListingPropertyDetails("listing-1", input);
     expect(mocks.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { id: "listing-1", hostId: "host-1" } }));
   });
+  it("never writes the derived bedroom and bathroom counts", async () => {
+    await updateListingPropertyDetails("listing-1", input);
+    const [[call]] = mocks.listingUpdate.mock.calls;
+    expect(call.data).not.toHaveProperty("bedrooms");
+    expect(call.data).not.toHaveProperty("bathrooms");
+    expect(call.data).toMatchObject({ beds: 3 });
+  });
   it("rejects invalid input and unknown property types without writing", async () => {
     expect((await updateListingPropertyDetails("listing-1", { ...input, beds: 99 })).issues).toEqual({ beds: "OUT_OF_RANGE" });
     mocks.typeFind.mockResolvedValue(null);
@@ -25,7 +32,9 @@ describe("property details action", () => {
     mocks.findFirst.mockResolvedValue({ id: "listing-1", slug: "home", status: "APPROVED", propertyId: "property-1", spaceType: "PRIVATE_ROOM", bedrooms: 1, beds: 1, bathrooms: 1, property: { propertyType: "HOUSE" } });
     const result = await updateListingPropertyDetails("listing-1", input);
     expect(mocks.listingUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ needsReview: true }) }));
-    expect(result).toMatchObject({ stored: input, complete: true });
+    // Bedrooms and bathrooms come back from the listing row, not from the input: they
+    // are a copy of the room count now, and this save is not what moves them.
+    expect(result).toMatchObject({ stored: { ...input, bedrooms: 1, bathrooms: 1 }, complete: true });
     const paths = mocks.revalidatePath.mock.calls.map(([path]) => path);
     expect(paths).toEqual(expect.arrayContaining(["/host/listings/listing-1/rooms", "/host/listings/listing-1", "/host/listings", "/host/listings/listing-1/edit", "/properties/home"]));
     expect(mocks.publicCaches).toHaveBeenCalled();

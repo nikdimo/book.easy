@@ -400,6 +400,9 @@ export function ReservationPanel({
             paymentStatusEvents: reservation.paymentStatusEvents,
             savedPaymentInstructionTemplates:
               reservation.savedPaymentInstructionTemplates ?? [],
+            paymentRequestPrefill: reservation.paymentRequestPrefill,
+            sentPaymentDetails: reservation.sentPaymentDetails ?? null,
+            reference: reservation.reference,
           }}
         />
       ) : null}

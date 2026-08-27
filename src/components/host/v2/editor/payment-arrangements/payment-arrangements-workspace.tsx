@@ -11,9 +11,10 @@ import type { DepositPoliciesSnapshotV2 } from "@/lib/payments/deposit-policies"
 import {
   PaymentArrangementsEditor,
 } from "./payment-arrangements-editor";
-import type {
-  PaymentArrangementsDraft,
-  PaymentArrangementsValue,
+import {
+  draftDetailsToPayload,
+  type PaymentArrangementsDraft,
+  type PaymentArrangementsValue,
 } from "./payment-arrangements-model";
 import {
   DepositPoliciesEditor,
@@ -42,6 +43,7 @@ export function PaymentArrangementsWorkspace({
         methods: draft.methodCodes,
         otherLabel: draft.otherLabel,
         instructionTemplates: draft.instructionTemplates ?? {},
+        instructionDetails: draftDetailsToPayload(draft),
       });
       if ("error" in result || "issues" in result) {
         throw new Error("Payment arrangements were rejected.");

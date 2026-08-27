@@ -7,8 +7,8 @@ import {
   KeyboardSensor,
   MouseSensor,
   TouchSensor,
-  closestCenter,
   pointerWithin,
+  rectIntersection,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -704,10 +704,13 @@ export function PhotosWorkspace({
       id="listing-photos-dnd"
       sensors={sensors}
       collisionDetection={(args) => {
-        // In By room, the pointer is the unambiguous answer: using only the nearest
-        // centre can select a neighbouring empty section instead of the pane under it.
+        // The pointer is the unambiguous answer wherever something is under it. Where
+        // nothing is — the gap between tiles, the margin beside the pane — fall back to
+        // what the dragged photo actually overlaps. The nearest centre is the wrong
+        // question to ask here: with a rail of rooms and a pane of sections on screen it
+        // always has an answer, so a room nowhere near the cursor lights up.
         const underPointer = pointerWithin(args);
-        return underPointer.length > 0 ? underPointer : closestCenter(args);
+        return underPointer.length > 0 ? underPointer : rectIntersection(args);
       }}
       onDragStart={handleDragStart}
       onDragEnd={(event) => void handleDragEnd(event)}

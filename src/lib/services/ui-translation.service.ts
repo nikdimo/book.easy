@@ -27,18 +27,18 @@ interface TranslationBatchLimits {
   strings: number;
 }
 
-/** Claude keeps the long-proven conservative payload. Gemini 2.5 Flash supports a
- * 65,536-token response, so its fallback can pack enough work to fit the project's
- * 20-request free daily allowance. */
+/** Claude keeps the long-proven conservative payload. Keep Gemini requests smaller:
+ * responses covering many locales can time out well before the model's nominal
+ * token limit, and smaller batches let an interrupted sync resume granularly. */
 const ANTHROPIC_BATCH_LIMITS: TranslationBatchLimits = {
   translations: 300,
   sourceCharacters: 30_000,
   strings: 40,
 };
 const GEMINI_BATCH_LIMITS: TranslationBatchLimits = {
-  translations: 1_200,
+  translations: 300,
   sourceCharacters: 130_000,
-  strings: 200,
+  strings: 20,
 };
 const DEFAULT_SYNC_CONCURRENCY = 3;
 

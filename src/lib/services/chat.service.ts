@@ -14,6 +14,11 @@ import {
   containsUnsafePaymentCredentials,
   PAYMENT_INSTRUCTIONS_PREVIEW,
 } from "@/lib/services/payment-instructions";
+import {
+  isPaymentMethodCode,
+  parsePaymentMethodsSnapshot,
+} from "@/lib/payments/payment-methods";
+import type { BookingPaymentDetailsSnapshotV2 } from "@/lib/payments/booking-payment-request";
 
 const MESSAGE_MAX_LENGTH = 2000;
 const EMAIL_PATTERN = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i;
@@ -700,6 +705,12 @@ export async function shareBookingPaymentInstructions(input: {
   sourceLocale?: string | null;
   clientId?: string;
   dueAt?: Date | null;
+  /**
+   * The structured details this send is made of, frozen onto the booking so the guest's
+   * card renders exactly what was sent. Omitted for a free-text send, which leaves the
+   * booking's snapshot null and keeps the message as the whole record.
+   */
+  detailsSnapshot?: BookingPaymentDetailsSnapshotV2 | null;
 }) {
   const body = input.body.trim();
   if (!body) throw new Error("Payment instructions cannot be empty");
@@ -741,7 +752,11 @@ export async function shareBookingPaymentInstructions(input: {
           id: true,
           status: true,
           acceptedAt: true,
-          listing: { select: { hostId: true } },
+          selectedPaymentMethod: true,
+          paymentMethodsSnapshot: true,
+          listing: {
+            select: { hostId: true, acceptedPaymentMethods: true },
+          },
           conversation: { select: { id: true } },
         },
       });
@@ -754,6 +769,28 @@ export async function shareBookingPaymentInstructions(input: {
         );
       }
       if (!booking.conversation) throw new Error("Booking conversation not found");
+
+      // The method is re-checked here, inside the lock, against the booking as it
+      // stands right now. A host tab opened before the guest's choice was recorded —
+      // or before the listing dropped a method — cannot send against a method this
+      // booking is no longer entitled to use.
+      if (input.detailsSnapshot) {
+        const method = input.detailsSnapshot.method;
+        if (booking.selectedPaymentMethod !== null) {
+          if (booking.selectedPaymentMethod !== method) {
+            throw new Error("The guest's payment method has changed. Reload and retry.");
+          }
+        } else {
+          const frozen = parsePaymentMethodsSnapshot(booking.paymentMethodsSnapshot);
+          const allowed =
+            frozen?.status === "REVIEWED" && frozen.methods.length > 0
+              ? frozen.methods
+              : booking.listing.acceptedPaymentMethods.filter(isPaymentMethodCode);
+          if (!allowed.includes(method)) {
+            throw new Error("That payment method is not valid for this booking.");
+          }
+        }
+      }
 
       const message = await createConversationMessageInTransaction(tx, {
         conversationId: booking.conversation.id,
@@ -769,6 +806,12 @@ export async function shareBookingPaymentInstructions(input: {
           paymentInstructionsStatus: "SENT",
           paymentInstructionsSentAt: new Date(),
           paymentInstructionsDueAt: input.dueAt ?? null,
+          // A resend replaces the frozen details with what was actually sent this time.
+          // A free-text send clears it, so the card never outlives the message it came
+          // from and the two can never describe different destinations.
+          paymentInstructionsSnapshot:
+            (input.detailsSnapshot as unknown as Prisma.InputJsonObject) ??
+            Prisma.DbNull,
         },
       });
       return message;

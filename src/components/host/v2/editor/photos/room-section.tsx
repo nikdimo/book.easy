@@ -16,7 +16,7 @@ import type { EditorPhoto } from "@/lib/services/listing-editor.service";
 import type { CatalogRoomType, ListingRoomSummary } from "@/lib/types/room-catalog";
 import { Tx, useI18n } from "@/lib/i18n/client";
 import { PhotoTile } from "./photo-tile";
-import { roomDropId, UNASSIGNED_DROP_ID } from "./rooms-panel";
+import { roomSectionDropId, UNASSIGNED_SECTION_DROP_ID } from "./rooms-panel";
 
 /**
  * One room in the By room view.
@@ -64,7 +64,7 @@ export function RoomSection({
   const { resolve } = i18n;
   const [collapsed, setCollapsed] = useState(false);
   const { setNodeRef, isOver } = useDroppable({
-    id: room ? roomDropId(room.id) : UNASSIGNED_DROP_ID,
+    id: room ? roomSectionDropId(room.id) : UNASSIGNED_SECTION_DROP_ID,
     data: { type: "room", roomId: room?.id ?? null },
   });
 

@@ -5,6 +5,7 @@ import { EyeOff, LayoutGrid, Search, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { amenityIcon } from "@/lib/amenities/icon-registry";
+import { useTypeToSearch } from "@/lib/hooks/use-type-to-search";
 import { amenityDisplayLabel } from "@/lib/amenities/presentation";
 import {
   groupAmenitiesByCategory,
@@ -65,6 +66,8 @@ export function AmenitiesWorkspace({
 
   const [selected, setSelected] = useState<Set<string>>(() => new Set(selectedIds));
   const [query, setQuery] = useState("");
+  const searchRef = useRef<HTMLInputElement>(null);
+  useTypeToSearch(searchRef);
   const [filter, setFilter] = useState<AmenityFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   /** The last selection the server confirmed — what an unsuccessful save reverts to. */
@@ -236,6 +239,7 @@ export function AmenitiesWorkspace({
               aria-hidden
             />
             <input
+              ref={searchRef}
               type="search"
               value={query}
               onChange={(event) => setQuery(event.target.value)}

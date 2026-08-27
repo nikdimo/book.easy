@@ -543,4 +543,7 @@ export const CURATED_TRANSLATION_OVERRIDES: Record<string, Record<string, string
   "host.v2.reservations.booked_on": {
     bg: "Заявена",
   },
+  "host.editor.payment_details.wise_identifier": {
+    sr: "Wise идентификатор или веза",
+  },
 };

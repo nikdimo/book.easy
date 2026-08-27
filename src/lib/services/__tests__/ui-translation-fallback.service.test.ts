@@ -95,13 +95,13 @@ describe("translation provider fallback integration", () => {
     expect(mocks.anthropic).toHaveBeenCalledTimes(1);
     expect(mocks.gemini).toHaveBeenCalledTimes(2);
     expect(Object.keys(mocks.gemini.mock.calls[0][0])).toHaveLength(40);
-    expect(Object.keys(mocks.gemini.mock.calls[1][0])).toHaveLength(200);
+    expect(Object.keys(mocks.gemini.mock.calls[1][0])).toHaveLength(20);
     expect(result).toMatchObject({
       locale: "mk",
       translated: 40,
       failed: 460,
     });
-    expect(result.errors).toHaveLength(3);
+    expect(result.errors).toHaveLength(23);
     expect(result.errors[1]).toContain("Skipped after provider configuration failure");
   });
 });

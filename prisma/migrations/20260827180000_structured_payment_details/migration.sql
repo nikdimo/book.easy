@@ -1,0 +1,25 @@
+-- Structured (V2) payment details.
+--
+-- Hosts used to save one free-text paragraph per payment method. This migration makes
+-- room for named, validated fields (IBAN, SWIFT/BIC, payment link, wallet address) and
+-- for a frozen record of what each guest was actually sent.
+--
+-- Strictly additive. Nothing is dropped, rewritten, or backfilled:
+--
+--   * `Listing.paymentInstructionTemplates` keeps its existing JSON. A V1 blob
+--     (`{ version: 1, templates: {...} }`) stays readable and usable exactly as it is;
+--     structured details are added beside it under a new `details` key when the blob is
+--     next written as V2. A host's legacy paragraph is only replaced for one method, and
+--     only after that host reviews and saves the conversion themselves.
+--
+--   * `Booking.paymentInstructionsSnapshot` is new and starts null everywhere. It holds
+--     the structured details a guest was actually sent, frozen at send time so that
+--     later edits to a reusable template cannot change what a guest was already told.
+--     Bookings that received free text keep it null and continue to render from the
+--     private conversation message, which is unchanged.
+--
+-- No index is added: the column is only ever read through a booking already located by
+-- its primary key, and it is never a filter, a join key, or a sort key.
+
+-- AlterTable
+ALTER TABLE "Booking" ADD COLUMN     "paymentInstructionsSnapshot" JSONB;

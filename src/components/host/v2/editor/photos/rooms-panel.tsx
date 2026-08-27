@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useDroppable } from "@dnd-kit/core";
+import { useEffect, useState } from "react";
+import { useDndContext, useDroppable } from "@dnd-kit/core";
 import { ChevronDown, Ellipsis, Plus } from "lucide-react";
 import {
   DropdownMenu,
@@ -18,6 +18,16 @@ import { Tx, useI18n } from "@/lib/i18n/client";
 export const UNASSIGNED_DROP_ID = "room-drop:unassigned";
 export const roomDropId = (roomId: string) => `room-drop:${roomId}`;
 export const roomTypeDropId = (roomTypeId: string) => `roomtype-drop:${roomTypeId}`;
+
+/**
+ * By room draws a second drop target for the same room — the section in the photo pane —
+ * and it needs its own id. dnd-kit keys its droppable registry by id alone, so a second
+ * target registered under an id already in use replaces the first: one of the two is left
+ * with no rect to hit, and because `isOver` is decided by id, both light up whenever
+ * either is hovered. That is why a drop that behaves in All photos misbehaves By room.
+ */
+export const UNASSIGNED_SECTION_DROP_ID = "room-section-drop:unassigned";
+export const roomSectionDropId = (roomId: string) => `room-section-drop:${roomId}`;
 
 /**
  * The right rail: compact rows that are also the drop targets.
@@ -54,6 +64,11 @@ export function RoomsPanel({
 }) {
   const { resolve } = useI18n();
   const [showMore, setShowMore] = useState(false);
+  useStickyRailRects([
+    UNASSIGNED_DROP_ID,
+    ...rooms.map((room) => roomDropId(room.id)),
+    ...suggestions.map((roomType) => roomTypeDropId(roomType.id)),
+  ]);
   const standardSuggestions = suggestions.filter((roomType) => roomType.isStandard);
   const moreSuggestions = suggestions.filter((roomType) => !roomType.isStandard);
   const addRoom = (
@@ -131,6 +146,37 @@ export function RoomsPanel({
           )}
     </EditorSideRail>
   );
+}
+
+/**
+ * Keeps the rail's drop rects honest while the page scrolls under a drag.
+ *
+ * dnd-kit measures every drop target once when the drag starts, then compensates the
+ * stored rect by how far that target's scroll ancestors have moved since. The rail is
+ * `position: sticky`, so it stays pinned while the window scrolls — the compensation is
+ * applied anyway, and the rows drift by exactly the distance scrolled since the drag
+ * began. The pointer then lands on a room a row or two away from the one it is over.
+ *
+ * Re-measuring the rail's own targets on each scroll resets that baseline, and costs a
+ * handful of rects rather than every photo in the pane.
+ */
+function useStickyRailRects(ids: string[]) {
+  const { active, measureDroppableContainers } = useDndContext();
+  // Joined, so the effect re-subscribes when the rail gains or loses a row rather than
+  // on every render of a list that is rebuilt each time.
+  const key = ids.join("|");
+
+  useEffect(() => {
+    if (!active) return;
+
+    const targets = key.split("|");
+    const remeasure = () => measureDroppableContainers(targets);
+    remeasure();
+    // Capture, so the rail's own overflow and any scroller between here and the window
+    // are covered by the one listener.
+    window.addEventListener("scroll", remeasure, { capture: true, passive: true });
+    return () => window.removeEventListener("scroll", remeasure, { capture: true });
+  }, [active, key, measureDroppableContainers]);
 }
 
 /** The drag-over look, shared by every drop target so a photo in the air always means the

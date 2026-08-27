@@ -2,6 +2,10 @@ import type { CalendarFormats } from "@/lib/host/v2/calendar-format";
 import type { DepositPoliciesSnapshotV2 } from "@/lib/payments/deposit-policies";
 import type { SavedPaymentInstructionTemplate } from "@/lib/payments/payment-instruction-templates";
 import type { PaymentMethodCode } from "@/lib/payments/payment-methods";
+import type {
+  BookingPaymentDetailsSnapshotV2,
+  BookingPaymentRequestPrefill,
+} from "@/lib/payments/booking-payment-request";
 
 /**
  * The reservations panel's payload, as plain JSON.
@@ -77,6 +81,13 @@ export interface HostReservation {
   checkOutTime: string | null;
   /** Owner-only saved copy used to prefill, never sent until the host submits it. */
   savedPaymentInstructionTemplates?: SavedPaymentInstructionTemplate[];
+  /**
+   * Owner-only prefill for the payment request, for the one method this booking uses.
+   * Carries no other method's details and is never part of a guest-facing payload.
+   */
+  paymentRequestPrefill?: BookingPaymentRequestPrefill;
+  /** The structured details already sent to this guest, if any. Both participants. */
+  sentPaymentDetails?: BookingPaymentDetailsSnapshotV2 | null;
 }
 
 export interface HostReservationsData {

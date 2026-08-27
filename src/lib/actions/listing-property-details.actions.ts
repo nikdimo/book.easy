@@ -27,14 +27,19 @@ export async function updateListingPropertyDetails(listingId: string, input: Lis
   const propertyType = input.propertyType.trim();
   const typeExists = await db.propertyType.findUnique({ where: { value: propertyType }, select: { value: true } });
   if (!typeExists) return { issues: { propertyType: "INVALID" } };
-  const changed = propertyType !== listing.property.propertyType || input.spaceType !== listing.spaceType || input.bedrooms !== listing.bedrooms || input.beds !== listing.beds || input.bathrooms !== listing.bathrooms;
+  // Bedrooms and bathrooms are not written here. They are a copy of how many rooms of
+  // each type the listing has, rewritten by `syncListingCountsFromRooms` whenever a room
+  // is added or removed. Letting this debounced save persist them too would mean a host
+  // who adds a bedroom and then changes the property type has the stale number from
+  // before the add put back on top of the fresh one.
+  const changed = propertyType !== listing.property.propertyType || input.spaceType !== listing.spaceType || input.beds !== listing.beds;
   if (changed) {
     await db.$transaction([
       db.property.update({ where: { id: listing.propertyId }, data: { propertyType } }),
-      db.listing.update({ where: { id: listing.id }, data: { spaceType: input.spaceType, bedrooms: input.bedrooms, beds: input.beds, bathrooms: input.bathrooms, ...(listing.status === "APPROVED" ? { needsReview: true } : {}) } }),
+      db.listing.update({ where: { id: listing.id }, data: { spaceType: input.spaceType, beds: input.beds, ...(listing.status === "APPROVED" ? { needsReview: true } : {}) } }),
     ]);
     refresh(listing.id, listing.slug, listing.status);
   }
-  const stored = { ...input, propertyType };
+  const stored = { ...input, propertyType, bedrooms: listing.bedrooms, bathrooms: listing.bathrooms };
   return { stored, complete: listingPropertyDetailsComplete(stored) };
 }

@@ -1455,6 +1455,51 @@
     "filePath": "src/app/(account)/account/bookings/[id]/after-stay/page.tsx"
   },
   {
+    "key": "booking.guest_payment_card.amount",
+    "sourceText": "Amount",
+    "filePath": "src/components/booking/guest-payment-card.tsx"
+  },
+  {
+    "key": "booking.guest_payment_card.copied",
+    "sourceText": "Copied",
+    "filePath": "src/components/booking/guest-payment-card.tsx"
+  },
+  {
+    "key": "booking.guest_payment_card.copied_announcement",
+    "sourceText": "Copied to clipboard",
+    "filePath": "src/components/booking/guest-payment-card.tsx"
+  },
+  {
+    "key": "booking.guest_payment_card.copy",
+    "sourceText": "Copy",
+    "filePath": "src/components/booking/guest-payment-card.tsx"
+  },
+  {
+    "key": "booking.guest_payment_card.direct_notice",
+    "sourceText": "You pay the host directly. Linger Homes does not collect, hold, verify, protect, or refund this payment.",
+    "filePath": "src/components/booking/guest-payment-card.tsx"
+  },
+  {
+    "key": "booking.guest_payment_card.due",
+    "sourceText": "Payment due",
+    "filePath": "src/components/booking/guest-payment-card.tsx"
+  },
+  {
+    "key": "booking.guest_payment_card.heading",
+    "sourceText": "How to pay the host",
+    "filePath": "src/components/booking/guest-payment-card.tsx"
+  },
+  {
+    "key": "booking.guest_payment_card.method",
+    "sourceText": "Payment method",
+    "filePath": "src/components/booking/guest-payment-card.tsx"
+  },
+  {
+    "key": "booking.guest_payment_card.reference",
+    "sourceText": "Booking reference",
+    "filePath": "src/components/booking/guest-payment-card.tsx"
+  },
+  {
     "key": "booking.guests_label",
     "sourceText": "Guests",
     "filePath": "src/app/(public)/bookings/confirm/page.tsx"
@@ -1910,11 +1955,6 @@
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
-    "key": "booking.payment_progress.instructions_label",
-    "sourceText": "Secure payment instructions",
-    "filePath": "src/components/booking/booking-payment-progress.tsx"
-  },
-  {
     "key": "booking.payment_progress.instructions_pending_guest",
     "sourceText": "The host has accepted your booking and will send payment instructions privately.",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
@@ -1925,19 +1965,14 @@
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
-    "key": "booking.payment_progress.instructions_placeholder",
-    "sourceText": "Add the private account, payment link, handle, wallet address, or other details the guest needs.",
-    "filePath": "src/components/booking/booking-payment-progress.tsx"
-  },
-  {
     "key": "booking.payment_progress.instructions_private",
     "sourceText": "This is sent only inside the Linger Homes conversation.",
-    "filePath": "src/components/booking/booking-payment-progress.tsx"
+    "filePath": "src/components/booking/payment-request-composer.tsx"
   },
   {
     "key": "booking.payment_progress.instructions_security",
     "sourceText": "Never ask for or send a card number, CVV, PIN, password, seed phrase, or private key.",
-    "filePath": "src/components/booking/booking-payment-progress.tsx"
+    "filePath": "src/components/booking/payment-request-composer.tsx"
   },
   {
     "key": "booking.payment_progress.instructions_send",
@@ -2060,11 +2095,6 @@
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
-    "key": "booking.payment_progress.save_for_future",
-    "sourceText": "Save these private details for future bookings using this method",
-    "filePath": "src/components/booking/booking-payment-progress.tsx"
-  },
-  {
     "key": "booking.payment_progress.title",
     "sourceText": "Payment progress",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
@@ -2088,6 +2118,61 @@
     "key": "booking.payment_progress.updated",
     "sourceText": "Payment status updated",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_request.choose_method",
+    "sourceText": "Payment method for this booking",
+    "filePath": "src/components/booking/payment-request-composer.tsx"
+  },
+  {
+    "key": "booking.payment_request.choose_method_placeholder",
+    "sourceText": "Choose a method",
+    "filePath": "src/components/booking/payment-request-composer.tsx"
+  },
+  {
+    "key": "booking.payment_request.edit_for_booking",
+    "sourceText": "Edit for this booking",
+    "filePath": "src/components/booking/payment-request-composer.tsx"
+  },
+  {
+    "key": "booking.payment_request.edit_note",
+    "sourceText": "Editing here changes this booking's message only. Your saved details stay as they are unless you tick the box below.",
+    "filePath": "src/components/booking/payment-request-composer.tsx"
+  },
+  {
+    "key": "booking.payment_request.guest_chose",
+    "sourceText": "The guest chose",
+    "filePath": "src/components/booking/payment-request-composer.tsx"
+  },
+  {
+    "key": "booking.payment_request.instructions_label",
+    "sourceText": "Payment details to send",
+    "filePath": "src/components/booking/payment-request-composer.tsx"
+  },
+  {
+    "key": "booking.payment_request.instructions_placeholder",
+    "sourceText": "The account, link, handle, or other details the guest needs.",
+    "filePath": "src/components/booking/payment-request-composer.tsx"
+  },
+  {
+    "key": "booking.payment_request.legacy_prefill",
+    "sourceText": "Prefilled from your saved instructions for this method.",
+    "filePath": "src/components/booking/payment-request-composer.tsx"
+  },
+  {
+    "key": "booking.payment_request.no_guest_choice",
+    "sourceText": "This booking was made before guests chose a method, so pick the one you agreed on.",
+    "filePath": "src/components/booking/payment-request-composer.tsx"
+  },
+  {
+    "key": "booking.payment_request.preview_heading",
+    "sourceText": "What the guest will receive",
+    "filePath": "src/components/booking/payment-request-composer.tsx"
+  },
+  {
+    "key": "booking.payment_request.save_for_future",
+    "sourceText": "Save these details for future bookings using this method",
+    "filePath": "src/components/booking/payment-request-composer.tsx"
   },
   {
     "key": "booking.pending",
@@ -4435,28 +4520,8 @@
     "filePath": "src/components/host/host-booking-actions.tsx"
   },
   {
-    "key": "host.booking.payment_private_details",
-    "sourceText": "Private payment details",
-    "filePath": "src/components/host/host-booking-actions.tsx"
-  },
-  {
-    "key": "host.booking.payment_private_details_placeholder",
-    "sourceText": "Add the account, payment link, handle, wallet address, or other instructions the guest needs.",
-    "filePath": "src/components/host/host-booking-actions.tsx"
-  },
-  {
     "key": "host.booking.payment_request_prepared",
-    "sourceText": "The booking reference, selected method, total, currency, and deadline are added automatically. Only the private details above can be saved for future bookings.",
-    "filePath": "src/components/host/host-booking-actions.tsx"
-  },
-  {
-    "key": "host.booking.payment_save_future",
-    "sourceText": "Save these private details for future bookings using this method",
-    "filePath": "src/components/host/host-booking-actions.tsx"
-  },
-  {
-    "key": "host.booking.payment_security",
-    "sourceText": "Never send card numbers, CVV, PINs, passwords, seed phrases, private keys, or recovery information.",
+    "sourceText": "The booking reference, selected method, total, currency, and deadline are added automatically.",
     "filePath": "src/components/host/host-booking-actions.tsx"
   },
   {
@@ -6300,6 +6365,11 @@
     "filePath": "src/components/host/v2/editor/overview/editor-overview.tsx"
   },
   {
+    "key": "host.editor.payment_arrangements.add_details",
+    "sourceText": "Add details",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
     "key": "host.editor.payment_arrangements.arrange_directly",
     "sourceText": "Arrange directly after the booking request",
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
@@ -6320,11 +6390,6 @@
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
   },
   {
-    "key": "host.editor.payment_arrangements.bank_international_placeholder",
-    "sourceText": "Account holder, bank name and address, IBAN/account number, SWIFT/BIC, and payment reference",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
-  },
-  {
     "key": "host.editor.payment_arrangements.bank_local",
     "sourceText": "Local or SEPA bank transfer",
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
@@ -6332,11 +6397,6 @@
   {
     "key": "host.editor.payment_arrangements.bank_local_description",
     "sourceText": "For domestic or SEPA transfers.",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
-  },
-  {
-    "key": "host.editor.payment_arrangements.bank_local_placeholder",
-    "sourceText": "Account holder, bank name, IBAN or local account number, and payment reference",
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
   },
   {
@@ -6350,16 +6410,6 @@
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
   },
   {
-    "key": "host.editor.payment_arrangements.bitcoin_placeholder",
-    "sourceText": "Bitcoin network, public wallet address, amount instructions, and payment reference",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
-  },
-  {
-    "key": "host.editor.payment_arrangements.bitcoin_security_hint",
-    "sourceText": "Enter only a public Bitcoin address. Never enter a seed phrase or private key.",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
-  },
-  {
     "key": "host.editor.payment_arrangements.cash",
     "sourceText": "Cash at the property",
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
@@ -6370,13 +6420,43 @@
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
   },
   {
+    "key": "host.editor.payment_arrangements.convert_pending",
+    "sourceText": "Your previous saved text is still in place. It is replaced only when you save these fields.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.details_optional_now",
+    "sourceText": "You can leave these blank and share the details when you accept a booking.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.edit_details",
+    "sourceText": "Edit details",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
     "key": "host.editor.payment_arrangements.heading",
     "sourceText": "Payment arrangements",
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
   },
   {
     "key": "host.editor.payment_arrangements.intro",
-    "sourceText": "Choose every payment method you accept. You can also save private instructions to reuse after accepting a booking.",
+    "sourceText": "Choose every payment method you accept. You can also save private details to reuse after accepting a booking.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.legacy_convert",
+    "sourceText": "Convert to structured fields",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.legacy_description",
+    "sourceText": "These still work and will prefill your message when you accept a booking. Convert them to fields to get checks on the IBAN and payment links.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.legacy_heading",
+    "sourceText": "Legacy saved instructions",
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
   },
   {
@@ -6460,43 +6540,8 @@
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
   },
   {
-    "key": "host.editor.payment_arrangements.private_details_description",
-    "sourceText": "Optional. Save the information you normally send for each method. It will prefill your private message after you accept a booking, and you can review or edit it before sending.",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
-  },
-  {
-    "key": "host.editor.payment_arrangements.private_details_heading",
-    "sourceText": "Saved private payment instructions",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
-  },
-  {
-    "key": "host.editor.payment_arrangements.private_details_hint",
-    "sourceText": "Guests cannot see this while browsing or while the request is pending.",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
-  },
-  {
-    "key": "host.editor.payment_arrangements.private_details_too_long",
-    "sourceText": "Shorten the saved instructions before continuing.",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
-  },
-  {
-    "key": "host.editor.payment_arrangements.private_details_unsafe",
-    "sourceText": "Remove card details, passwords, PINs, seed phrases, private keys, or recovery information.",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
-  },
-  {
-    "key": "host.editor.payment_arrangements.provider_placeholder",
-    "sourceText": "Payment handle or secure payment link, plus any reference the guest should use",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
-  },
-  {
-    "key": "host.editor.payment_arrangements.public_names_body",
-    "sourceText": "Only selected method names appear publicly. Saved account or wallet details stay private until you choose to send them after accepting a request.",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
-  },
-  {
-    "key": "host.editor.payment_arrangements.public_names_title",
-    "sourceText": "Guests see names, not details",
+    "key": "host.editor.payment_arrangements.privacy_notice",
+    "sourceText": "Guests see only the payment method names while browsing. Private details are shared only after you accept a booking.",
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
   },
   {
@@ -6512,16 +6557,6 @@
   {
     "key": "host.editor.payment_arrangements.revolut_description",
     "sourceText": "Revolut is available for this listing.",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
-  },
-  {
-    "key": "host.editor.payment_arrangements.safety_body",
-    "sourceText": "Never enter card numbers, CVV, PIN, passwords, seed phrases, private keys, or recovery information.",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
-  },
-  {
-    "key": "host.editor.payment_arrangements.safety_title",
-    "sourceText": "Keep sensitive details out",
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
   },
   {
@@ -6550,8 +6585,18 @@
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
   },
   {
+    "key": "host.editor.payment_arrangements.status_missing",
+    "sourceText": "Missing details",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
     "key": "host.editor.payment_arrangements.status_pending",
     "sourceText": "Changes ready to save",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.status_ready",
+    "sourceText": "Ready",
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
   },
   {
@@ -6583,6 +6628,256 @@
     "key": "host.editor.payment_arrangements.wise_description",
     "sourceText": "Wise is available for this listing.",
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.account_holder",
+    "sourceText": "Account holder",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.account_holder_placeholder",
+    "sourceText": "The name on the account",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.account_identifier",
+    "sourceText": "IBAN or account number",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.account_identifier_placeholder",
+    "sourceText": "MK07 2500 1200 0058 984",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.bank_address",
+    "sourceText": "Bank address",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.bank_address_placeholder",
+    "sourceText": "Branch address, if your bank asks for it",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.bank_name",
+    "sourceText": "Bank name",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.bank_name_placeholder",
+    "sourceText": "Your bank",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.https_only",
+    "sourceText": "Must be an HTTPS link.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.iban_country",
+    "sourceText": "IBAN format checks out for {country}.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.iban_not_verified",
+    "sourceText": "This checks the format only. It does not confirm the account or who owns it.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.issue_account",
+    "sourceText": "Enter an IBAN or a domestic account number, without extra words.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.issue_address",
+    "sourceText": "That is not a valid address for the network you chose.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.issue_bic",
+    "sourceText": "A SWIFT/BIC is 8 or 11 characters, like KOBSMK2X.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.issue_card",
+    "sourceText": "That looks like a payment card number. Card numbers cannot be shared here.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.issue_credentials",
+    "sourceText": "Remove card details, passwords, PINs, seed phrases, private keys, or recovery information.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.issue_generic",
+    "sourceText": "Check this value and try again.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.issue_https",
+    "sourceText": "Payment links must start with https:// so the page cannot be tampered with.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.issue_iban_checksum",
+    "sourceText": "This IBAN fails its check digits, so at least one character is wrong.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.issue_iban_format",
+    "sourceText": "That is not a valid IBAN for its country. Check the length and the country code.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.issue_option",
+    "sourceText": "Choose a network first.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.issue_required",
+    "sourceText": "Fill this in, or clear the rest of this method to finish it later.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.issue_secret",
+    "sourceText": "That looks like a seed phrase or private key. Enter only your public receiving address.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.issue_text",
+    "sourceText": "Remove line breaks and unusual characters.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.issue_too_long",
+    "sourceText": "This is too long.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.issue_url",
+    "sourceText": "Enter a complete link, including the address of the site.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.network",
+    "sourceText": "Network",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.network_bitcoin",
+    "sourceText": "Bitcoin (on-chain)",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.network_lightning",
+    "sourceText": "Lightning",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.network_placeholder",
+    "sourceText": "Choose a network",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.note",
+    "sourceText": "Note for the guest",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.note_placeholder",
+    "sourceText": "Anything else the guest should know",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.optional",
+    "sourceText": "optional",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.other_value",
+    "sourceText": "Payment details",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.other_value_placeholder",
+    "sourceText": "The handle, number, or link the guest needs",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.payment_url",
+    "sourceText": "Payment link",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.payment_url_placeholder",
+    "sourceText": "https://",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.paypal_identifier",
+    "sourceText": "PayPal email, handle, or link",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.paypal_placeholder",
+    "sourceText": "name@example.com",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.reference",
+    "sourceText": "Payment reference",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.reference_placeholder",
+    "sourceText": "What the guest should write on the transfer",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.revolut_identifier",
+    "sourceText": "Revtag, phone, email, or link",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.revolut_placeholder",
+    "sourceText": "@revtag",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.swift_bic",
+    "sourceText": "SWIFT/BIC",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.swift_placeholder",
+    "sourceText": "KOBSMK2X",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.wallet_address",
+    "sourceText": "Public wallet address",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.wallet_placeholder",
+    "sourceText": "bc1…",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.wallet_public_only",
+    "sourceText": "Enter a public receiving address only. Never a seed phrase or private key.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.wise_identifier",
+    "sourceText": "Wise identifier or link",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
+  },
+  {
+    "key": "host.editor.payment_details.wise_placeholder",
+    "sourceText": "name@example.com",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-detail-fields.tsx"
   },
   {
     "key": "host.editor.photos.add_photo",
@@ -7136,27 +7431,92 @@
   },
   {
     "key": "host.editor.rooms.add",
-    "sourceText": "Add room or space",
+    "sourceText": "Add space",
     "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
   },
   {
-    "key": "host.editor.rooms.configuration",
-    "sourceText": "Room configuration",
+    "key": "host.editor.rooms.adding",
+    "sourceText": "Adding…",
     "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
   },
   {
-    "key": "host.editor.rooms.counts",
-    "sourceText": "Rooms and beds",
+    "key": "host.editor.rooms.bathrooms",
+    "sourceText": "Bathrooms",
     "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
   },
   {
-    "key": "host.editor.rooms.empty",
-    "sourceText": "No rooms configured yet.",
+    "key": "host.editor.rooms.bedrooms",
+    "sourceText": "Bedrooms",
+    "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
+  },
+  {
+    "key": "host.editor.rooms.beds",
+    "sourceText": "Beds",
+    "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
+  },
+  {
+    "key": "host.editor.rooms.beds_hint",
+    "sourceText": "across every room",
+    "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
+  },
+  {
+    "key": "host.editor.rooms.delete_body",
+    "sourceText": "Its {count} photos stay in Photos as unassigned, so nothing is lost — you can sort them into another room.",
+    "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
+  },
+  {
+    "key": "host.editor.rooms.delete_cancel",
+    "sourceText": "Keep it",
+    "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
+  },
+  {
+    "key": "host.editor.rooms.delete_confirm",
+    "sourceText": "Remove room",
+    "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
+  },
+  {
+    "key": "host.editor.rooms.delete_room",
+    "sourceText": "Remove {room}",
+    "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
+  },
+  {
+    "key": "host.editor.rooms.delete_title",
+    "sourceText": "Remove {room}?",
+    "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
+  },
+  {
+    "key": "host.editor.rooms.empty_spaces",
+    "sourceText": "A kitchen, a balcony, a terrace — add the spaces you have photos of.",
     "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
   },
   {
     "key": "host.editor.rooms.heading",
     "sourceText": "Property details",
+    "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
+  },
+  {
+    "key": "host.editor.rooms.no_photos",
+    "sourceText": "No photos yet",
+    "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
+  },
+  {
+    "key": "host.editor.rooms.one_fewer",
+    "sourceText": "One {thing} fewer",
+    "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
+  },
+  {
+    "key": "host.editor.rooms.one_more",
+    "sourceText": "One {thing} more",
+    "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
+  },
+  {
+    "key": "host.editor.rooms.other_spaces",
+    "sourceText": "Other spaces",
+    "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
+  },
+  {
+    "key": "host.editor.rooms.photo_count",
+    "sourceText": "{count} photos",
     "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
   },
   {
@@ -7170,8 +7530,38 @@
     "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
   },
   {
+    "key": "host.editor.rooms.removed_with_photos",
+    "sourceText": "{room} removed. {count} photos are now unassigned in Photos.",
+    "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
+  },
+  {
+    "key": "host.editor.rooms.rename_cancel",
+    "sourceText": "Cancel",
+    "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
+  },
+  {
+    "key": "host.editor.rooms.rename_label",
+    "sourceText": "Room name",
+    "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
+  },
+  {
+    "key": "host.editor.rooms.rename_save",
+    "sourceText": "Save name",
+    "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
+  },
+  {
     "key": "host.editor.rooms.space_type",
     "sourceText": "What guests book",
+    "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
+  },
+  {
+    "key": "host.editor.rooms.spaces",
+    "sourceText": "Rooms and spaces",
+    "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
+  },
+  {
+    "key": "host.editor.rooms.spaces_help",
+    "sourceText": "These are the rooms you sort photos into. Adding one here adds it in Photos too.",
     "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
   },
   {
