@@ -22,6 +22,7 @@ import type { CatalogAmenity } from "@/lib/types/amenity-catalog";
 import type { ListingSpaceTypeValue } from "@/lib/types/listing-space-type";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 import { cn } from "@/lib/utils";
+import { reviewHref, stepNextTarget } from "@/lib/host/v2/listing-flow-return";
 import { ListingFlowFooter } from "./listing-flow-footer";
 import { useHostStartDraft } from "./host-start-draft-provider";
 
@@ -42,6 +43,7 @@ const CATALOG_PANEL_ID = "amenity-catalog-panel";
 export function AmenitiesStep({
   propertyType,
   spaceType,
+  returnToReview = false,
   catalog,
   initialSelectedIds = [],
   initialExpanded = false,
@@ -50,6 +52,8 @@ export function AmenitiesStep({
 }: {
   propertyType: PropertyTypeOption;
   spaceType: ListingSpaceTypeValue;
+  /** Reached from the Review screen's "Edit". */
+  returnToReview?: boolean;
   catalog: CatalogAmenity[];
   /** Test seam: the flow never arrives here with a selection. */
   initialSelectedIds?: string[];
@@ -72,6 +76,13 @@ export function AmenitiesStep({
   useTypeToSearch(searchRef);
   const [chip, setChip] = useState<AmenityChipFilter>(initialChip);
   const query = `propertyType=${encodeURIComponent(propertyType.value)}&spaceType=${encodeURIComponent(spaceType)}`;
+  /** Where the CTA goes, and what it says: on to the next question, or back to the
+   *  summary the host came from. */
+  const { href: nextHref, label: nextLabel } = stepNextTarget(
+    returnToReview,
+    query,
+    `/host/start/photos?${query}`,
+  );
 
   const displayCatalog = useMemo(
     () => displayableAmenities(catalog, selected),
@@ -298,16 +309,16 @@ export function AmenitiesStep({
         </div>
       </main>
       <ListingFlowFooter
-        nextHref={`/host/start/photos?${query}`}
-        backHref={`/host/start/phase-one-complete?${query}`}
+        nextHref={nextHref}
+        backHref={returnToReview ? reviewHref(query) : `/host/start/phase-one-complete?${query}`}
         onNext={async () => {
           if (await save({ amenityIds: [...selected], currentStepId: "photos" })) {
-            window.location.assign(`/host/start/photos?${query}`);
+            window.location.assign(nextHref);
           }
         }}
         phaseOneProgress={100}
         phaseTwoProgress={20}
-        nextLabel="Next"
+        nextLabel={nextLabel}
       />
     </>
   );

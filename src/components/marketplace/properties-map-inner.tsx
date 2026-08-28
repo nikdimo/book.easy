@@ -442,7 +442,14 @@ function ListingPreview({ pin }: { pin: MapPin }) {
             {pinLabel(pin)}
           </span>
         </div>
-        <p className="line-clamp-2 text-sm text-muted-foreground">{pin.title}</p>
+        <p
+          data-user-generated-content
+          data-translatable-user-content
+          translate="yes"
+          className="line-clamp-2 text-sm text-muted-foreground"
+        >
+          {pin.title}
+        </p>
       </div>
     </a>
   );
@@ -496,7 +503,14 @@ function GroupedListingPreview({ pins }: { pins: MapPin[] }) {
               ) : null}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="line-clamp-2 text-sm font-medium">{pin.title}</p>
+              <p
+                data-user-generated-content
+                data-translatable-user-content
+                translate="yes"
+                className="line-clamp-2 text-sm font-medium"
+              >
+                {pin.title}
+              </p>
               <p
                 className="notranslate mt-1 text-sm font-semibold"
                 translate="no"

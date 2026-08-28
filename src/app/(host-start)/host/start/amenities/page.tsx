@@ -3,6 +3,7 @@ import { NewListingHeader } from "@/components/host/v2/listings/new-listing-head
 import { requireHostPage } from "@/lib/auth-helpers";
 import { getT } from "@/lib/i18n/t";
 import { requireListingFlowContext, type ListingFlowSearchParams } from "@/lib/listing-flow-context";
+import { returnsToReview } from "@/lib/host/v2/listing-flow-return";
 import { getAmenityCatalog } from "@/lib/services/amenity.service";
 
 export const metadata = { title: "Amenities" };
@@ -20,7 +21,7 @@ export default async function AmenitiesPage({ searchParams }: { searchParams: Pr
   return (
     <div className="listing-flow flex min-h-dvh flex-col bg-white text-slate-950">
       <NewListingHeader t={t} exitHref="/host/listings" />
-      <AmenitiesStep propertyType={propertyType} spaceType={spaceType} catalog={catalog} />
+      <AmenitiesStep propertyType={propertyType} spaceType={spaceType} catalog={catalog} returnToReview={returnsToReview(params.returnTo)} />
     </div>
   );
 }

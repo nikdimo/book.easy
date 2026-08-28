@@ -3,6 +3,7 @@ import { NewListingHeader } from "@/components/host/v2/listings/new-listing-head
 import { requireHostPage } from "@/lib/auth-helpers";
 import { getT } from "@/lib/i18n/t";
 import { requireListingFlowContext, type ListingFlowSearchParams } from "@/lib/listing-flow-context";
+import { returnsToReview } from "@/lib/host/v2/listing-flow-return";
 
 export const metadata = { title: "House rules" };
 
@@ -19,7 +20,7 @@ export default async function HouseRulesPage({ searchParams }: { searchParams: P
   return (
     <div className="listing-flow flex min-h-dvh flex-col bg-white text-slate-950">
       <NewListingHeader t={t} exitHref="/host/listings" />
-      <HouseRulesStep propertyType={propertyType} spaceType={spaceType} />
+      <HouseRulesStep propertyType={propertyType} spaceType={spaceType} returnToReview={returnsToReview(params.returnTo)} />
     </div>
   );
 }

@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { formatMoney } from "@/lib/currency/convert";
 import { DEFAULT_CURRENCY } from "@/lib/constants";
 import { flowStepHref, publishBlockers } from "@/lib/host/v2/listing-publish-readiness";
+import { withReviewReturn } from "@/lib/host/v2/listing-flow-return";
 import { houseRulesFromDraft } from "@/lib/host/v2/listing-house-rules-draft";
 import {
   houseRulesRowData,
@@ -69,6 +70,11 @@ export function ReviewStep({
   const { locale, resolve } = i18n;
   const { data } = useHostStartDraft();
   const query = `propertyType=${encodeURIComponent(propertyType.value)}&spaceType=${encodeURIComponent(spaceType)}`;
+  /** Every link out of this screen, marked so the step it lands on brings the host
+   *  straight back here instead of restarting the walk from wherever they corrected
+   *  one answer. Only these links carry it: the flow's own query stays unmarked, so
+   *  the rows above still link to plain step addresses when a host walks the flow. */
+  const editQuery = withReviewReturn(query, true);
   const [published, setPublished] = useState(initialPublished);
   /** What the server refused, once it has. Kept apart from the blockers computed from
    *  the draft: it is the one message this screen could not have predicted — a currency
@@ -142,13 +148,13 @@ export function ReviewStep({
               icon={Home}
               label={resolve("host.v2.review.row_property", "Property and guest space").text}
               value={`${propertyType.label} · ${spaceTypeLabel}`}
-              editHref={`/host/start/property-type?${query}`}
+              editHref={`/host/start/property-type?${editQuery}`}
             />
             <ReviewRow
               icon={MapPin}
               label={resolve("host.v2.review.row_location", "Location").text}
               value={[data.address, data.city, data.country].filter(Boolean).join(", ") || unavailable}
-              editHref={`/host/start/location?${query}`}
+              editHref={`/host/start/location?${editQuery}`}
             />
             <ReviewRow
               icon={BedDouble}
@@ -166,7 +172,7 @@ export function ReviewStep({
                   },
                 ).text
               }
-              editHref={`/host/start/basics?${query}`}
+              editHref={`/host/start/basics?${editQuery}`}
             />
             <ReviewRow
               icon={Sparkles}
@@ -177,7 +183,7 @@ export function ReviewStep({
                   { count: data.amenityIds?.length ?? 0 },
                 ).text
               }
-              editHref={`/host/start/amenities?${query}`}
+              editHref={`/host/start/amenities?${editQuery}`}
             />
             <ReviewRow
               icon={Images}
@@ -192,13 +198,13 @@ export function ReviewStep({
                   },
                 ).text
               }
-              editHref={`/host/start/photos?${query}`}
+              editHref={`/host/start/photos?${editQuery}`}
             />
             <ReviewRow
               icon={PencilLine}
               label={resolve("host.v2.review.row_description", "Title and description").text}
               value={data.title || unavailable}
-              editHref={`/host/start/description?${query}`}
+              editHref={`/host/start/description?${editQuery}`}
             />
             <ReviewRow
               icon={Tag}
@@ -222,7 +228,7 @@ export function ReviewStep({
                     ).text
                   : unavailable
               }
-              editHref={`/host/start/price?${query}`}
+              editHref={`/host/start/price?${editQuery}`}
             />
             <ReviewRow
               icon={WalletCards}
@@ -240,13 +246,13 @@ export function ReviewStep({
                     ).text}`
                   : unavailable
               }
-              editHref={`/host/start/payment-arrangements?${query}`}
+              editHref={`/host/start/payment-arrangements?${editQuery}`}
             />
             <ReviewRow
               icon={CalendarRange}
               label={resolve("host.v2.review.row_availability", "Availability").text}
               value={availabilityLabel}
-              editHref={`/host/start/availability?${query}`}
+              editHref={`/host/start/availability?${editQuery}`}
             />
             <ReviewRow
               icon={Clock}
@@ -260,7 +266,7 @@ export function ReviewStep({
               value={houseRulesSummary
                 .map((line) => `${line.label}: ${line.value}`)
                 .join(" · ")}
-              editHref={`/host/start/house-rules?${query}`}
+              editHref={`/host/start/house-rules?${editQuery}`}
             />
           </dl>
 
@@ -287,7 +293,7 @@ export function ReviewStep({
                   >
                     <span className="min-w-0 flex-1">{blocker.message}</span>
                     <Link
-                      href={flowStepHref(blocker.step, query)}
+                      href={flowStepHref(blocker.step, editQuery)}
                       className="shrink-0 font-semibold underline underline-offset-4 hover:text-rose-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-400"
                     >
                       <Tx k="host.v2.review.blocker_fix" source="Fix this" />

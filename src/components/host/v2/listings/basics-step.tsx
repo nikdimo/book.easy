@@ -13,12 +13,22 @@ import { Tx } from "@/lib/i18n/client";
 import type { ListingSpaceTypeValue } from "@/lib/types/listing-space-type";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 import { StepperButton } from "@/components/host/v2/stepper-button";
+import { reviewHref, stepNextTarget } from "@/lib/host/v2/listing-flow-return";
 import { ListingFlowFooter } from "./listing-flow-footer";
 import { useHostStartDraft } from "./host-start-draft-provider";
 
 type Counts = Record<CapacityField, number>;
 
-export function BasicsStep({ propertyType, spaceType }: { propertyType: PropertyTypeOption; spaceType: ListingSpaceTypeValue }) {
+export function BasicsStep({
+  propertyType,
+  spaceType,
+  returnToReview = false,
+}: {
+  propertyType: PropertyTypeOption;
+  spaceType: ListingSpaceTypeValue;
+  /** Reached from the Review screen's "Edit". */
+  returnToReview?: boolean;
+}) {
   const { data, save } = useHostStartDraft();
   /** Read through the shared parser rather than a bare `Number()`: a draft written by
    *  the classic wizard carries "" for a count the host never reached, and `Number("")`
@@ -32,6 +42,13 @@ export function BasicsStep({ propertyType, spaceType }: { propertyType: Property
     bathrooms: capacityCountFromDraft(data.bathrooms, "bathrooms", 1),
   });
   const query = `propertyType=${encodeURIComponent(propertyType.value)}&spaceType=${encodeURIComponent(spaceType)}`;
+  /** Where the CTA goes, and what it says: on to the next question, or back to the
+   *  summary the host came from. */
+  const { href: nextHref, label: nextLabel } = stepNextTarget(
+    returnToReview,
+    query,
+    `/host/start/phase-one-complete?${query}`,
+  );
   const setCount = (key: CapacityField, next: number) =>
     setCounts((current) => ({ ...current, [key]: clampCapacity(next, key) }));
   /** Belt and braces: the steppers clamp, and so does the read above, so this should
@@ -59,8 +76,9 @@ export function BasicsStep({ propertyType, spaceType }: { propertyType: Property
         </div>
       </main>
       <ListingFlowFooter
-        {...(invalid ? {} : { nextHref: `/host/start/phase-one-complete?${query}` })}
-        backHref={`/host/start/address?${query}`}
+        {...(invalid ? {} : { nextHref })}
+        backHref={returnToReview ? reviewHref(query) : `/host/start/address?${query}`}
+        nextLabel={nextLabel}
         onNext={async () => {
           if (invalid) {
             // Out-of-range counts are pulled back into range rather than saved: the host
@@ -80,10 +98,9 @@ export function BasicsStep({ propertyType, spaceType }: { propertyType: Property
             bathrooms: String(counts.bathrooms),
             currentStepId: "amenities",
           });
-          if (saved) window.location.assign(`/host/start/phase-one-complete?${query}`);
+          if (saved) window.location.assign(nextHref);
         }}
         phaseOneProgress={92}
-        nextLabel="Next"
       />
     </>
   );

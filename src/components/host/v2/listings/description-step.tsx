@@ -13,6 +13,7 @@ import {
 } from "@/lib/host/v2/listing-basics";
 import type { ListingSpaceTypeValue } from "@/lib/types/listing-space-type";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
+import { reviewHref, stepNextTarget } from "@/lib/host/v2/listing-flow-return";
 import { ListingFlowFooter } from "./listing-flow-footer";
 import { useHostStartDraft } from "./host-start-draft-provider";
 
@@ -39,6 +40,7 @@ export function DescriptionStep({
   spaceType,
   initialView = "title",
   initialTitle = "",
+  returnToReview = false,
   initialDescription = "",
 }: {
   propertyType: PropertyTypeOption;
@@ -46,9 +48,18 @@ export function DescriptionStep({
   /** Test seam, and the reason the second half is reachable in a static render. */
   initialView?: DescriptionView;
   initialTitle?: string;
+  /** Reached from the Review screen's "Edit". */
+  returnToReview?: boolean;
   initialDescription?: string;
 }) {
   const query = `propertyType=${encodeURIComponent(propertyType.value)}&spaceType=${encodeURIComponent(spaceType)}`;
+  /** Where the CTA goes, and what it says: on to the next question, or back to the
+   *  summary the host came from. */
+  const { href: nextHref, label: nextLabel } = stepNextTarget(
+    returnToReview,
+    query,
+    `/host/start/phase-two-complete?${query}`,
+  );
   const { data, save } = useHostStartDraft();
   const [view, setView] = useState<DescriptionView>(initialView);
   const [title, setTitle] = useState(data.title ?? initialTitle);
@@ -65,6 +76,18 @@ export function DescriptionStep({
   const descriptionRef = useRef<HTMLTextAreaElement>(null);
 
   const issues = listingBasicsIssues({ title, description });
+
+  /** Shared by the footer's Next and by Enter in the title box: a single-line field the
+   *  host has just finished typing is one where Enter means "done", not "nothing". The
+   *  description half deliberately has no such handler — Enter there is a paragraph. */
+  const advanceFromTitle = () => {
+    setTitleTouched(true);
+    if (issues.title) {
+      titleRef.current?.focus();
+      return;
+    }
+    setView("description");
+  };
 
   return view === "title" ? (
     <>
@@ -99,21 +122,21 @@ export function DescriptionStep({
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 onBlur={() => setTitleTouched(true)}
+                onKeyDown={(event) => {
+                  // No form to submit, so Enter would otherwise do nothing at all here.
+                  // IME composition is left alone: Enter is picking a candidate then.
+                  if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+                  event.preventDefault();
+                  advanceFromTitle();
+                }}
               />
             )}
           </Field>
         </div>
       </main>
       <ListingFlowFooter
-        backHref={`/host/start/photos?${query}`}
-        onNext={() => {
-          setTitleTouched(true);
-          if (issues.title) {
-            titleRef.current?.focus();
-            return;
-          }
-          setView("description");
-        }}
+        backHref={returnToReview ? reviewHref(query) : `/host/start/photos?${query}`}
+        onNext={advanceFromTitle}
         phaseOneProgress={100}
         phaseTwoProgress={60}
         nextLabel="Next"
@@ -178,12 +201,12 @@ export function DescriptionStep({
             return;
           }
           if (await save({ title: title.trim(), description: description.trim(), currentStepId: "pricing" })) {
-            router.push(`/host/start/phase-two-complete?${query}`);
+            router.push(nextHref);
           }
         }}
         phaseOneProgress={100}
         phaseTwoProgress={80}
-        nextLabel="Next"
+        nextLabel={nextLabel}
       />
     </>
   );

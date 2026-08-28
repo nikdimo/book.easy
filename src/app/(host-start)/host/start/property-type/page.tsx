@@ -3,6 +3,7 @@ import { PropertyTypeStep } from "@/components/host/v2/listings/property-type-st
 import { requireHostPage } from "@/lib/auth-helpers";
 import { getT } from "@/lib/i18n/t";
 import { getActivePropertyTypes } from "@/lib/services/property-type.service";
+import { returnsToReview } from "@/lib/host/v2/listing-flow-return";
 
 export const metadata = { title: "Choose your property type" };
 
@@ -15,7 +16,11 @@ export const metadata = { title: "Choose your property type" };
 export default async function NewListingPropertyTypePage({
   searchParams,
 }: {
-  searchParams: Promise<{ propertyType?: string | string[] }>;
+  searchParams: Promise<{
+    propertyType?: string | string[];
+    spaceType?: string | string[];
+    returnTo?: string | string[];
+  }>;
 }) {
   const [, t, propertyTypes, params] = await Promise.all([
     requireHostPage(),
@@ -38,6 +43,11 @@ export default async function NewListingPropertyTypePage({
       <PropertyTypeStep
         propertyTypes={propertyTypes}
         initialPropertyType={initialPropertyType}
+        /* Only carried so a host who came from Review can go straight back to it, and
+           so the space-type screen after this one opens on the answer they already
+           gave. Nothing on this page reads it otherwise. */
+        spaceType={Array.isArray(params.spaceType) ? params.spaceType[0] : params.spaceType}
+        returnToReview={returnsToReview(params.returnTo)}
       />
     </div>
   );

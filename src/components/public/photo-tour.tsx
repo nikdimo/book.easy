@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { WheelEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { ArrowLeft, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { usePhotoGestures } from "@/lib/hooks/use-photo-gestures";
 import { useProgressivePreload } from "@/lib/hooks/use-progressive-preload";
 import { Tx, useI18n } from "@/lib/i18n/client";
+import { createPhotoWheelState, photoStepFromWheel } from "@/lib/photo-viewer-input";
 import { GalleryMedia, PreloadImages, preloadIndicesFor } from "./gallery-media";
 
 interface PhotoTourProps {
@@ -36,6 +38,7 @@ export function PhotoTour({ slug, images }: PhotoTourProps) {
   const listingHref = `/properties/${slug}`;
   const filmstripRef = useRef<HTMLDivElement | null>(null);
   const photoRef = useRef<HTMLDivElement | null>(null);
+  const wheelStateRef = useRef(createPhotoWheelState());
   /** Whether this session pushed the viewer onto the history stack. A visitor who
    * landed straight on a shared `?photo=` link has no grid entry behind them, so
    * closing has to rewrite the URL rather than step back off the site. */
@@ -99,6 +102,23 @@ export function PhotoTour({ slug, images }: PhotoTourProps) {
     [activeIndex, images.length, showPhoto]
   );
 
+  const handleWheel = useCallback(
+    (event: WheelEvent<HTMLDivElement>) => {
+      // Ctrl+wheel is a browser/trackpad pinch gesture; leave page zoom alone.
+      if (images.length < 2 || event.ctrlKey) return;
+
+      const direction = photoStepFromWheel(wheelStateRef.current, {
+        deltaX: event.deltaX,
+        deltaY: event.deltaY,
+        deltaMode: event.deltaMode,
+        timeStamp: event.timeStamp,
+        pageHeight: window.innerHeight,
+      });
+      if (direction !== 0) step(direction);
+    },
+    [images.length, step]
+  );
+
   useEffect(() => {
     if (activeIndex === null || !chromeVisible) return;
     const timer = setTimeout(() => setChromeVisible(false), 3000);
@@ -111,7 +131,18 @@ export function PhotoTour({ slug, images }: PhotoTourProps) {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "ArrowLeft") step(-1);
       else if (e.key === "ArrowRight") step(1);
-      else if (e.key === "Escape") closePhoto();
+      else if (e.key === " " && !e.repeat) {
+        // Preserve native Space activation for a focused button or link. Everywhere
+        // else, prevent the browser's scroll action and advance the gallery.
+        if (
+          e.target instanceof Element &&
+          e.target.closest("button, a, input, textarea, select")
+        ) {
+          return;
+        }
+        e.preventDefault();
+        step(1);
+      } else if (e.key === "Escape") closePhoto();
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -188,7 +219,10 @@ export function PhotoTour({ slug, images }: PhotoTourProps) {
      it neither tints the photo nor lets the letterboxing on a portrait shot read
      as broken layout, and every control floats over it. */
   return (
-    <div className="relative h-dvh w-full overflow-hidden bg-black">
+    <div
+      className="relative h-dvh w-full overflow-hidden bg-black"
+      onWheel={handleWheel}
+    >
       <div
         ref={photoRef}
         className="absolute inset-0 touch-none overflow-hidden"

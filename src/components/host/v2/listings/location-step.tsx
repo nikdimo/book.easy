@@ -6,6 +6,7 @@ import { useRef, useState } from "react";
 import { Tx, useI18n } from "@/lib/i18n/client";
 import type { ListingSpaceTypeValue } from "@/lib/types/listing-space-type";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
+import { reviewHref } from "@/lib/host/v2/listing-flow-return";
 import { ListingFlowFooter } from "./listing-flow-footer";
 import { LocationPreviewAnimation } from "./location-preview-animation";
 import { AddressModal } from "./address-modal";
@@ -15,16 +16,24 @@ import { RegionalSettingsTrigger } from "@/components/shared/regional-settings-t
 export function LocationStep({
   propertyType,
   spaceType,
+  returnToReview = false,
 }: {
   propertyType: PropertyTypeOption;
   spaceType: ListingSpaceTypeValue;
+  /** Reached from the Review screen's "Edit". */
+  returnToReview?: boolean;
 }) {
   const i18n = useI18n();
   const { data, save } = useHostStartDraft();
   const [address, setAddress] = useState(data.address || "");
   const [addressOpen, setAddressOpen] = useState(false);
   const addressInputRef = useRef<HTMLInputElement>(null);
-  const backHref = `/host/start/space-type?propertyType=${encodeURIComponent(propertyType.value)}&spaceType=${encodeURIComponent(spaceType)}`;
+  const query = `propertyType=${encodeURIComponent(propertyType.value)}&spaceType=${encodeURIComponent(spaceType)}`;
+  const backHref = returnToReview ? reviewHref(query) : `/host/start/space-type?${query}`;
+  // The address the modal saves is the whole of what Review's location row shows, so a
+  // host who came from there is finished once it is stored — the capacity screen after
+  // it is the next question of a walk they are not on.
+  const nextHref = returnToReview ? reviewHref(query) : `/host/start/basics?${query}`;
 
   return (
     <>
@@ -127,7 +136,7 @@ export function LocationStep({
             geocodingPlaceId: location.pin.placeId,
             currentStepId: "details",
           });
-          if (saved) window.location.assign(`/host/start/basics?propertyType=${encodeURIComponent(propertyType.value)}&spaceType=${encodeURIComponent(spaceType)}`);
+          if (saved) window.location.assign(nextHref);
         }}
       />
     </>

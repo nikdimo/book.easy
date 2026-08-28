@@ -4,6 +4,7 @@ import { SpaceTypeStep } from "@/components/host/v2/listings/space-type-step";
 import { requireHostPage } from "@/lib/auth-helpers";
 import { getT } from "@/lib/i18n/t";
 import { getActivePropertyTypes } from "@/lib/services/property-type.service";
+import { returnsToReview } from "@/lib/host/v2/listing-flow-return";
 import {
   allowedListingSpaceTypes,
   type ListingSpaceTypeValue,
@@ -22,6 +23,7 @@ export default async function NewListingSpaceTypePage({
   searchParams: Promise<{
     propertyType?: string | string[];
     spaceType?: string | string[];
+    returnTo?: string | string[];
   }>;
 }) {
   const [, t, propertyTypes, params] = await Promise.all([
@@ -54,6 +56,7 @@ export default async function NewListingSpaceTypePage({
       <SpaceTypeStep
         propertyType={propertyType}
         initialSpaceType={initialSpaceType}
+        returnToReview={returnsToReview(params.returnTo)}
       />
     </div>
   );

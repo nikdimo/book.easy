@@ -12,6 +12,7 @@ import {
 } from "@/components/host/v2/editor/payment-arrangements/payment-arrangements-model";
 import type { ListingSpaceTypeValue } from "@/lib/types/listing-space-type";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
+import { reviewHref, stepNextTarget } from "@/lib/host/v2/listing-flow-return";
 import { ListingFlowFooter } from "./listing-flow-footer";
 import { useHostStartDraft } from "./host-start-draft-provider";
 
@@ -20,12 +21,22 @@ import { useHostStartDraft } from "./host-start-draft-provider";
 export function PaymentArrangementsStep({
   propertyType,
   spaceType,
+  returnToReview = false,
 }: {
   propertyType: PropertyTypeOption;
   spaceType: ListingSpaceTypeValue;
+  /** Reached from the Review screen's "Edit". */
+  returnToReview?: boolean;
 }) {
   const { data, save } = useHostStartDraft();
   const query = `propertyType=${encodeURIComponent(propertyType.value)}&spaceType=${encodeURIComponent(spaceType)}`;
+  /** Where the CTA goes, and what it says: on to the next question, or back to the
+   *  summary the host came from. */
+  const { href: nextHref, label: nextLabel } = stepNextTarget(
+    returnToReview,
+    query,
+    `/host/start/availability?${query}`,
+  );
   const [draft, setDraft] = useState<PaymentArrangementsDraft>(() =>
     normalizePaymentArrangementsDraft({
       methodCodes: data.acceptedPaymentMethods ?? [],
@@ -49,7 +60,7 @@ export function PaymentArrangementsStep({
       <ListingFlowFooter
         {...(complete
           ? {
-              nextHref: `/host/start/availability?${query}`,
+              nextHref,
               onNext: async () => {
                 const normalized = normalizePaymentArrangementsDraft(draft);
                 if (
@@ -62,16 +73,16 @@ export function PaymentArrangementsStep({
                     currentStepId: "specialOffer",
                   })
                 ) {
-                  window.location.assign(`/host/start/availability?${query}`);
+                  window.location.assign(nextHref);
                 }
               },
             }
           : { onNext: () => undefined })}
-        backHref={`/host/start/price?${query}`}
+        backHref={returnToReview ? reviewHref(query) : `/host/start/price?${query}`}
         phaseOneProgress={100}
         phaseTwoProgress={100}
         phaseThreeProgress={40}
-        nextLabel="Next"
+        nextLabel={nextLabel}
       />
     </>
   );

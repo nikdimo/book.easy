@@ -46,6 +46,10 @@ const calmDay: Attention = {
   incompletePaymentArrangementCount: 0,
   confirmedBookingCount: 0,
   upcomingStay: null,
+  // The calm day belongs to a host who already has a home listed; a host with none
+  // gets the first-listing screen instead, which its own describe block covers.
+  listingCount: 1,
+  latestDraft: null,
 };
 
 function attention(overrides: Partial<Attention> = {}): Attention {
@@ -249,5 +253,56 @@ describe("the rest of the Today page", () => {
     expect(html).not.toContain('href="/host/v2');
     expect(html).not.toContain('href="/host/bookings');
     expect(html).not.toContain('href="/host/inbox');
+  });
+});
+
+describe("a host with nothing listed yet", () => {
+  it("offers the way in instead of telling them everything is in good shape", async () => {
+    mocks.getHostAttentionSummary.mockResolvedValue(attention({ listingCount: 0 }));
+
+    const html = await render();
+
+    expect(html).toContain("Welcome, Elena");
+    expect(html).toContain("Create your first listing");
+    expect(html).toContain('href="/host/start/new"');
+    expect(html).toContain('href="/host/start/import"');
+    expect(html).not.toContain("Enjoy the quiet moment");
+    expect(html).not.toContain("Welcome back");
+  });
+
+  it("offers the unfinished draft back before a fresh start", async () => {
+    mocks.getHostAttentionSummary.mockResolvedValue(
+      attention({ listingCount: 0, latestDraft: { id: "draft-1", title: "Lake House" } })
+    );
+
+    const html = await render();
+
+    expect(html).toContain("Finish your listing");
+    expect(html).toContain("Lake House");
+    expect(html).toContain('href="/host/start/resume?draft=draft-1"');
+    expect(html).toContain("Create a new listing");
+    expect(html).not.toContain("Create your first listing");
+  });
+
+  it("names an untitled draft rather than showing an empty row", async () => {
+    mocks.getHostAttentionSummary.mockResolvedValue(
+      attention({ listingCount: 0, latestDraft: { id: "draft-2", title: null } })
+    );
+
+    const html = await render();
+
+    expect(html).toContain("Untitled listing");
+  });
+
+  it("stays out of the way once a listing exists, even an unpublished one", async () => {
+    mocks.getHostAttentionSummary.mockResolvedValue(
+      attention({ listingCount: 1, latestDraft: { id: "draft-1", title: "Lake House" } })
+    );
+
+    const html = await render();
+
+    expect(html).toContain("Welcome back, Elena");
+    expect(html).not.toContain("Create your first listing");
+    expect(html).not.toContain("/host/start/");
   });
 });

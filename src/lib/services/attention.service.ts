@@ -1,6 +1,7 @@
 import "server-only";
 
 import { db } from "@/lib/db";
+import { listingDraftData } from "@/lib/mobile-listing-draft";
 
 export async function getHostAttentionSummary(hostId: string) {
   const today = new Date();
@@ -17,6 +18,8 @@ export async function getHostAttentionSummary(hostId: string) {
     confirmedBookingCount,
     upcomingStay,
     latestDamageReport,
+    listingCount,
+    latestDraft,
   ] =
     await Promise.all([
       db.booking.count({
@@ -116,6 +119,17 @@ export async function getHostAttentionSummary(hostId: string) {
         select: { conversationId: true },
         orderBy: { createdAt: "desc" },
       }),
+      // Everything a host has ever kept, published or not: a host with a listing in
+      // review or unpublished is not a first-time host and must not be sent back to
+      // the "create your first listing" screen. Only archiving takes a host back there.
+      db.listing.count({ where: { hostId, status: { not: "ARCHIVED" } } }),
+      // A wizard draft is not a Listing row yet, so it is the only trace a host who
+      // started and stopped leaves behind. Today offers it back to them.
+      db.listingDraft.findFirst({
+        where: { hostId },
+        select: { id: true, data: true },
+        orderBy: { updatedAt: "desc" },
+      }),
     ]);
 
   return {
@@ -130,6 +144,10 @@ export async function getHostAttentionSummary(hostId: string) {
     incompletePaymentArrangementCount,
     confirmedBookingCount,
     upcomingStay,
+    listingCount,
+    latestDraft: latestDraft
+      ? { id: latestDraft.id, title: listingDraftData(latestDraft.data).title ?? null }
+      : null,
   };
 }
 

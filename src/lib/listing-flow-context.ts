@@ -7,6 +7,8 @@ export type ListingFlowSearchParams = {
   spaceType?: string | string[];
   address?: string | string[];
   descriptionView?: string | string[];
+  /** "review" when the step was reached from the Review screen's "Edit" link. */
+  returnTo?: string | string[];
 };
 
 export async function requireListingFlowContext(params: ListingFlowSearchParams) {

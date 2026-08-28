@@ -12,6 +12,7 @@ import {
 import { Tx, useI18n } from "@/lib/i18n/client";
 import type { ListingSpaceTypeValue } from "@/lib/types/listing-space-type";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
+import { reviewHref, stepNextTarget } from "@/lib/host/v2/listing-flow-return";
 import { ListingFlowFooter } from "./listing-flow-footer";
 import { useHostStartDraft } from "./host-start-draft-provider";
 
@@ -22,15 +23,21 @@ const FIELD_ORDER = ["country", "address", "area", "postalCode", "city"] as cons
 
 type AddressField = (typeof FIELD_ORDER)[number];
 
+/** The countries the flow offers, in the order the dropdown lists them. */
+const OFFERED_COUNTRIES = ["MK", "DK", "GR", "ES"];
+
 export function AddressStep({
   propertyType,
   spaceType,
   initialAddress = "",
   initialTouched = false,
+  returnToReview = false,
 }: {
   propertyType: PropertyTypeOption;
   spaceType: ListingSpaceTypeValue;
   initialAddress?: string;
+  /** Reached from the Review screen's "Edit". */
+  returnToReview?: boolean;
   /** Test seam: renders the error state a host only reaches by trying to move on. */
   initialTouched?: boolean;
 }) {
@@ -46,7 +53,13 @@ export function AddressStep({
   const [touched, setTouched] = useState(initialTouched);
   const fieldRefs = useRef<Partial<Record<AddressField, HTMLElement | null>>>({});
   const query = `propertyType=${encodeURIComponent(propertyType.value)}&spaceType=${encodeURIComponent(spaceType)}`;
-  const nextHref = `/host/start/basics?${query}`;
+  /** Where the CTA goes, and what it says: on to the next question, or back to the
+   *  summary the host came from. */
+  const { href: nextHref, label: nextLabel } = stepNextTarget(
+    returnToReview,
+    query,
+    `/host/start/basics?${query}`,
+  );
 
   /**
    * The same rule module the listing editor and its server action use, so an address
@@ -107,6 +120,15 @@ export function AddressStep({
                 <option value="DK"><Tx k="country.dk" source="Denmark" /></option>
                 <option value="GR"><Tx k="country.gr" source="Greece" /></option>
                 <option value="ES"><Tx k="country.es" source="Spain" /></option>
+                {/* A draft can arrive carrying a country this list does not offer — an
+                    import from a provider listing anywhere else. Without an option of its
+                    own the select falls back to showing the first one, so the host reads
+                    "North Macedonia" over a stored value that is nothing of the sort and
+                    has no way to see what is really there. The address modal has always
+                    kept the stored value visible this way. */}
+                {OFFERED_COUNTRIES.includes(country) ? null : (
+                  <option value={country}>{country}</option>
+                )}
               </select>
               <FieldError
                 id="listing-flow-address-country-error"
@@ -167,7 +189,8 @@ export function AddressStep({
         // the happy path; otherwise a button that reveals what is missing and keeps the
         // host on this screen.
         {...(firstInvalid ? {} : { nextHref })}
-        backHref={`/host/start/location?${query}`}
+        backHref={returnToReview ? reviewHref(query) : `/host/start/location?${query}`}
+        nextLabel={nextLabel}
         onNext={async () => {
           setTouched(true);
           if (firstInvalid) {
@@ -189,7 +212,6 @@ export function AddressStep({
           if (saved) window.location.assign(nextHref);
         }}
         phaseOneProgress={72}
-        nextLabel="Next"
       />
     </>
   );

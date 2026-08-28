@@ -17,6 +17,7 @@ import {
 } from "@/lib/types/listing-space-type";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 import { cn } from "@/lib/utils";
+import { reviewHref } from "@/lib/host/v2/listing-flow-return";
 import { ListingFlowFooter } from "./listing-flow-footer";
 import { useHostStartDraft } from "./host-start-draft-provider";
 
@@ -61,9 +62,12 @@ function resolveSpaceTypeDescription(
 export function SpaceTypeStep({
   propertyType,
   initialSpaceType,
+  returnToReview = false,
 }: {
   propertyType: PropertyTypeOption;
   initialSpaceType?: ListingSpaceTypeValue;
+  /** Reached from the Review screen's "Edit", directly or through the property type. */
+  returnToReview?: boolean;
 }) {
   const i18n = useI18n();
   const { data, save } = useHostStartDraft();
@@ -76,9 +80,19 @@ export function SpaceTypeStep({
   const [showError, setShowError] = useState(false);
   const groupRef = useRef<HTMLDivElement>(null);
   const options = allowedListingSpaceTypes(propertyType.value);
-  const backHref = `/host/start/property-type?propertyType=${encodeURIComponent(propertyType.value)}`;
+  const flowQuery = (space: ListingSpaceTypeValue) =>
+    `propertyType=${encodeURIComponent(propertyType.value)}&spaceType=${encodeURIComponent(space)}`;
+  // Back needs an answer to address Review with, and the one the draft holds is the one
+  // this screen arrived carrying. Without it there is nothing to return to yet, so Back
+  // stays the step behind.
+  const backHref =
+    returnToReview && initialSpaceType
+      ? reviewHref(flowQuery(initialSpaceType))
+      : `/host/start/property-type?propertyType=${encodeURIComponent(propertyType.value)}`;
   const nextHref = selectedType
-    ? `/host/start/location?propertyType=${encodeURIComponent(propertyType.value)}&spaceType=${encodeURIComponent(selectedType)}`
+    ? returnToReview
+      ? reviewHref(flowQuery(selectedType))
+      : `/host/start/location?${flowQuery(selectedType)}`
     : null;
 
   return (
@@ -196,6 +210,7 @@ export function SpaceTypeStep({
       <ListingFlowFooter
         nextHref={nextHref ?? undefined}
         backHref={backHref}
+        nextLabel={returnToReview ? "Save and review" : "Continue"}
         onNext={async () => {
           if (!nextHref || !selectedType) {
             setShowError(true);

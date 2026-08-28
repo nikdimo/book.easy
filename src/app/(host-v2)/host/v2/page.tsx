@@ -2,8 +2,12 @@ import Link from "next/link";
 import {
   ArrowRight,
   CalendarCheck,
+  ChevronRight,
   CircleAlert,
   CalendarDays,
+  Download,
+  House,
+  HousePlus,
   Sparkles,
   MessageCircle,
   WalletCards,
@@ -29,6 +33,108 @@ export default async function HostV2TodayPage() {
   const [attention, t] = await Promise.all([getHostAttentionSummary(user.id), getT()]);
 
   const firstName = user.name?.split(" ")[0] || "Host";
+
+  /*
+   * A host who has not listed anything yet has no guests, no calendar and no messages,
+   * so every row below would be empty and the calm "you're all caught up" line read as
+   * a system that had forgotten why they signed up. Their Today is one thing: the way
+   * in. It keeps the panel shell — the tabs stay reachable — but nothing else on this
+   * screen competes with getting a first home listed.
+   */
+  if (attention.listingCount === 0) {
+    const draftTitle =
+      attention.latestDraft?.title?.trim() ||
+      t.resolve("host.v2.today.first_listing.untitled_draft", "Untitled listing").text;
+
+    return (
+      <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center px-3 pb-24 pt-8 md:px-0 md:pb-20 md:pt-4">
+        <h1 className="font-heading text-[2rem] font-semibold leading-[1.1] tracking-[-0.035em] text-slate-950 md:text-[2.5rem]">
+          {t
+            .resolve("host.v2.today.first_listing.greeting", "Welcome, {name}")
+            .text.replace("{name}", firstName)}
+        </h1>
+        <p className="mt-3 text-base leading-7 text-slate-500">
+          <T
+            t={t}
+            k="host.v2.today.first_listing.copy"
+            source="You haven't listed a home yet. Add your first one and start taking direct bookings — with 0% host commission."
+          />
+        </p>
+
+        {/* The draft comes first when there is one: finishing something already begun
+            is a smaller ask than starting over, and offering "create a new listing"
+            above it would quietly invite a second abandoned draft. */}
+        {attention.latestDraft ? (
+          <Link
+            href={`/host/start/resume?draft=${encodeURIComponent(attention.latestDraft.id)}`}
+            className={`group mt-10 flex min-h-16 items-center gap-4 px-4 py-4 transition-shadow hover:shadow-[0_2px_4px_rgba(15,23,42,0.08),0_12px_28px_-14px_rgba(15,23,42,0.32)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 md:px-5 ${CARD}`}
+          >
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-slate-100 text-slate-900">
+              <House className="size-5" strokeWidth={1.5} aria-hidden />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-semibold text-slate-900">
+                <T
+                  t={t}
+                  k="host.v2.today.first_listing.resume"
+                  source="Finish your listing"
+                />
+              </span>
+              <span className="mt-0.5 block truncate text-sm text-slate-500">
+                {draftTitle}
+              </span>
+            </span>
+            <ChevronRight
+              className="size-5 shrink-0 text-slate-400 transition-transform group-hover:translate-x-0.5"
+              aria-hidden
+            />
+          </Link>
+        ) : null}
+
+        <Link
+          href="/host/start/new"
+          className={`inline-flex min-h-12 items-center justify-center gap-2 self-start rounded-full bg-[#0f172a] px-6 text-base font-semibold text-white transition-colors hover:bg-[#1e293b] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 ${attention.latestDraft ? "mt-6" : "mt-10"}`}
+        >
+          <HousePlus className="size-5" strokeWidth={1.75} aria-hidden />
+          {attention.latestDraft ? (
+            <T
+              t={t}
+              k="host.v2.today.first_listing.create_another"
+              source="Create a new listing"
+            />
+          ) : (
+            <T
+              t={t}
+              k="host.v2.today.first_listing.create"
+              source="Create your first listing"
+            />
+          )}
+        </Link>
+
+        {/* The second path stays a quiet line rather than a second button: importing is
+            faster for a host who already lists elsewhere, but it is not the path most
+            hosts are on, and two filled buttons make neither one the answer. */}
+        <p className="mt-6 text-sm leading-6 text-slate-500">
+          <T
+            t={t}
+            k="host.v2.today.first_listing.import_prompt"
+            source="Already listed somewhere else?"
+          />{" "}
+          <Link
+            href="/host/start/import"
+            className="inline-flex items-center gap-1 font-medium text-slate-900 underline underline-offset-4 transition-colors hover:text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+          >
+            <Download className="size-4" strokeWidth={1.5} aria-hidden />
+            <T
+              t={t}
+              k="host.v2.today.first_listing.import"
+              source="Import it from Airbnb, Booking.com and more"
+            />
+          </Link>
+        </p>
+      </div>
+    );
+  }
   const nextCheckInDate = attention.upcomingStay
     ? new Intl.DateTimeFormat(t.locale, { day: "numeric", month: "long" }).format(
         attention.upcomingStay.checkIn

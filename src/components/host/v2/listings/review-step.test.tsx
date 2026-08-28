@@ -41,7 +41,7 @@ describe("ReviewStep — summary", () => {
     expect(html).toContain("Publishing makes this listing live");
   });
 
-  it("links each row back to its own step with the flow's query", () => {
+  it("links each row back to its own step, marked as a return trip", () => {
     const html = step();
 
     for (const path of [
@@ -55,8 +55,10 @@ describe("ReviewStep — summary", () => {
       "availability",
       "house-rules",
     ]) {
+      // `returnTo=review` is what makes the step's CTA come back here rather than
+      // walking the host through every screen after the one they corrected.
       expect(html).toContain(
-        `href="/host/start/${path}?propertyType=HOUSE&amp;spaceType=ENTIRE_PLACE"`,
+        `href="/host/start/${path}?propertyType=HOUSE&amp;spaceType=ENTIRE_PLACE&amp;returnTo=review"`,
       );
     }
   });

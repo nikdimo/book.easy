@@ -3,6 +3,7 @@ import { NewListingHeader } from "@/components/host/v2/listings/new-listing-head
 import { requireHostPage } from "@/lib/auth-helpers";
 import { getT } from "@/lib/i18n/t";
 import { requireListingFlowContext, type ListingFlowSearchParams } from "@/lib/listing-flow-context";
+import { returnsToReview } from "@/lib/host/v2/listing-flow-return";
 
 export const metadata = { title: "Title and description" };
 
@@ -26,6 +27,7 @@ export default async function DescriptionPage({ searchParams }: { searchParams: 
         propertyType={propertyType}
         spaceType={spaceType}
         initialView={requestedView === "description" ? "description" : "title"}
+        returnToReview={returnsToReview(params.returnTo)}
       />
     </div>
   );

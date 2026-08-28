@@ -165,7 +165,11 @@ describe("public listing metadata parser", () => {
       bedrooms: 1,
       beds: 3,
       bathrooms: 1,
-      currency: "DKK",
+      // The page declares DKK, but every amount on it is quoted in euros. The rate and
+      // its label are read off the same string and must agree — a listing seeded at
+      // 100.29 *kroner* because of a header would be off by a factor of seven.
+      currency: "EUR",
+      nightlyRate: 100.29,
       checkInTime: "15:00",
       checkOutTime: "11:00",
       amenities: ["Wifi", "Free parking on premises"],
@@ -181,5 +185,74 @@ describe("public listing metadata parser", () => {
       },
     });
     expect(result.imageUrls).toHaveLength(2);
+  });
+
+  it("reads the address and rate off a dateless hotel listing", () => {
+    // What a plain shared link looks like: no dates, so no stay quote and no night-count
+    // line — and a hotel-shaped listing, whose heading names a kind the location parser
+    // used to skip straight past.
+    const html = `
+      <meta property="og:title" content="Suite in Skopje · ★4.7 · 1 bedroom · 2 beds · 1 bath">
+      <script>{"serverDeterminedCurrency":"MKD"}</script>
+      <script id="data-deferred-state-0" type="application/json">${JSON.stringify({
+        eventData: { roomType: "Private room", personCapacity: 2, propertyType: "HOTEL" },
+        map: { lat: 41.9981, lng: 21.4254 },
+        price: { qualifier: "per night", price: "MKD 5,200" },
+        labels: ["Suite in Skopje, North Macedonia", "Show all photos"],
+      })}</script>`;
+
+    const result = parseListingHtml(html, "https://www.airbnb.com/rooms/42", "AIRBNB");
+
+    expect(result).toMatchObject({
+      propertyType: "HOTEL",
+      city: "Skopje",
+      country: "North Macedonia",
+      // The reverse geocode that fills the rest of the Address step needs a pin, and this
+      // payload states one under a key that is not the listing's own.
+      latitude: 41.9981,
+      longitude: 21.4254,
+      currency: "MKD",
+      // Not 5.2: the separator groups thousands here, it is not a decimal point.
+      nightlyRate: 5200,
+    });
+    expect(result.priceQuote).toBeUndefined();
+  });
+
+  it("reads a nightly rate stated only in the page's own text", () => {
+    const html = `
+      <script>{"serverDeterminedCurrency":"EUR"}</script>
+      <script id="data-deferred-state-0" type="application/json">${JSON.stringify({
+        labels: ["€85 per night", "Rental unit in Ohrid, North Macedonia", "€425 total"],
+      })}</script>`;
+
+    const result = parseListingHtml(html, "https://www.airbnb.com/rooms/7", "AIRBNB");
+
+    expect(result.nightlyRate).toBe(85);
+    expect(result.city).toBe("Ohrid");
+  });
+
+  it("does not mistake a stay total or a night count for a nightly rate", () => {
+    const html = `
+      <script>{"serverDeterminedCurrency":"EUR"}</script>
+      <script id="data-deferred-state-0" type="application/json">${JSON.stringify({
+        labels: ["€425 for 5 nights", "5 nights", "Reserve"],
+      })}</script>`;
+
+    expect(
+      parseListingHtml(html, "https://www.airbnb.com/rooms/8", "AIRBNB").nightlyRate,
+    ).toBeUndefined();
+  });
+
+  it("keeps a pin off the null island out of the import", () => {
+    const html = `
+      <script id="data-deferred-state-0" type="application/json">${JSON.stringify({
+        eventData: { personCapacity: 2 },
+        map: { lat: 0, lng: 0 },
+      })}</script>`;
+
+    const result = parseListingHtml(html, "https://www.airbnb.com/rooms/9", "AIRBNB");
+
+    expect(result.latitude).toBeUndefined();
+    expect(result.longitude).toBeUndefined();
   });
 });

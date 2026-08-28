@@ -14,6 +14,7 @@ import {
 import { HouseRulesRows } from "@/components/host/v2/house-rules/house-rules-rows";
 import type { ListingSpaceTypeValue } from "@/lib/types/listing-space-type";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
+import { reviewHref, stepNextTarget } from "@/lib/host/v2/listing-flow-return";
 import { ListingFlowFooter } from "./listing-flow-footer";
 import { useHostStartDraft } from "./host-start-draft-provider";
 
@@ -40,12 +41,15 @@ import { useHostStartDraft } from "./host-start-draft-provider";
 export function HouseRulesStep({
   propertyType,
   spaceType,
+  returnToReview = false,
   initialCheckInTime = "15:00",
   initialCheckOutTime = "11:00",
   initialMaxGuests = 2,
 }: {
   propertyType: PropertyTypeOption;
   spaceType: ListingSpaceTypeValue;
+  /** Reached from the Review screen's "Edit". */
+  returnToReview?: boolean;
   /** Test seams. The flow arrives here with the usual afternoon/morning pair. */
   initialCheckInTime?: string;
   initialCheckOutTime?: string;
@@ -53,6 +57,13 @@ export function HouseRulesStep({
 }) {
   const { data, save } = useHostStartDraft();
   const query = `propertyType=${encodeURIComponent(propertyType.value)}&spaceType=${encodeURIComponent(spaceType)}`;
+  /** Where the CTA goes, and what it says: on to the next question, or back to the
+   *  summary the host came from. */
+  const { href: nextHref, label: nextLabel } = stepNextTarget(
+    returnToReview,
+    query,
+    `/host/start/review?${query}`,
+  );
 
   const [rules, setRules] = useState<ListingHouseRulesInput>(() =>
     houseRulesFromDraft(data, {
@@ -86,7 +97,7 @@ export function HouseRulesStep({
         // No `nextHref` while a rule is unanswered, so the CTA cannot navigate — but it
         // keeps its handler, because a Next that silently does nothing is indistinguishable
         // from a broken one. Pressing it reveals which rows are missing instead.
-        {...(invalid ? {} : { nextHref: `/host/start/review?${query}` })}
+        {...(invalid ? {} : { nextHref })}
         onNext={async () => {
           if (invalid) {
             setShowIssues(true);
@@ -100,14 +111,14 @@ export function HouseRulesStep({
               currentStepId: "specialOffer",
             })
           ) {
-            window.location.assign(`/host/start/review?${query}`);
+            window.location.assign(nextHref);
           }
         }}
-        backHref={`/host/start/availability?${query}`}
+        backHref={returnToReview ? reviewHref(query) : `/host/start/availability?${query}`}
         phaseOneProgress={100}
         phaseTwoProgress={100}
         phaseThreeProgress={60}
-        nextLabel="Next"
+        nextLabel={nextLabel}
       />
     </>
   );

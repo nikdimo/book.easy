@@ -817,9 +817,15 @@ describe("ReviewStep", () => {
 
     expect(html).toContain("Finish these before you publish");
     expect(html).toContain("Add the street address");
-    expect(html).toContain(`href="/host/start/address?${QUERY.replace("&", "&amp;")}"`);
-    expect(html).toContain(`href="/host/start/photos?${QUERY.replace("&", "&amp;")}"`);
-    expect(html).toContain(`href="/host/start/basics?${QUERY.replace("&", "&amp;")}"`);
+    expect(html).toContain(
+      `href="/host/start/address?${QUERY.replace("&", "&amp;")}&amp;returnTo=review"`,
+    );
+    expect(html).toContain(
+      `href="/host/start/photos?${QUERY.replace("&", "&amp;")}&amp;returnTo=review"`,
+    );
+    expect(html).toContain(
+      `href="/host/start/basics?${QUERY.replace("&", "&amp;")}&amp;returnTo=review"`,
+    );
   });
 
   it("shows no blocker panel for a draft that walked the flow", () => {

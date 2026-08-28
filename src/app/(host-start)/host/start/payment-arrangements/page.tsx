@@ -6,6 +6,7 @@ import {
   requireListingFlowContext,
   type ListingFlowSearchParams,
 } from "@/lib/listing-flow-context";
+import { returnsToReview } from "@/lib/host/v2/listing-flow-return";
 
 export const metadata = { title: "Payment arrangements" };
 
@@ -26,6 +27,7 @@ export default async function PaymentArrangementsPage({
       <PaymentArrangementsStep
         propertyType={propertyType}
         spaceType={spaceType}
+        returnToReview={returnsToReview(params.returnTo)}
       />
     </div>
   );

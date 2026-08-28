@@ -27,6 +27,7 @@ import {
   currencyAdjustedMaximum,
   draftCurrencyOffer,
 } from "@/lib/host/v2/draft-currency";
+import { reviewHref, stepNextTarget } from "@/lib/host/v2/listing-flow-return";
 import { ListingFlowFooter } from "./listing-flow-footer";
 import { InfoSheet } from "./info-sheet";
 import { useHostStartDraft } from "./host-start-draft-provider";
@@ -61,6 +62,7 @@ import { useHostStartDraft } from "./host-start-draft-provider";
 export function PriceStep({
   propertyType,
   spaceType,
+  returnToReview = false,
   currency,
   displayCurrency = currency,
   rates = null,
@@ -72,6 +74,8 @@ export function PriceStep({
 }: {
   propertyType: PropertyTypeOption;
   spaceType: ListingSpaceTypeValue;
+  /** Reached from the Review screen's "Edit". */
+  returnToReview?: boolean;
   /** The fallback currency for a brand-new draft — what the host is paid in, never a
    *  converted display amount. A draft that already carries a currency (an imported
    *  listing, or a step the host has been through before) keeps its own. */
@@ -101,6 +105,13 @@ export function PriceStep({
   const { locale, resolve } = useI18n();
   const { data, save } = useHostStartDraft();
   const query = `propertyType=${encodeURIComponent(propertyType.value)}&spaceType=${encodeURIComponent(spaceType)}`;
+  /** Where the CTA goes, and what it says: on to the next question, or back to the
+   *  summary the host came from. */
+  const { href: nextHref, label: nextLabel } = stepNextTarget(
+    returnToReview,
+    query,
+    `/host/start/payment-arrangements?${query}`,
+  );
   const [price, setPrice] = useState(() => sanitizeNightlyPriceInput(data.baseNightlyRate ?? initialPrice));
   const [cleaningFee, setCleaningFee] = useState(() =>
     sanitizeCleaningFeeInput(data.cleaningFee ?? initialCleaningFee),
@@ -299,7 +310,7 @@ export function PriceStep({
         },
       }
     : {
-        nextHref: `/host/start/payment-arrangements?${query}`,
+        nextHref,
         onNext: async () => {
           if (
             await save({
@@ -311,7 +322,7 @@ export function PriceStep({
               currentStepId: "specialOffer",
             })
           ) {
-            window.location.assign(`/host/start/payment-arrangements?${query}`);
+            window.location.assign(nextHref);
           }
         },
       };
@@ -589,12 +600,12 @@ export function PriceStep({
       </InfoSheet>
 
       <ListingFlowFooter
-        backHref={`/host/start/phase-two-complete?${query}`}
+        backHref={returnToReview ? reviewHref(query) : `/host/start/phase-two-complete?${query}`}
         {...nextAction}
         phaseOneProgress={100}
         phaseTwoProgress={100}
         phaseThreeProgress={20}
-        nextLabel="Next"
+        nextLabel={nextLabel}
       />
     </>
   );

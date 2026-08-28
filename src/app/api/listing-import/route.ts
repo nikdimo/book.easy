@@ -94,6 +94,43 @@ function integerString(value: number | undefined, maximum: number): string {
     : "";
 }
 
+/** The names the two sources of an imported country use for the ones the flow offers.
+ *  Providers and the geocoder both speak country *names*; the Address step's dropdown,
+ *  every other draft in the table and the publish action all speak ISO codes. */
+const COUNTRY_CODES: Record<string, string> = {
+  "north macedonia": "MK",
+  "republic of north macedonia": "MK",
+  macedonia: "MK",
+  denmark: "DK",
+  danmark: "DK",
+  greece: "GR",
+  hellas: "GR",
+  "hellenic republic": "GR",
+  spain: "ES",
+  "españa": "ES",
+  espana: "ES",
+};
+
+/**
+ * The country as the Address step reads it.
+ *
+ * Storing a name in this field left that step's dropdown on its first option — North
+ * Macedonia — whatever the listing's real country was, so the one part of an imported
+ * address the host could not type back in was also the one silently overwritten. The
+ * geocoder's own ISO code is preferred, then a name this app has a code for; an
+ * unrecognised country keeps the provider's wording rather than acquiring an invented
+ * code, and the step renders it as an option of its own.
+ */
+function countryCode(...values: (string | undefined)[]): string {
+  const present = values.map((value) => value?.trim()).filter(Boolean) as string[];
+  for (const value of present) {
+    if (/^[A-Za-z]{2}$/.test(value)) return value.toUpperCase();
+    const mapped = COUNTRY_CODES[value.toLowerCase()];
+    if (mapped) return mapped;
+  }
+  return present[0] ?? "";
+}
+
 export async function POST(request: Request) {
   let user;
   try {
@@ -224,7 +261,11 @@ export async function POST(request: Request) {
         city: imported.city ?? geocoded?.city ?? "",
         area: imported.area ?? geocoded?.area ?? "",
         postalCode: (imported.postalCode ?? geocoded?.postalCode)?.slice(0, 20) ?? "",
-        country: imported.country ?? geocoded?.country ?? "",
+        country: countryCode(
+          geocoded?.countryCode,
+          imported.country,
+          geocoded?.country,
+        ),
         latitude: hasCoordinates ? String(imported.latitude) : "",
         longitude: hasCoordinates ? String(imported.longitude) : "",
         locationSource: hasCoordinates ? "import" : "",
@@ -235,7 +276,12 @@ export async function POST(request: Request) {
         beds: integerString(imported.beds, 40) || "0",
         bathrooms: integerString(imported.bathrooms, 20) || "0",
         currency,
+        // The rate travels with the currency it was read in. When that currency could
+        // not be used, the amount is dropped rather than relabelled: seeding 85 as euros
+        // because the page quoted 85 of something else is a worse start than the empty
+        // field the host would otherwise fill in themselves.
         baseNightlyRate: imported.nightlyRate && imported.nightlyRate > 0
+          && currency === imported.currency
           ? String(imported.nightlyRate)
           : "",
         importedPriceQuote: imported.priceQuote

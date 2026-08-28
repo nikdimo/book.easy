@@ -39,7 +39,7 @@ import type { PropertyTypeOption } from "@/lib/types/property-type";
 import type { PlaceOption } from "@/lib/utils/place";
 import type { Resolved } from "@/lib/i18n/t";
 import { BrandLogo } from "@/components/shared/brand-logo";
-import { Tx } from "@/lib/i18n/client";
+import { Tx, useI18n } from "@/lib/i18n/client";
 import { NotificationBell } from "@/components/communication/notification-bell";
 import {
   CountBadge,
@@ -60,20 +60,6 @@ export interface HeaderNavLabels {
   logIn: Resolved;
 }
 
-const DEFAULT_NAV_LABELS: HeaderNavLabels = {
-  switchToHosting: { text: "Switch to hosting", translated: false },
-  stays: { text: "Stays", translated: false },
-  trips: { text: "Trips", translated: false },
-  favorites: { text: "Favorites", translated: false },
-  account: { text: "Account", translated: false },
-  hostingDashboard: { text: "Hosting dashboard", translated: false },
-  yourListings: { text: "Your listings", translated: false },
-  becomeAHost: { text: "Become a host", translated: false },
-  admin: { text: "Admin", translated: false },
-  logOut: { text: "Log out", translated: false },
-  logIn: { text: "Log in", translated: false },
-};
-
 export function Header({
   popularCities = [],
   availablePropertyTypesByCity = {},
@@ -83,7 +69,7 @@ export function Header({
     text: "Start listing your property — takes about 10 minutes.",
     translated: false,
   },
-  navLabels = DEFAULT_NAV_LABELS,
+  navLabels,
   regionalSettings,
 }: {
   popularCities?: PlaceOption[];
@@ -97,6 +83,23 @@ export function Header({
    *  country without any of that being threaded through this client component. */
   regionalSettings?: React.ReactNode;
 }) {
+  const i18n = useI18n();
+  // Public pages can resolve these on the server, but account/auth layouts mount the
+  // same header directly. Resolve from the active client catalog there instead of
+  // silently falling back to English.
+  const resolvedNavLabels: HeaderNavLabels = navLabels ?? {
+    switchToHosting: i18n.resolve("header.switch_to_hosting", "Switch to hosting"),
+    stays: i18n.resolve("header.stays", "Stays"),
+    trips: i18n.resolve("header.trips", "Trips"),
+    favorites: i18n.resolve("header.favorites", "Favorites"),
+    account: i18n.resolve("header.account", "Account"),
+    hostingDashboard: i18n.resolve("header.hosting_dashboard", "Hosting dashboard"),
+    yourListings: i18n.resolve("header.your_listings", "Your listings"),
+    becomeAHost: i18n.resolve("header.become_a_host", "Become a host"),
+    admin: i18n.resolve("header.admin", "Admin"),
+    logOut: i18n.resolve("header.log_out", "Log out"),
+    logIn: i18n.resolve("header.log_in", "Log in"),
+  };
   const router = useRouter();
   const pathname = usePathname();
   const isHomePage = pathname === "/";
@@ -210,18 +213,18 @@ export function Header({
             >
               <Link
                 href="/host"
-                aria-label={navLabels.switchToHosting.text}
+                aria-label={resolvedNavLabels.switchToHosting.text}
               >
                 <Home className="size-[18px] lg:size-5" />
                 <span
                   className={cn(
                     "hidden sm:inline",
-                    navLabels.switchToHosting.translated
+                    resolvedNavLabels.switchToHosting.translated
                       ? "notranslate"
                       : undefined,
                   )}
                 >
-                  {navLabels.switchToHosting.text}
+                  {resolvedNavLabels.switchToHosting.text}
                 </span>
                 <CountBadge
                   value={summary?.host?.total}
@@ -270,7 +273,7 @@ export function Header({
                   >
                     <Link
                       href="/account/favorites"
-                      aria-label={navLabels.favorites.text}
+                      aria-label={resolvedNavLabels.favorites.text}
                     >
                       <Heart className="size-[18px] lg:size-5" />
                     </Link>
@@ -278,10 +281,10 @@ export function Header({
                 </TooltipTrigger>
                 <TooltipContent
                   className={
-                    navLabels.favorites.translated ? "notranslate" : undefined
+                    resolvedNavLabels.favorites.translated ? "notranslate" : undefined
                   }
                 >
-                  {navLabels.favorites.text}
+                  {resolvedNavLabels.favorites.text}
                 </TooltipContent>
               </Tooltip>
               <NotificationBell enabled />
@@ -321,12 +324,12 @@ export function Header({
                     <Heart className="mr-2 h-4 w-4" />
                     <span
                       className={
-                        navLabels.favorites.translated
+                        resolvedNavLabels.favorites.translated
                           ? "notranslate"
                           : undefined
                       }
                     >
-                      {navLabels.favorites.text}
+                      {resolvedNavLabels.favorites.text}
                     </span>
                   </Link>
                 </DropdownMenuItem>
@@ -335,10 +338,10 @@ export function Header({
                     <Home className="mr-2 h-4 w-4" />
                     <span
                       className={
-                        navLabels.stays.translated ? "notranslate" : undefined
+                        resolvedNavLabels.stays.translated ? "notranslate" : undefined
                       }
                     >
-                      {navLabels.stays.text}
+                      {resolvedNavLabels.stays.text}
                     </span>
                   </Link>
                 </DropdownMenuItem>
@@ -347,10 +350,10 @@ export function Header({
                     <CalendarDays className="mr-2 h-4 w-4" />
                     <span
                       className={
-                        navLabels.trips.translated ? "notranslate" : undefined
+                        resolvedNavLabels.trips.translated ? "notranslate" : undefined
                       }
                     >
-                      {navLabels.trips.text}
+                      {resolvedNavLabels.trips.text}
                     </span>
                   </Link>
                 </DropdownMenuItem>
@@ -376,10 +379,10 @@ export function Header({
                     <User className="mr-2 h-4 w-4" />
                     <span
                       className={
-                        navLabels.account.translated ? "notranslate" : undefined
+                        resolvedNavLabels.account.translated ? "notranslate" : undefined
                       }
                     >
-                      {navLabels.account.text}
+                      {resolvedNavLabels.account.text}
                     </span>
                   </Link>
                 </DropdownMenuItem>
@@ -394,12 +397,12 @@ export function Header({
                         <LayoutDashboard className="mr-2 h-4 w-4" />
                         <span
                           className={
-                            navLabels.hostingDashboard.translated
+                            resolvedNavLabels.hostingDashboard.translated
                               ? "notranslate"
                               : undefined
                           }
                         >
-                          {navLabels.hostingDashboard.text}
+                          {resolvedNavLabels.hostingDashboard.text}
                         </span>
                         <CountBadge
                           value={summary?.host?.total}
@@ -413,12 +416,12 @@ export function Header({
                         <LayoutDashboard className="mr-2 h-4 w-4" />
                         <span
                           className={
-                            navLabels.yourListings.translated
+                            resolvedNavLabels.yourListings.translated
                               ? "notranslate"
                               : undefined
                           }
                         >
-                          {navLabels.yourListings.text}
+                          {resolvedNavLabels.yourListings.text}
                         </span>
                       </Link>
                     </DropdownMenuItem>
@@ -430,12 +433,12 @@ export function Header({
                       <Home className="mr-2 h-4 w-4" />
                       <span
                         className={
-                          navLabels.becomeAHost.translated
+                          resolvedNavLabels.becomeAHost.translated
                             ? "notranslate"
                             : undefined
                         }
                       >
-                        {navLabels.becomeAHost.text}
+                        {resolvedNavLabels.becomeAHost.text}
                       </span>
                     </Link>
                   </DropdownMenuItem>
@@ -448,12 +451,12 @@ export function Header({
                         <ShieldCheck className="mr-2 h-4 w-4" />
                         <span
                           className={
-                            navLabels.admin.translated
+                            resolvedNavLabels.admin.translated
                               ? "notranslate"
                               : undefined
                           }
                         >
-                          {navLabels.admin.text}
+                          {resolvedNavLabels.admin.text}
                         </span>
                       </Link>
                     </DropdownMenuItem>
@@ -470,10 +473,10 @@ export function Header({
                   <LogOut className="mr-2 h-4 w-4" />
                   <span
                     className={
-                      navLabels.logOut.translated ? "notranslate" : undefined
+                      resolvedNavLabels.logOut.translated ? "notranslate" : undefined
                     }
                   >
-                    {navLabels.logOut.text}
+                    {resolvedNavLabels.logOut.text}
                   </span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -484,10 +487,10 @@ export function Header({
                 <Link href="/login">
                   <span
                     className={
-                      navLabels.logIn.translated ? "notranslate" : undefined
+                      resolvedNavLabels.logIn.translated ? "notranslate" : undefined
                     }
                   >
-                    {navLabels.logIn.text}
+                    {resolvedNavLabels.logIn.text}
                   </span>
                 </Link>
               </Button>

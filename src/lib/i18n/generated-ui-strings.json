@@ -1220,6 +1220,16 @@
     "filePath": "src/lib/i18n/amenity-labels.ts"
   },
   {
+    "key": "auth.check_email.body",
+    "sourceText": "We sent you a sign-in link. Open it on this device to continue.",
+    "filePath": "src/app/(auth)/login/check-email/page.tsx"
+  },
+  {
+    "key": "auth.check_email.title",
+    "sourceText": "Check your email",
+    "filePath": "src/app/(auth)/login/check-email/page.tsx"
+  },
+  {
     "key": "auth.check_inbox",
     "sourceText": "Check your inbox",
     "filePath": "src/components/auth/login-form.tsx"
@@ -13845,6 +13855,11 @@
     "filePath": "src/components/host/v2/listings/address-modal.tsx"
   },
   {
+    "key": "host.v2.flow.save_and_review",
+    "sourceText": "Save and review",
+    "filePath": "src/components/host/v2/listings/listing-flow-footer.tsx"
+  },
+  {
     "key": "host.v2.import.back",
     "sourceText": "Back",
     "filePath": "src/components/host/v2/listings/new-listing-import.tsx"
@@ -15410,6 +15425,46 @@
     "filePath": "src/components/host/v2/host-v2-account-menu.tsx"
   },
   {
+    "key": "host.v2.today.first_listing.copy",
+    "sourceText": "You haven't listed a home yet. Add your first one and start taking direct bookings — with 0% host commission.",
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+  },
+  {
+    "key": "host.v2.today.first_listing.create",
+    "sourceText": "Create your first listing",
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+  },
+  {
+    "key": "host.v2.today.first_listing.create_another",
+    "sourceText": "Create a new listing",
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+  },
+  {
+    "key": "host.v2.today.first_listing.greeting",
+    "sourceText": "Welcome, {name}",
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+  },
+  {
+    "key": "host.v2.today.first_listing.import",
+    "sourceText": "Import it from Airbnb, Booking.com and more",
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+  },
+  {
+    "key": "host.v2.today.first_listing.import_prompt",
+    "sourceText": "Already listed somewhere else?",
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+  },
+  {
+    "key": "host.v2.today.first_listing.resume",
+    "sourceText": "Finish your listing",
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+  },
+  {
+    "key": "host.v2.today.first_listing.untitled_draft",
+    "sourceText": "Untitled listing",
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
+  },
+  {
     "key": "host.v2.today.greeting",
     "sourceText": "Welcome back, {name}",
     "filePath": "src/app/(host-v2)/host/v2/page.tsx"
@@ -16333,6 +16388,41 @@
     "key": "map.view_listing",
     "sourceText": "View listing",
     "filePath": "src/components/marketplace/properties-explorer-client.tsx"
+  },
+  {
+    "key": "marketing.confirm.body",
+    "sourceText": "Confirm that {email} may receive {audience} marketing emails from Linger Homes.",
+    "filePath": "src/app/marketing/confirm/[token]/page.tsx"
+  },
+  {
+    "key": "marketing.confirm.heading",
+    "sourceText": "Confirm your subscription",
+    "filePath": "src/app/marketing/confirm/[token]/page.tsx"
+  },
+  {
+    "key": "marketing.confirm.submit",
+    "sourceText": "Confirm subscription",
+    "filePath": "src/app/marketing/confirm/[token]/page.tsx"
+  },
+  {
+    "key": "marketing.confirmed.body",
+    "sourceText": "You can unsubscribe from all promotional email at any time. Essential account and booking messages remain separate.",
+    "filePath": "src/app/marketing/confirmed/page.tsx"
+  },
+  {
+    "key": "marketing.confirmed.error_body",
+    "sourceText": "The link may be invalid, expired, or already used. Please request a new confirmation email.",
+    "filePath": "src/app/marketing/confirmed/page.tsx"
+  },
+  {
+    "key": "marketing.confirmed.error_heading",
+    "sourceText": "We could not confirm that link",
+    "filePath": "src/app/marketing/confirmed/page.tsx"
+  },
+  {
+    "key": "marketing.confirmed.heading",
+    "sourceText": "Subscription confirmed",
+    "filePath": "src/app/marketing/confirmed/page.tsx"
   },
   {
     "key": "mobile.account.all_tools",
@@ -18825,6 +18915,11 @@
     "filePath": "src/components/marketplace/search-labels.ts"
   },
   {
+    "key": "search.pets_not_allowed",
+    "sourceText": "This host does not allow pets",
+    "filePath": "src/components/marketplace/search-labels.ts"
+  },
+  {
     "key": "search.property_type",
     "sourceText": "Property type",
     "filePath": "src/components/marketplace/search-labels.ts"
@@ -19378,5 +19473,30 @@
     "key": "support.what_happened",
     "sourceText": "What happened?",
     "filePath": "src/components/support/safety-case-form.tsx"
+  },
+  {
+    "key": "unsubscribe.body",
+    "sourceText": "This stops all promotional email to {email}. Essential account, security, payment, and active-booking messages are not affected.",
+    "filePath": "src/app/unsubscribe/[token]/page.tsx"
+  },
+  {
+    "key": "unsubscribe.heading",
+    "sourceText": "Unsubscribe from marketing",
+    "filePath": "src/app/unsubscribe/[token]/page.tsx"
+  },
+  {
+    "key": "unsubscribe.submit",
+    "sourceText": "Unsubscribe from all marketing",
+    "filePath": "src/app/unsubscribe/[token]/page.tsx"
+  },
+  {
+    "key": "unsubscribe.success_body",
+    "sourceText": "You will no longer receive promotional email from Linger Homes. We may still send messages strictly required for your account, security, payments, listings, or bookings.",
+    "filePath": "src/app/unsubscribe/success/page.tsx"
+  },
+  {
+    "key": "unsubscribe.success_heading",
+    "sourceText": "You have been unsubscribed",
+    "filePath": "src/app/unsubscribe/success/page.tsx"
   }
 ]

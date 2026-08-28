@@ -24,6 +24,7 @@ import { getNightCount } from "@/lib/utils/format";
 import type { MapPin } from "@/components/marketplace/properties-map";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { getT, T, ti, tPlural } from "@/lib/i18n/t";
+import { localizePlaceName } from "@/lib/i18n/place-name";
 import { getMarketplaceSettings } from "@/lib/services/marketplace-settings.service";
 import { computeStayQuote, parseLocalYmd } from "@/lib/utils/stay-pricing";
 
@@ -224,7 +225,10 @@ export default async function PropertiesPage({
         lng: coordinates.lng,
         price: pinPrice,
         title: l.title,
-        location: [l.property.area, l.property.city].filter(Boolean).join(", "),
+        location: [l.property.area, l.property.city]
+          .filter((place): place is string => Boolean(place))
+          .map((place) => localizePlaceName(place, t.locale))
+          .join(", "),
         imageUrl: l.images.find((image) => image.url?.trim())?.url,
         imageAlt: l.images.find((image) => image.url?.trim())?.alt ?? undefined,
         query: listingQueryString,

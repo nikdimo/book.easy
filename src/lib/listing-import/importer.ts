@@ -249,21 +249,121 @@ interface AirbnbPageSignals {
   checkInTime?: string;
   checkOutTime?: string;
   currency?: string;
+  nightlyRate?: number;
   priceQuote?: ImportedPriceQuote;
 }
 
+/** Currency symbols that name exactly one currency. "$" is deliberately absent: it is
+ *  USD, CAD, AUD and several more, and `serverDeterminedCurrency` already says which one
+ *  the page is priced in. */
+const CURRENCY_SYMBOLS: Record<string, string> = { "€": "EUR", "£": "GBP" };
+
+/** The currency a price string states about itself — its symbol, or an ISO code printed
+ *  beside the amount. `fallback` is the page's own currency, which covers a bare "$" and
+ *  an amount with no marker at all. */
+function currencyFromText(value: string, fallback?: string): string | undefined {
+  for (const [symbol, code] of Object.entries(CURRENCY_SYMBOLS)) {
+    if (value.includes(symbol)) return code;
+  }
+  return value.match(/\b[A-Z]{3}\b/)?.[0] ?? fallback;
+}
+
+/**
+ * How Airbnb names the kind of place in the "<kind> in <City>, <Country>" heading every
+ * listing page carries. That heading is the only place a provider page states its city
+ * and country in plain text, because the address itself is never published.
+ *
+ * A kind missing from this list costs the import its city *and* its country. That is
+ * what happened to everything hotel-shaped — "Suite in …", "Condo in …", "Rental unit
+ * in …" all fell through the old five-word list, and the host reached the Address step
+ * with nothing in it but the country dropdown's default.
+ */
+const AIRBNB_PLACE_KINDS =
+  "Room|Home|House|Apartment|Aparthotel|Serviced apartment|Villa|Cabin|Cottage|Loft"
+  + "|Studio|Suite|Guest suite|Condo|Townhouse|Bungalow|Chalet|Guesthouse|Hotel"
+  + "|Boutique hotel|Bed and breakfast|Rental unit|Farm stay|Tiny home|Boat|Camper|Tent";
+
+/**
+ * The nightly rate as Airbnb prints it under the photos: a currency-marked amount that
+ * the same phrase ties to a night — "€85 per night", "85 EUR / night", "MKD 5,200 night".
+ *
+ * The stay-quote line `airbnbPriceQuote` reads ("2 nights x €85.56") deliberately does
+ * not match. Nothing there ties a night to the amount that follows it, and its first
+ * number is a night count, so a looser pattern would import 2 as the rate.
+ */
+const AIRBNB_NIGHTLY_RATE =
+  /(?:[€£$¥]\s?\d[\d.,]*|\d[\d.,]*\s?(?:[€£$¥]|[A-Z]{3}))\s*(?:\/\s*|per\s+|a\s+)?nights?\b/i;
+
+/** A coordinate from a payload that states it as either a number or a numeric string.
+ *  The null island is rejected along with anything out of range: both mean the pin is
+ *  missing, and a missing pin must not be imported as a real place off Africa. */
+function coordinate(value: unknown, limit: number): number | undefined {
+  const parsed = typeof value === "number"
+    ? value
+    : typeof value === "string" && value.trim() !== ""
+      ? Number(value)
+      : NaN;
+  return Number.isFinite(parsed) && parsed !== 0 && Math.abs(parsed) <= limit
+    ? parsed
+    : undefined;
+}
+
+/**
+ * The first amount in a price string, in whichever of the two separator conventions the
+ * provider printed it.
+ *
+ * Both separators present is unambiguous: the last one is the decimal point. A single
+ * separator is not, and the tie is broken by what follows it — exactly three digits is a
+ * thousands group, anything shorter is a fraction. Without that rule "MKD 5,200" parsed
+ * as 5.2, and a rate imported three orders of magnitude low clears the Price step's
+ * floor of 1 rather than being caught by it.
+ */
 function decimalFromPriceText(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value) && value >= 0) return value;
   if (typeof value !== "string") return undefined;
   const match = value.replace(/[\u00a0\u202f]/g, " ").match(/\d[\d.,]*/);
   if (!match) return undefined;
-  const raw = match[0];
-  const decimal = raw.lastIndexOf(".") > raw.lastIndexOf(",") ? "." : ",";
-  const normalized = raw.includes(".") && raw.includes(",")
-    ? raw.replace(decimal === "." ? /,/g : /\./g, "").replace(decimal, ".")
-    : raw.replace(decimal, ".");
+  const raw = match[0].replace(/[.,]+$/, "");
+  const lastDot = raw.lastIndexOf(".");
+  const lastComma = raw.lastIndexOf(",");
+  let normalized: string;
+  if (lastDot >= 0 && lastComma >= 0) {
+    const decimal = lastDot > lastComma ? "." : ",";
+    normalized = raw.replace(decimal === "." ? /,/g : /\./g, "").replace(decimal, ".");
+  } else if (lastDot >= 0 || lastComma >= 0) {
+    const separator = lastDot >= 0 ? "." : ",";
+    normalized = raw.length - raw.lastIndexOf(separator) === 4
+      ? raw.split(separator).join("")
+      : raw.replace(separator, ".");
+  } else {
+    normalized = raw;
+  }
   const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+/**
+ * The rate the Price step should open on.
+ *
+ * A dated link's stay quote is the better source when there is one: it was cross-checked
+ * against the stay total, and its pre-discount rate — not the promotional one the guest
+ * is being shown — is the number a host is setting here. Most shared links carry no
+ * dates, though, and then the price line under the photos is all the page states.
+ */
+function airbnbNightlyRate(
+  priceLines: string[],
+  quote: ImportedPriceQuote | undefined,
+  currency: string | undefined,
+): { amount: number; currency?: string } | undefined {
+  const quoted = quote?.originalNightlyRate ?? quote?.currentNightlyRate;
+  if (quoted !== undefined && quoted > 0) return { amount: quoted, currency: quote?.currency };
+  for (const line of priceLines) {
+    const amount = decimalFromPriceText(line);
+    if (amount !== undefined && amount > 0) {
+      return { amount, currency: currencyFromText(line, currency) };
+    }
+  }
+  return undefined;
 }
 
 function airbnbPriceQuote(
@@ -281,9 +381,7 @@ function airbnbPriceQuote(
   const nights = match ? Number(match[1]) : undefined;
   const currentNightlyRate = match ? decimalFromPriceText(match[2]) : undefined;
   if (!nights || !currentNightlyRate || currentNightlyRate <= 0) return undefined;
-  const quoteCurrency = nightLine.includes("€") ? "EUR"
-    : nightLine.includes("£") ? "GBP"
-      : nightLine.match(/\b[A-Z]{3}\b/)?.[0] ?? currency;
+  const quoteCurrency = currencyFromText(nightLine, currency) ?? currency;
   const monetary = strings
     .filter((value) => /[€$£¥]|\b(?:DKK|EUR|USD|GBP|NOK|SEK)\b/i.test(value))
     .map(decimalFromPriceText)
@@ -343,6 +441,13 @@ function parseAirbnbSignals(
   const amenityNames: string[] = [];
   const propertyTypes: string[] = [];
   const strings: string[] = [];
+  /** Amounts Airbnb itself labelled as a rate per night, in payload order. Read before
+   *  the loose scan over `strings`, because a listing page also carries the price of
+   *  every listing in its "similar homes" carousel. */
+  const nightlyPriceLines: string[] = [];
+  /** A pin from a key that is not the listing's own. Held in reserve rather than used:
+   *  see where it is applied below. */
+  let reservePin: { latitude: number; longitude: number } | undefined;
   const script = html.match(
     /<script\b[^>]*\bid\s*=\s*(["'])data-deferred-state-0\1[^>]*>([\s\S]*?)<\/script>/i,
   )?.[2];
@@ -392,6 +497,27 @@ function parseAirbnbSignals(
         if (typeof object.listingLng === "number" && result.longitude === undefined) {
           result.longitude = object.listingLng;
         }
+        // Airbnb has moved the pin between payload shapes more than once, and a listing
+        // that arrives without one skips the reverse geocode that fills the Address step
+        // at all — the host then confirms an address the import never found. A generic
+        // pair is kept only as a reserve, first in payload order, because these keys also
+        // belong to the map markers of the listings recommended further down the page.
+        if (!reservePin) {
+          const latitude = coordinate(object.lat ?? object.latitude, 90);
+          const longitude = coordinate(object.lng ?? object.longitude, 180);
+          if (latitude !== undefined && longitude !== undefined) {
+            reservePin = { latitude, longitude };
+          }
+        }
+        // The price line under the photos, as Airbnb structures it: an amount beside a
+        // qualifier that names the night. The pre-discount amount first — a host is
+        // setting their own rate here, not the promotion a guest is being shown.
+        if (typeof object.qualifier === "string" && /night/i.test(object.qualifier)) {
+          for (const key of ["originalPrice", "price", "discountedPrice"]) {
+            const amount = object[key];
+            if (typeof amount === "string") nightlyPriceLines.push(amount);
+          }
+        }
         for (const child of Object.values(object)) visit(child, depth + 1);
       };
       visit(root);
@@ -419,19 +545,27 @@ function parseAirbnbSignals(
     }
   }
 
+  // One vocabulary, three uses: the two ways a candidate line is found and the pattern
+  // that then reads the city and country out of it. Written out three times, they drifted
+  // — which is a silent loss of the only address signal the page carries.
+  // Built once rather than per candidate: `strings` is every string in the payload, and
+  // that is tens of thousands of them on a busy listing.
+  const headingInString = new RegExp(`\\b(?:${AIRBNB_PLACE_KINDS})\\s+in\\s+[^,]+,`, "i");
+  const headingInHtml = new RegExp(
+    `(?:${AIRBNB_PLACE_KINDS})\\s+in\\s+([^,<>{}"\\\\]{2,80}),\\s*([^<>{}"\\\\]{2,80})`,
+    "gi",
+  );
+  const locationPattern = new RegExp(
+    `\\b(?:${AIRBNB_PLACE_KINDS})\\s+in\\s+([^,\\n]{2,80}),\\s*([^,\\n·]{2,80})`,
+    "i",
+  );
   const locationCandidates = [
-    ...strings.filter((value) =>
-      /\b(?:Room|Home|House|Apartment|Villa|Cabin|Cottage|Loft|Studio)\s+in\s+[^,]+,/i.test(value),
-    ),
-    ...Array.from(html.matchAll(
-      /(?:Room|Home|House|Apartment|Villa|Cabin|Cottage|Loft|Studio)\s+in\s+([^,<>{}"\\]{2,80}),\s*([^<>{}"\\]{2,80})/gi,
-    )).map((match) => match[0]),
+    ...strings.filter((value) => headingInString.test(value)),
+    ...Array.from(html.matchAll(headingInHtml)).map((match) => match[0]),
   ];
   const parsedLocations: { city: string; country: string; score: number }[] = [];
   for (const candidate of locationCandidates) {
-    const location = candidate.match(
-      /\b(?:Room|Home|House|Apartment|Villa|Cabin|Cottage|Loft|Studio)\s+in\s+([^,\n]{2,80}),\s*([^,\n·]{2,80})/i,
-    );
+    const location = candidate.match(locationPattern);
     if (!location) continue;
     const city = cleanText(location[1], 120);
     const country = cleanText(location[2], 120);
@@ -455,7 +589,32 @@ function parseAirbnbSignals(
     result.checkInTime ??= timeFromText(description, "check-in");
     result.checkOutTime ??= timeFromText(description, "checkout");
   }
+  // Only when the listing's own key gave nothing: a reserve pin that turns out to belong
+  // to a neighbouring listing is still a pin in the right town, which is all the reverse
+  // geocode below needs, and the host confirms the exact spot on the map either way.
+  if (result.latitude === undefined || result.longitude === undefined) {
+    result.latitude = reservePin?.latitude;
+    result.longitude = reservePin?.longitude;
+  }
+
   result.priceQuote = airbnbPriceQuote(strings, sourceUrl, result.currency);
+  const rate = airbnbNightlyRate(
+    [
+      ...nightlyPriceLines,
+      ...strings
+        .map((value) => value.replace(/[\u00a0\u202f]/g, " ").match(AIRBNB_NIGHTLY_RATE)?.[0])
+        .filter((value): value is string => value !== undefined),
+    ],
+    result.priceQuote,
+    result.currency,
+  );
+  if (rate) {
+    result.nightlyRate = rate.amount;
+    // The amount and its currency are read off the same string, so they travel together.
+    // Storing the rate under the page's `serverDeterminedCurrency` while the number came
+    // from a "£" line would relabel the host's money without converting it.
+    result.currency = rate.currency ?? result.currency;
+  }
   return result;
 }
 
@@ -576,6 +735,10 @@ export function parseListingHtml(
     beds: airbnb.beds ?? generic.beds,
     bathrooms: airbnb.bathrooms ?? generic.bathrooms,
     currency: airbnb.currency ?? generic.currency,
+    // Airbnb publishes no schema offer, so `generic.nightlyRate` is always empty here and
+    // the Price step used to open blank on every imported listing — including the ones
+    // whose stay quote had already been read and stored beside it.
+    nightlyRate: airbnb.nightlyRate ?? generic.nightlyRate,
     priceQuote: airbnb.priceQuote,
     amenities: uniqueStrings([...airbnb.amenities, ...generic.amenities], 250),
     checkInTime: airbnb.checkInTime,

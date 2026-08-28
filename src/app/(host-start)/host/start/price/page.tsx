@@ -5,6 +5,7 @@ import { getDisplayCurrency } from "@/lib/currency/server";
 import { getExchangeRates } from "@/lib/currency/rates";
 import { getT } from "@/lib/i18n/t";
 import { requireListingFlowContext, type ListingFlowSearchParams } from "@/lib/listing-flow-context";
+import { returnsToReview } from "@/lib/host/v2/listing-flow-return";
 
 export const metadata = { title: "Price" };
 
@@ -46,6 +47,7 @@ export default async function PricePage({ searchParams }: { searchParams: Promis
         currency={displayCurrency}
         displayCurrency={displayCurrency}
         rates={rates?.rates ?? null}
+        returnToReview={returnsToReview(params.returnTo)}
       />
     </div>
   );

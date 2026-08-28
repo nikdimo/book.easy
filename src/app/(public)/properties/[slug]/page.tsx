@@ -293,6 +293,9 @@ export default async function ListingDetailPage({
       initialGuests={initialGuests}
       initialGuestDetails={initialGuestDetails}
       hasExplicitSearchSelection={hasExplicitSearchSelection}
+      // "Ask the host" is a conversation, not a refusal, so only an outright no takes
+      // the counter away. An unanswered policy cannot reach a published listing.
+      petsAllowed={houseRules.petPolicy !== "NOT_ALLOWED"}
       requestToBookTooltip={requestToBookTooltip}
       acceptedPaymentMethods={acceptedPaymentMethods}
       depositPolicies={depositPolicies}

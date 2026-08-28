@@ -31,6 +31,11 @@ import { toast } from "sonner";
 import { Check, ChevronDown, ChevronRight, ChevronUp, X } from "lucide-react";
 import { updateActiveSearchState } from "@/lib/marketplace-search-state";
 import {
+  clearBookingResumeDraft,
+  takeBookingResumeDraft,
+  writeBookingResumeDraft,
+} from "@/lib/booking-resume";
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -49,6 +54,7 @@ import {
   useCellCurrencyNote,
   useListingDayPrices,
 } from "./use-listing-day-prices";
+import { applyPetPolicy } from "@/lib/booking-flow";
 import { resolvePromotionLabel } from "./promotion-label";
 import {
   useListingStayRange,
@@ -72,6 +78,11 @@ interface BookingWidgetProps {
   initialGuests?: number;
   initialGuestDetails?: GuestDetails;
   hasExplicitSearchSelection?: boolean;
+  /**
+   * Whether the listing's house rules take pets. False and the party cannot hold one:
+   * not from the picker, and not from a `pets=` link either.
+   */
+  petsAllowed?: boolean;
   requestToBookTooltip: Resolved;
   /** Public method names only. Never payment instructions, account details or links. */
   acceptedPaymentMethods: AcceptedPaymentMethodsPresentation;
@@ -285,6 +296,7 @@ export function BookingWidget({
   initialCheckOut = "",
   initialGuests,
   initialGuestDetails = { adults: 0, children: 0, infants: 0, pets: 0 },
+  petsAllowed = true,
   requestToBookTooltip,
   acceptedPaymentMethods,
   depositPolicies,
@@ -321,7 +333,6 @@ export function BookingWidget({
   // overlay; they differ only in where they start it, and the last of them —
   // request to book — starts it on the step the request is sent from.
   const [pickerStep, setPickerStep] = useState<PickerStep>("dates");
-  const [dateFlexibility, setDateFlexibility] = useState(0);
   // Shared with the page's inline availability calendar (and with this widget's
   // own second mount at the other breakpoint) when a provider is above.
   const [{ checkIn: checkInStr, checkOut: checkOutStr }, setStayRange] =
@@ -330,10 +341,11 @@ export function BookingWidget({
       checkOut: initialCheckOut,
     });
   const [guestDetails, setGuestDetails] = useState(() => {
-    const occupancy = initialGuestDetails.adults + initialGuestDetails.children;
-    if (occupancy > 0) return initialGuestDetails;
+    const seed = applyPetPolicy(initialGuestDetails, petsAllowed);
+    const occupancy = seed.adults + seed.children;
+    if (occupancy > 0) return seed;
     return {
-      ...initialGuestDetails,
+      ...seed,
       adults: initialGuests
         ? Math.min(Math.max(initialGuests, 1), maxGuests)
         : 1,
@@ -395,9 +407,8 @@ export function BookingWidget({
       checkIn: checkInStr,
       checkOut: checkOutStr,
       guestCounts: guestDetails,
-      dateFlexibility,
     });
-  }, [checkInStr, checkOutStr, dateFlexibility, guestDetails]);
+  }, [checkInStr, checkOutStr, guestDetails]);
 
   const checkIn = checkInStr ? parseLocalYmd(checkInStr) : undefined;
   const checkOut = checkOutStr ? parseLocalYmd(checkOutStr) : undefined;
@@ -556,6 +567,41 @@ export function BookingWidget({
         !guestsConfirmed || guests < 1
         ? "guests"
         : "review";
+  /**
+   * The far side of a sign-in the guest was sent to from the request-to-book button.
+   *
+   * The stay comes back on the URL and is already seeded above; this puts back the note
+   * and the payment choice, which travelled in browser storage, and reopens the review
+   * so the guest presses one button rather than walking the whole overlay a second time.
+   *
+   * Waits for the session to be known: `useSession` reports "loading" first, and taking
+   * the draft then would spend it on a visitor who turns out not to be signed in.
+   */
+  const resumeHandledRef = useRef(false);
+  useEffect(() => {
+    if (resumeHandledRef.current || sessionStatus === "loading") return;
+    resumeHandledRef.current = true;
+    if (sessionStatus !== "authenticated") return;
+
+    const draft = takeBookingResumeDraft(listingId);
+    if (!draft) return;
+
+    // Browser storage is exactly the external system an effect is for, and it cannot be
+    // read while rendering: the server has no `localStorage`, so seeding this from the
+    // initial render would hydrate against markup that never had the note in it.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (draft.note) setNote(draft.note);
+    if (
+      draft.paymentMethod &&
+      (selectablePaymentMethods as string[]).includes(draft.paymentMethod)
+    ) {
+      setSelectedPaymentMethod(draft.paymentMethod as AcceptedPaymentMethodCode);
+    }
+    // Only when the stay itself survived the trip. Dates that were dropped on the way
+    // back — a stay that fell into the past while the guest read their email — leave the
+    // guest on the card, whose button already says which step is missing.
+    if (reserveStep === "review") openPicker("review");
+  }, [sessionStatus, listingId, selectablePaymentMethods, reserveStep]);
   // "Request to book" and not "Reserve": nothing is held and nothing is charged by
   // pressing it. It sends a request the host still has to accept, and the line under
   // the button says what happens if they do.
@@ -574,6 +620,10 @@ export function BookingWidget({
    * and says so.
    */
   const continueLabel = i18n.resolve("mobile.generic.continue", "Continue");
+  const guestStepActionLabel =
+    selectionValidation.status === "valid"
+      ? continueLabel
+      : i18n.resolve("booking.select_dates_cta", "Select dates");
   const datesRowLabel = i18n.resolve("booking.dates", "Dates");
   const guestsRowLabel = i18n.resolve("booking.guests_label", "Guests");
   const addDatesLabel = i18n.resolve("search.add_dates", "Add dates");
@@ -706,6 +756,18 @@ export function BookingWidget({
     returnUrl.searchParams.set("children", String(guestDetails.children));
     returnUrl.searchParams.set("infants", String(guestDetails.infants));
     returnUrl.searchParams.set("pets", String(guestDetails.pets));
+    // Everything the return URL cannot carry — see `booking-resume`. Written even when
+    // both are empty: its presence is what tells the widget, on the way back, that this
+    // page load is the far side of a sign-in and the review is where the guest left off.
+    writeBookingResumeDraft({
+      listingId,
+      note,
+      paymentMethod: selectedPaymentMethod,
+      savedAt: Date.now(),
+    });
+    // The login route is itself an intercepted modal. Unmount the booking dialog
+    // before navigating so two modal focus traps and two scrims never compete.
+    setDatePickerOpen(false);
     router.push(
       `/login?callbackUrl=${encodeURIComponent(`${returnUrl.pathname}${returnUrl.search}`)}`,
     );
@@ -783,8 +845,10 @@ export function BookingWidget({
   }
 
   function clearSelection() {
+    // Nothing left to come back to, so a draft written before an abandoned sign-in must
+    // not outlive the selection it belonged to.
+    clearBookingResumeDraft();
     setStayRange({ checkIn: "", checkOut: "" });
-    setDateFlexibility(0);
     setGuestDetails({ adults: 1, children: 0, infants: 0, pets: 0 });
     setGuestsConfirmed(false);
     setNote("");
@@ -1022,9 +1086,7 @@ export function BookingWidget({
                 }
               }}
               initialSegment={checkInStr && !checkOutStr ? "checkout" : "checkin"}
-              dateFlexibility={dateFlexibility}
-              showDateFlexibility
-              onDateFlexibilityChange={setDateFlexibility}
+              showDateFlexibility={false}
               dayMeta={dayPrice}
               priceNote={priceNote}
               dayVariant="booking"
@@ -1037,17 +1099,17 @@ export function BookingWidget({
               }}
               guestCounts={guestDetails}
               onGuestCountsChange={(next) => {
-                setGuestDetails(next);
+                setGuestDetails(applyPetPolicy(next, petsAllowed));
                 setGuestsConfirmed(true);
                 setError(null);
               }}
               maxOccupancy={maxGuests}
+              petsAllowed={petsAllowed}
               nextActionLabel={whosComingLabel}
               guestStepTitle={whosComingLabel}
-              finalActionLabel={continueLabel}
-              finalActionDisabled={
-                isPending || selectionValidation.status !== "valid" || guests < 1
-              }
+              finalActionLabel={guestStepActionLabel}
+              finalActionDisabled={isPending || guests < 1}
+              reviewStepEnabled={selectionValidation.status === "valid"}
               showFinalActionIcon={false}
               // The guest step is a step, not a checkout: it gets the title and the way
               // back to the dates that the search pill's own version does without.

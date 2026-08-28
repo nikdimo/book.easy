@@ -65,6 +65,7 @@ export interface SearchLabels {
   infantsHint: Resolved;
   pets: Resolved;
   petsHint: Resolved;
+  petsNotAllowed: Resolved;
   chooseGuestsDescription: Resolved;
   done: Resolved;
   edit: Resolved;
@@ -179,6 +180,10 @@ export function useSearchLabels(): SearchLabels {
       infantsHint: i18n.resolve("search.infants_hint", "Under 2"),
       pets: i18n.resolve("search.pets", "Pets"),
       petsHint: i18n.resolve("search.pets_hint", "Bringing a service animal?"),
+      petsNotAllowed: i18n.resolve(
+        "search.pets_not_allowed",
+        "This host does not allow pets"
+      ),
       chooseGuestsDescription: i18n.resolve(
         "search.choose_guests_description",
         "Choose how many guests are coming."

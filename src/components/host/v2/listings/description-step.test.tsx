@@ -125,8 +125,11 @@ describe("DescriptionStep — description view", () => {
   it("gates the step forward on a handler rather than a link out of the flow", () => {
     const html = step({ initialView: "description" });
 
-    // The CTA is a button, so the minimum runs before the host leaves the screen.
-    expect(html).toMatch(/<button[^>]*>Next<\/button>/);
+    // The CTA is a button, so the minimum runs before the host leaves the screen. Its
+    // label sits in a wrapper the footer never unmounts, so look for a button holding
+    // the label rather than for one whose only child is the word.
+    const buttons = html.match(/<button[\s\S]*?<\/button>/g) ?? [];
+    expect(buttons.some((button) => button.includes(">Next<"))).toBe(true);
     expect(html).not.toContain('href="/host/start/phase-two-complete');
     expect(html).not.toContain('href="/host/listings"');
   });

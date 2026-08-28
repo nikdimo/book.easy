@@ -16,6 +16,12 @@ const rawUiErrors: string[] = [];
 const UI_SCOPES = [
   "src/app/(public)/",
   "src/app/(account)/",
+  // Reached from a link in an email rather than from the site, so a visitor arrives
+  // here with a language already chosen. Left out of the catalog, these read as
+  // English no matter what that choice was.
+  "src/app/(auth)/login/",
+  "src/app/marketing/",
+  "src/app/unsubscribe/",
   "src/components/marketplace/",
   "src/components/public/",
   // The host panel is catalog-covered so hosts get server-rendered copy rather than

@@ -27,7 +27,11 @@ export function ListingActions({
 
   function handleToggleSaved() {
     if (!isAuthenticated) {
-      router.push("/login");
+      // Sign-in used to drop the guest on the home page, losing
+      // the listing they were reading. Come back to exactly where the heart
+      // was pressed, query string and all.
+      const returnTo = `${window.location.pathname}${window.location.search}`;
+      router.push(`/login?callbackUrl=${encodeURIComponent(returnTo)}`);
       return;
     }
     const next = !saved;

@@ -67,7 +67,7 @@ describe("the booking site header", () => {
     expect(header).not.toContain("version=current");
     expect(header).not.toContain("current_host_panel");
     expect(header).not.toContain("new_host_panel");
-    expect(header).toContain("navLabels.hostingDashboard.text");
+    expect(header).toContain("hostingDashboard.text");
   });
 
   it("sends Your listings to the V2 listings page", () => {

@@ -3,6 +3,7 @@ import { NewListingHeader } from "@/components/host/v2/listings/new-listing-head
 import { requireHostPage } from "@/lib/auth-helpers";
 import { getT } from "@/lib/i18n/t";
 import { requireListingFlowContext, type ListingFlowSearchParams } from "@/lib/listing-flow-context";
+import { returnsToReview } from "@/lib/host/v2/listing-flow-return";
 import { todayYmd } from "@/lib/utils/date-only";
 
 export const metadata = { title: "Availability" };
@@ -24,7 +25,7 @@ export default async function AvailabilityPage({ searchParams }: { searchParams:
   return (
     <div className="listing-flow flex min-h-dvh flex-col bg-white text-slate-950 md:h-dvh md:overflow-hidden">
       <NewListingHeader t={t} exitHref="/host/listings" />
-      <AvailabilityStep propertyType={propertyType} spaceType={spaceType} today={todayYmd()} />
+      <AvailabilityStep propertyType={propertyType} spaceType={spaceType} today={todayYmd()} returnToReview={returnsToReview(params.returnTo)} />
     </div>
   );
 }

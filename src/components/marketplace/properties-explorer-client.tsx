@@ -267,7 +267,12 @@ function SelectedPinCard({
           <p className="notranslate truncate text-sm font-semibold" translate="no">
             {pin.location}
           </p>
-          <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+          <p
+            data-user-generated-content
+            data-translatable-user-content
+            translate="yes"
+            className="mt-0.5 line-clamp-2 text-xs text-muted-foreground"
+          >
             {pin.title}
           </p>
           <p

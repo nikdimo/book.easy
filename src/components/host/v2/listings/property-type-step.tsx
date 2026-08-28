@@ -10,6 +10,7 @@ import {
 } from "@/lib/i18n/property-type-labels";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 import { cn } from "@/lib/utils";
+import { reviewHref } from "@/lib/host/v2/listing-flow-return";
 import { ListingFlowFooter } from "./listing-flow-footer";
 import { useHostStartDraft } from "./host-start-draft-provider";
 
@@ -22,9 +23,17 @@ import { useHostStartDraft } from "./host-start-draft-provider";
 export function PropertyTypeStep({
   propertyTypes,
   initialPropertyType,
+  returnToReview = false,
+  spaceType,
 }: {
   propertyTypes: PropertyTypeOption[];
   initialPropertyType?: string;
+  /** Reached from the Review screen's "Edit". */
+  returnToReview?: boolean;
+  /** The space type the flow already carries, so a host who came from Review can be
+   *  sent back there — Review is addressed by both answers — and so the next screen
+   *  opens on the choice they made rather than empty. */
+  spaceType?: string;
 }) {
   const i18n = useI18n();
   const { data, save } = useHostStartDraft();
@@ -36,9 +45,19 @@ export function PropertyTypeStep({
    *  that says what is missing, never a dead disabled one that says nothing. */
   const [showError, setShowError] = useState(false);
   const groupRef = useRef<HTMLDivElement>(null);
+  // Even from Review this step hands off to the space type rather than returning: the
+  // property type decides which space types are offered at all, so a changed answer
+  // here can leave the stored one no longer allowed. The marker rides along, and the
+  // screen after it is the one that returns.
   const nextHref = selectedType
-    ? `/host/start/space-type?propertyType=${encodeURIComponent(selectedType)}`
+    ? `/host/start/space-type?propertyType=${encodeURIComponent(selectedType)}${spaceType ? `&spaceType=${encodeURIComponent(spaceType)}` : ""}${returnToReview ? "&returnTo=review" : ""}`
     : null;
+  const backHref =
+    returnToReview && spaceType
+      ? reviewHref(
+          `propertyType=${encodeURIComponent(initialPropertyType ?? selectedType)}&spaceType=${encodeURIComponent(spaceType)}`,
+        )
+      : "/host/start";
 
   return (
     <>
@@ -166,7 +185,7 @@ export function PropertyTypeStep({
           same two x-positions here as on every later step. */}
       <ListingFlowFooter
         nextHref={nextHref ?? undefined}
-        backHref="/host/start"
+        backHref={backHref}
         onNext={async () => {
           if (!nextHref) {
             // Nothing is written and nothing navigates: the host is told what is

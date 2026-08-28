@@ -20,6 +20,7 @@ import type { PropertyTypeOption } from "@/lib/types/property-type";
 import { cn } from "@/lib/utils";
 import { DatePickerField } from "@/components/shared/date-picker-field";
 import { StepperColumn } from "@/components/host/v2/calendar/workbench-ui";
+import { reviewHref, stepNextTarget } from "@/lib/host/v2/listing-flow-return";
 import { ListingFlowFooter } from "./listing-flow-footer";
 import { useHostStartDraft } from "./host-start-draft-provider";
 import { EMPTY_PRE_PUBLISH_PLAN } from "@/lib/types/listing-prepublish-plan";
@@ -46,6 +47,7 @@ import { EMPTY_PRE_PUBLISH_PLAN } from "@/lib/types/listing-prepublish-plan";
 export function AvailabilityStep({
   propertyType,
   spaceType,
+  returnToReview = false,
   today,
   initialMode = null,
   initialStartDate = "",
@@ -53,6 +55,8 @@ export function AvailabilityStep({
 }: {
   propertyType: PropertyTypeOption;
   spaceType: ListingSpaceTypeValue;
+  /** Reached from the Review screen's "Edit". */
+  returnToReview?: boolean;
   /** Today as a civil date in the marketplace's zone, from the server — so the field's
    *  floor and the "that date has passed" rule agree with the publish gate. */
   today: string;
@@ -64,6 +68,13 @@ export function AvailabilityStep({
   const i18n = useI18n();
   const { data, save } = useHostStartDraft();
   const query = `propertyType=${encodeURIComponent(propertyType.value)}&spaceType=${encodeURIComponent(spaceType)}`;
+  /** Where the CTA goes, and what it says: on to the next question, or back to the
+   *  summary the host came from. */
+  const { href: nextHref, label: nextLabel } = stepNextTarget(
+    returnToReview,
+    query,
+    `/host/start/house-rules?${query}`,
+  );
 
   const storedAvailability = data.prePublishPlan?.availabilityStart;
   const [mode, setMode] = useState<AvailabilityMode | null>(storedAvailability?.mode ?? initialMode);
@@ -302,7 +313,7 @@ export function AvailabilityStep({
       </main>
 
       <ListingFlowFooter
-        backHref={`/host/start/payment-arrangements?${query}`}
+        backHref={returnToReview ? reviewHref(query) : `/host/start/payment-arrangements?${query}`}
         // Next is a link only once the answer holds; until then it is a button that
         // reveals what is missing, so the host is never navigated away from an
         // unanswered question and never meets a dead disabled control either.
@@ -317,17 +328,17 @@ export function AvailabilityStep({
                   : "listing-flow-availability-date";
               document.getElementById(target)?.focus();
             } }
-          : { nextHref: `/host/start/house-rules?${query}`, onNext: async () => {
+          : { nextHref, onNext: async () => {
               const availabilityStart = mode === "from" ? { mode, startDate } : { mode: mode! };
               const prePublishPlan = { ...(data.prePublishPlan ?? EMPTY_PRE_PUBLISH_PLAN), availabilityStart };
               if (await save({ prePublishPlan, minNights: String(minNights), currentStepId: "specialOffer" })) {
-                window.location.assign(`/host/start/house-rules?${query}`);
+                window.location.assign(nextHref);
               }
             } })}
         phaseOneProgress={100}
         phaseTwoProgress={100}
         phaseThreeProgress={40}
-        nextLabel="Next"
+        nextLabel={nextLabel}
       />
     </>
   );

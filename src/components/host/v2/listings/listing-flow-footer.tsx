@@ -23,7 +23,7 @@ type ListingFlowFooterProps = {
   /** Fills the third segment, on the same terms: a phase-three screen passes 100 for
    *  the two segments behind it. */
   phaseThreeProgress?: number;
-  nextLabel?: "Continue" | "Next" | "Publish listing" | "Back to listings";
+  nextLabel?: "Continue" | "Next" | "Save and review" | "Publish listing" | "Back to listings";
   hideOnMobile?: boolean;
 };
 
@@ -62,6 +62,10 @@ export function ListingFlowFooter({
     switch (nextLabel) {
       case "Next":
         return <Tx k="host.v2.flow.next" source="Next" />;
+      // The CTA of a step reached from Review: it says where the host lands, and that
+      // the answer they just changed is kept on the way.
+      case "Save and review":
+        return <Tx k="host.v2.flow.save_and_review" source="Save and review" />;
       case "Publish listing":
         return <Tx k="host.v2.review.publish" source="Publish listing" />;
       case "Back to listings":
@@ -70,6 +74,29 @@ export function ListingFlowFooter({
         return <Tx k="host.v2.flow.continue" source="Continue" />;
     }
   })();
+
+  /**
+   * What the CTA holds, in both of its forms below.
+   *
+   * The label is never swapped out for the spinner: it stays mounted, in the same grid
+   * cell, and is only hidden behind it. Replacing it destroyed and re-created its text
+   * node on every press, which is fine until something outside React is holding that
+   * node — a page-translation layer takes the label away, leaves its own copy in the
+   * button and has no idea React then removed the original, so the copy stays. Every
+   * screen in the flow has always done this; on all but one it goes unnoticed, because
+   * the first press navigates away. House rules with a rule still unanswered is the
+   * exception: the host stays put, and ten presses left ten copies behind, so the CTA
+   * read "NextNextNext…". The rest of the panel already draws its spinners beside a
+   * label that never unmounts, for the same reason.
+   */
+  const content = (
+    <span className="grid place-items-center">
+      <span className={`col-start-1 row-start-1${pending ? " invisible" : ""}`}>{label}</span>
+      {pending ? (
+        <Loader2 className="col-start-1 row-start-1 size-4 animate-spin" aria-hidden />
+      ) : null}
+    </span>
+  );
 
   return (
     <footer className={`${hideOnMobile ? "hidden lg:block" : "block"} fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 px-5 py-4 backdrop-blur md:px-8`}>
@@ -99,7 +126,7 @@ export function ListingFlowFooter({
           // No target and no handler is a step that cannot be left yet, not a step
           // whose CTA should quietly send the host back where they came from.
           <button type="button" onClick={() => void handleNext()} disabled={!onNext || pending} className={`${CTA_CLASS} disabled:cursor-not-allowed disabled:bg-slate-300`}>
-            {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : label}
+            {content}
           </button>
         ) : (
           <Link
@@ -108,7 +135,7 @@ export function ListingFlowFooter({
             onClick={onNext ? (event) => { event.preventDefault(); void handleNext(); } : undefined}
             className={`${CTA_CLASS} ${pending ? "pointer-events-none bg-slate-300" : ""}`}
           >
-            {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : label}
+            {content}
           </Link>
         )}
       </div>

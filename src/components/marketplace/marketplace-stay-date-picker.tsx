@@ -29,6 +29,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { guestStepDestination } from "@/lib/booking-flow";
 import {
   blockedRangeStarts,
   disabledRangesForSelection,
@@ -500,12 +501,20 @@ export function GuestCountsStep({
   guestCounts,
   onGuestCountsChange,
   maxOccupancy,
+  petsAllowed = true,
   className,
 }: {
   guestCounts: GuestCounts;
   onGuestCountsChange: (next: GuestCounts) => void;
   /** Adults and children consume listing capacity; infants and pets do not. */
   maxOccupancy?: number;
+  /**
+   * Whether this listing's house rules take pets. False leaves the row in place —
+   * a guest travelling with a dog needs to be told, not left wondering where the
+   * counter went — but the party cannot gain one. Search, which is not asking about
+   * any one listing, leaves it true.
+   */
+  petsAllowed?: boolean;
   className?: string;
 }) {
   const labels = useSearchLabels();
@@ -604,12 +613,16 @@ export function GuestCountsStep({
             >
               {labels.infants.text}
             </span>
-            {" + "}
-            <span
-              className={labels.pets.translated ? "notranslate" : undefined}
-            >
-              {labels.pets.text}
-            </span>
+            {petsAllowed ? (
+              <>
+                {" + "}
+                <span
+                  className={labels.pets.translated ? "notranslate" : undefined}
+                >
+                  {labels.pets.text}
+                </span>
+              </>
+            ) : null}
             {": ∞"}
           </p>
         </div>
@@ -622,9 +635,14 @@ export function GuestCountsStep({
       />
       <GuestRow
         title={labels.pets}
-        subtitle={labels.petsHint}
-        value={guestCounts.pets}
-        onChange={(pets) => onGuestCountsChange({ ...guestCounts, pets })}
+        subtitle={petsAllowed ? labels.petsHint : labels.petsNotAllowed}
+        value={petsAllowed ? guestCounts.pets : 0}
+        onChange={(pets) =>
+          petsAllowed
+            ? onGuestCountsChange({ ...guestCounts, pets })
+            : undefined
+        }
+        increaseDisabled={!petsAllowed}
       />
     </div>
   );
@@ -2141,6 +2159,7 @@ export function MarketplaceStayDatePicker({
   nextActionLabel,
   guestStepTitle,
   maxOccupancy,
+  petsAllowed = true,
   onRangeStringsChange,
   onGuestCountsChange = () => undefined,
   onDateFlexibilityChange = () => undefined,
@@ -2169,6 +2188,7 @@ export function MarketplaceStayDatePicker({
   showGuestStepChrome = false,
   reviewStepTitle,
   renderReviewStep,
+  reviewStepEnabled = true,
   searchPresentation = false,
   dialogContentId,
   className,
@@ -2196,6 +2216,8 @@ export function MarketplaceStayDatePicker({
   guestStepTitle?: Resolved;
   /** Adults and children consume listing capacity; infants and pets do not. */
   maxOccupancy?: number;
+  /** Whether the listing being booked takes pets. See `GuestCountsStep`. */
+  petsAllowed?: boolean;
   onRangeStringsChange: (next: { checkIn: string; checkOut: string }) => void;
   onGuestCountsChange?: (next: GuestCounts) => void;
   onDateFlexibilityChange?: (next: number) => void;
@@ -2254,6 +2276,8 @@ export function MarketplaceStayDatePicker({
     goToStep: (step: "dates" | "guests") => void;
     close: () => void;
   }) => React.ReactNode;
+  /** When false, the guest action returns to dates instead of entering review. */
+  reviewStepEnabled?: boolean;
   /** Keep the caller's trigger while using the streamlined search calendar and guest panels. */
   searchPresentation?: boolean;
   dialogContentId?: string;
@@ -2321,8 +2345,12 @@ export function MarketplaceStayDatePicker({
    * closes. Both footers below share it so the two presentations cannot drift.
    */
   const leaveGuestStep = React.useCallback(() => {
-    if (renderReviewStep) {
-      changeStep("review");
+    const destination = guestStepDestination(
+      Boolean(renderReviewStep),
+      reviewStepEnabled,
+    );
+    if (destination) {
+      changeStep(destination);
       return;
     }
     if (onFinalAction) onFinalAction();
@@ -2334,6 +2362,7 @@ export function MarketplaceStayDatePicker({
     onFinalAction,
     onSearchRequest,
     renderReviewStep,
+    reviewStepEnabled,
   ]);
 
   React.useEffect(() => {
@@ -3202,6 +3231,7 @@ export function MarketplaceStayDatePicker({
                   guestCounts={guestCounts}
                   onGuestCountsChange={onGuestCountsChange}
                   maxOccupancy={maxOccupancy}
+                  petsAllowed={petsAllowed}
                 />
               </div>
 

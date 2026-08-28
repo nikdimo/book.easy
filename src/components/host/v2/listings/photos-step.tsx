@@ -39,6 +39,7 @@ import type { ListingMediaItem, ListingMediaTypeValue } from "@/lib/types/listin
 import type { ListingSpaceTypeValue } from "@/lib/types/listing-space-type";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 import { cn } from "@/lib/utils";
+import { reviewHref, stepNextTarget } from "@/lib/host/v2/listing-flow-return";
 import { ListingFlowFooter } from "./listing-flow-footer";
 import { useHostStartDraft } from "./host-start-draft-provider";
 
@@ -170,9 +171,12 @@ function photosFromDraft(items: ListingMediaItem[] | undefined): DraftPhoto[] {
 export function PhotosStep({
   propertyType,
   spaceType,
+  returnToReview = false,
 }: {
   propertyType: PropertyTypeOption;
   spaceType: ListingSpaceTypeValue;
+  /** Reached from the Review screen's "Edit". */
+  returnToReview?: boolean;
 }) {
   const { resolve } = useI18n();
   const { data, save } = useHostStartDraft();
@@ -180,6 +184,13 @@ export function PhotosStep({
   const [dropping, setDropping] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const query = `propertyType=${encodeURIComponent(propertyType.value)}&spaceType=${encodeURIComponent(spaceType)}`;
+  /** Where the CTA goes, and what it says: on to the next question, or back to the
+   *  summary the host came from. */
+  const { href: nextHref, label: nextLabel } = stepNextTarget(
+    returnToReview,
+    query,
+    `/host/start/description?${query}`,
+  );
 
   // The ordered list is the single source of truth for what gets saved, and an upload run
   // reads it between awaits — after a reorder the host may have made mid-flight. A ref
@@ -335,7 +346,7 @@ export function PhotosStep({
     const mediaItems = draftMediaItems(photosRef.current);
     if (!mediaItems) throw new Error("Your photos could not be uploaded.");
     if (await save({ mediaItems, currentStepId: "description" })) {
-      window.location.assign(`/host/start/description?${query}`);
+      window.location.assign(nextHref);
     }
   }
 
@@ -512,8 +523,9 @@ export function PhotosStep({
       </main>
 
       <ListingFlowFooter
-        {...(progress.met ? { nextHref: `/host/start/description?${query}` } : {})}
-        backHref={`/host/start/amenities?${query}`}
+        {...(progress.met ? { nextHref } : {})}
+        backHref={returnToReview ? reviewHref(query) : `/host/start/amenities?${query}`}
+        nextLabel={nextLabel}
         onNext={() =>
           guardNext(async () => {
             try {
@@ -527,7 +539,6 @@ export function PhotosStep({
         }
         phaseOneProgress={100}
         phaseTwoProgress={40}
-        nextLabel="Next"
       />
     </>
   );
