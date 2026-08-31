@@ -107,13 +107,18 @@ export function FacebookPromoteButton({
           </TooltipContent>
         </Tooltip>
       )}
-      {/* A bottom sheet that fills a phone, a wide centered dialog from `md` up. The
-          shared `variant="sheet"` already switches between the two; the width override
-          is here because this panel carries a calendar and a ten-row textarea, which
-          the default `md:max-w-md` would squeeze. */}
+      {/* A sheet that fills a phone, a wide centered dialog from `md` up. The shared
+          `variant="sheet"` already switches between the two; the width override is here
+          because the compose step puts the controls and the live preview side by side
+          from `md`, and `max-w-2xl` gave each column about 320px — narrower than the
+          post it was previewing. `max-w-4xl` is still inside the listing flow's own
+          `max-w-5xl` step column, so the two read as the same width of screen.
+
+          The panel itself scrolls nothing: it is a flex column whose middle scrolls, so
+          the progress rail and the footer stay put while a step's content moves. */}
       <DialogContent
         variant="sheet"
-        className="h-dvh !max-h-dvh gap-0 overflow-y-auto rounded-none md:h-auto md:!max-h-[92dvh] md:max-w-2xl md:rounded-xl"
+        className="flex h-dvh !max-h-dvh flex-col gap-0 overflow-hidden rounded-none md:h-auto md:!max-h-[92dvh] md:max-w-4xl md:rounded-xl"
       >
         <PromotionWorkspace listingId={listingId} onOpenChange={setOpen} />
       </DialogContent>

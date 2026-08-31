@@ -13,7 +13,6 @@ import {
 import {
   PAYMENT_DETAIL_FIELDS,
   methodSupportsPaymentDetails,
-  paymentDetailsAreComplete,
   validatePaymentMethodDetails,
   type PaymentDetailFieldValues,
   type PaymentDetailIssues,
@@ -131,6 +130,49 @@ export function togglePaymentMethod(
   ]);
 }
 
+/**
+ * One checkbox change, applied to the whole draft.
+ *
+ * Lifted out of the editor so the two rules it encodes can be asserted directly rather
+ * than through a rendered checkbox: `ARRANGE_DIRECTLY` stays exclusive, and text the
+ * host has typed survives a method being switched off and back on. The save normalizer
+ * is what finally drops details for a method that stays unselected, so nothing typed is
+ * thrown away while the host is still deciding.
+ */
+export function draftAfterMethodToggle(
+  draft: PaymentArrangementsDraft,
+  code: PaymentMethodCode,
+  checked: boolean,
+): PaymentArrangementsDraft {
+  const methodCodes = togglePaymentMethod(draft.methodCodes, code, checked);
+  return {
+    methodCodes,
+    otherLabel: methodCodes.includes("OTHER") ? (draft.otherLabel ?? "") : null,
+    instructionTemplates: draft.instructionTemplates ?? {},
+    details: draft.details ?? {},
+  };
+}
+
+/** The method whose detail drawer is open, or `null` for none. */
+export type PaymentDetailsDrawer = PaymentMethodCode | null;
+
+/**
+ * What the drawer does when a method is ticked or unticked.
+ *
+ * Nothing, unless the method that was just cleared is the one on screen. Selecting a
+ * method and editing its details are two separate acts: a checkbox that also throws a
+ * modal over the list makes "I accept cash too" cost a dismissal, and it moves focus
+ * away from the row the host was working down.
+ */
+export function drawerAfterMethodToggle(
+  open: PaymentDetailsDrawer,
+  code: PaymentMethodCode,
+  checked: boolean,
+): PaymentDetailsDrawer {
+  if (!checked && open === code) return null;
+  return open;
+}
+
 export function validateOtherPaymentLabel(label: string): OtherPaymentLabelIssue | null {
   const value = label.trim();
   const length = Array.from(value).length;
@@ -158,22 +200,44 @@ export function paymentDetailIssues(
   return issues;
 }
 
+export type PaymentMethodDetailState =
+  | "NOT_APPLICABLE"
+  | "NONE"
+  | "ADDED"
+  | "ATTENTION";
+
 /**
- * Whether one method is ready to send without the host typing anything at acceptance.
+ * What one method's private details are, in the *draft* the host is looking at.
  *
- * "Missing details" is not an error — a host may deliberately share details later — so
- * this drives a neutral status chip rather than a validation failure.
+ * Three deliberate distinctions:
+ *
+ * `NONE` is not a failure. Details are optional — a host may always share them by hand
+ * when they accept a booking — so an empty method reads as "Optional", never as missing.
+ *
+ * `ADDED` says the draft holds something, and says nothing about the database. This
+ * screen keeps a local draft that is only written by the section's own Save, so calling
+ * a typed-but-unsaved IBAN "saved" would be a lie a host has no way to catch.
+ *
+ * `ATTENTION` is the one state that needs the host: something is entered and it does not
+ * validate, which is also what blocks the section's Save.
  */
-export function paymentMethodDetailsStatus(
+export function paymentMethodDetailState(
   draft: PaymentArrangementsDraft,
   code: PaymentMethodCode,
-): "READY" | "MISSING" | "NOT_APPLICABLE" {
+): PaymentMethodDetailState {
   if (!methodSupportsPaymentDetails(code)) return "NOT_APPLICABLE";
+
   const values = draft.details?.[code];
-  if (values && paymentDetailsAreComplete(code, values)) return "READY";
-  // Legacy free text still counts as ready: it is what the host has, and it works.
-  if (draft.instructionTemplates?.[code]?.trim()) return "READY";
-  return "MISSING";
+  const entered =
+    values !== undefined &&
+    Object.values(values).some((value) => (value ?? "").trim() !== "");
+  if (entered && !validatePaymentMethodDetails(code, values).success) {
+    return "ATTENTION";
+  }
+  if (entered) return "ADDED";
+  // Legacy free text is details too: it is what the host has, and it still works.
+  if (draft.instructionTemplates?.[code]?.trim()) return "ADDED";
+  return "NONE";
 }
 
 export function paymentArrangementsAreComplete(draft: PaymentArrangementsDraft): boolean {

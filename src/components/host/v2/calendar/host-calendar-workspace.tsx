@@ -8,6 +8,7 @@ import {
   useState,
   useTransition,
 } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { BASE_CURRENCY } from "@/lib/currency/currency-preference";
 import {
@@ -69,9 +70,7 @@ import type { ProposedPromotion } from "@/lib/host/v2/calendar-quote";
 import type { MutationStep } from "@/lib/host/v2/calendar-review";
 import {
   buildDateReviewPlan,
-  buildListingReviewPlan,
   type DateChange,
-  type ListingChange,
   type ReviewPlan,
 } from "@/lib/host/v2/calendar-review";
 import {
@@ -79,13 +78,22 @@ import {
   leavingLosesWork,
   CONNECTIONS_VIEW,
   MENU_VIEW,
-  MINIMUM_STAY_TARGET,
   openEditor as openWorkbenchEditor,
   scopeOfSelection,
   viewAfterScopeChange,
   type WorkbenchEditor,
   type WorkbenchView,
 } from "@/lib/host/v2/calendar-workbench";
+import type {
+  CalendarHrefRange,
+  CalendarIntent,
+} from "@/lib/host/v2/calendar-href";
+import {
+  calendarArrival,
+  EDITOR_FOR_INTENT,
+  viewForPendingIntent,
+} from "@/lib/host/v2/calendar-intent";
+import { editorSectionHref } from "@/lib/host/v2/editor-sections";
 import type { ScheduledChange } from "@/lib/host/v2/calendar-schedule";
 import { formatMonthYear, formatShortDate } from "@/lib/host/v2/calendar-format";
 import {
@@ -106,18 +114,28 @@ import { AllListingsTimeline } from "./all-listings-timeline";
 import { ReviewDialog } from "./review-dialog";
 import { runMutationSteps } from "./calendar-actions";
 import { ChannelChip } from "./channel-chip";
-import { bookabilityLine, money } from "./calendar-labels";
+import {
+  bookabilityLine,
+  money,
+  workbenchEditorLabel,
+} from "./calendar-labels";
 
 const RAIL_PREFERENCE_KEY = "bookeasy.host.v2.calendar.rail";
 
-type ReviewTarget =
-  | { kind: "date" }
-  | { kind: "listing"; change: ListingChange }
-  | null;
+/**
+ * A review is only ever about the selected dates now.
+ *
+ * It used to carry a listing-wide branch as well, with the staged change attached,
+ * because this screen edited the listing's defaults too. Those moved to the listing
+ * editor, and with them the second shape this had to hold.
+ */
+type ReviewTarget = { kind: "date" } | null;
 
 export function HostCalendarWorkspace({
   data,
   requestedListingId = null,
+  intent = null,
+  requestedRange = null,
 }: {
   data: HostCalendarWorkspaceData;
   /**
@@ -128,15 +146,59 @@ export function HostCalendarWorkspace({
    * resolves to nothing and the default property is shown instead of an empty calendar.
    */
   requestedListingId?: string | null;
+  /**
+   * Why the host came, from `?intent=`.
+   *
+   * The listing editor's contextual links are half a sentence — "set prices for
+   * specific dates" — and this is the other half arriving with them. It puts the
+   * calendar into a state that asks for dates, and opens the matching editor as soon
+   * as the first selection is made. It is never a permission: it names an editor that
+   * only ever acts on selected dates, and it is dropped the moment the host does
+   * anything else.
+   */
+  intent?: CalendarIntent | null;
+  /** Dates the link already knew about — a dated offer's own range. Inclusive. */
+  requestedRange?: CalendarHrefRange | null;
 }) {
   const i18n = useI18n();
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
+  /**
+   * Everything the link asked for, resolved once.
+   *
+   * Computed in one lazy initializer rather than three, because the selection, the open
+   * destination and whether an intent is still waiting are one decision — deriving them
+   * separately is how they drift apart.
+   */
+  const [arrival] = useState(() => {
+    const listingId = initialCalendarListingId(data, requestedListingId);
+    // `initialCalendarListingId` intentionally falls back to the host's first listing
+    // when a requested id is stale or belongs to somebody else. That is useful for
+    // rendering the calendar, but it must not retarget the requested edit/range to a
+    // different property. Only honour deep-link context when its exact listing was
+    // present in the host-scoped payload.
+    const requestedListingMatched =
+      requestedListingId !== null &&
+      data.listings.some((listing) => listing.id === requestedListingId);
+    return {
+      listingId,
+      ...calendarArrival({
+        intent,
+        range: requestedRange,
+        hasListing: requestedListingMatched,
+        today: data.today,
+        horizonEnd: data.horizonEnd,
+      }),
+    };
+  });
+
   const [selectedId, setSelectedId] = useState<string>(
-    () => initialCalendarListingId(data, requestedListingId) ?? ALL_LISTINGS,
+    () => arrival.listingId ?? ALL_LISTINGS,
   );
-  const [selection, setSelection] = useState<CalendarSelection | null>(null);
+  const [selection, setSelection] = useState<CalendarSelection | null>(
+    arrival.selection,
+  );
   const [promotionEditorId, setPromotionEditorId] = useState<string | null>(null);
   /** The month the stream is showing. Reported by scrolling, not by paging. */
   const [month, setMonth] = useState(() => monthOf(data.today));
@@ -167,23 +229,20 @@ export function HostCalendarWorkspace({
     result: DateActionResult;
     undoSteps: MutationStep[];
   } | null>(null);
-  const [focusMinimumStay, setFocusMinimumStay] = useState(false);
   /**
    * Where the editing panel is: its summary menu, one focused editor, or the
    * scheduled-changes list. Exactly one of the three, always.
    */
-  const [view, setView] = useState<WorkbenchView>(MENU_VIEW);
+  const [view, setView] = useState<WorkbenchView>(arrival.view);
   /**
-   * The single listing-wide change the open editor has staged.
+   * The action the host arrived to perform, until they perform it or drop it.
    *
-   * The listing-wide counterpart of `change`, and it exists for the same reason: the
-   * shell owns one Review button, so it has to know whether there is anything to
-   * review. Nothing is written from here — this is a description of a change, and only
-   * the review dialog's confirm can act on it.
+   * Held in state rather than read straight from the prop, so that cancelling it — or
+   * simply choosing a different editor — actually ends it. An intent that came back on
+   * every render would keep re-opening its editor over whatever the host did next.
    */
-  const [listingDraft, setListingDraft] = useState<ListingChange | null>(null);
-  /** Bumped to remount the listing-wide form, which is how a discard resets it. */
-  const [listingFormNonce, setListingFormNonce] = useState(0);
+  const [pendingIntentAction, setPendingIntentAction] =
+    useState<CalendarIntent | null>(arrival.pendingIntent);
   /** The move the host asked for, held while they answer the discard prompt. */
   const [pendingIntent, setPendingIntent] = useState<{ run: () => void } | null>(
     null,
@@ -318,7 +377,7 @@ export function HostCalendarWorkspace({
    * has to keep a stable identity; the ref is written from an effect, which has always
    * flushed before the next click can read it.
    */
-  const hasDraft = change !== null || listingDraft !== null;
+  const hasDraft = change !== null;
   const hasDraftRef = useRef(hasDraft);
   useEffect(() => {
     hasDraftRef.current = hasDraft;
@@ -339,10 +398,6 @@ export function HostCalendarWorkspace({
 
   const discardDraft = useCallback(() => {
     setChange(null);
-    setListingDraft(null);
-    // The listing-wide inputs hold their own state, so a discard has to remount them
-    // rather than politely asking them to forget what was typed.
-    setListingFormNonce((nonce) => nonce + 1);
   }, []);
 
   /**
@@ -372,6 +427,10 @@ export function HostCalendarWorkspace({
         setChange(null);
         setPromotionEditorId(null);
         setReviewTarget(null);
+        // An intent is scoped to the listing named by the deep link. Carrying it to a
+        // different property would silently turn "price dates for A" into "price
+        // dates for B" after the next selection.
+        setPendingIntentAction(null);
         // A different property means different dates, different prices and different
         // offers. Whatever editor was open was about the old one, so the panel goes
         // back to its menu rather than re-pointing an editor at a stranger.
@@ -395,35 +454,6 @@ export function HostCalendarWorkspace({
       setPromotionEditorId(null);
     });
   }, [guard, reviewBusy]);
-
-  /**
-   * The quiet minimum-stay row in the pricing editor.
-   *
-   * It changes the *scope* of the panel rather than adding a field to the date save:
-   * the minimum stay is one listing-wide rule, and a host who edited it from inside a
-   * three-night price edit would reasonably expect it to apply to those three nights.
-   */
-  const editListingWideStayRules = useCallback(() => {
-    guard(() => {
-      setSelection(null);
-      anchorRef.current = null;
-      setChange(null);
-      setView({ kind: "editor", editor: MINIMUM_STAY_TARGET.editor });
-      setFocusMinimumStay(true);
-    });
-  }, [guard]);
-
-  /** The same destination the pricing editor's "Change" link reaches, but entered on
-   *  its own terms: no field is singled out, because nothing sent the host here. */
-  const openListingDefaults = useCallback(() => {
-    guard(() => {
-      setSelection(null);
-      anchorRef.current = null;
-      setChange(null);
-      setView({ kind: "editor", editor: MINIMUM_STAY_TARGET.editor });
-      setFocusMinimumStay(false);
-    });
-  }, [guard]);
 
   const openSchedule = useCallback(() => {
     guard(() => {
@@ -472,7 +502,9 @@ export function HostCalendarWorkspace({
       // An out-of-scope request is refused rather than pointed at the wrong target.
       if (!next) return;
       guard(() => {
-        setFocusMinimumStay(false);
+        // Choosing an editor by hand answers the question the intent was asking, so
+        // the intent stops applying whichever editor was chosen.
+        setPendingIntentAction(null);
         setPromotionEditorId(null);
         setView(next);
       });
@@ -483,7 +515,10 @@ export function HostCalendarWorkspace({
   /** Back always means the summary menu — there is only ever one level to climb. */
   const backToMenu = useCallback(() => {
     const leave = () => {
-      setFocusMinimumStay(false);
+      // Backing out of the editor an intent opened is how the host declines it. The
+      // intent is dropped rather than re-applied on the next selection, so "no, not
+      // that" is answered once.
+      setPendingIntentAction(null);
       setView(backFrom(activeView));
     };
     // Only an editor can be holding a draft; backing out of the schedule list or the
@@ -523,9 +558,20 @@ export function HostCalendarWorkspace({
         // A new question about different dates should not inherit half an answer.
         setChange(null);
         setPromotionEditorId(null);
+        // The host followed a link that named an action and then picked the dates it
+        // was missing. Opening that editor here is answering them, not guessing: the
+        // intent is consumed at the same moment, so a later selection behaves normally.
+        const intentView = viewForPendingIntent(
+          pendingIntentAction,
+          result.selection,
+        );
+        if (intentView) {
+          setPendingIntentAction(null);
+          setView(intentView);
+        }
       });
     },
-    [i18n, guard],
+    [i18n, guard, pendingIntentAction],
   );
 
   const handleSelectDate = useCallback(
@@ -593,17 +639,20 @@ export function HostCalendarWorkspace({
     [guard],
   );
 
-  /** Open either promotion type in the editor that owns its scope. */
+  /**
+   * Open a promotion where it is actually edited.
+   *
+   * A dated offer belongs to its nights, so it opens here: the calendar selects that
+   * exact range and puts the promotion editor on it. An always-active one belongs to
+   * the listing, so this leaves for the Pricing section rather than growing a second
+   * editor for it — the whole reason the ongoing offers moved there is that "every
+   * date, forever" is not a thing a date grid can meaningfully show.
+   */
   const openPromotion = useCallback(
     (promotion: HostCalendarWorkspaceData["listings"][number]["promotions"][number]) => {
       guard(() => {
         if (!promotion.startDate || !promotion.endDate) {
-          setChange(null);
-          setListingDraft(null);
-          setSelection(null);
-          anchorRef.current = null;
-          setPromotionEditorId(promotion.id);
-          setView({ kind: "editor", editor: "listing_promotions" });
+          if (active) router.push(editorSectionHref(active.listing.id, "pricing"));
           return;
         }
         const nextSelection = {
@@ -617,25 +666,8 @@ export function HostCalendarWorkspace({
         setView({ kind: "editor", editor: "promotions" });
       });
     },
-    [guard],
+    [guard, active, router],
   );
-
-  const openAllDatePromotions = useCallback(() => {
-    guard(() => {
-      setChange(null);
-      setListingDraft(null);
-      setSelection(null);
-      anchorRef.current = null;
-      setPromotionEditorId(null);
-      setView({ kind: "editor", editor: "listing_promotions" });
-      // The banner is the only opener that sits outside the panel, so it is the only
-      // one that has to raise the drawer as well as choose the editor: every other
-      // caller is already inside a panel the host has open. Guarded by width because
-      // on desktop the panel is mounted in the right column, where `sheetOpen` would
-      // put dialog semantics on a pane that is not a dialog.
-      if (!window.matchMedia("(min-width: 1024px)").matches) setSheetOpen(true);
-    });
-  }, [guard]);
 
   /** A completed pointer drag. Committed once, on release, never during the gesture. */
   const handleSelectRange = useCallback(
@@ -663,23 +695,12 @@ export function HostCalendarWorkspace({
 
   const plan: ReviewPlan | null = useMemo(() => {
     if (!reviewTarget || !active) return null;
-    if (reviewTarget.kind === "date") {
-      return buildDateReviewPlan({
-        listing: active.listing,
-        index: active.index,
-        selection,
-        change,
-        today: data.today,
-      });
-    }
-    return buildListingReviewPlan({
+    return buildDateReviewPlan({
       listing: active.listing,
       index: active.index,
-      change: reviewTarget.change,
-      summary: active.summary,
+      selection,
+      change,
       today: data.today,
-      horizonEnd: data.horizonEnd,
-      horizonMonths: data.horizonMonths,
     });
   }, [reviewTarget, active, selection, change, data]);
 
@@ -913,7 +934,6 @@ export function HostCalendarWorkspace({
       // The change has landed, so the editor that described it has nothing left to
       // say. The panel returns to its menu showing the new state.
       setView(MENU_VIEW);
-      setFocusMinimumStay(false);
       // The draft has just become the saved state, so there is nothing left to
       // protect — clearing it directly rather than through `clearSelection` avoids
       // prompting the host to discard the change they only just confirmed.
@@ -958,14 +978,13 @@ export function HostCalendarWorkspace({
    */
   const managePanel = active ? (
     <ManageCalendarPanel
-      key={`${active.listing.id}:${listingFormNonce}`}
+      key={active.listing.id}
       listing={active.listing}
       index={active.index}
       summary={active.summary}
       formats={data.formats}
       today={data.today}
       horizonEnd={data.horizonEnd}
-      horizonMonths={data.horizonMonths}
       selection={selection}
       rangeLabel={rangeLabel}
       change={change}
@@ -981,18 +1000,6 @@ export function HostCalendarWorkspace({
       onApplyPromotion={applyPromotion}
       onUndoAction={undoDateAction}
       onDismissActionResult={() => setDateAction(null)}
-      listingDraft={listingDraft}
-      onListingDraftChange={setListingDraft}
-      onReviewListing={() => {
-        // Guarded by the button being disabled without a draft; re-checked here so a
-        // review can never open against nothing.
-        if (listingDraft) {
-          setReviewTarget({ kind: "listing", change: listingDraft });
-        }
-      }}
-      onEditListingWideStayRules={editListingWideStayRules}
-      onOpenListingDefaults={openListingDefaults}
-      focusMinimumStay={focusMinimumStay}
       view={activeView}
       onOpenEditor={openEditor}
       onOpenSchedule={openSchedule}
@@ -1000,8 +1007,9 @@ export function HostCalendarWorkspace({
       onOpenScheduledEntry={openScheduledEntry}
       onRemoveScheduledPromotion={removeScheduledPromotion}
       onSelectDatePromotion={openPromotion}
-      onClearPromotionTarget={() => setPromotionEditorId(null)}
       onOpenConnections={openConnections}
+      pendingIntent={pendingIntentAction}
+      onCancelIntent={() => setPendingIntentAction(null)}
     />
   ) : null;
 
@@ -1146,10 +1154,15 @@ export function HostCalendarWorkspace({
             <CalendarMonthStream
               lead={
                 <>
+                  {/* An always-active offer is not something this grid can show —
+                      it applies to every night, including the ones off screen — so the
+                      banner reports it and leads to the Pricing section, which is the
+                      one place it can be changed. It used to open a listing-wide
+                      editor inside this panel, which is exactly the second home the
+                      split removed. */}
                   {allDatePromotionCount > 0 ? (
-                    <button
-                      type="button"
-                      onClick={openAllDatePromotions}
+                    <Link
+                      href={editorSectionHref(active.listing.id, "pricing")}
                       className="mb-3 flex min-h-11 w-full shrink-0 items-center justify-between gap-4 rounded-xl bg-[#f8fafc] px-3.5 py-2.5 text-left text-[#0f172a] transition-colors hover:bg-[#f1f5f9] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]"
                     >
                       <span className="flex min-w-0 items-center gap-2">
@@ -1179,7 +1192,7 @@ export function HostCalendarWorkspace({
                       <span className="shrink-0 text-[0.75rem] font-semibold">
                         {i18n.resolve("host.v2.calendar.manage", "Manage").text}
                       </span>
-                    </button>
+                    </Link>
                   ) : null}
                 </>
               }
@@ -1335,10 +1348,20 @@ export function HostCalendarWorkspace({
                     ),
                     { range: rangeLabel },
                   ).text
-                : i18n.resolve(
-                    "host.v2.calendar.manage_all_dates",
-                    "Manage all dates",
-                  ).text}
+                : pendingIntentAction
+                  ? `${
+                      i18n.resolve(
+                        "host.v2.calendar.manage_all_dates",
+                        "Manage dates",
+                      ).text
+                    } · ${workbenchEditorLabel(
+                      i18n,
+                      EDITOR_FOR_INTENT[pendingIntentAction],
+                    ).text}`
+                  : i18n.resolve(
+                      "host.v2.calendar.manage_all_dates",
+                      "Manage dates",
+                    ).text}
             </span>
             <ChevronRight className="size-4 shrink-0 text-slate-400" aria-hidden />
           </button>
@@ -1381,19 +1404,13 @@ export function HostCalendarWorkspace({
         <ReviewDialog
           open={reviewTarget !== null}
           plan={plan}
-          scopeLabel={
-            reviewTarget?.kind === "date"
-              ? `${active.listing.title} · ${rangeLabel}`
-              : active.listing.title
-          }
+          scopeLabel={`${active.listing.title} · ${rangeLabel}`}
           currency={active.listing.pricing?.currency ?? BASE_CURRENCY}
           formats={data.formats}
           pending={pending}
           // Only a block carries a note. Everything else gets null and no field.
           note={
-            reviewTarget?.kind === "date" &&
-            change?.kind === "AVAILABILITY" &&
-            change.to === "BLOCK"
+            change?.kind === "AVAILABILITY" && change.to === "BLOCK"
               ? (change.note ?? "")
               : null
           }

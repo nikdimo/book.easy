@@ -285,8 +285,10 @@ describe("private payment details", () => {
     draft.data = { acceptedPaymentMethods: ["PAYPAL"] } as ListingDraftData;
     const html = step();
 
-    expect(html).toContain("Optional details");
+    expect(html).toContain("Optional");
     expect(html).not.toContain("Missing details");
+    // Nor does a method with nothing entered read as something the host must fix.
+    expect(html).not.toContain("Needs attention");
   });
 
   it("does not stand between the host and the next screen", async () => {

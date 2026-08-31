@@ -98,7 +98,11 @@ export function PaymentArrangementsWorkspace({
   }
 
   return (
-    <>
+    // One column, three groups, a rule between them — the composition every other
+    // editor section uses. Each child still centres itself inside its own `max-w-3xl`,
+    // which is what lets the methods editor be shared with the create flow unchanged;
+    // nesting the same clamp twice changes nothing.
+    <div className="py-6 md:py-10">
       <PaymentArrangementsEditor
         key={`${listingId}:${initialValue.reviewedAt ?? "unreviewed"}`}
         initialValue={initialValue}
@@ -120,6 +124,6 @@ export function PaymentArrangementsWorkspace({
         reviewedAt={initialCancellation.reviewedAt}
         onSave={saveCancellation}
       />
-    </>
+    </div>
   );
 }

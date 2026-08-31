@@ -6,9 +6,7 @@ import {
   leavingLosesWork,
   CONNECTIONS_VIEW,
   MENU_VIEW,
-  MINIMUM_STAY_TARGET,
   openEditor,
-  reviewContractFor,
   scopeOfSelection,
   viewAfterScopeChange,
   WORKBENCH_MENU,
@@ -24,18 +22,23 @@ describe("scope", () => {
     expect(scopeOfSelection(null)).toBe("ALL_FUTURE");
   });
 
-  it("offers a different menu in each scope, with nothing in common", () => {
-    const dates = WORKBENCH_MENU.DATES;
-    const all = WORKBENCH_MENU.ALL_FUTURE;
-    expect(dates).toEqual(["availability", "pricing", "promotions"]);
-    expect(all).toEqual([
-      "listing_visibility",
-      "listing_defaults",
-      "listing_promotions",
+  it("offers the three date editors, and nothing at all without dates", () => {
+    expect(WORKBENCH_MENU.DATES).toEqual([
+      "availability",
+      "pricing",
+      "promotions",
     ]);
-    // "Block these nights" and "close every date by default" must never be reachable
-    // through the same identifier.
-    expect(dates.some((editor) => all.includes(editor))).toBe(false);
+    // The calendar no longer edits anything listing-wide: the base price, the cleaning
+    // fee, the minimum stay, the always-active offers and the default availability all
+    // have exactly one home now, and it is the listing editor. With no dates chosen
+    // this panel reports those values and links to them.
+    expect(WORKBENCH_MENU.ALL_FUTURE).toEqual([]);
+  });
+
+  it("puts every editor in the date scope", () => {
+    for (const editor of WORKBENCH_MENU.DATES) {
+      expect(editorScope(editor)).toBe("DATES");
+    }
   });
 });
 
@@ -47,16 +50,17 @@ describe("opening an editor", () => {
     });
   });
 
-  it("refuses an editor that does not belong to the current scope", () => {
-    expect(openEditor("listing_defaults", "DATES")).toBeNull();
-    expect(openEditor("availability", "ALL_FUTURE")).toBeNull();
+  it("refuses every editor while no dates are selected", () => {
+    // This is what keeps an arriving `?intent=` safe: it can only ever name an editor
+    // that acts on selected dates, and without a selection it opens nothing at all.
+    for (const editor of WORKBENCH_MENU.DATES) {
+      expect(openEditor(editor, "ALL_FUTURE")).toBeNull();
+    }
   });
 
   it("puts every menu entry in reach of its own scope", () => {
-    for (const scope of ["DATES", "ALL_FUTURE"] as const) {
-      for (const editor of WORKBENCH_MENU[scope]) {
-        expect(openEditor(editor, scope)).toEqual({ kind: "editor", editor });
-      }
+    for (const editor of WORKBENCH_MENU.DATES) {
+      expect(openEditor(editor, "DATES")).toEqual({ kind: "editor", editor });
     }
   });
 });
@@ -105,18 +109,11 @@ describe("scope changes under an open editor", () => {
   });
 
   it("drops a date editor when the selection is cleared", () => {
-    expect(
-      viewAfterScopeChange({ kind: "editor", editor: "pricing" }, "ALL_FUTURE"),
-    ).toEqual(MENU_VIEW);
-  });
-
-  it("drops a listing editor when dates are selected", () => {
-    expect(
-      viewAfterScopeChange(
-        { kind: "editor", editor: "listing_defaults" },
-        "DATES",
-      ),
-    ).toEqual(MENU_VIEW);
+    for (const editor of WORKBENCH_MENU.DATES) {
+      expect(
+        viewAfterScopeChange({ kind: "editor", editor }, "ALL_FUTURE"),
+      ).toEqual(MENU_VIEW);
+    }
   });
 
   it("leaves the menu and the schedule list alone in either scope", () => {
@@ -136,20 +133,8 @@ describe("the sticky primary action", () => {
     expect(ctaForEditor("promotions")).toBe("REVIEW_PROMOTION");
   });
 
-  it("uses the date contract for date editors and the listing one for the rest", () => {
-    for (const editor of WORKBENCH_MENU.DATES) {
-      expect(reviewContractFor(editor)).toBe("DATE");
-    }
-    for (const editor of WORKBENCH_MENU.ALL_FUTURE) {
-      expect(reviewContractFor(editor)).toBe("LISTING");
-    }
-  });
-
   it("gives every editor exactly one action", () => {
-    const all: WorkbenchEditor[] = [
-      ...WORKBENCH_MENU.DATES,
-      ...WORKBENCH_MENU.ALL_FUTURE,
-    ];
+    const all: WorkbenchEditor[] = [...WORKBENCH_MENU.DATES];
     expect(new Set(all.map(ctaForEditor)).size).toBe(all.length);
   });
 });
@@ -164,19 +149,5 @@ describe("connected calendars", () => {
     // draft, and the discard prompt must stay reserved for one.
     expect(leavingLosesWork(CONNECTIONS_VIEW, true)).toBe(false);
     expect(backFrom(CONNECTIONS_VIEW)).toEqual(MENU_VIEW);
-  });
-});
-
-describe("the listing-wide minimum stay", () => {
-  it("is reached by changing scope, not by adding a field to the date save", () => {
-    expect(MINIMUM_STAY_TARGET).toEqual({
-      scope: "ALL_FUTURE",
-      editor: "listing_defaults",
-    });
-    // The thing this guards: a minimum stay saved through the date scope would be a
-    // listing-wide rule written as if it applied to the selected nights only.
-    expect(editorScope(MINIMUM_STAY_TARGET.editor)).toBe("ALL_FUTURE");
-    expect(reviewContractFor(MINIMUM_STAY_TARGET.editor)).toBe("LISTING");
-    expect(openEditor(MINIMUM_STAY_TARGET.editor, "DATES")).toBeNull();
   });
 });

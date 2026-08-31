@@ -25,7 +25,10 @@ import {
   type HostListingVisibility,
 } from "@/lib/host/v2/listing-status";
 import { addDaysToYmd, compareYmd, ymdToDbDate } from "@/lib/utils/date-only";
-import { hostCalendarHref } from "@/lib/host/v2/calendar-href";
+import {
+  hostCalendarHref,
+  type CalendarIntent,
+} from "@/lib/host/v2/calendar-href";
 
 export type ListingAvailabilityMode = "OPEN" | "CLOSED";
 
@@ -212,12 +215,17 @@ export function summarizeListingAvailability(
 }
 
 /**
- * Where every availability change is actually made.
+ * Where date-specific availability is changed.
  *
  * A named alias for this pane rather than a second implementation: `hostCalendarHref`
- * is the single source of the path and the parameter, so the pane's link and the
- * calendar page that reads it cannot drift.
+ * is the single source of the path and the parameters, so the pane's link and the
+ * calendar page that reads it cannot drift. The intent travels with it, so following
+ * the link lands on a calendar that is asking which dates to open or block rather than
+ * on a menu that has forgotten what the host came for.
  */
-export function calendarHrefForListing(listingId: string): string {
-  return hostCalendarHref(listingId);
+export function calendarHrefForListing(
+  listingId: string,
+  intent?: CalendarIntent | null,
+): string {
+  return hostCalendarHref(listingId, { intent });
 }

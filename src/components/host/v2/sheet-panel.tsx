@@ -3,6 +3,7 @@
 import { X } from "lucide-react";
 import { useCallback, useEffect, useId, useRef } from "react";
 import { useI18n } from "@/lib/i18n/client";
+import { cn } from "@/lib/utils";
 
 /**
  * The panel every host-panel sheet is made of.
@@ -15,7 +16,9 @@ import { useI18n } from "@/lib/i18n/client";
  * A sheet rather than an inline accordion, deliberately: several steps of this flow are
  * `md:h-dvh md:overflow-hidden`, so an expanding block would push the footer's Next off a
  * short viewport — and on a phone a bottom sheet is the shape this content already wants.
- * It rises from the bottom edge on small screens and centres on large ones.
+ * It rises from the bottom edge on small screens and, from `sm` up, either centres
+ * (`variant="center"`, the default and what every earlier caller gets) or pins to the
+ * right edge (`variant="side"`, for editing something the host is still reading).
  *
  * Behaviour that `role="dialog" aria-modal="true"` promises and markup alone does not:
  * Escape closes, Tab stays inside, the page behind stops scrolling, and focus returns to
@@ -26,6 +29,8 @@ export function SheetPanel({
   onClose,
   title,
   returnFocusTo,
+  variant = "center",
+  description,
   children,
   footer,
 }: {
@@ -34,6 +39,22 @@ export function SheetPanel({
   title: string;
   /** The control that opened this, so focus can go back to it on dismissal. */
   returnFocusTo?: React.RefObject<HTMLElement | null>;
+  /**
+   * Where the panel sits once there is room for a choice.
+   *
+   * `center` is the original and stays the default, so every sheet that existed before
+   * this prop is untouched. `side` pins it to the right edge at full height from `md`
+   * up, for a panel that edits something the host is still looking at — the payment
+   * method rows must not move while their details are open.
+   *
+   * Below `md` the two are the same bottom sheet. `md` rather than `sm` because the
+   * drawer is 448px wide: at 640px that leaves a 190px sliver of the thing the drawer
+   * exists to keep visible, which is worse than the bottom sheet a phone in landscape
+   * already expects.
+   */
+  variant?: "center" | "side";
+  /** An optional line under the title, wired to `aria-describedby`. */
+  description?: React.ReactNode;
   children: React.ReactNode;
   /** The panel's own actions. A sheet with none is a sheet you read and dismiss. */
   footer?: React.ReactNode;
@@ -43,6 +64,7 @@ export function SheetPanel({
   // Unique per instance: two sheets can be mounted at once (one closed), and a shared
   // id would point `aria-labelledby` at whichever heading rendered last.
   const titleId = useId();
+  const descriptionId = useId();
 
   useEffect(() => {
     if (!open) return;
@@ -104,7 +126,12 @@ export function SheetPanel({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:grid sm:place-items-center sm:p-4"
+      className={cn(
+        "fixed inset-0 z-50 flex items-end justify-center bg-black/40",
+        variant === "side"
+          ? "md:items-stretch md:justify-end"
+          : "sm:grid sm:place-items-center sm:p-4",
+      )}
       onPointerDown={onBackdropPointerDown}
     >
       <div
@@ -112,8 +139,17 @@ export function SheetPanel({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        aria-describedby={description ? descriptionId : undefined}
         tabIndex={-1}
-        className="relative max-h-[85dvh] w-full max-w-[34rem] overflow-y-auto rounded-t-[2rem] bg-white p-6 shadow-2xl outline-none sm:max-h-[calc(100dvh-2rem)] sm:rounded-[2rem] sm:p-8"
+        className={cn(
+          // One scroll container, always: the panel itself. A drawer whose body scrolls
+          // inside a fixed header and a fixed footer gives a short viewport two nested
+          // scrollbars and a Done button parked over the last field.
+          "relative max-h-[85dvh] w-full max-w-[34rem] overflow-y-auto rounded-t-[2rem] bg-white p-6 shadow-2xl outline-none",
+          variant === "side"
+            ? "md:h-dvh md:max-h-none md:w-[28rem] md:max-w-[min(100vw,30rem)] md:rounded-none md:rounded-l-[1.75rem] md:p-7"
+            : "sm:max-h-[calc(100dvh-2rem)] sm:rounded-[2rem] sm:p-8",
+        )}
       >
         <button
           type="button"
@@ -129,6 +165,11 @@ export function SheetPanel({
         >
           {title}
         </h2>
+        {description ? (
+          <p id={descriptionId} className="mt-1.5 text-sm leading-6 text-slate-500">
+            {description}
+          </p>
+        ) : null}
         <div className="mt-4 space-y-4 text-sm leading-6 text-slate-600">{children}</div>
         {footer}
       </div>

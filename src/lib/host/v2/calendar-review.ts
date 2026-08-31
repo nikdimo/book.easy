@@ -8,12 +8,8 @@ import {
   type ListingCalendarIndex,
 } from "@/lib/host/v2/calendar-model";
 import {
-  canHide,
   isPublishableStatus,
-  publishBlockers,
-  type HostListingStatusSummary,
   type ListingSaleBlocker,
-  type PublishBlocker,
 } from "@/lib/host/v2/listing-status";
 import {
   selectionContainsPastDate,
@@ -73,9 +69,7 @@ export type DateChange =
  * guest and deserve separate consequences.
  */
 export type ListingChange =
-  | { kind: "VISIBILITY"; to: "LIVE" | "HIDDEN" }
   | { kind: "AVAILABILITY_MODE"; to: "OPEN" | "CLOSED" }
-  | { kind: "MIN_NIGHTS"; to: number }
   | {
       kind: "DEFAULT_PRICING";
       /**
@@ -127,15 +121,7 @@ export type MutationStep =
       freeCleaning: boolean;
       roundToWholeUnit: boolean;
     }
-  | { type: "PUBLISH_LISTING" }
-  | { type: "HIDE_LISTING" }
   | { type: "SET_AVAILABILITY_MODE"; mode: "OPEN" | "CLOSED" }
-  | {
-      type: "SET_MIN_NIGHTS";
-      minNights: number;
-      baseNightlyRate: number;
-      cleaningFee: number;
-    }
   | {
       type: "SET_DEFAULT_PRICING";
       baseNightlyRate: number;
@@ -179,8 +165,6 @@ export type ReviewValue =
       /** True when this offer runs on every date, not only the selected ones. */
       evergreen: boolean;
     }
-  | { code: "VISIBILITY_LIVE" }
-  | { code: "VISIBILITY_HIDDEN" }
   | { code: "MODE_OPEN" }
   | { code: "MODE_CLOSED" }
   | { code: "NIGHTS"; nights: number }
@@ -193,7 +177,6 @@ export type ReviewField =
   | "block_note"
   | "price"
   | "promotion"
-  | "visibility"
   | "availability_mode"
   | "base_price"
   | "cleaning_fee"
@@ -240,13 +223,6 @@ export type Consequence =
       sellable: boolean;
     }
   | {
-      code: "LISTING_GOES_LIVE";
-      bookableDates: number;
-      openDates: number;
-      horizonMonths: number;
-    }
-  | { code: "LISTING_HIDDEN" }
-  | {
       code: "MODE_TO_OPEN";
       becomingOpen: number;
       becomingBookable: number;
@@ -281,11 +257,8 @@ export type SaveAction =
   | "SAVE_AND_BLOCK"
   | "SAVE_PRICE"
   | "SAVE_PROMOTION"
-  | "SAVE_AND_PUBLISH"
-  | "SAVE_AND_HIDE"
   | "SAVE_MODE_OPEN"
   | "SAVE_MODE_CLOSED"
-  | "SAVE_MIN_NIGHTS"
   | "SAVE_DEFAULT_PRICING"
   | "SAVE_EVERGREEN_PROMOTION"
   | "REMOVE_EVERGREEN_PROMOTION"
@@ -314,8 +287,6 @@ export type ReviewError =
    * reaching around it from here.
    */
   | { code: "INVALID_MIN_NIGHTS"; maxNights: number }
-  | { code: "CANNOT_PUBLISH"; blockers: PublishBlocker[] }
-  | { code: "CANNOT_HIDE" }
   | { code: "MODE_UNCHANGED" }
   | { code: "PROMOTION_NOT_FOUND" }
   | { code: "PROMOTION_NOT_EVERGREEN" }
@@ -994,77 +965,17 @@ export function buildListingReviewPlan({
   listing,
   index,
   change,
-  summary,
   today,
   horizonEnd,
   horizonMonths,
-  now,
 }: {
   listing: HostCalendarListing;
   index: ListingCalendarIndex;
   change: ListingChange;
-  summary: HostListingStatusSummary;
   today: string;
   horizonEnd: string;
   horizonMonths: number;
-  now?: Date;
 }): ReviewPlan {
-  if (change.kind === "VISIBILITY") {
-    const goingLive = change.to === "LIVE";
-    if (goingLive) {
-      const blockers = publishBlockers(listing, now);
-      if (blockers.length > 0) {
-        return plan({
-          rows: [],
-          consequences: [],
-          steps: [],
-          errors: [{ code: "CANNOT_PUBLISH", blockers }],
-          saveAction: "SAVE_AND_PUBLISH",
-        });
-      }
-    } else if (!canHide(listing)) {
-      return plan({
-        rows: [],
-        consequences: [],
-        steps: [],
-        errors: [{ code: "CANNOT_HIDE" }],
-        saveAction: "SAVE_AND_HIDE",
-      });
-    }
-
-    // Publishing removes the NOT_LIVE sale blocker, so the dates that are merely open
-    // today are exactly the ones that become bookable.
-    const openAfterPublish =
-      summary.counts.bookable + summary.counts.openNotBookable;
-
-    return plan({
-      rows: [
-        {
-          field: "visibility",
-          before: goingLive
-            ? { code: "VISIBILITY_HIDDEN" }
-            : { code: "VISIBILITY_LIVE" },
-          after: goingLive
-            ? { code: "VISIBILITY_LIVE" }
-            : { code: "VISIBILITY_HIDDEN" },
-        },
-      ],
-      consequences: [
-        goingLive
-          ? {
-              code: "LISTING_GOES_LIVE",
-              bookableDates: listing.pricing ? openAfterPublish : 0,
-              openDates: openAfterPublish,
-              horizonMonths,
-            }
-          : { code: "LISTING_HIDDEN" },
-      ],
-      steps: [{ type: goingLive ? "PUBLISH_LISTING" : "HIDE_LISTING" }],
-      errors: [],
-      saveAction: goingLive ? "SAVE_AND_PUBLISH" : "SAVE_AND_HIDE",
-    });
-  }
-
   if (change.kind === "AVAILABILITY_MODE") {
     const saveAction: SaveAction =
       change.to === "OPEN" ? "SAVE_MODE_OPEN" : "SAVE_MODE_CLOSED";
@@ -1121,60 +1032,7 @@ export function buildListingReviewPlan({
     return buildDefaultPricingReviewPlan(listing, change);
   }
 
-  if (change.kind === "EVERGREEN_PROMOTION") {
-    return buildEvergreenPromotionReviewPlan(listing, change);
-  }
-
-  const pricing = listing.pricing;
-  if (!pricing) {
-    return plan({
-      rows: [],
-      consequences: [],
-      steps: [],
-      errors: [{ code: "NO_PRICING" }],
-      saveAction: "SAVE_MIN_NIGHTS",
-    });
-  }
-  if (!isPositiveInteger(change.to, pricing.maxNights)) {
-    return plan({
-      rows: [],
-      consequences: [],
-      steps: [],
-      errors: [{ code: "INVALID_MIN_NIGHTS", maxNights: pricing.maxNights }],
-      saveAction: "SAVE_MIN_NIGHTS",
-    });
-  }
-  if (change.to === pricing.minNights) {
-    return plan({
-      rows: [],
-      consequences: [],
-      steps: [],
-      errors: [{ code: "NO_CHANGES" }],
-      saveAction: "SAVE_MIN_NIGHTS",
-    });
-  }
-  return plan({
-    rows: [
-      {
-        field: "min_nights",
-        before: { code: "NIGHTS", nights: pricing.minNights },
-        after: { code: "NIGHTS", nights: change.to },
-      },
-    ],
-    consequences: [{ code: "MIN_NIGHTS_ALL_DATES", minNights: change.to }],
-    steps: [
-      {
-        type: "SET_MIN_NIGHTS",
-        minNights: change.to,
-        // The pricing action saves the whole rule, so the untouched fields are
-        // resent exactly as they are rather than defaulted to something else.
-        baseNightlyRate: pricing.baseNightlyRate,
-        cleaningFee: pricing.cleaningFee,
-      },
-    ],
-    errors: [],
-    saveAction: "SAVE_MIN_NIGHTS",
-  });
+  return buildEvergreenPromotionReviewPlan(listing, change);
 }
 
 export { isPublishableStatus };

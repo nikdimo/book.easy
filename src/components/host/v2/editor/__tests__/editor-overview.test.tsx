@@ -108,6 +108,14 @@ describe("EditorOverview attention area", () => {
     expect(html).toContain('href="/host/listings/listing-2/payment-arrangements"');
   });
 
+  it("links an unchecked Street View task to Location and explains the job", () => {
+    const html = render({ ...complete, streetViewSet: false, attention: ["location"] });
+    expect(html).toContain(
+      "Check Street View and point it at the approach guests should use.",
+    );
+    expect(html).toContain('href="/host/listings/listing-1/location"');
+  });
+
   it("does not flag optional sections", () => {
     // Arrival guide has no stored completion state, so an empty one is never an alarm.
     const html = render(empty);
@@ -119,9 +127,9 @@ describe("EditorOverview all-sections area", () => {
   it("groups every implemented section the way the rail does", () => {
     const html = render(complete);
     expect(html).toContain("All sections");
-    expect(html).toContain("Calendar settings");
+    expect(html).toContain("Rates &amp; availability");
     expect(html).toContain("Listing details");
-    expect(html.indexOf("Calendar settings")).toBeLessThan(
+    expect(html.indexOf("Rates &amp; availability")).toBeLessThan(
       html.indexOf("Listing details"),
     );
   });
@@ -129,7 +137,6 @@ describe("EditorOverview all-sections area", () => {
   it("links each card at its real Host V2 route", () => {
     const html = render(complete);
     for (const href of [
-      "/host/calendar?listing=listing-1",
       "/host/listings/listing-1/availability",
       "/host/listings/listing-1/pricing",
       "/host/listings/listing-1/photos",
@@ -158,7 +165,7 @@ describe("EditorOverview all-sections area", () => {
     expect(html).toContain("3 rooms and spaces");
     expect(html).toContain("9 amenities");
     expect(html).toContain("€60 per night");
-    expect(html).toContain("Open by default");
+    expect(html).toContain("Available by default");
     expect(html).toContain("Reviewed");
     expect(html).toContain("Nothing needs attention");
   });
@@ -169,7 +176,7 @@ describe("EditorOverview all-sections area", () => {
     expect(html).toContain("No rooms added yet");
     expect(html).toContain("Nothing selected yet");
     expect(html).toContain("No nightly price set");
-    expect(html).toContain("Closed by default");
+    expect(html).toContain("Only dates I open");
     expect(html).toContain("7 things need your attention");
   });
 

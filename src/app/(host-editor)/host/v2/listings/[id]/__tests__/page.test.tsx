@@ -75,12 +75,14 @@ describe("the base listing editor route", () => {
     expect(html).toContain("Sunny loft");
   });
 
-  it("still links to every section, so nothing about task-based editing changes", async () => {
+  it("links to every editor section without a redundant generic Calendar item", async () => {
     const html = await render();
     expect(html).toContain('href="/host/listings/listing-1/photos"');
     expect(html).toContain('href="/host/listings/listing-1/availability"');
+    expect(html).toContain('href="/host/listings/listing-1/pricing"');
     expect(html).toContain('href="/host/listings/listing-1/payment-arrangements"');
-    expect(html).toContain('href="/host/calendar?listing=listing-1"');
+    expect(html).toContain('href="/host/listings/listing-1/house-rules"');
+    expect(html).not.toContain('href="/host/calendar?listing=listing-1"');
   });
 
   it("marks Overview as the active navigation item", async () => {

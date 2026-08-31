@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useId, useRef, useState } from "react";
 import { ChevronDown, ChevronRight, Minus, Plus } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -167,10 +169,13 @@ export function QuietRow({
     : {};
 
   if (href) {
+    // A client-side navigation, not a document load: these rows lead to the listing
+    // editor's own sections, and reloading the app shell to reach a sibling route
+    // would throw away the calendar the host is standing in.
     return (
-      <a href={href} className={className} {...anchorProps}>
+      <Link href={href} className={className} {...anchorProps}>
         {content}
-      </a>
+      </Link>
     );
   }
   return (
@@ -307,27 +312,33 @@ export function ConsequenceLine({
   );
 }
 
-/** A read-only fact the editor has to state but does not own. */
+/**
+ * A read-only fact the editor has to state but does not own.
+ *
+ * `actionHref` rather than a callback, because the place these facts are owned is no
+ * longer inside this panel: the cleaning fee and the listing-wide minimum stay are
+ * edited in the listing editor's Pricing section. A link is also the honest control —
+ * it goes somewhere, and it says so to a screen reader without the editor having to.
+ */
 export function InfoRow({
   label,
   action,
-  onAction,
+  actionHref,
 }: {
   label: string;
   action?: string;
-  onAction?: () => void;
+  actionHref?: string;
 }) {
   return (
     <p className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-slate-100 pt-3 text-[0.75rem] leading-4 text-slate-500">
       <span>{label}</span>
-      {action && onAction ? (
-        <button
-          type="button"
-          onClick={onAction}
-          className="min-h-11 font-semibold text-[#0f172a] underline underline-offset-2 transition-colors duration-150 hover:text-[#0f172a] motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]"
+      {action && actionHref ? (
+        <Link
+          href={actionHref}
+          className="inline-flex min-h-11 items-center font-semibold text-[#0f172a] underline underline-offset-2 transition-colors duration-150 hover:text-slate-600 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]"
         >
           {action}
-        </button>
+        </Link>
       ) : null}
     </p>
   );
@@ -439,6 +450,7 @@ export function StepperColumn({
   caption,
   value,
   min = 1,
+  max,
   disabled,
   decrementLabel,
   incrementLabel,
@@ -448,12 +460,14 @@ export function StepperColumn({
   caption: string;
   value: number;
   min?: number;
+  max?: number;
   disabled?: boolean;
   decrementLabel: string;
   incrementLabel: string;
   onChange: (value: number) => void;
 }) {
-  const step = (delta: number) => onChange(Math.max(min, value + delta));
+  const step = (delta: number) =>
+    onChange(Math.min(max ?? Number.POSITIVE_INFINITY, Math.max(min, value + delta)));
   return (
     <div className="text-center">
       <span className="block text-[0.75rem] text-slate-500">{label}</span>
@@ -473,7 +487,7 @@ export function StepperColumn({
         </span>
         <StepperButton
           label={incrementLabel}
-          disabled={disabled}
+          disabled={disabled || (max !== undefined && value >= max)}
           onClick={() => step(1)}
         >
           <Plus className="size-4" aria-hidden />

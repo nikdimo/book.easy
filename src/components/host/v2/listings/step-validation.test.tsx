@@ -271,20 +271,25 @@ describe("AddressStep", () => {
     return renderToStaticMarkup(<AddressStep propertyType={house} spaceType="ENTIRE_PLACE" />);
   }
 
-  it("saves a complete address and navigates", async () => {
-    draft.data = { address: "Partizanska 15", city: "Skopje", country: "MK", postalCode: "1000" };
+  it("records an existing geocoded pin as confirmed before navigating", async () => {
+    draft.data = {
+      address: "Partizanska 15",
+      city: "Skopje",
+      country: "MK",
+      postalCode: "1000",
+      latitude: "41.99",
+      longitude: "21.42",
+    };
     step();
 
     await advance();
 
     expect(draft.patches).toEqual([
       {
-        address: "Partizanska 15",
-        area: "",
-        postalCode: "1000",
-        city: "Skopje",
-        country: "MK",
-        currentStepId: "details",
+        latitude: "41.99",
+        longitude: "21.42",
+        locationConfirmed: "true",
+        currentStepId: "streetView",
         currentRoute: "basics",
       },
     ]);
@@ -321,19 +326,25 @@ describe("AddressStep", () => {
     expect(wentTo()).toEqual([]);
   });
 
-  it("shows the error against the field once Next has been pressed", () => {
+  it("shows the map instruction when a legacy draft has no pin", () => {
     draft.data = { city: "Skopje", country: "MK" };
     const html = renderToStaticMarkup(
       <AddressStep propertyType={house} spaceType="ENTIRE_PLACE" initialTouched />,
     );
 
-    expect(html).toContain("Add the street address so we can place your listing.");
-    expect(html).toContain('aria-invalid="true"');
+    expect(html).toContain("Tap or move the map to place the property pin.");
+    expect(html).toContain("Is the pin in the right spot?");
   });
 
   it("stays on the step when the save fails", async () => {
     draft.saveSucceeds = false;
-    draft.data = { address: "Partizanska 15", city: "Skopje", country: "MK" };
+    draft.data = {
+      address: "Partizanska 15",
+      city: "Skopje",
+      country: "MK",
+      latitude: "41.99",
+      longitude: "21.42",
+    };
     step();
 
     await advance();
@@ -341,9 +352,7 @@ describe("AddressStep", () => {
     expect(wentTo()).toEqual([]);
   });
 
-  it("does not ask a host with a pin to confirm it again", async () => {
-    // The product rule: a typed address and a placed pin are both trusted, and editing
-    // one is never a reason to re-confirm the other.
+  it("explicitly confirms even a geocoder-provided pin", async () => {
     draft.data = {
       address: "Partizanska 15",
       city: "Skopje",
@@ -356,8 +365,13 @@ describe("AddressStep", () => {
     await advance();
 
     expect(wentTo()).toHaveLength(1);
-    expect(draft.patches[0]).not.toHaveProperty("locationConfirmed");
-    expect(draft.patches[0]).not.toHaveProperty("latitude");
+    expect(draft.patches[0]).toMatchObject({
+      latitude: "41.99",
+      longitude: "21.42",
+      locationConfirmed: "true",
+      currentStepId: "streetView",
+      currentRoute: "basics",
+    });
   });
 });
 
@@ -1126,7 +1140,7 @@ describe("ReviewStep", () => {
     expect(html).toContain("Finish these before you publish");
     expect(html).toContain("Add the street address");
     expect(html).toContain(
-      `href="/host/start/address?${QUERY.replace("&", "&amp;")}&amp;returnTo=review"`,
+      `href="/host/start/location?${QUERY.replace("&", "&amp;")}&amp;returnTo=review"`,
     );
     expect(html).toContain(
       `href="/host/start/photos?${QUERY.replace("&", "&amp;")}&amp;returnTo=review"`,

@@ -1,20 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  availabilityDefaultDraft,
   defaultsDraft,
   defaultsFormOf,
   listingCtaFor,
   ongoingPromotionDraft,
   ongoingPromotionFormOf,
   ongoingPromotionOf,
-  visibilityDraft,
   type DefaultsForm,
   type OngoingPromotionForm,
 } from "@/lib/host/v2/calendar-listing-draft";
-import {
-  buildListingCalendarIndex,
-  countDates,
-} from "@/lib/host/v2/calendar-model";
-import { summarizeListingStatus } from "@/lib/host/v2/listing-status";
+import { buildListingCalendarIndex } from "@/lib/host/v2/calendar-model";
 import {
   buildListingReviewPlan,
   type ListingChange,
@@ -26,75 +22,43 @@ import {
 } from "@/lib/host/v2/calendar-workbench";
 import { HORIZON_END, makeListing, promotion, TODAY } from "./fixtures";
 
-describe("visibility decisions", () => {
-  it("stages nothing until something differs from what is stored", () => {
-    const listing = makeListing({ status: "APPROVED" });
-    expect(visibilityDraft(null, listing)).toBeNull();
-    expect(
-      visibilityDraft({ field: "visibility", to: "LIVE" }, listing),
-    ).toBeNull();
-  });
-
-  it("stages hiding a live listing", () => {
-    const listing = makeListing({ status: "APPROVED" });
-    expect(visibilityDraft({ field: "visibility", to: "HIDDEN" }, listing)).toEqual(
-      { kind: "VISIBILITY", to: "HIDDEN" },
-    );
-  });
-
-  it("stages publishing a listing that is ready", () => {
-    const listing = makeListing({ status: "UNPUBLISHED" });
-    expect(visibilityDraft({ field: "visibility", to: "LIVE" }, listing)).toEqual({
-      kind: "VISIBILITY",
-      to: "LIVE",
-    });
-  });
-
-  it("stages nothing for a move the listing cannot make", () => {
-    // A disabled button that explains itself beats an enabled one that opens a
-    // dialog only to refuse.
-    const suspended = makeListing({ status: "SUSPENDED" });
-    expect(visibilityDraft({ field: "visibility", to: "LIVE" }, suspended)).toBeNull();
-    const draft = makeListing({ status: "DRAFT" });
-    expect(visibilityDraft({ field: "visibility", to: "HIDDEN" }, draft)).toBeNull();
-  });
-
-  it("stages the availability rule only when it actually changes", () => {
+describe("default availability", () => {
+  it("stages nothing until the answer differs from what is stored", () => {
     const open = makeListing({ availabilityMode: "OPEN" });
-    expect(visibilityDraft({ field: "mode", to: "OPEN" }, open)).toBeNull();
-    expect(visibilityDraft({ field: "mode", to: "CLOSED" }, open)).toEqual({
+    expect(availabilityDefaultDraft(null, open)).toBeNull();
+    expect(availabilityDefaultDraft("OPEN", open)).toBeNull();
+  });
+
+  it("stages the change in either direction", () => {
+    const open = makeListing({ availabilityMode: "OPEN" });
+    expect(availabilityDefaultDraft("CLOSED", open)).toEqual({
       kind: "AVAILABILITY_MODE",
       to: "CLOSED",
     });
-  });
-
-  it("stages a minimum stay, and refuses a half-typed or invalid one", () => {
-    const listing = makeListing();
-    expect(visibilityDraft({ field: "minNights", value: "3" }, listing)).toEqual({
-      kind: "MIN_NIGHTS",
-      to: 3,
+    const closed = makeListing({ availabilityMode: "CLOSED" });
+    expect(availabilityDefaultDraft("OPEN", closed)).toEqual({
+      kind: "AVAILABILITY_MODE",
+      to: "OPEN",
     });
-    // The stored value is 2, so this is a no-op rather than a change.
-    expect(visibilityDraft({ field: "minNights", value: "2" }, listing)).toBeNull();
-    for (const value of ["", "  ", "0", "-1", "2.5", "abc", "400"]) {
-      expect(visibilityDraft({ field: "minNights", value }, listing)).toBeNull();
-    }
   });
 
-  it("stages no minimum stay at all without a pricing rule to compare against", () => {
-    const listing = makeListing({ pricing: null });
-    expect(visibilityDraft({ field: "minNights", value: "3" }, listing)).toBeNull();
+  it("says nothing about visibility, which is a different question elsewhere", () => {
+    // A listing can be visible and unbookable, and it can have bookable dates while
+    // nobody can find it. Nothing this function returns can change who sees the
+    // listing, so the two controls cannot be confused for one another.
+    const draft = availabilityDefaultDraft("CLOSED", makeListing({ status: "APPROVED" }));
+    expect(draft).toEqual({ kind: "AVAILABILITY_MODE", to: "CLOSED" });
+    expect(Object.keys(draft as object)).toEqual(["kind", "to"]);
   });
 
-  it("holds one decision at a time, so a review can only ever carry one", () => {
-    const listing = makeListing({ status: "APPROVED", availabilityMode: "OPEN" });
-    const first = visibilityDraft({ field: "visibility", to: "HIDDEN" }, listing);
-    const second = visibilityDraft({ field: "mode", to: "CLOSED" }, listing);
-    expect(first).toEqual({ kind: "VISIBILITY", to: "HIDDEN" });
-    expect(second).toEqual({ kind: "AVAILABILITY_MODE", to: "CLOSED" });
-    // Each call answers for exactly one decision; there is no shape here that could
-    // describe both at once.
-    expect(Object.keys(second as object)).toEqual(["kind", "to"]);
+  it("does not depend on the listing having a price", () => {
+    // Every listing has a stored default, priced or not, so this section is never
+    // blocked on pricing the way the offer editor legitimately is.
+    const listing = makeListing({ pricing: null, availabilityMode: "OPEN" });
+    expect(availabilityDefaultDraft("CLOSED", listing)).toEqual({
+      kind: "AVAILABILITY_MODE",
+      to: "CLOSED",
+    });
   });
 });
 
@@ -337,25 +301,20 @@ describe("ongoing promotions", () => {
 describe("draft to review plan", () => {
   function planFor(listing: ReturnType<typeof makeListing>, change: ListingChange) {
     const index = buildListingCalendarIndex(listing);
-    const counts = countDates(listing, index, TODAY, HORIZON_END);
     return buildListingReviewPlan({
       listing,
       index,
       change,
-      summary: summarizeListingStatus({ listing, counts, horizonMonths: 18 }),
       today: TODAY,
       horizonEnd: HORIZON_END,
       horizonMonths: 18,
-      now: new Date("2026-03-10T09:00:00.000Z"),
     });
   }
 
   it("gives the shell exactly one action, and one mutation behind it", () => {
     const listing = makeListing({ status: "APPROVED" });
     const drafts: ListingChange[] = [
-      visibilityDraft({ field: "visibility", to: "HIDDEN" }, listing)!,
-      visibilityDraft({ field: "mode", to: "CLOSED" }, listing)!,
-      visibilityDraft({ field: "minNights", value: "4" }, listing)!,
+      availabilityDefaultDraft("CLOSED", listing)!,
       defaultsDraft(
         { ...defaultsFormOf(listing), baseNightlyRate: "150" },
         listing,
@@ -381,12 +340,11 @@ describe("draft to review plan", () => {
     // is the whole of "disabled for no-op or invalid drafts".
     const listing = makeListing({ status: "APPROVED" });
     const stored = defaultsFormOf(listing);
-    expect(visibilityDraft(null, listing)).toBeNull();
-    expect(visibilityDraft({ field: "mode", to: "OPEN" }, listing)).toBeNull();
-    expect(visibilityDraft({ field: "minNights", value: "2" }, listing)).toBeNull();
-    expect(visibilityDraft({ field: "minNights", value: "x" }, listing)).toBeNull();
+    expect(availabilityDefaultDraft(null, listing)).toBeNull();
+    expect(availabilityDefaultDraft("OPEN", listing)).toBeNull();
     expect(defaultsDraft(stored, listing)).toBeNull();
     expect(defaultsDraft({ ...stored, baseNightlyRate: "0" }, listing)).toBeNull();
+    expect(defaultsDraft({ ...stored, minNights: "400" }, listing)).toBeNull();
     expect(
       ongoingPromotionDraft(ongoingPromotionFormOf(listing), listing),
     ).toBeNull();
@@ -477,28 +435,22 @@ describe("draft to review plan", () => {
     // Back out of an editor holding this: prompt. Off the menu or the schedule list:
     // never, because neither can be holding one.
     expect(
-      leavingLosesWork({ kind: "editor", editor: "listing_defaults" }, hasDraft),
+      leavingLosesWork({ kind: "editor", editor: "pricing" }, hasDraft),
     ).toBe(true);
     expect(leavingLosesWork(MENU_VIEW, hasDraft)).toBe(false);
-    // Selecting dates takes the listing-wide editor off screen entirely.
+    // Clearing the dates takes a date editor off screen entirely — the calendar has
+    // no editor left that a cleared selection could leave pointing at nothing.
     expect(
-      viewAfterScopeChange(
-        { kind: "editor", editor: "listing_defaults" },
-        "DATES",
-      ),
+      viewAfterScopeChange({ kind: "editor", editor: "pricing" }, "ALL_FUTURE"),
     ).toEqual(MENU_VIEW);
   });
 });
 
 describe("naming the single action", () => {
   it("names each listing-wide change, and removal apart from an edit", () => {
-    expect(listingCtaFor({ kind: "VISIBILITY", to: "HIDDEN" })).toBe(
-      "REVIEW_VISIBILITY",
-    );
     expect(listingCtaFor({ kind: "AVAILABILITY_MODE", to: "CLOSED" })).toBe(
       "REVIEW_AVAILABILITY_RULE",
     );
-    expect(listingCtaFor({ kind: "MIN_NIGHTS", to: 3 })).toBe("REVIEW_MIN_NIGHTS");
     expect(listingCtaFor({ kind: "DEFAULT_PRICING", to: {} })).toBe(
       "REVIEW_DEFAULTS",
     );

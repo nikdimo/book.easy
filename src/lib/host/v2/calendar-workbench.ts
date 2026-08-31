@@ -9,6 +9,13 @@
  * to a scope, and a view that no longer matches the scope collapses back to the menu
  * instead of quietly editing the wrong thing.
  *
+ * **The calendar edits dates.** It used to carry a second set of editors for the
+ * listing's own defaults — the base price, the cleaning fee, the minimum stay, the
+ * always-active offers, whether an untouched date starts open. Those are listing-wide
+ * settings, and they now live in the listing editor's Availability and Pricing
+ * sections, which is where a host goes to change what the listing *is*. What is left
+ * here is what only the calendar can answer: what happens on these particular nights.
+ *
  * Nothing here mutates or renders anything. It decides which destination is legal.
  */
 
@@ -20,24 +27,16 @@ import type { CalendarSelection } from "@/lib/host/v2/calendar-selection";
  * Derived from the selection alone, never stored: a panel whose scope could disagree
  * with the calendar is a panel that can save "these three nights" against every date
  * the listing will ever have.
+ *
+ * `ALL_FUTURE` no longer has editors of its own — it is the state in which the panel
+ * reports the listing's defaults and links to the pages that own them. It is still a
+ * scope rather than a boolean because `viewAfterScopeChange` has to close a date
+ * editor the moment the dates go away, which is exactly the same rule as before.
  */
 export type WorkbenchScope = "DATES" | "ALL_FUTURE";
 
-/**
- * Every focused editor the panel can show.
- *
- * The `listing_` editors are deliberately named apart from their date counterparts.
- * "Block these nights" and "close every date by default" are different promises to the
- * guest, and the two have never been allowed to share a card; here they cannot even
- * share an identifier.
- */
-export type WorkbenchEditor =
-  | "availability"
-  | "pricing"
-  | "promotions"
-  | "listing_visibility"
-  | "listing_defaults"
-  | "listing_promotions";
+/** Every focused editor the panel can show. All three are about selected dates. */
+export type WorkbenchEditor = "availability" | "pricing" | "promotions";
 
 export type WorkbenchView =
   | { kind: "menu" }
@@ -50,7 +49,10 @@ export type WorkbenchView =
 export const WORKBENCH_MENU: Readonly<Record<WorkbenchScope, readonly WorkbenchEditor[]>> =
   {
     DATES: ["availability", "pricing", "promotions"],
-    ALL_FUTURE: ["listing_visibility", "listing_defaults", "listing_promotions"],
+    // Deliberately empty. With no dates chosen there is nothing this panel is entitled
+    // to change, so it offers context and two links out rather than a second home for
+    // settings the listing editor owns.
+    ALL_FUTURE: [],
   };
 
 export function scopeOfSelection(
@@ -60,30 +62,18 @@ export function scopeOfSelection(
 }
 
 export function editorScope(editor: WorkbenchEditor): WorkbenchScope {
-  return WORKBENCH_MENU.DATES.includes(editor) ? "DATES" : "ALL_FUTURE";
-}
-
-/**
- * Which review a given editor's save produces.
- *
- * The one distinction the panel must never blur. `listing_defaults` holds the
- * listing-wide minimum stay, which the pricing editor links to — following that link
- * has to change the *scope*, not fold a listing-wide rule into a date-price save.
- */
-export type ReviewContract = "DATE" | "LISTING";
-
-export function reviewContractFor(editor: WorkbenchEditor): ReviewContract {
-  return editorScope(editor) === "DATES" ? "DATE" : "LISTING";
+  // Keep the parameter in the API: callers use this function as the single authority
+  // for whether a destination belongs to the current scope, and adding a future
+  // editor should require making that decision here.
+  void editor;
+  return "DATES";
 }
 
 /** The sticky primary action at the foot of each focused editor. */
 export type WorkbenchCta =
   | "REVIEW_AVAILABILITY"
   | "REVIEW_PRICE"
-  | "REVIEW_PROMOTION"
-  | "REVIEW_VISIBILITY"
-  | "REVIEW_DEFAULTS"
-  | "REVIEW_ONGOING_PROMOTION";
+  | "REVIEW_PROMOTION";
 
 export function ctaForEditor(editor: WorkbenchEditor): WorkbenchCta {
   switch (editor) {
@@ -93,12 +83,6 @@ export function ctaForEditor(editor: WorkbenchEditor): WorkbenchCta {
       return "REVIEW_PRICE";
     case "promotions":
       return "REVIEW_PROMOTION";
-    case "listing_visibility":
-      return "REVIEW_VISIBILITY";
-    case "listing_defaults":
-      return "REVIEW_DEFAULTS";
-    case "listing_promotions":
-      return "REVIEW_ONGOING_PROMOTION";
   }
 }
 
@@ -107,9 +91,9 @@ export const MENU_VIEW: WorkbenchView = { kind: "menu" };
 /**
  * Open an editor, if the current scope has one.
  *
- * An out-of-scope request is refused rather than honoured against the wrong target —
- * the caller is expected to change the scope first, which is exactly what following
- * the pricing editor's minimum-stay link does.
+ * An out-of-scope request is refused rather than honoured against the wrong target.
+ * With no dates selected that means every editor is refused, which is what keeps an
+ * arriving intent from opening a date editor before there are dates for it to act on.
  */
 export function openEditor(
   editor: WorkbenchEditor,
@@ -128,8 +112,8 @@ export function backFrom(view: WorkbenchView): WorkbenchView {
  *
  * An editor that still belongs to the new scope stays open — retyping a nightly price
  * because the host extended the range by a day would be its own small cruelty. One that
- * does not is dropped back to the menu, so a listing-wide editor can never be left on
- * screen above a date selection it knows nothing about.
+ * does not is dropped back to the menu, so an editor can never be left on screen above
+ * a selection it knows nothing about — or above no selection at all.
  */
 export function viewAfterScopeChange(
   view: WorkbenchView,
@@ -163,12 +147,6 @@ export function leavingLosesWork(
  *
  * Nothing here is staged or reviewed. Connecting or disconnecting a calendar takes
  * effect when the host asks for it, so this view can never be holding unsaved work —
- * which is why `leavingLosesWork` below still answers "no" for it.
+ * which is why `leavingLosesWork` above still answers "no" for it.
  */
 export const CONNECTIONS_VIEW: WorkbenchView = { kind: "connections" };
-
-/** Where the pricing editor's quiet minimum-stay row sends the host. */
-export const MINIMUM_STAY_TARGET = {
-  scope: "ALL_FUTURE",
-  editor: "listing_defaults",
-} as const satisfies { scope: WorkbenchScope; editor: WorkbenchEditor };

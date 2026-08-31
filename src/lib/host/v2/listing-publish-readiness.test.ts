@@ -130,11 +130,11 @@ describe("legacy and imported drafts get useful blockers", () => {
   });
 
   it("reports an address the publish schema would refuse", () => {
-    expect(steps(completeDraft({ address: "", city: "X" }))).toEqual(["address", "address"]);
+    expect(steps(completeDraft({ address: "", city: "X" }))).toEqual(["location", "location"]);
   });
 
-  it("reports a missing pin against the Location step, not the Address step", () => {
-    expect(steps(completeDraft({ latitude: "", longitude: "" }))).toEqual(["location"]);
+  it("reports a missing pin against the dedicated map checkpoint", () => {
+    expect(steps(completeDraft({ latitude: "", longitude: "" }))).toEqual(["address"]);
   });
 
   it("reports an availability answer whose date has already passed", () => {

@@ -36,6 +36,7 @@ import type {
   ScheduledProtection,
 } from "@/lib/host/v2/calendar-schedule";
 import type { ListingCta } from "@/lib/host/v2/calendar-listing-draft";
+import type { CalendarIntent } from "@/lib/host/v2/calendar-href";
 
 /**
  * Every user-visible sentence the calendar can say, in one place.
@@ -469,6 +470,37 @@ export function workbenchScopeLabel(
     : i18n.resolve("host.v2.calendar.scope.all_future", "All future dates");
 }
 
+/**
+ * What the calendar is waiting for, when the host arrived from a contextual link.
+ *
+ * Each one names the action *and* the missing half of it, because the sentence started
+ * on the page the host came from: they pressed "Set prices for specific dates" and this
+ * is the calendar finishing it. Generic wording — "select some dates" — would throw
+ * that context away and leave them wondering what they were about to do.
+ */
+export function intentPromptLabel(
+  i18n: Translator,
+  intent: CalendarIntent,
+): Resolved {
+  switch (intent) {
+    case "availability":
+      return i18n.resolve(
+        "host.v2.calendar.intent.availability",
+        "Select the dates you want to open or block.",
+      );
+    case "pricing":
+      return i18n.resolve(
+        "host.v2.calendar.intent.pricing",
+        "Select the dates you want to give their own price.",
+      );
+    case "promotion":
+      return i18n.resolve(
+        "host.v2.calendar.intent.promotion",
+        "Select the dates your offer should run on.",
+      );
+  }
+}
+
 /** The name of a destination, used by both its menu row and its editor header. */
 export function workbenchEditorLabel(
   i18n: Translator,
@@ -481,21 +513,6 @@ export function workbenchEditorLabel(
       return i18n.resolve("host.v2.calendar.menu.price", "Nightly price");
     case "promotions":
       return i18n.resolve("host.v2.calendar.menu.promotion", "Promotion");
-    case "listing_visibility":
-      return i18n.resolve(
-        "host.v2.calendar.menu.listing_visibility",
-        "Listing visibility",
-      );
-    case "listing_defaults":
-      return i18n.resolve(
-        "host.v2.calendar.menu.listing_defaults",
-        "Default price and stay rules",
-      );
-    case "listing_promotions":
-      return i18n.resolve(
-        "host.v2.calendar.menu.listing_promotions",
-        "Promotions",
-      );
   }
 }
 
@@ -511,38 +528,22 @@ export function workbenchCtaLabel(
       return i18n.resolve("host.v2.calendar.cta.price", "Review price");
     case "REVIEW_PROMOTION":
       return i18n.resolve("host.v2.calendar.cta.promotion", "Review promotion");
-    case "REVIEW_VISIBILITY":
-      return i18n.resolve("host.v2.calendar.cta.visibility", "Review visibility");
-    case "REVIEW_DEFAULTS":
-      return i18n.resolve("host.v2.calendar.cta.defaults", "Review defaults");
-    case "REVIEW_ONGOING_PROMOTION":
-      return i18n.resolve(
-        "host.v2.calendar.cta.ongoing_promotion",
-        "Review ongoing promotion",
-      );
   }
 }
 
 /**
- * The shell's single action while a listing-wide editor is open.
+ * The single action while a listing-wide editor is open.
  *
- * Named from the staged change rather than from which editor is showing: the
- * visibility screen holds three separate decisions, and "Review removal" is a
- * materially different promise from "Review ongoing promotion".
+ * Named from the staged change rather than from which editor is showing: the Pricing
+ * section stages a default-pricing edit and an offer edit from one screen, and
+ * "Review removal" is a materially different promise from "Review ongoing promotion".
  */
 export function listingCtaLabel(i18n: Translator, cta: ListingCta): Resolved {
   switch (cta) {
-    case "REVIEW_VISIBILITY":
-      return i18n.resolve("host.v2.calendar.cta.visibility", "Review visibility");
     case "REVIEW_AVAILABILITY_RULE":
       return i18n.resolve(
         "host.v2.calendar.cta.availability_rule",
         "Review availability rule",
-      );
-    case "REVIEW_MIN_NIGHTS":
-      return i18n.resolve(
-        "host.v2.calendar.cta.min_nights",
-        "Review minimum stay",
       );
     case "REVIEW_DEFAULTS":
       return i18n.resolve(
@@ -639,8 +640,6 @@ export function reviewFieldLabel(
       return i18n.resolve("host.v2.calendar.field.price", "Nightly price");
     case "promotion":
       return i18n.resolve("host.v2.calendar.field.promotion", "Promotion");
-    case "visibility":
-      return i18n.resolve("host.v2.calendar.field.visibility", "Listing visibility");
     case "availability_mode":
       return i18n.resolve(
         "host.v2.calendar.field.availability_mode",
@@ -835,10 +834,6 @@ export function reviewValueText(
       }
       return join(details);
     }
-    case "VISIBILITY_LIVE":
-      return i18n.resolve("host.v2.calendar.value.live", "Live on the site");
-    case "VISIBILITY_HIDDEN":
-      return i18n.resolve("host.v2.calendar.value.hidden", "Hidden from guests");
     case "MODE_OPEN":
       return i18n.resolve(
         "host.v2.calendar.value.mode_open",
@@ -867,6 +862,21 @@ export function reviewValueText(
       // another language, it is a thing the host wrote and has to recognise.
       return { text: value.note, translated: true };
   }
+}
+
+/**
+ * The sentence every default-availability confirmation ends on.
+ *
+ * A host changing how untouched dates begin is, in the moment, asking one question:
+ * "does this cancel anything?" The counts above answer what moves; this answers the
+ * question they were actually asking, and it is stated in both directions because
+ * closing dates by default is the direction that sounds like it might.
+ */
+function reservationsUnaffected(i18n: Translator): Resolved {
+  return i18n.resolve(
+    "host.v2.calendar.consequence.mode_reservations_safe",
+    "Reservations guests have already made are not affected.",
+  );
 }
 
 export function consequenceText(
@@ -1041,27 +1051,6 @@ export function consequenceText(
       }
       return join(parts);
     }
-    case "LISTING_GOES_LIVE":
-      return consequence.bookableDates > 0
-        ? interpolate(
-            i18n.resolve(
-              "host.v2.calendar.consequence.live",
-              "The listing goes back on the site and guests can book its {bookable} open dates in the next {months} months.",
-            ),
-            {
-              bookable: consequence.bookableDates,
-              months: consequence.horizonMonths,
-            },
-          )
-        : i18n.resolve(
-            "host.v2.calendar.consequence.live_none",
-            "The listing goes back on the site, but no date is bookable yet.",
-          );
-    case "LISTING_HIDDEN":
-      return i18n.resolve(
-        "host.v2.calendar.consequence.hidden",
-        "The listing comes off the site straight away. Guests can no longer find or book it. Existing reservations stay in place.",
-      );
     case "MODE_TO_OPEN": {
       const parts: Resolved[] = [
         interpolate(
@@ -1102,6 +1091,7 @@ export function consequenceText(
           ),
         );
       }
+      parts.push(reservationsUnaffected(i18n));
       return join(parts);
     }
     case "MODE_TO_CLOSED": {
@@ -1147,6 +1137,7 @@ export function consequenceText(
           ),
         );
       }
+      parts.push(reservationsUnaffected(i18n));
       return join(parts);
     }
     case "BASE_PRICE_FALLBACK":
@@ -1239,16 +1230,6 @@ export function saveActionLabel(
       return i18n.resolve("host.v2.calendar.save.price", "Save price changes");
     case "SAVE_PROMOTION":
       return i18n.resolve("host.v2.calendar.save.promotion", "Save this promotion");
-    case "SAVE_AND_PUBLISH":
-      return i18n.resolve(
-        "host.v2.calendar.save.publish",
-        "Save and put this listing back on the site",
-      );
-    case "SAVE_AND_HIDE":
-      return i18n.resolve(
-        "host.v2.calendar.save.hide",
-        "Save and hide this listing from guests",
-      );
     case "SAVE_MODE_OPEN":
       return i18n.resolve(
         "host.v2.calendar.save.mode_open",
@@ -1258,11 +1239,6 @@ export function saveActionLabel(
       return i18n.resolve(
         "host.v2.calendar.save.mode_closed",
         "Save and close dates by default",
-      );
-    case "SAVE_MIN_NIGHTS":
-      return i18n.resolve(
-        "host.v2.calendar.save.min_nights",
-        "Save minimum stay for all dates",
       );
     case "SAVE_DEFAULT_PRICING":
       return i18n.resolve(
@@ -1329,16 +1305,6 @@ export function reviewActionLabel(
         ),
         { scope },
       );
-    case "SAVE_AND_PUBLISH":
-      return i18n.resolve(
-        "host.v2.calendar.review_action.publish",
-        "Review putting this listing on the site",
-      );
-    case "SAVE_AND_HIDE":
-      return i18n.resolve(
-        "host.v2.calendar.review_action.hide",
-        "Review hiding this listing",
-      );
     case "SAVE_MODE_OPEN":
       return i18n.resolve(
         "host.v2.calendar.review_action.mode_open",
@@ -1348,11 +1314,6 @@ export function reviewActionLabel(
       return i18n.resolve(
         "host.v2.calendar.review_action.mode_closed",
         "Review closing dates by default",
-      );
-    case "SAVE_MIN_NIGHTS":
-      return i18n.resolve(
-        "host.v2.calendar.review_action.min_nights",
-        "Review the minimum stay",
       );
     case "SAVE_DEFAULT_PRICING":
       return i18n.resolve(
@@ -1447,16 +1408,6 @@ export function reviewErrorText(
           "Enter a minimum stay between 1 and {max} nights.",
         ),
         { max: error.maxNights },
-      );
-    case "CANNOT_PUBLISH":
-      return i18n.resolve(
-        "host.v2.calendar.error.cannot_publish",
-        "This listing is not ready to go on the site yet:",
-      );
-    case "CANNOT_HIDE":
-      return i18n.resolve(
-        "host.v2.calendar.error.cannot_hide",
-        "Only a live listing can be hidden.",
       );
     case "MODE_UNCHANGED":
       return i18n.resolve(

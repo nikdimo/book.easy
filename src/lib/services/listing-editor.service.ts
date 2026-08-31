@@ -5,7 +5,10 @@ import { resolveRoomTypeLabel } from "@/lib/i18n/room-labels";
 import { getRoomTypeCatalogIncluding } from "@/lib/services/room-type.service";
 import { roomDisplayName } from "@/lib/rooms/room-name";
 import { listingBasicsComplete } from "@/lib/host/v2/listing-basics";
-import { listingLocationComplete } from "@/lib/host/v2/listing-location";
+import {
+  listingLocationComplete,
+  listingStreetViewComplete,
+} from "@/lib/host/v2/listing-location";
 import { listingPropertyDetailsComplete } from "@/lib/host/v2/listing-property-details";
 import { editorCompletedSections } from "@/lib/host/v2/editor-sections";
 import { editorAttentionSlugs } from "@/lib/host/v2/editor-overview";
@@ -75,6 +78,9 @@ export async function getListingEditorData(
           country: true,
           latitude: true,
           longitude: true,
+          streetViewHeading: true,
+          streetViewPitch: true,
+          streetViewPanoId: true,
         },
       },
       images: {
@@ -194,6 +200,7 @@ export async function getListingEditorData(
 const attention = editorAttentionSlugs({
   completeSections,
   hasPricing: listing.pricingRule !== null,
+  streetViewSet: listingStreetViewComplete(listing.property),
   });
 
   return {
@@ -275,6 +282,9 @@ export async function getListingEditorHeader(listingId: string, hostId: string) 
           country: true,
           latitude: true,
           longitude: true,
+          streetViewHeading: true,
+          streetViewPitch: true,
+          streetViewPanoId: true,
         },
       },
       images: {
@@ -313,6 +323,7 @@ export async function getListingEditorHeader(listingId: string, hostId: string) 
 const attention = editorAttentionSlugs({
   completeSections,
   hasPricing: listing.pricingRule !== null,
+  streetViewSet: listingStreetViewComplete(listing.property),
   });
 
   return {
@@ -346,6 +357,8 @@ export interface ListingEditorOverview {
   houseRulesReviewed: boolean;
   /** Whether the host has ever saved Payment arrangements. */
   paymentMethodsReviewed: boolean;
+  /** Whether the host has chosen a saved Street View approach. */
+  streetViewSet?: boolean;
   completeSections: string[];
   /** Sections with an open task. Pricing can appear here; it has no checkmark of its
    *  own because it is not a completion section. */
@@ -395,6 +408,9 @@ export async function getListingEditorOverview(
           country: true,
           latitude: true,
           longitude: true,
+          streetViewHeading: true,
+          streetViewPitch: true,
+          streetViewPanoId: true,
         },
       },
       images: {
@@ -442,6 +458,7 @@ export async function getListingEditorOverview(
 const attention = editorAttentionSlugs({
   completeSections,
   hasPricing: listing.pricingRule !== null,
+  streetViewSet: listingStreetViewComplete(listing.property),
   });
 
   return {
@@ -467,6 +484,7 @@ const attention = editorAttentionSlugs({
       listing.paymentMethodsReviewedAt !== null &&
       listing.depositPoliciesReviewedAt !== null &&
       listing.cancellationPolicyReviewedAt !== null,
+    streetViewSet: listingStreetViewComplete(listing.property),
     completeSections,
     attention,
   };

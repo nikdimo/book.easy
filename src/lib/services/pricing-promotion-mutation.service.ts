@@ -4,6 +4,7 @@ import { PromotionType } from "@prisma/client";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { BASE_CURRENCY } from "@/lib/currency/currency-preference";
 import { createAuditLog } from "@/lib/services/audit.service";
 import type { ManagedAvailabilityListing } from "@/lib/services/availability-mutation.service";
 import { compareYmd, ymdToDbDate } from "@/lib/utils/date-only";
@@ -95,6 +96,61 @@ function revalidatePromotionPaths(listing: ManagedAvailabilityListing) {
   revalidatePath("/host/calendar");
   if (listing.slug) revalidatePath(`/properties/${listing.slug}`);
   revalidatePublicListingCaches();
+}
+
+/**
+ * The listing's first pricing rule.
+ *
+ * Almost every listing gets one when it is created, nested in the same write as the
+ * listing itself, so this is the recovery path rather than the normal one: an imported
+ * listing, or one from before that create existed, reaches the Pricing section with no
+ * rule at all and cannot be published, cannot be quoted, and — until now — could not be
+ * given a price from the page that is supposed to own its price.
+ *
+ * No schema change was needed for it. `PricingRule` already defaults the currency, the
+ * maximum stay and the service fee, so the three numbers a host actually chooses are
+ * the three the form asks for, and the rest are the same defaults every other listing
+ * was created with.
+ *
+ * Deliberately refuses when a rule already exists rather than overwriting one: this is
+ * "there is nothing here yet", and `saveDefaultPricingForManagedListing` is the path
+ * for changing what is. Two functions that can both create leave two audit trails for
+ * the same event and no way to tell which one a host used.
+ */
+export async function createDefaultPricingForManagedListing(
+  listing: ManagedAvailabilityListing,
+  actorId: string,
+  input: { baseNightlyRate: number; cleaningFee: number; minNights: number },
+) {
+  const parsed = pricingSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Invalid pricing." };
+  }
+  const existing = await db.pricingRule.findUnique({
+    where: { listingId: listing.id },
+    select: { id: true },
+  });
+  if (existing) return { error: "This listing already has pricing." };
+
+  await db.pricingRule.create({
+    data: {
+      listingId: listing.id,
+      // The platform's authoring currency, which is what every other listing's rule is
+      // created with and what the schema itself defaults to. Nothing here changes the
+      // currency of a listing that already has one.
+      currency: BASE_CURRENCY,
+      ...parsed.data,
+    },
+  });
+  await createAuditLog({
+    userId: actorId,
+    action: "listing.pricing_created",
+    entityType: "Listing",
+    entityId: listing.id,
+    metadata: parsed.data,
+  });
+  revalidatePricingPaths(listing);
+  return { success: "Pricing saved." };
 }
 
 export async function saveDefaultPricingForManagedListing(

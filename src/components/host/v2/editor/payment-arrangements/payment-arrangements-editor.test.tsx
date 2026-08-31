@@ -4,10 +4,19 @@ import { PaymentArrangementsEditor } from "./payment-arrangements-editor";
 import {
   PAYMENT_METHOD_CODES,
   paymentArrangementsAreComplete,
+  paymentMethodDetailState,
   togglePaymentMethod,
   validateOtherPaymentLabel,
+  type PaymentArrangementsDraft,
   type PaymentArrangementsValue,
 } from "./payment-arrangements-model";
+
+const BANK_DETAILS = {
+  accountHolder: "Nikola Dimovski",
+  bankName: "Komercijalna Banka",
+  accountIdentifier: "DK5000400440116243",
+  swiftBic: "DABADKKK",
+};
 
 function renderEditor(
   value: Partial<PaymentArrangementsValue> = {},
@@ -208,56 +217,112 @@ describe("PaymentArrangementsEditor", () => {
     expect(withOther).toContain('value="MobilePay"');
   });
 
-  it("collapses every method's details until one is opened", () => {
+  it("keeps every method's details out of the page until a drawer is opened", () => {
     const html = renderEditor({
       methodCodes: ["BANK_TRANSFER_INTERNATIONAL", "PAYPAL"],
-      details: {
-        BANK_TRANSFER_INTERNATIONAL: {
-          accountHolder: "Nikola Dimovski",
-          bankName: "Komercijalna Banka",
-          accountIdentifier: "DK5000400440116243",
-          swiftBic: "DABADKKK",
-        },
-      },
+      details: { BANK_TRANSFER_INTERNATIONAL: BANK_DETAILS },
       reviewedAt: "2026-08-24T10:00:00.000Z",
     });
 
-    // Both rows are collapsed on first paint, so no panel is expanded.
-    expect(html).not.toContain('aria-expanded="true"');
-    expect((html.match(/aria-expanded="false"/g) ?? []).length).toBe(2);
-    // Every details panel is hidden, one per selected method that has fields.
-    expect((html.match(/id="payment-details-[a-z-]+"/g) ?? []).length).toBe(2);
-    expect((html.match(/hidden=""/g) ?? []).length).toBe(2);
-    // What the collapsed row itself shows is masked down to a recognisable tail.
+    // No dialog, and no detail field anywhere in the list. The old inline panels
+    // opened between the rows and pushed everything below them down the page.
+    expect(html).not.toContain('role="dialog"');
+    expect(html).not.toContain('id="payment-field-');
+    expect(html).not.toContain("IBAN or account number");
+    // What the row itself shows is masked down to a recognisable tail.
     expect(html).toContain("DK50 •••• 6243");
+    expect(html).not.toContain("DK5000400440116243");
   });
 
-  it("names saved details as saved and unsaved ones as optional, never as missing", () => {
+  it("names details in the draft as added, never as saved, and empty ones as optional", () => {
     const html = renderEditor({
       methodCodes: ["BANK_TRANSFER_INTERNATIONAL", "PAYPAL"],
-      details: {
-        BANK_TRANSFER_INTERNATIONAL: {
-          accountHolder: "Nikola Dimovski",
-          bankName: "Komercijalna Banka",
-          accountIdentifier: "DK5000400440116243",
-          swiftBic: "DABADKKK",
-        },
-      },
+      details: { BANK_TRANSFER_INTERNATIONAL: BANK_DETAILS },
       reviewedAt: "2026-08-24T10:00:00.000Z",
     });
 
-    expect(html).toContain("Details saved");
-    // "Missing details" read as a blocker on a screen where these are genuinely
-    // optional, and sent hosts hunting for a Next that was never waiting on them.
-    expect(html).toContain("Optional details");
+    // "Details added" and not "Details saved": this screen holds a local draft, and
+    // only the section's own Save writes it. Calling a typed-but-unsaved IBAN saved is
+    // a claim about the database that a host has no way to check.
+    expect(html).toContain("Details added");
+    expect(html).not.toContain("Details saved");
+    // "Optional", because on this screen they genuinely are — never "Missing".
+    expect(html).toContain("Optional");
     expect(html).not.toContain("Missing details");
     expect(html).toContain("Edit details");
     expect(html).toContain("Add details");
-    expect(html).not.toContain("Not ready");
     // A selected method with no details yet is a normal state, not a validation
     // failure: nothing is flagged as an error and nothing demands a value.
     expect(html).not.toContain('role="alert"');
     expect(html).not.toContain("Fill this in");
+    expect(html).not.toContain("Needs attention");
+  });
+
+  it("marks a method whose entered details do not validate as needing attention", () => {
+    const draft: PaymentArrangementsDraft = {
+      methodCodes: ["BANK_TRANSFER_INTERNATIONAL"],
+      otherLabel: null,
+      details: {
+        // The check digits are wrong by one, which the existing IBAN validation catches.
+        BANK_TRANSFER_INTERNATIONAL: {
+          ...BANK_DETAILS,
+          accountIdentifier: "DK5100400440116243",
+        },
+      },
+    };
+
+    expect(paymentMethodDetailState(draft, "BANK_TRANSFER_INTERNATIONAL")).toBe(
+      "ATTENTION",
+    );
+    const html = renderEditor({ ...draft, reviewedAt: "2026-08-24T10:00:00.000Z" });
+    expect(html).toContain("Needs attention");
+    // The row says which method needs it; the reason stays behind the drawer, with the
+    // field it belongs to.
+    expect(html).not.toContain("fails its check digits");
+    expect(html).toMatch(/type="submit"[^>]*disabled/);
+  });
+
+  it.each([
+    ["NONE", {}],
+    ["NONE", { BANK_TRANSFER_INTERNATIONAL: { accountHolder: "   " } }],
+    ["ADDED", { BANK_TRANSFER_INTERNATIONAL: BANK_DETAILS }],
+    // Started but unfinished is the existing rule's "not saveable yet": required fields
+    // bite once anything is filled in, and the row must say so rather than imply it is
+    // done. Clearing the method's fields entirely puts it back to Optional.
+    ["ATTENTION", { BANK_TRANSFER_INTERNATIONAL: { accountHolder: "Nikola" } }],
+  ] as const)("reports %s for the details a draft actually holds", (state, details) => {
+    expect(
+      paymentMethodDetailState(
+        {
+          methodCodes: ["BANK_TRANSFER_INTERNATIONAL"],
+          otherLabel: null,
+          details,
+        },
+        "BANK_TRANSFER_INTERNATIONAL",
+      ),
+    ).toBe(state);
+  });
+
+  it("counts a legacy paragraph as details the host already has", () => {
+    expect(
+      paymentMethodDetailState(
+        {
+          methodCodes: ["BANK_TRANSFER_INTERNATIONAL"],
+          otherLabel: null,
+          instructionTemplates: { BANK_TRANSFER_INTERNATIONAL: "IBAN DK50…" },
+        },
+        "BANK_TRANSFER_INTERNATIONAL",
+      ),
+    ).toBe("ADDED");
+  });
+
+  it("says nothing about details for a method that has none to give", () => {
+    expect(
+      paymentMethodDetailState(
+        { methodCodes: ["ARRANGE_DIRECTLY"], otherLabel: null },
+        "ARRANGE_DIRECTLY",
+      ),
+    ).toBe("NOT_APPLICABLE");
   });
 
   it("holds back the required message and the guest preview when the wizard asks it to", () => {
@@ -278,32 +343,24 @@ describe("PaymentArrangementsEditor", () => {
     expect(html).toContain('id="payment-method-cash-at-property"');
   });
 
-  it("keeps the checkbox and the disclosure button as separate controls", () => {
+  it("keeps selecting a method and editing its details as two separate controls", () => {
     const html = renderEditor({
       methodCodes: ["PAYPAL"],
       reviewedAt: "2026-08-24T10:00:00.000Z",
     });
 
-    // The label wraps text only — no button is nested inside it.
+    // The label wraps text only — no button is nested inside it, so clicking the
+    // method's name ticks the box and competes with nothing.
     expect(html).not.toMatch(/<label[^>]*>(?:(?!<\/label>)[\s\S])*<button/);
-    expect(html).toContain('aria-controls="payment-details-paypal"');
     expect(html).toContain('for="payment-method-paypal"');
-  });
-
-  it("offers a legacy paragraph for deliberate conversion instead of parsing it", () => {
-    const html = renderEditor({
-      methodCodes: ["BANK_TRANSFER_INTERNATIONAL"],
-      instructionTemplates: {
-        BANK_TRANSFER_INTERNATIONAL: "IBAN DK5000400440116243\nSWIFT DABADKKK",
-      },
-      reviewedAt: "2026-08-24T10:00:00.000Z",
-    });
-
-    expect(html).toContain("Legacy saved instructions");
-    expect(html).toContain("Convert to structured fields");
-    // The legacy text is shown verbatim, never split across the structured fields.
-    expect(html).toContain("IBAN DK5000400440116243");
-    expect(html).not.toContain('value="DK5000400440116243"');
+    // The detail action is its own button, and announces that it opens a dialog.
+    expect(html).toContain('aria-haspopup="dialog"');
+    // The checkbox is described by its status, so a screen reader can tell selecting a
+    // method apart from what its details currently are.
+    expect(html).toContain('aria-describedby="payment-status-paypal"');
+    expect(html).toContain('id="payment-status-paypal"');
+    // And the button names its method, so ten "Edit details" are not indistinguishable.
+    expect(html).toContain("PayPal</span>");
   });
 
   it("blocks unsafe saved credentials before they reach the server", () => {
@@ -318,7 +375,8 @@ describe("PaymentArrangementsEditor", () => {
       reviewedAt: "2026-08-24T10:00:00.000Z",
     });
 
-    expect(html).toContain("not a valid address for the network you chose");
+    // The row says so and the section's Save refuses, with the drawer still closed.
+    expect(html).toContain("Needs attention");
     expect(html).toMatch(/type="submit"[^>]*disabled/);
   });
 

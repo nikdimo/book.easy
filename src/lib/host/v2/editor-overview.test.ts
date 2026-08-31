@@ -21,6 +21,21 @@ describe("editorAttentionItems", () => {
     ).toEqual([]);
   });
 
+  it("asks a host with a complete location to check Street View", () => {
+    expect(
+      editorAttentionItems({
+        completeSections: everything,
+        hasPricing: true,
+        streetViewSet: false,
+      }),
+    ).toEqual([
+      expect.objectContaining({
+        slug: "location",
+        source: "Check Street View and point it at the approach guests should use.",
+      }),
+    ]);
+  });
+
   it("flags exactly the sections the shared completion set left undone", () => {
     const complete = editorCompletedSections({
       photoCount: 5,

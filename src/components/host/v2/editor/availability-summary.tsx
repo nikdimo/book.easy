@@ -7,8 +7,6 @@ import {
   CheckCircle2,
   Clock,
   Link2,
-  Lock,
-  Unlock,
 } from "lucide-react";
 import {
   calendarHrefForListing,
@@ -25,21 +23,23 @@ import { resolveListingStatus } from "@/lib/i18n/status-labels";
 import { ymdToLocalDate } from "@/lib/utils/date-only";
 
 /**
- * Availability, reported rather than edited.
+ * Availability: the listing's default, and then what has been done to particular dates.
  *
- * The Calendar is where a host opens and blocks dates, and duplicating any part of that
- * here would give the same decision two homes and two answers. So this pane answers the
- * question the editor is actually asked — *what is my availability right now?* — and
- * then hands over: every row is text, and the only control is the link to Calendar.
+ * The division of labour is the whole design. This page owns the one setting that
+ * belongs to the listing — how a future date starts out — and the Calendar owns every
+ * decision about specific dates. Each setting therefore has exactly one editable home,
+ * and the other surface shows it and links here.
  *
- * It is deliberately not counted as an editor step. There is nothing to complete here,
- * and a checkmark for reading a summary would inflate the progress a host is trying to
- * read honestly.
+ * The editable part is a client component passed in as `defaultsEditor`; everything
+ * below it is a report. That report is still rendered on the server, so dates are
+ * formatted with the server's full ICU data and shipped as finished text — there is no
+ * client component underneath to re-resolve the locale against whatever data the
+ * browser happens to ship, which is the hydration mismatch the Calendar's format
+ * snapshots exist to avoid.
  *
- * Rendered on the server, so dates are formatted with the server's full ICU data and
- * shipped as finished text — there is no client component underneath to re-resolve the
- * locale against whatever data the browser happens to ship, which is the hydration
- * mismatch the Calendar's format snapshots exist to avoid.
+ * It is deliberately not counted as an editor step. Every listing already has a stored
+ * default, so there is no state in which this section is "unfinished", and a checkmark
+ * for having visited it would inflate progress the host is trying to read honestly.
  */
 
 /** Long enough to be unambiguous, short enough for two of them to sit on one line. */
@@ -226,15 +226,26 @@ function Panel({
 
 export function AvailabilitySummary({
   overview,
+  defaultsEditor,
   t,
 }: {
   overview: ListingAvailabilityOverview;
+  /**
+   * The editable default, mounted between the lead and the report.
+   *
+   * Passed in rather than imported so this stays a server component: the form under it
+   * is interactive, everything around it is finished text, and only the form has to
+   * ship to the browser.
+   */
+  defaultsEditor: React.ReactNode;
   t: Translator;
 }) {
   const locale = t.locale;
   const closed = overview.mode === "CLOSED";
   const status = resolveListingStatus(t, overview.status);
-  const calendarHref = calendarHrefForListing(overview.listingId);
+  // Named so the Calendar opens ready for the job this page hands off: choosing dates
+  // to open or block, rather than a menu asking what the host came for.
+  const calendarHref = calendarHrefForListing(overview.listingId, "availability");
   const horizon = ti(
     t,
     "host.editor.availability.horizon",
@@ -254,21 +265,12 @@ export function AvailabilitySummary({
           <T
             t={t}
             k="host.editor.availability.lead"
-            source="A summary of what is open and what is blocked. Availability itself is set in Calendar."
+            source="Set how future dates start out here. Opening or blocking particular dates happens in the calendar."
           />
         </p>
-        <Link
-          href={calendarHref}
-          className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-[#f1f5f9] px-5 text-sm font-semibold text-[#0f172a] transition-colors hover:bg-[#e2e8f0] focus-visible:bg-[#e2e8f0] focus-visible:outline-none"
-        >
-          <T
-            t={t}
-            k="host.editor.availability.manage_cta"
-            source="Manage availability in Calendar"
-          />
-          <ArrowRight className="size-4" aria-hidden />
-        </Link>
       </header>
+
+      {defaultsEditor}
 
       <dl className="mt-8 grid gap-3 sm:grid-cols-2">
         <Fact
@@ -276,20 +278,6 @@ export function AvailabilitySummary({
           label={text(t, "host.editor.availability.visibility_label", "Listing visibility")}
           value={status.text}
           note={visibilityNote(t, overview.visibility)}
-        />
-        <Fact
-          icon={closed ? Lock : Unlock}
-          label={text(t, "host.editor.availability.mode_label", "Availability mode")}
-          value={
-            closed
-              ? text(t, "host.editor.availability.mode_closed", "Closed by default")
-              : text(t, "host.editor.availability.mode_open", "Open by default")
-          }
-          note={
-            closed
-              ? text(t, "host.editor.availability.mode_closed_note", "Only the dates you open can be booked.")
-              : text(t, "host.editor.availability.mode_open_note", "Every future date can be booked unless you block it.")
-          }
         />
         <Fact
           icon={Link2}
@@ -457,6 +445,41 @@ export function AvailabilitySummary({
         </Panel>
       )}
 
+      {/* The handoff, named after the job rather than after the screen. "Open
+          calendar" told a host where to go and nothing about why; this says what they
+          are about to do, and the link carries that intent so the calendar arrives
+          asking for dates instead of showing a menu. */}
+      <section
+        aria-labelledby="availability-dates"
+        className="mt-8 rounded-2xl bg-slate-50 p-5"
+      >
+        <h3 id="availability-dates" className="text-sm font-semibold text-slate-900">
+          <T
+            t={t}
+            k="host.editor.availability.dates_title"
+            source="Particular dates"
+          />
+        </h3>
+        <p className="mt-1 text-sm leading-6 text-slate-600">
+          <T
+            t={t}
+            k="host.editor.availability.dates_body"
+            source="A holiday, a repair, a stay you took directly — anything that applies to some dates and not to others is set on the calendar."
+          />
+        </p>
+        <Link
+          href={calendarHref}
+          className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full bg-[#f1f5f9] px-5 text-sm font-semibold text-[#0f172a] transition-colors hover:bg-[#e2e8f0] focus-visible:bg-[#e2e8f0] focus-visible:outline-none"
+        >
+          <T
+            t={t}
+            k="host.editor.availability.dates_cta"
+            source="Open or block specific dates"
+          />
+          <ArrowRight className="size-4" aria-hidden />
+        </Link>
+      </section>
+
       <Panel
         id="availability-how"
         title={text(t, "host.editor.availability.how_title", "How availability works")}
@@ -475,7 +498,7 @@ export function AvailabilitySummary({
             <T
               t={t}
               k="host.editor.availability.how_listing_wide"
-              source="Listing-wide availability controls future dates. Dates already booked are never changed by it."
+              source="The default above only affects dates you have not decided about. Booked dates are never changed by it."
             />
           </li>
           <li className="flex gap-3 text-sm leading-6 text-slate-600">

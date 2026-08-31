@@ -40,6 +40,7 @@ import type { ListingSpaceTypeValue } from "@/lib/types/listing-space-type";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 import { cn } from "@/lib/utils";
 import { reviewHref, stepNextTarget } from "@/lib/host/v2/listing-flow-return";
+import { isEquirectangularPanoramaDimensions } from "@/lib/media/panorama";
 import { ListingFlowFooter } from "./listing-flow-footer";
 import { useHostStartDraft } from "./host-start-draft-provider";
 
@@ -52,15 +53,35 @@ function PhotoTile({
   photo,
   index,
   onRemove,
+  onPanoramaDetected,
 }: {
   photo: DraftPhoto;
   index: number;
   onRemove: (id: string) => void;
+  onPanoramaDetected: (id: string) => void;
 }) {
   const { resolve } = useI18n();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: photo.id });
   const isCover = index === 0;
+  const imageRef = useRef<HTMLImageElement>(null);
+  const recognizePanorama = useCallback(
+    (image: HTMLImageElement) => {
+      if (
+        !photo.isPanorama &&
+        isEquirectangularPanoramaDimensions(image.naturalWidth, image.naturalHeight)
+      ) {
+        onPanoramaDetected(photo.id);
+      }
+    },
+    [onPanoramaDetected, photo.id, photo.isPanorama],
+  );
+
+  // A persisted draft image can finish from the browser cache before React attaches
+  // its load handler. Check the already-decoded element once as well as listening below.
+  useEffect(() => {
+    if (imageRef.current?.complete) recognizePanorama(imageRef.current);
+  }, [recognizePanorama]);
 
   return (
     <li
@@ -85,10 +106,12 @@ function PhotoTile({
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
+          ref={imageRef}
           src={photo.previewUrl}
           alt=""
           draggable={false}
           className="pointer-events-none h-full w-full object-cover"
+          onLoad={(event) => recognizePanorama(event.currentTarget)}
         />
       </button>
 
@@ -278,6 +301,21 @@ export function PhotosStep({
       })();
     },
     [applyPhotos, releasePreview],
+  );
+
+  // Local previews exist before the upload endpoint can inspect their bytes. Recognize
+  // the standard 2:1 projection as soon as the browser decodes each tile, so hosts get
+  // immediate feedback. This also repairs an older persisted draft item that predates
+  // the server-side flag; the next draft save carries the detected value forward.
+  const markPanoramaDetected = useCallback(
+    (id: string) => {
+      applyPhotos((current) =>
+        current.map((photo) =>
+          photo.id === id && !photo.isPanorama ? { ...photo, isPanorama: true } : photo,
+        ),
+      );
+    },
+    [applyPhotos],
   );
 
   // Next both uploads and navigates, so a double-click would otherwise start two batches
@@ -520,6 +558,7 @@ export function PhotosStep({
                         photo={photo}
                         index={index}
                         onRemove={remove}
+                        onPanoramaDetected={markPanoramaDetected}
                       />
                     ))}
                     <li className="aspect-[4/3]">

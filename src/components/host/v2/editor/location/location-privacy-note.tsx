@@ -1,6 +1,7 @@
 import { Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Resolved } from "@/lib/i18n/t";
+import { EXACT_LOCATION_UNLOCK_DAYS } from "@/lib/utils/street-view-access";
 
 /** Both the server `Translator` and the client one expose exactly this, which is why
  *  this component can be rendered inside the client workspace and in a plain
@@ -54,8 +55,8 @@ export function LocationPrivacyNote({
             {
               resolve(
                 "host.editor.location.private_rest",
-                "The street address, pin and Street View stay private until you confirm a booking.",
-              ).text
+                "The street address, pin and Street View stay private until {days} days before check-in for a confirmed booking, when guests receive arrival instructions.",
+              ).text.replace("{days}", String(EXACT_LOCATION_UNLOCK_DAYS))
             }
           </>
         ) : (

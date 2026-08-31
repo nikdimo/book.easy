@@ -38,6 +38,7 @@ export function PaymentDetailFields({
   issues,
   disabled,
   idPrefix,
+  layout = "grid",
   onChange,
 }: {
   code: PaymentMethodCode;
@@ -45,13 +46,20 @@ export function PaymentDetailFields({
   issues: PaymentDetailIssues | undefined;
   disabled: boolean;
   idPrefix: string;
+  /**
+   * `grid` pairs the short fields two-up once the viewport allows it, which is right in
+   * a full-width form. `stack` keeps one field per line for a caller that is narrow
+   * while the *viewport* is wide — the payment details drawer is 448px whatever the
+   * window is, and a media query cannot see that.
+   */
+  layout?: "grid" | "stack";
   onChange: (key: string, value: string) => void;
 }) {
   const fields = PAYMENT_DETAIL_FIELDS[code];
   if (fields.length === 0) return null;
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className={cn("grid gap-4", layout === "grid" && "sm:grid-cols-2")}>
       {fields.map((field) => (
         <DetailField
           key={field.key}
@@ -61,6 +69,7 @@ export function PaymentDetailFields({
           issue={issues?.[field.key]}
           disabled={disabled}
           id={`${idPrefix}-${field.key}`}
+          wide={layout === "grid"}
           onChange={(value) => onChange(field.key, value)}
         />
       ))}
@@ -75,6 +84,7 @@ function DetailField({
   issue,
   disabled,
   id,
+  wide: allowWide,
   onChange,
 }: {
   code: PaymentMethodCode;
@@ -83,12 +93,15 @@ function DetailField({
   issue: PaymentDetailFieldIssue | undefined;
   disabled: boolean;
   id: string;
+  /** False in a single-column layout, where spanning two columns means nothing. */
+  wide: boolean;
   onChange: (value: string) => void;
 }) {
   const i18n = useI18n();
   const errorId = issue ? `${id}-error` : undefined;
   const hintId = `${id}-hint`;
-  const wide = field.type === "NOTE" || field.type === "PAYMENT_URL";
+  const wide =
+    allowWide && (field.type === "NOTE" || field.type === "PAYMENT_URL");
 
   return (
     <div className={cn("space-y-1.5", wide && "sm:col-span-2")}>

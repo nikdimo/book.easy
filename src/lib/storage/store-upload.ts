@@ -2,6 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import convertHeic from "heic-convert";
 import { getStorageAdapter } from "./index";
+import { isEquirectangularPanoramaDimensions } from "@/lib/media/panorama";
 import type { ListingMediaTypeValue } from "@/lib/types/listing-media";
 
 /**
@@ -199,10 +200,8 @@ function safeImageDimensions(buffer: Buffer): Dimensions | null {
   return pngDimensions(buffer) ?? jpegDimensions(buffer) ?? webpDimensions(buffer);
 }
 
-/** Full spherical equirectangular photos are conventionally 2:1. A small tolerance
- * covers camera stitching and exports that shave a few pixels from either edge. XMP
- * wins when a 360 camera explicitly identifies the projection. Tiny 2:1 graphics are
- * excluded so banners and screenshots are not accidentally turned into panoramas. */
+/** XMP wins when a 360 camera explicitly identifies the projection. Otherwise the
+ * shared dimension rule keeps server recognition aligned with the browser preview. */
 export function detectEquirectangularPanorama(buffer: Buffer): boolean {
   const xmp = buffer.toString("utf8");
   if (
@@ -215,8 +214,7 @@ export function detectEquirectangularPanorama(buffer: Buffer): boolean {
   try {
     const dimensions = safeImageDimensions(buffer);
     if (!dimensions) return false;
-    const ratio = dimensions.width / dimensions.height;
-    return dimensions.width >= 1600 && dimensions.height >= 800 && ratio >= 1.9 && ratio <= 2.1;
+    return isEquirectangularPanoramaDimensions(dimensions.width, dimensions.height);
   } catch {
     return false;
   }

@@ -4,6 +4,11 @@ import { ChevronLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { Tx } from "@/lib/i18n/client";
+import {
+  FLOW_BACK_CLASS,
+  FLOW_CTA_CLASS,
+  FlowProgressRail,
+} from "@/components/host/flow-chrome";
 
 type ListingFlowFooterProps = {
   backHref: string;
@@ -27,8 +32,9 @@ type ListingFlowFooterProps = {
   hideOnMobile?: boolean;
 };
 
-const CTA_CLASS =
-  "inline-flex min-h-11 min-w-28 items-center justify-center rounded-full bg-slate-950 px-6 font-heading text-sm font-semibold text-white transition-colors hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400";
+// Shared with the promotion wizard, which is the same flow in a dialog. See
+// `components/host/flow-chrome` for why these live outside this file.
+const CTA_CLASS = FLOW_CTA_CLASS;
 
 export function ListingFlowFooter({
   backHref,
@@ -100,13 +106,10 @@ export function ListingFlowFooter({
 
   return (
     <footer className={`${hideOnMobile ? "hidden lg:block" : "block"} fixed inset-x-0 bottom-0 z-20 border-t border-slate-200 bg-white/95 px-5 py-4 backdrop-blur md:px-8`}>
-      <div className="absolute inset-x-0 top-0 flex gap-1.5" aria-hidden>
-        <Segment progress={first} />
-        <Segment progress={second} />
-        {/* Empty until a phase-three screen fills it: a screen that never reaches phase
-            three renders the bare rail it always has. */}
-        {third > 0 ? <Segment progress={third} /> : <span className="h-1 flex-1 bg-slate-200" />}
-      </div>
+      {/* The third segment is empty until a phase-three screen fills it: a screen that
+          never reaches phase three renders the bare rail it always has, which is what
+          a zero already draws. */}
+      <FlowProgressRail segments={[first, second, third]} />
       {/* One fixed column for the controls, not the full viewport: the bar itself stays
           edge to edge (so does the progress line above it), but Back and the CTA land on
           exactly the same two x-positions on every screen of the flow. `max-w-5xl` is the
@@ -117,7 +120,7 @@ export function ListingFlowFooter({
         <Link
           href={backHref}
           onClick={onBack ? (event) => { event.preventDefault(); onBack(); } : undefined}
-          className="inline-flex min-h-11 items-center gap-2 rounded-full px-2 text-sm font-semibold text-slate-700 transition-colors hover:text-slate-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400"
+          className={FLOW_BACK_CLASS}
         >
           <ChevronLeft className="size-4" aria-hidden />
           <Tx k="host.v2.flow.back" source="Back" />
@@ -140,14 +143,5 @@ export function ListingFlowFooter({
         )}
       </div>
     </footer>
-  );
-}
-
-/** One filled segment of the three-part progress line. */
-function Segment({ progress }: { progress: number }) {
-  return (
-    <span className="h-1 flex-1 bg-slate-200">
-      <span className="block h-full bg-slate-950" style={{ width: `${progress}%` }} />
-    </span>
   );
 }

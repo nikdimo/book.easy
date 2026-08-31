@@ -59,7 +59,9 @@ describe("getPromotionListing", () => {
       description: "By the sea.",
       maxGuests: 4,
       property: { city: "Ohrid" },
-      images: [{ url: "/photo.jpg" }],
+      images: [
+        { id: "m1", url: "/photo.jpg", mediaType: "IMAGE", isPrimary: true },
+      ],
       pricingRule: {
         baseNightlyRate: "80",
         currency: "EUR",
@@ -73,6 +75,32 @@ describe("getPromotionListing", () => {
     expect(view?.maxNights).toBeNull();
     expect(view?.minNights).toBe(2);
     expect(view?.baseNightlyRate).toBe(80);
+    expect(view?.imageUrl).toBe("/photo.jpg");
+  });
+
+  it("carries every asset for the host to take away, cover first", async () => {
+    // Instagram cannot be posted without a file, and a group post does better with real
+    // photos than with a link card — so the workspace needs the whole set, not just the
+    // one image the Open Graph tags already use.
+    mocks.listingFindFirst.mockResolvedValue({
+      id: "listing-1",
+      slug: "slice-of-paradise",
+      title: "Slice of Paradise",
+      description: "By the sea.",
+      maxGuests: 4,
+      property: { city: "Ohrid" },
+      images: [
+        { id: "m1", url: "/terrace.mp4", mediaType: "VIDEO", isPrimary: true },
+        { id: "m2", url: "/photo.jpg", mediaType: "IMAGE", isPrimary: false },
+      ],
+      pricingRule: null,
+    });
+
+    const view = await getPromotionListing("host-1", "listing-1");
+
+    expect(view?.media.map((item) => item.id)).toEqual(["m1", "m2"]);
+    // The cover is the first *image*: a listing whose primary asset is a clip still
+    // needs a still for the header and for the link-card preview.
     expect(view?.imageUrl).toBe("/photo.jpg");
   });
 });

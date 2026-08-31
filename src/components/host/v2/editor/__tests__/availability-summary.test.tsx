@@ -37,67 +37,60 @@ function overview(
   });
 }
 
+/** Stands in for the client editor the page mounts; this file is about the report.
+ *  `translate="no"` because this is scaffolding, not product copy the catalog should
+ *  ever be asked to carry. */
+const editorSlot = <div translate="no">Default availability form</div>;
+
 function render(data: ListingAvailabilityOverview): string {
-  return renderToStaticMarkup(<AvailabilitySummary overview={data} t={t} />);
+  return renderToStaticMarkup(
+    <AvailabilitySummary overview={data} defaultsEditor={editorSlot} t={t} />,
+  );
 }
 
 describe("AvailabilitySummary", () => {
-  it("sends the host to Calendar for this listing and nowhere else", () => {
+  it("mounts the editable default above the report", () => {
     const html = render(overview());
-
-    expect(html).toContain('href="/host/calendar?listing=listing-1"');
-    expect(html).toContain("Manage availability in Calendar");
-    // The one link on the page is the handoff.
-    expect(html.match(/<a /g)).toHaveLength(1);
+    expect(html).toContain("Default availability form");
+    // The lead says where each half of the job is done, and no longer claims the whole
+    // of availability is set somewhere else.
+    expect(html).toContain("Set how future dates start out here.");
+    expect(html).not.toContain("Availability itself is set in Calendar");
   });
 
-  it("offers nothing to edit", () => {
-    const html = render(
-      overview({
-        mode: "CLOSED",
-        windows: [{ id: "window-1", startDate: "2026-04-01", endDate: "2026-04-08" }],
-        blocks: [
-          {
-            id: "block-1",
-            startDate: "2026-05-01",
-            endDate: "2026-05-04",
-            blockType: "MANUAL_BLOCK",
-            reason: "Renovation",
-            feedName: null,
-            feedUrl: null,
-          },
-        ],
-      }),
-    );
-
-    expect(html).not.toContain("<form");
-    expect(html).not.toContain("<input");
-    expect(html).not.toContain("<button");
-    expect(html).not.toContain("<select");
-    expect(html).not.toContain("<textarea");
-  });
-
-  it("explains where availability is changed", () => {
+  it("hands off to the calendar by naming the job, not the screen", () => {
     const html = render(overview());
 
-    expect(html).toContain("Select dates in Calendar to open or block them.");
-    expect(html).toContain("Listing-wide availability controls future dates.");
+    // The intent travels with the link, so the calendar arrives asking which dates.
     expect(html).toContain(
-      "External Airbnb, Booking.com and other calendars are connected and managed from Calendar.",
+      'href="/host/calendar?listing=listing-1&amp;intent=availability"',
     );
+    expect(html).toContain("Open or block specific dates");
+    // The old generic handoff is gone: it told a host where to go and nothing about why.
+    expect(html).not.toContain("Manage availability in Calendar");
+    expect(html).not.toContain("Open calendar");
   });
 
-  it("states visibility and which way the calendar defaults", () => {
+  it("does not restate the default it no longer owns as a read-only fact", () => {
+    // The default has one home on this page — the form above — so the summary must not
+    // print a second, non-editable copy of the same answer beside it.
+    const html = render(overview({ mode: "CLOSED" }));
+    expect(html).not.toContain("Availability mode");
+    expect(html).not.toContain("Closed by default");
+    expect(html).not.toContain("Open by default");
+  });
+
+  it("keeps listing visibility as its own separate fact", () => {
+    // Visibility and default availability are different promises: a listing can be
+    // visible and unbookable, and it can have bookable dates while nobody can find it.
     const open = render(overview());
-    expect(open).toContain("Open by default");
+    expect(open).toContain("Listing visibility");
     expect(open).toContain(
       "Published to guests. Whether a stay can be booked also depends on its dates and pricing.",
     );
 
-    const closed = render(overview({ mode: "CLOSED", status: "UNPUBLISHED" }));
-    expect(closed).toContain("Closed by default");
-    expect(closed).toContain("Only the dates you open can be booked.");
-    expect(closed).toContain("Hidden from guests.");
+    const hidden = render(overview({ status: "UNPUBLISHED" }));
+    expect(hidden).toContain("Hidden from guests.");
   });
 
   it("lists open dates only for a listing that is closed by default", () => {
@@ -179,6 +172,7 @@ describe("AvailabilitySummary", () => {
     const html = render(overview());
 
     expect(html).toContain('aria-labelledby="availability-blocked"');
+    expect(html).toContain('aria-labelledby="availability-dates"');
     expect(html).toContain('aria-labelledby="availability-how"');
   });
 });

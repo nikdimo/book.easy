@@ -173,24 +173,24 @@ export function publishBlockers(
   );
 
   if (locationIssues.address) {
-    add("address", "Add the street address (at least " + ADDRESS_MIN + " characters).");
+    add("location", "Add the street address (at least " + ADDRESS_MIN + " characters).");
   }
   if (locationIssues.city) {
-    add("address", "Add the city or town (at least " + CITY_MIN + " characters).");
+    add("location", "Add the city or town (at least " + CITY_MIN + " characters).");
   }
   if (locationIssues.country) {
-    add("address", "Choose the country (at least " + COUNTRY_MIN + " characters).");
+    add("location", "Choose the country (at least " + COUNTRY_MIN + " characters).");
   }
   if (locationIssues.postalCode) {
-    add("address", "That postcode is too long.");
+    add("location", "That postcode is too long.");
   }
   if (locationIssues.area) {
-    add("address", "That apartment, suite or unit line is too long.");
+    add("location", "That apartment, suite or unit line is too long.");
   }
   if (locationIssues.pin) {
-    // The pin itself, never a second confirmation of it: a draft carrying coordinates is
-    // a draft whose host placed them, and Review does not ask them to say so again.
-    add("location", "Place your property on the map so guests can find it.");
+    // Address text is corrected in Location's modal; the following `/address` route is
+    // now the dedicated map checkpoint and owns a missing pin.
+    add("address", "Place your property on the map so guests can find it.");
   }
 
   // --- Capacity ---------------------------------------------------------------------

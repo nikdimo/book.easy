@@ -2,7 +2,6 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   ArrowRight,
-  CalendarDays,
   CheckCircle2,
   CircleAlert,
   ExternalLink,
@@ -123,15 +122,11 @@ function sectionSummary(
           }).text
         : text(t, "host.editor.overview.summary.no_price", "No nightly price set");
     case "availability":
+      // The same two plain-language answers the Availability section itself offers, so
+      // the card and the page it opens never describe the setting differently.
       return overview.availabilityMode === "CLOSED"
-        ? text(t, "host.editor.overview.summary.closed", "Closed by default")
-        : text(t, "host.editor.overview.summary.open", "Open by default");
-    case "open-calendar":
-      return text(
-        t,
-        "host.editor.overview.summary.calendar",
-        "Dates, blocks and per-night prices",
-      );
+        ? text(t, "host.editor.availability.default_closed", "Only dates I open")
+        : text(t, "host.editor.availability.default_open", "Available by default");
     default:
       return null;
   }
@@ -174,11 +169,7 @@ function SectionCard({
             <span className="mt-0.5 block truncate text-sm text-slate-600">{summary}</span>
           )}
         </span>
-        {item.external ? (
-          <CalendarDays className="size-4 shrink-0 text-slate-400" aria-hidden />
-        ) : (
-          <ArrowRight className="size-4 shrink-0 text-slate-400" aria-hidden />
-        )}
+        <ArrowRight className="size-4 shrink-0 text-slate-400" aria-hidden />
       </Link>
     </li>
   );
@@ -196,6 +187,7 @@ export function EditorOverview({
   const attention = editorAttentionItems({
     completeSections: overview.completeSections,
     hasPricing: overview.nightlyRate !== null,
+    streetViewSet: overview.streetViewSet,
   });
 
   return (

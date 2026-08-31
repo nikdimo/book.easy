@@ -745,7 +745,7 @@ export function LocationWorkspace({
               {
                 resolve(
                   "host.editor.location.street_view_privacy",
-                  "Never public. A guest sees it {days} days before check-in, once you have confirmed their booking.",
+                  "Never public. A guest sees it with their arrival instructions {days} days before check-in, once you have confirmed their booking.",
                 ).text.replace("{days}", String(EXACT_LOCATION_UNLOCK_DAYS))
               }
             </span>

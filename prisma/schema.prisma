@@ -519,6 +519,7 @@ model User {
   contactMessages              ContactMessage[]
   deletionTokens               AccountDeletionToken[]
   facebookDestinations         HostFacebookDestination[]        @relation("HostFacebookDestination")
+  promotionPreference          HostPromotionPreference?         @relation("HostPromotionPreference")
 
   @@index([email])
   @@index([role])
@@ -2500,6 +2501,32 @@ model ExchangeRateSnapshot {
 /// their own text and post it themselves. A private group is therefore fine — the
 /// URL is opened in the host's own logged-in browser, which is the only place the
 /// group's privacy is decided.
+/// How a host set the promotion wizard up the last time they used it.
+///
+/// A convenience, never a record: nothing here is evidence that anything was posted,
+/// and no screen reads it except the wizard, which uses it to open on the answers the
+/// host gave last time instead of an empty form. One row per host rather than per
+/// listing — a host who promotes into the same three groups does so for every property
+/// they own, and a per-listing copy would make them re-tick the list for each.
+model HostPromotionPreference {
+  hostId String @id
+  /// Channel codes, as `lib/promotion/channels.ts` defines them. Stored as written and
+  /// filtered against the current list on read, so removing a channel from the product
+  /// does not resurrect it here.
+  channels       String[] @default([])
+  /// Whether the host's own Facebook profile was among the places they posted.
+  includeProfile Boolean  @default(true)
+  /// Saved group ids last selected. Ids the host has since deleted are dropped on read
+  /// rather than cleaned up on write — the destination table is the authority.
+  destinationIds String[] @default([])
+  /// The two facts the post can carry about the property.
+  includeGuests  Boolean  @default(true)
+  includePrice   Boolean  @default(false)
+  updatedAt      DateTime @updatedAt
+
+  host User @relation("HostPromotionPreference", fields: [hostId], references: [id], onDelete: Cascade)
+}
+
 model HostFacebookDestination {
   id         String    @id @default(cuid())
   hostId     String

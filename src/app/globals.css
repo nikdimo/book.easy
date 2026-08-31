@@ -206,6 +206,21 @@ body {
   top: 0 !important;
 }
 
+/* The listing editor is a fixed frame from `lg` up: its shell is `h-dvh
+   overflow-hidden` and the section pane inside it is the scroller. That only holds if
+   the document itself cannot also scroll — otherwise anything that leaves a few extra
+   pixels on `body` (a stray overlay, a translated node, a taller-than-`dvh` toast root)
+   puts a second scrollbar right beside the pane's own, which is what the payment
+   arrangements section showed. Clamping `body` while the shell is mounted makes the
+   pane the only vertical scroller on the route. Below `lg` the editor is deliberately
+   an ordinary scrolling document, so the rule stays inside the media query. */
+@media (width >= 64rem) {
+  body:has(.editor-shell) {
+    height: 100dvh;
+    overflow: hidden;
+  }
+}
+
 /* Route markers set browser-like magnification on the whole app body so dialogs,
    toasts, and consent UI scale with the page. The compensated minimum heights keep
    100dvh route shells flush with the viewport after magnification. Unlike

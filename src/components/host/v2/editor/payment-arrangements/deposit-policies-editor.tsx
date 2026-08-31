@@ -1,8 +1,11 @@
 "use client";
 
 import { useId, useState, type FormEvent, type ReactNode } from "react";
-import { CircleAlert, LoaderCircle, ShieldCheck } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { CircleAlert } from "lucide-react";
+import {
+  EDITOR_GROUP_DIVIDER,
+  EDITOR_GROUP_HEADING,
+} from "@/components/host/v2/editor/editor-group";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -14,6 +17,8 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tx, useI18n } from "@/lib/i18n/client";
+import { cn } from "@/lib/utils";
+import { SectionSaveRow, SectionStatusLine } from "./section-save-row";
 import {
   type DepositAmountType,
   type DepositDueTiming,
@@ -115,27 +120,22 @@ export function DepositPoliciesEditor({
   }
 
   return (
-    <section className="mx-auto w-full max-w-3xl border-t border-slate-200 py-8 pb-14">
-      <div className="flex items-start gap-3">
-        <ShieldCheck className="mt-0.5 size-5 shrink-0 text-slate-600" aria-hidden />
-        <div>
-          <h2 className="text-base font-semibold text-slate-900">
-            <Tx
-              k="host.editor.deposit.heading"
-              source="Advance payment and damage deposit"
-            />
-          </h2>
-          <p className="mt-1 text-sm leading-6 text-slate-600">
-            <Tx
-              k="host.editor.deposit.intro"
-              source="Set these two independently. You can ask for neither, either, or both. Linger Homes records these terms but does not collect, hold, verify, or refund money."
-            />
-          </p>
-        </div>
-      </div>
+    <section className={cn("mx-auto w-full max-w-3xl", EDITOR_GROUP_DIVIDER)}>
+      <h2 className={EDITOR_GROUP_HEADING}>
+        <Tx
+          k="host.editor.deposit.heading"
+          source="Advance payment and damage deposit"
+        />
+      </h2>
+      <p className="mt-1 text-sm leading-6 text-slate-500">
+        <Tx
+          k="host.editor.deposit.intro"
+          source="Set these two independently. You can ask for neither, either, or both. Linger Homes records these terms but does not collect, hold, verify, or refund money."
+        />
+      </p>
 
-      <form onSubmit={submit} className="mt-5 space-y-4">
-        <fieldset disabled={saving} className="space-y-4">
+      <form onSubmit={submit} className="mt-4">
+        <fieldset disabled={saving} className="divide-y divide-slate-100 border-y border-slate-100">
           <PolicySection
             kind="advance-payment"
             enabled={draft.advancePayment.enabled}
@@ -227,31 +227,27 @@ export function DepositPoliciesEditor({
         </fieldset>
 
         {error ? (
-          <p role="alert" className="flex items-center gap-2 text-sm text-rose-700">
-            <CircleAlert className="size-4" aria-hidden /> {error}
+          <p role="alert" className="mt-4 flex items-center gap-2 text-sm text-rose-700">
+            <CircleAlert className="size-4 shrink-0" aria-hidden /> {error}
           </p>
         ) : null}
         {showSubmit ? (
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-slate-500">
-              {saved ? (
-                <Tx k="host.editor.deposit.saved" source="Deposit settings saved" />
-              ) : (
-                <Tx
-                  k="host.editor.deposit.not_saved"
-                  source="Deposit settings need review"
-                />
-              )}
-            </p>
-            <Button
-              type="submit"
-              disabled={saving}
-              className="rounded-full bg-slate-900 px-6"
-            >
-              {saving ? <LoaderCircle className="animate-spin" aria-hidden /> : null}
-              <Tx k="host.editor.deposit.save" source="Save deposit settings" />
-            </Button>
-          </div>
+          <SectionSaveRow
+            saving={saving}
+            status={
+              <SectionStatusLine>
+                {saved ? (
+                  <Tx k="host.editor.deposit.saved" source="Deposit settings saved" />
+                ) : (
+                  <Tx
+                    k="host.editor.deposit.not_saved"
+                    source="Deposit settings need review"
+                  />
+                )}
+              </SectionStatusLine>
+            }
+            label={<Tx k="host.editor.deposit.save" source="Save deposit settings" />}
+          />
         ) : null}
       </form>
     </section>
@@ -275,29 +271,28 @@ function PolicySection({
 }) {
   const labelId = useId();
   return (
-    <div
-      data-deposit-section={kind}
-      data-enabled={enabled}
-      className="rounded-xl border border-slate-200 p-4"
-    >
+    // A row with a rule under it, not a card. These are two questions in a list of
+    // questions; a box around each one turns the section into a stack of frames and
+    // makes the page read as a dashboard rather than as a form.
+    <div data-deposit-section={kind} data-enabled={enabled} className="py-5">
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <p id={labelId} className="text-sm font-semibold text-slate-900">
+        <div className="min-w-0">
+          <p id={labelId} className="text-sm font-medium text-slate-900">
             {title}
           </p>
-          <p className="mt-1 text-sm leading-6 text-slate-600">{description}</p>
+          <p className="mt-0.5 text-sm leading-6 text-slate-500">{description}</p>
         </div>
+        {/* A switch, not a checkbox: this turns an optional feature and its dependent
+            fields on, which is exactly what a switch is for. */}
         <Switch
           checked={enabled}
           onCheckedChange={onEnabledChange}
           aria-labelledby={labelId}
-          className="mt-0.5 shrink-0"
+          className="mt-1 shrink-0"
         />
       </div>
       {enabled ? (
-        <div className="mt-4 grid gap-4 rounded-lg bg-slate-50 p-4 sm:grid-cols-2">
-          {children}
-        </div>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">{children}</div>
       ) : null}
     </div>
   );

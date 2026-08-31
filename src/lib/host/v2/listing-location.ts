@@ -242,6 +242,24 @@ export function listingLocationComplete(
   );
 }
 
+/** Whether the host has deliberately saved a usable Street View direction. Unlike the
+ * address and pin, this is not a publishing gate; it becomes a clearable Location task
+ * in the editor once the listing has been created. */
+export function listingStreetViewComplete(
+  stored: Pick<
+    StoredListingLocation,
+    "streetViewHeading" | "streetViewPitch" | "streetViewPanoId"
+  >,
+): boolean {
+  return (
+    Boolean(stored.streetViewPanoId?.trim()) &&
+    typeof stored.streetViewHeading === "number" &&
+    Number.isFinite(stored.streetViewHeading) &&
+    typeof stored.streetViewPitch === "number" &&
+    Number.isFinite(stored.streetViewPitch)
+  );
+}
+
 const EARTH_RADIUS_M = 6_371_000;
 
 /** Great-circle distance in metres. Used only to decide whether a pin moved far enough

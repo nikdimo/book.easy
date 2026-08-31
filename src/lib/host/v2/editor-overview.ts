@@ -20,6 +20,9 @@ export interface EditorOverviewFacts {
   /** Whether the listing has a pricing rule. Without one no date can be booked, which
    *  is a blocked sale rather than a matter of taste. */
   hasPricing: boolean;
+  /** A saved panorama and camera direction. Optional at publish time, but explicitly
+   * checked afterwards so guests receive a useful approach view near check-in. */
+  streetViewSet?: boolean;
 }
 
 export interface EditorAttentionItem {
@@ -64,6 +67,12 @@ const NO_PRICING: EditorAttentionItem = {
   source: "No nightly price is set, so no date can be booked.",
 };
 
+const STREET_VIEW_UNCHECKED: EditorAttentionItem = {
+  slug: "location",
+  key: "host.editor.overview.attention.street_view",
+  source: "Check Street View and point it at the approach guests should use.",
+};
+
 /**
  * The listing's real open tasks, most consequential first.
  *
@@ -79,7 +88,12 @@ export function editorAttentionItems(
   if (!facts.hasPricing) items.push(NO_PRICING);
 
   for (const section of EDITOR_COMPLETION_SECTIONS) {
-    if (done.has(section.slug)) continue;
+    if (done.has(section.slug)) {
+      if (section.slug === "location" && facts.streetViewSet === false) {
+        items.push(STREET_VIEW_UNCHECKED);
+      }
+      continue;
+    }
     const reason = INCOMPLETE_REASON[section.slug];
     if (!reason) continue;
     items.push({ slug: section.slug, key: reason.key, source: reason.source });

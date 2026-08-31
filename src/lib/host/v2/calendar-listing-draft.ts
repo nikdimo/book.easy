@@ -1,26 +1,27 @@
 /**
  * What the listing-wide editors have typed, and the single change it amounts to.
  *
- * The date editors already work this way: the panel holds one `DateChange | null`, the
- * shell's Review button is enabled exactly when it is non-null, and the review model
- * turns it into steps. The listing-wide editors used to be the exception — each card
- * raised its own review from a button inside itself — so the shell had no idea whether
- * there was anything to save and could not own the primary action.
+ * The date editors already work this way: the calendar panel holds one
+ * `DateChange | null`, its Review button is enabled exactly when that is non-null, and
+ * the review model turns it into steps. The listing-wide editors used to be the
+ * exception — each card raised its own review from a button inside itself — so the
+ * shell had no idea whether there was anything to save and could not own the action.
  *
  * This module closes that gap. It converts form state into `ListingChange | null`, and
  * `null` means the same thing everywhere: nothing to review, so no CTA. It never
  * mutates anything and never guesses a stored value it was not given.
  *
+ * These editors live in the **listing editor** now — Availability and Pricing — rather
+ * than in the calendar. The shape did not have to change for that: a screen that stages
+ * one change and hands it to a review dialog is the same screen wherever it is mounted,
+ * which is why the calendar's review model is reused rather than reimplemented.
+ *
  * **One decision per confirmation.** A `ListingChange` carries exactly one change, and
- * so does a review plan. The visibility screen shows three separate decisions, so the
- * pending one is modelled explicitly as a single value rather than diffed out of a form
- * that could disagree with itself — two edits could otherwise produce one review that
- * silently dropped one of them.
+ * so does a review plan.
  */
 
 import type { HostCalendarListing } from "@/lib/host/v2/calendar-types";
 import type { ListingChange } from "@/lib/host/v2/calendar-review";
-import { isPublishableStatus, canHide } from "@/lib/host/v2/listing-status";
 
 /** The saved always-active offer, if the listing has one. At most one is edited. */
 export function ongoingPromotionOf(
@@ -38,52 +39,25 @@ function positiveInteger(value: number, max: number): boolean {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Listing visibility and default availability                                 */
+/* Default availability                                                        */
 /* -------------------------------------------------------------------------- */
 
 /**
- * The one decision the host has made on the visibility screen, or null.
+ * How an untouched future date begins, as a staged change.
  *
- * Three questions live on that screen — whether guests can see the listing, how an
- * untouched date starts out, and the minimum stay — and each is a different promise
- * with a different consequence. Holding only the latest keeps the other two showing
- * their saved values, so the screen can never present two pending edits and review one.
+ * Deliberately its own function rather than a field on a form: it is one question with
+ * one answer, and choosing the value already stored is not a change. Listing visibility
+ * is not modelled beside it — a listing can be visible and unbookable, and bookable
+ * dates can exist on a listing nobody can find, so the two questions are answered in
+ * different places and neither is ever folded into the other's confirmation.
  */
-export type VisibilityDecision =
-  | { field: "visibility"; to: "LIVE" | "HIDDEN" }
-  | { field: "mode"; to: "OPEN" | "CLOSED" }
-  /** Raw input text, so a half-typed number is a no-op rather than a save. */
-  | { field: "minNights"; value: string };
-
-export function visibilityDraft(
-  decision: VisibilityDecision | null,
+export function availabilityDefaultDraft(
+  chosen: "OPEN" | "CLOSED" | null,
   listing: HostCalendarListing,
 ): ListingChange | null {
-  if (!decision) return null;
-
-  if (decision.field === "visibility") {
-    const live = listing.status === "APPROVED";
-    if (decision.to === (live ? "LIVE" : "HIDDEN")) return null;
-    // Refused here as well as in the review, so the CTA is never offered for a move
-    // the listing cannot make — a disabled button that explains itself beats an
-    // enabled one that opens a dialog only to say no.
-    if (decision.to === "LIVE" && !isPublishableStatus(listing)) return null;
-    if (decision.to === "HIDDEN" && !canHide(listing)) return null;
-    return { kind: "VISIBILITY", to: decision.to };
-  }
-
-  if (decision.field === "mode") {
-    if (decision.to === listing.availabilityMode) return null;
-    return { kind: "AVAILABILITY_MODE", to: decision.to };
-  }
-
-  const pricing = listing.pricing;
-  if (!pricing) return null;
-  const value = Number(decision.value.trim());
-  if (decision.value.trim() === "") return null;
-  if (!positiveInteger(value, pricing.maxNights)) return null;
-  if (value === pricing.minNights) return null;
-  return { kind: "MIN_NIGHTS", to: value };
+  if (!chosen) return null;
+  if (chosen === listing.availabilityMode) return null;
+  return { kind: "AVAILABILITY_MODE", to: chosen };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -277,21 +251,15 @@ export function ongoingPromotionDraft(
  * materially different promise from "Review ongoing promotion".
  */
 export type ListingCta =
-  | "REVIEW_VISIBILITY"
   | "REVIEW_AVAILABILITY_RULE"
-  | "REVIEW_MIN_NIGHTS"
   | "REVIEW_DEFAULTS"
   | "REVIEW_ONGOING_PROMOTION"
   | "REVIEW_PROMOTION_REMOVAL";
 
 export function listingCtaFor(change: ListingChange): ListingCta {
   switch (change.kind) {
-    case "VISIBILITY":
-      return "REVIEW_VISIBILITY";
     case "AVAILABILITY_MODE":
       return "REVIEW_AVAILABILITY_RULE";
-    case "MIN_NIGHTS":
-      return "REVIEW_MIN_NIGHTS";
     case "DEFAULT_PRICING":
       return "REVIEW_DEFAULTS";
     default:

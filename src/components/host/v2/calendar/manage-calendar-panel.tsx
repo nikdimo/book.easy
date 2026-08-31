@@ -2,7 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import { BASE_CURRENCY } from "@/lib/currency/currency-preference";
-import { ArrowLeft, CalendarSync, ListChecks, SlidersHorizontal, X } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarSync,
+  ListChecks,
+  Tag,
+  Unlock,
+  X,
+} from "lucide-react";
+import Link from "next/link";
+import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { interpolate, useI18n } from "@/lib/i18n/client";
 import { Button } from "@/components/ui/button";
@@ -23,7 +32,9 @@ import {
   selectionDates,
   type CalendarSelection,
 } from "@/lib/host/v2/calendar-selection";
-import type { DateChange, ListingChange } from "@/lib/host/v2/calendar-review";
+import type { DateChange } from "@/lib/host/v2/calendar-review";
+import { editorSectionHref } from "@/lib/host/v2/editor-sections";
+import type { CalendarIntent } from "@/lib/host/v2/calendar-href";
 import {
   ctaForEditor,
   scopeOfSelection,
@@ -32,13 +43,6 @@ import {
   type WorkbenchView,
 } from "@/lib/host/v2/calendar-workbench";
 import type { ScheduledChange } from "@/lib/host/v2/calendar-schedule";
-import { compareYmd } from "@/lib/utils/date-only";
-import {
-  DefaultPricingEditor,
-  ListingVisibilityEditor,
-  OngoingPromotionEditor,
-  type OngoingPromotionMode,
-} from "./listing-editors";
 import {
   AvailabilityEditor,
   PricingEditor,
@@ -49,13 +53,10 @@ import type { AvailabilityDirection } from "@/lib/host/v2/calendar-availability-
 import { ScheduledChanges } from "./scheduled-changes";
 import { ConnectedCalendars } from "./connected-calendars";
 import { QuietRow, SummaryRow } from "./workbench-ui";
-import { listingCtaFor } from "@/lib/host/v2/calendar-listing-draft";
 import {
   availabilitySummaryWord,
-  listingCtaLabel,
+  intentPromptLabel,
   money,
-  promotionSummary,
-  visibilityLabel,
   workbenchCtaLabel,
   workbenchEditorLabel,
   workbenchScopeLabel,
@@ -92,6 +93,58 @@ function ClearDatesChip({ onClick }: { onClick: () => void }) {
 }
 
 /**
+ * One listing-wide setting, stated rather than offered.
+ *
+ * The calendar shows these so a host looking at a grid of nights can see what those
+ * nights start from — and it links out rather than editing, because a setting with two
+ * editable homes is a setting that will eventually hold two different values. The link
+ * is a real link with its own words ("Change base price and ongoing offers"), not a
+ * chevron on the row: the row is a fact, the link is the action, and a screen reader
+ * should not have to guess which.
+ */
+function ListingDefaultRow({
+  icon: Icon,
+  label,
+  value,
+  attention,
+  href,
+  linkLabel,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  attention?: boolean;
+  href: string;
+  linkLabel: string;
+}) {
+  return (
+    <div className="rounded-xl bg-slate-50 px-3 py-2.5">
+      <div className="flex items-baseline gap-2">
+        <Icon className="size-3.5 shrink-0 translate-y-0.5 text-slate-400" aria-hidden />
+        <dt className="min-w-0 flex-1 text-[0.75rem] text-slate-500">{label}</dt>
+        <dd
+          className={cn(
+            "min-w-0 max-w-[55%] truncate text-right text-[0.8125rem] font-medium",
+            attention ? "text-amber-700" : "text-slate-900",
+          )}
+        >
+          {/* Amber alone would be the only thing saying "this is missing", and a host
+              who cannot separate those two greys learns nothing from it. The value
+              itself already reads as an absence in words. */}
+          {value}
+        </dd>
+      </div>
+      <Link
+        href={href}
+        className="mt-1.5 inline-flex min-h-9 items-center text-[0.75rem] font-semibold text-[#0f172a] underline underline-offset-2 transition-colors duration-150 hover:text-slate-600 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]"
+      >
+        {linkLabel}
+      </Link>
+    </div>
+  );
+}
+
+/**
  * The right-hand editor: a summary menu that transforms into one focused editor.
  *
  * The panel this replaces stacked three accordions in a column. Opening one left the
@@ -101,9 +154,12 @@ function ClearDatesChip({ onClick }: { onClick: () => void }) {
  * a time: a menu of where you can go, or the place you went, with a Back control and
  * one primary action that names what it will review.
  *
- * The scope — "Selected dates" or "All future dates" — is stated once, in the header,
- * and comes from the selection rather than from any state of this component, so what
- * the panel says it will change cannot drift from what the calendar has selected.
+ * **Everything it edits belongs to the selected dates.** With no dates chosen the panel
+ * used to grow a second set of editors for the listing's own defaults, which is how one
+ * setting ended up with two homes: a host could change the base price from a screen
+ * whose header said "All future dates" and again from the Pricing section of the
+ * listing editor. Now the empty state reports those defaults and links to the section
+ * that owns each of them, so this panel has exactly one job and says so.
  */
 export function ManageCalendarPanel({
   listing,
@@ -112,7 +168,6 @@ export function ManageCalendarPanel({
   formats,
   today,
   horizonEnd,
-  horizonMonths,
   selection,
   rangeLabel,
   change,
@@ -128,12 +183,6 @@ export function ManageCalendarPanel({
   onApplyPromotion,
   onUndoAction,
   onDismissActionResult,
-  listingDraft,
-  onListingDraftChange,
-  onReviewListing,
-  onEditListingWideStayRules,
-  onOpenListingDefaults,
-  focusMinimumStay,
   view,
   onOpenEditor,
   onOpenSchedule,
@@ -141,8 +190,9 @@ export function ManageCalendarPanel({
   onOpenScheduledEntry,
   onRemoveScheduledPromotion,
   onSelectDatePromotion,
-  onClearPromotionTarget,
   onOpenConnections,
+  pendingIntent,
+  onCancelIntent,
 }: {
   listing: HostCalendarListing;
   index: ListingCalendarIndex;
@@ -150,7 +200,6 @@ export function ManageCalendarPanel({
   formats: CalendarFormats;
   today: string;
   horizonEnd: string;
-  horizonMonths: number;
   selection: CalendarSelection | null;
   rangeLabel: string;
   change: DateChange | null;
@@ -163,9 +212,8 @@ export function ManageCalendarPanel({
   onReviewDate: () => void;
   /**
    * Availability and price act rather than stage: both write through these instead of
-   * raising a review, so the footer below carries no action for either. Promotions and
-   * every listing-wide change still go through the review dialog — a wrong discount or
-   * a hidden listing is not something a host can spot and undo at a glance.
+   * raising a review, so the footer below carries no action for either. Promotions
+   * retain review for destructive actions such as removing an existing offer.
    */
   actionPending: boolean;
   actionResult: DateActionResult | null;
@@ -178,15 +226,6 @@ export function ManageCalendarPanel({
   onApplyPromotion: (offer: ProposedPromotion) => void;
   onUndoAction: () => void;
   onDismissActionResult: () => void;
-  /** The single listing-wide change staged by whichever editor is open. */
-  listingDraft: ListingChange | null;
-  onListingDraftChange: (change: ListingChange | null) => void;
-  onReviewListing: () => void;
-  onEditListingWideStayRules: () => void;
-  /** Opens the listing-wide defaults from the dates menu. Without it the only route
-   *  there is clearing the selection, which reads as cancelling, not as navigating. */
-  onOpenListingDefaults: () => void;
-  focusMinimumStay: boolean;
   view: WorkbenchView;
   /** Guarded by the caller, so leaving an editor with a draft still prompts. */
   onOpenEditor: (editor: WorkbenchEditor) => void;
@@ -197,8 +236,16 @@ export function ManageCalendarPanel({
   onSelectDatePromotion: (
     promotion: HostCalendarListing["promotions"][number],
   ) => void;
-  onClearPromotionTarget: () => void;
   onOpenConnections: () => void;
+  /**
+   * The action the host arrived to perform but has no dates for yet.
+   *
+   * Set only while the calendar is waiting: it turns the empty band into a prompt for
+   * that specific job, and the first selection both opens the editor and clears it.
+   */
+  pendingIntent: CalendarIntent | null;
+  /** Declines the intent without leaving the calendar. */
+  onCancelIntent: () => void;
 }) {
   const i18n = useI18n();
   const scope = scopeOfSelection(selection);
@@ -243,22 +290,8 @@ export function ManageCalendarPanel({
     : listing.title;
 
   const editor = view.kind === "editor" ? view.editor : null;
-  const [ongoingPromotionState, setOngoingPromotionState] = useState<{
-    listingId: string;
-    mode: OngoingPromotionMode;
-  }>({ listingId: listing.id, mode: "list" });
-  const storedOngoingPromotionMode =
-    ongoingPromotionState.listingId === listing.id
-      ? ongoingPromotionState.mode
-      : "list";
-  const ongoingPromotionMode =
-    editor === "listing_promotions" && promotionEditorId
-      ? "edit"
-      : storedOngoingPromotionMode;
-  const setOngoingPromotionMode = (mode: OngoingPromotionMode) => {
-    if (mode === "list") onClearPromotionTarget();
-    setOngoingPromotionState({ listingId: listing.id, mode });
-  };
+  const availabilityHref = editorSectionHref(listing.id, "availability");
+  const pricingHref = editorSectionHref(listing.id, "pricing");
 
   /** The truthful one-line state behind each menu row. */
   function menuValue(candidate: WorkbenchEditor): {
@@ -315,76 +348,25 @@ export function ManageCalendarPanel({
         ).text,
       };
     }
-    if (candidate === "listing_visibility") {
-      return {
-        text: visibilityLabel(i18n, summary.visibility).text,
-        attention: summary.tone === "warning",
-      };
-    }
-    if (candidate === "listing_defaults") {
-      return {
-        text: listing.pricing
-          ? money(listing.pricing.baseNightlyRate, currency, formats)
-          : i18n.resolve("host.v2.calendar.no_pricing_short", "No pricing set").text,
-        attention: !listing.pricing,
-      };
-    }
-    const activeOrUpcoming = listing.promotions.filter(
-      (promotion) =>
-        !promotion.endDate || compareYmd(promotion.endDate, today) > 0,
-    );
-    return {
-      text: promotionSummary(i18n, activeOrUpcoming).text,
-      empty: activeOrUpcoming.length === 0,
-    };
+    // Every menu row belongs to the date scope, and the menu is only rendered with a
+    // selection, so there is no remaining branch to write. An empty string would still
+    // be a truthful "nothing to say" if one were ever reached.
+    return { text: "" };
   }
 
   /**
-   * The one action, for either scope.
+   * The one action, and the one rule that enables it.
    *
-   * Both editors now report a single staged change upwards and neither raises its own
-   * review, so the button is enabled by exactly one rule — there is something to
-   * review — and named by the change itself. A draft that is a no-op or half-typed
-   * resolves to `null`, which is why an unchanged or invalid form leaves it disabled
-   * rather than opening a dialog that would only refuse.
+   * Availability and price act from their own buttons inside their editors, so the
+   * footer carries nothing for them. Only a promotion still stages a change here, and
+   * only a removal of one — creating or editing an offer applies directly, the way a
+   * price does. A draft that is a no-op or half-typed resolves to `null`, which is why
+   * an unchanged form leaves the button disabled rather than opening a dialog that
+   * would only refuse.
    */
-  // Availability and price act from their own buttons. Promotions use this footer both
-  // to open a clean builder and to name its create, edit, or removal action.
-  const reviewable =
-    editor !== null &&
-    editor !== "availability" &&
-    editor !== "pricing" &&
-    (editor !== "promotions" || change?.kind === "PROMOTION_REMOVE");
-  const staged = scope === "DATES" ? change : listingDraft;
-  const promotionListOpen =
-    editor === "listing_promotions" && ongoingPromotionMode === "list";
-  const canReview = promotionListOpen || (reviewable && staged !== null);
-  const ctaText = promotionListOpen
-    ? i18n.resolve(
-        "host.v2.calendar.cta.add_promotion",
-        "Add another promotion",
-      ).text
-    : editor === "listing_promotions" &&
-        listingDraft?.kind === "EVERGREEN_PROMOTION" &&
-        listingDraft.action === "REMOVE"
-      ? listingCtaLabel(i18n, listingCtaFor(listingDraft)).text
-      : editor === "listing_promotions" && ongoingPromotionMode === "create"
-        ? i18n.resolve(
-            "host.v2.calendar.cta.create_promotion",
-            "Create promotion",
-          ).text
-        : editor === "listing_promotions" && ongoingPromotionMode === "edit"
-          ? i18n.resolve(
-              "host.v2.calendar.cta.save_promotion",
-              "Save changes",
-            ).text
-    : !editor
-    ? ""
-    : scope === "DATES"
-      ? workbenchCtaLabel(i18n, ctaForEditor(editor)).text
-      : listingDraft
-        ? listingCtaLabel(i18n, listingCtaFor(listingDraft)).text
-        : workbenchCtaLabel(i18n, ctaForEditor(editor)).text;
+  const reviewable = editor === "promotions" && change?.kind === "PROMOTION_REMOVE";
+  const canReview = reviewable && change !== null;
+  const ctaText = editor ? workbenchCtaLabel(i18n, ctaForEditor(editor)).text : "";
 
   return (
     <div
@@ -404,10 +386,7 @@ export function ManageCalendarPanel({
         {view.kind !== "menu" ? (
           <button
             type="button"
-            onClick={() => {
-              setOngoingPromotionMode("list");
-              onBack();
-            }}
+            onClick={onBack}
             className="-ml-1 grid size-11 shrink-0 place-items-center rounded-lg text-slate-500 transition-colors duration-150 hover:bg-slate-50 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0f172a]"
             aria-label={i18n.resolve("host.v2.calendar.back", "Back").text}
           >
@@ -498,10 +477,15 @@ export function ManageCalendarPanel({
                           "host.v2.calendar.choose_change",
                           "Choose what to change",
                         ).text
-                      : i18n.resolve(
-                          "host.v2.calendar.manage_prompt",
-                          "What would you like to change?",
-                        ).text
+                      : pendingIntent
+                        ? i18n.resolve(
+                            "host.v2.calendar.intent_prompt",
+                            "Choose the dates for this change",
+                          ).text
+                        : i18n.resolve(
+                            "host.v2.calendar.manage_prompt",
+                            "What would you like to change?",
+                          ).text
                   }
                 </h3>
                 {selection ? (
@@ -512,25 +496,41 @@ export function ManageCalendarPanel({
                     {rangeLabel} · {selectionCountText}
                   </p>
                 ) : (
-                  /* An empty panel used to say only what it was for. Saying how to fill it
-                     is the part a host opening the calendar for the first time is missing.
-
-                     It used to say only "Pick dates on the calendar", which reads as a
-                     precondition — as if the rows below were locked until a date was
-                     picked. They are not: with no selection they are the listing-wide
-                     editors and work right now. Naming both ways in stops a host who
-                     wants the base price from hunting the grid for permission. */
-                  <p className="mt-0.5 truncate text-[0.6875rem] text-slate-400">
-                    {
-                      i18n.resolve(
-                        "host.v2.calendar.menu_start_hint",
-                        "Choose a setting below, or pick dates first",
-                      ).text
-                    }
+                  /* With nothing selected this really is a precondition now, and
+                     saying so is the honest thing: every editor below the band acts on
+                     dates. What used to be reachable from here without a selection —
+                     the base price, the cleaning fee, the offers that run on every
+                     date — is named underneath as current state with a link to the
+                     page that owns it, so nobody has to guess that clearing dates was
+                     the way to reach a setting. */
+                  <p className="mt-0.5 text-[0.6875rem] leading-4 text-slate-500">
+                    {pendingIntent
+                      ? intentPromptLabel(i18n, pendingIntent).text
+                      : i18n.resolve(
+                          "host.v2.calendar.menu_start_hint",
+                          "Select dates on the calendar to open, block or price them.",
+                        ).text}
                   </p>
                 )}
               </div>
               {selection ? <ClearDatesChip onClick={onClearSelection} /> : null}
+              {/* Declining is always available, and it is a control rather than a
+                  keyboard trick: an intent the host no longer wants must not be
+                  something they have to select dates to escape. */}
+              {!selection && pendingIntent ? (
+                <button
+                  type="button"
+                  onClick={onCancelIntent}
+                  className="min-h-9 shrink-0 rounded-full border border-slate-300 bg-white/70 px-2.5 text-[0.75rem] font-medium text-slate-700 transition-colors duration-150 hover:bg-white hover:text-slate-900 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[#0f172a]"
+                >
+                  {
+                    i18n.resolve(
+                      "host.v2.calendar.intent_cancel",
+                      "Not now",
+                    ).text
+                  }
+                </button>
+              ) : null}
             </div>
             {/* Cards, not hairlines: a hairline gives a row an edge, but not a
                 surface, and a row with no surface reads as a line in a summary table
@@ -548,35 +548,69 @@ export function ManageCalendarPanel({
                     emptyValue={value.empty}
                     reveal={selectionAttention}
                     revealIndex={rowIndex}
-                    onClick={() => {
-                      if (candidate === "listing_promotions") {
-                        setOngoingPromotionMode("list");
-                      }
-                      onOpenEditor(candidate);
-                    }}
+                    onClick={() => onOpenEditor(candidate)}
                   />
                 );
               })}
             </div>
 
-            <div className="mt-2 flex flex-col divide-y divide-slate-100 border-t border-slate-100 pt-2">
-              {/* Only while dates are selected: without it the listing-wide editor is
-                  reachable solely by clearing the selection, and a host who wants the
-                  cleaning fee has no reason to think discarding their dates is the way
-                  to it. With no selection the menu above already lists it. */}
-              {scope === "DATES" ? (
-                <QuietRow
-                  icon={SlidersHorizontal}
-                  label={workbenchEditorLabel(i18n, "listing_defaults").text}
-                  hint={
+            {/* No selection: the listing's own settings, reported rather than edited,
+                each next to the way to its one editable home. */}
+            {scope === "ALL_FUTURE" ? (
+              <dl className="mt-1 flex flex-col gap-2">
+                <ListingDefaultRow
+                  icon={Unlock}
+                  label={
                     i18n.resolve(
-                      "host.v2.calendar.listing_defaults_hint",
-                      "Base price, cleaning fee and minimum stay for every date",
+                      "host.v2.calendar.default_availability",
+                      "Default availability",
                     ).text
                   }
-                  onClick={onOpenListingDefaults}
+                  value={
+                    listing.availabilityMode === "CLOSED"
+                      ? i18n.resolve(
+                          "host.v2.calendar.default_closed",
+                          "Only dates you open",
+                        ).text
+                      : i18n.resolve(
+                          "host.v2.calendar.default_open",
+                          "Available by default",
+                        ).text
+                  }
+                  href={availabilityHref}
+                  linkLabel={
+                    i18n.resolve(
+                      "host.v2.calendar.change_default_availability",
+                      "Change default availability",
+                    ).text
+                  }
                 />
-              ) : null}
+                <ListingDefaultRow
+                  icon={Tag}
+                  label={
+                    i18n.resolve("host.v2.calendar.base_price", "Base price").text
+                  }
+                  value={
+                    listing.pricing
+                      ? money(listing.pricing.baseNightlyRate, currency, formats)
+                      : i18n.resolve(
+                          "host.v2.calendar.no_pricing_short",
+                          "No pricing set",
+                        ).text
+                  }
+                  attention={!listing.pricing}
+                  href={pricingHref}
+                  linkLabel={
+                    i18n.resolve(
+                      "host.v2.calendar.change_base_price",
+                      "Change base price and ongoing offers",
+                    ).text
+                  }
+                />
+              </dl>
+            ) : null}
+
+            <div className="mt-2 flex flex-col divide-y divide-slate-100 border-t border-slate-100 pt-2">
               <QuietRow
                 icon={ListChecks}
                 label={
@@ -677,7 +711,7 @@ export function ManageCalendarPanel({
                 onApply={onApplyPrice}
                 onUndo={onUndoAction}
                 onDismissResult={onDismissActionResult}
-                onEditListingWide={onEditListingWideStayRules}
+                listingPricingHref={pricingHref}
               />
             ) : (
               <PromotionEditor
@@ -697,38 +731,6 @@ export function ManageCalendarPanel({
             )}
             </div>
           </>
-        ) : editor ? (
-          // Keyed on the listing, so switching property starts each editor from the
-          // values that property actually has rather than the last one's.
-          <div key={`${listing.id}:${editor}:${promotionEditorId ?? ""}`}>
-            {editor === "listing_visibility" ? (
-              <ListingVisibilityEditor
-                listing={listing}
-                summary={summary}
-                horizonMonths={horizonMonths}
-                onDraftChange={onListingDraftChange}
-              />
-            ) : editor === "listing_defaults" ? (
-              <DefaultPricingEditor
-                listing={listing}
-                formats={formats}
-                today={today}
-                focusMinimumStay={focusMinimumStay}
-                onDraftChange={onListingDraftChange}
-              />
-            ) : (
-              <OngoingPromotionEditor
-                listing={listing}
-                formats={formats}
-                today={today}
-                promotionEditorId={promotionEditorId}
-                mode={ongoingPromotionMode}
-                onModeChange={setOngoingPromotionMode}
-                onDraftChange={onListingDraftChange}
-                onSelectDatePromotion={onSelectDatePromotion}
-              />
-            )}
-          </div>
         ) : null}
       </div>
 
@@ -743,13 +745,7 @@ export function ManageCalendarPanel({
             type="button"
             size="lg"
             disabled={!canReview}
-            onClick={
-              promotionListOpen
-                ? () => setOngoingPromotionMode("create")
-                : scope === "DATES"
-                  ? onReviewDate
-                  : onReviewListing
-            }
+            onClick={onReviewDate}
             className={cn(
               "min-h-11 w-full bg-[#0f172a] text-white hover:bg-[#1e293b]",
               "disabled:bg-slate-100 disabled:text-slate-400",

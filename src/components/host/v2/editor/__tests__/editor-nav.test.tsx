@@ -20,7 +20,7 @@ const rail = (current: string, attention: string[] = []) => {
 describe("EditorNav rail", () => {
   it("renders the three groups in the required order", () => {
     const html = rail("overview");
-    const order = ["Overview", "Calendar settings", "Listing details"];
+    const order = ["Overview", "Rates &amp; availability", "Listing details"];
     const positions = order.map((heading) => html.indexOf(heading));
     expect(positions.every((position) => position >= 0)).toBe(true);
     expect([...positions].sort((a, b) => a - b)).toEqual(positions);
@@ -30,7 +30,6 @@ describe("EditorNav rail", () => {
     const html = rail("photos");
     const order = [
       "Listing overview",
-      "Open calendar",
       "Availability",
       "Pricing",
       "Photos",
@@ -51,10 +50,10 @@ describe("EditorNav rail", () => {
     expect(render("overview")).toContain('href="/host/listings/listing-1"');
   });
 
-  it("opens the Host V2 calendar on the listing being edited", () => {
+  it("does not duplicate Calendar as a generic editor navigation item", () => {
     const html = render("overview");
-    expect(html).toContain('href="/host/calendar?listing=listing-1"');
-    // Never the internal version URL or the classic editor suffix.
+    expect(html).not.toContain("Open calendar");
+    expect(html).not.toContain('href="/host/calendar?listing=listing-1"');
     expect(html).not.toContain("/host/v2");
     expect(html).not.toContain("/host/listings/listing-1/edit");
   });
@@ -70,7 +69,7 @@ describe("EditorNav rail", () => {
 
   it("marks Overview active on the base route", () => {
     expect(render("overview")).toContain("aria-current=\"page\"");
-    // Calendar leaves the editor, so it is never the active page.
+    // A removed legacy slug cannot mark any current editor page active.
     expect(render("open-calendar")).not.toContain("aria-current=\"page\"");
   });
 

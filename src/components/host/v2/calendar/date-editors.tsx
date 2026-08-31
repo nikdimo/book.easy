@@ -633,7 +633,7 @@ export function PricingEditor({
   onApply,
   onUndo,
   onDismissResult,
-  onEditListingWide,
+  listingPricingHref,
 }: {
   listing: HostCalendarListing;
   index: ListingCalendarIndex;
@@ -646,8 +646,13 @@ export function PricingEditor({
   onApply: (nightlyRate: number | null) => void;
   onUndo: () => void;
   onDismissResult: () => void;
-  /** Switches scope to the listing-wide editor. Never folded into this save. */
-  onEditListingWide: () => void;
+  /**
+   * The listing editor's Pricing section, which owns the cleaning fee and the
+   * listing-wide minimum stay. A link out rather than a scope switch inside this
+   * panel: those two numbers are not this editor's to change, and neither ever
+   * becomes part of the date-price save.
+   */
+  listingPricingHref: string;
 }) {
   const i18n = useI18n();
   const dates = selectionDates(selection);
@@ -963,8 +968,8 @@ export function PricingEditor({
           The cleaning fee sits in the guest total above and cannot be set per date —
           it is charged once per stay, and a stay does not have to match the selection —
           so naming it here beside the minimum stay is the only honest thing to do with
-          it. Following this link changes the scope of the whole panel; neither value
-          ever becomes part of the date-price save. */}
+          it. The link leaves for the section that owns both; neither value ever
+          becomes part of the date-price save. */}
       <InfoRow
         label={[
           listing.pricing.cleaningFee > 0
@@ -989,7 +994,7 @@ export function PricingEditor({
           .filter(Boolean)
           .join(" · ")}
         action={i18n.resolve("host.v2.calendar.editor.change", "Change").text}
-        onAction={onEditListingWide}
+        actionHref={listingPricingHref}
       />
     </div>
   );

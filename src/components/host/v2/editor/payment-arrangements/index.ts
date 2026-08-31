@@ -15,8 +15,14 @@ export {
   type DepositSectionDraft,
 } from "./deposit-policies-editor";
 
+export { PaymentDetailsSheet } from "./payment-details-sheet";
+export { SectionSaveRow, SectionStatusLine } from "./section-save-row";
+
 export {
   PAYMENT_METHOD_CODES,
+  draftAfterMethodToggle,
+  drawerAfterMethodToggle,
+  paymentMethodDetailState,
   normalizePaymentArrangementsDraft,
   normalizePaymentMethodCodes,
   paymentArrangementsAreComplete,
@@ -26,5 +32,7 @@ export {
   type OtherPaymentLabelIssue,
   type PaymentArrangementsDraft,
   type PaymentArrangementsValue,
+  type PaymentDetailsDrawer,
   type PaymentMethodCode,
+  type PaymentMethodDetailState,
 } from "./payment-arrangements-model";

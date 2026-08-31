@@ -31,13 +31,39 @@ import {
  * is a host publishing dates to a Facebook group that nobody can actually book.
  */
 
+/**
+ * One photo or clip a host may take with them to a channel that needs a file.
+ *
+ * Same-origin `/uploads/...` paths, which is what makes the download a plain anchor
+ * with a `download` attribute rather than a proxy: a cross-origin bucket would have
+ * needed one, and this does not.
+ */
+export interface PromotionMediaItem {
+  id: string;
+  url: string;
+  mediaType: "IMAGE" | "VIDEO";
+  /** The listing's cover, and the image the Open Graph link card already shows. */
+  isPrimary: boolean;
+}
+
+/** Enough for a post; past this a picker stops being a strip and becomes a gallery. */
+const PROMOTION_MEDIA_LIMIT = 12;
+
 export interface PromotionListingView {
   id: string;
   slug: string;
   title: string;
   description: string;
   city: string | null;
+  /** The cover, kept as its own field because the workspace header and the link-card
+   *  preview both want exactly one image and neither should have to pick. */
   imageUrl: string | null;
+  /**
+   * Everything the host could attach, cover first. Instagram cannot be posted without
+   * one of these, and a Facebook group post carrying real photos outperforms the link
+   * card — at the cost of the card, since Facebook renders one or the other.
+   */
+  media: PromotionMediaItem[];
   maxGuests: number;
   baseNightlyRate: number | null;
   currency: string | null;
@@ -78,11 +104,12 @@ export async function getPromotionListing(
       description: true,
       maxGuests: true,
       property: { select: { city: true } },
+      // Video comes too. A clip is what a Reel is made of, and a host who filmed the
+      // terrace should not have to go and find the file themselves.
       images: {
-        where: { mediaType: "IMAGE" },
         orderBy: [{ isPrimary: "desc" }, { displayOrder: "asc" }],
-        take: 1,
-        select: { url: true },
+        take: PROMOTION_MEDIA_LIMIT,
+        select: { id: true, url: true, mediaType: true, isPrimary: true },
       },
       pricingRule: {
         select: {
@@ -105,7 +132,16 @@ export async function getPromotionListing(
     title: listing.title,
     description: listing.description,
     city: listing.property?.city ?? null,
-    imageUrl: listing.images.at(0)?.url ?? null,
+    // The cover is the first image, not the first item: a listing whose primary asset
+    // is a clip still needs a still for the header and the link-card preview.
+    imageUrl:
+      listing.images.find((item) => item.mediaType === "IMAGE")?.url ?? null,
+    media: listing.images.map((item) => ({
+      id: item.id,
+      url: item.url,
+      mediaType: item.mediaType,
+      isPrimary: item.isPrimary,
+    })),
     maxGuests: listing.maxGuests,
     baseNightlyRate: listing.pricingRule
       ? Number(listing.pricingRule.baseNightlyRate)

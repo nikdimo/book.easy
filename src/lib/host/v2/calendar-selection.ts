@@ -216,3 +216,27 @@ export function selectionAfterListingSwitch(
 ): CalendarSelection | null {
   return previousListingId === nextListingId ? selection : null;
 }
+
+/**
+ * A selection a deep link asked for, narrowed to dates this calendar actually renders.
+ *
+ * A link can be old, bookmarked or hand-typed, so its range is a request rather than a
+ * fact: dates before today cannot be acted on and dates past the horizon are not in the
+ * stream at all. The overlap is what the host is shown; a range with no overlap selects
+ * nothing, which is the same state as arriving with no range and is exactly what the
+ * intent banner is there to prompt about.
+ *
+ * `horizonEnd` is the exclusive end used everywhere else here, so the last selectable
+ * date is the day before it.
+ */
+export function clampSelectionToHorizon(
+  selection: CalendarSelection,
+  today: string,
+  horizonEnd: string,
+): CalendarSelection | null {
+  const lastDate = addDaysToYmd(horizonEnd, -1);
+  const start = compareYmd(selection.start, today) < 0 ? today : selection.start;
+  const end = compareYmd(selection.end, lastDate) > 0 ? lastDate : selection.end;
+  if (compareYmd(start, end) > 0) return null;
+  return { start, end };
+}

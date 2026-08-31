@@ -1,4 +1,3 @@
-import { hostCalendarHref } from "@/lib/host/v2/calendar-href";
 import { MIN_PUBLISH_PHOTOS } from "@/lib/host/v2/photo-draft";
 
 /**
@@ -6,13 +5,18 @@ import { MIN_PUBLISH_PHOTOS } from "@/lib/host/v2/photo-draft";
  *
  * One list, shared by the desktop rail, the phone chip row, the section footer and the
  * Overview screen, so none of them can drift. Sections are grouped the way a host thinks
- * about the work: what the calendar decides, and what the listing itself says.
+ * about the work: what a stay costs and when it can be had, and what the listing says.
  *
- * Overview and "Open calendar" are navigation items rather than sections — one is the
- * editor's own index page, the other leaves the editor entirely — so they are declared
- * beside the sections instead of inside them. That keeps `EDITOR_SECTIONS` meaning
- * exactly "a page that edits part of this listing", which is what completion counting
- * and the section footer both need it to mean.
+ * There is no "Open calendar" entry any more. It was a rail row that left the editor
+ * without saying what for, sitting above the two sections that now *own* the settings a
+ * host went looking for; the calendar is reached from inside Rates & availability, from
+ * links that name the date-specific job they lead to. The header's overflow menu keeps
+ * one global escape hatch for hosts who simply want the calendar.
+ *
+ * Overview is a navigation item rather than a section — it is the editor's own index
+ * page — so it is declared beside the sections instead of inside them. That keeps
+ * `EDITOR_SECTIONS` meaning exactly "a page that edits part of this listing", which is
+ * what completion counting and the section footer both need it to mean.
  */
 export interface EditorSection {
   slug: string;
@@ -28,6 +32,11 @@ export interface EditorSection {
 }
 
 export const EDITOR_SECTIONS: EditorSection[] = [
+  // Availability edits one persisted default that every listing already has, so there
+  // is no state in which it is "unfinished" — it is never counted or chased. Pricing
+  // is the same for completion purposes; a listing with no pricing rule at all is
+  // flagged separately by `editorAttentionItems`, which is a blocked sale rather than
+  // an unfinished form.
   { slug: "availability", key: "host.editor.section.availability", source: "Availability", completion: false, group: "calendar" },
   { slug: "pricing", key: "host.editor.section.pricing", source: "Pricing", completion: false, group: "calendar" },
   { slug: "photos", key: "host.editor.section.photos", source: "Photos", completion: true, group: "details" },
@@ -91,16 +100,14 @@ export function editorSectionHref(listingId: string, slug: string): string {
  * One navigation entry.
  *
  * `slug` is what marks the entry active, and matches the section slug wherever the
- * entry is a section. `external` entries leave the editor, so nothing in the editor is
- * ever highlighted for them.
+ * entry is a section. Every entry is a page of the editor: nothing in this navigation
+ * leaves it any more, so an entry can always be highlighted for the page it names.
  */
 export interface EditorNavItem {
   slug: string;
   key: string;
   source: string;
   href: (listingId: string) => string;
-  /** Leaves the editor — currently only Calendar, which lives in the app shell. */
-  external?: boolean;
 }
 
 export interface EditorNavGroup {
@@ -126,15 +133,6 @@ export const EDITOR_OVERVIEW_ITEM: EditorNavItem = {
   href: (listingId) => editorSectionHref(listingId, EDITOR_OVERVIEW_SLUG),
 };
 
-/** The Host V2 calendar — never the classic one — opened on the listing being edited. */
-export const EDITOR_OPEN_CALENDAR_ITEM: EditorNavItem = {
-  slug: "open-calendar",
-  key: "host.editor.nav.open_calendar",
-  source: "Open calendar",
-  href: (listingId) => hostCalendarHref(listingId),
-  external: true,
-};
-
 /**
  * The navigation, in the order the rail renders it.
  *
@@ -149,13 +147,17 @@ export const EDITOR_NAV_GROUPS: EditorNavGroup[] = [
     items: [EDITOR_OVERVIEW_ITEM],
   },
   {
+    // The id stays `calendar` on purpose. It is what marks the group in the rail, the
+    // overflow menu and the Overview cards, and renaming it would touch every one of
+    // them to change a word only the host reads. The label is the part that moved:
+    // these two pages set what a stay costs and when it can be had, and calling them
+    // "Calendar settings" sent hosts to the calendar looking for a base price.
     id: "calendar",
-    key: "host.editor.calendar_settings",
-    source: "Calendar settings",
-    items: [
-      EDITOR_OPEN_CALENDAR_ITEM,
-      ...EDITOR_SECTIONS.filter((section) => section.group === "calendar").map(sectionNavItem),
-    ],
+    key: "host.editor.nav.group_rates",
+    source: "Rates & availability",
+    items: EDITOR_SECTIONS.filter((section) => section.group === "calendar").map(
+      sectionNavItem,
+    ),
   },
   {
     id: "details",

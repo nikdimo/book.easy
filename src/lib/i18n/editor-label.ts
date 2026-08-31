@@ -30,12 +30,11 @@ export function resolveEditorLabel(
   switch (key) {
     // Navigation groups.
     case "host.editor.nav.group_overview": return translator.resolve("host.editor.nav.group_overview", "Overview");
-    case "host.editor.calendar_settings": return translator.resolve("host.editor.calendar_settings", "Calendar settings");
+    case "host.editor.nav.group_rates": return translator.resolve("host.editor.nav.group_rates", "Rates & availability");
     case "host.editor.nav.group_details": return translator.resolve("host.editor.nav.group_details", "Listing details");
 
     // Navigation items.
     case "host.editor.section.overview": return translator.resolve("host.editor.section.overview", "Listing overview");
-    case "host.editor.nav.open_calendar": return translator.resolve("host.editor.nav.open_calendar", "Open calendar");
     case "host.editor.section.availability": return translator.resolve("host.editor.section.availability", "Availability");
     case "host.editor.section.pricing": return translator.resolve("host.editor.section.pricing", "Pricing");
     case "host.editor.section.photos": return translator.resolve("host.editor.section.photos", "Photos");
@@ -53,6 +52,7 @@ export function resolveEditorLabel(
     case "host.editor.overview.attention.basics": return translator.resolve("host.editor.overview.attention.basics", "The title or the description still needs work.");
     case "host.editor.overview.attention.rooms": return translator.resolve("host.editor.overview.attention.rooms", "Property details are incomplete.");
     case "host.editor.overview.attention.location": return translator.resolve("host.editor.overview.attention.location", "The address or the map pin is incomplete.");
+    case "host.editor.overview.attention.street_view": return translator.resolve("host.editor.overview.attention.street_view", "Check Street View and point it at the approach guests should use.");
     case "host.editor.overview.attention.payment_arrangements": return translator.resolve("host.editor.overview.attention.payment_arrangements", "Choose accepted payment methods and whether a deposit is required.");
     case "host.editor.overview.attention.house_rules": return translator.resolve("host.editor.overview.attention.house_rules", "House rules have not been reviewed.");
 

@@ -29,7 +29,10 @@ describe("listing editor navigation", () => {
     ]);
     expect(EDITOR_NAV_GROUPS.map(({ source }) => source)).toEqual([
       "Overview",
-      "Calendar settings",
+      // Not "Calendar settings": these two pages set what a stay costs and when it can
+      // be had, and naming them after the calendar sent hosts to the calendar looking
+      // for a base price. The group id stays `calendar`, because only the label moved.
+      "Rates & availability",
       "Listing details",
     ]);
   });
@@ -39,7 +42,7 @@ describe("listing editor navigation", () => {
       EDITOR_NAV_GROUPS.map((group) => group.items.map((item) => item.source)),
     ).toEqual([
       ["Listing overview"],
-      ["Open calendar", "Availability", "Pricing"],
+      ["Availability", "Pricing"],
       [
         "Photos",
         "Title & description",
@@ -68,8 +71,6 @@ describe("listing editor navigation", () => {
     );
     expect(hrefs).toEqual({
       "Listing overview": "/host/listings/listing-1",
-      // The new calendar, never the classic host one, with this listing preselected.
-      "Open calendar": "/host/calendar?listing=listing-1",
       Availability: "/host/listings/listing-1/availability",
       Pricing: "/host/listings/listing-1/pricing",
       Photos: "/host/listings/listing-1/photos",
@@ -83,10 +84,30 @@ describe("listing editor navigation", () => {
     });
   });
 
-  it("marks only Calendar as leaving the editor", () => {
-    expect(
-      EDITOR_NAV_ITEMS.filter((item) => item.external).map((item) => item.slug),
-    ).toEqual(["open-calendar"]);
+  it("has no generic 'Open calendar' entry anywhere in the navigation", () => {
+    // It left the editor without saying what for, from a rail row sitting above the
+    // two sections that now own the settings hosts were going to the calendar to find.
+    // The calendar is still reachable — from contextual links inside Pricing and
+    // Availability that name the date-specific job, and from the header's overflow
+    // menu — but never as an unexplained navigation item.
+    expect(EDITOR_NAV_ITEMS.map((item) => item.source)).not.toContain("Open calendar");
+    expect(EDITOR_NAV_ITEMS.map((item) => item.slug)).not.toContain("open-calendar");
+  });
+
+  it("keeps every navigation entry inside the editor", () => {
+    for (const item of EDITOR_NAV_ITEMS) {
+      expect(item.href("listing-1")).toMatch(/^\/host\/listings\/listing-1/);
+    }
+  });
+
+  it("keeps Rates & availability to exactly Availability and Pricing", () => {
+    // No separate Promotions section: ongoing offers are part of what a stay costs, so
+    // they live inside Pricing rather than in a third page beside it.
+    const group = EDITOR_NAV_GROUPS.find((candidate) => candidate.id === "calendar");
+    expect(group?.items.map((item) => item.slug)).toEqual([
+      "availability",
+      "pricing",
+    ]);
   });
 
   it("puts Overview on the base route and every section on its own slug", () => {
@@ -98,6 +119,17 @@ describe("listing editor navigation", () => {
     );
     // Overview is not a section: nothing about it counts toward completion.
     expect(findEditorSection(EDITOR_OVERVIEW_SLUG)).toBeUndefined();
+  });
+
+  it("leaves Availability and Pricing out of the completable set", () => {
+    // Neither is an ordinary completion section, and neither became one by gaining a
+    // form. Availability always has a persisted default, so there is no state in which
+    // it is unfinished; a listing with no pricing rule is flagged separately by
+    // `editorAttentionItems`, which is a blocked sale rather than an unfinished form.
+    expect(
+      EDITOR_COMPLETION_SECTIONS.map(({ slug }) => slug),
+    ).not.toContain("availability");
+    expect(EDITOR_COMPLETION_SECTIONS.map(({ slug }) => slug)).not.toContain("pricing");
   });
 
   it("excludes Calendar-managed sections from the completable set", () => {

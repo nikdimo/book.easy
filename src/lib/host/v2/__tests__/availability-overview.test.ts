@@ -199,4 +199,13 @@ describe("calendarHrefForListing", () => {
   it("encodes the id so it cannot escape the query parameter", () => {
     expect(calendarHrefForListing("a&b=c")).toBe("/host/calendar?listing=a%26b%3Dc");
   });
+
+  it("carries the availability intent, so the calendar asks for dates on arrival", () => {
+    // The pane's CTA is "Open or block specific dates" — half a sentence the calendar
+    // finishes. Without the intent the host lands on a menu that has forgotten why
+    // they came.
+    expect(calendarHrefForListing("listing-1", "availability")).toBe(
+      "/host/calendar?listing=listing-1&intent=availability",
+    );
+  });
 });

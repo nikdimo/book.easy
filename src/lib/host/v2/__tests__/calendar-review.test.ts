@@ -1,13 +1,10 @@
 import { describe, expect, it } from "vitest";
-import {
-  buildListingCalendarIndex,
-  countDates,
-} from "@/lib/host/v2/calendar-model";
-import { summarizeListingStatus } from "@/lib/host/v2/listing-status";
+import { buildListingCalendarIndex } from "@/lib/host/v2/calendar-model";
 import {
   buildDateReviewPlan,
   buildListingReviewPlan,
   type DateChange,
+  type ListingChange,
 } from "@/lib/host/v2/calendar-review";
 import {
   bookingBlock,
@@ -21,8 +18,6 @@ import {
 import type { HostCalendarListing } from "@/lib/host/v2/calendar-types";
 
 const selection = { start: "2026-03-12", end: "2026-03-14" };
-/** Well after `TODAY`, so the publish-availability check is evaluated deterministically. */
-const NOW = new Date("2026-03-10T09:00:00.000Z");
 
 function datePlan(listing: HostCalendarListing, change: DateChange | null) {
   return buildDateReviewPlan({
@@ -38,17 +33,13 @@ function listingPlan(
   listing: HostCalendarListing,
   change: Parameters<typeof buildListingReviewPlan>[0]["change"],
 ) {
-  const index = buildListingCalendarIndex(listing);
-  const counts = countDates(listing, index, TODAY, HORIZON_END);
   return buildListingReviewPlan({
     listing,
-    index,
+    index: buildListingCalendarIndex(listing),
     change,
-    summary: summarizeListingStatus({ listing, counts, horizonMonths: 18 }),
     today: TODAY,
     horizonEnd: HORIZON_END,
     horizonMonths: 18,
-    now: NOW,
   });
 }
 
@@ -799,115 +790,41 @@ describe("date review — fail closed", () => {
   });
 });
 
-describe("listing review — publish readiness", () => {
-  it("publishes when every check `submitForReview` makes would pass", () => {
-    const listing = makeListing({ status: "UNPUBLISHED" });
-    const plan = listingPlan(listing, { kind: "VISIBILITY", to: "LIVE" });
-    expect(plan.savable).toBe(true);
-    expect(plan.steps).toEqual([{ type: "PUBLISH_LISTING" }]);
-    expect(plan.consequences[0]).toMatchObject({ code: "LISTING_GOES_LIVE" });
-  });
-
-  it("lists a missing photo count as an actionable blocker", () => {
-    const plan = listingPlan(makeListing({ status: "DRAFT", photoCount: 2 }), {
-      kind: "VISIBILITY",
-      to: "LIVE",
+/**
+ * Publishing and hiding are not reviewed here any more.
+ *
+ * The calendar used to carry a listing-visibility editor whose save published or hid
+ * the listing, and this file used to prove its publish-readiness branch. That control
+ * belongs to the listings page, where the host answers "is this listing on the site?"
+ * with a switch — so the branch, its mutation steps and its blocker errors are gone
+ * rather than left unreachable. `publishBlockers` itself is untouched and still tested
+ * where it lives, in listing-publish-readiness.test.ts.
+ */
+describe("listing review — what it will no longer do", () => {
+  it("has no listing-wide change that publishes, hides or sets a bare minimum stay", () => {
+    // A compile-time fact made explicit: `ListingChange` has exactly three kinds, and
+    // none of them is a visibility move. If one is ever added back, this list is the
+    // place that has to say so out loud.
+    const kinds: ListingChange["kind"][] = [
+      "AVAILABILITY_MODE",
+      "DEFAULT_PRICING",
+      "EVERGREEN_PROMOTION",
+    ];
+    expect(kinds).toHaveLength(3);
+    // The minimum stay is still changeable — through the whole-rule pricing edit the
+    // Pricing section stages, which resends the untouched fields from the loaded rule.
+    const plan = listingPlan(makeListing(), {
+      kind: "DEFAULT_PRICING",
+      to: { minNights: 5 },
     });
-    expect(plan.errors).toEqual([
-      { code: "CANNOT_PUBLISH", blockers: ["PHOTOS"] },
+    expect(plan.steps).toEqual([
+      {
+        type: "SET_DEFAULT_PRICING",
+        baseNightlyRate: 120,
+        cleaningFee: 30,
+        minNights: 5,
+      },
     ]);
-    expect(plan.steps).toEqual([]);
-  });
-
-  it("lists missing pricing as a blocker", () => {
-    const plan = listingPlan(
-      makeListing({ status: "DRAFT", pricing: null }),
-      { kind: "VISIBILITY", to: "LIVE" },
-    );
-    expect(plan.errors[0]).toMatchObject({ code: "CANNOT_PUBLISH" });
-    if (plan.errors[0].code === "CANNOT_PUBLISH") {
-      expect(plan.errors[0].blockers).toContain("PRICING");
-    }
-  });
-
-  it("blocks a never-published open listing with no confirmed availability start", () => {
-    const plan = listingPlan(
-      makeListing({ status: "DRAFT", publishedAt: null }),
-      { kind: "VISIBILITY", to: "LIVE" },
-    );
-    expect(plan.errors[0]).toMatchObject({ code: "CANNOT_PUBLISH" });
-    if (plan.errors[0].code === "CANNOT_PUBLISH") {
-      expect(plan.errors[0].blockers).toContain("AVAILABILITY_UNCONFIRMED");
-    }
-  });
-
-  it("accepts a never-published listing protected by a start-date block", () => {
-    const plan = listingPlan(
-      makeListing({
-        status: "DRAFT",
-        publishedAt: null,
-        blocks: [
-          {
-            id: "start-block",
-            startDate: TODAY,
-            endDate: "2026-06-01",
-            blockType: "MANUAL_BLOCK",
-            reason: "Before the listing's availability start date",
-            guestName: null,
-            bookingStatus: null,
-            feedName: null,
-            feedPlatform: null,
-          },
-        ],
-      }),
-      { kind: "VISIBILITY", to: "LIVE" },
-    );
-    expect(plan.errors).toEqual([]);
-    expect(plan.savable).toBe(true);
-  });
-
-  it("reports every blocker at once rather than one at a time", () => {
-    const plan = listingPlan(
-      makeListing({
-        status: "DRAFT",
-        pricing: null,
-        photoCount: 0,
-        publishedAt: null,
-      }),
-      { kind: "VISIBILITY", to: "LIVE" },
-    );
-    if (plan.errors[0].code === "CANNOT_PUBLISH") {
-      expect(plan.errors[0].blockers).toEqual([
-        "PRICING",
-        "PHOTOS",
-        "AVAILABILITY_UNCONFIRMED",
-      ]);
-    }
-  });
-
-  it("refuses to publish a listing already on the site", () => {
-    const plan = listingPlan(makeListing({ status: "APPROVED" }), {
-      kind: "VISIBILITY",
-      to: "LIVE",
-    });
-    if (plan.errors[0].code === "CANNOT_PUBLISH") {
-      expect(plan.errors[0].blockers).toContain("STATUS");
-    }
-  });
-
-  it("counts the dates publishing would make bookable, not merely open", () => {
-    const listing = makeListing({
-      status: "UNPUBLISHED",
-      blocks: [manualBlock("2026-03-12", "2026-03-15")],
-    });
-    const plan = listingPlan(listing, { kind: "VISIBILITY", to: "LIVE" });
-    const consequence = plan.consequences[0];
-    if (consequence.code === "LISTING_GOES_LIVE") {
-      const index = buildListingCalendarIndex(listing);
-      const counts = countDates(listing, index, TODAY, HORIZON_END);
-      expect(consequence.bookableDates).toBe(counts.openNotBookable);
-      expect(consequence.bookableDates).toBe(counts.total - 3);
-    }
   });
 });
 
@@ -967,9 +884,12 @@ describe("listing review — availability mode", () => {
   });
 });
 
-describe("listing review — minimum stay", () => {
+describe("listing review — minimum stay, through default pricing", () => {
   it("saves it as a listing-wide change, resending the untouched fields", () => {
-    const plan = listingPlan(makeListing(), { kind: "MIN_NIGHTS", to: 5 });
+    const plan = listingPlan(makeListing(), {
+      kind: "DEFAULT_PRICING",
+      to: { minNights: 5 },
+    });
     expect(plan.rows).toEqual([
       {
         field: "min_nights",
@@ -982,7 +902,7 @@ describe("listing review — minimum stay", () => {
     ]);
     expect(plan.steps).toEqual([
       {
-        type: "SET_MIN_NIGHTS",
+        type: "SET_DEFAULT_PRICING",
         minNights: 5,
         baseNightlyRate: 120,
         cleaningFee: 30,
@@ -993,11 +913,28 @@ describe("listing review — minimum stay", () => {
   it.each([0, 1.5, -3, 400, Number.NaN])(
     "rejects the minimum stay %p",
     (value) => {
-      const plan = listingPlan(makeListing(), { kind: "MIN_NIGHTS", to: value });
+      const plan = listingPlan(makeListing(), {
+        kind: "DEFAULT_PRICING",
+        to: { minNights: value },
+      });
       expect(plan.steps).toEqual([]);
       expect(plan.savable).toBe(false);
     },
   );
+
+  it("refuses a minimum stay longer than the listing's maximum", () => {
+    // `makeListing` carries the default 365-night maximum, and the review refuses
+    // rather than letting a rule through that the pricing service would reject.
+    const plan = listingPlan(makeListing(), {
+      kind: "DEFAULT_PRICING",
+      to: { minNights: 366 },
+    });
+    expect(plan.errors).toContainEqual({
+      code: "INVALID_MIN_NIGHTS",
+      maxNights: 365,
+    });
+    expect(plan.savable).toBe(false);
+  });
 });
 
 describe("listing review — default pricing", () => {

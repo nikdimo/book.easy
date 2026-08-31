@@ -2,17 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BASE_CURRENCY } from "@/lib/currency/currency-preference";
-import { ChevronDown, Eye, EyeOff, LockKeyhole, UnlockKeyhole } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { interpolate, useI18n } from "@/lib/i18n/client";
 import { CALENDAR_ANCHOR, anchorProps } from "@/lib/host/v2/calendar-anchors";
 import type { CalendarFormats } from "@/lib/host/v2/calendar-format";
 import type { HostCalendarListing } from "@/lib/host/v2/calendar-types";
-import {
-  canHide,
-  isPublishableStatus,
-  publishBlockers,
-  type HostListingStatusSummary,
-} from "@/lib/host/v2/listing-status";
 import type { ListingChange } from "@/lib/host/v2/calendar-review";
 import {
   computeSelectionQuote,
@@ -26,17 +20,14 @@ import {
   defaultsDraft,
   ongoingPromotionDraft,
   ongoingPromotionFormOf,
-  visibilityDraft,
   type OngoingPromotionForm,
-  type VisibilityDecision,
 } from "@/lib/host/v2/calendar-listing-draft";
-import { addDaysToYmd, compareYmd } from "@/lib/utils/date-only";
+import { addDaysToYmd } from "@/lib/utils/date-only";
 import {
   ColumnPair,
   ConsequenceLine,
   Disclosure,
   NumberColumn,
-  SegmentedChoice,
   StepperColumn,
   ToggleRow,
 } from "./workbench-ui";
@@ -50,27 +41,28 @@ import {
   wholeAmountFromInput,
 } from "@/lib/host/v2/calendar-price-action";
 import {
-  bookableDatesLabel,
   currencySymbol,
-  discoverabilityLabel,
   formatSignedPercent,
   money,
-  publishBlockerText,
 } from "./calendar-labels";
 
 /**
- * The three focused editors for everything that is not a date selection.
+ * The focused editors for the listing's own defaults, rather than for a date range.
  *
- * They replace the last of the old dense card vocabulary: bordered cards inside a
- * bordered pane, each with its own Save button, each restating the listing title and
- * the scope the panel header had already given. Here the shell owns the header, the
- * Back control and the one action, and each editor is only the decision itself, the
- * sentence that says what it does, and a disclosure for the part a host asks about
- * once and then never again.
+ * They live beside the calendar because they are built out of the same small parts —
+ * `workbench-ui`, the panel slider, the calendar's own labels and its quote engine —
+ * but the calendar no longer mounts them. **The listing editor does:** these are the
+ * insides of `/host/listings/<id>/pricing`, which is the one editable home for the
+ * base price, the cleaning fee, the minimum stay and the always-active offers. The
+ * calendar shows those values as read-only context and links here.
  *
- * None of them save anything. Each reports a `ListingChange | null` upwards, exactly
- * as the date editors report a `DateChange | null`, and the shell's Review button is
- * enabled precisely when that value is non-null.
+ * They were not copied for that move, and deliberately so: a second implementation is
+ * a second answer to "what does a 15% offer cost me", and the whole point of the
+ * split is that each setting has exactly one home.
+ *
+ * Neither of them saves anything. Each reports a `ListingChange | null` upwards, the
+ * way the date editors report a `DateChange | null`, and the surrounding screen's
+ * Review button is enabled precisely when that value is non-null.
  */
 
 const QUICK_DISCOUNTS = [5, 10, 15, 20] as const;
@@ -222,213 +214,6 @@ function useListingDraft(
 }
 
 /* -------------------------------------------------------------------------- */
-
-export function ListingVisibilityEditor({
-  listing,
-  summary,
-  horizonMonths,
-  onDraftChange,
-}: {
-  listing: HostCalendarListing;
-  summary: HostListingStatusSummary;
-  horizonMonths: number;
-  onDraftChange: (change: ListingChange | null) => void;
-}) {
-  const i18n = useI18n();
-  const [decision, setDecision] = useState<VisibilityDecision | null>(null);
-  const live = listing.status === "APPROVED";
-  const blockers = publishBlockers(listing);
-
-  const draft = useMemo(
-    () => visibilityDraft(decision, listing),
-    [decision, listing],
-  );
-  useListingDraft(draft, onDraftChange);
-
-  // Each control shows the pending decision if it is the one being made, and the
-  // stored value otherwise — which is how three decisions share one screen without
-  // ever producing two pending changes for one confirmation.
-  const shownVisibility =
-    decision?.field === "visibility" ? decision.to : live ? "LIVE" : "HIDDEN";
-  const shownMode =
-    decision?.field === "mode" ? decision.to : listing.availabilityMode;
-
-  return (
-    <div
-      {...anchorProps(CALENDAR_ANCHOR.listingStatus)}
-      className="flex flex-col gap-5"
-    >
-      <section className="flex flex-col gap-2">
-        <h3 className="text-[0.9375rem] font-semibold text-slate-900">
-          {
-            i18n.resolve(
-              "host.v2.calendar.listing.visible_question",
-              "Is this listing visible to guests?",
-            ).text
-          }
-        </h3>
-        <SegmentedChoice
-          label={
-            i18n.resolve(
-              "host.v2.calendar.listing.visible_question",
-              "Is this listing visible to guests?",
-            ).text
-          }
-          value={shownVisibility}
-          onChange={(to) =>
-            setDecision(
-              to === (live ? "LIVE" : "HIDDEN")
-                ? null
-                : { field: "visibility", to },
-            )
-          }
-          options={[
-            {
-              value: "LIVE",
-              label: i18n.resolve("host.v2.calendar.listing.visible", "Visible").text,
-              icon: Eye,
-              disabled: !live && !isPublishableStatus(listing),
-            },
-            {
-              value: "HIDDEN",
-              label: i18n.resolve("host.v2.calendar.listing.hidden", "Hidden").text,
-              icon: EyeOff,
-              disabled: live && !canHide(listing),
-            },
-          ]}
-        />
-        <ConsequenceLine tone={shownVisibility === "LIVE" ? "good" : "neutral"}>
-          {shownVisibility === "LIVE"
-            ? i18n.resolve(
-                "host.v2.calendar.listing.visibility_live_effect",
-                "Guests can open this listing. Search visibility and date bookability still depend on its calendar.",
-              ).text
-            : i18n.resolve(
-                "host.v2.calendar.listing.visibility_hidden_effect",
-                "Guests cannot open or book this listing. Existing reservations still stand.",
-              ).text}
-        </ConsequenceLine>
-
-        {/* Three different things that a host reasonably reads as one. Kept apart
-            because a listing can be visible and still unbookable, and bookable dates
-            can exist on a listing nobody can find. */}
-        <Disclosure
-          label={
-            i18n.resolve("host.v2.calendar.editor.how_this_works", "How this works")
-              .text
-          }
-        >
-          <div className="flex flex-col gap-1.5 pt-1">
-            <p>
-              <span className="font-semibold text-slate-700">
-                {
-                  i18n.resolve("host.v2.calendar.listing.term_visible", "Visible")
-                    .text
-                }
-              </span>
-              {" — "}
-              {
-                i18n.resolve(
-                  "host.v2.calendar.listing.term_visible_body",
-                  "whether the listing page exists for guests at all.",
-                ).text
-              }
-            </p>
-            <p>
-              <span className="font-semibold text-slate-700">
-                {
-                  i18n.resolve(
-                    "host.v2.calendar.listing.term_search",
-                    "Found in search",
-                  ).text
-                }
-              </span>
-              {" — "}
-              {discoverabilityLabel(i18n, summary.discoverability).text}
-              {". "}
-              {
-                i18n.resolve(
-                  "host.v2.calendar.listing.term_search_body",
-                  "A closed-by-default listing only appears once a guest searches dates you have opened.",
-                ).text
-              }
-            </p>
-            <p>
-              <span className="font-semibold text-slate-700">
-                {
-                  i18n.resolve(
-                    "host.v2.calendar.listing.term_bookable",
-                    "Bookable dates",
-                  ).text
-                }
-              </span>
-              {" — "}
-              {bookableDatesLabel(i18n, summary.counts.bookable, horizonMonths).text}
-              {"."}
-            </p>
-            {blockers.length > 0 ? (
-              <ul className="mt-1 list-disc space-y-0.5 pl-4 text-amber-700">
-                {blockers.map((blocker) => (
-                  <li key={blocker}>{publishBlockerText(i18n, blocker).text}</li>
-                ))}
-              </ul>
-            ) : null}
-          </div>
-        </Disclosure>
-      </section>
-
-      <section className="flex flex-col gap-2 border-t border-slate-100 pt-4">
-        <h3 className="text-[0.9375rem] font-semibold text-slate-900">
-          {
-            i18n.resolve(
-              "host.v2.calendar.listing.mode_question",
-              "How do untouched dates begin?",
-            ).text
-          }
-        </h3>
-        <SegmentedChoice
-          label={
-            i18n.resolve(
-              "host.v2.calendar.listing.mode_question",
-              "How do untouched dates begin?",
-            ).text
-          }
-          value={shownMode}
-          onChange={(to) =>
-            setDecision(
-              to === listing.availabilityMode ? null : { field: "mode", to },
-            )
-          }
-          options={[
-            {
-              value: "OPEN",
-              label: i18n.resolve("host.v2.calendar.listing.mode_open", "Open").text,
-              icon: UnlockKeyhole,
-            },
-            {
-              value: "CLOSED",
-              label: i18n.resolve("host.v2.calendar.listing.mode_closed", "Closed")
-                .text,
-              icon: LockKeyhole,
-            },
-          ]}
-        />
-        <ConsequenceLine>
-          {shownMode === "OPEN"
-            ? i18n.resolve(
-                "host.v2.calendar.listing.mode_open_body",
-                "Every date is bookable unless you block it.",
-              ).text
-            : i18n.resolve(
-                "host.v2.calendar.listing.mode_closed_body",
-                "No date is bookable until you open it.",
-              ).text}
-        </ConsequenceLine>
-      </section>
-
-    </div>
-  );
-}
 
 /* -------------------------------------------------------------------------- */
 
@@ -725,7 +510,6 @@ export function OngoingPromotionEditor({
   mode,
   onModeChange,
   onDraftChange,
-  onSelectDatePromotion,
 }: {
   listing: HostCalendarListing;
   formats: CalendarFormats;
@@ -734,9 +518,6 @@ export function OngoingPromotionEditor({
   mode: OngoingPromotionMode;
   onModeChange: (mode: OngoingPromotionMode) => void;
   onDraftChange: (change: ListingChange | null) => void;
-  onSelectDatePromotion: (
-    promotion: HostCalendarListing["promotions"][number],
-  ) => void;
 }) {
   const i18n = useI18n();
   // Seeded from the first saved promotion, including its rounding choice.
@@ -878,10 +659,8 @@ export function OngoingPromotionEditor({
     setForm(ongoingPromotionFormOf(listing, target));
     onModeChange("edit");
   };
-  const visiblePromotionCount = listing.promotions.filter(
-    (promotion) =>
-      !promotion.endDate || compareYmd(promotion.endDate, today) > 0,
-  ).length;
+  const ongoingPromotions = evergreenPromotions(listing);
+  const visiblePromotionCount = ongoingPromotions.length;
 
   return (
     <div
@@ -890,16 +669,10 @@ export function OngoingPromotionEditor({
     >
       {mode === "list" ? (
         <AllPromotionsOverview
-          promotions={listing.promotions}
+          promotions={ongoingPromotions}
           today={today}
           formats={formats}
-          onSelect={(promotion) => {
-            if (promotion.startDate && promotion.endDate) {
-              onSelectDatePromotion(promotion);
-            } else {
-              editOffer(promotion.id);
-            }
-          }}
+          onSelect={(promotion) => editOffer(promotion.id)}
         />
       ) : (
         <button

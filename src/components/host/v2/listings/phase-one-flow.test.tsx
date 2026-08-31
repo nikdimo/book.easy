@@ -11,20 +11,24 @@ import { PhaseOneComplete } from "@/components/host/v2/listings/phase-one-comple
 const house = { value: "HOUSE", label: "House", icon: "House", description: "A house." };
 
 describe("remaining phase one flow", () => {
-  it("holds an empty address on the step rather than linking on to basics", () => {
-    const html = renderToStaticMarkup(<AddressStep propertyType={house} spaceType="ENTIRE_PLACE" />);
-    expect(html).toContain("Confirm your address");
-    // Next is a button, not a link, until the address is one publishing would take.
-    expect(html).not.toContain('href="/host/start/basics?propertyType=HOUSE&amp;spaceType=ENTIRE_PLACE"');
+  it("puts a visible map-pin checkpoint before guest capacity", () => {
+    const html = renderToStaticMarkup(
+      <AddressStep propertyType={house} spaceType="ENTIRE_PLACE" />,
+    );
+    expect(html).toContain("Is the pin in the right spot?");
+    expect(html).toContain("Tap or move the map to place the property pin.");
+    // Confirmation is saved first; this is deliberately a button, not a direct link
+    // that could carry the host to Guests without recording the answer.
+    expect(html).not.toContain(
+      'href="/host/start/basics?propertyType=HOUSE&amp;spaceType=ENTIRE_PLACE"',
+    );
   });
 
-  it("links straight on to basics once the address holds", () => {
+  it("explains that browsers never see the exact pin", () => {
     const html = renderToStaticMarkup(
-      <AddressStep propertyType={house} spaceType="ENTIRE_PLACE" initialAddress="Partizanska 15" />,
+      <AddressStep propertyType={house} spaceType="ENTIRE_PLACE" />,
     );
-    // The city comes from the draft in the real flow; the fallback country is already
-    // valid, so only the street line is missing from a static render.
-    expect(html).toContain('value="Partizanska 15"');
+    expect(html).toContain("see only an approximate area, never this exact pin");
   });
 
   it("uses the old editor capacity defaults and limits", () => {
@@ -42,11 +46,9 @@ describe("remaining phase one flow", () => {
 
   it("stages every layer of the completion illustration", () => {
     const html = renderToStaticMarkup(<PhaseOneComplete propertyType={house} spaceType="ENTIRE_PLACE" />);
-    // Asset paths only exist as strings, so a typo would otherwise ship a blank layer.
     for (const layer of ["path", "house", "location", "guests", "beds", "photo", "plant", "check"]) {
       expect(html).toContain(`%2Fimages%2Flisting-flow%2Fphase-one%2F${layer}.png`);
     }
-    // The checkmark lands last, and the whole sequence stays under two seconds.
     expect(html).toContain("--delay:1200ms");
   });
 });

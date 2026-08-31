@@ -211,7 +211,11 @@ function OwnerGrowthHero({
                 propertyTypes={propertyTypes}
               />
             </div>
-            <div className="hidden md:block">
+            {/* Centred the way every other pill call site centres it. The bar is
+                `w-full max-w-[850px]` with no auto margins of its own, so a plain
+                block parent leaves it against the left edge of this 64rem column —
+                87px off the hero's middle, under a heading that is centred. */}
+            <div className="hidden md:flex md:justify-center">
               <MarketplaceSearchBar
                 variant="pill"
                 popularCities={popularCities}

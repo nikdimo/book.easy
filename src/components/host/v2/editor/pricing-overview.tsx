@@ -1,8 +1,6 @@
 import Link from "next/link";
-import { BASE_CURRENCY } from "@/lib/currency/currency-preference";
 import { ArrowRight, CalendarRange, Tag } from "lucide-react";
-import { formatMoney } from "@/lib/currency/convert";
-import { hostCalendarHref } from "@/lib/host/v2/calendar-href";
+import { hostCalendarHref, type CalendarIntent } from "@/lib/host/v2/calendar-href";
 import { T, ti, tPlural, type Resolved, type Translator } from "@/lib/i18n/t";
 import type {
   ListingPricingSummary,
@@ -11,20 +9,53 @@ import type {
 import { addDaysToYmd, ymdToDbDate } from "@/lib/utils/date-only";
 
 /**
- * The editor's Pricing section: a summary, not an editor.
+ * The editor's Pricing section: the listing's own prices, and a way to the rest.
  *
- * Calendar owns every price on this listing — the base rate, the nights that cost
- * something different, and the offers. Duplicating any of that here would give a host
- * two places to change one number and two answers when they disagree, so this pane
- * reads the current values and hands over. There are no inputs and no actions in it
- * beyond the link to the screen that does the work.
+ * This page owns everything that applies to the listing as a whole — the base nightly
+ * price, the cleaning fee, the minimum stay and the offers that run on every date. Those
+ * live in the client editors passed in as `defaultsEditor` and `offersEditor`; what is
+ * written here is the part that is only ever reported, because it belongs to particular
+ * dates and the calendar owns those.
+ *
+ * The split is what stops one number having two answers. Nothing on this page edits a
+ * date-specific price or a dated offer, and nothing in the calendar edits what is above.
+ * Each side shows the other's values and links to it, naming the job rather than the
+ * screen: "Set prices for specific dates", not "Open calendar".
  */
 
-/** The Calendar deep link, so it opens on this listing rather than on whichever one the
- *  workspace happened to have selected last. An alias for the shared builder rather
- *  than a second copy of the path. */
-export function calendarPricingHref(listingId: string): string {
-  return hostCalendarHref(listingId);
+/**
+ * The Calendar deep link for a pricing job.
+ *
+ * An alias for the shared builder rather than a second copy of the path, and it now
+ * carries the intent: a host who followed "set prices for specific dates" arrives at a
+ * calendar asking which dates, not at a menu that has forgotten why they came.
+ */
+export function calendarPricingHref(
+  listingId: string,
+  intent: CalendarIntent = "pricing",
+): string {
+  return hostCalendarHref(listingId, { intent });
+}
+
+/**
+ * A dated offer, opened where it is edited.
+ *
+ * The offer's own nights travel with the link, so the calendar selects exactly the run
+ * it applies to. Stored ends are exclusive, so the last covered night is the day before.
+ */
+export function datedPromotionHref(
+  listingId: string,
+  promotion: PricingSummaryPromotion,
+): string {
+  return promotion.startDate && promotion.endDate
+    ? hostCalendarHref(listingId, {
+        intent: "promotion",
+        range: {
+          from: promotion.startDate,
+          to: addDaysToYmd(promotion.endDate, -1),
+        },
+      })
+    : hostCalendarHref(listingId, { intent: "promotion" });
 }
 
 function formatYmd(ymd: string, locale: string): string {
@@ -123,17 +154,42 @@ function Row({ label, children }: { label: Resolved; children: React.ReactNode }
   );
 }
 
+/** A contextual link that says what it will let the host do. */
+function DateWorkLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#f1f5f9] px-5 text-sm font-semibold text-[#0f172a] transition-colors hover:bg-[#e2e8f0] focus-visible:bg-[#e2e8f0] focus-visible:outline-none"
+    >
+      {children}
+      <ArrowRight className="size-4" aria-hidden />
+    </Link>
+  );
+}
+
 export function PricingOverview({
   summary,
+  defaultsEditor,
+  offersEditor,
   t,
 }: {
   summary: ListingPricingSummary;
+  /** The editable base price, cleaning fee and minimum stay. */
+  defaultsEditor: React.ReactNode;
+  /**
+   * The editable always-active offers.
+   *
+   * Withheld when the listing has no pricing rule: an offer discounts a price, and
+   * there is no price yet to discount. The defaults editor asks for one first.
+   */
+  offersEditor: React.ReactNode;
   t: Translator;
 }) {
   const { rule, promotions } = summary;
   const locale = t.locale;
-  const money = (amount: number) =>
-    formatMoney(amount, rule?.currency ?? BASE_CURRENCY, locale);
+  const datedPromotions = promotions.filter(
+    (promotion) => promotion.startDate || promotion.endDate,
+  );
 
   return (
     <div className="mx-auto w-full max-w-2xl py-6 md:py-10">
@@ -147,51 +203,38 @@ export function PricingOverview({
           <T
             t={t}
             k="host.editor.pricing.intro"
-            source="What this listing charges today. Prices are set and changed in Calendar."
+            source="Set what this listing charges by default here. Prices for particular dates are set on the calendar."
           />
         </p>
       </header>
 
-      <section
-        aria-labelledby="pricing-current-heading"
-        className="mt-6 rounded-2xl border border-slate-200 p-5"
-      >
-        <h3
-          id="pricing-current-heading"
-          className="text-sm font-semibold text-slate-900"
-        >
-          <T t={t} k="host.editor.pricing.current_heading" source="Current pricing" />
-        </h3>
+      {defaultsEditor}
+      {rule ? offersEditor : null}
 
-        {rule ? (
+      {/* Context the host cannot change from here, and never could: the currency every
+          amount is authored in, and the longest stay the listing accepts. Stated
+          because the numbers above are read against them — a minimum stay is only
+          meaningful next to the maximum it cannot exceed. */}
+      {rule && (
+        <section
+          aria-labelledby="pricing-context-heading"
+          className="mt-4 rounded-2xl border border-slate-200 p-5"
+        >
+          <h3
+            id="pricing-context-heading"
+            className="text-sm font-semibold text-slate-900"
+          >
+            <T
+              t={t}
+              k="host.editor.pricing.context_heading"
+              source="Fixed for this listing"
+            />
+          </h3>
           <dl className="mt-2">
             <Row label={t.resolve("host.editor.pricing.currency", "Currency")}>
               <span className="notranslate" translate="no">
                 {rule.currency}
               </span>
-            </Row>
-            <Row
-              label={t.resolve("host.editor.pricing.base_rate", "Base nightly rate")}
-            >
-              <span className="notranslate" translate="no">
-                {money(rule.baseNightlyRate)}
-              </span>
-            </Row>
-            <Row label={t.resolve("host.editor.pricing.cleaning_fee", "Cleaning fee")}>
-              <span className="notranslate" translate="no">
-                {money(rule.cleaningFee)}
-              </span>
-            </Row>
-            <Row label={t.resolve("host.editor.pricing.min_stay", "Minimum stay")}>
-              {
-                tPlural(
-                  t,
-                  "host.editor.pricing.nights",
-                  rule.minNights,
-                  "{n} night",
-                  "{n} nights",
-                ).text
-              }
             </Row>
             <Row label={t.resolve("host.editor.pricing.max_stay", "Maximum stay")}>
               {
@@ -205,31 +248,31 @@ export function PricingOverview({
               }
             </Row>
           </dl>
-        ) : (
-          // A listing can reach this section before anyone has opened Calendar for it.
-          // Saying so plainly beats rendering zeroes that read like a real price.
-          <p className="mt-2 text-sm leading-6 text-slate-600">
+          <p className="mt-3 text-sm leading-6 text-slate-600">
             <T
               t={t}
-              k="host.editor.pricing.no_rule"
-              source="No prices have been set for this listing yet. Open Calendar to set a nightly rate before you publish."
+              k="host.editor.pricing.context_note"
+              source="Every amount on this listing is set in this currency. Contact support to change either of these."
             />
           </p>
-        )}
-      </section>
+        </section>
+      )}
 
+      {/* Everything below belongs to particular dates. It is reported here so a host
+          can see the whole picture of what their listing charges, and each block hands
+          off to the calendar naming the job rather than the screen. */}
       <section
-        aria-labelledby="pricing-extras-heading"
+        aria-labelledby="pricing-dates-heading"
         className="mt-4 rounded-2xl border border-slate-200 p-5"
       >
         <h3
-          id="pricing-extras-heading"
+          id="pricing-dates-heading"
           className="text-sm font-semibold text-slate-900"
         >
           <T
             t={t}
-            k="host.editor.pricing.extras_heading"
-            source="On top of the base price"
+            k="host.editor.pricing.dates_heading"
+            source="Particular dates"
           />
         </h3>
 
@@ -260,34 +303,42 @@ export function PricingOverview({
                     "No dates are priced differently. Every night is charged at the base rate.",
                   ).text}
             </p>
+            <div className="mt-3">
+              <DateWorkLink href={calendarPricingHref(summary.listingId, "pricing")}>
+                <T
+                  t={t}
+                  k="host.editor.pricing.dates_cta"
+                  source="Set prices for specific dates"
+                />
+              </DateWorkLink>
+            </div>
           </div>
         </div>
 
-        <div className="mt-5 flex gap-3">
+        <div className="mt-6 flex gap-3">
           <Tag className="mt-0.5 size-4 shrink-0 text-slate-400" aria-hidden />
           <div className="min-w-0">
             <p className="text-sm font-medium text-slate-900">
-              <T t={t} k="host.editor.pricing.promotions_label" source="Promotions" />
+              <T
+                t={t}
+                k="host.editor.pricing.dated_promotions_label"
+                source="Date-based offers"
+              />
             </p>
             <p className="mt-1 text-sm leading-6 text-slate-600">
-              {promotions.length === 0
+              {datedPromotions.length === 0
                 ? t.resolve(
-                    "host.editor.pricing.promotions_none",
-                    "No promotions are running or scheduled.",
+                    "host.editor.pricing.dated_promotions_none",
+                    "No offer is running for particular dates.",
                   ).text
-                : ti(
-                    t,
-                    "host.editor.pricing.promotions_count",
-                    "{active} running now, {upcoming} scheduled.",
-                    {
-                      active: summary.activePromotionCount,
-                      upcoming: summary.upcomingPromotionCount,
-                    },
+                : t.resolve(
+                    "host.editor.pricing.dated_promotions_some",
+                    "These run only on the dates they were created for. Open one to change it on the calendar.",
                   ).text}
             </p>
-            {promotions.length > 0 && (
+            {datedPromotions.length > 0 && (
               <ul className="mt-3 space-y-2">
-                {promotions.map((promotion) => {
+                {datedPromotions.map((promotion) => {
                   const headline = promotionHeadline(t, promotion);
                   const detail = promotionDetail(t, promotion);
                   const phase =
@@ -295,85 +346,54 @@ export function PricingOverview({
                       ? t.resolve("host.editor.pricing.promo.running", "Running now")
                       : t.resolve("host.editor.pricing.promo.scheduled", "Scheduled");
                   return (
-                    <li
-                      key={promotion.id}
-                      className="rounded-xl bg-slate-50 px-3 py-2 text-sm"
-                    >
-                      <span
-                        className="font-medium text-slate-900"
-                        translate={headline.translated ? "no" : undefined}
+                    <li key={promotion.id}>
+                      <Link
+                        href={datedPromotionHref(summary.listingId, promotion)}
+                        className="flex min-h-11 items-center gap-3 rounded-xl bg-slate-50 px-3 py-2 text-sm transition-colors hover:bg-slate-100 focus-visible:bg-slate-100 focus-visible:outline-none"
                       >
-                        {headline.text}
-                      </span>
-                      <span
-                        className="ml-2 text-slate-600"
-                        translate={phase.translated ? "no" : undefined}
-                      >
-                        {phase.text}
-                      </span>
-                      <span
-                        className="mt-0.5 block text-slate-600"
-                        translate={detail.translated ? "no" : undefined}
-                      >
-                        {detail.text}
-                      </span>
+                        <span className="min-w-0 flex-1">
+                          <span
+                            className="font-medium text-slate-900"
+                            translate={headline.translated ? "no" : undefined}
+                          >
+                            {headline.text}
+                          </span>
+                          <span
+                            className="ml-2 text-slate-600"
+                            translate={phase.translated ? "no" : undefined}
+                          >
+                            {phase.text}
+                          </span>
+                          <span
+                            className="mt-0.5 block text-slate-600"
+                            translate={detail.translated ? "no" : undefined}
+                          >
+                            {detail.text}
+                          </span>
+                        </span>
+                        <ArrowRight
+                          className="size-4 shrink-0 text-slate-400"
+                          aria-hidden
+                        />
+                      </Link>
                     </li>
                   );
                 })}
               </ul>
             )}
+            <div className="mt-3">
+              <DateWorkLink
+                href={calendarPricingHref(summary.listingId, "promotion")}
+              >
+                <T
+                  t={t}
+                  k="host.editor.pricing.dated_offer_cta"
+                  source="Create a date-based offer"
+                />
+              </DateWorkLink>
+            </div>
           </div>
         </div>
-      </section>
-
-      <section
-        aria-labelledby="pricing-handoff-heading"
-        className="mt-4 rounded-2xl bg-slate-50 p-5"
-      >
-        <h3
-          id="pricing-handoff-heading"
-          className="text-sm font-semibold text-slate-900"
-        >
-          <T
-            t={t}
-            k="host.editor.pricing.handoff_heading"
-            source="Where pricing is changed"
-          />
-        </h3>
-        <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-600">
-          <li>
-            <T
-              t={t}
-              k="host.editor.pricing.handoff_base"
-              source="The base nightly rate applies to every night unless that date says otherwise."
-            />
-          </li>
-          <li>
-            <T
-              t={t}
-              k="host.editor.pricing.handoff_dates"
-              source="To charge more or less for particular nights, select those dates in Calendar and give them their own price."
-            />
-          </li>
-          <li>
-            <T
-              t={t}
-              k="host.editor.pricing.handoff_promotions"
-              source="Promotions are created and ended in Calendar as well, so one screen decides what a guest pays."
-            />
-          </li>
-        </ul>
-        <Link
-          href={calendarPricingHref(summary.listingId)}
-          className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-[#f1f5f9] px-5 text-sm font-semibold text-[#0f172a] transition-colors hover:bg-[#e2e8f0] focus-visible:bg-[#e2e8f0] focus-visible:outline-none"
-        >
-          <T
-            t={t}
-            k="host.editor.pricing.manage_cta"
-            source="Manage pricing in Calendar"
-          />
-          <ArrowRight className="size-4" aria-hidden />
-        </Link>
       </section>
     </div>
   );

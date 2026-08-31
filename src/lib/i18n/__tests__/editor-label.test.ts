@@ -55,9 +55,9 @@ describe("resolveEditorLabel", () => {
     };
     const resolved = resolveEditorLabel(
       translator,
-      "host.editor.nav.open_calendar",
-      "Open calendar",
+      "host.editor.nav.group_rates",
+      "Rates & availability",
     );
-    expect(resolved).toEqual({ text: "[host.editor.nav.open_calendar]", translated: true });
+    expect(resolved).toEqual({ text: "[host.editor.nav.group_rates]", translated: true });
   });
 });

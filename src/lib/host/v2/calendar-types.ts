@@ -119,6 +119,22 @@ export interface HostCalendarDateCounts {
   booked: number;
 }
 
+/**
+ * One listing's calendar facts, for a screen that only ever shows one.
+ *
+ * The listing editor's Availability and Pricing sections reuse the calendar's review
+ * model, which reasons over blocks, windows, date prices and offers rather than over a
+ * pricing rule alone. This is the same payload the workspace carries, minus the other
+ * properties the host owns and the rail that would let them switch.
+ */
+export interface HostCalendarListingContext {
+  today: string;
+  horizonEnd: string;
+  horizonMonths: number;
+  formats: CalendarFormats;
+  listing: HostCalendarListing;
+}
+
 export interface HostCalendarWorkspaceData {
   /** Today as a civil date in the marketplace time zone. */
   today: string;

@@ -1,14 +1,12 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import {
   Bitcoin,
   Banknote,
   Check,
-  ChevronDown,
   CircleAlert,
   Clock3,
-  Eye,
   Globe2,
   Landmark,
   Link2,
@@ -19,36 +17,34 @@ import {
   WalletCards,
   type LucideIcon,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { EDITOR_GROUP_HEADING } from "@/components/host/v2/editor/editor-group";
 import { Input } from "@/components/ui/input";
 import { Tx, useI18n } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
 import {
-  PAYMENT_DETAIL_FIELDS,
   maskedPaymentDetailsSummary,
   methodSupportsPaymentDetails,
   type PaymentDetailFieldValues,
-  type PaymentDetailIssues,
 } from "@/lib/payments/payment-details";
-import {
-  PaymentDetailFields,
-  FieldIssueMessage,
-} from "./payment-detail-fields";
+import { PaymentDetailsSheet } from "./payment-details-sheet";
+import { SectionSaveRow, SectionStatusLine } from "./section-save-row";
 import {
   PAYMENT_METHOD_CODES,
+  draftAfterMethodToggle,
+  drawerAfterMethodToggle,
   normalizePaymentArrangementsDraft,
   normalizePaymentMethodCodes,
   paymentArrangementsAreComplete,
   paymentDetailIssues,
-  paymentMethodDetailsStatus,
+  paymentMethodDetailState,
   paymentMethodRowId,
   samePaymentArrangementsDraft,
-  togglePaymentMethod,
   validateOtherPaymentLabel,
   type OtherPaymentLabelIssue,
   type PaymentArrangementsDraft,
   type PaymentArrangementsValue,
   type PaymentMethodCode,
+  type PaymentMethodDetailState,
 } from "./payment-arrangements-model";
 
 export type PaymentArrangementsSaveState =
@@ -118,6 +114,7 @@ export function PaymentArrangementsEditor({
   showGuestPreview = true,
   showHeader = true,
 }: PaymentArrangementsEditorProps) {
+  const i18n = useI18n();
   const [draft, setDraft] = useState<PaymentArrangementsDraft>(() =>
     normalizePaymentArrangementsDraft(initialValue),
   );
@@ -129,11 +126,16 @@ export function PaymentArrangementsEditor({
   );
   const [reviewed, setReviewed] = useState(Boolean(initialValue.reviewedAt));
   /**
-   * Exactly one method's details are open at a time. Selecting a method is a separate
-   * act from opening it: the checkbox says "I accept this", the disclosure button says
-   * "show me its fields", and a host can do either without the other.
+   * The one method whose details are open, if any.
+   *
+   * One value, so exactly one drawer can be open — there is no state in which two are.
+   * Selecting a method is a separate act from opening it: the checkbox says "I accept
+   * this", the "Add details" button says "show me its fields", and a host can do either
+   * without the other. Ticking a box does not open anything.
    */
-  const [expanded, setExpanded] = useState<PaymentMethodCode | null>(null);
+  const [openDetails, setOpenDetails] = useState<PaymentMethodCode | null>(null);
+  /** The button the drawer was opened from, so focus goes back to it on dismissal. */
+  const detailsTrigger = useRef<HTMLButtonElement | null>(null);
   /** Methods whose legacy paragraph the host chose to replace with structured fields. */
   const [converting, setConverting] = useState<PaymentMethodCode[]>([]);
 
@@ -154,19 +156,15 @@ export function PaymentArrangementsEditor({
   }
 
   function changeMethod(code: PaymentMethodCode, checked: boolean) {
-    const methodCodes = togglePaymentMethod(draft.methodCodes, code, checked);
-    publishChange({
-      methodCodes,
-      otherLabel: methodCodes.includes("OTHER") ? (draft.otherLabel ?? "") : null,
-      // Keep unsaved text while a host toggles a method off and back on. The save
-      // normalizer removes anything left against a method that stays unselected.
-      instructionTemplates: draft.instructionTemplates ?? {},
-      details: draft.details ?? {},
-    });
-    // Selecting a method opens it, so its fields are one click away rather than
-    // somewhere further down the page. Clearing one closes it again.
-    if (checked && methodSupportsPaymentDetails(code)) setExpanded(code);
-    else if (!checked && expanded === code) setExpanded(null);
+    // Unsaved text survives a method being switched off and back on; the save
+    // normalizer removes anything left against a method that stays unselected.
+    publishChange(draftAfterMethodToggle(draft, code, checked));
+    setOpenDetails((open) => drawerAfterMethodToggle(open, code, checked));
+  }
+
+  function openDetailsFor(code: PaymentMethodCode, trigger: HTMLButtonElement | null) {
+    detailsTrigger.current = trigger;
+    setOpenDetails(code);
   }
 
   function changeDetailField(
@@ -200,8 +198,12 @@ export function PaymentArrangementsEditor({
     }
   }
 
+  const openLegacyText = openDetails
+    ? (draft.instructionTemplates?.[openDetails]?.trim() ?? "")
+    : "";
+
   return (
-    <div className="mx-auto w-full max-w-3xl py-6 pb-12 md:py-10 md:pb-14">
+    <div className={cn("mx-auto w-full max-w-3xl", showHeader && "pt-1")}>
       {showHeader ? (
         <header>
           <h1 className="sr-only">
@@ -219,17 +221,7 @@ export function PaymentArrangementsEditor({
         </header>
       ) : null}
 
-      {/* One notice, once. Repeating a warning under every field trains hosts to
-          skip it; the field-level messages below appear only when they apply. */}
-      <p className="mt-4 flex items-start gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3.5 text-xs leading-5 text-slate-600">
-        <ShieldCheck className="mt-0.5 size-4 shrink-0 text-slate-500" aria-hidden />
-        <Tx
-          k="host.editor.payment_arrangements.privacy_notice"
-          source="Guests see only the payment method names while browsing. Private details are shared only after you accept a booking."
-        />
-      </p>
-
-      <form onSubmit={submit} noValidate className="mt-6">
+      <form onSubmit={submit} noValidate className={showHeader ? "mt-8" : "mt-6"}>
         <fieldset
           disabled={busy}
           aria-invalid={showRequiredError && draft.methodCodes.length === 0}
@@ -239,7 +231,7 @@ export function PaymentArrangementsEditor({
               : "payment-methods-hint"
           }
         >
-          <legend className="text-base font-semibold text-slate-900">
+          <legend className={EDITOR_GROUP_HEADING}>
             <Tx
               k="host.editor.payment_arrangements.methods_legend"
               source="Accepted payment methods"
@@ -252,26 +244,27 @@ export function PaymentArrangementsEditor({
             />
           </p>
 
-          <ul className="mt-4 divide-y divide-slate-200 overflow-hidden rounded-xl border border-slate-200 bg-white">
+          {/* One notice, once. Repeating a warning under every field trains hosts to
+              skip it; the field-level messages appear only when they apply. A line
+              rather than a panel — it is a standing fact, not an alert. */}
+          <p className="mt-3 flex items-start gap-2 text-xs leading-5 text-slate-500">
+            <ShieldCheck className="mt-0.5 size-4 shrink-0 text-slate-400" aria-hidden />
+            <Tx
+              k="host.editor.payment_arrangements.privacy_notice"
+              source="Guests see only the payment method names while browsing. Private details are shared only after you accept a booking."
+            />
+          </p>
+
+          <ul className="mt-3 divide-y divide-slate-100 border-y border-slate-100">
             {PAYMENT_METHOD_CODES.map((code) => (
               <MethodRow
                 key={code}
                 code={code}
                 draft={draft}
                 checked={draft.methodCodes.includes(code)}
-                expanded={expanded === code}
-                converting={converting.includes(code)}
-                issues={detailIssues[code]}
                 disabled={busy}
                 onToggle={(checked) => changeMethod(code, checked)}
-                onExpandedChange={(open) => setExpanded(open ? code : null)}
-                onFieldChange={(key, value) => changeDetailField(code, key, value)}
-                onConvert={() => {
-                  setConverting((current) =>
-                    current.includes(code) ? current : [...current, code],
-                  );
-                  setExpanded(code);
-                }}
+                onOpenDetails={(trigger) => openDetailsFor(code, trigger)}
               />
             ))}
           </ul>
@@ -283,13 +276,6 @@ export function PaymentArrangementsEditor({
             issue={otherIssue}
             disabled={busy}
             onChange={(otherLabel) => publishChange({ ...draft, otherLabel })}
-          />
-        ) : null}
-
-        {showGuestPreview ? (
-          <GuestPreview
-            draft={draft}
-            showMethods={(reviewed || dirty) && draft.methodCodes.length > 0}
           />
         ) : null}
 
@@ -309,91 +295,108 @@ export function PaymentArrangementsEditor({
           </p>
         ) : null}
 
-        {showSubmit ? <div className="mt-6 flex flex-col-reverse gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
-          <SaveStatus
-            state={effectiveSaveState}
-            reviewed={reviewed}
-            errorMessage={errorMessage}
+        {showGuestPreview ? (
+          <GuestPreview
+            draft={draft}
+            showMethods={(reviewed || dirty) && draft.methodCodes.length > 0}
           />
-          <Button
-            type="submit"
-            size="lg"
+        ) : null}
+
+        {showSubmit ? (
+          <SectionSaveRow
+            saving={effectiveSaveState === "saving"}
             disabled={busy || !canSubmit}
-            className="w-full rounded-full bg-slate-900 px-6 text-white hover:bg-slate-800 sm:w-auto"
-          >
-            {effectiveSaveState === "saving" ? (
-              <>
-                <LoaderCircle className="animate-spin" aria-hidden />
-                <Tx
-                  k="host.editor.payment_arrangements.saving_button"
-                  source="Saving…"
-                />
-              </>
-            ) : (
+            status={
+              <SaveStatus
+                state={effectiveSaveState}
+                reviewed={reviewed}
+                errorMessage={errorMessage}
+              />
+            }
+            label={
               <Tx
                 k="host.editor.payment_arrangements.save_button"
                 source="Save payment methods"
               />
-            )}
-          </Button>
-        </div> : null}
+            }
+            savingLabel={
+              <Tx
+                k="host.editor.payment_arrangements.saving_button"
+                source="Saving…"
+              />
+            }
+          />
+        ) : null}
       </form>
+
+      {/* Mounted once, outside the list, and driven by a single method code: two detail
+          drawers cannot be open because there is nowhere to say that they are. */}
+      <PaymentDetailsSheet
+        code={openDetails}
+        draft={draft}
+        issues={openDetails ? detailIssues[openDetails] : undefined}
+        legacyText={openLegacyText}
+        showLegacy={Boolean(openLegacyText) && !(openDetails && converting.includes(openDetails))}
+        disabled={busy}
+        title={
+          openDetails ? methodSourceName(openDetails, draft.otherLabel, i18n.resolve) : ""
+        }
+        returnFocusTo={detailsTrigger}
+        onClose={() => setOpenDetails(null)}
+        onFieldChange={(key, value) => {
+          if (openDetails) changeDetailField(openDetails, key, value);
+        }}
+        onConvert={() => {
+          if (!openDetails) return;
+          setConverting((current) =>
+            current.includes(openDetails) ? current : [...current, openDetails],
+          );
+        }}
+      />
     </div>
   );
 }
 
 /**
- * One method: a checkbox that selects it, and a disclosure button that opens its fields.
+ * One method: a checkbox that selects it, and a button that opens its details drawer.
  *
  * The two controls are deliberately separate and are never nested inside one another —
  * the label wraps text only, so clicking the name toggles the checkbox and nothing else
- * competes for the same click.
+ * competes for the same click. Ticking the box does not open the drawer: a host adding
+ * four methods in a row should not have to dismiss four drawers to do it.
  */
 function MethodRow({
   code,
   draft,
   checked,
-  expanded,
-  converting,
-  issues,
   disabled,
   onToggle,
-  onExpandedChange,
-  onFieldChange,
-  onConvert,
+  onOpenDetails,
 }: {
   code: PaymentMethodCode;
   draft: PaymentArrangementsDraft;
   checked: boolean;
-  expanded: boolean;
-  converting: boolean;
-  issues: PaymentDetailIssues | undefined;
   disabled: boolean;
   onToggle: (checked: boolean) => void;
-  onExpandedChange: (expanded: boolean) => void;
-  onFieldChange: (key: string, value: string) => void;
-  onConvert: () => void;
+  /** The trigger element comes back so focus can be returned to it on dismissal. */
+  onOpenDetails: (trigger: HTMLButtonElement | null) => void;
 }) {
   const i18n = useI18n();
   const presentation = methodPresentation(code);
   const Icon = presentation.icon;
   const base = rowId(code);
   const checkboxId = paymentMethodRowId(code);
-  const panelId = `payment-details-${base}`;
   const statusId = `payment-status-${base}`;
 
   const supportsDetails = methodSupportsPaymentDetails(code);
   const values = draft.details?.[code] ?? {};
-  const legacyText = draft.instructionTemplates?.[code]?.trim() ?? "";
-  const showLegacy = Boolean(legacyText) && !converting;
-  const status = paymentMethodDetailsStatus(draft, code);
+  const state = paymentMethodDetailState(draft, code);
   const summary = maskedPaymentDetailsSummary(code, values);
   const methodName = methodSourceName(code, draft.otherLabel, i18n.resolve);
-  const hasIssues = Boolean(issues && Object.keys(issues).length > 0);
 
   return (
-    <li className={cn(checked && "bg-slate-50/60")}>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 p-4">
+    <li>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5">
         <input
           id={checkboxId}
           name="payment-methods"
@@ -412,8 +415,13 @@ function MethodRow({
           )}
           aria-hidden
         />
-        <label htmlFor={checkboxId} className="min-w-0 flex-1 cursor-pointer">
-          <span className="block text-sm font-semibold text-slate-900">
+        {/* The label is the whole hit target for selection and wraps text only, so the
+            row stays a checkbox and the detail button stays a button. */}
+        <label
+          htmlFor={checkboxId}
+          className="flex min-w-0 flex-1 cursor-pointer flex-col justify-center py-1.5"
+        >
+          <span className="block text-sm font-medium text-slate-900">
             {presentation.label}
           </span>
           <span className="mt-0.5 block text-xs leading-5 text-slate-500">
@@ -422,177 +430,82 @@ function MethodRow({
         </label>
 
         {checked && supportsDetails ? (
-          <div className="flex items-center gap-2">
-            <span
-              id={statusId}
-              className={cn(
-                "rounded-full px-2.5 py-1 text-xs font-medium",
-                status === "READY"
-                  ? "bg-emerald-50 text-emerald-800"
-                  : "bg-slate-100 text-slate-600",
-              )}
-            >
-              {status === "READY" ? (
-                <Tx
-                  k="host.editor.payment_arrangements.status_ready"
-                  source="Details saved"
-                />
-              ) : (
-                <Tx
-                  k="host.editor.payment_arrangements.status_missing"
-                  source="Optional details"
-                />
-              )}
-            </span>
+          <div className="flex items-center gap-3 pl-8 sm:pl-0">
             {summary ? (
               <span
-                className="hidden font-mono text-xs text-slate-500 sm:inline"
+                className="hidden font-mono text-xs text-slate-400 sm:inline"
                 translate="no"
               >
                 {summary}
               </span>
             ) : null}
+            {/* Words, not a coloured pill: the status has to survive a greyscale
+                screenshot and be read out with the checkbox it describes. */}
+            <span
+              id={statusId}
+              className={cn(
+                "text-xs",
+                state === "ATTENTION" ? "text-rose-700" : "text-slate-500",
+              )}
+            >
+              <DetailStateLabel state={state} />
+            </span>
             <button
               type="button"
               disabled={disabled}
-              onClick={() => onExpandedChange(!expanded)}
-              aria-expanded={expanded}
-              aria-controls={panelId}
-              className="flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={(event) => onOpenDetails(event.currentTarget)}
+              aria-haspopup="dialog"
+              className="inline-flex min-h-11 shrink-0 items-center rounded-full px-2 text-sm font-semibold text-slate-700 underline-offset-4 transition-colors hover:text-slate-950 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {status === "READY" ? (
-                <Tx
-                  k="host.editor.payment_arrangements.edit_details"
-                  source="Edit details"
-                />
-              ) : (
+              {state === "NONE" ? (
                 <Tx
                   k="host.editor.payment_arrangements.add_details"
                   source="Add details"
                 />
+              ) : (
+                <Tx
+                  k="host.editor.payment_arrangements.edit_details"
+                  source="Edit details"
+                />
               )}
+              {/* Screen readers get the method too, so "Edit details" is never one of
+                  ten identical buttons in the list of controls. */}
               <span className="sr-only"> — {methodName}</span>
-              <ChevronDown
-                className={cn(
-                  "size-3.5 transition-transform",
-                  expanded && "rotate-180",
-                )}
-                aria-hidden
-              />
             </button>
           </div>
         ) : null}
       </div>
-
-      {checked && supportsDetails ? (
-        // The panel stays mounted and is hidden rather than unmounted, so a host who
-        // collapses a row mid-edit keeps their cursor position and their unsaved text,
-        // and `aria-controls` always resolves to a real element.
-        <div
-          id={panelId}
-          role="group"
-          aria-label={methodName}
-          hidden={!expanded}
-          className={cn(!expanded && "hidden", "border-t border-slate-200 bg-white p-4 sm:p-5")}
-        >
-          {showLegacy ? (
-            <LegacyInstructions
-              text={legacyText}
-              disabled={disabled}
-              onConvert={onConvert}
-            />
-          ) : (
-            <>
-              {legacyText ? (
-                <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">
-                  <Tx
-                    k="host.editor.payment_arrangements.convert_pending"
-                    source="Your previous saved text is still in place. It is replaced only when you save these fields."
-                  />
-                </p>
-              ) : null}
-              <PaymentDetailFields
-                code={code}
-                values={values}
-                issues={issues}
-                disabled={disabled}
-                idPrefix={`payment-field-${base}`}
-                onChange={onFieldChange}
-              />
-              {issues?._ ? (
-                <p role="alert" className="mt-3 flex items-start gap-2 text-sm text-rose-700">
-                  <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
-                  <FieldIssueMessage issue={issues._} />
-                </p>
-              ) : null}
-              {!hasIssues && PAYMENT_DETAIL_FIELDS[code].some((f) => f.required) ? (
-                <p className="mt-3 text-xs leading-5 text-slate-500">
-                  <Tx
-                    k="host.editor.payment_arrangements.details_optional_now"
-                    source="You can leave these blank and share the details when you accept a booking."
-                  />
-                </p>
-              ) : null}
-            </>
-          )}
-        </div>
-      ) : null}
     </li>
   );
 }
 
 /**
- * A host's V1 paragraph, shown as it was written.
+ * What a selected method's details are, in words.
  *
- * It is never parsed into the structured fields. Splitting a paragraph into an IBAN and
- * a SWIFT code by pattern-matching is exactly how money ends up sent to the wrong place,
- * so the host re-enters the values themselves and the old text stays visible while
- * they do.
+ * "Details added", never "saved": this screen holds a local draft, and the section's
+ * Save button below is the only thing that writes it.
  */
-function LegacyInstructions({
-  text,
-  disabled,
-  onConvert,
-}: {
-  text: string;
-  disabled: boolean;
-  onConvert: () => void;
-}) {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
-      <h3 className="text-sm font-semibold text-slate-900">
+function DetailStateLabel({ state }: { state: PaymentMethodDetailState }) {
+  switch (state) {
+    case "ATTENTION":
+      return (
         <Tx
-          k="host.editor.payment_arrangements.legacy_heading"
-          source="Legacy saved instructions"
+          k="host.editor.payment_arrangements.status_attention"
+          source="Needs attention"
         />
-      </h3>
-      <p className="mt-1 text-xs leading-5 text-slate-600">
+      );
+    case "ADDED":
+      return (
         <Tx
-          k="host.editor.payment_arrangements.legacy_description"
-          source="These still work and will prefill your message when you accept a booking. Convert them to fields to get checks on the IBAN and payment links."
+          k="host.editor.payment_arrangements.status_ready"
+          source="Details added"
         />
-      </p>
-      <pre
-        className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap rounded-md border border-slate-200 bg-white p-3 font-sans text-xs leading-5 text-slate-800"
-        translate="no"
-      >
-        {text}
-      </pre>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={disabled}
-        onClick={onConvert}
-        className="mt-3"
-      >
-        <Tx
-          k="host.editor.payment_arrangements.legacy_convert"
-          source="Convert to structured fields"
-        />
-      </Button>
-    </div>
-  );
+      );
+    default:
+      return (
+        <Tx k="host.editor.payment_arrangements.status_missing" source="Optional" />
+      );
+  }
 }
 
 function OtherMethodField({
@@ -611,7 +524,7 @@ function OtherMethodField({
   const errorId = issue ? "other-payment-method-error" : undefined;
 
   return (
-    <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5">
+    <div className="mt-5 max-w-sm">
       <div className="flex items-end justify-between gap-3">
         <label htmlFor="other-payment-method" className="text-sm font-semibold text-slate-900">
           <Tx
@@ -639,7 +552,7 @@ function OtherMethodField({
           "host.editor.payment_arrangements.other_placeholder",
           "MobilePay",
         ).text}
-        className="mt-2 h-12 bg-white text-base md:h-10 md:text-sm"
+        className="mt-2 h-12 text-base md:h-10 md:text-sm"
       />
       {issue ? (
         <p
@@ -712,32 +625,30 @@ function GuestPreview({
   const methods = normalizePaymentMethodCodes(draft.methodCodes);
 
   return (
-    <section
-      className="mt-8 rounded-xl border border-slate-200 bg-white p-4 sm:p-5"
-      aria-labelledby="payment-guest-preview-heading"
-    >
-      <div className="flex items-center gap-2">
-        <Eye className="size-4 text-slate-500" aria-hidden />
-        <h2 id="payment-guest-preview-heading" className="text-sm font-semibold text-slate-900">
-          <Tx
-            k="host.editor.payment_arrangements.preview_heading"
-            source="What guests will see"
-          />
-        </h2>
-      </div>
+    // A sentence, not a dashboard card. It restates the current draft in the words a
+    // guest reads it in, which is the only thing this section is for — a framed panel
+    // around three lines of prose would outrank the controls it is summarising.
+    <section className="mt-6" aria-labelledby="payment-guest-preview-heading">
+      <h2
+        id="payment-guest-preview-heading"
+        className="text-sm font-semibold text-slate-900"
+      >
+        <Tx
+          k="host.editor.payment_arrangements.preview_heading"
+          source="What guests will see"
+        />
+      </h2>
       {showMethods ? (
         <>
-          <ul className="mt-3 flex flex-wrap gap-2">
-            {methods.map((code) => (
-              <li
-                key={code}
-                className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-800"
-              >
+          <p className="mt-1 text-sm leading-6 text-slate-800">
+            {methods.map((code, index) => (
+              <span key={code}>
+                {index > 0 ? ", " : null}
                 <MethodLabel code={code} otherLabel={draft.otherLabel} />
-              </li>
+              </span>
             ))}
-          </ul>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
+          </p>
+          <p className="mt-1 text-sm leading-6 text-slate-500">
             <Tx
               k="host.editor.payment_arrangements.reviewed_explanation"
               source="The host will share payment instructions after accepting your request."
@@ -745,7 +656,7 @@ function GuestPreview({
           </p>
         </>
       ) : (
-        <p className="mt-3 text-sm leading-6 text-slate-600">
+        <p className="mt-1 text-sm leading-6 text-slate-500">
           <Tx
             k="host.editor.payment_arrangements.unanswered_fallback"
             source="Payment is arranged directly with the host after the booking request is accepted."
@@ -768,14 +679,7 @@ function SaveStatus({
   const i18n = useI18n();
 
   return (
-    <p
-      role="status"
-      aria-live="polite"
-      className={cn(
-        "flex min-h-6 items-center gap-2 text-sm",
-        state === "error" ? "text-rose-700" : "text-slate-500",
-      )}
-    >
+    <SectionStatusLine tone={state === "error" ? "error" : "muted"}>
       {state === "pending" ? (
         <>
           <Clock3 className="size-4 shrink-0" aria-hidden />
@@ -818,7 +722,7 @@ function SaveStatus({
           />
         </>
       )}
-    </p>
+    </SectionStatusLine>
   );
 }
 

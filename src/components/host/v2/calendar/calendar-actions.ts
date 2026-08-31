@@ -2,8 +2,6 @@
 
 import {
   clearCalendarDatePrice,
-  hideListingFromCalendar,
-  publishListingFromCalendar,
   removeCalendarPromotion,
   saveCalendarDefaultPricing,
   saveCalendarPromotion,
@@ -17,12 +15,17 @@ import {
 import type { MutationStep } from "@/lib/host/v2/calendar-review";
 
 /**
- * The only place in the v2 calendar that changes anything.
+ * The only place a reviewed plan becomes a write.
  *
  * It takes the steps a reviewed plan produced and hands each one to the existing
- * server action for that job — the same actions the current panel calls, with the same
- * session check, ownership check and validation on the server side. Nothing here
- * decides *whether* a change is allowed; it only carries an already-reviewed decision.
+ * server action for that job — with the same session check, ownership check and
+ * validation on the server side. Nothing here decides *whether* a change is allowed;
+ * it only carries an already-reviewed decision.
+ *
+ * Shared with the listing editor's Availability and Pricing sections, which run the
+ * listing-wide steps (`SET_AVAILABILITY_MODE`, `SET_DEFAULT_PRICING`,
+ * `SAVE_EVERGREEN_PROMOTION`, `REMOVE_PROMOTION`) through this same function. There is
+ * one implementation of "carry out a reviewed change", not one per surface.
  *
  * Steps run in order and stop at the first failure, so a partial save is reported as
  * one rather than silently swallowed.
@@ -69,18 +72,8 @@ export async function runMutationStep(
         startDate: step.startDate,
         endDate: step.endDate,
       });
-    case "PUBLISH_LISTING":
-      return publishListingFromCalendar(listingId);
-    case "HIDE_LISTING":
-      return hideListingFromCalendar(listingId);
     case "SET_AVAILABILITY_MODE":
       return setCalendarAvailabilityMode(listingId, step.mode);
-    case "SET_MIN_NIGHTS":
-      return saveCalendarDefaultPricing(listingId, {
-        baseNightlyRate: step.baseNightlyRate,
-        cleaningFee: step.cleaningFee,
-        minNights: step.minNights,
-      });
     case "SET_DEFAULT_PRICING":
       return saveCalendarDefaultPricing(listingId, {
         baseNightlyRate: step.baseNightlyRate,

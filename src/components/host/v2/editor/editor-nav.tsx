@@ -79,7 +79,7 @@ export function EditorNav({
       >
         {visible.map((item) => {
           const text = label(item);
-          const active = !item.external && item.slug === current;
+          const active = item.slug === current;
           return (
             <Link
               key={item.slug}
@@ -116,7 +116,7 @@ export function EditorNav({
                 </DropdownMenuLabel>
                 {group.items.map((item) => {
                   const text = label(item);
-                  const active = !item.external && item.slug === current;
+                  const active = item.slug === current;
                   return (
                     <DropdownMenuItem key={item.slug} asChild className="gap-2">
                       <Link
@@ -159,7 +159,7 @@ export function EditorNav({
               <ul className="space-y-0.5">
                 {group.items.map((item) => {
                   const text = label(item);
-                  const active = !item.external && item.slug === current;
+                  const active = item.slug === current;
                   return (
                     <li key={item.slug}>
                       <Link

@@ -19,7 +19,6 @@ import type { CalendarFormats } from "@/lib/host/v2/calendar-format";
 import type { ReviewPlan } from "@/lib/host/v2/calendar-review";
 import {
   consequenceText,
-  publishBlockerText,
   reviewErrorText,
   reviewFieldLabel,
   reviewValueText,
@@ -92,21 +91,10 @@ export function ReviewDialog({
                   className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[0.8125rem] text-amber-900"
                 >
                   <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
-                  <span className="min-w-0">
-                    <span className={text.translated ? "notranslate" : undefined}>
-                      {text.text}
-                    </span>
-                    {/* Publish is refused for a list of concrete reasons, so the
-                        host is given the list rather than one flat refusal. */}
-                    {error.code === "CANNOT_PUBLISH" ? (
-                      <ul className="mt-1 list-disc space-y-0.5 pl-4">
-                        {error.blockers.map((blocker) => (
-                          <li key={blocker}>
-                            {publishBlockerText(i18n, blocker).text}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : null}
+                  <span
+                    className={cn("min-w-0", text.translated && "notranslate")}
+                  >
+                    {text.text}
                   </span>
                 </li>
               );

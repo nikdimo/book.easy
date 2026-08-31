@@ -1,12 +1,17 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { CircleAlert, LoaderCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { CircleAlert } from "lucide-react";
+import {
+  EDITOR_GROUP_DIVIDER,
+  EDITOR_GROUP_HEADING,
+} from "@/components/host/v2/editor/editor-group";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tx } from "@/lib/i18n/client";
+import { cn } from "@/lib/utils";
 import { validateCancellationPolicy } from "@/lib/payments/cancellation-policy";
+import { SectionSaveRow, SectionStatusLine } from "./section-save-row";
 
 export function CancellationPolicyEditor({
   initialDays,
@@ -42,17 +47,20 @@ export function CancellationPolicyEditor({
   }
 
   return (
-    <section className="mx-auto w-full max-w-3xl border-t border-slate-200 py-8 pb-14">
-      <h2 className="text-base font-semibold text-slate-900">
+    // Below the deposits, deliberately: what a host may keep when a guest cancels
+    // depends on what they took in advance, so the answer above is the one that has to
+    // be read first.
+    <section className={cn("mx-auto w-full max-w-3xl pb-4", EDITOR_GROUP_DIVIDER)}>
+      <h2 className={EDITOR_GROUP_HEADING}>
         <Tx k="host.editor.cancellation.heading" source="Cancellation policy" />
       </h2>
-      <p className="mt-1 text-sm leading-6 text-slate-600">
+      <p className="mt-1 text-sm leading-6 text-slate-500">
         <Tx
           k="host.editor.cancellation.intro"
           source="Choose how many whole days before check-in the guest can cancel for a full refund. Enter 0 to allow a full refund until check-in begins."
         />
       </p>
-      <form onSubmit={submit} className="mt-4 space-y-4">
+      <form onSubmit={submit} className="mt-4">
         <div className="max-w-sm">
           <Label htmlFor="listing-free-cancellation-days" className="mb-1.5 block">
             <Tx
@@ -75,7 +83,7 @@ export function CancellationPolicyEditor({
               setError(false);
             }}
           />
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm leading-6 text-slate-500">
             <Tx
               k="host.editor.cancellation.after_deadline"
               source="After that deadline, you may keep only an advance payment already received. A damage deposit is always separate and refundable."
@@ -83,30 +91,35 @@ export function CancellationPolicyEditor({
           </p>
         </div>
         {error ? (
-          <p role="alert" className="flex items-center gap-2 text-sm text-rose-700">
-            <CircleAlert className="size-4" aria-hidden />
+          <p role="alert" className="mt-4 flex items-center gap-2 text-sm text-rose-700">
+            <CircleAlert className="size-4 shrink-0" aria-hidden />
             <Tx
               k="host.editor.cancellation.error"
               source="Enter a whole number from 0 to 3650 and try again."
             />
           </p>
         ) : null}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-slate-500">
-            {saved ? (
-              <Tx k="host.editor.cancellation.saved" source="Cancellation policy saved" />
-            ) : (
-              <Tx
-                k="host.editor.cancellation.review"
-                source="Cancellation policy needs review"
-              />
-            )}
-          </p>
-          <Button type="submit" disabled={saving} className="rounded-full bg-slate-900 px-6">
-            {saving ? <LoaderCircle className="animate-spin" aria-hidden /> : null}
+        <SectionSaveRow
+          saving={saving}
+          status={
+            <SectionStatusLine>
+              {saved ? (
+                <Tx
+                  k="host.editor.cancellation.saved"
+                  source="Cancellation policy saved"
+                />
+              ) : (
+                <Tx
+                  k="host.editor.cancellation.review"
+                  source="Cancellation policy needs review"
+                />
+              )}
+            </SectionStatusLine>
+          }
+          label={
             <Tx k="host.editor.cancellation.save" source="Save cancellation policy" />
-          </Button>
-        </div>
+          }
+        />
       </form>
     </section>
   );

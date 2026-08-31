@@ -4,6 +4,7 @@ import * as React from "react";
 import { Loader2, Pencil, Plus, Search, Star, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tx, interpolate, useI18n } from "@/lib/i18n/client";
@@ -17,23 +18,24 @@ import type { HostFacebookDestinationView } from "@/lib/services/facebook-destin
 import { cn } from "@/lib/utils";
 
 /**
- * Where the host is going to paste the post.
+ * The Facebook places a host is posting into, as a list they tick.
  *
- * Three kinds, and only three: their own Facebook profile, a group they saved once and
- * reuse everywhere, or a group link they are pasting for the first time and may not
- * want to keep. Nothing here is a Facebook integration — Linger Homes stores a name and
- * a URL, and opens that URL in a tab.
+ * Multi-select, which is the change that makes the whole wizard worth having: a host
+ * with three local rental groups posts into all three, and the single-selection version
+ * of this made them run the entire flow once per group. Their own profile is a row in
+ * the same list rather than a separate concept — to the host it is simply a fourth
+ * place the post goes.
  *
- * Saved groups belong to the host account rather than to a property, so the same three
- * local rental groups are one setup for every listing they will ever publish.
+ * Nothing here is a Facebook integration. Linger Homes stores a name and a URL, and
+ * later opens that URL in a tab. Saved groups belong to the host account rather than to
+ * a property, so the same three groups are one setup for every listing they publish.
+ *
+ * A pasted link is saved rather than used once. The previous version allowed an
+ * ephemeral "custom" destination alongside a single selection; with a list of ticked
+ * places there is nowhere coherent for an unsaved one to live, and a group worth
+ * posting into once is nearly always worth posting into again. Pasting still starts
+ * here — the address goes into the field below and the save form opens with it filled.
  */
-
-/** The one selection shape the workspace acts on. `profile` needs no id; `custom`
- *  carries a URL the host has not saved. */
-export type PromotionDestination =
-  | { kind: "profile" }
-  | { kind: "saved"; id: string; name: string; url: string }
-  | { kind: "custom"; url: string };
 
 /** Past this many saved groups the list stops being scannable and earns a filter. */
 const SEARCH_THRESHOLD = 6;
@@ -86,21 +88,24 @@ function useDestinationErrorMessage() {
 export function FacebookDestinationPicker({
   destinations,
   onDestinationsChange,
-  value,
-  onChange,
+  profileSelected,
+  onProfileSelectedChange,
+  selectedIds,
+  onSelectedIdsChange,
 }: {
   destinations: HostFacebookDestinationView[];
   onDestinationsChange: (next: HostFacebookDestinationView[]) => void;
-  value: PromotionDestination;
-  onChange: (next: PromotionDestination) => void;
+  profileSelected: boolean;
+  onProfileSelectedChange: (next: boolean) => void;
+  selectedIds: string[];
+  onSelectedIdsChange: (next: string[]) => void;
 }) {
   const { resolve } = useI18n();
   const errorMessage = useDestinationErrorMessage();
-  const groupName = React.useId();
   const [query, setQuery] = React.useState("");
   const [editing, setEditing] = React.useState<string | null>(null);
   const [adding, setAdding] = React.useState(false);
-  const [customUrl, setCustomUrl] = React.useState("");
+  const [pastedUrl, setPastedUrl] = React.useState("");
 
   const filtered = React.useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -111,6 +116,14 @@ export function FacebookDestinationPicker({
         item.url.toLowerCase().includes(needle),
     );
   }, [destinations, query]);
+
+  function toggleSelected(id: string, checked: boolean) {
+    onSelectedIdsChange(
+      checked
+        ? [...selectedIds.filter((value) => value !== id), id]
+        : selectedIds.filter((value) => value !== id),
+    );
+  }
 
   async function toggleFavorite(destination: HostFacebookDestinationView) {
     let result;
@@ -151,59 +164,34 @@ export function FacebookDestinationPicker({
       toast.error(errorMessage(result.error));
       return;
     }
-    onDestinationsChange(destinations.filter((item) => item.id !== destination.id));
-    if (value.kind === "saved" && value.id === destination.id) {
-      onChange({ kind: "profile" });
-    }
+    onDestinationsChange(
+      destinations.filter((item) => item.id !== destination.id),
+    );
+    onSelectedIdsChange(selectedIds.filter((id) => id !== destination.id));
   }
 
-  const customResult = customUrl.trim()
-    ? normalizeFacebookGroupUrl(customUrl)
-    : null;
+  const pasted = pastedUrl.trim() ? normalizeFacebookGroupUrl(pastedUrl) : null;
 
   return (
-    <fieldset className="min-w-0 space-y-3">
-      <legend className="text-sm font-medium">
-        <Tx k="host.promote.destination.legend" source="Where do you want to post?" />
-      </legend>
-
-      <label className="flex cursor-pointer items-center gap-3 rounded-lg border p-3 has-checked:border-[#1877F2] has-checked:bg-[#1877F2]/5">
-        <input
-          type="radio"
-          name={groupName}
-          className="size-4 accent-[#1877F2]"
-          checked={value.kind === "profile"}
-          onChange={() => onChange({ kind: "profile" })}
-        />
-        <span className="text-sm font-medium">
-          <Tx k="host.promote.destination.profile" source="My Facebook profile" />
-        </span>
-      </label>
-
-      {destinations.length > SEARCH_THRESHOLD && (
-        <div className="relative">
-          <Search
-            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden
+    <div className="min-w-0">
+      <ul className="divide-y divide-slate-200 border-y border-slate-200">
+        <li className="flex items-center gap-3 py-2.5">
+          <Checkbox
+            id="promotion-destination-profile"
+            checked={profileSelected}
+            onCheckedChange={(checked) => onProfileSelectedChange(checked === true)}
           />
-          <Input
-            className="pl-9"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            aria-label={
-              resolve("host.promote.destination.search", "Search saved groups").text
-            }
-            placeholder={
-              resolve("host.promote.destination.search", "Search saved groups").text
-            }
-          />
-        </div>
-      )}
+          <Label
+            htmlFor="promotion-destination-profile"
+            className="min-w-0 flex-1 cursor-pointer text-sm font-normal text-slate-900"
+          >
+            <Tx k="host.promote.destination.profile" source="My Facebook profile" />
+          </Label>
+        </li>
 
-      <ul className="space-y-2">
-        {filtered.map((destination) => (
-          <li key={destination.id}>
-            {editing === destination.id ? (
+        {filtered.map((destination) =>
+          editing === destination.id ? (
+            <li key={destination.id} className="py-2.5">
               <DestinationForm
                 initialName={destination.name}
                 initialUrl={destination.url}
@@ -222,123 +210,119 @@ export function FacebookDestinationPicker({
                       item.id === result.data.id ? result.data : item,
                     ),
                   );
-                  if (value.kind === "saved" && value.id === result.data.id) {
-                    onChange({
-                      kind: "saved",
-                      id: result.data.id,
-                      name: result.data.name,
-                      url: result.data.url,
-                    });
-                  }
                   setEditing(null);
                   return null;
                 }}
               />
-            ) : (
-              <div
-                className={cn(
-                  "flex items-center gap-2 rounded-lg border p-2 pl-3",
-                  value.kind === "saved" &&
-                    value.id === destination.id &&
-                    "border-[#1877F2] bg-[#1877F2]/5",
-                )}
+            </li>
+          ) : (
+            <li key={destination.id} className="flex items-center gap-2 py-2.5">
+              <Checkbox
+                id={`promotion-destination-${destination.id}`}
+                checked={selectedIds.includes(destination.id)}
+                onCheckedChange={(checked) =>
+                  toggleSelected(destination.id, checked === true)
+                }
+              />
+              <Label
+                htmlFor={`promotion-destination-${destination.id}`}
+                className="min-w-0 flex-1 cursor-pointer font-normal"
               >
-                <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
-                  <input
-                    type="radio"
-                    name={groupName}
-                    className="size-4 shrink-0 accent-[#1877F2]"
-                    checked={value.kind === "saved" && value.id === destination.id}
-                    onChange={() =>
-                      onChange({
-                        kind: "saved",
-                        id: destination.id,
-                        name: destination.name,
-                        url: destination.url,
-                      })
-                    }
-                  />
-                  <span className="min-w-0">
-                    <span
-                      className="block truncate text-sm font-medium"
-                      data-user-generated-content
-                      translate="yes"
-                    >
-                      {destination.name}
-                    </span>
-                    <span className="block truncate text-xs text-muted-foreground" translate="no">
-                      {destination.url}
-                    </span>
-                  </span>
-                </label>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => void toggleFavorite(destination)}
-                  aria-label={
-                    destination.favorite
-                      ? interpolate(
-                          resolve(
-                            "host.promote.destination.unfavorite_label",
-                            "Unpin {name} from the top",
-                          ),
-                          { name: destination.name },
-                        ).text
-                      : interpolate(
-                          resolve(
-                            "host.promote.destination.favorite_label",
-                            "Pin {name} to the top",
-                          ),
-                          { name: destination.name },
-                        ).text
-                  }
-                  aria-pressed={destination.favorite}
+                <span
+                  className="block truncate text-sm text-slate-900"
+                  data-user-generated-content
+                  translate="yes"
                 >
-                  <Star
-                    className={cn(
-                      "size-4",
-                      destination.favorite && "fill-amber-400 text-amber-500",
-                    )}
-                    aria-hidden
-                  />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => setEditing(destination.id)}
-                  aria-label={
-                    interpolate(
-                      resolve("host.promote.destination.rename_label", "Rename {name}"),
-                      { name: destination.name },
-                    ).text
-                  }
-                >
-                  <Pencil className="size-4" aria-hidden />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => void remove(destination)}
-                  aria-label={
-                    interpolate(
-                      resolve("host.promote.destination.remove_label", "Remove {name}"),
-                      { name: destination.name },
-                    ).text
-                  }
-                >
-                  <Trash2 className="size-4" aria-hidden />
-                </Button>
-              </div>
-            )}
-          </li>
-        ))}
+                  {destination.name}
+                </span>
+              </Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => void toggleFavorite(destination)}
+                aria-label={
+                  destination.favorite
+                    ? interpolate(
+                        resolve(
+                          "host.promote.destination.unfavorite_label",
+                          "Unpin {name} from the top",
+                        ),
+                        { name: destination.name },
+                      ).text
+                    : interpolate(
+                        resolve(
+                          "host.promote.destination.favorite_label",
+                          "Pin {name} to the top",
+                        ),
+                        { name: destination.name },
+                      ).text
+                }
+                aria-pressed={destination.favorite}
+              >
+                <Star
+                  className={cn(
+                    "size-4",
+                    destination.favorite && "fill-amber-400 text-amber-500",
+                  )}
+                  aria-hidden
+                />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => setEditing(destination.id)}
+                aria-label={
+                  interpolate(
+                    resolve("host.promote.destination.rename_label", "Rename {name}"),
+                    { name: destination.name },
+                  ).text
+                }
+              >
+                <Pencil className="size-4" aria-hidden />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                onClick={() => void remove(destination)}
+                aria-label={
+                  interpolate(
+                    resolve("host.promote.destination.remove_label", "Remove {name}"),
+                    { name: destination.name },
+                  ).text
+                }
+              >
+                <Trash2 className="size-4" aria-hidden />
+              </Button>
+            </li>
+          ),
+        )}
       </ul>
 
+      {destinations.length > SEARCH_THRESHOLD && (
+        <div className="relative mt-3">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden
+          />
+          <Input
+            className="pl-9"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            aria-label={
+              resolve("host.promote.destination.search", "Search saved groups").text
+            }
+            placeholder={
+              resolve("host.promote.destination.search", "Search saved groups").text
+            }
+          />
+        </div>
+      )}
+
       {destinations.length > 0 && filtered.length === 0 && (
-        <p className="text-sm text-muted-foreground">
+        <p className="mt-3 text-sm text-muted-foreground">
           <Tx
             k="host.promote.destination.no_matches"
             source="No saved group matches that search."
@@ -346,90 +330,59 @@ export function FacebookDestinationPicker({
         </p>
       )}
 
-      {/* A group the host is opening once. It is not saved, so it never joins the list
-          above and never has to be cleaned up. */}
-      <label className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 has-checked:border-[#1877F2] has-checked:bg-[#1877F2]/5">
-        <input
-          type="radio"
-          name={groupName}
-          className="mt-0.5 size-4 accent-[#1877F2]"
-          checked={value.kind === "custom"}
-          onChange={() =>
-            onChange({ kind: "custom", url: customResult?.ok ? customResult.url : "" })
-          }
-        />
-        <span className="min-w-0 flex-1 space-y-2">
-          <span className="block text-sm font-medium">
-            <Tx
-              k="host.promote.destination.custom"
-              source="Paste another group link"
-            />
-          </span>
-          <Input
-            value={customUrl}
-            onChange={(event) => {
-              setCustomUrl(event.target.value);
-              const parsed = normalizeFacebookGroupUrl(event.target.value);
-              onChange({ kind: "custom", url: parsed.ok ? parsed.url : "" });
+      {adding ? (
+        <div className="mt-3">
+          <DestinationForm
+            initialName=""
+            initialUrl={pasted?.ok ? pasted.url : ""}
+            submitLabel={resolve("host.promote.destination.save", "Save group").text}
+            onCancel={() => setAdding(false)}
+            onSubmit={async (name, url) => {
+              const result = await createFacebookDestinationAction({ name, url });
+              if (!result.ok) return errorMessage(result.error);
+              onDestinationsChange([result.data, ...destinations]);
+              // Saved from inside the flow means the host is posting there now.
+              onSelectedIdsChange([...selectedIds, result.data.id]);
+              setAdding(false);
+              setPastedUrl("");
+              return null;
             }}
+          />
+        </div>
+      ) : (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Input
+            value={pastedUrl}
+            onChange={(event) => setPastedUrl(event.target.value)}
             aria-label={
-              resolve(
-                "host.promote.destination.custom_label",
-                "Facebook group link",
-              ).text
+              resolve("host.promote.destination.custom_label", "Facebook group link")
+                .text
             }
             placeholder={GROUP_URL_EXAMPLE}
+            inputMode="url"
+            className="min-w-0 flex-1"
           />
-          {customResult && !customResult.ok && (
-            <span className="block text-xs text-destructive">
-              <Tx
-                k="host.promote.destination.error_invalid"
-                source="That is not a Facebook group link. It should look like facebook.com/groups/…"
-              />
-            </span>
-          )}
-        </span>
-      </label>
-
-      {adding ? (
-        <DestinationForm
-          initialName=""
-          initialUrl={customResult?.ok ? customResult.url : ""}
-          submitLabel={resolve("host.promote.destination.save", "Save group").text}
-          onCancel={() => setAdding(false)}
-          onSubmit={async (name, url) => {
-            const result = await createFacebookDestinationAction({ name, url });
-            if (!result.ok) return errorMessage(result.error);
-            onDestinationsChange([result.data, ...destinations]);
-            onChange({
-              kind: "saved",
-              id: result.data.id,
-              name: result.data.name,
-              url: result.data.url,
-            });
-            setAdding(false);
-            return null;
-          }}
-        />
-      ) : (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setAdding(true)}
-        >
-          <Plus className="size-4" aria-hidden />
-          <Tx k="host.promote.destination.add" source="Save a Facebook group" />
-        </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setAdding(true)}
+          >
+            <Plus className="size-4" aria-hidden />
+            <Tx k="host.promote.destination.add" source="Save a Facebook group" />
+          </Button>
+        </div>
       )}
 
-      <p className="text-xs text-muted-foreground">
-        <Tx
-          k="host.promote.destination.privacy"
-          source="Private groups are fine. We only store the name and the link, and open it in a new tab — we never read the group or post for you."
-        />
-      </p>
-    </fieldset>
+      {pasted && !pasted.ok && (
+        <p className="mt-2 text-xs text-destructive">
+          <Tx
+            k="host.promote.destination.error_invalid"
+            source="That is not a Facebook group link. It should look like facebook.com/groups/…"
+          />
+        </p>
+      )}
+    </div>
   );
 }
 

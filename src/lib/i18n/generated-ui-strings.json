@@ -3130,16 +3130,6 @@
     "filePath": "src/components/host/v2/listings/address-modal.tsx"
   },
   {
-    "key": "country.es",
-    "sourceText": "Spain",
-    "filePath": "src/components/host/v2/listings/address-step.tsx"
-  },
-  {
-    "key": "country.gr",
-    "sourceText": "Greece",
-    "filePath": "src/components/host/v2/listings/address-step.tsx"
-  },
-  {
     "key": "country.mk",
     "sourceText": "North Macedonia",
     "filePath": "src/components/host/v2/listings/address-modal.tsx"
@@ -5755,6 +5745,61 @@
     "filePath": "src/components/host/v2/editor/availability-summary.tsx"
   },
   {
+    "key": "host.editor.availability.dates_body",
+    "sourceText": "A holiday, a repair, a stay you took directly — anything that applies to some dates and not to others is set on the calendar.",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.dates_cta",
+    "sourceText": "Open or block specific dates",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.dates_title",
+    "sourceText": "Particular dates",
+    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.default_closed",
+    "sourceText": "Only dates I open",
+    "filePath": "src/components/host/v2/editor/availability-default-editor.tsx"
+  },
+  {
+    "key": "host.editor.availability.default_closed_help",
+    "sourceText": "Future dates cannot be booked until you open them.",
+    "filePath": "src/components/host/v2/editor/availability-default-editor.tsx"
+  },
+  {
+    "key": "host.editor.availability.default_open",
+    "sourceText": "Available by default",
+    "filePath": "src/components/host/v2/editor/availability-default-editor.tsx"
+  },
+  {
+    "key": "host.editor.availability.default_open_help",
+    "sourceText": "Future dates can be booked unless you block them.",
+    "filePath": "src/components/host/v2/editor/availability-default-editor.tsx"
+  },
+  {
+    "key": "host.editor.availability.defaults_current",
+    "sourceText": "This is the current setting.",
+    "filePath": "src/components/host/v2/editor/availability-default-editor.tsx"
+  },
+  {
+    "key": "host.editor.availability.defaults_lead",
+    "sourceText": "How every future date starts out, before you open or block anything.",
+    "filePath": "src/components/host/v2/editor/availability-default-editor.tsx"
+  },
+  {
+    "key": "host.editor.availability.defaults_pending",
+    "sourceText": "Nothing changes until you confirm.",
+    "filePath": "src/components/host/v2/editor/availability-default-editor.tsx"
+  },
+  {
+    "key": "host.editor.availability.defaults_title",
+    "sourceText": "Default availability",
+    "filePath": "src/components/host/v2/editor/availability-default-editor.tsx"
+  },
+  {
     "key": "host.editor.availability.feed_count.few",
     "sourceText": "{n} calendars",
     "filePath": "src/components/host/v2/editor/availability-summary.tsx"
@@ -5836,17 +5881,12 @@
   },
   {
     "key": "host.editor.availability.how_listing_wide",
-    "sourceText": "Listing-wide availability controls future dates. Dates already booked are never changed by it.",
+    "sourceText": "The default above only affects dates you have not decided about. Booked dates are never changed by it.",
     "filePath": "src/components/host/v2/editor/availability-summary.tsx"
   },
   {
     "key": "host.editor.availability.lead",
-    "sourceText": "A summary of what is open and what is blocked. Availability itself is set in Calendar.",
-    "filePath": "src/components/host/v2/editor/availability-summary.tsx"
-  },
-  {
-    "key": "host.editor.availability.manage_cta",
-    "sourceText": "Manage availability in Calendar",
+    "sourceText": "Set how future dates start out here. Opening or blocking particular dates happens in the calendar.",
     "filePath": "src/components/host/v2/editor/availability-summary.tsx"
   },
   {
@@ -5883,6 +5923,11 @@
     "key": "host.editor.availability.nights.zero",
     "sourceText": "{n} nights",
     "filePath": "src/components/host/v2/editor/availability-summary.tsx"
+  },
+  {
+    "key": "host.editor.availability.review_cta",
+    "sourceText": "Review this change",
+    "filePath": "src/components/host/v2/editor/availability-default-editor.tsx"
   },
   {
     "key": "host.editor.availability.scheduled_count.few",
@@ -6008,11 +6053,6 @@
     "key": "host.editor.basics.title_placeholder",
     "sourceText": "Modern apartment near the center",
     "filePath": "src/components/host/v2/editor/basics/basics-workspace.tsx"
-  },
-  {
-    "key": "host.editor.calendar_settings",
-    "sourceText": "Calendar settings",
-    "filePath": "src/lib/i18n/editor-label.ts"
   },
   {
     "key": "host.editor.cancellation.after_deadline",
@@ -6366,7 +6406,7 @@
   },
   {
     "key": "host.editor.location.private_rest",
-    "sourceText": "The street address, pin and Street View stay private until you confirm a booking.",
+    "sourceText": "The street address, pin and Street View stay private until {days} days before check-in for a confirmed booking, when guests receive arrival instructions.",
     "filePath": "src/components/host/v2/editor/location/location-privacy-note.tsx"
   },
   {
@@ -6436,7 +6476,7 @@
   },
   {
     "key": "host.editor.location.street_view_privacy",
-    "sourceText": "Never public. A guest sees it {days} days before check-in, once you have confirmed their booking.",
+    "sourceText": "Never public. A guest sees it with their arrival instructions {days} days before check-in, once you have confirmed their booking.",
     "filePath": "src/components/host/v2/editor/location/location-workspace.tsx"
   },
   {
@@ -6500,8 +6540,8 @@
     "filePath": "src/lib/i18n/editor-label.ts"
   },
   {
-    "key": "host.editor.nav.open_calendar",
-    "sourceText": "Open calendar",
+    "key": "host.editor.nav.group_rates",
+    "sourceText": "Rates & availability",
     "filePath": "src/lib/i18n/editor-label.ts"
   },
   {
@@ -6557,6 +6597,11 @@
   {
     "key": "host.editor.overview.attention.rooms",
     "sourceText": "Property details are incomplete.",
+    "filePath": "src/lib/i18n/editor-label.ts"
+  },
+  {
+    "key": "host.editor.overview.attention.street_view",
+    "sourceText": "Check Street View and point it at the approach guests should use.",
     "filePath": "src/lib/i18n/editor-label.ts"
   },
   {
@@ -6732,12 +6777,17 @@
   {
     "key": "host.editor.payment_arrangements.convert_pending",
     "sourceText": "Your previous saved text is still in place. It is replaced only when you save these fields.",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-details-sheet.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.details_done",
+    "sourceText": "Done",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-details-sheet.tsx"
   },
   {
     "key": "host.editor.payment_arrangements.details_optional_now",
     "sourceText": "You can leave these blank and share the details when you accept a booking.",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-details-sheet.tsx"
   },
   {
     "key": "host.editor.payment_arrangements.edit_details",
@@ -6757,17 +6807,17 @@
   {
     "key": "host.editor.payment_arrangements.legacy_convert",
     "sourceText": "Convert to structured fields",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-details-sheet.tsx"
   },
   {
     "key": "host.editor.payment_arrangements.legacy_description",
     "sourceText": "These still work and will prefill your message when you accept a booking. Convert them to fields to get checks on the IBAN and payment links.",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-details-sheet.tsx"
   },
   {
     "key": "host.editor.payment_arrangements.legacy_heading",
     "sourceText": "Legacy saved instructions",
-    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-details-sheet.tsx"
   },
   {
     "key": "host.editor.payment_arrangements.method_required",
@@ -6890,13 +6940,23 @@
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
   },
   {
+    "key": "host.editor.payment_arrangements.sheet_description",
+    "sourceText": "Only shared with a guest after you accept their booking.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-details-sheet.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.status_attention",
+    "sourceText": "Needs attention",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
     "key": "host.editor.payment_arrangements.status_error",
     "sourceText": "Not saved. Check your connection and try again.",
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
   },
   {
     "key": "host.editor.payment_arrangements.status_missing",
-    "sourceText": "Optional details",
+    "sourceText": "Optional",
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
   },
   {
@@ -6906,7 +6966,7 @@
   },
   {
     "key": "host.editor.payment_arrangements.status_ready",
-    "sourceText": "Details saved",
+    "sourceText": "Details added",
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
   },
   {
@@ -7545,23 +7605,18 @@
     "filePath": "src/components/host/v2/editor/editor-header.tsx"
   },
   {
-    "key": "host.editor.pricing.base_rate",
-    "sourceText": "Base nightly rate",
+    "key": "host.editor.pricing.context_heading",
+    "sourceText": "Fixed for this listing",
     "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
   },
   {
-    "key": "host.editor.pricing.cleaning_fee",
-    "sourceText": "Cleaning fee",
+    "key": "host.editor.pricing.context_note",
+    "sourceText": "Every amount on this listing is set in this currency. Contact support to change either of these.",
     "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
   },
   {
     "key": "host.editor.pricing.currency",
     "sourceText": "Currency",
-    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
-  },
-  {
-    "key": "host.editor.pricing.current_heading",
-    "sourceText": "Current pricing",
     "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
   },
   {
@@ -7580,48 +7635,78 @@
     "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
   },
   {
-    "key": "host.editor.pricing.extras_heading",
-    "sourceText": "On top of the base price",
+    "key": "host.editor.pricing.dated_offer_cta",
+    "sourceText": "Create a date-based offer",
     "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
   },
   {
-    "key": "host.editor.pricing.handoff_base",
-    "sourceText": "The base nightly rate applies to every night unless that date says otherwise.",
+    "key": "host.editor.pricing.dated_promotions_label",
+    "sourceText": "Date-based offers",
     "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
   },
   {
-    "key": "host.editor.pricing.handoff_dates",
-    "sourceText": "To charge more or less for particular nights, select those dates in Calendar and give them their own price.",
+    "key": "host.editor.pricing.dated_promotions_none",
+    "sourceText": "No offer is running for particular dates.",
     "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
   },
   {
-    "key": "host.editor.pricing.handoff_heading",
-    "sourceText": "Where pricing is changed",
+    "key": "host.editor.pricing.dated_promotions_some",
+    "sourceText": "These run only on the dates they were created for. Open one to change it on the calendar.",
     "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
   },
   {
-    "key": "host.editor.pricing.handoff_promotions",
-    "sourceText": "Promotions are created and ended in Calendar as well, so one screen decides what a guest pays.",
+    "key": "host.editor.pricing.dates_cta",
+    "sourceText": "Set prices for specific dates",
     "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.dates_heading",
+    "sourceText": "Particular dates",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.defaults_current",
+    "sourceText": "These are the current values.",
+    "filePath": "src/components/host/v2/editor/pricing-defaults-editor.tsx"
+  },
+  {
+    "key": "host.editor.pricing.defaults_lead",
+    "sourceText": "What a night costs, and the least a guest can book, unless a particular date says otherwise.",
+    "filePath": "src/components/host/v2/editor/pricing-defaults-editor.tsx"
+  },
+  {
+    "key": "host.editor.pricing.defaults_pending",
+    "sourceText": "Nothing changes until you confirm.",
+    "filePath": "src/components/host/v2/editor/pricing-defaults-editor.tsx"
+  },
+  {
+    "key": "host.editor.pricing.defaults_title",
+    "sourceText": "Default pricing",
+    "filePath": "src/components/host/v2/editor/pricing-defaults-editor.tsx"
+  },
+  {
+    "key": "host.editor.pricing.first_body",
+    "sourceText": "This listing has no price yet, so no date can be booked. Give it a nightly price to start.",
+    "filePath": "src/components/host/v2/editor/pricing-defaults-editor.tsx"
+  },
+  {
+    "key": "host.editor.pricing.first_cta",
+    "sourceText": "Save nightly price",
+    "filePath": "src/components/host/v2/editor/pricing-defaults-editor.tsx"
+  },
+  {
+    "key": "host.editor.pricing.first_title",
+    "sourceText": "Set your nightly price",
+    "filePath": "src/components/host/v2/editor/pricing-defaults-editor.tsx"
   },
   {
     "key": "host.editor.pricing.intro",
-    "sourceText": "What this listing charges today. Prices are set and changed in Calendar.",
-    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
-  },
-  {
-    "key": "host.editor.pricing.manage_cta",
-    "sourceText": "Manage pricing in Calendar",
+    "sourceText": "Set what this listing charges by default here. Prices for particular dates are set on the calendar.",
     "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
   },
   {
     "key": "host.editor.pricing.max_stay",
     "sourceText": "Maximum stay",
-    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
-  },
-  {
-    "key": "host.editor.pricing.min_stay",
-    "sourceText": "Minimum stay",
     "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
   },
   {
@@ -7655,9 +7740,14 @@
     "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
   },
   {
-    "key": "host.editor.pricing.no_rule",
-    "sourceText": "No prices have been set for this listing yet. Open Calendar to set a nightly rate before you publish.",
-    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+    "key": "host.editor.pricing.offers_lead",
+    "sourceText": "Discounts that run on every date until you end them. Offers for particular dates are set on the calendar.",
+    "filePath": "src/components/host/v2/editor/ongoing-offers-editor.tsx"
+  },
+  {
+    "key": "host.editor.pricing.offers_title",
+    "sourceText": "Ongoing offers",
+    "filePath": "src/components/host/v2/editor/ongoing-offers-editor.tsx"
   },
   {
     "key": "host.editor.pricing.promo.all_dates",
@@ -7735,19 +7825,9 @@
     "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
   },
   {
-    "key": "host.editor.pricing.promotions_count",
-    "sourceText": "{active} running now, {upcoming} scheduled.",
-    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
-  },
-  {
-    "key": "host.editor.pricing.promotions_label",
-    "sourceText": "Promotions",
-    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
-  },
-  {
-    "key": "host.editor.pricing.promotions_none",
-    "sourceText": "No promotions are running or scheduled.",
-    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+    "key": "host.editor.pricing.review_cta",
+    "sourceText": "Review and save pricing",
+    "filePath": "src/components/host/v2/editor/pricing-defaults-editor.tsx"
   },
   {
     "key": "host.editor.rooms.add",
@@ -9745,11 +9825,6 @@
     "filePath": "src/components/host/promotion/promotion-availability-picker.tsx"
   },
   {
-    "key": "host.promote.availability.heading",
-    "sourceText": "Availability",
-    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
-  },
-  {
     "key": "host.promote.availability.hint",
     "sourceText": "Optional. Pick a range from your real calendar — nothing is added to the post unless you choose dates.",
     "filePath": "src/components/host/promotion/promotion-availability-picker.tsx"
@@ -9765,29 +9840,109 @@
     "filePath": "src/components/host/promotion/promotion-availability-picker.tsx"
   },
   {
+    "key": "host.promote.channel.facebook",
+    "sourceText": "Facebook",
+    "filePath": "src/components/host/promotion/promotion-step-post.tsx"
+  },
+  {
+    "key": "host.promote.channel.facebook_note",
+    "sourceText": "Profile and groups",
+    "filePath": "src/components/host/promotion/promotion-step-where.tsx"
+  },
+  {
+    "key": "host.promote.channel.instagram",
+    "sourceText": "Instagram",
+    "filePath": "src/components/host/promotion/promotion-step-post.tsx"
+  },
+  {
+    "key": "host.promote.channel.instagram_note",
+    "sourceText": "Photo and caption",
+    "filePath": "src/components/host/promotion/promotion-step-where.tsx"
+  },
+  {
+    "key": "host.promote.channel.link",
+    "sourceText": "Copy link",
+    "filePath": "src/components/host/promotion/promotion-step-where.tsx"
+  },
+  {
+    "key": "host.promote.channel.link_note",
+    "sourceText": "Anywhere else",
+    "filePath": "src/components/host/promotion/promotion-step-where.tsx"
+  },
+  {
+    "key": "host.promote.channel.messaging",
+    "sourceText": "WhatsApp · Viber",
+    "filePath": "src/components/host/promotion/promotion-step-where.tsx"
+  },
+  {
+    "key": "host.promote.channel.messaging_note",
+    "sourceText": "Nothing to copy",
+    "filePath": "src/components/host/promotion/promotion-step-where.tsx"
+  },
+  {
+    "key": "host.promote.close",
+    "sourceText": "Done",
+    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+  },
+  {
+    "key": "host.promote.compose.heading",
+    "sourceText": "Write it once",
+    "filePath": "src/components/host/promotion/promotion-step-compose.tsx"
+  },
+  {
+    "key": "host.promote.compose.help",
+    "sourceText": "Why each app looks different",
+    "filePath": "src/components/host/promotion/promotion-step-compose.tsx"
+  },
+  {
+    "key": "host.promote.compose.help_body",
+    "sourceText": "One post, adjusted for what each app can do. Editing one does not change the others, and each can be reset.",
+    "filePath": "src/components/host/promotion/promotion-step-compose.tsx"
+  },
+  {
+    "key": "host.promote.compose.help_dates",
+    "sourceText": "Dates are optional, and only ever ones your calendar still has open. They go in the link too, so a guest arrives with that stay already priced.",
+    "filePath": "src/components/host/promotion/promotion-step-compose.tsx"
+  },
+  {
+    "key": "host.promote.compose.help_instagram",
+    "sourceText": "Instagram captions cannot hold a working link, so yours points at your bio instead, with the city as a hashtag.",
+    "filePath": "src/components/host/promotion/promotion-step-compose.tsx"
+  },
+  {
+    "key": "host.promote.compose.tab_preview",
+    "sourceText": "Preview",
+    "filePath": "src/components/host/promotion/promotion-step-compose.tsx"
+  },
+  {
+    "key": "host.promote.compose.tab_write",
+    "sourceText": "Write",
+    "filePath": "src/components/host/promotion/promotion-step-compose.tsx"
+  },
+  {
     "key": "host.promote.copied",
     "sourceText": "Post text copied. Paste it into Facebook with Ctrl+V.",
-    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+    "filePath": "src/components/host/promotion/promotion-step-post.tsx"
   },
   {
     "key": "host.promote.copy",
     "sourceText": "Copy text",
-    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+    "filePath": "src/components/host/promotion/promotion-step-post.tsx"
   },
   {
     "key": "host.promote.copy_failed",
     "sourceText": "The text could not be copied. Select it in the box and copy it manually.",
-    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+    "filePath": "src/components/host/promotion/promotion-step-post.tsx"
   },
   {
     "key": "host.promote.custom_message",
     "sourceText": "Your opening line (optional)",
-    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+    "filePath": "src/components/host/promotion/promotion-step-compose.tsx"
   },
   {
     "key": "host.promote.custom_message_placeholder",
     "sourceText": "Last-minute opening after a cancellation!",
-    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+    "filePath": "src/components/host/promotion/promotion-step-compose.tsx"
   },
   {
     "key": "host.promote.destination.add",
@@ -9797,11 +9952,6 @@
   {
     "key": "host.promote.destination.cancel",
     "sourceText": "Cancel",
-    "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
-  },
-  {
-    "key": "host.promote.destination.custom",
-    "sourceText": "Paste another group link",
     "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
   },
   {
@@ -9850,11 +10000,6 @@
     "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
   },
   {
-    "key": "host.promote.destination.legend",
-    "sourceText": "Where do you want to post?",
-    "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
-  },
-  {
     "key": "host.promote.destination.name",
     "sourceText": "Group name",
     "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
@@ -9867,7 +10012,7 @@
   {
     "key": "host.promote.destination.privacy",
     "sourceText": "Private groups are fine. We only store the name and the link, and open it in a new tab — we never read the group or post for you.",
-    "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
+    "filePath": "src/components/host/promotion/promotion-step-where.tsx"
   },
   {
     "key": "host.promote.destination.profile",
@@ -9910,23 +10055,33 @@
     "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
   },
   {
-    "key": "host.promote.details.guests",
-    "sourceText": "Sleeps up to {count} guests",
+    "key": "host.promote.details.guests_short",
+    "sourceText": "Guests",
+    "filePath": "src/components/host/promotion/promotion-step-compose.tsx"
+  },
+  {
+    "key": "host.promote.details.price_short",
+    "sourceText": "Price",
+    "filePath": "src/components/host/promotion/promotion-step-compose.tsx"
+  },
+  {
+    "key": "host.promote.done.body",
+    "sourceText": "{count} places, one sitting. Next time, Promote opens right where you left off.",
     "filePath": "src/components/host/promotion/promotion-workspace.tsx"
   },
   {
-    "key": "host.promote.details.heading",
-    "sourceText": "Include in the post",
+    "key": "host.promote.done.eyebrow",
+    "sourceText": "All posted",
     "filePath": "src/components/host/promotion/promotion-workspace.tsx"
   },
   {
-    "key": "host.promote.details.price",
-    "sourceText": "Starting price per night",
+    "key": "host.promote.done.heading",
+    "sourceText": "Your place is out there",
     "filePath": "src/components/host/promotion/promotion-workspace.tsx"
   },
   {
-    "key": "host.promote.instructions",
-    "sourceText": "Copy the text first. Then open Facebook, paste with Ctrl+V, add your photos if desired, and post.",
+    "key": "host.promote.finish",
+    "sourceText": "Finish",
     "filePath": "src/components/host/promotion/promotion-workspace.tsx"
   },
   {
@@ -9935,14 +10090,69 @@
     "filePath": "src/components/host/promotion/promotion-workspace.tsx"
   },
   {
-    "key": "host.promote.open_group",
-    "sourceText": "Open selected group",
-    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+    "key": "host.promote.media.heading",
+    "sourceText": "Photos and video",
+    "filePath": "src/components/host/promotion/promotion-media-picker.tsx"
   },
   {
-    "key": "host.promote.open_profile",
-    "sourceText": "Post on Facebook profile",
-    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+    "key": "host.promote.media.help",
+    "sourceText": "Photos, and what Facebook does with them",
+    "filePath": "src/components/host/promotion/promotion-media-picker.tsx"
+  },
+  {
+    "key": "host.promote.media.help_facebook",
+    "sourceText": "Facebook already shows your cover photo in the link preview. Attach photos and it shows those instead, and your link becomes plain text — often worth it in a group, where photos are what people stop for.",
+    "filePath": "src/components/host/promotion/promotion-media-picker.tsx"
+  },
+  {
+    "key": "host.promote.media.help_instagram",
+    "sourceText": "Instagram needs a file. Save the photos here, then pick them from your gallery in the app.",
+    "filePath": "src/components/host/promotion/promotion-media-picker.tsx"
+  },
+  {
+    "key": "host.promote.media.help_saving",
+    "sourceText": "Saving several at once makes your browser ask permission. On an iPhone, choose Save to Photos in the share sheet.",
+    "filePath": "src/components/host/promotion/promotion-media-picker.tsx"
+  },
+  {
+    "key": "host.promote.media.hint",
+    "sourceText": "Attach them yourself for a stronger post.",
+    "filePath": "src/components/host/promotion/promotion-media-picker.tsx"
+  },
+  {
+    "key": "host.promote.media.item_label",
+    "sourceText": "Include photo {number} in what you save",
+    "filePath": "src/components/host/promotion/promotion-media-picker.tsx"
+  },
+  {
+    "key": "host.promote.media.save",
+    "sourceText": "Save {count}",
+    "filePath": "src/components/host/promotion/promotion-media-picker.tsx"
+  },
+  {
+    "key": "host.promote.media.save_failed",
+    "sourceText": "Those files could not be saved. Open the listing and save them from the gallery instead.",
+    "filePath": "src/components/host/promotion/promotion-media-picker.tsx"
+  },
+  {
+    "key": "host.promote.media.saved",
+    "sourceText": "{count} saved to your device.",
+    "filePath": "src/components/host/promotion/promotion-media-picker.tsx"
+  },
+  {
+    "key": "host.promote.messaging.telegram",
+    "sourceText": "Telegram",
+    "filePath": "src/components/host/promotion/promotion-step-post.tsx"
+  },
+  {
+    "key": "host.promote.messaging.viber",
+    "sourceText": "Viber",
+    "filePath": "src/components/host/promotion/promotion-step-post.tsx"
+  },
+  {
+    "key": "host.promote.messaging.whatsapp",
+    "sourceText": "WhatsApp",
+    "filePath": "src/components/host/promotion/promotion-step-post.tsx"
   },
   {
     "key": "host.promote.post.available",
@@ -9955,9 +10165,14 @@
     "filePath": "src/components/host/promotion/promotion-workspace.tsx"
   },
   {
-    "key": "host.promote.post.count",
-    "sourceText": "{count} characters. Facebook hides anything past about {limit} behind “See more”.",
-    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+    "key": "host.promote.post.copied_paste",
+    "sourceText": "Text copied — paste with Ctrl+V",
+    "filePath": "src/components/host/promotion/promotion-step-post.tsx"
+  },
+  {
+    "key": "host.promote.post.copy_link",
+    "sourceText": "Copy the property link",
+    "filePath": "src/components/host/promotion/promotion-step-post.tsx"
   },
   {
     "key": "host.promote.post.cta",
@@ -9972,7 +10187,62 @@
   {
     "key": "host.promote.post.heading",
     "sourceText": "Post text",
+    "filePath": "src/components/host/promotion/promotion-step-compose.tsx"
+  },
+  {
+    "key": "host.promote.post.heading_step",
+    "sourceText": "Post it yourself",
+    "filePath": "src/components/host/promotion/promotion-step-post.tsx"
+  },
+  {
+    "key": "host.promote.post.help",
+    "sourceText": "Why we cannot post for you",
+    "filePath": "src/components/host/promotion/promotion-step-post.tsx"
+  },
+  {
+    "key": "host.promote.post.help_body",
+    "sourceText": "No app lets another website post for you, and we would not ask for that access. We write the post, copy it and open the page — you paste it and press post.",
+    "filePath": "src/components/host/promotion/promotion-step-post.tsx"
+  },
+  {
+    "key": "host.promote.post.help_groups",
+    "sourceText": "Groups open one at a time: browsers block a site that opens several tabs at once, and you have to post in each one anyway.",
+    "filePath": "src/components/host/promotion/promotion-step-post.tsx"
+  },
+  {
+    "key": "host.promote.post.instagram_caption",
+    "sourceText": "Caption",
+    "filePath": "src/components/host/promotion/promotion-step-post.tsx"
+  },
+  {
+    "key": "host.promote.post.instagram_media_ready",
+    "sourceText": "{count} saved to your device",
+    "filePath": "src/components/host/promotion/promotion-step-post.tsx"
+  },
+  {
+    "key": "host.promote.post.instagram_needs_media",
+    "sourceText": "Instagram needs a photo from your device. Go back and save one first.",
+    "filePath": "src/components/host/promotion/promotion-step-post.tsx"
+  },
+  {
+    "key": "host.promote.post.link_in_bio",
+    "sourceText": "🔗 Link in bio",
     "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+  },
+  {
+    "key": "host.promote.post.messaging_note",
+    "sourceText": "The whole message travels in the link — nothing to copy.",
+    "filePath": "src/components/host/promotion/promotion-step-post.tsx"
+  },
+  {
+    "key": "host.promote.post.open",
+    "sourceText": "Open",
+    "filePath": "src/components/host/promotion/promotion-step-post.tsx"
+  },
+  {
+    "key": "host.promote.post.open_again",
+    "sourceText": "Open again",
+    "filePath": "src/components/host/promotion/promotion-step-post.tsx"
   },
   {
     "key": "host.promote.post.price",
@@ -9980,14 +10250,19 @@
     "filePath": "src/components/host/promotion/promotion-workspace.tsx"
   },
   {
-    "key": "host.promote.post.regenerate",
-    "sourceText": "Reset to generated text",
+    "key": "host.promote.post.progress",
+    "sourceText": "{done} of {total}",
     "filePath": "src/components/host/promotion/promotion-workspace.tsx"
   },
   {
-    "key": "host.promote.post.review_old_dates",
-    "sourceText": "Your edited post may still contain old dates. Update the text or reset it before copying.",
-    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+    "key": "host.promote.post.regenerate",
+    "sourceText": "Reset to generated text",
+    "filePath": "src/components/host/promotion/promotion-step-compose.tsx"
+  },
+  {
+    "key": "host.promote.preview.link_card",
+    "sourceText": "Your photo comes with the link",
+    "filePath": "src/components/host/promotion/promotion-step-compose.tsx"
   },
   {
     "key": "host.promote.range_error.booked",
@@ -10043,6 +10318,26 @@
     "key": "host.promote.unavailable",
     "sourceText": "Only published properties can be promoted. Publish this one first, then try again.",
     "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+  },
+  {
+    "key": "host.promote.where.heading",
+    "sourceText": "Where should this go?",
+    "filePath": "src/components/host/promotion/promotion-step-where.tsx"
+  },
+  {
+    "key": "host.promote.where.help",
+    "sourceText": "How promoting works",
+    "filePath": "src/components/host/promotion/promotion-step-where.tsx"
+  },
+  {
+    "key": "host.promote.where.help_body",
+    "sourceText": "We write the post from your listing. You paste it and post it yourself — we never sign in to your accounts.",
+    "filePath": "src/components/host/promotion/promotion-step-where.tsx"
+  },
+  {
+    "key": "host.promote.where.help_channels",
+    "sourceText": "Facebook shows your photo from the link. Instagram cannot make links clickable, so its caption points at your bio. WhatsApp and Viber carry the whole message, so there is nothing to copy.",
+    "filePath": "src/components/host/promotion/promotion-step-where.tsx"
   },
   {
     "key": "host.promotion.all_stays",
@@ -10795,16 +11090,6 @@
     "filePath": "src/components/host/v2/listings/address-modal.tsx"
   },
   {
-    "key": "host.v2.address.heading",
-    "sourceText": "Confirm your address",
-    "filePath": "src/components/host/v2/listings/address-step.tsx"
-  },
-  {
-    "key": "host.v2.address.hint",
-    "sourceText": "Guests only see the street address after they book, but we need it to place your listing.",
-    "filePath": "src/components/host/v2/listings/address-step.tsx"
-  },
-  {
     "key": "host.v2.address.postcode",
     "sourceText": "Postcode",
     "filePath": "src/components/host/v2/listings/address-modal.tsx"
@@ -11065,6 +11350,11 @@
     "filePath": "src/components/host/v2/calendar/safety-banner.tsx"
   },
   {
+    "key": "host.v2.calendar.base_price",
+    "sourceText": "Base price",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
     "key": "host.v2.calendar.block_note_cancel",
     "sourceText": "Cancel",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
@@ -11168,6 +11458,16 @@
     "key": "host.v2.calendar.cancel",
     "sourceText": "Cancel",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.change_base_price",
+    "sourceText": "Change base price and ongoing offers",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
+    "key": "host.v2.calendar.change_default_availability",
+    "sourceText": "Change default availability",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
   },
   {
     "key": "host.v2.calendar.change_property",
@@ -11570,21 +11870,6 @@
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
-    "key": "host.v2.calendar.consequence.hidden",
-    "sourceText": "The listing comes off the site straight away. Guests can no longer find or book it. Existing reservations stay in place.",
-    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
-  },
-  {
-    "key": "host.v2.calendar.consequence.live",
-    "sourceText": "The listing goes back on the site and guests can book its {bookable} open dates in the next {months} months.",
-    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
-  },
-  {
-    "key": "host.v2.calendar.consequence.live_none",
-    "sourceText": "The listing goes back on the site, but no date is bookable yet.",
-    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
-  },
-  {
     "key": "host.v2.calendar.consequence.losing_bookable.few",
     "sourceText": "{n} of them can be booked right now, and will stop being bookable.",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
@@ -11732,6 +12017,11 @@
   {
     "key": "host.v2.calendar.consequence.mode_open_still_blocked",
     "sourceText": "{blocked} dates stay blocked by reservations, your own blocks or a connected calendar.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.consequence.mode_reservations_safe",
+    "sourceText": "Reservations guests have already made are not affected.",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
@@ -11922,21 +12212,11 @@
   {
     "key": "host.v2.calendar.cta.create_promotion",
     "sourceText": "Create promotion",
-    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+    "filePath": "src/components/host/v2/editor/ongoing-offers-editor.tsx"
   },
   {
     "key": "host.v2.calendar.cta.default_pricing",
     "sourceText": "Review default pricing",
-    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
-  },
-  {
-    "key": "host.v2.calendar.cta.defaults",
-    "sourceText": "Review defaults",
-    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
-  },
-  {
-    "key": "host.v2.calendar.cta.min_nights",
-    "sourceText": "Review minimum stay",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
@@ -11962,12 +12242,7 @@
   {
     "key": "host.v2.calendar.cta.save_promotion",
     "sourceText": "Save changes",
-    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
-  },
-  {
-    "key": "host.v2.calendar.cta.visibility",
-    "sourceText": "Review visibility",
-    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+    "filePath": "src/components/host/v2/editor/ongoing-offers-editor.tsx"
   },
   {
     "key": "host.v2.calendar.day.available",
@@ -12023,6 +12298,21 @@
     "key": "host.v2.calendar.day.past",
     "sourceText": "Past",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.default_availability",
+    "sourceText": "Default availability",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
+    "key": "host.v2.calendar.default_closed",
+    "sourceText": "Only dates you open",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
+    "key": "host.v2.calendar.default_open",
+    "sourceText": "Available by default",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
   },
   {
     "key": "host.v2.calendar.discard_body",
@@ -12413,11 +12703,6 @@
     "key": "host.v2.calendar.editor.how_offers_work",
     "sourceText": "How offers work",
     "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
-  },
-  {
-    "key": "host.v2.calendar.editor.how_this_works",
-    "sourceText": "How this works",
-    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
   },
   {
     "key": "host.v2.calendar.editor.keep_offer",
@@ -12880,16 +13165,6 @@
     "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
   },
   {
-    "key": "host.v2.calendar.error.cannot_hide",
-    "sourceText": "Only a live listing can be hidden.",
-    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
-  },
-  {
-    "key": "host.v2.calendar.error.cannot_publish",
-    "sourceText": "This listing is not ready to go on the site yet:",
-    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
-  },
-  {
     "key": "host.v2.calendar.error.cleaning_fee",
     "sourceText": "Enter a cleaning fee of zero or more.",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
@@ -13015,11 +13290,6 @@
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
-    "key": "host.v2.calendar.field.visibility",
-    "sourceText": "Listing visibility",
-    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
-  },
-  {
     "key": "host.v2.calendar.help.dated_fit",
     "sourceText": "A date-specific promotion discounts only the nights inside its date range. Nights outside it use their own best promotion or the normal price.",
     "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
@@ -13055,6 +13325,31 @@
     "filePath": "src/components/host/v2/calendar/calendar-month-stream.tsx"
   },
   {
+    "key": "host.v2.calendar.intent_cancel",
+    "sourceText": "Not now",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
+    "key": "host.v2.calendar.intent_prompt",
+    "sourceText": "Choose the dates for this change",
+    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
+  },
+  {
+    "key": "host.v2.calendar.intent.availability",
+    "sourceText": "Select the dates you want to open or block.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.intent.pricing",
+    "sourceText": "Select the dates you want to give their own price.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.intent.promotion",
+    "sourceText": "Select the dates your offer should run on.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
     "key": "host.v2.calendar.legend.available",
     "sourceText": "Available",
     "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
@@ -13078,11 +13373,6 @@
     "key": "host.v2.calendar.legend.selected",
     "sourceText": "Selected",
     "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
-  },
-  {
-    "key": "host.v2.calendar.listing_defaults_hint",
-    "sourceText": "Base price, cleaning fee and minimum stay for every date",
-    "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
   },
   {
     "key": "host.v2.calendar.listing.all_dates_follow",
@@ -13245,38 +13535,8 @@
     "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
   },
   {
-    "key": "host.v2.calendar.listing.hidden",
-    "sourceText": "Hidden",
-    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
-  },
-  {
     "key": "host.v2.calendar.listing.minimum_taken",
     "sourceText": "Another {percent}% promotion starts at {nights} nights. Both can run; the promotion that saves the guest more will win.",
-    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.listing.mode_closed",
-    "sourceText": "Closed",
-    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.listing.mode_closed_body",
-    "sourceText": "No date is bookable until you open it.",
-    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.listing.mode_open",
-    "sourceText": "Open",
-    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.listing.mode_open_body",
-    "sourceText": "Every date is bookable unless you block it.",
-    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.listing.mode_question",
-    "sourceText": "How do untouched dates begin?",
     "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
   },
   {
@@ -13315,31 +13575,6 @@
     "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
   },
   {
-    "key": "host.v2.calendar.listing.term_bookable",
-    "sourceText": "Bookable dates",
-    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.listing.term_search",
-    "sourceText": "Found in search",
-    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.listing.term_search_body",
-    "sourceText": "A closed-by-default listing only appears once a guest searches dates you have opened.",
-    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.listing.term_visible",
-    "sourceText": "Visible",
-    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.listing.term_visible_body",
-    "sourceText": "whether the listing page exists for guests at all.",
-    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
-  },
-  {
     "key": "host.v2.calendar.listing.unchanged_from",
     "sourceText": "of {amount}",
     "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
@@ -13375,26 +13610,6 @@
     "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
   },
   {
-    "key": "host.v2.calendar.listing.visibility_hidden_effect",
-    "sourceText": "Guests cannot open or book this listing. Existing reservations still stand.",
-    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.listing.visibility_live_effect",
-    "sourceText": "Guests can open this listing. Search visibility and date bookability still depend on its calendar.",
-    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.listing.visible",
-    "sourceText": "Visible",
-    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
-  },
-  {
-    "key": "host.v2.calendar.listing.visible_question",
-    "sourceText": "Is this listing visible to guests?",
-    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
-  },
-  {
     "key": "host.v2.calendar.listing.was",
     "sourceText": "was {amount}",
     "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
@@ -13406,7 +13621,7 @@
   },
   {
     "key": "host.v2.calendar.manage_all_dates",
-    "sourceText": "Manage all dates",
+    "sourceText": "Manage dates",
     "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
   },
   {
@@ -13446,23 +13661,8 @@
   },
   {
     "key": "host.v2.calendar.menu_start_hint",
-    "sourceText": "Choose a setting below, or pick dates first",
+    "sourceText": "Select dates on the calendar to open, block or price them.",
     "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
-  },
-  {
-    "key": "host.v2.calendar.menu.listing_defaults",
-    "sourceText": "Default price and stay rules",
-    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
-  },
-  {
-    "key": "host.v2.calendar.menu.listing_promotions",
-    "sourceText": "Promotions",
-    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
-  },
-  {
-    "key": "host.v2.calendar.menu.listing_visibility",
-    "sourceText": "Listing visibility",
-    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
     "key": "host.v2.calendar.menu.price",
@@ -13755,16 +13955,6 @@
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
-    "key": "host.v2.calendar.review_action.hide",
-    "sourceText": "Review hiding this listing",
-    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
-  },
-  {
-    "key": "host.v2.calendar.review_action.min_nights",
-    "sourceText": "Review the minimum stay",
-    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
-  },
-  {
     "key": "host.v2.calendar.review_action.mode_closed",
     "sourceText": "Review closing dates by default",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
@@ -13787,11 +13977,6 @@
   {
     "key": "host.v2.calendar.review_action.promotion",
     "sourceText": "Review this promotion for {scope}",
-    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
-  },
-  {
-    "key": "host.v2.calendar.review_action.publish",
-    "sourceText": "Review putting this listing on the site",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
@@ -13840,16 +14025,6 @@
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
-    "key": "host.v2.calendar.save.hide",
-    "sourceText": "Save and hide this listing from guests",
-    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
-  },
-  {
-    "key": "host.v2.calendar.save.min_nights",
-    "sourceText": "Save minimum stay for all dates",
-    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
-  },
-  {
     "key": "host.v2.calendar.save.mode_closed",
     "sourceText": "Save and close dates by default",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
@@ -13872,11 +14047,6 @@
   {
     "key": "host.v2.calendar.save.promotion",
     "sourceText": "Save this promotion",
-    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
-  },
-  {
-    "key": "host.v2.calendar.save.publish",
-    "sourceText": "Save and put this listing back on the site",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
@@ -14295,16 +14465,6 @@
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
-    "key": "host.v2.calendar.value.hidden",
-    "sourceText": "Hidden from guests",
-    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
-  },
-  {
-    "key": "host.v2.calendar.value.live",
-    "sourceText": "Live on the site",
-    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
-  },
-  {
     "key": "host.v2.calendar.value.mixed",
     "sourceText": "Mixed — {available} available, {blocked} blocked, {booked} booked",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
@@ -14472,12 +14632,12 @@
   {
     "key": "host.v2.flow.back",
     "sourceText": "Back",
-    "filePath": "src/components/host/v2/listings/listing-flow-footer.tsx"
+    "filePath": "src/components/host/promotion/promotion-flow-footer.tsx"
   },
   {
     "key": "host.v2.flow.continue",
     "sourceText": "Continue",
-    "filePath": "src/components/host/v2/listings/listing-flow-footer.tsx"
+    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
   },
   {
     "key": "host.v2.flow.next",
@@ -14868,6 +15028,31 @@
     "key": "host.v2.location.privacy",
     "sourceText": "You can confirm the exact map position before your listing goes live.",
     "filePath": "src/components/host/v2/listings/location-step.tsx"
+  },
+  {
+    "key": "host.v2.map_pin.heading",
+    "sourceText": "Is the pin in the right spot?",
+    "filePath": "src/components/host/v2/listings/address-step.tsx"
+  },
+  {
+    "key": "host.v2.map_pin.hint",
+    "sourceText": "Move the map until the pin marks the property entrance guests should use.",
+    "filePath": "src/components/host/v2/listings/address-step.tsx"
+  },
+  {
+    "key": "host.v2.map_pin.no_address",
+    "sourceText": "No address has been saved yet.",
+    "filePath": "src/components/host/v2/listings/address-step.tsx"
+  },
+  {
+    "key": "host.v2.map_pin.place_first",
+    "sourceText": "Tap or move the map to place the property pin.",
+    "filePath": "src/components/host/v2/listings/address-step.tsx"
+  },
+  {
+    "key": "host.v2.map_pin.privacy",
+    "sourceText": "Guests browsing your listing see only an approximate area, never this exact pin.",
+    "filePath": "src/components/host/v2/listings/address-step.tsx"
   },
   {
     "key": "host.v2.messages.all_reservations",

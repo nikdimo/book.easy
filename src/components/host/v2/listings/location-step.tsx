@@ -7,7 +7,7 @@ import { Tx, useI18n } from "@/lib/i18n/client";
 import type { ListingSpaceTypeValue } from "@/lib/types/listing-space-type";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 import { hostStartRouteOf } from "@/lib/host-start-draft";
-import { reviewHref } from "@/lib/host/v2/listing-flow-return";
+import { reviewHref, withReviewReturn } from "@/lib/host/v2/listing-flow-return";
 import { ListingFlowFooter } from "./listing-flow-footer";
 import { LocationPreviewAnimation } from "./location-preview-animation";
 import { AddressModal } from "./address-modal";
@@ -31,10 +31,9 @@ export function LocationStep({
   const addressInputRef = useRef<HTMLInputElement>(null);
   const query = `propertyType=${encodeURIComponent(propertyType.value)}&spaceType=${encodeURIComponent(spaceType)}`;
   const backHref = returnToReview ? reviewHref(query) : `/host/start/space-type?${query}`;
-  // The address the modal saves is the whole of what Review's location row shows, so a
-  // host who came from there is finished once it is stored — the capacity screen after
-  // it is the next question of a walk they are not on.
-  const nextHref = returnToReview ? reviewHref(query) : `/host/start/basics?${query}`;
+  // A geocoder cannot confirm that its result marks the correct entrance. Every path,
+  // including an edit from Review, goes through the visible map checkpoint.
+  const nextHref = `/host/start/address?${withReviewReturn(query, returnToReview)}`;
 
   return (
     <>
@@ -132,10 +131,9 @@ export function LocationStep({
             latitude: String(location.pin.latitude),
             longitude: String(location.pin.longitude),
             locationSource: location.pin.source,
-            locationConfirmed: "true",
             geocodingProvider: location.pin.provider,
             geocodingPlaceId: location.pin.placeId,
-            currentStepId: "details",
+            currentStepId: "address",
             currentRoute: hostStartRouteOf(nextHref),
           });
           if (saved) window.location.assign(nextHref);

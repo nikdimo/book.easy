@@ -43,10 +43,12 @@ export default async function ListingEditorLayout({
     // A fixed frame from `lg` up: the header is the only thing above the work area, and
     // the workspace inside decides for itself what scrolls. Below `lg` it stays an
     // ordinary scrolling document, which is what a phone and a portrait tablet want.
+    // `editor-shell` is what `globals.css` keys the document clamp off, so `body` cannot
+    // grow a scrollbar of its own beside the section pane's.
     // `overflow-x-hidden` is a floor, not the fix — nothing in here should overflow
     // sideways, and this only stops one stray element from putting a scrollbar under the
     // whole page while it is being found.
-    <div className="flex min-h-dvh flex-col overflow-x-hidden bg-white text-slate-950 lg:h-dvh lg:min-h-0 lg:overflow-hidden">
+    <div className="editor-shell flex min-h-dvh flex-col overflow-x-hidden bg-white text-slate-950 lg:h-dvh lg:min-h-0 lg:overflow-hidden">
       <EditorHeader
         listingId={listing.id}
         title={listing.title}
