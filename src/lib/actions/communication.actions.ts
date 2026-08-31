@@ -10,6 +10,7 @@ import type {
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { requireAdmin, requireHost } from "@/lib/auth-helpers";
+import { ymdToDbDate } from "@/lib/utils/date-only";
 import {
   ensureInquiryConversation,
   joinConversationAsSupport,
@@ -67,9 +68,7 @@ export async function shareBookingPaymentInstructionsAction(input: unknown) {
       body: parsed.data.body,
       sourceLocale: parsed.data.sourceLocale,
       clientId: parsed.data.clientId,
-      dueAt: parsed.data.dueDate
-        ? new Date(`${parsed.data.dueDate}T00:00:00.000Z`)
-        : null,
+      dueAt: parsed.data.dueDate ? ymdToDbDate(parsed.data.dueDate) : null,
       hostId: host.id,
     });
     await createAuditLog({

@@ -13,6 +13,7 @@ import { LabeledInput } from "@/components/listing/labeled-input";
 import { useLanguage } from "@/context/language-context";
 import { useApiError } from "@/lib/use-api-error";
 import { apiFetch, formatRelativeTime } from "@/lib/api";
+import { isAdminRole, type UserRole } from "@/lib/roles";
 import { colors, radii, spacing, type } from "@/theme";
 
 interface CaseDetail {
@@ -37,7 +38,7 @@ interface CaseDetail {
     id: string;
     body: string;
     createdAt: string;
-    author: { name: string | null; role: string } | null;
+    author: { name: string | null; role: UserRole } | null;
   }[];
 }
 
@@ -149,8 +150,7 @@ export default function SupportCaseScreen() {
             </Text>
           ) : null}
           {detail.updates.map((update) => {
-            const fromSupport =
-              update.author?.role === "ADMIN" || update.author?.role === "SUPERADMIN";
+            const fromSupport = isAdminRole(update.author?.role);
             return (
               <View
                 key={update.id}

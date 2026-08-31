@@ -15,7 +15,8 @@ import type {
 // answer the question it is actually asking — what this page puts on screen and where
 // its links point.
 vi.mock("@/lib/actions/booking.actions", () => ({
-  confirmBookingAction: vi.fn(),
+  acceptBookingWithPaymentAction: vi.fn(),
+  getBookingAcceptancePaymentDataAction: vi.fn(),
   rejectBookingAction: vi.fn(),
   hostCancelBookingAction: vi.fn(),
 }));
@@ -47,7 +48,11 @@ const reservation: HostReservation = {
   guestCount: 2,
   currency: "EUR",
   nightlyRate: 100,
+  averageNightlyRate: 100,
+  accommodationSubtotal: 300,
+  originalAccommodationSubtotal: 300,
   cleaningFee: 25,
+  originalCleaningFee: 25,
   serviceFee: 0,
   discountAmount: 0,
   total: 325,
@@ -221,5 +226,71 @@ describe("ReservationPanel", () => {
     );
 
     expect(html).not.toContain("Accept request");
+  });
+
+  /**
+   * Audit L2. The accommodation row used to be `nightlyRate * nights`, and that column
+   * is a rounded effective average: a stay priced 100 / 100 / 101 stores 100.33 and the
+   * product is 300.99, a cent short of the nights and a cent short of the total printed
+   * below it. The row now comes from the resolved subtotal.
+   */
+  describe("price rows", () => {
+    const uneven: HostReservation = {
+      ...reservation,
+      nights: 3,
+      nightlyRate: 100.33,
+      averageNightlyRate: 100.33,
+      accommodationSubtotal: 301,
+      originalAccommodationSubtotal: 301,
+      cleaningFee: 25,
+      originalCleaningFee: 25,
+      total: 326,
+    };
+
+    it("prints the resolved subtotal, not the average times the nights", () => {
+      const html = render(
+        <ReservationPanel
+          reservation={uneven}
+          property={data.properties[0]}
+          data={data}
+          action={null}
+          initialCountdown={null}
+        />,
+      );
+
+      expect(html).toContain("€301.00");
+      expect(html).not.toContain("€300.99");
+      // Cleaning fee and total, so the three rows are visibly 301 + 25 = 326.
+      expect(html).toContain("€25.00");
+      expect(html).toContain("€326.00");
+    });
+
+    it("prints the gross figures beside an itemised discount", () => {
+      const discounted: HostReservation = {
+        ...uneven,
+        accommodationSubtotal: 270,
+        originalAccommodationSubtotal: 300,
+        cleaningFee: 0,
+        originalCleaningFee: 25,
+        discountAmount: 55,
+        total: 270,
+      };
+      const html = render(
+        <ReservationPanel
+          reservation={discounted}
+          property={data.properties[0]}
+          data={data}
+          action={null}
+          initialCountdown={null}
+        />,
+      );
+
+      // 300 + 25 − 55 = 270. Printing the net 270 beside the −55 row would have shown
+      // a receipt that subtracts the promotion twice.
+      expect(html).toContain("€300.00");
+      expect(html).toContain("€25.00");
+      expect(html).toContain("€55.00");
+      expect(html).toContain("€270.00");
+    });
   });
 });

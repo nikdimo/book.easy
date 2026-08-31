@@ -139,8 +139,26 @@ describe("buildHostActionQueue", () => {
 });
 
 describe("daysUntil", () => {
-  it("counts whole UTC days regardless of the time of day", () => {
-    expect(daysUntil(new Date("2026-08-12T23:30:00.000Z"), NOW)).toBe(0);
+  it("counts from the marketplace day, not the instant's UTC day", () => {
+    // 22:30 UTC on June 9 is already June 10 in Skopje. A check-in stored as June 10
+    // is therefore today, not tomorrow.
+    const justAfterMarketplaceMidnight = new Date("2026-06-09T22:30:00.000Z");
+    expect(
+      daysUntil(
+        new Date("2026-06-10T00:00:00.000Z"),
+        justAfterMarketplaceMidnight,
+      ),
+    ).toBe(0);
+    expect(
+      daysUntil(
+        new Date("2026-06-11T00:00:00.000Z"),
+        justAfterMarketplaceMidnight,
+      ),
+    ).toBe(1);
+  });
+
+  it("counts stored calendar days regardless of the time of day", () => {
+    expect(daysUntil(new Date("2026-08-12T00:00:00.000Z"), NOW)).toBe(0);
     expect(daysUntil(new Date("2026-08-13T00:00:00.000Z"), NOW)).toBe(1);
     expect(daysUntil(new Date("2026-08-10T00:00:00.000Z"), NOW)).toBe(-2);
   });

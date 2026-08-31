@@ -18,12 +18,16 @@ import { ymdToDbDate } from "@/lib/utils/date-only";
  * these from `status === "APPROVED"` alone is what produced "your listing is live"
  * next to a calendar with every date blocked.
  */
+/**
+ * There is no IN_REVIEW or REJECTED here on purpose. Moderation runs *after* a listing
+ * goes live — publishing writes APPROVED with `needsReview`, which is a flag on a live
+ * listing rather than a visibility state — so the only way a moderator takes a listing
+ * off the site is SUSPENDED.
+ */
 export type HostListingVisibility =
   | "LIVE"
   | "HIDDEN"
   | "DRAFT"
-  | "IN_REVIEW"
-  | "REJECTED"
   | "SUSPENDED"
   | "ARCHIVED";
 
@@ -84,10 +88,6 @@ export function listingVisibility(status: string): HostListingVisibility {
       return "LIVE";
     case "UNPUBLISHED":
       return "HIDDEN";
-    case "PENDING_REVIEW":
-      return "IN_REVIEW";
-    case "REJECTED":
-      return "REJECTED";
     case "SUSPENDED":
       return "SUSPENDED";
     case "ARCHIVED":
@@ -177,11 +177,7 @@ export function publishBlockers(
 ): PublishBlocker[] {
   const blockers: PublishBlocker[] = [];
 
-  if (
-    listing.status !== "DRAFT" &&
-    listing.status !== "REJECTED" &&
-    listing.status !== "UNPUBLISHED"
-  ) {
+  if (listing.status !== "DRAFT" && listing.status !== "UNPUBLISHED") {
     blockers.push("STATUS");
   }
   if (!listing.pricing) blockers.push("PRICING");
@@ -219,9 +215,5 @@ export function canHide(listing: HostCalendarListing): boolean {
 
 /** Whether the host could reach the publish flow at all, blockers aside. */
 export function isPublishableStatus(listing: HostCalendarListing): boolean {
-  return (
-    listing.status === "DRAFT" ||
-    listing.status === "REJECTED" ||
-    listing.status === "UNPUBLISHED"
-  );
+  return listing.status === "DRAFT" || listing.status === "UNPUBLISHED";
 }

@@ -11,6 +11,8 @@ import {
 import { useLanguage } from "@/context/language-context";
 import {
   apiFetch,
+  BookingAcceptance,
+  BookingPaymentDecision,
   BookingSummary,
   BookingsResponse,
   formatDate,
@@ -38,6 +40,11 @@ export default function BookingsScreen() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [cancelId, setCancelId] = useState<string | null>(null);
   const [rejectId, setRejectId] = useState<string | null>(null);
+  // The acceptance question, open on one booking at a time. `null` acceptance means
+  // the answers are still loading; a failure closes the panel with an alert rather
+  // than accepting on a guess.
+  const [acceptId, setAcceptId] = useState<string | null>(null);
+  const [acceptance, setAcceptance] = useState<BookingAcceptance | null>(null);
   const [reason, setReason] = useState("");
   const [filter, setFilter] = useState<"pending" | "confirmed" | "all">("pending");
 
@@ -57,21 +64,86 @@ export default function BookingsScreen() {
 
   async function updateBooking(
     booking: BookingSummary,
-    action: "confirm" | "reject" | "cancel"
+    action: "reject" | "cancel"
   ) {
-    if ((action === "cancel" || action === "reject") && !reason.trim()) return;
+    if (!reason.trim()) return;
     try {
       setBusyId(booking.id);
       await apiFetch(`/api/mobile/v1/bookings/${booking.id}`, {
         method: "PATCH",
-        body: JSON.stringify({
-          action,
-          reason: action === "cancel" || action === "reject" ? reason.trim() : undefined,
-        }),
+        body: JSON.stringify({ action, reason: reason.trim() }),
       });
       setCancelId(null);
       setRejectId(null);
       setReason("");
+      await load();
+    } catch (caught) {
+      Alert.alert(
+        t("Could not update booking"),
+        caught instanceof Error ? caught.message : t("Try again.")
+      );
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  /**
+   * Opens the payment question. The answers come from the server, so the phone can
+   * never offer one the service would refuse — a stay with nothing left to collect gets
+   * "no instructions needed" alone, and a bank transfer never gets it at all.
+   */
+  async function openAccept(booking: BookingSummary) {
+    setRejectId(null);
+    setCancelId(null);
+    setAcceptId(booking.id);
+    setAcceptance(null);
+    try {
+      const result = await apiFetch<{
+        booking: { acceptance: BookingAcceptance | null };
+      }>(`/api/mobile/v1/bookings/${booking.id}`);
+      if (!result.booking.acceptance) throw new Error(t("Try again."));
+      setAcceptance(result.booking.acceptance);
+    } catch (caught) {
+      setAcceptId(null);
+      Alert.alert(
+        t("Could not update booking"),
+        caught instanceof Error ? caught.message : t("Try again.")
+      );
+    }
+  }
+
+  /** Accepts with the decision the host just chose. Never with a default. */
+  async function acceptBooking(
+    booking: BookingSummary,
+    decision: BookingPaymentDecision,
+    options: BookingAcceptance
+  ) {
+    try {
+      setBusyId(booking.id);
+      const response = await apiFetch<{ warning?: string | null }>(
+        `/api/mobile/v1/bookings/${booking.id}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            action: "confirm",
+            decision,
+            // The phone has no composer, so a send-now sends the details this host
+            // already reviewed and saved, resolved on the server. They never travel
+            // to the device and back.
+            ...(decision === "SEND_NOW"
+              ? { useSavedInstructions: true, dueDate: options.dueDate }
+              : {}),
+          }),
+        }
+      );
+      setAcceptId(null);
+      setAcceptance(null);
+      if (response.warning) {
+        // The booking did update; the warning is about the follow-up send. Calling the
+        // whole acceptance a failure invites a second tap against an already-confirmed
+        // booking and obscures the action-list recovery path.
+        Alert.alert(t("Confirmed"), response.warning);
+      }
       await load();
     } catch (caught) {
       Alert.alert(
@@ -203,26 +275,14 @@ export default function BookingsScreen() {
               </View>
             ) : null}
 
-            {booking.status === "PENDING" && rejectId !== booking.id ? (
+            {booking.status === "PENDING" &&
+            rejectId !== booking.id &&
+            acceptId !== booking.id ? (
               <View style={styles.actions}>
                 <ActionButton
                   disabled={busyId === booking.id}
                   label={t("Confirm")}
-                  onPress={() =>
-                    Alert.alert(
-                      t("Confirm booking"),
-                      t(
-                        "Accept this request and reserve these dates for the guest? After accepting, share your payment instructions directly with the guest."
-                      ),
-                      [
-                        { text: t("Not yet"), style: "cancel" },
-                        {
-                          text: t("Confirm"),
-                          onPress: () => void updateBooking(booking, "confirm"),
-                        },
-                      ]
-                    )
-                  }
+                  onPress={() => void openAccept(booking)}
                 />
                 <ActionButton
                   disabled={busyId === booking.id}
@@ -230,6 +290,102 @@ export default function BookingsScreen() {
                   onPress={() => {
                     setRejectId(booking.id);
                     setReason("");
+                  }}
+                  secondary
+                />
+              </View>
+            ) : null}
+
+            {/* Accepting is one decision about money, not a yes/no. The host picks it
+                here; the server refuses an acceptance that arrives without one. */}
+            {booking.status === "PENDING" && acceptId === booking.id ? (
+              <View style={styles.cancelForm}>
+                <Text style={styles.panelTitle}>{t("Payment instructions")}</Text>
+                {!acceptance ? (
+                  <Text style={styles.panelHint}>{t("Loading")}</Text>
+                ) : (
+                  <>
+                    <Text style={styles.panelHint}>
+                      {t("Guest chose")}:{" "}
+                      {acceptance.paymentMethodLabel
+                        ? t(acceptance.paymentMethodLabel)
+                        : t("Payment method not recorded")}
+                      {acceptance.amountDue !== null
+                        ? " · " +
+                          new Intl.NumberFormat(resolveIntlLocale(locale), {
+                            style: "currency",
+                            currency: acceptance.currency,
+                          }).format(acceptance.amountDue)
+                        : ""}
+                    </Text>
+
+                    {acceptance.allowedDecisions.includes("SEND_NOW") &&
+                    acceptance.canSendNow ? (
+                      <View style={styles.decision}>
+                        <ActionButton
+                          disabled={busyId === booking.id}
+                          label={t("Accept and send payment request")}
+                          onPress={() =>
+                            void acceptBooking(booking, "SEND_NOW", acceptance)
+                          }
+                        />
+                        <Text style={styles.panelHint}>
+                          {t(
+                            "Review the private details below and send them with the booking total and reference."
+                          )}
+                        </Text>
+                        {acceptance.savedInstructionsPreview ? (
+                          <View style={styles.note}>
+                            <Text style={styles.noteText}>
+                              {acceptance.savedInstructionsPreview}
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    ) : null}
+
+                    {acceptance.allowedDecisions.includes("SEND_LATER") ? (
+                      <View style={styles.decision}>
+                        <ActionButton
+                          disabled={busyId === booking.id}
+                          label={t("Accept and send later")}
+                          onPress={() =>
+                            void acceptBooking(booking, "SEND_LATER", acceptance)
+                          }
+                          secondary
+                        />
+                        <Text style={styles.panelHint}>
+                          {t(
+                            "The booking is accepted now and remains in your action list until instructions are sent."
+                          )}
+                        </Text>
+                      </View>
+                    ) : null}
+
+                    {acceptance.allowedDecisions.includes("NO_INSTRUCTIONS") ? (
+                      <View style={styles.decision}>
+                        <ActionButton
+                          disabled={busyId === booking.id}
+                          label={t("No instructions needed")}
+                          onPress={() =>
+                            void acceptBooking(booking, "NO_INSTRUCTIONS", acceptance)
+                          }
+                          secondary
+                        />
+                        <Text style={styles.panelHint}>
+                          {t(
+                            "Use this for cash at the property or an arrangement you will make directly."
+                          )}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </>
+                )}
+                <ActionButton
+                  label={t("Not yet")}
+                  onPress={() => {
+                    setAcceptId(null);
+                    setAcceptance(null);
                   }}
                   secondary
                 />
@@ -392,6 +548,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   noteText: { ...type.meta, color: colors.inkSoft },
+  panelTitle: { ...type.bodyStrong, color: colors.ink },
+  panelHint: { ...type.caption, color: colors.muted, lineHeight: 16 },
+  decision: { gap: spacing.sm, marginTop: spacing.sm },
   actions: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginTop: spacing.md },
   button: {
     minHeight: 38,

@@ -77,7 +77,7 @@ describe("request-to-book flow", () => {
       guestCount: 1,
     });
 
-    await confirmBooking(booking.id, host.id);
+    await confirmBooking(booking.id, host.id, { decision: "NO_INSTRUCTIONS" });
 
     const accepted = await db.booking.findUniqueOrThrow({ where: { id: booking.id } });
     expect(accepted.status).toBe("CONFIRMED");
@@ -87,7 +87,7 @@ describe("request-to-book flow", () => {
     expect(Number(accepted.totalPrice)).toBe(Number(booking.totalPrice));
 
     // Accepting twice is not a way to trigger anything a second time.
-    await expect(confirmBooking(booking.id, host.id)).rejects.toThrow();
+    await expect(confirmBooking(booking.id, host.id, { decision: "NO_INSTRUCTIONS" })).rejects.toThrow();
   });
 
   it("ends the request when the host declines, and needs a reason to do it", async () => {

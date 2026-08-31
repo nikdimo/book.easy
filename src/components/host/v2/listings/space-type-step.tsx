@@ -17,6 +17,7 @@ import {
 } from "@/lib/types/listing-space-type";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 import { cn } from "@/lib/utils";
+import { hostStartRouteOf } from "@/lib/host-start-draft";
 import { reviewHref } from "@/lib/host/v2/listing-flow-return";
 import { ListingFlowFooter } from "./listing-flow-footer";
 import { useHostStartDraft } from "./host-start-draft-provider";
@@ -221,6 +222,7 @@ export function SpaceTypeStep({
             propertyType: propertyType.value,
             spaceType: selectedType,
             currentStepId: "location",
+            currentRoute: hostStartRouteOf(nextHref),
           });
           if (saved) window.location.assign(nextHref);
         }}

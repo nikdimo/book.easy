@@ -98,6 +98,12 @@ function PhotoTile({
         </span>
       )}
 
+      {photo.isPanorama && (
+        <span className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-black/65 px-2.5 py-1 text-xs font-semibold text-white shadow-sm">
+          <Tx k="host.v2.photos.panorama_badge" source="360° detected" />
+        </span>
+      )}
+
       {/* Visible from the start on touch, where there is no hover to reveal it. */}
       <button
         type="button"
@@ -121,7 +127,11 @@ const DRAFT_PHOTOS_ENDPOINT = "/api/host-start/draft/photos";
  */
 async function uploadDraftPhoto(
   photo: DraftPhoto,
-): Promise<{ url: string; mediaType?: ListingMediaTypeValue }> {
+): Promise<{
+  url: string;
+  mediaType?: ListingMediaTypeValue;
+  isPanorama?: boolean;
+}> {
   const body = new FormData();
   body.set("file", photo.file as File);
   body.set("alt", photo.name);
@@ -129,12 +139,17 @@ async function uploadDraftPhoto(
   const result = (await response.json().catch(() => ({}))) as {
     url?: string;
     mediaType?: ListingMediaTypeValue;
+    isPanorama?: boolean;
     error?: string;
   };
   if (!response.ok || !result.url) {
     throw new Error(result.error ?? `Could not upload ${photo.name}.`);
   }
-  return { url: result.url, mediaType: result.mediaType };
+  return {
+    url: result.url,
+    mediaType: result.mediaType,
+    isPanorama: result.isPanorama === true,
+  };
 }
 
 /** Turns whatever the draft is already holding into tiles. Their URLs are stored URLs,
@@ -150,6 +165,7 @@ function photosFromDraft(items: ListingMediaItem[] | undefined): DraftPhoto[] {
       previewUrl: item.url,
       uploadedUrl: item.url,
       mediaType: "IMAGE" as const,
+      isPanorama: item.isPanorama === true,
     }));
 }
 
@@ -186,7 +202,7 @@ export function PhotosStep({
   const query = `propertyType=${encodeURIComponent(propertyType.value)}&spaceType=${encodeURIComponent(spaceType)}`;
   /** Where the CTA goes, and what it says: on to the next question, or back to the
    *  summary the host came from. */
-  const { href: nextHref, label: nextLabel } = stepNextTarget(
+  const { href: nextHref, label: nextLabel, route: nextRoute } = stepNextTarget(
     returnToReview,
     query,
     `/host/start/description?${query}`,
@@ -333,8 +349,10 @@ export function PhotosStep({
       // The object URL stays the tile's preview even after the file is stored: it is
       // already decoded in this tab, and swapping it for the storage URL would refetch a
       // photo the host is looking at. It is revoked on unmount like every other one.
-      (photo, url, mediaType) =>
-        applyPhotos((current) => markPhotoUploaded(current, photo.id, url, mediaType)),
+      (photo, url, mediaType, isPanorama) =>
+        applyPhotos((current) =>
+          markPhotoUploaded(current, photo.id, url, mediaType, isPanorama),
+        ),
     );
 
     if (run.failed) {
@@ -345,7 +363,7 @@ export function PhotosStep({
 
     const mediaItems = draftMediaItems(photosRef.current);
     if (!mediaItems) throw new Error("Your photos could not be uploaded.");
-    if (await save({ mediaItems, currentStepId: "description" })) {
+    if (await save({ mediaItems, currentStepId: "description", currentRoute: nextRoute })) {
       window.location.assign(nextHref);
     }
   }

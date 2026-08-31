@@ -5,7 +5,11 @@
  */
 
 import "server-only";
-import { formatDate, formatPrice } from "@/lib/utils/format";
+import {
+  formatCalendarDate,
+  formatDate,
+  formatPrice,
+} from "@/lib/utils/format";
 import { createSmtpTransport } from "@/lib/email/smtp-transport";
 import { COMMUNICATION_BRAND } from "@/lib/communication-brand";
 import {
@@ -398,11 +402,11 @@ function bookingEmailDetails(booking: BookingEmailContext, t: EmailTranslator) {
   const details = [
     {
       label: t.t("email.booking.check_in", "Check-in"),
-      value: formatDate(booking.checkIn, t.locale),
+      value: formatCalendarDate(booking.checkIn, t.locale),
     },
     {
       label: t.t("email.booking.check_out", "Check-out"),
-      value: formatDate(booking.checkOut, t.locale),
+      value: formatCalendarDate(booking.checkOut, t.locale),
     },
     {
       label: t.t("email.booking.guests", "Guests"),
@@ -521,8 +525,8 @@ export async function notifyGuestBookingRequestReceived(bookingId: string): Prom
       paymentNotice,
       "",
       `${t.t("email.booking.reference", "Reference")}: ${booking.reference}`,
-      `${t.t("email.booking.check_in", "Check-in")}: ${formatDate(booking.checkIn, t.locale)}`,
-      `${t.t("email.booking.check_out", "Check-out")}: ${formatDate(booking.checkOut, t.locale)}`,
+      `${t.t("email.booking.check_in", "Check-in")}: ${formatCalendarDate(booking.checkIn, t.locale)}`,
+      `${t.t("email.booking.check_out", "Check-out")}: ${formatCalendarDate(booking.checkOut, t.locale)}`,
       `${t.t("email.booking.guests", "Guests")}: ${booking.guestCount}`,
       ...bookingEmailAmountLines(booking, t),
       "",
@@ -581,7 +585,7 @@ export async function notifyHostNewBookingRequest(bookingId: string): Promise<vo
   const content = await bookingUserContent(booking, t, { note: true });
   const deadline = bookingDeadline(booking, t.locale);
   const hostEmail = booking.listing.host.email;
-  const dates = `${formatDate(booking.checkIn, t.locale)}–${formatDate(booking.checkOut, t.locale)}`;
+  const dates = `${formatCalendarDate(booking.checkIn, t.locale)}–${formatCalendarDate(booking.checkOut, t.locale)}`;
   const lines = [
     greetingFormal(booking.listing.host.name, t),
     ``,
@@ -724,8 +728,8 @@ export async function notifyGuestBookingConfirmed(bookingId: string): Promise<vo
       'Good news — your booking for "{listing}" has been accepted. The host will share payment instructions with you.',
       { listing: content.title.text }
     ),
-    `${t.t("email.booking.check_in", "Check-in")}: ${formatDate(booking.checkIn, t.locale)}`,
-    `${t.t("email.booking.check_out", "Check-out")}: ${formatDate(booking.checkOut, t.locale)}`,
+    `${t.t("email.booking.check_in", "Check-in")}: ${formatCalendarDate(booking.checkIn, t.locale)}`,
+    `${t.t("email.booking.check_out", "Check-out")}: ${formatCalendarDate(booking.checkOut, t.locale)}`,
     ...bookingEmailAmountLines(booking, t),
     ``,
     `— ${COMMUNICATION_BRAND.name}`,
@@ -795,8 +799,8 @@ export async function notifyGuestBookingRejected(bookingId: string): Promise<voi
       'Unfortunately your booking request for "{listing}" ({checkIn} – {checkOut}) was declined by the host.',
       {
         listing: content.title.text,
-        checkIn: formatDate(booking.checkIn, t.locale),
-        checkOut: formatDate(booking.checkOut, t.locale),
+        checkIn: formatCalendarDate(booking.checkIn, t.locale),
+        checkOut: formatCalendarDate(booking.checkOut, t.locale),
       }
     ),
     ...(booking.cancellationReason
@@ -925,8 +929,8 @@ export async function notifyGuestBookingCancelled(bookingId: string): Promise<vo
       'Your booking for "{listing}" ({checkIn} – {checkOut}) has been cancelled.',
       {
         listing: content.title.text,
-        checkIn: formatDate(booking.checkIn, t.locale),
-        checkOut: formatDate(booking.checkOut, t.locale),
+        checkIn: formatCalendarDate(booking.checkIn, t.locale),
+        checkOut: formatCalendarDate(booking.checkOut, t.locale),
       }
     ),
     ...(booking.cancellationReason
@@ -997,8 +1001,8 @@ export async function notifyHostBookingCancelledByGuest(bookingId: string): Prom
       {
         guest: booking.guest.name,
         listing: content.title.text,
-        checkIn: formatDate(booking.checkIn, t.locale),
-        checkOut: formatDate(booking.checkOut, t.locale),
+        checkIn: formatCalendarDate(booking.checkIn, t.locale),
+        checkOut: formatCalendarDate(booking.checkOut, t.locale),
       }
     ),
     ``,

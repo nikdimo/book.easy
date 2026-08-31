@@ -188,7 +188,7 @@ export function availabilityBlocksPublish({
  * Existing Listing rows predate the create wizard's persisted availability answer,
  * so they cannot be passed through `validateAvailabilityStartForPublish` without
  * inventing an answer the host never gave. This is the fail-closed bridge for those
- * rows when an old DRAFT/REJECTED publish path is used.
+ * rows when an old DRAFT/UNPUBLISHED publish path is used.
  *
  * A previously published listing may be restored with its current calendar intact.
  * A never-published listing is safe only when it is unavailable by default, or when

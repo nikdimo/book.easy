@@ -1,11 +1,18 @@
+"use client";
+
 import { Tx } from "@/lib/i18n/client";
+import { useRouter } from "next/navigation";
 import type { ListingSpaceTypeValue } from "@/lib/types/listing-space-type";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 import { ListingFlowFooter } from "./listing-flow-footer";
 import { PhaseCompleteIllustration } from "./phase-complete-illustration";
+import { useHostStartDraft } from "./host-start-draft-provider";
 
 export function PhaseOneComplete({ propertyType, spaceType }: { propertyType: PropertyTypeOption; spaceType: ListingSpaceTypeValue }) {
+  const { save } = useHostStartDraft();
+  const router = useRouter();
   const query = `propertyType=${encodeURIComponent(propertyType.value)}&spaceType=${encodeURIComponent(spaceType)}`;
+  const nextHref = `/host/start/amenities?${query}`;
   return (
     <>
       <main className="flex min-h-0 flex-1 items-center px-5 pb-28 pt-6 md:px-8 md:pb-24 md:pt-2">
@@ -22,7 +29,17 @@ export function PhaseOneComplete({ propertyType, spaceType }: { propertyType: Pr
           <PhaseCompleteIllustration />
         </div>
       </main>
-      <ListingFlowFooter backHref={`/host/start/basics?${query}`} nextHref={`/host/start/amenities?${query}`} phaseOneProgress={100} nextLabel="Next" />
+      <ListingFlowFooter
+        backHref={`/host/start/basics?${query}`}
+        nextHref={nextHref}
+        onNext={async () => {
+          if (await save({ currentStepId: "amenities", currentRoute: "amenities" })) {
+            router.push(nextHref);
+          }
+        }}
+        phaseOneProgress={100}
+        nextLabel="Next"
+      />
     </>
   );
 }

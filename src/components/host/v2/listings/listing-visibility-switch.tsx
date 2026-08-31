@@ -13,11 +13,11 @@ import { interpolate, useI18n } from "@/lib/i18n/client";
  *
  * A menu item cannot do that: the host has to open the menu to find out which way it
  * currently is. Only APPROVED and the host-recoverable states are binary, though, so
- * anything an admin owns (SUSPENDED, PENDING_REVIEW, ARCHIVED) keeps the status dot
- * instead — a switch there would offer a host a move that is not theirs to make.
+ * anything an admin owns (SUSPENDED, ARCHIVED) keeps the status dot instead — a switch
+ * there would offer a host a move that is not theirs to make.
  */
 
-const HOST_PUBLISHABLE = new Set(["UNPUBLISHED", "DRAFT", "REJECTED"]);
+const HOST_PUBLISHABLE = new Set(["UNPUBLISHED", "DRAFT"]);
 
 export function isVisibilitySwitchable(status: string) {
   return status === "APPROVED" || HOST_PUBLISHABLE.has(status);

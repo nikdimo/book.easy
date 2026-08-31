@@ -53,7 +53,6 @@ export function MarketplacePlaceSelector({
   showPropertyTypes = false,
   open: controlledOpen,
   onOpenChange,
-  sharedPillActive = false,
   hidePillDivider = false,
   desktopContentRef,
   desktopContentStyle,
@@ -76,7 +75,6 @@ export function MarketplacePlaceSelector({
   showPropertyTypes?: boolean;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  sharedPillActive?: boolean;
   hidePillDivider?: boolean;
   desktopContentRef?: React.Ref<HTMLDivElement>;
   desktopContentStyle?: React.CSSProperties;
@@ -193,14 +191,13 @@ export function MarketplacePlaceSelector({
     : labels.searchDestinations.text;
 
   const pillFieldClass = cn(
-    "relative flex flex-1 min-w-0 cursor-pointer items-center rounded-full px-6 py-2.5 text-left transition-[background-color,box-shadow,transform] duration-200 ease-out",
+    // Airbnb's leading segment: 32px of horizontal padding against 24px on the rest.
+    "relative flex min-w-0 flex-1 cursor-pointer items-center rounded-full px-8 py-[15px] text-left transition-colors duration-200 ease-out",
     "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-    "after:absolute after:right-0 after:top-1/2 after:h-8 after:w-px after:-translate-y-1/2 after:bg-black/8 after:transition-opacity after:duration-150",
+    "after:absolute after:-right-[3px] after:top-1/2 after:h-8 after:w-px after:-translate-y-1/2 after:bg-[#DDDDDD] after:transition-opacity after:duration-150",
     triggerActive
-      ? sharedPillActive
-        ? "after:opacity-0"
-        : "bg-white shadow-[0_2px_10px_rgba(15,23,42,0.12)] after:opacity-0"
-      : "hover:bg-black/[0.035]",
+      ? "bg-white shadow-[0_3px_12px_rgba(0,0,0,0.1),0_1px_2px_rgba(0,0,0,0.08)] after:opacity-0"
+      : "hover:bg-[#EBEBEB] group-data-[panel-open=true]/pill:hover:bg-[#DDDDDD]",
     hidePillDivider && "after:opacity-0"
   );
 
@@ -288,10 +285,10 @@ export function MarketplacePlaceSelector({
       <div className="min-w-0 flex-1">
         <span
           className={cn(
-            "block font-semibold text-foreground",
+            "block",
             layout === "pill"
-              ? "text-[0.72rem] leading-4"
-              : "text-xs tracking-wide",
+              ? "text-xs font-medium leading-4 text-[#222222]"
+              : "text-xs font-semibold tracking-wide text-foreground",
             labels.where.translated && "notranslate"
           )}
         >
@@ -299,13 +296,17 @@ export function MarketplacePlaceSelector({
         </span>
         <span
           className={cn(
-            "mt-px block truncate",
+            "block truncate",
             // The pill's value line stays 14px so all three segments (Where / When / Who)
             // read as one row; only the taller hero layout steps up to 16px.
             layout === "pill"
-              ? "text-sm leading-5 font-normal"
-              : "text-sm font-medium md:text-base",
-            !city && "text-muted-foreground",
+              ? "text-sm font-normal leading-[18px]"
+              : "mt-px text-sm font-medium md:text-base",
+            layout === "pill"
+              ? city
+                ? "text-[#222222]"
+                : "text-[#6C6C6C]"
+              : !city && "text-muted-foreground",
             (city || labels.searchDestinations.translated) && "notranslate"
           )}
           translate={city || labels.searchDestinations.translated ? "no" : undefined}

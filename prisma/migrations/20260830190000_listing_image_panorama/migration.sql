@@ -1,0 +1,2 @@
+ALTER TABLE "ListingImage"
+ADD COLUMN "isPanorama" BOOLEAN NOT NULL DEFAULT false;

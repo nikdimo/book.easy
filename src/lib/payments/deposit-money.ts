@@ -93,6 +93,20 @@ function roundToCurrency(decimal: ParsedDecimal, fractionDigits: number): string
 }
 
 /**
+ * Rounds a plain amount into a currency's own minor units.
+ *
+ * The same half-up rule every declared amount goes through, exposed on its own so a
+ * caller comparing a resolved amount against a booking total compares two figures that
+ * were rounded identically. Null when the input is not a usable non-negative decimal.
+ */
+export function toCurrencyAmount(value: unknown, currency: string): string | null {
+  const parsed = parseNonNegativeDecimal(value);
+  return parsed === null
+    ? null
+    : roundToCurrency(parsed, currencyFractionDigits(currency));
+}
+
+/**
  * Resolves one declared amount against a booking total, in that amount's own currency.
  *
  * `FIXED` ignores the total entirely; `PERCENTAGE` reads as a percentage *of the booking

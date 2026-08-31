@@ -196,10 +196,11 @@ function listingEditSignature(
 ) {
   return JSON.stringify({
     values,
-    mediaItems: mediaItems.map(({ id, url, mediaType, alt }) => ({
+    mediaItems: mediaItems.map(({ id, url, mediaType, isPanorama, alt }) => ({
       id: id ?? null,
       url,
       mediaType,
+      isPanorama,
       alt: alt ?? null,
     })),
     amenityIds: [...amenityIds].sort(),

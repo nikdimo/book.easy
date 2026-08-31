@@ -18,7 +18,10 @@ import { getEmailT } from '@/lib/email/i18n';
 import { communicationAppUrl, communicationSupportEmail } from '@/lib/communication-brand.server';
 import { PRODUCT_NAME } from '@/lib/branding';
 import { rateLimit } from '@/lib/rate-limit';
-import { deleteUserAccount } from '@/lib/services/gdpr.service';
+import {
+  AccountDeletionBlockedError,
+  deleteUserAccount,
+} from '@/lib/services/gdpr.service';
 
 /** Long enough to read the email without leaving a deletion link live all day. */
 const TOKEN_TTL_MS = 60 * 60 * 1000;
@@ -158,13 +161,27 @@ export async function confirmAccountDeletion(
     return { ok: false, error: 'This confirmation link belongs to a different account.' };
   }
 
-  // Mark used before deleting. The row is removed by the cascade on success; if the
-  // deletion fails partway, the token is already spent and can't be retried blindly.
-  await db.accountDeletionToken.update({
-    where: { tokenHash: hashToken(token) },
-    data: { usedAt: new Date() },
-  });
-
-  await deleteUserAccount(check.userId);
-  return { ok: true };
+  // Spending the token and erasing the account are one transaction, not two.
+  //
+  // Marking `usedAt` first, in its own write, meant every failed erasure burned the
+  // link: the user requested a new one, hit the same failure, and had no way through.
+  // Handing the hash to `deleteUserAccount` puts the update inside the same transaction
+  // as the deletion, so anything that goes wrong — a refusal, a constraint, a dropped
+  // connection — rolls the token back with it and the emailed link still works.
+  try {
+    await deleteUserAccount(check.userId, { consumeTokenHash: hashToken(token) });
+    return { ok: true };
+  } catch (error) {
+    // A refusal is an answer the user can act on; the generic failure is not.
+    if (error instanceof AccountDeletionBlockedError) {
+      return { ok: false, error: error.message };
+    }
+    return {
+      ok: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to delete user account. Contact support for assistance.',
+    };
+  }
 }

@@ -2,6 +2,7 @@ import "server-only";
 
 import { db } from "@/lib/db";
 import {
+  advanceExceedsEveryStay,
   createDepositPoliciesSnapshot,
   validateDepositPolicies,
   type AdvancePaymentPolicy,
@@ -27,7 +28,17 @@ const SELECT = {
   damageDepositReturnDaysAfterCheckout: true,
   depositPoliciesCurrency: true,
   depositPoliciesReviewedAt: true,
-  pricingRule: { select: { currency: true } },
+  // The live pricing currency is what every booking from this listing is quoted in, and
+  // `createDepositPoliciesSnapshot` reconciles the stored policy label against it. The
+  // rate, fee and ceiling beside it are what bound a fixed advance payment at save time.
+  pricingRule: {
+    select: {
+      currency: true,
+      baseNightlyRate: true,
+      cleaningFee: true,
+      maxNights: true,
+    },
+  },
 } as const;
 
 export async function getListingDepositPoliciesData(
@@ -41,9 +52,12 @@ export async function getListingDepositPoliciesData(
   if (!listing) return null;
   return {
     listing: { id: listing.id, slug: listing.slug, status: listing.status },
+    // Reads UNANSWERED when the stored policy currency has drifted from the live pricing
+    // currency, which is how the editor asks the host to restate the amounts rather than
+    // re-offering figures under a label they were never quoted in.
     policies: createDepositPoliciesSnapshot(listing),
-    // What a new answer will be quoted in. The stored policy currency can lag behind a
-    // listing whose pricing currency changed, so the editor is shown the live one.
+    // What a new answer will be quoted in: always the live pricing currency, never the
+    // stored policy label.
     listingCurrency: listing.pricingRule?.currency ?? "EUR",
   };
 }
@@ -98,6 +112,12 @@ function returnDays(
  * The currency is taken from the listing's pricing rule rather than from the submitted
  * payload: a host quotes their own listing's currency, and a client that says otherwise
  * is either stale or lying. Both sections share it because a listing has one price.
+ *
+ * This is also the only place a currency drift is resolved. A listing whose pricing
+ * currency changed after its last review reads as UNANSWERED everywhere until the host
+ * comes back here and restates the amounts; that save re-stamps the amounts and the
+ * label together, which is the deliberate correction the drift is waiting for. Nothing
+ * is ever converted, and no stored figure is relabelled on the way through.
  */
 export async function saveListingDepositPolicies(
   listingId: string,
@@ -121,6 +141,16 @@ export async function saveListingDepositPolicies(
   const currency = listing.pricingRule?.currency ?? null;
   const validation = validateDepositPolicies({ ...raw, currency });
   if (!validation.success) return { issues: validation.issues };
+
+  // The advance payment is part of the booking total, so it can never exceed it. A
+  // percentage is already bounded at 100% by validation above; a fixed amount is bounded
+  // for real at booking creation, where the stay's actual total is known. The one thing
+  // provable here is that a flat advance larger than the dearest stay this listing
+  // permits at its own base rate would be capped for every booking it ever takes — a
+  // typo, not a policy — and this is the screen on which the host can still fix it.
+  if (advanceExceedsEveryStay(validation.value.advancePayment, listing.pricingRule)) {
+    return { issues: { advancePayment: { value: "ADVANCE_EXCEEDS_STAY_TOTAL" } } };
+  }
 
   const current = createDepositPoliciesSnapshot(listing);
   const next = validation.value;

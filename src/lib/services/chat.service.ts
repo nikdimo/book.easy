@@ -17,6 +17,7 @@ import {
 import {
   isPaymentMethodCode,
   parsePaymentMethodsSnapshot,
+  type PaymentMethodCode,
 } from "@/lib/payments/payment-methods";
 import type { BookingPaymentDetailsSnapshotV2 } from "@/lib/payments/booking-payment-request";
 
@@ -711,6 +712,13 @@ export async function shareBookingPaymentInstructions(input: {
    * booking's snapshot null and keeps the message as the whole record.
    */
   detailsSnapshot?: BookingPaymentDetailsSnapshotV2 | null;
+  /** Links this reviewed send to one exact non-zero obligation. */
+  paymentRequestId?: string | null;
+  paymentRequestType?:
+    | "ADVANCE_PAYMENT"
+    | "ACCOMMODATION_BALANCE"
+    | "DAMAGE_DEPOSIT";
+  method?: PaymentMethodCode | null;
 }) {
   const body = input.body.trim();
   if (!body) throw new Error("Payment instructions cannot be empty");
@@ -754,6 +762,9 @@ export async function shareBookingPaymentInstructions(input: {
           acceptedAt: true,
           selectedPaymentMethod: true,
           paymentMethodsSnapshot: true,
+          paymentStatus: true,
+          advancePaymentStatus: true,
+          damageDepositStatus: true,
           listing: {
             select: { hostId: true, acceptedPaymentMethods: true },
           },
@@ -769,6 +780,47 @@ export async function shareBookingPaymentInstructions(input: {
         );
       }
       if (!booking.conversation) throw new Error("Booking conversation not found");
+
+      const paymentRequest = input.paymentRequestId
+        ? await tx.bookingPaymentRequest.findFirst({
+            where: { id: input.paymentRequestId, bookingId: booking.id },
+          })
+        : input.paymentRequestType
+          ? await tx.bookingPaymentRequest.findUnique({
+              where: {
+                bookingId_type: {
+                  bookingId: booking.id,
+                  type: input.paymentRequestType,
+                },
+              },
+            })
+          : null;
+      if ((input.paymentRequestId || input.paymentRequestType) && !paymentRequest) {
+        throw new Error("Payment request not found");
+      }
+      if (paymentRequest && Number(paymentRequest.amount) <= 0) {
+        throw new Error("A zero-value payment request cannot be sent");
+      }
+      if (paymentRequest && paymentRequest.status !== "DRAFT") {
+        throw new Error("This payment request is no longer awaiting instructions");
+      }
+      if (paymentRequest) {
+        const trackIsOpen =
+          paymentRequest.type === "ADVANCE_PAYMENT"
+            ? ["UNTRACKED", "AWAITING_PAYMENT"].includes(
+                booking.advancePaymentStatus,
+              )
+            : paymentRequest.type === "DAMAGE_DEPOSIT"
+              ? ["UNTRACKED", "AWAITING_DEPOSIT"].includes(
+                  booking.damageDepositStatus,
+                )
+              : ["UNTRACKED", "AWAITING_PAYMENT"].includes(
+                  booking.paymentStatus,
+                );
+        if (!trackIsOpen) {
+          throw new Error("This payment request has already been reported or settled");
+        }
+      }
 
       // The method is re-checked here, inside the lock, against the booking as it
       // stands right now. A host tab opened before the guest's choice was recorded —
@@ -800,10 +852,36 @@ export async function shareBookingPaymentInstructions(input: {
         sourceLocale: input.sourceLocale,
         kind: "PAYMENT_INSTRUCTIONS",
       });
+      let paymentInstructionsStatus: "PENDING" | "SENT" = "SENT";
+      if (paymentRequest) {
+        const sentAt = new Date();
+        const method = input.detailsSnapshot?.method ?? input.method ?? null;
+        await tx.bookingPaymentRequest.update({
+          where: { id: paymentRequest.id },
+          data: {
+            status: "SENT",
+            dueAt: input.dueAt ?? paymentRequest.dueAt,
+            method,
+            instructionsSnapshot: input.detailsSnapshot
+              ? (input.detailsSnapshot as unknown as Prisma.InputJsonObject)
+              : ({ version: 1, kind: "FREE_TEXT", body } as Prisma.InputJsonObject),
+            reviewedAt: sentAt,
+            sentAt,
+          },
+        });
+        // Typed requests are independent obligations. Sending the advance request must
+        // not hide the balance or damage-deposit requests from the host's action queue.
+        // The global status remains PENDING until every booking-specific request has
+        // been reviewed and sent.
+        const remainingDrafts = await tx.bookingPaymentRequest.count({
+          where: { bookingId: booking.id, status: "DRAFT" },
+        });
+        if (remainingDrafts > 0) paymentInstructionsStatus = "PENDING";
+      }
       await tx.booking.update({
         where: { id: booking.id },
         data: {
-          paymentInstructionsStatus: "SENT",
+          paymentInstructionsStatus,
           paymentInstructionsSentAt: new Date(),
           paymentInstructionsDueAt: input.dueAt ?? null,
           // A resend replaces the frozen details with what was actually sent this time.

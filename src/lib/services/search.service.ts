@@ -20,10 +20,40 @@ import { crossesAntimeridian } from "@/lib/map-bounds";
 import type {
   SearchFilterPreview,
   SearchFilters,
+  SearchPriceComparison,
 } from "@/lib/types/search";
-import { dateKey } from "@/lib/utils/stay-pricing";
-import { getNightCount } from "@/lib/utils/format";
+import {
+  computeStayQuote,
+  parseLocalYmd,
+  toStayPromotion,
+  type NightlyRateRange,
+} from "@/lib/utils/stay-pricing";
+import {
+  dbDateToYmd,
+  isValidYmd,
+  nightsBetweenYmd,
+  ymdToDbDate,
+} from "@/lib/utils/date-only";
+import {
+  windowsCoverStay,
+  windowsOverlappingStay,
+} from "@/lib/utils/availability-windows";
 import { getNightlyRateRangesForListings } from "@/lib/services/pricing.service";
+import { getExchangeRates } from "@/lib/currency/rates";
+import {
+  BASE_CURRENCY,
+  normalizeCurrencyCode,
+} from "@/lib/currency/currency-preference";
+import type { ConversionContext } from "@/lib/currency/convert";
+import {
+  convertPriceBand,
+  hasPriceBounds,
+  normalizePriceBounds,
+  orderPriceCandidates,
+  type PriceBounds,
+  type PriceCandidate,
+  type PriceSort,
+} from "@/lib/search/price-comparison";
 
 /** Listings without a pricing rule have no rate to range over, so they are dropped
  * rather than defaulted to zero. */
@@ -56,18 +86,93 @@ const CARD_IMAGE_LIMIT = 4;
  * suspension, so the window is a fallback rather than the primary mechanism. */
 const HOME_LISTINGS_REVALIDATE_SECONDS = 60;
 
-function buildListingWhere(filters: SearchFilters): Prisma.ListingWhereInput {
+/**
+ * The stay a dated search is actually asking for, or `null` when it isn't asking for a
+ * real one.
+ *
+ * `checkIn`/`checkOut` arrive as raw URL strings, so they carry whatever a shared link
+ * or a hand-edited address bar held: an unparseable value, a check-out before its
+ * check-in, or the same day twice. None of those describe a stay anyone can book, and a
+ * search that quietly ignored them returned a full page of listings against a range the
+ * booking server refuses on sight.
+ */
+function requestedStay(
+  filters: SearchFilters,
+): { checkIn: Date; checkOut: Date; nights: number } | null {
+  if (!filters.checkIn || !filters.checkOut) return null;
+  if (!isValidYmd(filters.checkIn) || !isValidYmd(filters.checkOut)) {
+    return null;
+  }
+  const checkIn = ymdToDbDate(filters.checkIn);
+  const checkOut = ymdToDbDate(filters.checkOut);
+  const nights = nightsBetweenYmd(filters.checkIn, filters.checkOut);
+  if (nights <= 0) return null;
+  return { checkIn, checkOut, nights };
+}
+
+/** A `where` no listing satisfies — for a dated search whose dates are unbookable. */
+const MATCHES_NOTHING: Prisma.ListingWhereInput = { id: { in: [] } };
+
+/**
+ * Which closed-by-default listings have open windows covering the whole stay.
+ *
+ * This is the one place the shared availability rule cannot be pushed into SQL. Coverage
+ * by a *union* of touching windows is a fold across sibling rows, and a Prisma relation
+ * filter can only ask about one row at a time — `some: { spans the whole stay }` is the
+ * question that produced the disagreement in the first place, since it cannot see that
+ * the window ending on the 15th is continued by the one starting on the 15th.
+ *
+ * So the database narrows (only approved closed listings with a window overlapping these
+ * dates can qualify — a listing with no overlapping window covers none of the stay) and
+ * `windowsCoverStay` decides, exactly as it decides for `checkAvailability` and
+ * `createBooking`. The narrowing keeps this proportional to the listings open anywhere
+ * near the requested dates rather than the whole table.
+ */
+async function closedListingIdsOpenForStay(
+  checkIn: Date,
+  checkOut: Date,
+): Promise<string[]> {
+  const overlapping = windowsOverlappingStay(checkIn, checkOut);
+  const candidates = await db.listing.findMany({
+    where: {
+      status: ListingStatus.APPROVED,
+      availabilityMode: "CLOSED",
+      availabilityWindows: { some: overlapping },
+    },
+    select: {
+      id: true,
+      availabilityWindows: {
+        where: overlapping,
+        select: { startDate: true, endDate: true },
+      },
+    },
+  });
+
+  return candidates
+    .filter((listing) =>
+      windowsCoverStay(listing.availabilityWindows, checkIn, checkOut),
+    )
+    .map((listing) => listing.id);
+}
+
+async function buildListingWhere(
+  filters: SearchFilters,
+): Promise<Prisma.ListingWhereInput> {
   const where: Prisma.ListingWhereInput = {
     status: ListingStatus.APPROVED,
   };
-  const hasStayDates = Boolean(filters.checkIn && filters.checkOut);
+  const stay = requestedStay(filters);
+  // Both dates given but not a bookable stay (reversed, same day, unparseable): match
+  // nothing rather than falling back to undated discovery. The guest asked for those
+  // dates, and a full page of listings that the booking server would refuse for them is
+  // the same disagreement this change exists to remove. A search carrying only one of
+  // the two has not named a stay yet and keeps its undated behaviour.
+  if (filters.checkIn && filters.checkOut && !stay) return MATCHES_NOTHING;
+  const hasStayDates = stay !== null;
   // Closed-by-default listings are useful only to guests searching dates the host
   // explicitly opened. Keep them out of undated discovery and the home page.
   if (!hasStayDates) where.availabilityMode = "OPEN";
-  const requestedNights =
-    filters.checkIn && filters.checkOut
-      ? getNightCount(filters.checkIn, filters.checkOut)
-      : undefined;
+  const requestedNights = stay?.nights;
 
   if (filters.city && filters.country) {
     // Exact (city, country) pair — known from the autocomplete — so two same-named
@@ -101,23 +206,32 @@ function buildListingWhere(filters: SearchFilters): Prisma.ListingWhereInput {
     };
   }
 
-  if (
-    filters.minPrice ||
-    filters.maxPrice ||
-    (requestedNights != null && requestedNights > 0)
-  ) {
+  // `minPrice`/`maxPrice` are deliberately absent from this `where`.
+  //
+  // They used to compare two bare numbers against `pricingRule.baseNightlyRate`,
+  // whatever currency the host quoted in, and against the base rate rather than the
+  // figure the card prints. Both are resolved in `resolvePriceScope` now: the effective
+  // price is not a column (it needs date overrides, promotions and blocked nights) and
+  // the comparison is not a number (it needs one exchange-rate snapshot shared by every
+  // listing in the search). What is left here is the stay-length rule, which really is
+  // a column comparison.
+  if (requestedNights != null && requestedNights > 0) {
+    // Spelled `is:` rather than the bare shorthand because of the `OR` below: with a
+    // top-level `OR` key, the shorthand resolves to the relation filter's own
+    // `is`/`isNot` shape instead of PricingRuleWhereInput. Same query either way.
     where.pricingRule = {
-      ...(filters.minPrice || filters.maxPrice
-        ? {
-            baseNightlyRate: {
-              ...(filters.minPrice && { gte: filters.minPrice }),
-              ...(filters.maxPrice && { lte: filters.maxPrice }),
-            },
-          }
-        : {}),
-      ...(requestedNights != null && requestedNights > 0
-        ? { minNights: { lte: requestedNights } }
-        : {}),
+      is: {
+        // Both ends of the host's stay-length rule, so results and the booking server
+        // agree. `maxNights` was missing here, which is how a 30-night search returned
+        // a listing capped at 14 and priced all 30 nights before refusing at submit.
+        //
+        // A cap only counts when it is at least one night. The column is non-nullable
+        // (`@default(365)`), so "no maximum" is spelled as a stored zero rather than a
+        // null, and a zero must not be read as "no stay is ever bookable" — the same
+        // reading `exceedsMaxNights` applies for the widget and `createBooking`.
+        minNights: { lte: requestedNights },
+        OR: [{ maxNights: { lt: 1 } }, { maxNights: { gte: requestedNights } }],
+      },
     };
   }
 
@@ -162,11 +276,11 @@ function buildListingWhere(filters: SearchFilters): Prisma.ListingWhereInput {
     });
   }
 
-  if (filters.checkIn && filters.checkOut) {
+  if (stay) {
     where.availabilityBlocks = {
       none: {
-        startDate: { lt: new Date(filters.checkOut) },
-        endDate: { gt: new Date(filters.checkIn) },
+        startDate: { lt: stay.checkOut },
+        endDate: { gt: stay.checkIn },
       },
     };
     andClauses.push({
@@ -174,12 +288,9 @@ function buildListingWhere(filters: SearchFilters): Prisma.ListingWhereInput {
         { availabilityMode: "OPEN" },
         {
           availabilityMode: "CLOSED",
-          availabilityWindows: {
-            some: {
-              startDate: { lte: new Date(filters.checkIn) },
-              endDate: { gte: new Date(filters.checkOut) },
-            },
-          },
+          // Resolved against the shared rule rather than asked of one window at a
+          // time — see closedListingIdsOpenForStay for why this leg cannot stay in SQL.
+          id: { in: await closedListingIdsOpenForStay(stay.checkIn, stay.checkOut) },
         },
       ],
     });
@@ -198,85 +309,369 @@ async function collectAvailablePropertyTypes(
   return sortPropertyTypesInDisplayOrder([...new Set(values)], allValues);
 }
 
-export async function searchListings(filters: SearchFilters) {
-  const page = filters.page || 1;
-  const skip = (page - 1) * ITEMS_PER_PAGE;
-  const where = buildListingWhere(filters);
+/** The sort a search asked for, with anything unrecognised falling back to the
+ *  platform default rather than to an arbitrary price order. */
+function requestedSort(filters: SearchFilters): PriceSort {
+  return filters.sort === "price_asc" || filters.sort === "price_desc"
+    ? filters.sort
+    : "newest";
+}
 
-  let orderBy: Prisma.ListingOrderByWithRelationInput = { createdAt: "desc" };
-  if (filters.sort === "price_asc") {
-    orderBy = { pricingRule: { baseNightlyRate: "asc" } };
-  } else if (filters.sort === "price_desc") {
-    orderBy = { pricingRule: { baseNightlyRate: "desc" } };
+/** The currency this search's price bounds are stated in, and the one every listing
+ *  is normalised into. An unsupported or missing code falls back to the base currency,
+ *  which is what the slider is authored in and what every pre-existing link meant. */
+function filterCurrencyOf(filters: SearchFilters): string {
+  return normalizeCurrencyCode(filters.currency) ?? BASE_CURRENCY;
+}
+
+/** Exactly what pricing a listing takes: its own rate and currency, the offers that
+ *  could apply, and when it was created so equal prices still order stably. */
+const priceCandidateSelect = {
+  id: true,
+  createdAt: true,
+  pricingRule: {
+    select: { baseNightlyRate: true, cleaningFee: true, currency: true },
+  },
+  promotions: {
+    where: { disabledAt: null },
+    select: {
+      id: true,
+      type: true,
+      discountPercent: true,
+      minimumNights: true,
+      freeCleaning: true,
+      roundToWholeUnit: true,
+      startDate: true,
+      endDate: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: "desc" as const },
+  },
+} satisfies Prisma.ListingSelect;
+
+type PriceCandidateRow = Prisma.ListingGetPayload<{
+  select: typeof priceCandidateSelect;
+}>;
+
+/** Per-listing nightly overrides for the requested stay, keyed the way
+ *  `computeStayQuote` reads them — the same construction the card uses, so the two
+ *  cannot price the same nights differently. */
+async function stayOverridesByListing(
+  listingIds: string[],
+  stay: { checkIn: Date; checkOut: Date },
+): Promise<{
+  overrides: Map<string, Map<string, number>>;
+  rows: Map<string, { date: string; rate: number }[]>;
+}> {
+  const overrides = new Map<string, Map<string, number>>();
+  const rows = new Map<string, { date: string; rate: number }[]>();
+  if (listingIds.length === 0) return { overrides, rows };
+
+  const datePrices = await db.listingDatePrice.findMany({
+    where: {
+      listingId: { in: listingIds },
+      date: { gte: stay.checkIn, lt: stay.checkOut },
+    },
+    select: { listingId: true, date: true, nightlyRate: true },
+  });
+
+  for (const row of datePrices) {
+    // `date` is `@db.Date`: its UTC fields are the day the host priced, and reading
+    // them locally would key a June 10 override as "2026-06-09" on any server behind
+    // UTC — the same key `computeStayQuote` then fails to find (M6).
+    const key = dbDateToYmd(row.date);
+    const rate = Number(row.nightlyRate);
+    const map = overrides.get(row.listingId) ?? new Map<string, number>();
+    map.set(key, rate);
+    overrides.set(row.listingId, map);
+    rows.set(row.listingId, [...(rows.get(row.listingId) ?? []), { date: key, rate }]);
   }
 
-  const [listings, total] = await Promise.all([
-    db.listing.findMany({
-      where,
-      select: {
-        ...listingCardSelect,
-        images: {
-          where: { mediaType: "IMAGE" },
-          select: { url: true, alt: true },
-          orderBy: { displayOrder: "asc" },
-          take: CARD_IMAGE_LIMIT,
-        },
-      },
-      orderBy,
-      skip,
-      take: ITEMS_PER_PAGE,
-    }),
-    db.listing.count({ where }),
-  ]);
+  return { overrides, rows };
+}
 
-  const listingIds = listings.map((l) => l.id);
-  const hasSearchDates = Boolean(filters.checkIn && filters.checkOut);
-  const [videoUrls, datePrices, nightlyRanges] = await Promise.all([
-    getFirstVideoUrlsByListingIds(listingIds),
-    hasSearchDates && listingIds.length > 0
-      ? db.listingDatePrice.findMany({
-          where: {
-            listingId: { in: listingIds },
-            date: {
-              gte: new Date(filters.checkIn!),
-              lt: new Date(filters.checkOut!),
-            },
-          },
-          select: { listingId: true, date: true, nightlyRate: true },
-        })
-      : Promise.resolve([]),
+/**
+ * The price a listing's search card actually leads with, in the listing's own
+ * currency.
+ *
+ * This is the figure M5 is about. The old filter read `baseNightlyRate`, so a home
+ * with a €100 base and a €300 June override matched "under €150" and then rendered
+ * €300 — filter and card disagreeing about the same listing.
+ *
+ * **With dates** the card prints `computeStayQuote(...).effectiveAverageNightly`:
+ * the stay's own average after date overrides and any qualifying promotion. That is a
+ * single number, so `low === high`.
+ *
+ * **Without dates** the card prints the span of bookable nightly rates over the next
+ * year (`computeNightlyRateRange`, which already skips blocked nights). Both ends are
+ * carried, because the filter rule for a range is overlap — see `bandMatchesBounds`.
+ * A listing with nothing bookable in that horizon has no range; it keeps the base
+ * rate, which is exactly what the card falls back to.
+ */
+function quotedBandFor(
+  row: PriceCandidateRow,
+  stay: { checkIn: Date; checkOut: Date } | null,
+  overridesByListing: Map<string, Map<string, number>>,
+  nightlyRanges: Map<string, NightlyRateRange>,
+) {
+  if (!row.pricingRule) return null;
+  const currency = row.pricingRule.currency;
+  const baseNightly = Number(row.pricingRule.baseNightlyRate);
+
+  if (stay) {
+    const quote = computeStayQuote({
+      baseNightly,
+      cleaningFee: Number(row.pricingRule.cleaningFee),
+      checkIn: stay.checkIn,
+      checkOut: stay.checkOut,
+      overrides: overridesByListing.get(row.id) ?? new Map<string, number>(),
+      // Windows read off their stored UTC fields before the quote walks local
+      // calendar days against them.
+      promotions: row.promotions.map(toStayPromotion),
+    });
+    return {
+      currency,
+      low: quote.effectiveAverageNightly,
+      high: quote.effectiveAverageNightly,
+    };
+  }
+
+  const range = nightlyRanges.get(row.id);
+  return range
+    ? { currency, low: range.min, high: range.max }
+    : { currency, low: baseNightly, high: baseNightly };
+}
+
+/**
+ * The rate snapshot, or nothing.
+ *
+ * `getExchangeRates` already returns null when the provider is down and no usable
+ * snapshot is stored, but it can also *throw* — it is wrapped in `unstable_cache`,
+ * which raises outside a request context, and the database read behind the snapshot
+ * can fail on its own. None of those are reasons to fail a search: they all mean the
+ * same thing, which is that nothing here may compare two currencies. Every caller
+ * treats a null as "not comparable" and says so, which is the honest answer to a rate
+ * lookup that did not work.
+ */
+async function rateTableOrNull() {
+  try {
+    return await getExchangeRates();
+  } catch (error) {
+    console.warn("[search] exchange rates unavailable for price comparison", error);
+    return null;
+  }
+}
+
+interface PriceScope {
+  /** Every listing matching `where` *and* the price bounds, in the requested order.
+   *  Authoritative: callers page this list rather than asking the database for a page
+   *  and re-sorting it. */
+  orderedIds: string[];
+  comparison: SearchPriceComparison;
+  /** Computed for every candidate on the way here, so the page the caller slices out
+   *  does not pay for them a second time. */
+  nightlyRanges: Map<string, NightlyRateRange>;
+  stayPrices: Map<string, { date: string; rate: number }[]>;
+}
+
+/**
+ * Filtering and ordering by price, for the searches that ask for either.
+ *
+ * All of this is in Node rather than SQL, and deliberately so on two counts. The
+ * effective price is not a column — it needs the listing's date overrides, its
+ * promotions and its blocked nights — and the comparison is not between two numbers:
+ * hosts quote in their own currencies, so every price has to be restated in the
+ * filter's currency against **one** rate snapshot before any of them can be ranked or
+ * thresholded. A `Decimal` column and a hard-coded `10`–`800` band cannot express
+ * either.
+ *
+ * The cost is that this reads every matching listing's pricing rather than one page of
+ * it. That is the price of a correct answer, and it is only paid when a price bound or
+ * a price sort is actually asked for — plain discovery still pages in the database.
+ */
+async function resolvePriceScope(
+  where: Prisma.ListingWhereInput,
+  filters: SearchFilters,
+  bounds: PriceBounds,
+  sort: PriceSort,
+): Promise<PriceScope> {
+  const filterCurrency = filterCurrencyOf(filters);
+  const stay = requestedStay(filters);
+  // Local midnight, matching PropertyCard and the map pins — `computeStayQuote` walks
+  // calendar days, and pricing the same stay off two different midnights would put an
+  // override on a different night in the filter than on the card.
+  const stayDays =
+    stay && filters.checkIn && filters.checkOut
+      ? {
+          checkIn: parseLocalYmd(filters.checkIn),
+          checkOut: parseLocalYmd(filters.checkOut),
+        }
+      : null;
+
+  const rows = await db.listing.findMany({ where, select: priceCandidateSelect });
+  const listingIds = rows.map((row) => row.id);
+
+  const [nightlyRanges, stayPricing] = await Promise.all([
     // Only the dateless card shows a range — a search that carries dates prices those
     // exact nights instead, so it would pay for a year of rates it never renders.
-    hasSearchDates
-      ? Promise.resolve(new Map<string, { min: number; max: number }>())
-      : getNightlyRateRangesForListings(rateRangeInputs(listings)),
+    stayDays
+      ? Promise.resolve(new Map<string, NightlyRateRange>())
+      : getNightlyRateRangesForListings(rateRangeInputs(rows)),
+    // The *stored* dates, not the local ones: `date` is a `@db.Date` column that
+    // Prisma reads back as UTC midnight, so the window has to be asked for in the same
+    // terms it is stored in.
+    stay
+      ? stayOverridesByListing(listingIds, stay)
+      : Promise.resolve({
+          overrides: new Map<string, Map<string, number>>(),
+          rows: new Map<string, { date: string; rate: number }[]>(),
+        }),
   ]);
-  const pricesByListing = new Map<
-    string,
-    { date: string; rate: number }[]
-  >();
-  for (const row of datePrices) {
-    const values = pricesByListing.get(row.listingId) ?? [];
-    values.push({ date: dateKey(row.date), rate: Number(row.nightlyRate) });
-    pricesByListing.set(row.listingId, values);
+
+  const quoted = rows.map((row) => ({
+    row,
+    band: quotedBandFor(row, stayDays, stayPricing.overrides, nightlyRanges),
+  }));
+
+  // Fetching rates is a network call on a cache miss, so a search where every listing
+  // already quotes in the filter's currency — the overwhelmingly common one — does not
+  // make it. Nothing is being compared across currencies in that case, which is the
+  // only reason it is safe to skip.
+  const needsConversion = quoted.some(
+    (entry) => entry.band !== null && entry.band.currency !== filterCurrency,
+  );
+  const rateTable = needsConversion ? await rateTableOrNull() : null;
+  const context: ConversionContext | null = rateTable
+    ? { display: filterCurrency, rates: rateTable.rates }
+    : null;
+
+  let unconvertible = 0;
+  const candidates: PriceCandidate[] = quoted.map(({ row, band }) => {
+    const normalized = band ? convertPriceBand(band, filterCurrency, context) : null;
+    // A listing with no pricing rule has no price to compare and is not an
+    // exchange-rate failure; only a quoted band that would not convert is.
+    if (band !== null && normalized === null) unconvertible += 1;
+    return {
+      id: row.id,
+      createdAt: row.createdAt.getTime(),
+      band: normalized,
+    };
+  });
+
+  if (unconvertible > 0) {
+    console.warn(
+      `[search] ${unconvertible} listing(s) could not be priced in ${filterCurrency}` +
+        `${hasPriceBounds(bounds) ? " and were excluded from the price filter" : " and were sorted last"}`,
+    );
   }
+
+  return {
+    orderedIds: orderPriceCandidates(candidates, bounds, sort),
+    comparison: {
+      currency: filterCurrency,
+      applied: true,
+      complete: unconvertible === 0,
+      unconvertible,
+    },
+    nightlyRanges,
+    stayPrices: stayPricing.rows,
+  };
+}
+
+/** True when the price stage has to run at all: a bound to honour, or an order that
+ *  is defined by price. */
+function needsPriceScope(bounds: PriceBounds, sort: PriceSort): boolean {
+  return hasPriceBounds(bounds) || sort !== "newest";
+}
+
+/** A comparison that never ran, for the searches that asked nothing of price. */
+function inertPriceComparison(filters: SearchFilters): SearchPriceComparison {
+  return {
+    currency: filterCurrencyOf(filters),
+    applied: false,
+    complete: true,
+    unconvertible: 0,
+  };
+}
+
+/** ANDs an id restriction onto a `where` without touching whatever `AND` clauses
+ *  `buildListingWhere` already put there. */
+function restrictToIds(
+  where: Prisma.ListingWhereInput,
+  ids: string[],
+): Prisma.ListingWhereInput {
+  return { AND: [where, { id: { in: ids } }] };
+}
+
+/**
+ * The same `where` with the price bounds honoured, for the facet queries.
+ *
+ * The bounds cannot be expressed in SQL any more — they are a comparison between
+ * converted effective prices — so the only way a chip count can agree with the results
+ * page is to resolve the price stage and hand the query the ids it produced. Returns
+ * the `where` untouched when no bound was asked for, which is the common case and
+ * costs nothing.
+ */
+async function withPriceBounds(
+  where: Prisma.ListingWhereInput,
+  filters: SearchFilters,
+): Promise<Prisma.ListingWhereInput> {
+  const bounds = normalizePriceBounds(filters.minPrice, filters.maxPrice);
+  if (!hasPriceBounds(bounds)) return where;
+  const scope = await resolvePriceScope(where, filters, bounds, "newest");
+  return restrictToIds(where, scope.orderedIds);
+}
+
+export async function searchListings(filters: SearchFilters) {
+  const page = Math.max(1, filters.page || 1);
+  const skip = (page - 1) * ITEMS_PER_PAGE;
+  const where = await buildListingWhere(filters);
+  const bounds = normalizePriceBounds(filters.minPrice, filters.maxPrice);
+  const sort = requestedSort(filters);
+
+  // The price stage owns filtering, ordering *and* paging when it runs. Asking the
+  // database for a page first and sorting that page is what made `sort=price_asc`
+  // return twelve listings shuffled among themselves instead of the twelve cheapest.
+  const scope = needsPriceScope(bounds, sort)
+    ? await resolvePriceScope(where, filters, bounds, sort)
+    : null;
+
+  const { listings, total } = scope
+    ? await readCardPage(scope.orderedIds, skip)
+    : await readOrderedCardPage(where, skip);
+
+  const listingIds = listings.map((l) => l.id);
+  const stay = requestedStay(filters);
+
+  const [videoUrls, cardPricing] = await Promise.all([
+    getFirstVideoUrlsByListingIds(listingIds),
+    // The price stage already computed both of these for every candidate; only the
+    // discovery path, which never ran it, has to pay for the page's own.
+    scope
+      ? Promise.resolve({
+          nightlyRanges: scope.nightlyRanges,
+          stayPrices: scope.stayPrices,
+        })
+      : cardPricingFor(listings, stay),
+  ]);
 
   return {
     listings: listings.map((l) =>
       serializeListingCard(
         l,
         videoUrls.get(l.id),
-        pricesByListing.get(l.id) ?? [],
-        nightlyRanges.get(l.id) ?? null
+        cardPricing.stayPrices.get(l.id) ?? [],
+        cardPricing.nightlyRanges.get(l.id) ?? null
       )
     ),
     total,
     page,
     totalPages: Math.ceil(total / ITEMS_PER_PAGE),
+    priceComparison: scope ? scope.comparison : inertPriceComparison(filters),
   };
 }
 
-const cardSelectWithImages = {
+const cardSelectForSearch = {
   ...listingCardSelect,
   images: {
     where: { mediaType: "IMAGE" as const },
@@ -284,7 +679,71 @@ const cardSelectWithImages = {
     orderBy: { displayOrder: "asc" as const },
     take: CARD_IMAGE_LIMIT,
   },
-};
+} satisfies Prisma.ListingSelect;
+
+type SearchCardRow = Prisma.ListingGetPayload<{
+  select: typeof cardSelectForSearch;
+}>;
+
+/** One page out of an order the price stage already decided. `findMany` answers in the
+ *  database's order, so the ids are re-imposed on the result. */
+async function readCardPage(orderedIds: string[], skip: number) {
+  const pageIds = orderedIds.slice(skip, skip + ITEMS_PER_PAGE);
+  const rows =
+    pageIds.length > 0
+      ? await db.listing.findMany({
+          where: { id: { in: pageIds } },
+          select: cardSelectForSearch,
+        })
+      : [];
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  return {
+    listings: pageIds.flatMap((id) => {
+      const row = byId.get(id);
+      return row ? [row] : [];
+    }),
+    total: orderedIds.length,
+  };
+}
+
+/** Plain discovery: no price bound and no price order, so the database can page it.
+ *  Ordered newest first *and then by id* — two listings created in the same
+ *  millisecond otherwise come back in whatever order the planner chose, and a guest
+ *  paging through them sees one twice and another never. */
+async function readOrderedCardPage(
+  where: Prisma.ListingWhereInput,
+  skip: number,
+): Promise<{ listings: SearchCardRow[]; total: number }> {
+  const [listings, total] = await Promise.all([
+    db.listing.findMany({
+      where,
+      select: cardSelectForSearch,
+      orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+      skip,
+      take: ITEMS_PER_PAGE,
+    }),
+    db.listing.count({ where }),
+  ]);
+  return { listings, total };
+}
+
+/** The override and range data one page of cards needs, for the discovery path. */
+async function cardPricingFor(
+  listings: SearchCardRow[],
+  stay: { checkIn: Date; checkOut: Date } | null,
+) {
+  const listingIds = listings.map((l) => l.id);
+  if (stay) {
+    const { rows } = await stayOverridesByListing(listingIds, stay);
+    return { nightlyRanges: new Map<string, NightlyRateRange>(), stayPrices: rows };
+  }
+  return {
+    nightlyRanges: await getNightlyRateRangesForListings(rateRangeInputs(listings)),
+    stayPrices: new Map<string, { date: string; rate: number }[]>(),
+  };
+}
+
+const cardSelectWithImages = cardSelectForSearch;
 
 /** Newest public listings. This is the honest default ordering for the home page —
  *  see getPopularListings for the demand-ranked one. */
@@ -366,11 +825,14 @@ export async function getAvailableAmenities() {
 }
 
 export async function getAvailableAmenityNames(filters: SearchFilters) {
-  const where = buildListingWhere({
-    ...filters,
-    page: undefined,
-    amenities: undefined,
-  });
+  const where = await withPriceBounds(
+    await buildListingWhere({
+      ...filters,
+      page: undefined,
+      amenities: undefined,
+    }),
+    filters,
+  );
 
   // Ask the DB for distinct amenity names directly instead of fetching every matching
   // listing's full amenity list and deduping in Node.
@@ -402,11 +864,14 @@ function withPetsAllowed(names: string[], allowed: boolean): string[] {
 }
 
 export async function getAvailablePropertyTypes(filters: SearchFilters) {
-  const where = buildListingWhere({
-    ...filters,
-    page: undefined,
-    propertyTypes: undefined,
-  });
+  const where = await withPriceBounds(
+    await buildListingWhere({
+      ...filters,
+      page: undefined,
+      propertyTypes: undefined,
+    }),
+    filters,
+  );
 
   const rows = await db.property.groupBy({
     by: ["propertyType"],
@@ -419,25 +884,38 @@ export async function getAvailablePropertyTypes(filters: SearchFilters) {
 export async function getSearchFilterPreview(
   filters: SearchFilters
 ): Promise<SearchFilterPreview> {
-  const totalWhere = buildListingWhere({
-    ...filters,
-    page: undefined,
-  });
-  const propertyTypesWhere = buildListingWhere({
+  const bounds = normalizePriceBounds(filters.minPrice, filters.maxPrice);
+  // One price scope for all four facet counts.
+  //
+  // Every `where` below is the same search with one facet relaxed, so each is a subset
+  // of this one, and a listing's effective price does not depend on its bedroom count,
+  // its type or its amenities. Resolving the band once against the loosest of them and
+  // intersecting gives every facet the same answer the results page will give — which
+  // is the whole point: a chip that promises 8 homes and a page that then shows 5 is
+  // the same disagreement in a smaller frame.
+  const looseWhere = await buildListingWhere({
     ...filters,
     page: undefined,
     propertyTypes: undefined,
-  });
-  const amenitiesWhere = buildListingWhere({
-    ...filters,
-    page: undefined,
     amenities: undefined,
-  });
-  const bedroomsWhere = buildListingWhere({
-    ...filters,
-    page: undefined,
     bedrooms: undefined,
   });
+  const scope = hasPriceBounds(bounds)
+    ? await resolvePriceScope(looseWhere, filters, bounds, "newest")
+    : null;
+  const narrow = async (overrides: Partial<SearchFilters>) => {
+    const where = await buildListingWhere({
+      ...filters,
+      page: undefined,
+      ...overrides,
+    });
+    return scope ? restrictToIds(where, scope.orderedIds) : where;
+  };
+
+  const totalWhere = await narrow({});
+  const propertyTypesWhere = await narrow({ propertyTypes: undefined });
+  const amenitiesWhere = await narrow({ amenities: undefined });
+  const bedroomsWhere = await narrow({ bedrooms: undefined });
 
   const [totalCount, propertyTypeRows, amenityRows, petsAllowedCount, bedroomStats] =
     await Promise.all([
@@ -472,6 +950,7 @@ export async function getSearchFilterPreview(
       petsAllowedCount > 0
     ),
     maxBedrooms: bedroomStats._max.bedrooms ?? 0,
+    priceComparison: scope ? scope.comparison : inertPriceComparison(filters),
   };
 }
 

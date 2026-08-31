@@ -98,7 +98,7 @@ describe("private payment details never leak", () => {
     await confirmBooking(booking.id, (await db.listing.findUniqueOrThrow({
       where: { id: booking.listingId },
       select: { hostId: true },
-    })).hostId);
+    })).hostId, { decision: "SEND_LATER" });
 
     const guestBooking = await getGuestBookingWithHost(booking.id, guest.id);
     const serialized = JSON.stringify(guestBooking);
@@ -122,7 +122,7 @@ describe("private payment details never leak", () => {
 
   it("keeps saved details out of the shared payment-progress payload", async () => {
     const { host, guest, booking } = await setup();
-    await confirmBooking(booking.id, host.id);
+    await confirmBooking(booking.id, host.id, { decision: "SEND_LATER" });
 
     for (const viewerId of [guest.id, host.id]) {
       const progress = await getBookingPaymentProgress(booking.id, viewerId);
@@ -136,7 +136,7 @@ describe("private payment details never leak", () => {
 
   it("shows the guest only the details sent for their own booking", async () => {
     const { host, guest, booking } = await setup();
-    await confirmBooking(booking.id, host.id);
+    await confirmBooking(booking.id, host.id, { decision: "SEND_LATER" });
     await db.booking.update({
       where: { id: booking.id },
       data: {
@@ -187,7 +187,7 @@ describe("private payment details never leak", () => {
 
   it("writes no payment values into the booking's audit trail or timeline", async () => {
     const { host, booking } = await setup();
-    await confirmBooking(booking.id, host.id);
+    await confirmBooking(booking.id, host.id, { decision: "SEND_LATER" });
 
     const [timeline, audits] = await Promise.all([
       db.bookingTimelineEvent.findMany({ where: { bookingId: booking.id } }),

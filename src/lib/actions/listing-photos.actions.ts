@@ -62,7 +62,7 @@ async function flagRoomChangeForReview(listing: { id: string; status: string }) 
  */
 export async function addListingPhotos(
   listingId: string,
-  items: { url: string; mediaType: ListingMediaTypeValue }[],
+  items: { url: string; mediaType: ListingMediaTypeValue; isPanorama?: boolean }[],
 ): Promise<Result<{ ids: string[] }>> {
   const listing = await ownedListing(listingId);
   if (!listing) return { error: "Listing not found." };
@@ -86,6 +86,7 @@ export async function addListingPhotos(
           listingId,
           url: item.url,
           mediaType: item.mediaType,
+          isPanorama: item.mediaType === "IMAGE" && item.isPanorama === true,
           displayOrder: start + index,
           // The very first photo on an empty listing becomes the cover, so a listing is
           // never left without one just because the host stopped after uploading.
@@ -471,4 +472,26 @@ export async function deleteListingRoom(
   await flagRoomChangeForReview(listing);
   refresh(listingId, listing.slug, listing.status);
   return { releasedPhotos: room._count.images };
+}
+
+/** Marks an equirectangular image for interactive 360-degree rendering. The host can
+ * switch it off again if a very wide ordinary photo was selected by mistake. */
+export async function setListingPhotoPanorama(
+  listingId: string,
+  photoId: string,
+  isPanorama: boolean,
+): Promise<Result> {
+  const listing = await ownedListing(listingId);
+  if (!listing) return { error: "Listing not found." };
+
+  const photo = await db.listingImage.findFirst({
+    where: { id: photoId, listingId },
+    select: { id: true, mediaType: true },
+  });
+  if (!photo) return { error: "That photo is no longer on this listing." };
+  if (photo.mediaType !== "IMAGE") return { error: "Only photos can be shown in 360°." };
+
+  await db.listingImage.update({ where: { id: photoId }, data: { isPanorama } });
+  refresh(listingId, listing.slug, listing.status);
+  return {};
 }

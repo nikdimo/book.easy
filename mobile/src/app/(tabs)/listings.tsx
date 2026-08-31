@@ -26,9 +26,7 @@ import { useApiError } from "@/lib/use-api-error";
 
 const statusLabels: Record<string, string> = {
   DRAFT: "Draft",
-  PENDING_REVIEW: "Pending Review",
   APPROVED: "Approved",
-  REJECTED: "Rejected",
   UNPUBLISHED: "Unpublished",
   SUSPENDED: "Suspended",
   ARCHIVED: "Archived",

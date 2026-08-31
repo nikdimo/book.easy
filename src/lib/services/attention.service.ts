@@ -1,11 +1,24 @@
 import "server-only";
 
 import { db } from "@/lib/db";
+import { expirePendingBookings } from "@/lib/services/booking.service";
 import { listingDraftData } from "@/lib/mobile-listing-draft";
+import { todayYmd, ymdToDbDate } from "@/lib/utils/date-only";
 
 export async function getHostAttentionSummary(hostId: string) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Today and the badge must agree with the reservation lists, and every one of those
+  // reads sweeps first (see `getHostBookings`, `getHostReservations`). Without this the
+  // counter kept requests whose `responseDueAt` had passed until the next timer run,
+  // sending the host to a screen where the request was already gone. This is the same
+  // authoritative sweep, not a second rule: it releases the booking hold, queues the
+  // guest email and notifies exactly once, and its `updateMany` guard makes a repeated
+  // dashboard read a no-op rather than a second message.
+  await expirePendingBookings();
+
+  // `checkIn` is `@db.Date`. Marketplace day, in the terms it is stored in — the
+  // server-local midnight this replaces dropped or kept a stay starting today
+  // depending on which side of UTC the host process ran (M6).
+  const today = ymdToDbDate(todayYmd());
 
   const [
     pendingBookings,
@@ -57,10 +70,11 @@ export async function getHostAttentionSummary(hostId: string) {
         select: { id: true },
         orderBy: { createdAt: "asc" },
       }),
-      // Payment methods and deposit policy each have their own reviewed marker. An
+      // Payment methods, deposit policy, and cancellation policy each have their own
+      // reviewed marker. An
       // explicit "arrange directly" method and an explicit "no deposit" answer both
       // set those markers, so this finds only hosts who have not answered one of the
-      // two questions — never hosts who deliberately chose the empty-looking option.
+      // three questions — never hosts who deliberately chose the empty-looking option.
       // One oldest listing is enough for Today: showing a card for every property
       // would turn a useful task into a noisy stack. Once it is answered, the next
       // incomplete listing naturally becomes the task.
@@ -71,6 +85,7 @@ export async function getHostAttentionSummary(hostId: string) {
           OR: [
             { paymentMethodsReviewedAt: null },
             { depositPoliciesReviewedAt: null },
+            { cancellationPolicyReviewedAt: null },
           ],
         },
         select: { id: true, title: true },
@@ -83,6 +98,7 @@ export async function getHostAttentionSummary(hostId: string) {
           OR: [
             { paymentMethodsReviewedAt: null },
             { depositPoliciesReviewedAt: null },
+            { cancellationPolicyReviewedAt: null },
           ],
         },
       }),

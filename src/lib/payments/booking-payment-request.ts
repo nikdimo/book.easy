@@ -8,6 +8,95 @@ import {
   validatePaymentMethodDetails,
   type PaymentDetailFieldValues,
 } from "./payment-details";
+import { parseDepositPoliciesSnapshot } from "./deposit-policies";
+import {
+  addDaysToYmd,
+  dbDateToYmd,
+  isValidYmd,
+  marketplaceYmd,
+} from "@/lib/utils/date-only";
+
+export type BookingPaymentObligationType =
+  | "ADVANCE_PAYMENT"
+  | "ACCOMMODATION_BALANCE"
+  | "DAMAGE_DEPOSIT";
+
+export interface BookingPaymentObligation {
+  type: BookingPaymentObligationType;
+  amount: number;
+  dueDate: string;
+}
+
+function policyDueDate(
+  policy: { dueTiming: string; dueDaysBeforeCheckIn: number | null },
+  acceptedOn: string,
+  checkIn: string,
+) {
+  if (policy.dueTiming === "AFTER_ACCEPTANCE") return acceptedOn;
+  if (policy.dueTiming === "DAYS_BEFORE_CHECK_IN") {
+    return addDaysToYmd(checkIn, -(policy.dueDaysBeforeCheckIn ?? 0));
+  }
+  return checkIn;
+}
+
+/**
+ * Builds the three possible requests without ever charging the advance twice.
+ * The accommodation balance is always total minus advance; damage security stays
+ * separate from the accommodation price.
+ */
+export function bookingPaymentObligations(input: {
+  total: number;
+  advancePaymentAmount: number;
+  damageDepositAmount: number;
+  depositPolicySnapshot: unknown;
+  acceptedAt: Date | string;
+  checkIn: Date | string;
+}): BookingPaymentObligation[] {
+  const total = Math.max(0, input.total);
+  const advance = Math.min(total, Math.max(0, input.advancePaymentAmount));
+  const balance = Math.max(0, total - advance);
+  const damage = Math.max(0, input.damageDepositAmount);
+  // Two different columns, so two different readings. `acceptedAt` is a *timestamp*:
+  // its civil day is the marketplace's, and reading its UTC fields instead put every
+  // acceptance made between local midnight and 02:00 on the previous day — an
+  // AFTER_ACCEPTANCE deadline that was already overdue when it was created (M6).
+  // `checkIn` is `@db.Date`, whose UTC fields *are* the stored day. A caller that
+  // already holds a calendar date is taken at its word rather than re-read through a
+  // zone it was never in.
+  const acceptedOn = isValidYmd(input.acceptedAt)
+    ? input.acceptedAt
+    : marketplaceYmd(new Date(input.acceptedAt));
+  const checkIn = dbDateToYmd(input.checkIn);
+  const policies = parseDepositPoliciesSnapshot(input.depositPolicySnapshot);
+  const obligations: BookingPaymentObligation[] = [];
+
+  if (advance > 0) {
+    obligations.push({
+      type: "ADVANCE_PAYMENT",
+      amount: advance,
+      dueDate: policies?.advancePayment
+        ? policyDueDate(policies.advancePayment, acceptedOn, checkIn)
+        : acceptedOn,
+    });
+  }
+  if (balance > 0) {
+    obligations.push({
+      type: "ACCOMMODATION_BALANCE",
+      amount: balance,
+      dueDate: checkIn,
+    });
+  }
+  if (damage > 0) {
+    obligations.push({
+      type: "DAMAGE_DEPOSIT",
+      amount: damage,
+      dueDate: policies?.damageDeposit
+        ? policyDueDate(policies.damageDeposit, acceptedOn, checkIn)
+        : checkIn,
+    });
+  }
+  return obligations;
+}
 
 export type BookingPaymentDecision =
   | "SEND_NOW"
@@ -95,6 +184,13 @@ export function parseBookingPaymentDetailsSnapshot(
   };
 }
 
+/** A frozen decision that this request needs no private transfer coordinates. */
+export function isNoInstructionsPaymentRequestSnapshot(value: unknown): boolean {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const raw = value as Record<string, unknown>;
+  return raw.version === 1 && raw.kind === "NO_INSTRUCTIONS";
+}
+
 function stableAmount(value: number, currency: string): string {
   const amount = Number.isInteger(value) ? value.toFixed(2) : String(value);
   return `${amount} ${currency.toUpperCase()}`;
@@ -148,5 +244,9 @@ export function buildStructuredBookingPaymentRequest(input: {
 export function paymentMethodCanNeedNoInstructions(
   method: PaymentMethodCode | null,
 ): boolean {
-  return method === null || method === "CASH_AT_PROPERTY" || method === "ARRANGE_DIRECTLY";
+  // An unrecorded method is unknown, not proof that transfer coordinates are
+  // unnecessary. Acceptance handles the separate legacy case where the booking has no
+  // payment methods at all; a booking that still offers bank/online methods must first
+  // resolve one of them.
+  return method === "CASH_AT_PROPERTY" || method === "ARRANGE_DIRECTLY";
 }

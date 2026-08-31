@@ -4,14 +4,20 @@ import {
   BookingEmailKind,
   BookingStatus,
   BlockType,
+  ListingStatus,
   type Prisma,
 } from "@prisma/client";
-import { differenceInDays } from "date-fns";
 import {
   buildPriceOverrideMap,
   computeStayQuote,
+  toStayPromotion,
 } from "@/lib/utils/stay-pricing";
 import { isAvailabilityOverlapConstraintError } from "@/lib/utils/db-errors";
+import {
+  isStayWithinAvailabilityWindows,
+  windowsOverlappingStay,
+} from "@/lib/utils/availability-windows";
+import { exceedsMaxNights } from "@/lib/utils/booking-selection";
 import {
   conversionRate,
   type ConversionContext,
@@ -21,7 +27,15 @@ import {
   enqueueBookingEmails,
   kickBookingEmailDelivery,
 } from "@/lib/services/booking-email-outbox.service";
+import { recordBookingTimelineEvent } from "@/lib/services/booking-timeline.service";
 import { houseRulesSnapshot } from "@/lib/host/v2/listing-house-rules";
+import {
+  BOOKING_PARTY_COUNT_MAX,
+  bookingPartyIssues,
+  bookingPartyOccupancy,
+  normalizeBookingParty,
+  type BookingPartyInput,
+} from "@/lib/booking-party";
 import { houseRulesVersion } from "@/lib/host/v2/house-rules-version.server";
 import {
   isPaymentMethodCode,
@@ -40,12 +54,40 @@ import {
   methodSupportsPaymentDetails,
   type PaymentDetailFieldValues,
 } from "@/lib/payments/payment-details";
-import type { BookingPaymentRequestPrefill } from "@/lib/payments/booking-payment-request";
+import type {
+  BookingPaymentDecision,
+  BookingPaymentRequestPrefill,
+} from "@/lib/payments/booking-payment-request";
+import { bookingPaymentObligations } from "@/lib/payments/booking-payment-request";
+import {
+  acceptanceDecisionError,
+  acceptanceDecisionRule,
+  instructionsStatusForDecision,
+  obligationTrackIsOpen,
+  resolveRequestMethod,
+} from "@/lib/payments/booking-acceptance";
 import {
   calculateDepositAmounts,
   createDepositPoliciesSnapshot,
   parseDepositPoliciesSnapshot,
 } from "@/lib/payments/deposit-policies";
+import {
+  calculateCancellationSettlement,
+  cancellationPolicySnapshot,
+  parseCancellationPolicySnapshot,
+} from "@/lib/payments/cancellation-policy";
+import {
+  paymentStateAfterAcceptance,
+  paymentStateAfterCancellation,
+} from "@/lib/services/booking-payment-status.service";
+import { reviewWindowOpensAt } from "@/lib/services/review-window";
+import {
+  dbDateToLocalDate,
+  dbDateToYmd,
+  nightsBetweenYmd,
+  todayYmd,
+  ymdToDbDate,
+} from "@/lib/utils/date-only";
 
 export const BOOKING_RESPONSE_WINDOW_HOURS = 24;
 
@@ -59,43 +101,84 @@ function notifyBestEffort(fn: () => Promise<void>): void {
 }
 
 /**
- * Lazily transitions confirmed bookings whose stay has ended to COMPLETED. There's no
- * background job in this deployment, so callers that read booking lists/details call
- * this first — it's a single indexed, idempotent UPDATE that touches ~0 rows on most
- * calls. Phase 2 (reviews) depends on this status actually being reachable.
+ * Transitions confirmed bookings whose stay has ended to COMPLETED.
+ *
+ * "Ended" means the checkout *instant* has been reached — the booking's own frozen
+ * checkout time on its checkout date, read in the marketplace zone (`reviewWindowOpensAt`).
+ * It used to mean the start of the checkout calendar day, which completed a stay up to
+ * twelve hours before the guest had actually left and opened the review window with it
+ * (L7). Midnight is not checkout.
+ *
+ * Idempotent and safe to run concurrently: every write is guarded on the status it is
+ * moving away from, so two sweeps racing each other produce one transition and one
+ * timeline event. Called by `bookings:process`, by the review-reminder timer, and by
+ * the booking reads themselves — none of the three is the only way a stay completes.
  */
-export async function completePastBookings(): Promise<void> {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const completing = await db.booking.findMany({
+export async function completePastBookings(now = new Date()): Promise<void> {
+  // The marketplace's calendar date, in the terms `checkOut` is stored in.
+  //
+  // `checkOut` is `@db.Date`, which Prisma reads back as UTC midnight, and the old
+  // server-local midnight was an *instant* two hours behind that on a UTC+2 host — so
+  // a stay ending today never satisfied `lte` and only completed the day after
+  // checkout (M6). Comparing UTC midnight to UTC midnight makes the sweep land on the
+  // intended day, and `todayYmd` is what decides which day that is.
+  //
+  // This is the *candidate* filter, not the decision: a stay checking out tomorrow can
+  // never have ended yet, whatever hour it names, while a stay checking out today may
+  // or may not have. The hour is settled per booking below, off its frozen snapshot.
+  const today = ymdToDbDate(todayYmd(undefined, now));
+  const candidates = await db.booking.findMany({
     where: {
       status: BookingStatus.CONFIRMED,
       checkOut: { lte: today },
     },
-    select: { id: true },
+    select: { id: true, checkOut: true, houseRulesSnapshot: true },
   });
-  if (completing.length === 0) return;
+  const due = candidates
+    .map((booking) => ({
+      id: booking.id,
+      endedAt: reviewWindowOpensAt(booking),
+    }))
+    .filter((booking) => booking.endedAt.getTime() <= now.getTime());
+  if (due.length === 0) return;
 
-  await db.booking.updateMany({
-    where: { id: { in: completing.map((booking) => booking.id) } },
-    data: { status: BookingStatus.COMPLETED },
+  // The status and its history entry go in together, one guarded update per booking.
+  // The guard is what makes the loser of a concurrent sweep write nothing at all, and
+  // the per-booking count is what says which rows actually moved — a booking cancelled
+  // between the read above and the write below must not collect a COMPLETED entry for a
+  // transition that never happened.
+  const completed = await db.$transaction(async (tx) => {
+    const ids: string[] = [];
+    for (const booking of due) {
+      const result = await tx.booking.updateMany({
+        where: { id: booking.id, status: BookingStatus.CONFIRMED },
+        data: { status: BookingStatus.COMPLETED },
+      });
+      if (result.count === 0) continue;
+      ids.push(booking.id);
+      await recordBookingTimelineEvent(tx, {
+        bookingId: booking.id,
+        type: "COMPLETED",
+        // Nobody did this. The stay ended and the calendar caught up with it.
+        actor: { role: "SYSTEM" },
+        // The moment the stay actually ended, which is the moment this event records —
+        // not the moment a sweep happened to notice. Already proven to be at or before
+        // `now` by the filter above, so it can never be stamped in the future.
+        createdAt: booking.endedAt,
+      });
+    }
+    return ids;
   });
-  await db.bookingTimelineEvent.createMany({
-    data: completing.map((booking) => ({
-      bookingId: booking.id,
-      type: "COMPLETED",
-      idempotencyKey: `booking:${booking.id}:completed`,
-      createdAt: today,
-    })),
-    skipDuplicates: true,
-  });
+  if (completed.length === 0) return;
 
   // Completing the stay also opens the sealed 14-day review window. Invitations are
   // independently deduplicated, so a retry cannot send duplicate opening messages.
   const { ensureReviewInvitationsForBooking } =
     await import("@/lib/services/review.service");
   await Promise.allSettled(
-    completing.map((booking) => ensureReviewInvitationsForBooking(booking.id)),
+    completed.map((bookingId) =>
+      ensureReviewInvitationsForBooking(bookingId, now),
+    ),
   );
 }
 
@@ -125,6 +208,12 @@ export async function expirePendingBookings(now = new Date()): Promise<number> {
       });
       if (result.count === 0) continue;
       expired.push(booking.id);
+      await recordBookingTimelineEvent(tx, {
+        bookingId: booking.id,
+        type: "EXPIRED",
+        // Nobody declined this; the answer window closed on its own.
+        actor: { role: "SYSTEM" },
+      });
       await tx.availabilityBlock.deleteMany({
         where: {
           bookingId: booking.id,
@@ -259,12 +348,32 @@ export async function getGuestBookingForConfirmation(
   });
 }
 
+/** A host booking their own listing. Thrown before anything is written, so nothing —
+ *  no booking, no hold, no conversation, no notification, no email — is created for it.
+ *  Exported so callers and tests can recognise the refusal without matching on prose. */
+export const SELF_BOOKING_ERROR =
+  "You can't book your own listing.";
+
 interface CreateBookingInput {
   listingId: string;
   guestId: string;
   checkIn: Date;
   checkOut: Date;
-  guestCount: number;
+  /**
+   * The party, when the caller collected one. Adults, children, infants and pets are
+   * each stored on their own, and `guestCount` below is derived from the first two
+   * rather than taken from the caller.
+   *
+   * Optional because a caller may still book by capacity alone (`guestCount`), and a
+   * booking made that way records no party rather than a fabricated one — the same
+   * distinction the nullable columns draw for every booking taken before they existed.
+   */
+  party?: BookingPartyInput;
+  /**
+   * Capacity: adults + children. Ignored when `party` is supplied, because the party is
+   * then the only thing that decides it; required when it is not.
+   */
+  guestCount?: number;
   guestNote?: string;
   /** The guest's choice from the listing methods loaded in the booking transaction. */
   selectedPaymentMethod?: PaymentMethodCode | null;
@@ -303,7 +412,6 @@ export async function createBooking(input: CreateBookingInput) {
     guestId,
     checkIn,
     checkOut,
-    guestCount,
     guestNote,
     selectedPaymentMethod,
     guestLocale,
@@ -312,11 +420,37 @@ export async function createBooking(input: CreateBookingInput) {
     expectedHouseRulesVersion,
   } = input;
 
+  // The party decides the capacity when there is one; `guestCount` is only consulted
+  // for a caller that supplied no party at all. Nothing is derived from the two
+  // together, so a request cannot state a party of six and a capacity of one.
+  const party = input.party ? normalizeBookingParty(input.party) : null;
+  const guestCount = party ? bookingPartyOccupancy(party) : input.guestCount;
+  if (guestCount === undefined) {
+    throw new Error("A booking needs a party or a guest count.");
+  }
+  // The web action validates this already, but `createBooking` is also called by
+  // background work and tests and is the final boundary before persistence. Keep the
+  // legacy count-only path for deploy compatibility without allowing a raw caller to
+  // create a zero, negative, fractional or non-finite party. A structured party gets
+  // the same ceiling through `bookingPartyIssues` inside the transaction.
+  if (
+    !Number.isInteger(guestCount) ||
+    guestCount < 1 ||
+    guestCount > BOOKING_PARTY_COUNT_MAX
+  ) {
+    throw new Error("That party size can't be booked. Check the guest counts.");
+  }
+
   const createdAt = new Date();
   const responseDueAt = new Date(
     createdAt.getTime() + BOOKING_RESPONSE_WINDOW_HOURS * 60 * 60 * 1000,
   );
   const reference = newBookingReference(createdAt);
+  // The stay as calendar dates. `checkIn`/`checkOut` arrive as the UTC-midnight
+  // instants the `@db.Date` columns take, so every night, price and length decision
+  // below reads them here rather than off the server's own clock.
+  const checkInYmd = dbDateToYmd(checkIn);
+  const checkOutYmd = dbDateToYmd(checkOut);
   let booking;
   try {
     booking = await db.$transaction(async (tx) => {
@@ -335,18 +469,36 @@ export async function createBooking(input: CreateBookingInput) {
             where: { disabledAt: null },
             orderBy: { createdAt: "desc" },
           },
+          // Read inside the transaction, and every window that touches the stay rather
+          // than one that spans it — the shared rule merges touching windows, so it has
+          // to see the neighbour a spanning-window query would have discarded.
           availabilityWindows: {
-            where: {
-              startDate: { lte: checkIn },
-              endDate: { gte: checkOut },
-            },
-            select: { id: true },
+            where: windowsOverlappingStay(checkIn, checkOut),
+            select: { startDate: true, endDate: true },
           },
         },
       });
 
       if (!listing) {
         throw new Error("Listing not found or not available");
+      }
+
+      // 1a. A host cannot be their own guest.
+      //
+      // This is the authoritative check and it is deliberately the first thing decided
+      // after the listing is known — before the booking row, the availability hold, the
+      // conversation, the notification and the queued emails, every one of which a
+      // self-booking would otherwise create. A self-booking is not a harmless oddity:
+      // it blocks the host's own calendar with a BOOKING_HOLD, opens a conversation
+      // whose two participants are the same person, invites that person to review
+      // themselves in both directions, and counts toward the confirmed-booking total
+      // that decides whether they still see first-time-host guidance.
+      //
+      // Hiding the widget on the listing page is a courtesy to a host who wandered onto
+      // their own page. It is not the enforcement — this is, and it holds for a request
+      // posted straight at the action or for any future caller of this service.
+      if (listing.hostId === guestId) {
+        throw new Error(SELF_BOOKING_ERROR);
       }
 
       if (!listing.pricingRule) {
@@ -379,6 +531,10 @@ export async function createBooking(input: CreateBookingInput) {
         );
       }
       const currentDepositPolicies = createDepositPoliciesSnapshot(listing);
+      const currentCancellationPolicy = cancellationPolicySnapshot(
+        listing.freeCancellationDaysBeforeCheckIn,
+        listing.cancellationPolicyReviewedAt,
+      );
       if (houseRulesAcceptedAt) {
         if (
           !expectedHouseRulesVersion ||
@@ -391,31 +547,67 @@ export async function createBooking(input: CreateBookingInput) {
       }
 
       if (
-        listing.availabilityMode === "CLOSED" &&
-        listing.availabilityWindows.length === 0
+        !isStayWithinAvailabilityWindows({
+          availabilityMode: listing.availabilityMode,
+          windows: listing.availabilityWindows,
+          checkIn,
+          checkOut,
+        })
       ) {
         throw new Error(
           "These dates are not open for booking. Please select different dates.",
         );
       }
 
-      // 2. Validate guest count
+      // 2. Validate the party, then the capacity it adds up to.
+      //
+      // The capacity rule is untouched: `guestCount` is still adults + children and is
+      // still what `maxGuests` is compared against. Infants and pets are checked for
+      // their own reasons — a party has to have an adult in it, and a pet needs a
+      // listing whose house rules take one — and neither of them is ever added to the
+      // number a host set their capacity to.
+      //
+      // The pet policy is read from the listing row loaded in this transaction, not
+      // from anything the request carried, and `ASK_HOST` stays a yes here: it is the
+      // policy of a host who takes a small dog but not a Great Dane, and refusing it
+      // outright would turn a conversation into a rejection.
+      if (party) {
+        const issues = bookingPartyIssues(party, {
+          petsAllowed: currentHouseRules.petPolicy !== "NOT_ALLOWED",
+        });
+        if (issues.includes("COUNT_OUT_OF_RANGE")) {
+          throw new Error("That party size can't be booked. Check the guest counts.");
+        }
+        if (issues.includes("NO_ADULTS")) {
+          throw new Error("Add at least one adult to the booking.");
+        }
+        if (issues.includes("PETS_NOT_ALLOWED")) {
+          throw new Error("This host does not accept pets.");
+        }
+      }
+
       if (guestCount > listing.maxGuests) {
         throw new Error(`Maximum ${listing.maxGuests} guests allowed`);
       }
 
       // 3. Validate minimum nights
-      const numberOfNights = differenceInDays(checkOut, checkIn);
+      //
+      // Counted off the stored calendar dates rather than with `differenceInDays`,
+      // which counts *local* calendar days: over the UTC-midnight values these are,
+      // an autumn DST change makes the last day look short and drops a night, so a
+      // 24-27 October stay would be measured as two nights against the host's
+      // minimum and maximum (M6).
+      const numberOfNights = nightsBetweenYmd(checkInYmd, checkOutYmd);
       if (numberOfNights < listing.pricingRule.minNights) {
         throw new Error(
           `Minimum stay is ${listing.pricingRule.minNights} nights`,
         );
       }
 
-      if (
-        listing.pricingRule.maxNights &&
-        numberOfNights > listing.pricingRule.maxNights
-      ) {
+      // Still the last word on stay length — the widget and the search filter now say
+      // the same thing earlier, but they say it by calling this same rule, and the
+      // guest-facing checks are a courtesy rather than the enforcement.
+      if (exceedsMaxNights(numberOfNights, listing.pricingRule.maxNights)) {
         throw new Error(
           `Maximum stay is ${listing.pricingRule.maxNights} nights`,
         );
@@ -445,24 +637,37 @@ export async function createBooking(input: CreateBookingInput) {
         },
       });
       const overrideMap = buildPriceOverrideMap(overrideRows);
+      // `checkIn`/`checkOut` are the stored `@db.Date` instants — right for every
+      // query above, and the one flavour `computeStayQuote` must not be handed: it
+      // walks calendar days off local fields, so on a server behind UTC every night
+      // would shift back a day and take the date overrides and promotion windows with
+      // it. Converted here, once, at the boundary.
       const quote = computeStayQuote({
         baseNightly,
         cleaningFee: Number(listing.pricingRule.cleaningFee),
-        checkIn,
-        checkOut,
+        checkIn: dbDateToLocalDate(checkIn),
+        checkOut: dbDateToLocalDate(checkOut),
         overrides: overrideMap,
-        promotions: listing.promotions.map((promotion) => ({
-          id: promotion.id,
-          type: promotion.type,
-          discountPercent: promotion.discountPercent,
-          minimumNights: promotion.minimumNights,
-          freeCleaning: promotion.freeCleaning,
-          roundToWholeUnit: promotion.roundToWholeUnit,
-          startDate: promotion.startDate,
-          endDate: promotion.endDate,
-          createdAt: promotion.createdAt,
-        })),
+        promotions: listing.promotions.map((promotion) =>
+          toStayPromotion({
+            id: promotion.id,
+            type: promotion.type,
+            discountPercent: promotion.discountPercent,
+            minimumNights: promotion.minimumNights,
+            freeCleaning: promotion.freeCleaning,
+            roundToWholeUnit: promotion.roundToWholeUnit,
+            startDate: promotion.startDate,
+            endDate: promotion.endDate,
+            createdAt: promotion.createdAt,
+          }),
+        ),
       });
+      // A rounded effective average, stored for compatibility and for nothing else.
+      // Three nights at 100 / 100 / 101 put `100.33` here against a `301.00` total, so
+      // multiplying it by the nights reconstructs neither the accommodation subtotal nor
+      // the total (audit L2). `priceBreakdown.accommodationSubtotal` below is the
+      // authoritative figure, and `resolveBookingPricing` in `@/lib/booking-pricing` is
+      // the only supported way to read either one back.
       const nightlyRate = quote.effectiveAverageNightly;
       const cleaningFee = quote.cleaningFee;
       const serviceFee = 0; // Placeholder for future platform fee
@@ -470,9 +675,22 @@ export async function createBooking(input: CreateBookingInput) {
       // Two amounts, each resolved on its own against the same booking total and never
       // added together: the advance payment is a part of `totalPrice`, while the damage
       // deposit is separate security money the host expects to give back.
+      //
+      // Both are quoted in `listing.pricingRule.currency` — the same unit as
+      // `totalPrice`, `priceBreakdown` and the `currency` column written below — and
+      // that currency is passed in rather than inferred, so a policy carrying any other
+      // label resolves to null instead of being relabelled. The snapshot above has
+      // already refused a listing whose stored deposit currency drifted from its pricing
+      // currency, so this is the second lock on that door, on the path that actually
+      // writes the money columns. The advance payment is additionally capped at
+      // `totalPrice`, because it is part of that total and cannot exceed it.
       const { advancePaymentAmount, damageDepositAmount } =
         currentDepositPolicies.status === "REVIEWED"
-          ? calculateDepositAmounts(currentDepositPolicies, String(totalPrice))
+          ? calculateDepositAmounts(
+              currentDepositPolicies,
+              String(totalPrice),
+              listing.pricingRule.currency,
+            )
           : { advancePaymentAmount: null, damageDepositAmount: null };
       const appliedPromotion = quote.appliedPromotion;
       const serializedPromotion = (promotion: NonNullable<typeof appliedPromotion>) => ({
@@ -528,6 +746,20 @@ export async function createBooking(input: CreateBookingInput) {
           checkIn,
           checkOut,
           guestCount,
+          // The party as the guest chose it, each part on its own column. Only the
+          // first two are inside `guestCount` above; infants and pets sit beside it so
+          // the host learns about the cot and the dog without either one consuming
+          // capacity. A caller that supplied no party leaves all four NULL rather than
+          // zero — "nobody asked" is not "none", and a zero here would be this
+          // function inventing an answer on the guest's behalf.
+          ...(party
+            ? {
+                adults: party.adults,
+                children: party.children,
+                infants: party.infants,
+                pets: party.pets,
+              }
+            : {}),
           currency: listing.pricingRule.currency,
           nightlyRate,
           cleaningFee,
@@ -587,6 +819,8 @@ export async function createBooking(input: CreateBookingInput) {
           // before the split keep their V1 object and are read through the same parser.
           depositPolicySnapshot:
             currentDepositPolicies as unknown as Prisma.InputJsonObject,
+          cancellationPolicySnapshot:
+            currentCancellationPolicy as unknown as Prisma.InputJsonObject,
           advancePaymentAmount,
           damageDepositAmount,
           // Each track opens only if its own policy asked for something. "Not required"
@@ -600,6 +834,15 @@ export async function createBooking(input: CreateBookingInput) {
               ? "UNTRACKED"
               : "NOT_REQUIRED",
         },
+      });
+
+      // The request is the first entry in this booking's permanent history, and it is
+      // written here rather than by the notification that announces it: the
+      // announcement is best-effort, the record is not.
+      await recordBookingTimelineEvent(tx, {
+        bookingId: created.id,
+        type: "REQUESTED",
+        actor: { role: "GUEST", userId: guestId },
       });
 
       // 7. Create availability hold
@@ -693,6 +936,14 @@ export async function cancelBooking(
         throw new Error("You can only cancel bookings for your own listings");
       }
 
+      if (cancelledBy === "admin") {
+        const admin = await tx.user.findFirst({
+          where: { id: userId, role: "ADMIN", isActive: true },
+          select: { id: true },
+        });
+        if (!admin) throw new Error("Only an active administrator can cancel as support");
+      }
+
       if (
         booking.status !== BookingStatus.PENDING &&
         booking.status !== BookingStatus.CONFIRMED
@@ -700,11 +951,77 @@ export async function cancelBooking(
         throw new Error("This booking cannot be cancelled");
       }
 
-      const statusMap = {
-        guest: BookingStatus.CANCELLED_BY_GUEST,
-        host: BookingStatus.CANCELLED_BY_HOST,
-        admin: BookingStatus.CANCELLED_BY_ADMIN,
-      };
+      const now = new Date();
+      if (
+        booking.status === BookingStatus.CONFIRMED &&
+        dbDateToYmd(booking.checkIn) <= todayYmd(undefined, now)
+      ) {
+        throw new Error(
+          "Confirmed bookings cannot be cancelled through the ordinary flow after check-in. Contact support.",
+        );
+      }
+
+      let settlement: ReturnType<typeof calculateCancellationSettlement> | null = null;
+      if (booking.status === BookingStatus.CONFIRMED) {
+        const policy = parseCancellationPolicySnapshot(
+          booking.cancellationPolicySnapshot,
+        );
+        const advanceAmount = Number(booking.advancePaymentAmount ?? 0);
+        const advanceReceived =
+          ["PAYMENT_REPORTED", "PAYMENT_CONFIRMED"].includes(
+            booking.advancePaymentStatus,
+          )
+            ? advanceAmount
+            : 0;
+        // In the split request model paymentStatus tracks the accommodation balance.
+        // Legacy rows without an advance still use it for the full accommodation sum.
+        const balanceAmount = Math.max(0, Number(booking.totalPrice) - advanceAmount);
+        const accommodationBalanceReceived =
+          ["PAYMENT_REPORTED", "PAYMENT_CONFIRMED"].includes(
+            booking.paymentStatus,
+          )
+            ? advanceAmount > 0
+              ? balanceAmount
+              : Number(booking.totalPrice)
+            : 0;
+        settlement = calculateCancellationSettlement({
+          cancelledBy,
+          checkIn: booking.checkIn,
+          cancelledOn: todayYmd(undefined, now),
+          // A legacy unanswered policy never grants a retention right. Treating it as
+          // full refund is a safe fallback, not a public default for the listing.
+          freeDays:
+            policy?.status === "REVIEWED"
+              ? policy.freeCancellationDaysBeforeCheckIn ?? 0
+              : 3650,
+          advanceReceived,
+          accommodationBalanceReceived,
+          damageDepositReceived:
+            booking.damageDepositStatus === "DEPOSIT_REPORTED" ||
+            booking.damageDepositStatus === "DEPOSIT_CONFIRMED",
+        });
+      }
+
+      // Status, permanent-history type and actor role in one table, so a canceller can
+      // never be given a status without also being given the history entry that says
+      // who did it.
+      const cancellation = {
+        guest: {
+          status: BookingStatus.CANCELLED_BY_GUEST,
+          event: "CANCELLED_BY_GUEST",
+          role: "GUEST",
+        },
+        host: {
+          status: BookingStatus.CANCELLED_BY_HOST,
+          event: "CANCELLED_BY_HOST",
+          role: "HOST",
+        },
+        admin: {
+          status: BookingStatus.CANCELLED_BY_ADMIN,
+          event: "CANCELLED_BY_ADMIN",
+          role: "ADMIN",
+        },
+      } as const;
 
       const cancelled = await tx.booking.updateMany({
         where: {
@@ -712,17 +1029,68 @@ export async function cancelBooking(
           status: booking.status,
         },
         data: {
-          status: statusMap[cancelledBy],
+          status: cancellation[cancelledBy].status,
           respondedAt:
             booking.status === BookingStatus.PENDING
               ? new Date()
               : booking.respondedAt,
           cancellationReason: reason,
+          cancelledAt: now,
+          ...(settlement
+            ? {
+                accommodationRefundAmount: settlement.accommodationRefundAmount,
+                ...paymentStateAfterCancellation({
+                  accommodationRefundAmount: settlement.accommodationRefundAmount,
+                  accommodationRefundStatus: booking.accommodationRefundStatus,
+                }),
+                accommodationRefundStatusUpdatedAt:
+                  settlement.accommodationRefundAmount > 0 ? now : null,
+                cancellationSettlementSnapshot: {
+                  version: 1,
+                  calculatedAt: now.toISOString(),
+                  freeCancellation: settlement.freeCancellation,
+                  accommodationRefundAmount: settlement.accommodationRefundAmount,
+                  retainableAdvanceAmount: settlement.retainableAdvanceAmount,
+                  damageDepositReturnRequired:
+                    settlement.damageDepositReturnRequired,
+                },
+              }
+            : {}),
         },
       });
       if (cancelled.count === 0) {
         throw new Error("This booking changed while it was being cancelled");
       }
+      await recordBookingTimelineEvent(tx, {
+        bookingId,
+        type: cancellation[cancelledBy].event,
+        actor: { role: cancellation[cancelledBy].role, userId },
+      });
+
+      // Cancellation opens an obligation; it never claims the refund happened. Keep
+      // that opening in the same append-only payment timeline as every later report
+      // and confirmation so support can reconstruct why AWAITING_REFUND appeared.
+      if (settlement && settlement.accommodationRefundAmount > 0) {
+        await tx.bookingPaymentStatusEvent.create({
+          data: {
+            bookingId,
+            actorId: userId,
+            eventType: "CANCELLATION_OPENED_ACCOMMODATION_REFUND",
+            paymentStatus: booking.paymentStatus,
+            advancePaymentStatus: booking.advancePaymentStatus,
+            damageDepositStatus: booking.damageDepositStatus,
+            accommodationRefundStatus: "AWAITING_REFUND",
+            depositStatus: booking.depositStatus,
+          },
+        });
+      }
+      await tx.bookingPaymentRequest.updateMany({
+        where: {
+          bookingId,
+          status: { in: ["DRAFT", "SENT"] },
+        },
+        data: { status: "CANCELLED" },
+      });
 
       // Release availability hold
       await tx.availabilityBlock.deleteMany({
@@ -746,7 +1114,11 @@ export async function cancelBooking(
           await import("@/lib/services/notification.service");
         await notifyBookingEvent(
           updated.id,
-          cancelledBy === "guest" ? "cancelled-by-guest" : "cancelled-by-host",
+          cancelledBy === "guest"
+            ? "cancelled-by-guest"
+            : cancelledBy === "admin"
+              ? "cancelled-by-admin"
+              : "cancelled-by-host",
         );
       });
       return updated;
@@ -766,6 +1138,13 @@ export async function getBookingAcceptancePaymentData(
       currency: true,
       totalPrice: true,
       checkIn: true,
+      acceptedAt: true,
+      depositPolicySnapshot: true,
+      advancePaymentAmount: true,
+      damageDepositAmount: true,
+      paymentStatus: true,
+      advancePaymentStatus: true,
+      damageDepositStatus: true,
       selectedPaymentMethod: true,
       paymentMethodsSnapshot: true,
       guest: { select: { name: true } },
@@ -774,6 +1153,17 @@ export async function getBookingAcceptancePaymentData(
           id: true,
           acceptedPaymentMethods: true,
           paymentInstructionTemplates: true,
+        },
+      },
+      paymentRequests: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          type: true,
+          amount: true,
+          currency: true,
+          dueAt: true,
+          status: true,
         },
       },
     },
@@ -804,6 +1194,66 @@ export async function getBookingAcceptancePaymentData(
   const resolved = guestChosenMethod
     ? resolvePaymentInstructionsForMethod(store, guestChosenMethod)
     : ({ kind: "NONE" } as const);
+  const calculatedObligations = bookingPaymentObligations({
+    total: Number(booking.totalPrice),
+    advancePaymentAmount: Number(booking.advancePaymentAmount ?? 0),
+    damageDepositAmount: Number(booking.damageDepositAmount ?? 0),
+    depositPolicySnapshot: booking.depositPolicySnapshot,
+    acceptedAt: booking.acceptedAt ?? new Date(),
+    checkIn: booking.checkIn,
+  });
+  const requests =
+    booking.paymentRequests.length > 0
+      ? booking.paymentRequests.map((request) => ({
+          id: request.id,
+          type: request.type,
+          amount: Number(request.amount),
+          currency: request.currency,
+          dueDate: dbDateToYmd(request.dueAt),
+          status: request.status,
+        }))
+      : calculatedObligations.map((request) => ({
+          id: null,
+          ...request,
+          currency: booking.currency,
+          status: "DRAFT" as const,
+        }));
+
+  /**
+   * What accepting would actually put on the guest: a request above zero, on a track
+   * acceptance leaves open. A zero-value stay, a waived price and an already-settled
+   * deposit all count as nothing to collect, which is what makes "no instructions
+   * needed" a true answer rather than a way to skip the question.
+   */
+  const frozenDepositPolicies = parseDepositPoliciesSnapshot(
+    booking.depositPolicySnapshot,
+  );
+  const stateAfterAcceptance = paymentStateAfterAcceptance({
+    paymentStatus: booking.paymentStatus,
+    advancePaymentStatus: booking.advancePaymentStatus,
+    damageDepositStatus: booking.damageDepositStatus,
+    advancePaymentAmount: booking.advancePaymentAmount,
+    damageDepositAmount: booking.damageDepositAmount,
+    advanceDueAfterAcceptance:
+      frozenDepositPolicies?.advancePayment?.dueTiming === "AFTER_ACCEPTANCE",
+    damageDueAfterAcceptance:
+      frozenDepositPolicies?.damageDeposit?.dueTiming === "AFTER_ACCEPTANCE",
+  });
+  const payableRequests = requests.filter(
+    (request) =>
+      request.status === "DRAFT" &&
+      request.amount > 0 &&
+      obligationTrackIsOpen(request.type, stateAfterAcceptance),
+  );
+  // Computed from the guest's own choice, which is what the host's screen shows. The
+  // acceptance workflow recomputes it against the method it actually resolves, so a
+  // booking with no recorded choice cannot be accepted "no instructions needed" while
+  // the host quietly supplies a bank transfer.
+  const decisionRule = acceptanceDecisionRule({
+    method: guestChosenMethod,
+    payableCount: payableRequests.length,
+    availableMethods,
+  });
 
   return {
     bookingId: booking.id,
@@ -813,6 +1263,7 @@ export async function getBookingAcceptancePaymentData(
     guestName: booking.guest.name,
     currency: booking.currency,
     total: Number(booking.totalPrice),
+    requests,
     checkIn: booking.checkIn.toISOString().slice(0, 10),
     selectedPaymentMethod: guestChosenMethod,
     /**
@@ -830,6 +1281,11 @@ export async function getBookingAcceptancePaymentData(
       resolved.kind === "STRUCTURED"
         ? resolved.details.fields
         : ({} as PaymentDetailFieldValues),
+    /** How many obligations acceptance would open. Zero means nothing to collect. */
+    payableRequestCount: payableRequests.length,
+    /** The decisions a host may accept this booking with, and the one a UI may
+     *  preselect. Advisory for rendering; the service revalidates on submit. */
+    decisionRule,
   };
 }
 
@@ -974,15 +1430,44 @@ export async function saveBookingPaymentInstructionTemplate(input: {
   });
 }
 
+/**
+ * Writes the acceptance. The only place a booking becomes CONFIRMED.
+ *
+ * `decision` is required and is not defaulted anywhere: this used to fall back to a
+ * status derived from `selectedPaymentMethod`, so a host who accepted on the phone got
+ * a `PENDING` instructions task they had never been asked about, while the same
+ * booking accepted on the web got whatever the dialog had made them choose (M1).
+ *
+ * The decision is re-validated here, inside the transaction, against the booking as it
+ * stands right now — the guest's recorded method and the money this acceptance would
+ * actually open. `acceptBookingAsHost` is the workflow every host path goes through and
+ * checks more than this (a host-supplied method for a booking with no recorded choice,
+ * the details being sent); this is the floor beneath it, so no caller — a future route,
+ * a script, a test — can write an acceptance whose payment state contradicts itself.
+ */
 export async function confirmBooking(
   bookingId: string,
   hostId: string,
   options: {
-    paymentInstructionsStatus?: "PENDING" | "NOT_NEEDED";
-  } = {},
+    decision: BookingPaymentDecision;
+    /** Only consulted when the guest did not record a choice. */
+    method?: PaymentMethodCode;
+  },
 ) {
   const now = new Date();
   const result = await db.$transaction(async (tx) => {
+    const bookingListing = await tx.booking.findUnique({
+      where: { id: bookingId },
+      select: { listingId: true },
+    });
+    if (!bookingListing) throw new Error("Booking not found");
+
+    // Acceptance is part of the same per-listing lifecycle as booking creation,
+    // unpublishing, archiving and suspension. Once the lock is ours, re-read both the
+    // booking and listing in this transaction: the screen's earlier payment DTO and
+    // even the lookup above may be stale by the time this writer gets its turn.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${bookingListing.listingId}))`;
+
     const booking = await tx.booking.findUnique({
       where: { id: bookingId },
       include: { listing: true },
@@ -991,6 +1476,11 @@ export async function confirmBooking(
     if (!booking) throw new Error("Booking not found");
     if (booking.listing.hostId !== hostId) {
       throw new Error("You can only confirm bookings for your own listings");
+    }
+    if (booking.listing.status !== ListingStatus.APPROVED) {
+      throw new Error(
+        "This listing is no longer approved, so this booking request cannot be accepted",
+      );
     }
     if (booking.status !== BookingStatus.PENDING) {
       throw new Error("Only pending bookings can be confirmed");
@@ -1016,26 +1506,87 @@ export async function confirmBooking(
       await enqueueBookingEmails(tx, bookingId, [
         BookingEmailKind.GUEST_EXPIRED,
       ]);
+      // The host arrived too late, so what happened here is an expiry — recorded as
+      // one even though this call is about to fail. That transition committed; only
+      // the acceptance or the decline did not.
+      await recordBookingTimelineEvent(tx, {
+        bookingId,
+        type: "EXPIRED",
+        actor: { role: "SYSTEM" },
+      });
       return { outcome: "expired" as const, bookingId };
     }
 
     const frozenDepositPolicies = parseDepositPoliciesSnapshot(
       booking.depositPolicySnapshot,
     );
-    const advancePaymentStatus = frozenDepositPolicies?.advancePayment
-      ? frozenDepositPolicies.advancePayment.dueTiming === "AFTER_ACCEPTANCE"
-        ? "AWAITING_PAYMENT"
-        : "UNTRACKED"
-      : Number(booking.advancePaymentAmount ?? 0) > 0
-        ? booking.advancePaymentStatus
-        : "NOT_REQUIRED";
-    const damageDepositStatus = frozenDepositPolicies?.damageDeposit
-      ? frozenDepositPolicies.damageDeposit.dueTiming === "AFTER_ACCEPTANCE"
-        ? "AWAITING_DEPOSIT"
-        : "UNTRACKED"
-      : Number(booking.damageDepositAmount ?? 0) > 0
-        ? booking.damageDepositStatus
-        : "NOT_REQUIRED";
+    // Accepting a request opens the money tracks the policy asked for — but only the
+    // ones that are actually asking for money.
+    //
+    // The policy *object* is not that question. A percentage policy on a small total,
+    // or a fixed one the host set to zero, resolves to an amount of zero, and creation
+    // settles that track as NOT_REQUIRED — a real answer, and the one the guest was
+    // shown at request time. Keying acceptance off the object alone re-opened those
+    // settled tracks as AWAITING_PAYMENT/AWAITING_DEPOSIT, asking the guest for money
+    // the booking had already told them was not owed.
+    //
+    // So the frozen amount decides first, and an already-settled track stays settled.
+    // The amount is the figure frozen at creation from the same policy, so this cannot
+    // disagree with what the guest agreed to.
+    const acceptedPaymentState = paymentStateAfterAcceptance({
+      paymentStatus: booking.paymentStatus,
+      advancePaymentStatus: booking.advancePaymentStatus,
+      damageDepositStatus: booking.damageDepositStatus,
+      advancePaymentAmount: booking.advancePaymentAmount,
+      damageDepositAmount: booking.damageDepositAmount,
+      advanceDueAfterAcceptance:
+        frozenDepositPolicies?.advancePayment?.dueTiming === "AFTER_ACCEPTANCE",
+      damageDueAfterAcceptance:
+        frozenDepositPolicies?.damageDeposit?.dueTiming === "AFTER_ACCEPTANCE",
+    });
+    const obligations = bookingPaymentObligations({
+      total: Number(booking.totalPrice),
+      advancePaymentAmount: Number(booking.advancePaymentAmount ?? 0),
+      damageDepositAmount: Number(booking.damageDepositAmount ?? 0),
+      depositPolicySnapshot: booking.depositPolicySnapshot,
+      acceptedAt: now,
+      checkIn: booking.checkIn,
+    }).filter((obligation) =>
+      obligationTrackIsOpen(obligation.type, acceptedPaymentState),
+    );
+    const paymentSnapshot = parsePaymentMethodsSnapshot(
+      booking.paymentMethodsSnapshot,
+    );
+    const availableMethods =
+      paymentSnapshot?.status === "REVIEWED" && paymentSnapshot.methods.length > 0
+        ? paymentSnapshot.methods
+        : booking.listing.acceptedPaymentMethods.filter(isPaymentMethodCode);
+    const effectiveMethod = resolveRequestMethod(
+      {
+        selectedPaymentMethod: isPaymentMethodCode(booking.selectedPaymentMethod)
+          ? booking.selectedPaymentMethod
+          : null,
+        availableMethods,
+      },
+      options.method,
+    );
+    if (
+      !isPaymentMethodCode(booking.selectedPaymentMethod) &&
+      options.method &&
+      !effectiveMethod
+    ) {
+      throw new Error("That payment method is not valid for this booking.");
+    }
+    const decisionError = acceptanceDecisionError(
+      options.decision,
+      acceptanceDecisionRule({
+        method: effectiveMethod,
+        payableCount: obligations.length,
+        availableMethods,
+      }),
+    );
+    if (decisionError) throw new Error(decisionError);
+    const paymentInstructionsStatus = instructionsStatusForDecision(options.decision);
 
     const confirmed = await tx.booking.updateMany({
       where: {
@@ -1047,25 +1598,56 @@ export async function confirmBooking(
         status: BookingStatus.CONFIRMED,
         respondedAt: now,
         acceptedAt: now,
-        paymentStatus: "AWAITING_PAYMENT",
-        paymentInstructionsStatus:
-          options.paymentInstructionsStatus ??
-          (booking.selectedPaymentMethod === null ||
-          booking.selectedPaymentMethod === "CASH_AT_PROPERTY" ||
-          booking.selectedPaymentMethod === "ARRANGE_DIRECTLY"
-            ? "NOT_NEEDED"
-            : "PENDING"),
+        // Persist an allowed host fallback so later payment requests and reminders do
+        // not have to rediscover the method chosen during acceptance.
+        selectedPaymentMethod: effectiveMethod,
+        paymentStatus: acceptedPaymentState.paymentStatus,
+        paymentInstructionsStatus,
         paymentStatusUpdatedAt: now,
-        advancePaymentStatus,
-        damageDepositStatus,
+        advancePaymentStatus: acceptedPaymentState.advancePaymentStatus,
+        damageDepositStatus: acceptedPaymentState.damageDepositStatus,
         advancePaymentStatusUpdatedAt:
-          advancePaymentStatus === "AWAITING_PAYMENT" ? now : null,
+          acceptedPaymentState.advancePaymentStatus === "AWAITING_PAYMENT" ? now : null,
         damageDepositStatusUpdatedAt:
-          damageDepositStatus === "AWAITING_DEPOSIT" ? now : null,
+          acceptedPaymentState.damageDepositStatus === "AWAITING_DEPOSIT" ? now : null,
       },
     });
     if (confirmed.count === 0) {
       throw new Error("This booking request changed while you were responding");
+    }
+    await recordBookingTimelineEvent(tx, {
+      bookingId,
+      type: "CONFIRMED",
+      actor: { role: "HOST", userId: hostId },
+    });
+    if (obligations.length > 0) {
+      await tx.bookingPaymentRequest.createMany({
+        data: obligations.map((obligation) => ({
+          bookingId,
+          type: obligation.type,
+          amount: obligation.amount,
+          currency: booking.currency,
+          dueAt: ymdToDbDate(obligation.dueDate),
+          method: effectiveMethod,
+          otherLabel: paymentSnapshot?.otherLabel ?? null,
+          // Cash-at-property and arrange-directly still need an active, dated
+          // obligation for progress and reminders, but there are no private bank
+          // details for the host to review or send. Mark that decision explicitly so
+          // the booking does not immediately create a false "send instructions" task.
+          ...(paymentInstructionsStatus === "NOT_NEEDED"
+            ? {
+                status: "SENT" as const,
+                instructionsSnapshot: {
+                  version: 1,
+                  kind: "NO_INSTRUCTIONS",
+                } as Prisma.InputJsonObject,
+                reviewedAt: now,
+                sentAt: now,
+              }
+            : {}),
+        })),
+        skipDuplicates: true,
+      });
     }
     await enqueueBookingEmails(tx, bookingId, [
       BookingEmailKind.GUEST_CONFIRMED,
@@ -1141,6 +1723,14 @@ export async function rejectBooking(
       await enqueueBookingEmails(tx, bookingId, [
         BookingEmailKind.GUEST_EXPIRED,
       ]);
+      // The host arrived too late, so what happened here is an expiry — recorded as
+      // one even though this call is about to fail. That transition committed; only
+      // the acceptance or the decline did not.
+      await recordBookingTimelineEvent(tx, {
+        bookingId,
+        type: "EXPIRED",
+        actor: { role: "SYSTEM" },
+      });
       return { outcome: "expired" as const, bookingId };
     }
 
@@ -1159,6 +1749,11 @@ export async function rejectBooking(
     if (rejected.count === 0) {
       throw new Error("This booking request changed while you were responding");
     }
+    await recordBookingTimelineEvent(tx, {
+      bookingId,
+      type: "REJECTED",
+      actor: { role: "HOST", userId: hostId },
+    });
 
     await tx.availabilityBlock.deleteMany({
       where: { bookingId, blockType: BlockType.BOOKING_HOLD },

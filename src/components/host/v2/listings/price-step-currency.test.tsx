@@ -97,7 +97,13 @@ describe("PriceStep — the draft's own currency", () => {
     await advance();
 
     expect(draft.patches).toEqual([
-      { baseNightlyRate: "120", cleaningFee: "0", currency: "USD", currentStepId: "specialOffer" },
+      {
+        baseNightlyRate: "120",
+        cleaningFee: "0",
+        currency: "USD",
+        currentStepId: "specialOffer",
+        currentRoute: "payment-arrangements",
+      },
     ]);
   });
 
@@ -112,6 +118,7 @@ describe("PriceStep — the draft's own currency", () => {
         cleaningFee: "0",
         currency: DEFAULT_CURRENCY,
         currentStepId: "specialOffer",
+        currentRoute: "payment-arrangements",
       },
     ]);
   });
@@ -317,7 +324,13 @@ describe("PriceStep — a currency change during an unfinished draft", () => {
     await advance();
 
     expect(draft.patches).toEqual([
-      { baseNightlyRate: "120", cleaningFee: "0", currency: "USD", currentStepId: "specialOffer" },
+      {
+        baseNightlyRate: "120",
+        cleaningFee: "0",
+        currency: "USD",
+        currentStepId: "specialOffer",
+        currentRoute: "payment-arrangements",
+      },
     ]);
   });
 

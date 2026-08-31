@@ -38,6 +38,7 @@ export function PhotoTile({
   onToggleSelect,
   onSetListingCover,
   onSetRoomCover,
+  onTogglePanorama,
   onMoveTo,
   onMoveToRoomType,
   onDelete,
@@ -52,6 +53,7 @@ export function PhotoTile({
   onToggleSelect: (id: string, additive: boolean) => void;
   onSetListingCover: (id: string) => void;
   onSetRoomCover: (id: string) => void;
+  onTogglePanorama: (id: string, isPanorama: boolean) => void;
   onMoveTo: (id: string, roomId: string | null) => void;
   onMoveToRoomType: (id: string, roomTypeId: string) => void;
   onDelete: (id: string) => void;
@@ -133,6 +135,12 @@ export function PhotoTile({
         </span>
       )}
 
+      {photo.isPanorama && (
+        <span className="pointer-events-none absolute left-1.5 top-8 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">
+          360°
+        </span>
+      )}
+
       {roomLabel && (
         <span
           className="pointer-events-none absolute bottom-1.5 right-1.5 max-w-[calc(100%-0.75rem)] truncate rounded bg-black/45 px-1.5 py-0.5 text-[10px] text-white"
@@ -157,6 +165,15 @@ export function PhotoTile({
                   k="host.editor.photos.set_listing_cover"
                   source="Set as listing cover"
                 />
+              </DropdownMenuItem>
+            )}
+            {photo.mediaType === "IMAGE" && (
+              <DropdownMenuItem onSelect={() => onTogglePanorama(photo.id, !photo.isPanorama)}>
+                {photo.isPanorama ? (
+                  <Tx k="host.editor.photos.disable_360" source="Show as regular photo" />
+                ) : (
+                  <Tx k="host.editor.photos.enable_360" source="Show as 360° photo" />
+                )}
               </DropdownMenuItem>
             )}
             {photo.roomId && (

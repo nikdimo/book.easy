@@ -6,7 +6,12 @@ import {
   HostBookingActionRail,
   type HostActionCard,
 } from "@/components/host/host-booking-action-rail";
-import { formatDate, formatPrice } from "@/lib/utils/format";
+import {
+  formatCalendarDate,
+  formatCalendarDay,
+  formatCalendarMonth,
+  formatPrice,
+} from "@/lib/utils/format";
 import { getDisplayCurrency } from "@/lib/currency/server";
 import { getExchangeRates } from "@/lib/currency/rates";
 import { summarizeUpcomingTotal } from "@/lib/host/upcoming-booking-total";
@@ -22,6 +27,10 @@ import {
   formatCountdown,
 } from "@/lib/host/booking-action-queue";
 import { resolveBookingStatus } from "@/lib/i18n/status-labels";
+import {
+  bookingPartyDetailLine,
+  resolveBookingParty,
+} from "@/lib/booking-party";
 
 export const metadata = { title: "Bookings" };
 
@@ -109,6 +118,7 @@ export default async function HostBookingsPage() {
 
   const actionCards: HostActionCard[] = queue.map((item) => {
     const booking = byId.get(item.bookingId)!;
+    const partyDetail = bookingPartyDetailLine(t, resolveBookingParty(booking));
     return {
       bookingId: booking.id,
       kind: item.kind,
@@ -124,7 +134,7 @@ export default async function HostBookingsPage() {
       imageUrl: booking.listing.images[0]?.url ?? null,
       imageAlt: booking.listing.images[0]?.alt || booking.listing.title,
       guestName: booking.guest.name,
-      guestLine: `${booking.guest.name} · ${booking.guestCount} · ${formatDate(booking.checkIn, t.locale)} – ${formatDate(booking.checkOut, t.locale)} · ${formatPrice(Number(booking.totalPrice), booking.currency, t.locale)}`,
+      guestLine: `${booking.guest.name} · ${partyDetail?.text ?? booking.guestCount} · ${formatCalendarDate(booking.checkIn, t.locale)} – ${formatCalendarDate(booking.checkOut, t.locale)} · ${formatPrice(Number(booking.totalPrice), booking.currency, t.locale)}`,
       guestNote: booking.guestNote,
       unreadCount: unreadFor(booking),
       alsoNeeds: item.alsoNeeds,
@@ -207,6 +217,10 @@ export default async function HostBookingsPage() {
           const statusConfig = resolveBookingStatus(t, booking.status);
           const isTerminal = TERMINAL_STATUSES.has(booking.status);
           const daysToCheckIn = daysUntil(booking.checkIn, now);
+          // Use the full recorded party whenever the capacity number leaves something
+          // out (children, infants or pets). Historical bookings and adults-only
+          // parties keep the compact number the list has always shown.
+          const partyDetail = bookingPartyDetailLine(t, resolveBookingParty(booking));
           return {
             id: booking.id,
             searchText: [booking.listing.title, booking.listing.property.city, booking.guest.name, booking.reference, booking.status, statusConfig.text, booking.guestNote].filter(Boolean).join(" "),
@@ -230,10 +244,10 @@ export default async function HostBookingsPage() {
               >
                 <div className="w-11 shrink-0 text-center">
                   <p className="text-[11px] uppercase text-muted-foreground" translate="no">
-                    {new Intl.DateTimeFormat(t.locale, { month: "short" }).format(booking.checkIn)}
+                    {formatCalendarMonth(booking.checkIn, t.locale)}
                   </p>
                   <p className="text-xl font-semibold leading-tight tabular-nums" translate="no">
-                    {new Intl.DateTimeFormat(t.locale, { day: "2-digit" }).format(booking.checkIn)}
+                    {formatCalendarDay(booking.checkIn, t.locale)}
                   </p>
                 </div>
                 <span className="self-stretch border-l" aria-hidden="true" />
@@ -262,8 +276,8 @@ export default async function HostBookingsPage() {
                   </div>
                   <p className="mt-0.5 truncate pl-3.5 text-sm text-muted-foreground">
                     {isTerminal ? `${statusConfig.text} · ` : ""}
-                    {booking.guest.name} · {booking.guestCount} ·{" "}
-                    {formatDate(booking.checkIn, t.locale)} – {formatDate(booking.checkOut, t.locale)} ·{" "}
+                    {booking.guest.name} · {partyDetail?.text ?? booking.guestCount} ·{" "}
+                    {formatCalendarDate(booking.checkIn, t.locale)} – {formatCalendarDate(booking.checkOut, t.locale)} ·{" "}
                     {formatPrice(Number(booking.totalPrice), booking.currency, t.locale)}
                   </p>
                 </div>

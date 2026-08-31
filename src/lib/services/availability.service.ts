@@ -1,6 +1,18 @@
 import "server-only";
 import { db } from "@/lib/db";
-import { addDays } from "date-fns";
+import {
+  addDaysToYmd,
+  addMonthsToYmd,
+  compareYmd,
+  dbDateToYmd,
+  todayYmd,
+  ymdToDbDate,
+} from "@/lib/utils/date-only";
+import {
+  isStayWithinAvailabilityWindows,
+  mergeAvailabilityWindows,
+  windowsOverlappingStay,
+} from "@/lib/utils/availability-windows";
 
 export async function checkAvailability(
   listingId: string,
@@ -11,16 +23,22 @@ export async function checkAvailability(
     where: { id: listingId },
     select: {
       availabilityMode: true,
+      // Every window that touches the stay, not just one that spans it: the shared rule
+      // merges them, so it has to see the neighbour a spanning-window query would drop.
       availabilityWindows: {
-        where: { startDate: { lte: checkIn }, endDate: { gte: checkOut } },
-        select: { id: true },
+        where: windowsOverlappingStay(checkIn, checkOut),
+        select: { startDate: true, endDate: true },
       },
     },
   });
   if (
     !listing ||
-    (listing.availabilityMode === "CLOSED" &&
-      listing.availabilityWindows.length === 0)
+    !isStayWithinAvailabilityWindows({
+      availabilityMode: listing.availabilityMode,
+      windows: listing.availabilityWindows,
+      checkIn,
+      checkOut,
+    })
   ) {
     return { available: false };
   }
@@ -47,12 +65,21 @@ export async function checkAvailability(
   return { available: true };
 }
 
+/**
+ * A run of unbookable days, as calendar dates rather than instants.
+ *
+ * `yyyy-MM-dd` on purpose. These cross the server/client boundary into the guest
+ * calendar, and a `Date` crosses it as a *moment*: the UTC midnight the `@db.Date`
+ * columns read back as is 19:00 the previous day in Chicago, so every blocked run
+ * arrived a day early for guests west of UTC. A date-only string means the same day
+ * on both sides, and the pickers turn it back into their own local midnight.
+ */
 export interface BlockedDateRange {
   /** First blocked day, inclusive. */
-  from: Date;
+  from: string;
   /** Last blocked day, inclusive (storage is [startDate, endDate) — checkout day is
    * not itself blocked, so this is one day before the stored exclusive `endDate`). */
-  to: Date;
+  to: string;
 }
 
 /** How far ahead the public listing page shows blocked dates. Bookings/blocks further
@@ -79,10 +106,14 @@ export async function getBlockedDateRangesForListings(
   const byListing = new Map<string, BlockedDateRange[]>();
   if (listingIds.length === 0) return byListing;
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const horizon = new Date(today);
-  horizon.setMonth(horizon.getMonth() + PUBLIC_AVAILABILITY_HORIZON_MONTHS);
+  // The marketplace's day, in the terms the `@db.Date` columns are stored in. The old
+  // server-local midnight was an instant two hours off the UTC midnight Prisma reads
+  // these columns back as, so on a UTC+2 host the window was skewed against every
+  // comparison below and `addDays` walked local days over UTC anchors (M6).
+  const today = todayYmd();
+  const horizon = addMonthsToYmd(today, PUBLIC_AVAILABILITY_HORIZON_MONTHS);
+  const todayDate = ymdToDbDate(today);
+  const horizonDate = ymdToDbDate(horizon);
 
   const [listings, blocks] = await Promise.all([
     db.listing.findMany({
@@ -91,7 +122,7 @@ export async function getBlockedDateRangesForListings(
         id: true,
         availabilityMode: true,
         availabilityWindows: {
-          where: { startDate: { lt: horizon }, endDate: { gt: today } },
+          where: { startDate: { lt: horizonDate }, endDate: { gt: todayDate } },
           select: { startDate: true, endDate: true },
           orderBy: { startDate: "asc" },
         },
@@ -100,8 +131,8 @@ export async function getBlockedDateRangesForListings(
     db.availabilityBlock.findMany({
       where: {
         listingId: { in: listingIds },
-        startDate: { lt: horizon },
-        endDate: { gt: today },
+        startDate: { lt: horizonDate },
+        endDate: { gt: todayDate },
       },
       select: { listingId: true, startDate: true, endDate: true },
       orderBy: { startDate: "asc" },
@@ -111,10 +142,17 @@ export async function getBlockedDateRangesForListings(
   for (const listing of listings) {
     const result = blocks
       .filter((block) => block.listingId === listing.id)
-      .map((block) => ({
-        from: block.startDate < today ? today : block.startDate,
-        to: block.endDate > horizon ? horizon : addDays(block.endDate, -1),
-      }));
+      .map((block) => {
+        const start = dbDateToYmd(block.startDate);
+        const endExclusive = dbDateToYmd(block.endDate);
+        return {
+          from: compareYmd(start, today) < 0 ? today : start,
+          to:
+            compareYmd(endExclusive, horizon) > 0
+              ? horizon
+              : addDaysToYmd(endExclusive, -1),
+        };
+      });
 
     if (listing.availabilityMode !== "CLOSED") {
       byListing.set(listing.id, result);
@@ -123,17 +161,27 @@ export async function getBlockedDateRangesForListings(
 
     // The guest calendar consumes blocked ranges, so complement explicit open windows
     // inside its bounded horizon. Booking enforcement above remains unbounded.
+    //
+    // Complementing the *merged* spans rather than the raw rows is what keeps this
+    // calendar honest: it is the same merge `checkAvailability`, `createBooking` and
+    // search now run, so a night this leaves selectable is a night the server accepts.
+    // The old loop bridged touching windows too, but only as a side effect of carrying
+    // `cursor` forward — and the three server paths did not bridge at all.
     let cursor = today;
-    for (const window of listing.availabilityWindows) {
-      const start = window.startDate < today ? today : window.startDate;
-      const end = window.endDate > horizon ? horizon : window.endDate;
-      if (start > cursor) result.push({ from: cursor, to: addDays(start, -1) });
-      if (end > cursor) cursor = end;
+    for (const span of mergeAvailabilityWindows(listing.availabilityWindows)) {
+      const spanStart = dbDateToYmd(span.startDate);
+      const spanEnd = dbDateToYmd(span.endDate);
+      const start = compareYmd(spanStart, today) < 0 ? today : spanStart;
+      const end = compareYmd(spanEnd, horizon) > 0 ? horizon : spanEnd;
+      if (compareYmd(start, cursor) > 0) {
+        result.push({ from: cursor, to: addDaysToYmd(start, -1) });
+      }
+      if (compareYmd(end, cursor) > 0) cursor = end;
     }
-    if (cursor < horizon) result.push({ from: cursor, to: horizon });
+    if (compareYmd(cursor, horizon) < 0) result.push({ from: cursor, to: horizon });
     byListing.set(
       listing.id,
-      result.sort((a, b) => a.from.getTime() - b.from.getTime())
+      result.sort((a, b) => compareYmd(a.from, b.from))
     );
   }
 

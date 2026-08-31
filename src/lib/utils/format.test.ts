@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { formatDate, formatPrice } from "@/lib/utils/format";
+import {
+  formatCalendarDate,
+  formatCalendarDateShort,
+  formatDate,
+  formatPrice,
+} from "@/lib/utils/format";
 
 describe("formatPrice", () => {
   it("formats a non-EUR currency in the booking's own official currency, not EUR", () => {
@@ -33,5 +38,32 @@ describe("formatDate", () => {
 
     expect(en).not.toBe(de);
     expect(en).not.toBe(mk);
+  });
+});
+
+describe("calendar-date formatting", () => {
+  it("keeps a stored booking day unchanged in every process time zone", () => {
+    const previous = process.env.TZ;
+    try {
+      const answers = [
+        "UTC",
+        "Europe/Skopje",
+        "America/Chicago",
+        "Pacific/Kiritimati",
+      ].map((zone) => {
+        process.env.TZ = zone;
+        return {
+          full: formatCalendarDate(new Date("2026-06-10T00:00:00.000Z"), "en"),
+          short: formatCalendarDateShort("2026-06-10", "en"),
+        };
+      });
+
+      expect(new Set(answers.map((answer) => answer.full)).size).toBe(1);
+      expect(new Set(answers.map((answer) => answer.short)).size).toBe(1);
+      expect(answers[0].full).toContain("10");
+      expect(answers[0].short).toContain("10");
+    } finally {
+      process.env.TZ = previous;
+    }
   });
 });

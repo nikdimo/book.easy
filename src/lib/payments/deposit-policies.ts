@@ -16,6 +16,30 @@
  *
  * Linger Homes records these terms and the participants' own manual status reports. It
  * never collects, holds, processes, verifies or refunds any of this money.
+ *
+ * ## The currency invariant
+ *
+ * **Every amount this module calculates or freezes onto a booking is denominated in the
+ * booking's pricing currency** — the listing's `pricingRule.currency`, which is what
+ * `Booking.currency`, `Booking.totalPrice` and `priceBreakdown` are all quoted in.
+ *
+ * A listing carries a *second* currency label, `depositPoliciesCurrency`, stamped when
+ * the host last reviewed the payment-arrangements screen. It can lag: it is a record of
+ * what the host was quoted in at review time, not a live read of the listing's price.
+ * The two are therefore reconciled at exactly two points, and never by relabelling:
+ *
+ *   - `createDepositPoliciesSnapshot` refuses to produce REVIEWED terms when the stored
+ *     label disagrees with the live pricing currency (or when either is missing while a
+ *     policy asks for money). The listing reads as UNANSWERED, which is what the host's
+ *     own editor shows as "needs review" and what a guest is told plainly. A `FIXED 100`
+ *     saved under EUR is never re-served as `100 MKD`.
+ *   - `calculateDepositAmounts` takes the booking currency explicitly and drops any
+ *     policy that does not match it. Unreachable once the snapshot has been checked; it
+ *     is the second lock on the same door, on the path that writes money columns.
+ *
+ * The advance payment is additionally bounded: it is *part of* the booking total, so it
+ * can never exceed it. The damage deposit is separate money on top of the total and is
+ * deliberately left unbounded — no business rule caps security against damage.
  */
 
 import {
@@ -23,6 +47,7 @@ import {
   decimalIsPositive,
   normalizeDepositValue,
   resolveDeclaredAmount,
+  toCurrencyAmount,
   type DecimalLike,
 } from "@/lib/payments/deposit-money";
 import {
@@ -85,6 +110,7 @@ export type DepositPolicyIssue =
   | "INVALID_VALUE"
   | "VALUE_MUST_BE_POSITIVE"
   | "PERCENTAGE_TOO_HIGH"
+  | "ADVANCE_EXCEEDS_STAY_TOTAL"
   | "CURRENCY_REQUIRED"
   | "INVALID_CURRENCY"
   | "DUE_TIMING_REQUIRED"
@@ -283,6 +309,16 @@ export interface ListingDepositPoliciesRow {
   damageDepositReturnDaysAfterCheckout: number | null;
   depositPoliciesCurrency: string | null;
   depositPoliciesReviewedAt: Date | null;
+  /**
+   * The listing's live pricing currency, which is the only currency a booking made from
+   * this listing is ever quoted in.
+   *
+   * Structural rather than a bare string so it reads as what it is — the pricing rule
+   * relation — and so a caller that forgot to select it fails to typecheck instead of
+   * silently passing the stored label off as the live one. Null is a real state: a draft
+   * listing has no pricing rule yet.
+   */
+  pricingRule: { currency: string } | null;
 }
 
 const UNANSWERED: DepositPoliciesConfig = {
@@ -295,10 +331,29 @@ const UNANSWERED: DepositPoliciesConfig = {
  *
  * A row that fails validation degrades to UNANSWERED rather than to a partially-read
  * policy: telling a guest nothing is honest, telling them half a term is not.
+ *
+ * A row whose stored policy currency no longer matches the listing's pricing currency
+ * degrades the same way, and for the same reason. Those amounts were quoted in a
+ * currency this listing no longer prices in; re-serving them under the new label would
+ * turn `100 EUR` into `100 MKD` without anyone deciding to. The host's own editor reads
+ * this snapshot, so the listing shows as needing review and the next save re-stamps both
+ * the amounts and the currency together. Nothing in the database is rewritten here, and
+ * bookings that already froze terms keep them untouched.
+ *
+ * Currency is only consulted when a section actually asks for money: a listing that asks
+ * for neither is a complete answer that no currency can spoil, including on a draft with
+ * no pricing rule at all.
  */
 export function createDepositPoliciesSnapshot(
   row: ListingDepositPoliciesRow,
 ): DepositPoliciesSnapshotV2 {
+  const wantsMoney = row.advancePaymentEnabled || row.damageDepositEnabled;
+  const pricingCurrency = normalizeCode(row.pricingRule?.currency);
+  const storedCurrency = normalizeCode(row.depositPoliciesCurrency);
+  if (wantsMoney && (pricingCurrency === null || storedCurrency !== pricingCurrency)) {
+    return { version: 2, status: "UNANSWERED", ...UNANSWERED };
+  }
+
   const validation = validateDepositPolicies({
     currency: row.depositPoliciesCurrency,
     advancePayment: row.advancePaymentEnabled
@@ -433,28 +488,144 @@ export interface FrozenDepositAmounts {
   damageDepositAmount: string | null;
 }
 
+/**
+ * Resolves one policy against a booking total, refusing any policy not denominated in
+ * the booking's own currency.
+ *
+ * `PERCENTAGE` is a share *of this booking total*, so a policy carrying a different
+ * currency label would be resolving a share of one currency and printing it as another.
+ * `FIXED` is worse still — a flat number relabelled outright. Neither is reconcilable
+ * without an exchange rate this product deliberately does not apply to payable amounts,
+ * so both return null and the track opens as NOT_REQUIRED.
+ */
+function resolveAgainstBooking(
+  policy: AdvancePaymentPolicy,
+  bookingTotal: DecimalLike,
+  bookingCurrency: string,
+): string | null {
+  if (normalizeCode(policy.currency) !== bookingCurrency) return null;
+  return resolveDeclaredAmount(
+    policy.amountType,
+    policy.value,
+    bookingCurrency,
+    bookingTotal,
+  );
+}
+
 export function calculateDepositAmounts(
   policies: DepositPoliciesConfig,
   bookingTotal: DecimalLike,
+  /** The booking's pricing currency — `Booking.currency`, the unit of `bookingTotal`. */
+  bookingCurrency: string,
 ): FrozenDepositAmounts {
+  const currency = normalizeCode(bookingCurrency);
+  if (currency === null) {
+    return { advancePaymentAmount: null, damageDepositAmount: null };
+  }
+
+  let advancePaymentAmount = policies.advancePayment
+    ? resolveAgainstBooking(policies.advancePayment, bookingTotal, currency)
+    : null;
+
+  // The advance payment is part of the booking total, so asking for more than the total
+  // is not a bigger advance — it is a figure that cannot mean anything. A `PERCENTAGE`
+  // is already bounded at save time (`PERCENTAGE_TOO_HIGH`); a `FIXED` value knows
+  // nothing about the stay it lands on, and a short stay can cost less than it. Capping
+  // at the total reads as "pay the stay in full up front", which is the only sound
+  // reading, and it keeps the guest from ever being quoted more than they owe. The
+  // frozen policy still records what the host declared, so the cap stays legible.
+  //
+  // The damage deposit is deliberately not capped: it is security *on top of* the total,
+  // and no rule in this product ties its size to the price of the stay.
+  const totalInBookingCurrency = toCurrencyAmount(bookingTotal, currency);
+  if (
+    advancePaymentAmount !== null &&
+    totalInBookingCurrency !== null &&
+    !decimalAtMost(advancePaymentAmount, totalInBookingCurrency)
+  ) {
+    advancePaymentAmount = totalInBookingCurrency;
+  }
+
   return {
-    advancePaymentAmount: policies.advancePayment
-      ? resolveDeclaredAmount(
-          policies.advancePayment.amountType,
-          policies.advancePayment.value,
-          policies.advancePayment.currency,
-          bookingTotal,
-        )
-      : null,
+    advancePaymentAmount,
     damageDepositAmount: policies.damageDeposit
-      ? resolveDeclaredAmount(
-          policies.damageDeposit.amountType,
-          policies.damageDeposit.value,
-          policies.damageDeposit.currency,
-          bookingTotal,
-        )
+      ? resolveAgainstBooking(policies.damageDeposit, bookingTotal, currency)
       : null,
   };
+}
+
+/**
+ * The dearest stay this listing could sell at its own base rate: every night it allows,
+ * plus the cleaning fee. Null when the pricing rule is not usable.
+ */
+export function maximumStayTotalAtBaseRate(pricing: {
+  baseNightlyRate: DecimalLike;
+  cleaningFee: DecimalLike;
+  maxNights: number;
+  currency: string;
+}): string | null {
+  const nightly = normalizeDepositValue(pricing.baseNightlyRate);
+  const cleaning = normalizeDepositValue(pricing.cleaningFee);
+  if (nightly === null || cleaning === null) return null;
+  if (!Number.isSafeInteger(pricing.maxNights) || pricing.maxNights < 1) return null;
+
+  // Percentage arithmetic in reverse: `maxNights * 100%` of the nightly rate, so the
+  // multiplication stays on the same integer-coefficient path every other amount uses.
+  const nights = resolveDeclaredAmount(
+    "PERCENTAGE",
+    String(pricing.maxNights * 100),
+    pricing.currency,
+    nightly,
+  );
+  if (nights === null) return null;
+  const total = addDecimals(nights, cleaning);
+  return toCurrencyAmount(total, pricing.currency);
+}
+
+function addDecimals(left: string, right: string): string {
+  const [leftWhole, leftFraction = ""] = left.split(".");
+  const [rightWhole, rightFraction = ""] = right.split(".");
+  const scale = Math.max(leftFraction.length, rightFraction.length);
+  const sum =
+    BigInt(`${leftWhole}${leftFraction.padEnd(scale, "0")}`) +
+    BigInt(`${rightWhole}${rightFraction.padEnd(scale, "0")}`);
+  if (scale === 0) return sum.toString();
+  const digits = sum.toString().padStart(scale + 1, "0");
+  return `${digits.slice(0, -scale)}.${digits.slice(-scale)}`;
+}
+
+/**
+ * Whether a declared advance payment could never be collected in full.
+ *
+ * The real bound is the booking total, which no listing screen can know — a stay's price
+ * depends on its dates, its per-night overrides and whatever promotion applies. What a
+ * listing *can* prove is that a flat advance larger than its dearest permitted stay at
+ * its own base rate would be capped for every booking it ever takes, which makes it a
+ * typo rather than a policy. Per-night overrides can price a stay above the base rate,
+ * so this is a floor on wrongness and not a substitute for the cap in
+ * `calculateDepositAmounts`; it exists to tell the host at the moment they can fix it.
+ *
+ * A `PERCENTAGE` advance needs none of this: it is bounded at 100% by validation, and
+ * 100% of the total is exactly the cap.
+ */
+export function advanceExceedsEveryStay(
+  advancePayment: AdvancePaymentPolicy | null,
+  pricing: {
+    baseNightlyRate: DecimalLike;
+    cleaningFee: DecimalLike;
+    maxNights: number;
+    currency: string;
+  } | null,
+): boolean {
+  if (!advancePayment || advancePayment.amountType !== "FIXED" || !pricing) return false;
+  if (normalizeCode(advancePayment.currency) !== normalizeCode(pricing.currency)) {
+    return false;
+  }
+  const ceiling = maximumStayTotalAtBaseRate(pricing);
+  if (ceiling === null) return false;
+  const declared = toCurrencyAmount(advancePayment.value, pricing.currency);
+  if (declared === null) return false;
+  return !decimalAtMost(declared, ceiling);
 }
 
 /** Whether the host answered the question at all and asked for anything. */

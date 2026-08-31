@@ -26,10 +26,13 @@ import {
   stringifyPropertyTypesParam,
 } from "@/lib/property-type-filter";
 import {
+  clearPriceParams,
+  PRICE_FILTER_CURRENCY,
   PRICE_RANGE_MAX,
   PRICE_RANGE_MIN,
   PRICE_RANGE_STEP,
   resolvePriceRange,
+  setPriceParams,
 } from "@/lib/search-filter-config";
 import { isFlexibilityValue } from "@/components/marketplace/marketplace-stay-date-picker";
 import type { SearchFilterPreview } from "@/lib/types/search";
@@ -268,6 +271,12 @@ function SearchFiltersInner({
       initialPreview?.availablePropertyTypes ?? availablePropertyTypes,
     availableAmenities: initialPreview?.availableAmenities ?? [],
     maxBedrooms: initialPreview?.maxBedrooms ?? 0,
+    priceComparison: initialPreview?.priceComparison ?? {
+      currency: BASE_CURRENCY,
+      applied: false,
+      complete: true,
+      unconvertible: 0,
+    },
   }));
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
 
@@ -362,6 +371,9 @@ function SearchFiltersInner({
             guests: guests > 0 ? guests : undefined,
             minPrice: isPriceFiltered ? priceRange[0] : undefined,
             maxPrice: isPriceFiltered ? priceRange[1] : undefined,
+            // The band is authored in euros and compared in euros; saying so is what
+            // keeps this count and the results page filtering the same listings.
+            currency: PRICE_FILTER_CURRENCY,
             bedrooms: bedrooms > 0 ? bedrooms : undefined,
             propertyTypes,
             amenities: selectedAmenities,
@@ -409,16 +421,14 @@ function SearchFiltersInner({
   function buildFilteredParams() {
     const params = new URLSearchParams(baseSearchParamsString);
     params.delete("page");
-    params.delete("minPrice");
-    params.delete("maxPrice");
+    clearPriceParams(params);
     params.delete("bedrooms");
     params.delete("propertyType");
     params.delete("propertyTypes");
     params.delete("amenities");
 
     if (isPriceFiltered) {
-      params.set("minPrice", String(priceRange[0]));
-      params.set("maxPrice", String(priceRange[1]));
+      setPriceParams(params, priceRange);
     }
 
     if (bedrooms > 0) {
@@ -460,8 +470,7 @@ function SearchFiltersInner({
     startTransition(() => {
       const params = new URLSearchParams(baseSearchParamsString);
       params.delete("page");
-      params.delete("minPrice");
-      params.delete("maxPrice");
+      clearPriceParams(params);
       params.delete("bedrooms");
       params.delete("propertyType");
       params.delete("propertyTypes");

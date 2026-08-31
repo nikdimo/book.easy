@@ -15,40 +15,30 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Tx, useI18n } from "@/lib/i18n/client";
 import {
-  validateDepositPolicies,
   type DepositAmountType,
   type DepositDueTiming,
   type DepositPoliciesSnapshotV2,
 } from "@/lib/payments/deposit-policies";
+import {
+  depositPoliciesDraftFromSnapshot,
+  depositPoliciesDraftIsValid,
+  depositPoliciesPayload,
+  type DamageDepositSectionDraft,
+  type DepositPoliciesDraft,
+  type DepositSectionDraft,
+} from "@/lib/host/v2/listing-deposit-draft";
 
 /**
- * One editable policy section. `enabled` is kept alongside the values rather than
- * replacing them with null so a host who switches a section off and on again gets their
- * numbers back instead of an empty form.
+ * The form shapes and the payload builder now live in `lib/host/v2/listing-deposit-draft`
+ * so the publish action can read a draft's answer through the same conversion this
+ * editor writes it with. Re-exported here because this module was their address first
+ * and every existing importer still uses it.
  */
-export type DepositSectionDraft = {
-  enabled: boolean;
-  amountType: DepositAmountType;
-  value: string;
-  dueTiming: DepositDueTiming;
-  dueDaysBeforeCheckIn: number | null;
-};
-
-export type DamageDepositSectionDraft = DepositSectionDraft & {
-  returnDaysAfterCheckout: number | null;
-};
-
-export type DepositPoliciesDraft = {
-  advancePayment: DepositSectionDraft;
-  damageDeposit: DamageDepositSectionDraft;
-};
-
-const EMPTY_SECTION: DepositSectionDraft = {
-  enabled: false,
-  amountType: "FIXED",
-  value: "",
-  dueTiming: "AFTER_ACCEPTANCE",
-  dueDaysBeforeCheckIn: null,
+export {
+  depositPoliciesPayload as toPayload,
+  type DamageDepositSectionDraft,
+  type DepositPoliciesDraft,
+  type DepositSectionDraft,
 };
 
 /**
@@ -63,35 +53,26 @@ export function DepositPoliciesEditor({
   initialValue,
   listingCurrency,
   onSave,
+  onChange,
+  showSubmit = true,
 }: {
   initialValue: DepositPoliciesSnapshotV2;
   listingCurrency: string;
   onSave: (draft: DepositPoliciesDraft) => Promise<void>;
+  /** Every edit, with whether the answer could be published as it stands. Both
+   *  sections off is complete — it is how a host says "I ask for neither". */
+  onChange?: (
+    draft: DepositPoliciesDraft,
+    meta: { isComplete: boolean },
+  ) => void;
+  /** Listing creation owns navigation in its fixed footer, so it reuses the fields
+   *  without rendering this editor's standalone save row. */
+  showSubmit?: boolean;
 }) {
   const i18n = useI18n();
-  const initialDraft = (): DepositPoliciesDraft => ({
-    advancePayment: initialValue.advancePayment
-      ? {
-          enabled: true,
-          amountType: initialValue.advancePayment.amountType,
-          value: initialValue.advancePayment.value,
-          dueTiming: initialValue.advancePayment.dueTiming,
-          dueDaysBeforeCheckIn: initialValue.advancePayment.dueDaysBeforeCheckIn,
-        }
-      : { ...EMPTY_SECTION },
-    damageDeposit: initialValue.damageDeposit
-      ? {
-          enabled: true,
-          amountType: initialValue.damageDeposit.amountType,
-          value: initialValue.damageDeposit.value,
-          dueTiming: initialValue.damageDeposit.dueTiming,
-          dueDaysBeforeCheckIn: initialValue.damageDeposit.dueDaysBeforeCheckIn,
-          returnDaysAfterCheckout:
-            initialValue.damageDeposit.returnDaysAfterCheckout,
-        }
-      : { ...EMPTY_SECTION, returnDaysAfterCheckout: null },
-  });
-  const [draft, setDraft] = useState<DepositPoliciesDraft>(initialDraft);
+  const [draft, setDraft] = useState<DepositPoliciesDraft>(() =>
+    depositPoliciesDraftFromSnapshot(initialValue),
+  );
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(initialValue.status === "REVIEWED");
   const [error, setError] = useState<string | null>(null);
@@ -100,11 +81,14 @@ export function DepositPoliciesEditor({
     setDraft(next);
     setSaved(false);
     setError(null);
+    onChange?.(next, {
+      isComplete: depositPoliciesDraftIsValid(next, listingCurrency),
+    });
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!validateDepositPolicies(toPayload(draft, listingCurrency)).success) {
+    if (!depositPoliciesDraftIsValid(draft, listingCurrency)) {
       setError(
         i18n.resolve(
           "host.editor.deposit.invalid",
@@ -174,7 +158,7 @@ export function DepositPoliciesEditor({
               />
             }
           >
-            <SectionFields
+            <DepositSectionFields
               idPrefix="advance-payment"
               listingCurrency={listingCurrency}
               section={draft.advancePayment}
@@ -204,7 +188,7 @@ export function DepositPoliciesEditor({
               />
             }
           >
-            <SectionFields
+            <DepositSectionFields
               idPrefix="damage-deposit"
               listingCurrency={listingCurrency}
               section={draft.damageDeposit}
@@ -238,7 +222,7 @@ export function DepositPoliciesEditor({
                   })
                 }
               />
-            </SectionFields>
+            </DepositSectionFields>
           </PolicySection>
         </fieldset>
 
@@ -247,26 +231,28 @@ export function DepositPoliciesEditor({
             <CircleAlert className="size-4" aria-hidden /> {error}
           </p>
         ) : null}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-slate-500">
-            {saved ? (
-              <Tx k="host.editor.deposit.saved" source="Deposit settings saved" />
-            ) : (
-              <Tx
-                k="host.editor.deposit.not_saved"
-                source="Deposit settings need review"
-              />
-            )}
-          </p>
-          <Button
-            type="submit"
-            disabled={saving}
-            className="rounded-full bg-slate-900 px-6"
-          >
-            {saving ? <LoaderCircle className="animate-spin" aria-hidden /> : null}
-            <Tx k="host.editor.deposit.save" source="Save deposit settings" />
-          </Button>
-        </div>
+        {showSubmit ? (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-slate-500">
+              {saved ? (
+                <Tx k="host.editor.deposit.saved" source="Deposit settings saved" />
+              ) : (
+                <Tx
+                  k="host.editor.deposit.not_saved"
+                  source="Deposit settings need review"
+                />
+              )}
+            </p>
+            <Button
+              type="submit"
+              disabled={saving}
+              className="rounded-full bg-slate-900 px-6"
+            >
+              {saving ? <LoaderCircle className="animate-spin" aria-hidden /> : null}
+              <Tx k="host.editor.deposit.save" source="Save deposit settings" />
+            </Button>
+          </div>
+        ) : null}
       </form>
     </section>
   );
@@ -317,7 +303,16 @@ function PolicySection({
   );
 }
 
-function SectionFields({
+/**
+ * The amount, timing and return fields of one deposit section.
+ *
+ * Exported so the new-listing step can put the same fields behind its own
+ * "Require / Not required" choice. The two screens ask the question differently — a
+ * switch there, two radio cards here — but a host must not meet two different sets of
+ * fields, two different validations or two different ids depending on which one they
+ * are standing on.
+ */
+export function DepositSectionFields({
   idPrefix,
   listingCurrency,
   section,
@@ -539,33 +534,4 @@ function Field({
       {children}
     </div>
   );
-}
-
-/**
- * The wire shape the Server Action validates. A switched-off section sends only its
- * flag, so no stale amount can reach the server hidden behind a disabled toggle.
- */
-export function toPayload(draft: DepositPoliciesDraft, currency: string) {
-  return {
-    currency,
-    advancePayment: draft.advancePayment.enabled
-      ? {
-          enabled: true,
-          amountType: draft.advancePayment.amountType,
-          value: draft.advancePayment.value,
-          dueTiming: draft.advancePayment.dueTiming,
-          dueDaysBeforeCheckIn: draft.advancePayment.dueDaysBeforeCheckIn,
-        }
-      : { enabled: false },
-    damageDeposit: draft.damageDeposit.enabled
-      ? {
-          enabled: true,
-          amountType: draft.damageDeposit.amountType,
-          value: draft.damageDeposit.value,
-          dueTiming: draft.damageDeposit.dueTiming,
-          dueDaysBeforeCheckIn: draft.damageDeposit.dueDaysBeforeCheckIn,
-          returnDaysAfterCheckout: draft.damageDeposit.returnDaysAfterCheckout,
-        }
-      : { enabled: false },
-  };
 }

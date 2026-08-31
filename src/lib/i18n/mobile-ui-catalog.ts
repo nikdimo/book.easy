@@ -88,6 +88,17 @@ export function mobileUiCatalog(translator: Translator): string[] {
     t(translator, "mobile.bookings.guest", "Guest"),
     t(translator, "mobile.bookings.dates", "Dates"),
     t(translator, "mobile.bookings.guests", "Guests"),
+    // The party beside the capacity count. React Native has no live DOM translation
+    // to fall back on, so each form is a catalog entry of its own — the web widget
+    // resolves the same four counters through `booking.adults` and friends.
+    t(translator, "mobile.bookings.party.adult", "{count} adult"),
+    t(translator, "mobile.bookings.party.adults", "{count} adults"),
+    t(translator, "mobile.bookings.party.child", "{count} child"),
+    t(translator, "mobile.bookings.party.children", "{count} children"),
+    t(translator, "mobile.bookings.party.infant", "{count} infant"),
+    t(translator, "mobile.bookings.party.infants", "{count} infants"),
+    t(translator, "mobile.bookings.party.pet", "{count} pet"),
+    t(translator, "mobile.bookings.party.pets", "{count} pets"),
     t(translator, "mobile.bookings.total", "Total"),
     t(translator, "mobile.bookings.pending", "Pending"),
     t(translator, "mobile.bookings.cancelled_guest", "Cancelled by Guest"),

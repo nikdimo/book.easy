@@ -299,26 +299,6 @@ font.goog-text-highlight,
   display: none !important;
 }
 
-.desktop-search-active-capsule {
-  transition:
-    left 260ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    top 260ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    width 260ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    height 260ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    opacity 120ms ease-out,
-    box-shadow 200ms ease-out;
-  will-change: left, top, width, height;
-}
-
-/* First placement has nothing to slide from: the capsule would otherwise animate
-   in from wherever the previous segment left it, sitting over a neighbouring
-   field while its panel is already open. Snap it onto the field instead. */
-.desktop-search-active-capsule[data-instant="true"] {
-  transition:
-    opacity 120ms ease-out,
-    box-shadow 200ms ease-out;
-}
-
 @keyframes desktop-search-content-in {
   from {
     opacity: 0;
@@ -366,10 +346,6 @@ font.goog-text-highlight,
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .desktop-search-active-capsule {
-    transition-duration: 1ms !important;
-  }
-
   .desktop-search-panel-content {
     animation-duration: 1ms !important;
     animation-delay: 0ms !important;

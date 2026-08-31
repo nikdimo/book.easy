@@ -4,6 +4,11 @@ import Image from "next/image";
 import { ArrowLeft, Calendar, MapPin, Star, Users } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { getHostBookingWithGuest } from "@/lib/services/booking.service";
+import {
+  bookingPartyDetailLine,
+  resolveBookingParty,
+} from "@/lib/booking-party";
+import { resolveBookingPricing } from "@/lib/booking-pricing";
 import { BookingStatusHero } from "@/components/booking/booking-status-hero";
 import { HostBookingActions } from "@/components/host/host-booking-actions";
 import { HostCancelBookingButton } from "@/components/host/host-cancel-booking-button";
@@ -11,13 +16,20 @@ import { StartConversationButton } from "@/components/communication/start-conver
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { formatDate, formatPrice } from "@/lib/utils/format";
+import { formatCalendarDate, formatPrice } from "@/lib/utils/format";
 import { formatMoney } from "@/lib/currency/convert";
 import { getT, T, TWithValues } from "@/lib/i18n/t";
 import { getBookingPaymentProgress } from "@/lib/services/booking-payment-status.service";
 import { getBookingPaymentRequestPrefill } from "@/lib/services/booking.service";
-import { parseBookingPaymentDetailsSnapshot } from "@/lib/payments/booking-payment-request";
+import {
+  isNoInstructionsPaymentRequestSnapshot,
+  parseBookingPaymentDetailsSnapshot,
+} from "@/lib/payments/booking-payment-request";
 import { parseDepositPoliciesSnapshot } from "@/lib/payments/deposit-policies";
+import {
+  parseCancellationPolicySnapshot,
+  parseCancellationSettlementSnapshot,
+} from "@/lib/payments/cancellation-policy";
 import { BookingPaymentProgress } from "@/components/booking/booking-payment-progress";
 import { acceptedPaymentMethodsFromSnapshot } from "@/components/booking/accepted-payment-methods";
 
@@ -46,12 +58,16 @@ export default async function HostBookingDetailPage({
   );
 
   const t = await getT();
-  const priceBreakdown = booking.priceBreakdown as {
-    accommodationSubtotal?: number;
-  } | null;
-  const accommodationSubtotal =
-    priceBreakdown?.accommodationSubtotal ??
-    Number(booking.nightlyRate) * booking.numberOfNights;
+  // One resolver, shared with the guest pages and the mobile API. `nightlyRate` is a
+  // rounded average and the old fallback multiplied it by the nights, which misses the
+  // total by a cent or more on an uneven stay (audit L2). This card carries no discount
+  // line, so it prints the *net* figures: those add up to the booking total on their own.
+  const pricing = resolveBookingPricing(booking);
+  // The part of the party the guest count cannot say: the children inside it, and the
+  // infants and pets that were never inside it at all. This is the line a host plans a
+  // cot, a cleaning pass and pet access from. Null on a booking taken before the party
+  // was recorded — that host is shown the plain count, never a fabricated zero.
+  const partyDetail = bookingPartyDetailLine(t, resolveBookingParty(booking));
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -122,7 +138,7 @@ export default async function HostBookingDetailPage({
               </p>
               <p className="mt-1 flex items-center gap-1 font-medium">
                 <Calendar className="h-3.5 w-3.5" />
-                {formatDate(booking.checkIn, t.locale)}
+                {formatCalendarDate(booking.checkIn, t.locale)}
               </p>
             </div>
             <div>
@@ -131,7 +147,7 @@ export default async function HostBookingDetailPage({
               </p>
               <p className="mt-1 flex items-center gap-1 font-medium">
                 <Calendar className="h-3.5 w-3.5" />
-                {formatDate(booking.checkOut, t.locale)}
+                {formatCalendarDate(booking.checkOut, t.locale)}
               </p>
             </div>
             <div>
@@ -142,6 +158,13 @@ export default async function HostBookingDetailPage({
                 <Users className="h-3.5 w-3.5" />
                 {booking.guestCount}
               </p>
+              {partyDetail ? (
+                <p
+                  className={`mt-0.5 text-xs text-muted-foreground ${partyDetail.translated ? "notranslate" : ""}`}
+                >
+                  {partyDetail.text}
+                </p>
+              ) : null}
             </div>
             <div>
               <p className="text-muted-foreground">
@@ -175,14 +198,14 @@ export default async function HostBookingDetailPage({
                   values={{ nights: booking.numberOfNights }}
                 />
               </span>
-              <span>{formatPrice(accommodationSubtotal, booking.currency, t.locale)}</span>
+              <span>{formatPrice(pricing.accommodationSubtotal, booking.currency, t.locale)}</span>
             </div>
-            {Number(booking.cleaningFee) > 0 ? (
+            {pricing.cleaningFee > 0 ? (
               <div className="flex justify-between gap-4">
                 <span>
                   <T t={t} k="host.booking_detail.cleaning_fee" source="Cleaning fee" />
                 </span>
-                <span>{formatPrice(Number(booking.cleaningFee), booking.currency, t.locale)}</span>
+                <span>{formatPrice(pricing.cleaningFee, booking.currency, t.locale)}</span>
               </div>
             ) : null}
             <Separator />
@@ -264,6 +287,12 @@ export default async function HostBookingDetailPage({
                   ? null
                   : Number(paymentProgress.damageDepositAmount),
               depositPolicies: parseDepositPoliciesSnapshot(paymentProgress.depositPolicySnapshot),
+              cancellationPolicy: parseCancellationPolicySnapshot(
+                paymentProgress.cancellationPolicySnapshot,
+              ),
+              cancellationSettlement: parseCancellationSettlementSnapshot(
+                paymentProgress.cancellationSettlementSnapshot,
+              ),
               paymentStatus: paymentProgress.paymentStatus,
               paymentInstructionsStatus: paymentProgress.paymentInstructionsStatus,
               paymentInstructionsDueAt:
@@ -279,11 +308,61 @@ export default async function HostBookingDetailPage({
               paymentMethodOtherLabel: paymentMethods?.otherLabel ?? null,
               advancePaymentStatus: paymentProgress.advancePaymentStatus,
               damageDepositStatus: paymentProgress.damageDepositStatus,
+              accommodationRefundStatus: paymentProgress.accommodationRefundStatus,
+              accommodationRefundAmount:
+                paymentProgress.accommodationRefundAmount === null
+                  ? null
+                  : Number(paymentProgress.accommodationRefundAmount),
               paymentStatusEvents: paymentProgress.paymentStatusEvents.map((event) => ({
                 id: event.id,
-                actor: event.eventType.startsWith("GUEST_") ? "GUEST" : "HOST",
+                actor:
+                  event.actorId === paymentProgress.guestId
+                    ? "GUEST"
+                    : event.actorId === paymentProgress.listing.hostId
+                      ? "HOST"
+                      : event.actorId
+                        ? "ADMIN"
+                        : event.eventType.startsWith("GUEST_")
+                          ? "GUEST"
+                          : event.eventType.startsWith("HOST_")
+                            ? "HOST"
+                            : "SYSTEM",
                 eventType: event.eventType,
                 createdAt: event.createdAt.toISOString(),
+              })),
+              paymentRequests: paymentProgress.paymentRequests.map((request) => ({
+                id: request.id,
+                type: request.type,
+                amount: Number(request.amount),
+                currency: request.currency,
+                dueAt: request.dueAt.toISOString(),
+                status: request.status,
+                sentPaymentDetails: parseBookingPaymentDetailsSnapshot(
+                  request.instructionsSnapshot,
+                ),
+                instructionsNotRequired: isNoInstructionsPaymentRequestSnapshot(
+                  request.instructionsSnapshot,
+                ),
+                reminders: request.reminders.map((reminder) => ({
+                  kind: reminder.kind,
+                  sentAt: reminder.sentAt.toISOString(),
+                })),
+              })),
+              transactionReports: paymentProgress.paymentPrivateRecords.map((report) => ({
+                id: report.id,
+                track: report.track,
+                reporter:
+                  report.reporterId === null
+                    ? "REDACTED"
+                    : report.reporterId === paymentProgress.guestId
+                      ? "GUEST"
+                      : "HOST",
+                amount: Number(report.amount),
+                currency: report.currency,
+                transactionDate: report.transactionDate.toISOString(),
+                reference: report.reference,
+                note: report.note,
+                retainedReason: report.retainedReason,
               })),
             }}
           />

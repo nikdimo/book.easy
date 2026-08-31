@@ -20,7 +20,7 @@ function request(overrides: Record<string, unknown> = {}) {
     listingId: "listing-1",
     checkIn: ymd(checkIn),
     checkOut: ymd(checkOut),
-    guestCount: "2",
+    adults: "2",
     houseRulesAccepted: "true",
     houseRulesVersion: "a".repeat(64),
     ...overrides,
@@ -30,6 +30,14 @@ function request(overrides: Record<string, unknown> = {}) {
 describe("createBookingSchema house-rules acceptance", () => {
   it("accepts a request that carries an explicit acceptance", () => {
     expect(createBookingSchema.safeParse(request()).success).toBe(true);
+  });
+
+  it("refuses impossible calendar dates even when their shape is yyyy-MM-dd", () => {
+    expect(
+      createBookingSchema.safeParse(
+        request({ checkIn: "2027-02-30", checkOut: "2027-03-03" }),
+      ).success,
+    ).toBe(false);
   });
 
   it("refuses a request that omits it", () => {

@@ -1,8 +1,8 @@
 import { Badge } from "@/components/ui/badge";
-import { formatDateShort } from "@/lib/utils/format";
+import { formatCalendarDateShort } from "@/lib/utils/format";
 import { getPropertyTypeLabel } from "@/lib/services/property-type.service";
 import { resolveListingSpaceTypeLabel, resolvePropertyTypeLabel } from "@/lib/i18n/property-type-labels";
-import { parseISO, isValid } from "date-fns";
+import { isValid, parseISO } from "date-fns";
 import { PropertyCardGallery } from "@/components/public/property-card-gallery";
 import { LocalizedPrice } from "@/components/shared/localized-price";
 import { auth } from "@/lib/auth";
@@ -94,7 +94,7 @@ export async function PropertyCard({
     isValid(parseISO(checkOut));
   const dateLine =
     showTrip &&
-    `${formatDateShort(parseISO(checkIn!), t.requestedLocale)} – ${formatDateShort(parseISO(checkOut!), t.requestedLocale)}`;
+    `${formatCalendarDateShort(checkIn!, t.requestedLocale)} – ${formatCalendarDateShort(checkOut!, t.requestedLocale)}`;
 
   const nightly = pricingRule ? Number(pricingRule.baseNightlyRate) : 0;
   // A listing that charges one rate all year has nothing to span, so it keeps the
@@ -103,6 +103,12 @@ export async function PropertyCard({
     listing.nightlyRange && listing.nightlyRange.max > listing.nightlyRange.min
       ? listing.nightlyRange
       : null;
+  // The low end of what is actually bookable, falling back to the base rate only when
+  // there is no range at all. Reading `nightly` whenever min equalled max printed the
+  // base rate for a listing whose every night is overridden to something else — and
+  // the search now filters and sorts on this same number, so the card would have been
+  // ordered by one price and labelled with another.
+  const leadingNightly = listing.nightlyRange?.min ?? nightly;
   const quote =
     showTrip && pricingRule
       ? computeStayQuote({
@@ -328,7 +334,7 @@ export async function PropertyCard({
             <span aria-hidden="true">·</span>
             <span className="flex shrink-0 items-baseline gap-1">
               <LocalizedPrice
-                amount={rateRange ? rateRange.min : nightly}
+                amount={leadingNightly}
                 currency={pricingRule.currency}
                 locale={t.locale}
                 className="text-[0.95rem] font-semibold text-foreground"

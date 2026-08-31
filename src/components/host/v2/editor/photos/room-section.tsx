@@ -38,6 +38,7 @@ export function RoomSection({
   onToggleSelect,
   onSetListingCover,
   onSetRoomCover,
+  onTogglePanorama,
   onMoveTo,
   onMoveToRoomType,
   onDelete,
@@ -54,6 +55,7 @@ export function RoomSection({
   onToggleSelect: (id: string, additive: boolean) => void;
   onSetListingCover: (id: string) => void;
   onSetRoomCover: (id: string) => void;
+  onTogglePanorama: (id: string, isPanorama: boolean) => void;
   onMoveTo: (id: string, roomId: string | null) => void;
   onMoveToRoomType: (id: string, roomTypeId: string) => void;
   onDelete: (id: string) => void;
@@ -164,6 +166,7 @@ export function RoomSection({
                   onToggleSelect={onToggleSelect}
                   onSetListingCover={onSetListingCover}
                   onSetRoomCover={onSetRoomCover}
+                  onTogglePanorama={onTogglePanorama}
                   onMoveTo={onMoveTo}
                   onMoveToRoomType={onMoveToRoomType}
                   onDelete={onDelete}

@@ -54,13 +54,6 @@ type Variant =
   | "floating";
 type DesktopPanel = "where" | "when" | "who";
 
-type CapsuleGeometry = {
-  left: number;
-  top: number;
-  width: number;
-  height: number;
-};
-
 type PopoverGeometry = {
   left: number;
   top: number;
@@ -399,38 +392,15 @@ function MarketplaceSearchBarInner({
         : null
     : null;
   const pillFormRef = useRef<HTMLFormElement>(null);
-  const whereFieldRef = useRef<HTMLDivElement>(null);
-  const whenFieldRef = useRef<HTMLDivElement>(null);
-  const whoFieldRef = useRef<HTMLDivElement>(null);
-  // Who / reset / submit share a shrink-0 group whose width changes when the submit
-  // button grows its label. That slides the Who field without resizing it, so the
-  // group is what the capsule has to watch to stay on the field.
-  const trailingGroupRef = useRef<HTMLDivElement>(null);
   const pendingDatePickerCloseFrameRef = useRef<number | null>(null);
-  const [capsuleGeometry, setCapsuleGeometry] =
-    useState<CapsuleGeometry | null>(null);
   const [renderedDesktopPanel, setRenderedDesktopPanel] =
     useState<DesktopPanel | null>(null);
   const [desktopShellVisible, setDesktopShellVisible] = useState(false);
   const [popoverGeometry, setPopoverGeometry] =
     useState<PopoverGeometry | null>(null);
-  // The capsule keeps its last box while hidden, so a fresh open would otherwise
-  // slide it in from whichever segment was active last — reading, for 260ms, as a
-  // white pill parked over a neighbouring field while its panel is already open.
-  // Opening also widens the submit button over 200ms, which shifts every segment
-  // sideways under a capsule that is still easing towards the old position. Snap
-  // during both, and only animate once the pill has settled on a segment.
-  const [capsuleSettled, setCapsuleSettled] = useState(false);
   const visualDesktopPanel =
     activeDesktopPanel ??
     (desktopShellVisible ? renderedDesktopPanel : null);
-  const capsuleSnap = !visualDesktopPanel || !capsuleSettled;
-
-  useEffect(() => {
-    if (!visualDesktopPanel) return;
-    const settle = setTimeout(() => setCapsuleSettled(true), 260);
-    return () => clearTimeout(settle);
-  }, [visualDesktopPanel]);
 
   useEffect(
     () => () => {
@@ -457,8 +427,6 @@ function MarketplaceSearchBarInner({
       // enough for the next trigger to claim it, avoiding a one-frame flash.
       hideTimer = setTimeout(() => {
         setDesktopShellVisible(false);
-        // The capsule is hidden from here on, so the next open starts snapped.
-        setCapsuleSettled(false);
         removeTimer = setTimeout(() => setRenderedDesktopPanel(null), 180);
       }, 80);
     }
@@ -480,24 +448,12 @@ function MarketplaceSearchBarInner({
       const formRect = form.getBoundingClientRect();
       if (formRect.width <= 0 || formRect.height <= 0) return;
 
-      const field =
-        activeDesktopPanel === "where"
-          ? whereFieldRef.current
-          : activeDesktopPanel === "when"
-            ? whenFieldRef.current
-            : activeDesktopPanel === "who"
-              ? whoFieldRef.current
-              : null;
-
-      if (field) {
-        const fieldRect = field.getBoundingClientRect();
-        setCapsuleGeometry({
-          left: fieldRect.left - formRect.left,
-          top: fieldRect.top - formRect.top,
-          width: fieldRect.width,
-          height: fieldRect.height,
-        });
-      }
+      // Some routes render inside `zoom: 0.9` (see `.app-zoom-90` in globals.css).
+      // getBoundingClientRect reports the zoomed, on-screen box, but the `left` and
+      // `width` written back below are read in the panel's own unzoomed coordinates —
+      // so every measurement has to be divided back out or the panel lands at 0.9x its
+      // intended offset and width. Reads 1 on unzoomed routes.
+      const zoom = form.offsetWidth > 0 ? formRect.width / form.offsetWidth : 1;
 
       const viewportPadding = 16;
       const availableWidth = Math.max(
@@ -523,24 +479,17 @@ function MarketplaceSearchBarInner({
       const top = formRect.bottom + 12;
 
       setPopoverGeometry({
-        left,
-        top,
-        width: targetWidth,
-        maxHeight: Math.max(180, window.innerHeight - top - viewportPadding),
+        left: left / zoom,
+        top: top / zoom,
+        width: targetWidth / zoom,
+        maxHeight:
+          Math.max(180, window.innerHeight - top - viewportPadding) / zoom,
       });
     };
 
     updateGeometry();
     const resizeObserver = new ResizeObserver(updateGeometry);
     resizeObserver.observe(form);
-    [
-      whereFieldRef.current,
-      whenFieldRef.current,
-      whoFieldRef.current,
-      trailingGroupRef.current,
-    ].forEach((node) => {
-      if (node) resizeObserver.observe(node);
-    });
     window.addEventListener("resize", updateGeometry);
     window.addEventListener("scroll", updateGeometry, true);
 
@@ -873,33 +822,17 @@ function MarketplaceSearchBarInner({
           ref={pillFormRef}
           data-desktop-search-pill
           onSubmit={onSubmit}
+          data-panel-open={visualDesktopPanel ? "true" : undefined}
           className={cn(
-            "relative z-[60] flex w-full max-w-[64rem] items-center rounded-full border border-black/10 bg-[#f7f7f7] p-1 shadow-[0_1px_2px_rgba(0,0,0,0.08),0_8px_24px_rgba(0,0,0,0.08)] transition-shadow duration-200 hover:shadow-[0_2px_4px_rgba(0,0,0,0.10),0_10px_28px_rgba(0,0,0,0.10)]",
+            // Airbnb's bar, measured: 850x66, fully rounded, a #DDDDDD hairline and a
+            // two-layer shadow. The whole bar drops to #EBEBEB while a panel is open so
+            // the active segment's white pill is the only bright thing in the row.
+            "group/pill relative z-[60] flex h-[66px] w-full max-w-[850px] items-stretch gap-[5px] rounded-full border border-[#DDDDDD] shadow-[0_0_0_1px_rgba(0,0,0,0.02),0_8px_24px_rgba(0,0,0,0.1)] transition-colors duration-200",
+            visualDesktopPanel ? "bg-[#EBEBEB]" : "bg-white",
             isFloating && "animate-in fade-in-0 zoom-in-95 duration-300",
           )}
         >
-          <span
-            aria-hidden
-            className="desktop-search-active-capsule pointer-events-none absolute z-0 rounded-full border border-black/[0.04] bg-white shadow-[0_2px_10px_rgba(15,23,42,0.12)]"
-            data-instant={capsuleSnap ? "true" : undefined}
-            style={
-              capsuleGeometry
-                ? {
-                    left: capsuleGeometry.left,
-                    top: capsuleGeometry.top,
-                    width: capsuleGeometry.width,
-                    height: capsuleGeometry.height,
-                    opacity: visualDesktopPanel ? 1 : 0,
-                    transform: "translateZ(0)",
-                  }
-                : { opacity: 0 }
-            }
-          />
-
-          <div
-            ref={whereFieldRef}
-            className="relative z-10 flex min-w-0 flex-1 self-stretch"
-          >
+          <div className="relative z-10 flex min-w-0 flex-1">
             <MarketplacePlaceSelector
               layout="pill"
               city={city}
@@ -917,7 +850,6 @@ function MarketplaceSearchBarInner({
               availablePropertyTypesByCity={availablePropertyTypesByCity}
               propertyTypes={propertyTypeOptions}
               showPropertyTypes={showPropertyTypesInWhere}
-              sharedPillActive
               hidePillDivider={
                 visualDesktopPanel === "where" ||
                 visualDesktopPanel === "when"
@@ -929,10 +861,7 @@ function MarketplaceSearchBarInner({
             />
           </div>
 
-          <div
-            ref={whenFieldRef}
-            className="relative z-10 flex min-w-0 flex-1 self-stretch"
-          >
+          <div className="relative z-10 flex min-w-0 flex-1">
             <MarketplaceStayDatePicker
               layout="pill"
               checkIn={checkIn}
@@ -960,7 +889,6 @@ function MarketplaceSearchBarInner({
               }}
               onSearchRequest={submitQuery}
               showPillGuestAction
-              sharedPillActive
               hidePillDivider={
                 visualDesktopPanel === "when" ||
                 visualDesktopPanel === "who"
@@ -972,42 +900,46 @@ function MarketplaceSearchBarInner({
             />
           </div>
 
-          <div
-            ref={trailingGroupRef}
-            className="relative z-10 flex min-w-0 shrink-0 items-center pl-0.5 pr-0.5"
-          >
-            <div ref={whoFieldRef} className="flex min-w-0 self-stretch">
-              <MarketplaceGuestSelector
-                layout="pill"
-                value={guestCounts}
-                active={activeDesktopPanel === "who"}
-                sharedPillActive
-                onOpenRequest={openGuestsStep}
-                dialogContentId="desktop-search-date-panel"
-                className="min-w-[14rem] flex-1"
-              />
-            </div>
-            {hasSearchSelection && (
-              <button
-                type="button"
-                onClick={clearSearch}
-                className="mr-1 inline-flex h-9 shrink-0 items-center gap-1 rounded-full px-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                aria-label={labels.reset.text}
-              >
-                <X className="h-3.5 w-3.5" />
-                <span className="hidden xl:inline">{labels.reset.text}</span>
-              </button>
-            )}
+          {/*
+            Airbnb keeps the search button inside the last segment, over a fixed strip of
+            reserved padding (they reserve 131px for a 48px button). Nothing in the bar
+            reflows when the button grows its label or when the reset control appears —
+            which is what used to drag every segment sideways mid-animation.
+          */}
+          <div className="relative z-10 flex min-w-0 flex-1">
+            <MarketplaceGuestSelector
+              layout="pill"
+              value={guestCounts}
+              active={activeDesktopPanel === "who"}
+              onOpenRequest={openGuestsStep}
+              dialogContentId="desktop-search-date-panel"
+              className="flex-1 pr-[9.25rem]"
+            />
+            <div className="pointer-events-none absolute inset-y-0 right-[9px] z-20 flex items-center gap-1">
+              {hasSearchSelection && (
+                <button
+                  type="button"
+                  onClick={clearSearch}
+                  className="pointer-events-auto inline-flex h-8 shrink-0 items-center gap-1 rounded-full px-2 text-xs font-medium text-[#6C6C6C] transition-colors hover:bg-black/5 hover:text-[#222222]"
+                  aria-label={labels.reset.text}
+                >
+                  {/* Icon only: the reserved strip fits the 93px expanded Search
+                      button plus a 30px control, and the spelled-out label would
+                      overrun "Who's coming" once a selection exists. aria-label
+                      carries the meaning the text otherwise would. */}
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             <Button
               type="submit"
               className={cn(
-                // `md:h-11` restates the height the `size` variant overrides with
-                // `md:h-8`: without it the 44px-wide circle renders 32px tall above
+                // `md:h-12` restates the height the `size` variant overrides with
+                // `md:h-8`: without it the 48px-wide circle renders 32px tall above
                 // the md breakpoint, so only mobile got a round button. `gap-0` keeps
                 // the icon centred — the collapsed "Search" label is still a flex
                 // child at max-w-0, and the variant gap would push the glass 3px left.
-                "relative z-10 ml-1 h-11 shrink-0 rounded-full bg-primary px-4 text-primary-foreground shadow-none transition-all duration-200 hover:bg-primary/95 md:h-11",
-                visualDesktopPanel ? "gap-2 px-5" : "w-11 gap-0 px-0"
+                "pointer-events-auto relative z-10 h-12 shrink-0 rounded-full bg-primary px-4 text-primary-foreground shadow-none transition-all duration-200 hover:bg-primary/95 md:h-12",
+                visualDesktopPanel ? "gap-2 px-5" : "w-12 gap-0 px-0"
               )}
               aria-label={labels.search.text}
             >
@@ -1024,6 +956,7 @@ function MarketplaceSearchBarInner({
                 {labels.search.text}
               </span>
             </Button>
+            </div>
           </div>
         </form>
       </>

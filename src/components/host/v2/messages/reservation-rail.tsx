@@ -40,6 +40,8 @@ export function ReservationRail({
     weekday: "short",
     day: "numeric",
     month: "short",
+    // Booking dates are calendar days serialized at UTC midnight, not instants.
+    timeZone: "UTC",
   });
   const fullDate = new Intl.DateTimeFormat(locale, { dateStyle: "long" });
 

@@ -63,6 +63,13 @@ import { allowedListingSpaceTypes } from "@/lib/types/listing-space-type";
 import type { ListingDraftData } from "@/lib/types/listing-draft";
 import { validateListingPaymentMethods } from "@/lib/payments/payment-methods";
 import { validatePaymentInstructionTemplates } from "@/lib/payments/payment-instruction-templates";
+import {
+  depositPoliciesCurrency,
+  depositPoliciesDraftMatchesCurrency,
+  depositPoliciesDraftIsValid,
+  parseDepositPoliciesDraft,
+} from "@/lib/host/v2/listing-deposit-draft";
+import { validateCancellationPolicy } from "@/lib/payments/cancellation-policy";
 
 /** The screens of the create flow a blocker can send a host back to. */
 export const FLOW_STEPS = [
@@ -310,6 +317,53 @@ export function publishBlockers(
         "Review or shorten the saved private payment instructions.",
       );
     }
+  }
+
+  // The deposit answer. Absent is the case this catches: a draft started before the
+  // wizard asked, imported from a provider, or begun in the mobile app. Publishing one
+  // freezes `UNANSWERED` deposit terms onto every booking it takes — which the guest
+  // reads as "the host never answered", not as "no deposit" — and raises an incomplete
+  // payment-arrangements task the moment the listing goes live.
+  //
+  // Asking for neither is a complete answer and passes here; not having been asked is
+  // what fails. The draft is never defaulted to "no deposit" for the same reason a
+  // blank house-rule policy is not defaulted to "not allowed": it would put terms on a
+  // live listing that its host never chose.
+  const depositPolicies = parseDepositPoliciesDraft(data.depositPolicies);
+  if (!depositPolicies) {
+    add(
+      "payment-arrangements",
+      "Answer the advance payment and damage deposit questions.",
+    );
+  } else if (
+    !depositPoliciesDraftMatchesCurrency(
+      depositPolicies,
+      depositPoliciesCurrency(data),
+    )
+  ) {
+    add(
+      "payment-arrangements",
+      "Review the deposit amounts after changing the listing currency.",
+    );
+  } else if (
+    !depositPoliciesDraftIsValid(depositPolicies, depositPoliciesCurrency(data))
+  ) {
+    add(
+      "payment-arrangements",
+      "Check the deposit amounts and timing.",
+    );
+  }
+
+  const cancellation = validateCancellationPolicy(
+    data.freeCancellationDaysBeforeCheckIn,
+  );
+  if (!cancellation.success) {
+    add(
+      "payment-arrangements",
+      cancellation.issue === "REQUIRED"
+        ? "Choose the free-cancellation deadline."
+        : "Free-cancellation days must be a whole number from 0 to 3650.",
+    );
   }
 
   // --- Availability -----------------------------------------------------------------------

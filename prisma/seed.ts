@@ -344,7 +344,7 @@ async function main() {
       title: "Mountain Retreat Cabin in Mavrovo National Park",
       slug: "mountain-retreat-cabin-mavrovo",
       description: "Escape to the mountains in this cozy cabin surrounded by the pristine nature of Mavrovo National Park. Perfect for skiing in winter and hiking in summer. Features a fireplace, wooden terrace, and stunning mountain views.",
-      status: ListingStatus.PENDING_REVIEW,
+      status: ListingStatus.UNPUBLISHED,
       maxGuests: 5,
       bedrooms: 2,
       bathrooms: 1,

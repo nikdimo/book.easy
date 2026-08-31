@@ -1,5 +1,9 @@
 import { getHostBookings } from "@/lib/services/listing.service";
 import { mobileJson, mobileOptions, requireMobileHost } from "@/lib/mobile-api";
+import {
+  bookingPartyPayload,
+  resolveBookingParty,
+} from "@/lib/booking-party";
 
 export async function OPTIONS(request: Request) {
   return mobileOptions(request);
@@ -20,6 +24,10 @@ export async function GET(request: Request) {
       city: booking.listing.property.city,
       guestName: booking.guest.name,
       guestCount: booking.guestCount,
+      // Capacity above, the party beside it. `null` — never four zeroes — for a
+      // booking taken before the party was recorded, so a client can tell "no pets"
+      // from "nobody asked".
+      party: bookingPartyPayload(resolveBookingParty(booking)),
       guestNote: booking.guestNote,
       checkIn: booking.checkIn.toISOString(),
       checkOut: booking.checkOut.toISOString(),

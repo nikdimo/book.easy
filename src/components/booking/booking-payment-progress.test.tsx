@@ -4,6 +4,7 @@ import { BookingPaymentProgress, type BookingPaymentProgressView } from "./booki
 
 vi.mock("@/lib/actions/booking-payment.actions", () => ({
   recordBookingPaymentEventAction: vi.fn(),
+  reportBookingTransactionAction: vi.fn(),
 }));
 vi.mock("@/lib/actions/booking.actions", () => ({
   sendBookingPaymentRequestAction: vi.fn(),
@@ -227,6 +228,38 @@ describe("BookingPaymentProgress", () => {
     expect(html).not.toContain("How to pay the host");
   });
 
+  it("does not claim a private message was sent for cash at the property", () => {
+    const html = renderToStaticMarkup(
+      <BookingPaymentProgress
+        progress={{
+          ...confirmed,
+          paymentInstructionsStatus: "NOT_NEEDED",
+          selectedPaymentMethod: "CASH_AT_PROPERTY",
+          paymentRequests: [
+            {
+              id: "cash-balance",
+              type: "ACCOMMODATION_BALANCE",
+              amount: 260,
+              currency: "EUR",
+              dueAt: "2027-01-10T00:00:00.000Z",
+              status: "SENT",
+              sentPaymentDetails: null,
+              instructionsNotRequired: true,
+            },
+          ],
+        }}
+        actor="GUEST"
+      />,
+    );
+
+    expect(html).toContain(
+      "No private payment instructions are needed for this payment method.",
+    );
+    expect(html).not.toContain(
+      "Payment instructions were sent in the private conversation.",
+    );
+  });
+
   it("does not offer post-acceptance mutations before confirmation", () => {
     const html = renderToStaticMarkup(
       <BookingPaymentProgress progress={{ ...confirmed, status: "PENDING" }} actor="HOST" />,
@@ -321,5 +354,164 @@ describe("BookingPaymentProgress", () => {
 
     expect(html).not.toContain("data-payment-track=");
     expect(html).toContain("does not ask for an advance payment or a refundable damage deposit");
+  });
+
+  // ---- After checkout ----------------------------------------------------------
+  //
+  // The card and its history were always rendered for a completed booking; what
+  // vanished was every control on it, including the deposit return leg, which only ever
+  // happens after checkout.
+
+  const completed: BookingPaymentProgressView = {
+    ...confirmed,
+    status: "COMPLETED",
+    paymentInstructionsStatus: "SENT",
+  };
+
+  it("keeps the host's deposit return and retain controls after checkout", () => {
+    const html = renderToStaticMarkup(
+      <BookingPaymentProgress
+        progress={{ ...completed, damageDepositStatus: "DEPOSIT_CONFIRMED" }}
+        actor="HOST"
+      />,
+    );
+
+    expect(html).toContain('data-payment-event="HOST_REPORT_DAMAGE_DEPOSIT_RETURNED"');
+    expect(html).toContain('data-payment-event="HOST_MARK_DAMAGE_DEPOSIT_RETAINED"');
+    // The card and its history stay, as they always did.
+    expect(html).toContain("Payment progress");
+    expect(html).toContain("Status history");
+  });
+
+  it("lets the guest confirm the deposit came back after checkout", () => {
+    const html = renderToStaticMarkup(
+      <BookingPaymentProgress progress={completed} actor="GUEST" />,
+    );
+
+    expect(html).toContain('data-payment-event="GUEST_CONFIRM_DAMAGE_DEPOSIT_RETURNED"');
+  });
+
+  it("still lets the host confirm cash taken at the property after checkout", () => {
+    const html = renderToStaticMarkup(
+      <BookingPaymentProgress
+        progress={{
+          ...completed,
+          selectedPaymentMethod: "CASH_AT_PROPERTY",
+          paymentStatus: "AWAITING_PAYMENT",
+        }}
+        actor="HOST"
+      />,
+    );
+
+    expect(html).toContain('data-payment-event="HOST_CONFIRM_PAYMENT_RECEIVED"');
+  });
+
+  it("drops the collection-opening controls once the stay is over", () => {
+    const html = renderToStaticMarkup(
+      <BookingPaymentProgress
+        progress={{
+          ...completed,
+          paymentStatus: "UNTRACKED",
+          advancePaymentStatus: "UNTRACKED",
+          damageDepositStatus: "UNTRACKED",
+        }}
+        actor="HOST"
+      />,
+    );
+
+    // Announcing that money is due after the guest has left reopens collection on a
+    // finished stay. Confirming what was actually received does not.
+    expect(html).not.toContain('data-payment-event="HOST_MARK_PAYMENT_DUE"');
+    expect(html).not.toContain('data-payment-event="HOST_MARK_ADVANCE_PAYMENT_DUE"');
+    expect(html).not.toContain('data-payment-event="HOST_MARK_DAMAGE_DEPOSIT_DUE"');
+    expect(html).toContain('data-payment-event="HOST_CONFIRM_PAYMENT_RECEIVED"');
+    expect(html).toContain('data-payment-event="HOST_CONFIRM_DAMAGE_DEPOSIT_RECEIVED"');
+  });
+
+  it("does not reopen the send-instructions form after checkout", () => {
+    const html = renderToStaticMarkup(
+      <BookingPaymentProgress
+        progress={{ ...completed, paymentInstructionsStatus: "PENDING" }}
+        actor="HOST"
+      />,
+    );
+
+    expect(html).not.toContain("Send payment request");
+  });
+
+  it("does not offer collection controls on a cancelled booking with nothing to refund", () => {
+    const html = renderToStaticMarkup(
+      <BookingPaymentProgress
+        progress={{
+          ...confirmed,
+          status: "CANCELLED_BY_GUEST",
+          damageDepositStatus: "RETURN_CONFIRMED",
+        }}
+        actor="HOST"
+      />,
+    );
+
+    expect(html).not.toContain("data-payment-event");
+    expect(html).not.toContain("Send payment request");
+  });
+
+  it("keeps the accommodation refund action available after cancellation", () => {
+    const html = renderToStaticMarkup(
+      <BookingPaymentProgress
+        progress={{
+          ...confirmed,
+          status: "CANCELLED_BY_GUEST",
+          accommodationRefundStatus: "AWAITING_REFUND",
+          accommodationRefundAmount: 120,
+        }}
+        actor="HOST"
+      />,
+    );
+
+    expect(html).toContain(
+      'data-payment-event="HOST_REPORT_ACCOMMODATION_REFUND_SENT"',
+    );
+    expect(html).not.toContain('data-payment-event="HOST_MARK_PAYMENT_DUE"');
+  });
+
+  it("lets the guest edit a report until the host confirms it", () => {
+    const html = renderToStaticMarkup(
+      <BookingPaymentProgress
+        progress={{
+          ...confirmed,
+          advancePaymentStatus: "PAYMENT_REPORTED",
+          damageDepositStatus: "DEPOSIT_REPORTED",
+        }}
+        actor="GUEST"
+      />,
+    );
+
+    expect(html).toContain('data-payment-event="GUEST_REPORT_ADVANCE_PAYMENT_SENT"');
+    expect(html).toContain('data-payment-event="GUEST_REPORT_DAMAGE_DEPOSIT_SENT"');
+    expect(html).toContain("Edit advance-payment report");
+    expect(html).toContain("Edit damage-deposit report");
+  });
+
+  it("shows the frozen cancellation terms and resulting refund status", () => {
+    const html = renderToStaticMarkup(
+      <BookingPaymentProgress
+        progress={{
+          ...confirmed,
+          status: "CANCELLED_BY_HOST",
+          cancellationPolicy: {
+            version: 1,
+            status: "REVIEWED",
+            freeCancellationDaysBeforeCheckIn: 7,
+          },
+          accommodationRefundStatus: "AWAITING_REFUND",
+          accommodationRefundAmount: 120,
+        }}
+        actor="GUEST"
+      />,
+    );
+
+    expect(html).toContain("Cancel at least 7 days before check-in");
+    expect(html).toContain('data-payment-track="accommodation-refund"');
+    expect(html).toContain("Awaiting host refund");
   });
 });

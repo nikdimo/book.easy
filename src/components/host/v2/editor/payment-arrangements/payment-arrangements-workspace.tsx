@@ -6,6 +6,7 @@ import {
 } from "@/components/host/v2/editor/save-state";
 import { updateListingPaymentMethods } from "@/lib/actions/listing-payment-methods.actions";
 import { updateListingDepositPolicies } from "@/lib/actions/listing-deposit-policies.actions";
+import { updateListingCancellationPolicy } from "@/lib/actions/listing-cancellation-policy.actions";
 import { useI18n } from "@/lib/i18n/client";
 import type { DepositPoliciesSnapshotV2 } from "@/lib/payments/deposit-policies";
 import {
@@ -21,6 +22,7 @@ import {
   toPayload,
   type DepositPoliciesDraft,
 } from "./deposit-policies-editor";
+import { CancellationPolicyEditor } from "./cancellation-policy-editor";
 
 /** Connects the reusable editor to the authenticated, owner-scoped Server Action. */
 export function PaymentArrangementsWorkspace({
@@ -28,11 +30,16 @@ export function PaymentArrangementsWorkspace({
   initialValue,
   initialDeposit,
   listingCurrency,
+  initialCancellation,
 }: {
   listingId: string;
   initialValue: PaymentArrangementsValue;
   initialDeposit: DepositPoliciesSnapshotV2;
   listingCurrency: string;
+  initialCancellation: {
+    freeCancellationDaysBeforeCheckIn: number | null;
+    reviewedAt: string | null;
+  };
 }) {
   const { resolve } = useI18n();
 
@@ -74,6 +81,22 @@ export function PaymentArrangementsWorkspace({
     }
   }
 
+  async function saveCancellation(days: number) {
+    beginSave();
+    try {
+      const result = await updateListingCancellationPolicy(listingId, {
+        freeCancellationDaysBeforeCheckIn: days,
+      });
+      if ("error" in result || "issues" in result) {
+        throw new Error("Cancellation policy was rejected.");
+      }
+      endSave();
+    } catch (error) {
+      endSave(true);
+      throw error;
+    }
+  }
+
   return (
     <>
       <PaymentArrangementsEditor
@@ -91,6 +114,11 @@ export function PaymentArrangementsWorkspace({
         initialValue={initialDeposit}
         listingCurrency={listingCurrency}
         onSave={saveDeposit}
+      />
+      <CancellationPolicyEditor
+        initialDays={initialCancellation.freeCancellationDaysBeforeCheckIn}
+        reviewedAt={initialCancellation.reviewedAt}
+        onSave={saveCancellation}
       />
     </>
   );

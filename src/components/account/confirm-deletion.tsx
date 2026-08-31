@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { confirmAccountDeletionAction } from "@/lib/actions/account-deletion.actions";
 import { Tx, useI18n } from "@/lib/i18n/client";
@@ -11,6 +12,7 @@ const linkClass =
 
 export function ConfirmDeletion({ token, email }: { token: string; email: string }) {
   const { resolve } = useI18n();
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [done, setDone] = useState(false);
 
@@ -22,10 +24,11 @@ export function ConfirmDeletion({ token, email }: { token: string; email: string
         return;
       }
       setDone(true);
-      // The session row is deleted server-side; a full reload drops the now-dangling
-      // cookie rather than letting the client router keep rendering stale account UI.
+      // The server action clears the JWT session cookie. Replace the account page so
+      // Back cannot reopen it from browser history.
       setTimeout(() => {
-        window.location.href = "/";
+        router.replace("/");
+        router.refresh();
       }, 2500);
     });
   };

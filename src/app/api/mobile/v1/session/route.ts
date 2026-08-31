@@ -15,8 +15,7 @@ export async function GET(request: Request) {
   const access = await requireMobileUser(request);
   if ("response" in access) return access.response;
 
-  const isAdmin =
-    access.user.role === "ADMIN" || access.user.role === "SUPERADMIN";
+  const isAdmin = access.user.role === "ADMIN";
 
   return mobileJson(request, {
     user: {

@@ -5,6 +5,11 @@ import {
   listingStepId,
   resumeListingStep,
 } from "@/lib/constants/listing-steps";
+import { HOST_START_ROUTES } from "@/lib/host-start-draft";
+import {
+  DEPOSIT_AMOUNT_TYPE_CODES,
+  DEPOSIT_DUE_TIMING_CODES,
+} from "@/lib/payments/deposit-policies";
 import {
   ADDITIONAL_RULES_MAX,
   EVENT_POLICIES,
@@ -25,9 +30,29 @@ const stepIdSchema = z.enum(
   LISTING_STEPS.map((step) => step.id) as [string, ...string[]]
 );
 
+/** Any screen of the web wizard. Same reasoning as the step ids above: an unknown
+ *  route is refused rather than stored, so a typo cannot strand a resume on a 404. */
+const routeSchema = z.enum(HOST_START_ROUTES as unknown as [string, ...string[]]);
+
+/** One deposit section as the wizard's form holds it. Shaped here and nothing more:
+ *  whether the amounts and timings are *coherent* is decided once, at publish, by
+ *  `validateDepositPolicies` — the same place the listing editor's save decides it.
+ *  A draft has to be able to hold a half-typed amount, exactly like every other money
+ *  field on it. */
+const depositSectionSchema = z.object({
+  enabled: z.boolean(),
+  amountType: z.enum(DEPOSIT_AMOUNT_TYPE_CODES),
+  value: z.string().max(40),
+  dueTiming: z.enum(DEPOSIT_DUE_TIMING_CODES),
+  dueDaysBeforeCheckIn: z.number().int().min(0).max(3650).nullable(),
+});
+
 const mobileListingDraftPatchSchema = z
   .object({
     currentStepId: stepIdSchema.optional(),
+    /** The web wizard's own resume position, written alongside the shared step id
+     *  rather than instead of it — see `ListingDraftData.currentRoute`. */
+    currentRoute: routeSchema.optional(),
     /** Legacy: clients that predate currentStepId send a bare index. It is only
      *  read when no id is present — see the note in parseMobileListingDraftPatch
      *  about why an old index cannot be translated reliably. */
@@ -61,6 +86,23 @@ const mobileListingDraftPatchSchema = z
         z.record(z.string().trim().min(1).max(40), z.string().max(500)),
       )
       .optional(),
+    // The advance-payment and damage-deposit answer. Both sections are required
+    // together because they are one answer: sending half of it would leave the other
+    // question in a state that reads as "off" without anyone having said so, and
+    // "off" is what publishing writes onto every booking the listing takes.
+    depositPolicies: z
+      .object({
+        // This is a review-time stamp, not a client-selected booking currency. It lets
+        // publishing detect that a host entered a fixed amount and later changed the
+        // draft's pricing currency instead of silently relabelling that amount.
+        currency: z.string().trim().toUpperCase().regex(/^[A-Z]{3}$/).optional(),
+        advancePayment: depositSectionSchema,
+        damageDeposit: depositSectionSchema.extend({
+          returnDaysAfterCheckout: z.number().int().min(0).max(3650).nullable(),
+        }),
+      })
+      .optional(),
+    freeCancellationDaysBeforeCheckIn: z.string().max(4).optional(),
     checkInTime: draftString.optional(),
     checkOutTime: draftString.optional(),
 
@@ -110,6 +152,7 @@ const mobileListingDraftPatchSchema = z
           id: z.string().max(100).optional(),
           url: z.string().min(1).max(2000),
           mediaType: z.enum(["IMAGE", "VIDEO"]),
+          isPanorama: z.boolean().optional(),
           alt: z.string().max(500).nullish(),
         })
       )

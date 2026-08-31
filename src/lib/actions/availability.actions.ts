@@ -8,10 +8,10 @@ import {
   compareYmd,
   dbDateToYmd,
   eachYmdExclusive,
+  todayYmd,
   ymdToDbDate,
 } from "@/lib/utils/date-only";
 import { isAvailabilityOverlapConstraintError } from "@/lib/utils/db-errors";
-import { format } from "date-fns";
 import { revalidatePublicListingCaches } from "@/lib/utils/revalidate-public-listing-caches";
 import {
   resetDatePriceRangeForManagedListing,
@@ -375,7 +375,7 @@ export async function blockAllFutureDates(listingId: string) {
   if ("error" in listingResult) return { error: listingResult.error };
   const listing = listingResult.listing;
 
-  const startDate = format(new Date(), "yyyy-MM-dd");
+  const startDate = todayYmd();
   const endDate = "2100-01-01";
   const start = ymdToDbDate(startDate);
 
@@ -434,7 +434,7 @@ export async function makeAllFutureDatesAvailable(listingId: string) {
   const listingResult = await requireManagedListing(listingId);
   if ("error" in listingResult) return { error: listingResult.error };
   const listing = listingResult.listing;
-  const today = ymdToDbDate(format(new Date(), "yyyy-MM-dd"));
+  const today = ymdToDbDate(todayYmd());
 
   await db.availabilityBlock.deleteMany({
     where: {

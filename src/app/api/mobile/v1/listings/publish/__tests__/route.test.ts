@@ -81,6 +81,42 @@ describe("mobile listing publication", () => {
       error: "Confirm when guests can start booking before publishing.",
     });
   });
+
+  it("forwards the complete deposit answer to the canonical action", async () => {
+    const depositPolicies = {
+      advancePayment: {
+        enabled: false,
+        amountType: "FIXED",
+        value: "",
+        dueTiming: "AFTER_ACCEPTANCE",
+        dueDaysBeforeCheckIn: null,
+      },
+      damageDeposit: {
+        enabled: false,
+        amountType: "FIXED",
+        value: "",
+        dueTiming: "AFTER_ACCEPTANCE",
+        dueDaysBeforeCheckIn: null,
+        returnDaysAfterCheckout: null,
+      },
+    };
+    mocks.submitNewListing.mockImplementation(async (formData: FormData) => {
+      expect(JSON.parse(String(formData.get("depositPolicies")))).toEqual(
+        depositPolicies,
+      );
+      return { listingId: "listing-1" };
+    });
+
+    const response = await POST(
+      new Request("http://localhost/api/mobile/v1/listings/publish", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title: "Lake house", depositPolicies }),
+      }),
+    );
+
+    expect(response?.status).toBe(200);
+  });
 });
 
 describe("mobile listing publication — house rules", () => {

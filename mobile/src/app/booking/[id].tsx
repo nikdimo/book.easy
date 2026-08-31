@@ -25,10 +25,30 @@ interface BookingDetail {
   checkIn: string;
   checkOut: string;
   guestCount: number;
+  /** Adults, children, infants and pets as the guest chose them. `null` for a booking
+   *  taken before the API recorded a party — which is not the same as a party of
+   *  zeroes, and is why this screen shows only the count for those. */
+  party: {
+    adults: number;
+    children: number;
+    infants: number;
+    pets: number;
+  } | null;
   guestNote: string | null;
+  /** The currency every amount below is quoted in. */
+  currency: string;
+  /** Authoritative. `accommodationSubtotal + cleaningFee + serviceFee` equals it
+   *  exactly, so this screen prints the API's numbers and computes none of its own. */
   totalPrice: number;
-  nightlyRate: number;
+  /** What the nights are worth, net of any promotion. */
+  accommodationSubtotal: number;
+  /** A display average, not a price component — never multiply it by the nights. */
+  averageNightlyRate: number;
   cleaningFee: number;
+  serviceFee: number;
+  /** @deprecated Compatibility field carried by the API for older builds. Use
+   *  `averageNightlyRate`; `nightlyRate * nights` does not reconstruct the subtotal. */
+  nightlyRate?: number;
   createdAt: string;
   responseDueAt: string | null;
   cancellationReason: string | null;
@@ -55,6 +75,12 @@ export default function BookingDetailScreen() {
   const [booking, setBooking] = useState<BookingDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // The party spelled out beneath the capacity count, and only when it says something
+  // that count does not: the children inside it, and the infants and pets deliberately
+  // outside it — the cot, the cleaning and the pet access a host plans from. Empty for
+  // a party of adults alone, and for a booking whose party was never recorded.
+  const partyLine = partySummary(booking?.party ?? null, t);
+
   const load = useCallback(async () => {
     if (!id) return;
     try {
@@ -73,10 +99,13 @@ export default function BookingDetailScreen() {
     return () => clearTimeout(timer);
   }, [load]);
 
+  // The booking's own currency, not a hard-coded one: `totalPrice` and every component
+  // beside it are quoted in `booking.currency`, and labelling them EUR regardless was a
+  // second way of printing a number that is not what the guest owes.
   function money(value: number) {
     return new Intl.NumberFormat(resolveIntlLocale(locale), {
       style: "currency",
-      currency: "EUR",
+      currency: booking?.currency || "EUR",
     }).format(value);
   }
 
@@ -147,6 +176,9 @@ export default function BookingDetailScreen() {
                 booking.guestCount === 1 ? "guest" : "guests"
               )}`}
             />
+            {partyLine ? (
+              <Row label={t("Guests")} value={partyLine} />
+            ) : null}
             {booking.responseDueAt && booking.status === "PENDING" ? (
               <Row
                 label={t("Respond by")}
@@ -156,9 +188,24 @@ export default function BookingDetailScreen() {
             ) : null}
           </View>
 
+          {/* Every figure comes from the API already resolved. The average is labelled
+              as an average because that is what it is; the subtotal beneath it, plus the
+              fees, is the total exactly. Nothing here multiplies or subtracts. */}
           <View style={styles.card}>
-            <Row label={t("Nightly rate")} value={money(booking.nightlyRate)} />
-            <Row label={t("Cleaning fee")} value={money(booking.cleaningFee)} />
+            <Row
+              label={t("Average per night")}
+              value={money(booking.averageNightlyRate)}
+            />
+            <Row
+              label={t("Accommodation")}
+              value={money(booking.accommodationSubtotal)}
+            />
+            {booking.cleaningFee > 0 ? (
+              <Row label={t("Cleaning fee")} value={money(booking.cleaningFee)} />
+            ) : null}
+            {booking.serviceFee > 0 ? (
+              <Row label={t("Service fee")} value={money(booking.serviceFee)} />
+            ) : null}
             <Row label={t("Total")} value={money(booking.totalPrice)} strong />
           </View>
 
@@ -202,6 +249,28 @@ export default function BookingDetailScreen() {
       ) : null}
     </AppScreen>
   );
+}
+
+/** The four counters, in the order the guest picked them, skipping every zero. */
+const PARTY_LABELS = [
+  ["adults", "{count} adult", "{count} adults"],
+  ["children", "{count} child", "{count} children"],
+  ["infants", "{count} infant", "{count} infants"],
+  ["pets", "{count} pet", "{count} pets"],
+] as const;
+
+function partySummary(
+  party: BookingDetail["party"],
+  t: (source: string, values?: Record<string, string | number>) => string
+): string | null {
+  if (!party) return null;
+  const parts = PARTY_LABELS.filter(([kind]) => party[kind] > 0).map(
+    ([kind, one, other]) =>
+      t(party[kind] === 1 ? one : other, { count: party[kind] })
+  );
+  // One part is the guest count said twice; the line only earns its place when the
+  // party holds something the count above cannot carry.
+  return parts.length > 1 ? parts.join(", ") : null;
 }
 
 function Row({

@@ -81,7 +81,14 @@ export function PhotosField({
             : { uri: entry.uri, name: entry.name, type: entry.mimeType };
 
         const result = await uploadFile(payload, entry.name);
-        onChange([...items, { url: result.url, mediaType: result.mediaType }]);
+        onChange([
+          ...items,
+          {
+            url: result.url,
+            mediaType: result.mediaType,
+            isPanorama: result.isPanorama,
+          },
+        ]);
         setPendingAndReport((current) =>
           current.filter((item) => item.key !== entry.key)
         );

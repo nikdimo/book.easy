@@ -51,6 +51,7 @@ export interface DraftPhoto {
    *  list does not strip identities the draft was already holding. */
   mediaId?: string;
   mediaType?: ListingMediaTypeValue;
+  isPanorama?: boolean;
 }
 
 /** A photo the server has already stored and written onto the draft. */
@@ -80,9 +81,12 @@ export function markPhotoUploaded(
   id: string,
   uploadedUrl: string,
   mediaType: ListingMediaTypeValue = "IMAGE",
+  isPanorama = false,
 ): DraftPhoto[] {
   return photos.map((photo) =>
-    photo.id === id ? { ...photo, uploadedUrl, mediaType, file: undefined } : photo,
+    photo.id === id
+      ? { ...photo, uploadedUrl, mediaType, isPanorama, file: undefined }
+      : photo,
   );
 }
 
@@ -101,6 +105,7 @@ export function draftMediaItems(photos: readonly DraftPhoto[]): ListingMediaItem
       ...(photo.mediaId ? { id: photo.mediaId } : {}),
       url,
       mediaType: photo.mediaType ?? "IMAGE",
+      ...(photo.isPanorama === true ? { isPanorama: true } : {}),
       alt: photo.name,
     });
   }
@@ -148,8 +153,17 @@ export interface PhotoUploadRun {
  */
 export async function uploadPendingPhotos(
   photos: readonly DraftPhoto[],
-  upload: (photo: DraftPhoto) => Promise<{ url: string; mediaType?: ListingMediaTypeValue }>,
-  onUploaded?: (photo: DraftPhoto, url: string, mediaType: ListingMediaTypeValue) => void,
+  upload: (photo: DraftPhoto) => Promise<{
+    url: string;
+    mediaType?: ListingMediaTypeValue;
+    isPanorama?: boolean;
+  }>,
+  onUploaded?: (
+    photo: DraftPhoto,
+    url: string,
+    mediaType: ListingMediaTypeValue,
+    isPanorama: boolean,
+  ) => void,
 ): Promise<PhotoUploadRun> {
   let current = [...photos];
   let uploaded = 0;
@@ -159,9 +173,10 @@ export async function uploadPendingPhotos(
     try {
       const result = await upload(photo);
       const mediaType = result.mediaType ?? "IMAGE";
-      current = markPhotoUploaded(current, photo.id, result.url, mediaType);
+      const isPanorama = mediaType === "IMAGE" && result.isPanorama === true;
+      current = markPhotoUploaded(current, photo.id, result.url, mediaType, isPanorama);
       uploaded += 1;
-      onUploaded?.(photo, result.url, mediaType);
+      onUploaded?.(photo, result.url, mediaType, isPanorama);
     } catch (error) {
       return {
         photos: current,

@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as WebBrowser from "expo-web-browser";
 import * as ExpoLinking from "expo-linking";
 import { formatLocalizedDate } from "@/lib/date-locale";
+import type { UserRole } from "@/lib/roles";
 
 const configuredApiUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
 const defaultApiUrl = Platform.OS === "web" ? "http://localhost:3000" : "https://lingerhomes.com";
@@ -37,7 +38,7 @@ export interface SessionUser {
   id: string;
   name?: string | null;
   email?: string | null;
-  role: string;
+  role: UserRole;
   isHost: boolean;
   /** False for a signed-in guest: the session is real, but this app has nothing for
    *  them. Distinguishing it from "no session" is what stops the sign-in loop. */
@@ -202,6 +203,37 @@ export interface BookingSummary {
 
 export interface BookingsResponse {
   bookings: BookingSummary[];
+}
+
+export type BookingPaymentDecision =
+  | "SEND_NOW"
+  | "SEND_LATER"
+  | "NO_INSTRUCTIONS";
+
+/**
+ * The payment question a host has to answer before a request can be accepted.
+ *
+ * Accepting on the phone used to send no answer at all, and the server derived one from
+ * the payment method — so the same booking accepted here and on the web ended in
+ * different states, and a host could be left with a "send payment instructions" task
+ * they had never agreed to. The server now returns the answers this booking allows and
+ * refuses an acceptance that carries none.
+ */
+export interface BookingAcceptance {
+  allowedDecisions: BookingPaymentDecision[];
+  instructionsRequired: boolean;
+  nothingToCollect: boolean;
+  paymentMethod: string | null;
+  /** English source label; `t()` resolves it against the reviewed catalog. */
+  paymentMethodLabel: string | null;
+  currency: string;
+  amountDue: number | null;
+  /** The deadline a send-now from the phone posts back — this booking's check-in. */
+  dueDate: string;
+  /** False when nothing reviewed is saved for the method, so there is nothing to send
+   *  without the composer the phone does not have. */
+  canSendNow: boolean;
+  savedInstructionsPreview: string | null;
 }
 
 export interface PromotionSummary {
@@ -449,6 +481,7 @@ export interface ListingMediaItem {
   id?: string;
   url: string;
   mediaType: "IMAGE" | "VIDEO";
+  isPanorama?: boolean;
   alt?: string | null;
 }
 
@@ -478,6 +511,7 @@ export interface ResolvedPlace {
 export async function uploadFile(file: Blob | FormDataValue, name: string): Promise<{
   url: string;
   mediaType: "IMAGE" | "VIDEO";
+  isPanorama: boolean;
 }> {
   const form = new FormData();
   form.append("file", file as Blob, name);
@@ -711,7 +745,7 @@ export interface AdminUserItem {
   id: string;
   name: string | null;
   email: string | null;
-  role: string;
+  role: UserRole;
   isHost: boolean;
   isActive: boolean;
   image: string | null;

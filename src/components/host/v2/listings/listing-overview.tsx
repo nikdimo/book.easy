@@ -9,6 +9,7 @@ import {
   AddListingMenu,
 } from "@/components/host/v2/listings/add-listing-menu";
 import { ListingActionsMenu } from "@/components/host/v2/listings/listing-actions-menu";
+import { FacebookPromoteButton } from "@/components/host/facebook-promote-button";
 import { useTypeToSearch } from "@/lib/hooks/use-type-to-search";
 import {
   ListingModerationNotice,
@@ -87,8 +88,6 @@ function storeView(next: View) {
 
 const DOT: Record<string, string> = {
   APPROVED: "bg-emerald-500",
-  PENDING_REVIEW: "bg-amber-500",
-  REJECTED: "bg-rose-500",
   SUSPENDED: "bg-rose-500",
   UNPUBLISHED: "bg-slate-400",
   DRAFT: "bg-slate-400",
@@ -97,7 +96,7 @@ const DOT: Record<string, string> = {
 
 /** Statuses that mean something went wrong, and so are worth a filled badge rather than
  *  a dot. `Approved` is the ordinary case and should never shout. */
-const LOUD = new Set(["REJECTED", "SUSPENDED"]);
+const LOUD = new Set(["SUSPENDED"]);
 
 export function ListingOverview({
   listings,
@@ -375,11 +374,11 @@ function ListingRow({
 }) {
   const line = label(state);
   // The moderator's own words replace the state line when the state was only going to
-  // say "rejected — open the listing to see why". A rejected listing whose calendar is
-  // also broken keeps its sync line and gains the note below it, so neither fact hides
-  // the other.
+  // say "suspended — check your email". A suspended listing whose calendar is also
+  // broken keeps its sync line and gains the note below it, so neither fact hides the
+  // other.
   const blocked = isModerationBlocked(listing.status);
-  const restatesBlock = state.code === "REJECTED" || state.code === "SUSPENDED";
+  const restatesBlock = state.code === "SUSPENDED";
   return (
     <div
       className={`group relative flex min-h-20 gap-4 rounded-xl px-3 transition-colors hover:bg-slate-50 ${
@@ -439,6 +438,13 @@ function ListingRow({
 
       {/* Dates and prices is the job a host comes back to weekly, so it stays visible
           rather than joining the archive-and-delete menu. */}
+      {listing.status === "APPROVED" && (
+        <FacebookPromoteButton
+          listingId={listing.id}
+          title={listing.title}
+          compact
+        />
+      )}
       <CalendarButton listingId={listing.id} title={listing.title} />
       <ListingActionsMenu
         listingId={listing.id}
@@ -535,6 +541,14 @@ function ListingTile({
           >
             {line.short}
           </span>
+        )}
+        {listing.status === "APPROVED" && (
+          <FacebookPromoteButton
+            listingId={listing.id}
+            title={listing.title}
+            compact
+            className="absolute right-12 top-2 bg-white/95 opacity-100 shadow-sm transition-opacity focus-visible:opacity-100 md:opacity-0 md:group-hover:opacity-100"
+          />
         )}
         <ListingActionsMenu
           listingId={listing.id}

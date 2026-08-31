@@ -41,6 +41,7 @@ import {
   paymentArrangementsAreComplete,
   paymentDetailIssues,
   paymentMethodDetailsStatus,
+  paymentMethodRowId,
   samePaymentArrangementsDraft,
   togglePaymentMethod,
   validateOtherPaymentLabel,
@@ -77,6 +78,22 @@ export type PaymentArrangementsEditorProps = {
   /** Listing creation owns navigation in its fixed footer, so it reuses the fields
    * without rendering this editor's standalone save row. */
   showSubmit?: boolean;
+  /**
+   * Whether the "choose a method" message and the matching `aria-invalid` are rendered
+   * while nothing is selected.
+   *
+   * True on the post-publish editor, which is a page about one saved answer and can say
+   * so the moment it is empty. The wizard turns it off until the host presses Next:
+   * a step that opens already covered in red tells a host they got something wrong
+   * before anyone has asked them anything.
+   */
+  showRequiredError?: boolean;
+  /** The wizard leads with its own "Your payment terms" summary, which already states
+   *  what a guest will see, so it suppresses this second preview of the same answer. */
+  showGuestPreview?: boolean;
+  /** The wizard supplies the screen's own heading and intro above this editor, so it
+   *  suppresses these rather than putting a second h1 in the middle of the page. */
+  showHeader?: boolean;
 };
 
 type MethodPresentation = {
@@ -97,6 +114,9 @@ export function PaymentArrangementsEditor({
   errorMessage,
   disabled = false,
   showSubmit = true,
+  showRequiredError = true,
+  showGuestPreview = true,
+  showHeader = true,
 }: PaymentArrangementsEditorProps) {
   const [draft, setDraft] = useState<PaymentArrangementsDraft>(() =>
     normalizePaymentArrangementsDraft(initialValue),
@@ -182,20 +202,22 @@ export function PaymentArrangementsEditor({
 
   return (
     <div className="mx-auto w-full max-w-3xl py-6 pb-12 md:py-10 md:pb-14">
-      <header>
-        <h1 className="sr-only">
-          <Tx
-            k="host.editor.payment_arrangements.heading"
-            source="Payment arrangements"
-          />
-        </h1>
-        <p className="text-sm leading-6 text-slate-600">
-          <Tx
-            k="host.editor.payment_arrangements.intro"
-            source="Choose every payment method you accept. You can also save private details to reuse after accepting a booking."
-          />
-        </p>
-      </header>
+      {showHeader ? (
+        <header>
+          <h1 className="sr-only">
+            <Tx
+              k="host.editor.payment_arrangements.heading"
+              source="Payment arrangements"
+            />
+          </h1>
+          <p className="text-sm leading-6 text-slate-600">
+            <Tx
+              k="host.editor.payment_arrangements.intro"
+              source="Choose every payment method you accept. You can also save private details to reuse after accepting a booking."
+            />
+          </p>
+        </header>
+      ) : null}
 
       {/* One notice, once. Repeating a warning under every field trains hosts to
           skip it; the field-level messages below appear only when they apply. */}
@@ -210,9 +232,9 @@ export function PaymentArrangementsEditor({
       <form onSubmit={submit} noValidate className="mt-6">
         <fieldset
           disabled={busy}
-          aria-invalid={!isComplete && draft.methodCodes.length === 0}
+          aria-invalid={showRequiredError && draft.methodCodes.length === 0}
           aria-describedby={
-            draft.methodCodes.length === 0
+            showRequiredError && draft.methodCodes.length === 0
               ? "payment-methods-hint payment-methods-error"
               : "payment-methods-hint"
           }
@@ -264,16 +286,25 @@ export function PaymentArrangementsEditor({
           />
         ) : null}
 
-        <GuestPreview
-          draft={draft}
-          showMethods={(reviewed || dirty) && draft.methodCodes.length > 0}
-        />
+        {showGuestPreview ? (
+          <GuestPreview
+            draft={draft}
+            showMethods={(reviewed || dirty) && draft.methodCodes.length > 0}
+          />
+        ) : null}
 
-        {!isComplete && draft.methodCodes.length === 0 ? (
-          <p id="payment-methods-error" className="mt-4 text-sm text-rose-700">
+        {showRequiredError && draft.methodCodes.length === 0 ? (
+          // Not a live region: the fieldset already points `aria-describedby` at it, and
+          // the wizard raises one summary alert for the whole screen. A second alert
+          // here would announce the same refusal twice.
+          <p
+            id="payment-methods-error"
+            className="mt-4 flex items-start gap-2 text-sm text-rose-700"
+          >
+            <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
             <Tx
               k="host.editor.payment_arrangements.method_required"
-              source="Choose at least one payment method to complete this section."
+              source="Choose at least one way guests can pay."
             />
           </p>
         ) : null}
@@ -347,7 +378,7 @@ function MethodRow({
   const presentation = methodPresentation(code);
   const Icon = presentation.icon;
   const base = rowId(code);
-  const checkboxId = `payment-method-${base}`;
+  const checkboxId = paymentMethodRowId(code);
   const panelId = `payment-details-${base}`;
   const statusId = `payment-status-${base}`;
 
@@ -402,11 +433,14 @@ function MethodRow({
               )}
             >
               {status === "READY" ? (
-                <Tx k="host.editor.payment_arrangements.status_ready" source="Ready" />
+                <Tx
+                  k="host.editor.payment_arrangements.status_ready"
+                  source="Details saved"
+                />
               ) : (
                 <Tx
                   k="host.editor.payment_arrangements.status_missing"
-                  source="Missing details"
+                  source="Optional details"
                 />
               )}
             </span>

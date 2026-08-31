@@ -6,6 +6,7 @@ export {
 } from "./payment-arrangements-editor";
 
 export { PaymentArrangementsWorkspace } from "./payment-arrangements-workspace";
+export { CancellationPolicyEditor } from "./cancellation-policy-editor";
 export {
   DepositPoliciesEditor,
   toPayload as depositPoliciesPayload,

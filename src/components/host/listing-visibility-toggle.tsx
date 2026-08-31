@@ -13,8 +13,8 @@ import { toast } from "sonner";
 import { interpolate, translatedClass, useI18n } from "@/lib/i18n/client";
 
 /** Statuses a host can put back on the site themselves. Anything else (SUSPENDED,
- * ARCHIVED, PENDING_REVIEW) is an admin/queue state the host must not flip. */
-const HOST_PUBLISHABLE = new Set(["UNPUBLISHED", "DRAFT", "REJECTED"]);
+ * ARCHIVED) is an admin state the host must not flip. */
+const HOST_PUBLISHABLE = new Set(["UNPUBLISHED", "DRAFT"]);
 
 export function isHostVisibilityToggleable(status: string) {
   return status === "APPROVED" || HOST_PUBLISHABLE.has(status);

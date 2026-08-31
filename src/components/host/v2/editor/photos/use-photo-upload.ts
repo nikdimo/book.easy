@@ -30,6 +30,7 @@ interface UploadResponse {
   error?: string;
   url?: string;
   mediaType?: string;
+  isPanorama?: boolean;
 }
 
 function fileMediaType(file: File): ListingMediaTypeValue {
@@ -47,7 +48,7 @@ function putFile(
   file: File,
   onProgress: (progress: number) => void,
   onProcessing: () => void,
-): Promise<{ url: string; mediaType: ListingMediaTypeValue }> {
+): Promise<{ url: string; mediaType: ListingMediaTypeValue; isPanorama: boolean }> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     const body = new FormData();
@@ -75,7 +76,11 @@ function putFile(
         return;
       }
       if (data.url && (data.mediaType === "IMAGE" || data.mediaType === "VIDEO")) {
-        resolve({ url: data.url, mediaType: data.mediaType });
+        resolve({
+          url: data.url,
+          mediaType: data.mediaType,
+          isPanorama: data.mediaType === "IMAGE" && data.isPanorama === true,
+        });
         return;
       }
       reject(new Error("The server returned an invalid upload response."));
@@ -89,7 +94,11 @@ export function usePhotoUpload({
 }: {
   /** Called per finished file, so a photo reaches the grid as soon as it lands rather
    *  than when the slowest file in the batch does. */
-  onUploaded: (item: { url: string; mediaType: ListingMediaTypeValue }) => Promise<void>;
+  onUploaded: (item: {
+    url: string;
+    mediaType: ListingMediaTypeValue;
+    isPanorama: boolean;
+  }) => Promise<void>;
 }) {
   const [tasks, setTasks] = useState<UploadTask[]>([]);
   const previewUrls = useRef(new Set<string>());

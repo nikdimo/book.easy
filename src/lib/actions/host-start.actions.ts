@@ -20,8 +20,15 @@ import { enqueueUploadDeletions, sweepUploads } from "@/lib/storage/upload-clean
 import { draftUploadUrls } from "@/lib/storage/upload-references";
 import { validCoordinates } from "@/lib/host/v2/listing-location";
 import { HOUSE_RULES_DRAFT_FIELDS } from "@/lib/host/v2/listing-house-rules-draft";
+import {
+  depositPoliciesCurrency,
+  depositPoliciesDraftMatchesCurrency,
+  depositPoliciesDraftIsValid,
+  parseDepositPoliciesDraft,
+} from "@/lib/host/v2/listing-deposit-draft";
 import { getDisplayCurrency } from "@/lib/currency/server";
 import type { ListingDraftData } from "@/lib/types/listing-draft";
+import { validateCancellationPolicy } from "@/lib/payments/cancellation-policy";
 
 export type HostStartDraftPatch = Partial<ListingDraftData>;
 
@@ -173,6 +180,21 @@ function appendDraftToFormData(formData: FormData, data: ListingDraftData) {
     JSON.stringify(data.paymentInstructionTemplates ?? {}),
   );
   formData.set("paymentDetails", JSON.stringify(data.paymentDetails ?? {}));
+  // Only when the host actually answered. An absent field is how `submitNewListing`
+  // tells "the host asked for neither" apart from "nobody asked" — the first sets the
+  // reviewed marker, the second leaves it null so the listing keeps the task that
+  // collects the answer. Sending an empty object for both would erase that difference
+  // and quote every guest a confident "no deposit" the host never gave.
+  const depositPolicies = parseDepositPoliciesDraft(data.depositPolicies);
+  if (depositPolicies) {
+    formData.set("depositPolicies", JSON.stringify(depositPolicies));
+  }
+  if (data.freeCancellationDaysBeforeCheckIn !== undefined) {
+    formData.set(
+      "freeCancellationDaysBeforeCheckIn",
+      data.freeCancellationDaysBeforeCheckIn,
+    );
+  }
   for (const item of data.mediaItems ?? []) {
     formData.append("mediaItems", JSON.stringify(item));
   }
@@ -188,6 +210,25 @@ export async function publishHostStartDraft(): Promise<
   if (!draft) return { error: "Your listing draft could not be found. Start a new listing and try again." };
 
   const data = listingDraftData(draft.data);
+  const depositPolicies = parseDepositPoliciesDraft(data.depositPolicies);
+  if (!depositPolicies) {
+    return {
+      error: "Answer the advance payment and damage deposit questions before publishing.",
+    };
+  }
+  const currency = depositPoliciesCurrency(data);
+  if (!depositPoliciesDraftMatchesCurrency(depositPolicies, currency)) {
+    return {
+      error:
+        "Review the advance payment and damage deposit amounts after changing the listing currency.",
+    };
+  }
+  if (!depositPoliciesDraftIsValid(depositPolicies, currency)) {
+    return { error: "Check the deposit amounts and timing before publishing." };
+  }
+  if (!validateCancellationPolicy(data.freeCancellationDaysBeforeCheckIn).success) {
+    return { error: "Choose the free-cancellation deadline before publishing." };
+  }
   const formData = new FormData();
   appendDraftToFormData(formData, data);
   const result = await submitNewListing(formData, draft.id);

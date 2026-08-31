@@ -1,4 +1,3 @@
-import { format } from "date-fns";
 import { ArrowLeft, CircleHelp, Eye } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -23,7 +22,7 @@ import {
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getLocale, getT, T } from "@/lib/i18n/t";
-import { ymdToDbDate } from "@/lib/utils/date-only";
+import { todayYmd, ymdToDbDate } from "@/lib/utils/date-only";
 
 /** Availability, pricing and promotions are one calendar seen three ways, so they
  *  share this shell and differ only by `lens`. */
@@ -90,7 +89,7 @@ export async function CalendarLensPage({
       status: true,
       availabilityMode: true,
       availabilityWindows: {
-        where: { endDate: { gte: ymdToDbDate(format(new Date(), "yyyy-MM-dd")) } },
+        where: { endDate: { gte: ymdToDbDate(todayYmd()) } },
         orderBy: { startDate: "asc" },
       },
       pricingRule: true,
@@ -102,7 +101,8 @@ export async function CalendarLensPage({
   });
   if (!listing) notFound();
 
-  const today = ymdToDbDate(format(new Date(), "yyyy-MM-dd"));
+  // The marketplace day, not the host process’s (M6).
+  const today = ymdToDbDate(todayYmd());
   const [blocks, datePrices, connectedFeeds] = await Promise.all([
     db.availabilityBlock.findMany({
       where: { listingId: listing.id, endDate: { gte: today } },

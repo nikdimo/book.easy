@@ -97,7 +97,13 @@ export async function addDraftPhoto({
   draftId: string | null;
   file: File;
   alt?: string;
-}): Promise<DraftPhotoResult<{ draftId: string; url: string; mediaType: "IMAGE" | "VIDEO"; data: ListingDraftData }>> {
+}): Promise<DraftPhotoResult<{
+  draftId: string;
+  url: string;
+  mediaType: "IMAGE" | "VIDEO";
+  isPanorama: boolean;
+  data: ListingDraftData;
+}>> {
   const draft = await ownedDraft(hostId, draftId);
   const existing = draft ? listingDraftData(draft.data) : {};
   if (mediaItems(existing).length >= MAX_DRAFT_MEDIA) {
@@ -110,13 +116,21 @@ export async function addDraftPhoto({
   const item: ListingMediaItem = {
     url: stored.url,
     mediaType: stored.mediaType,
+    ...(stored.isPanorama ? { isPanorama: true } : {}),
     alt: alt?.slice(0, 500) || null,
   };
 
   try {
     if (draft) {
       const data = await appendToOwnedDraft(draft.id, hostId, item);
-      return { ok: true, draftId: draft.id, url: stored.url, mediaType: stored.mediaType, data };
+      return {
+        ok: true,
+        draftId: draft.id,
+        url: stored.url,
+        mediaType: stored.mediaType,
+        isPanorama: stored.isPanorama,
+        data,
+      };
     }
     // A stale or foreign cookie never grants access and never blocks a host from
     // starting over — it is replaced with a new, owned draft, matching
@@ -130,6 +144,7 @@ export async function addDraftPhoto({
       draftId: created.id,
       url: stored.url,
       mediaType: stored.mediaType,
+      isPanorama: stored.isPanorama,
       data: listingDraftData(created.data),
     };
   } catch (error) {

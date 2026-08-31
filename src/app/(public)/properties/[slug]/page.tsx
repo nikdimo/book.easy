@@ -26,6 +26,7 @@ import {
 } from "@/components/booking/accepted-payment-methods";
 import { DepositPoliciesSummary } from "@/components/booking/deposit-policies-summary";
 import { createDepositPoliciesSnapshot } from "@/lib/payments/deposit-policies";
+import { cancellationPolicySnapshot } from "@/lib/payments/cancellation-policy";
 import { houseRulesSnapshot } from "@/lib/host/v2/listing-house-rules";
 import { houseRulesVersion } from "@/lib/host/v2/house-rules-version.server";
 import { ListingLocationMap } from "@/components/public/listing-location-map";
@@ -37,10 +38,10 @@ import { ListingViewTracker } from "@/components/public/listing-view-tracker";
 import { StartConversationButton } from "@/components/communication/start-conversation-button";
 import { getListingBySlug } from "@/lib/services/property.service";
 import { bookableStayFromSearch } from "@/lib/utils/booking-selection";
-import { todayYmd } from "@/lib/utils/date-only";
+import { dbDateToYmd, todayYmd } from "@/lib/utils/date-only";
 import { getBlockedDateRangesForListing } from "@/lib/services/availability.service";
 import { getFutureDatePriceRowsForListing } from "@/lib/services/pricing.service";
-import { dateKey } from "@/lib/utils/stay-pricing";
+import { toStayPromotion } from "@/lib/utils/stay-pricing";
 import { getPropertyTypeLabel } from "@/lib/services/property-type.service";
 import { auth } from "@/lib/auth";
 import { getFavoriteListingIdSet } from "@/lib/services/favorite.service";
@@ -52,6 +53,7 @@ import {
 } from "@/lib/i18n/property-type-labels";
 import type { Metadata } from "next";
 import { getPublishedListingReviews } from "@/lib/services/review.service";
+import { PRODUCT_NAME } from "@/lib/branding";
 
 interface ListingPageProps {
   params: Promise<{ slug: string }>;
@@ -64,17 +66,29 @@ export async function generateMetadata({
   const { slug } = await params;
   const listing = await getListingBySlug(slug);
   if (!listing) return { title: "Not Found" };
-  const ogImage = listing.images.find(
-    (item) => item.mediaType === "IMAGE",
-  )?.url;
+  // The photo Facebook, WhatsApp and every other unfurler shows for a shared link.
+  // `images` arrives ordered by `displayOrder` alone, so the first row is not
+  // necessarily the one the host flagged as the cover — a promoted link would then
+  // preview a bathroom because it happened to sort first. Prefer the primary photo and
+  // keep the display order as the fallback.
+  const photos = listing.images.filter((item) => item.mediaType === "IMAGE");
+  const ogImage = (photos.find((item) => item.isPrimary) ?? photos[0])?.url;
+  const description = listing.description.trim().slice(0, 160);
+  const publicPath = `/properties/${encodeURIComponent(listing.slug)}`;
 
   return {
     title: listing.title,
-    description: listing.description.slice(0, 160),
+    description,
+    alternates: { canonical: publicPath },
     openGraph: {
       title: listing.title,
-      description: listing.description.slice(0, 160),
-      images: ogImage ? [ogImage] : [],
+      description,
+      type: "website",
+      siteName: PRODUCT_NAME,
+      url: publicPath,
+      images: ogImage
+        ? [{ url: ogImage, alt: listing.title }]
+        : [],
     },
   };
 }
@@ -139,8 +153,10 @@ export default async function ListingDetailPage({
       getT(),
     ]);
 
+  // `date` is `@db.Date`; its UTC fields are the day the host priced. Read locally
+  // this keyed a June 10 override as "2026-06-09" on any server behind UTC (M6).
   const priceOverrides = priceRows.map((r) => ({
-    date: dateKey(new Date(r.date)),
+    date: dbDateToYmd(r.date),
     rate: Number(r.nightlyRate),
   }));
 
@@ -267,7 +283,24 @@ export default async function ListingDetailPage({
     otherLabel: listing.paymentMethodOther,
   });
   const depositPolicies = createDepositPoliciesSnapshot(listing);
-  const bookingWidget = listing.pricingRule ? (
+  const cancellationPolicy = cancellationPolicySnapshot(
+    listing.freeCancellationDaysBeforeCheckIn,
+    listing.cancellationPolicyReviewedAt,
+  );
+  // A host is not a guest at their own place. `createBooking` refuses a self-booking
+  // outright — that refusal is the enforcement, and it holds for a request posted
+  // straight at the action — so leaving the widget here would only offer a host a
+  // button that ends in an error. Everything else on the page stays: the photos, the
+  // rules and the availability calendar are exactly what this host wants to check.
+  const bookingWidget = isOwnListing ? (
+    <div className="rounded-2xl border border-border/50 bg-muted/20 p-5 text-sm text-muted-foreground lg:sticky lg:top-24">
+      <T
+        t={t}
+        k="listing.own_listing_notice"
+        source="You host this listing, so you can't send a booking request for it."
+      />
+    </div>
+  ) : listing.pricingRule ? (
     <BookingWidget
       listingId={listing.id}
       maxGuests={listing.maxGuests}
@@ -275,17 +308,8 @@ export default async function ListingDetailPage({
       cleaningFee={Number(listing.pricingRule.cleaningFee)}
       currency={listing.pricingRule.currency}
       minNights={listing.pricingRule.minNights}
-      promotions={listing.promotions.map((promotion) => ({
-        id: promotion.id,
-        type: promotion.type,
-        discountPercent: promotion.discountPercent,
-        minimumNights: promotion.minimumNights,
-        freeCleaning: promotion.freeCleaning,
-        roundToWholeUnit: promotion.roundToWholeUnit,
-        startDate: promotion.startDate,
-        endDate: promotion.endDate,
-        createdAt: promotion.createdAt,
-      }))}
+      maxNights={listing.pricingRule.maxNights}
+      promotions={listing.promotions.map(toStayPromotion)}
       disabledDateRanges={disabledDateRanges}
       priceOverrides={priceOverrides}
       initialCheckIn={initialCheckIn}
@@ -299,6 +323,7 @@ export default async function ListingDetailPage({
       requestToBookTooltip={requestToBookTooltip}
       acceptedPaymentMethods={acceptedPaymentMethods}
       depositPolicies={depositPolicies}
+      cancellationPolicy={cancellationPolicy}
       messageHost={messageHostButton}
       houseRules={<HouseRulesList t={t} rules={houseRules} />}
       houseRulesVersion={renderedHouseRulesVersion}
@@ -314,17 +339,7 @@ export default async function ListingDetailPage({
       baseNightlyRate={Number(listing.pricingRule.baseNightlyRate)}
       currency={listing.pricingRule.currency}
       priceOverrides={priceOverrides}
-      promotions={listing.promotions.map((promotion) => ({
-        id: promotion.id,
-        type: promotion.type,
-        discountPercent: promotion.discountPercent,
-        minimumNights: promotion.minimumNights,
-        freeCleaning: promotion.freeCleaning,
-        roundToWholeUnit: promotion.roundToWholeUnit,
-        startDate: promotion.startDate,
-        endDate: promotion.endDate,
-        createdAt: promotion.createdAt,
-      }))}
+      promotions={listing.promotions.map(toStayPromotion)}
     />
   ) : null;
 
@@ -374,6 +389,7 @@ export default async function ListingDetailPage({
           listingId={listing.id}
           initialSaved={isSaved}
           isAuthenticated={!!session?.user}
+          isOwnListing={isOwnListing}
         />
       </div>
 

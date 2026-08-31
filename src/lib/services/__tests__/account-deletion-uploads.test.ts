@@ -25,7 +25,7 @@ const mocks = vi.hoisted(() => ({
   drafts: [] as { data: unknown }[],
   rows: [] as QueueRow[],
   clock: 0,
-  userDelete: vi.fn(async () => ({})),
+  userUpdate: vi.fn(async () => ({})),
   /** Anything else the erasure transaction touches; the counts are irrelevant here. */
   imageCount: vi.fn(async () => 0),
   userCount: vi.fn(async () => 0),
@@ -107,7 +107,14 @@ function modelFor(name: string) {
   if (name === "listingDraft") {
     return { ...permissiveModel, findMany: async () => mocks.drafts };
   }
-  if (name === "user") return { ...permissiveModel, delete: mocks.userDelete };
+  if (name === "user") {
+    return {
+      ...permissiveModel,
+      // Erasure anonymizes in place, so the walk reads the row, then overwrites it.
+      findUnique: async () => ({ id: "host-1", image: null, deletedAt: null }),
+      update: mocks.userUpdate,
+    };
+  }
   if (name === "listingImage") return { ...permissiveModel, count: mocks.imageCount };
   if (name === "profile") return { ...permissiveModel, count: mocks.profileCount };
   if (name === "damageReportEvidence") return { ...permissiveModel, count: mocks.damageCount };
@@ -143,7 +150,7 @@ beforeEach(() => {
   mocks.rows = [];
   mocks.clock = 0;
   mocks.remove.mockReset().mockResolvedValue(undefined);
-  mocks.userDelete.mockReset().mockResolvedValue({});
+  mocks.userUpdate.mockReset().mockResolvedValue({});
   mocks.imageCount.mockReset().mockResolvedValue(0);
   mocks.userCount.mockReset().mockResolvedValue(0);
   mocks.profileCount.mockReset().mockResolvedValue(0);
@@ -167,7 +174,7 @@ describe("deleteUserAccount — draft photo cleanup", () => {
     const result = await deleteUserAccount("host-1");
 
     expect(result.success).toBe(true);
-    expect(mocks.userDelete).toHaveBeenCalled();
+    expect(mocks.userUpdate).toHaveBeenCalled();
     expect(unlinked()).toEqual(["/uploads/1-hall.jpg", "/uploads/2-legacy.jpg"]);
     expect(result.deletedRecords.draftUploads).toBe(2);
     expect(mocks.rows).toHaveLength(0);
@@ -251,7 +258,7 @@ describe("deleteUserAccount — draft photo cleanup", () => {
 
     // The erasure is a legal obligation; a stuck file must never hold it up.
     expect(result.success).toBe(true);
-    expect(result.deletedRecords.user).toBe(1);
+    expect(result.anonymizedRecords.user).toBe(1);
     expect(result.deletedRecords.draftUploads).toBe(0);
     // Discoverable and retryable rather than silently lost.
     expect(mocks.rows.map((row) => row.url)).toEqual(["/uploads/1-stuck.jpg"]);
@@ -260,7 +267,7 @@ describe("deleteUserAccount — draft photo cleanup", () => {
 
   it("queues nothing when the erasure itself fails", async () => {
     mocks.drafts = [{ data: { mediaItems: [{ url: "/uploads/1-hall.jpg", mediaType: "IMAGE" }] } }];
-    mocks.userDelete.mockRejectedValue(new Error("foreign key violation"));
+    mocks.userUpdate.mockRejectedValue(new Error("foreign key violation"));
 
     await expect(deleteUserAccount("host-1")).rejects.toThrow(/Failed to delete user account/);
 

@@ -72,6 +72,7 @@ interface UploadResponse {
   error?: string;
   url?: string;
   mediaType?: string;
+  isPanorama?: boolean;
 }
 
 const MAX_PARALLEL_UPLOADS = 3;
@@ -94,7 +95,7 @@ function uploadFile(
   task: UploadTask,
   onProgress: (progress: number) => void,
   onProcessing: () => void
-): Promise<{ url: string; mediaType: "IMAGE" | "VIDEO" }> {
+): Promise<{ url: string; mediaType: "IMAGE" | "VIDEO"; isPanorama: boolean }> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     const formData = new FormData();
@@ -127,7 +128,11 @@ function uploadFile(
         data.url &&
         (data.mediaType === "IMAGE" || data.mediaType === "VIDEO")
       ) {
-        resolve({ url: data.url, mediaType: data.mediaType });
+        resolve({
+          url: data.url,
+          mediaType: data.mediaType,
+          isPanorama: data.mediaType === "IMAGE" && data.isPanorama === true,
+        });
         return;
       }
 
@@ -506,7 +511,11 @@ export function ListingImagesField({
           key={`mediaItems-${item.mediaType}-${i}`}
           type="hidden"
           name="mediaItems"
-          value={JSON.stringify({ url: item.url, mediaType: item.mediaType })}
+          value={JSON.stringify({
+            url: item.url,
+            mediaType: item.mediaType,
+            isPanorama: item.isPanorama === true,
+          })}
         />
       ))}
     </div>
@@ -685,6 +694,11 @@ function SortableImageTile({
       {isCover && (
         <span className="absolute bottom-1 left-1 rounded bg-background/90 px-1.5 py-0.5 text-xs md:text-[10px] font-medium shadow-sm">
           <Tx k="host.images.cover" source="Cover" />
+        </span>
+      )}
+      {item.isPanorama && (
+        <span className="absolute bottom-1 right-1 rounded bg-black/65 px-1.5 py-0.5 text-xs font-semibold text-white shadow-sm md:text-[10px]">
+          360°
         </span>
       )}
     </li>

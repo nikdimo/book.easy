@@ -67,11 +67,15 @@ import { BasicsStep } from "@/components/host/v2/listings/basics-step";
 import { DescriptionStep } from "@/components/host/v2/listings/description-step";
 import { HouseRulesStep } from "@/components/host/v2/listings/house-rules-step";
 import { PhotosStep } from "@/components/host/v2/listings/photos-step";
+import { PaymentArrangementsStep } from "@/components/host/v2/listings/payment-arrangements-step";
+import { PhaseOneComplete } from "@/components/host/v2/listings/phase-one-complete";
+import { PhaseTwoComplete } from "@/components/host/v2/listings/phase-two-complete";
 import { PriceStep } from "@/components/host/v2/listings/price-step";
 import { PropertyTypeStep } from "@/components/host/v2/listings/property-type-step";
 import { ReviewStep } from "@/components/host/v2/listings/review-step";
 import { SpaceTypeStep } from "@/components/host/v2/listings/space-type-step";
 import { MIN_PUBLISH_PHOTOS } from "@/lib/host/v2/photo-draft";
+import { emptyDepositPoliciesDraft } from "@/lib/host/v2/listing-deposit-draft";
 
 const house = { value: "HOUSE", label: "House", icon: "House", description: "A house." };
 const QUERY = "propertyType=HOUSE&spaceType=ENTIRE_PLACE";
@@ -79,6 +83,9 @@ const QUERY = "propertyType=HOUSE&spaceType=ENTIRE_PLACE";
 /** Where the tab was sent, if anywhere. `window.location.assign` is what most steps use;
  *  the description step goes through the router instead. */
 const navigations: string[] = [];
+/** What a blocked step asked the page to do on the host's behalf. */
+const scrolledTo: string[] = [];
+const focused: string[] = [];
 
 beforeEach(() => {
   draft.data = {};
@@ -89,6 +96,8 @@ beforeEach(() => {
   router.pushed = [];
   toasts.errors = [];
   navigations.length = 0;
+  scrolledTo.length = 0;
+  focused.length = 0;
 });
 
 /** Runs the footer's Next with a stand-in for the navigation it may end in. */
@@ -100,15 +109,22 @@ async function advance() {
   Reflect.set(globalThis, "window", {
     location: { assign: (href: string) => navigations.push(href) },
   });
-  if (previousDocument === undefined) {
-    Reflect.set(globalThis, "document", { getElementById: () => null });
-  }
+  // Every id a step can reach for exists on the real page, so the stand-in answers for
+  // all of them and records what was asked. A stub returning null would let a step aim
+  // at an element that is not there and still look like it worked.
+  Reflect.set(globalThis, "document", {
+    getElementById: (id: string) => ({
+      scrollIntoView: () => scrolledTo.push(id),
+      focus: () => focused.push(id),
+    }),
+  });
   try {
     await onNext();
   } finally {
     if (previousWindow === undefined) Reflect.deleteProperty(globalThis, "window");
     else Reflect.set(globalThis, "window", previousWindow);
     if (previousDocument === undefined) Reflect.deleteProperty(globalThis, "document");
+    else Reflect.set(globalThis, "document", previousDocument);
   }
 }
 
@@ -116,6 +132,45 @@ async function advance() {
 function wentTo(): string[] {
   return [...navigations, ...router.pushed];
 }
+
+describe("phase transitions", () => {
+  it("records Amenities before leaving the phase-one completion screen", async () => {
+    renderToStaticMarkup(
+      <PhaseOneComplete propertyType={house} spaceType="ENTIRE_PLACE" />,
+    );
+
+    await advance();
+
+    expect(draft.patches).toEqual([
+      { currentStepId: "amenities", currentRoute: "amenities" },
+    ]);
+    expect(wentTo()).toEqual([`/host/start/amenities?${QUERY}`]);
+  });
+
+  it("records Price before leaving the phase-two completion screen", async () => {
+    renderToStaticMarkup(
+      <PhaseTwoComplete propertyType={house} spaceType="ENTIRE_PLACE" />,
+    );
+
+    await advance();
+
+    expect(draft.patches).toEqual([
+      { currentStepId: "pricing", currentRoute: "price" },
+    ]);
+    expect(wentTo()).toEqual([`/host/start/price?${QUERY}`]);
+  });
+
+  it("does not navigate from a phase transition when saving the resume route fails", async () => {
+    draft.saveSucceeds = false;
+    renderToStaticMarkup(
+      <PhaseOneComplete propertyType={house} spaceType="ENTIRE_PLACE" />,
+    );
+
+    await advance();
+
+    expect(wentTo()).toEqual([]);
+  });
+});
 
 // ---------------------------------------------------------------------------------
 // Property type
@@ -135,7 +190,9 @@ describe("PropertyTypeStep", () => {
 
     await advance();
 
-    expect(draft.patches).toEqual([{ propertyType: "VILLA", currentStepId: "spaceType" }]);
+    expect(draft.patches).toEqual([
+      { propertyType: "VILLA", currentStepId: "spaceType", currentRoute: "space-type" },
+    ]);
     expect(wentTo()).toEqual(["/host/start/space-type?propertyType=VILLA"]);
   });
 
@@ -176,7 +233,12 @@ describe("SpaceTypeStep", () => {
     await advance();
 
     expect(draft.patches).toEqual([
-      { propertyType: "HOUSE", spaceType: "ENTIRE_PLACE", currentStepId: "location" },
+      {
+        propertyType: "HOUSE",
+        spaceType: "ENTIRE_PLACE",
+        currentStepId: "location",
+        currentRoute: "location",
+      },
     ]);
     expect(wentTo()).toHaveLength(1);
   });
@@ -223,6 +285,7 @@ describe("AddressStep", () => {
         city: "Skopje",
         country: "MK",
         currentStepId: "details",
+        currentRoute: "basics",
       },
     ]);
     expect(wentTo()).toEqual([`/host/start/basics?${QUERY}`]);
@@ -314,7 +377,14 @@ describe("BasicsStep", () => {
     await advance();
 
     expect(draft.patches).toEqual([
-      { maxGuests: "4", bedrooms: "2", beds: "3", bathrooms: "1", currentStepId: "amenities" },
+      {
+        maxGuests: "4",
+        bedrooms: "2",
+        beds: "3",
+        bathrooms: "1",
+        currentStepId: "amenities",
+        currentRoute: "phase-one-complete",
+      },
     ]);
     expect(wentTo()).toEqual([`/host/start/phase-one-complete?${QUERY}`]);
   });
@@ -394,7 +464,9 @@ describe("AmenitiesStep", () => {
 
     await advance();
 
-    expect(draft.patches).toEqual([{ amenityIds: ["wifi"], currentStepId: "photos" }]);
+    expect(draft.patches).toEqual([
+      { amenityIds: ["wifi"], currentStepId: "photos", currentRoute: "photos" },
+    ]);
     expect(wentTo()).toEqual([`/host/start/photos?${QUERY}`]);
   });
 
@@ -455,6 +527,7 @@ describe("DescriptionStep", () => {
         description:
           "A bright two-bedroom house a short walk from the old bazaar and the river.",
         currentStepId: "pricing",
+        currentRoute: "phase-two-complete",
       },
     ]);
     expect(wentTo()).toEqual([`/host/start/phase-two-complete?${QUERY}`]);
@@ -519,7 +592,13 @@ describe("PriceStep", () => {
     await advance();
 
     expect(draft.patches).toEqual([
-      { baseNightlyRate: "90", cleaningFee: "0", currency: "EUR", currentStepId: "specialOffer" },
+      {
+        baseNightlyRate: "90",
+        cleaningFee: "0",
+        currency: "EUR",
+        currentStepId: "specialOffer",
+        currentRoute: "payment-arrangements",
+      },
     ]);
     expect(wentTo()).toEqual([`/host/start/payment-arrangements?${QUERY}`]);
   });
@@ -637,6 +716,167 @@ describe("AvailabilityStep", () => {
 });
 
 // ---------------------------------------------------------------------------------
+// Payment arrangements — methods and the two deposit questions
+// ---------------------------------------------------------------------------------
+
+describe("PaymentArrangementsStep", () => {
+  /** A method the host has selected. It is the one required answer on the screen. */
+  const METHODS: ListingDraftData = { acceptedPaymentMethods: ["PAYPAL"] };
+
+  /** The host asked for a percentage advance and a fixed damage deposit. */
+  function bothDeposits() {
+    const answer = emptyDepositPoliciesDraft();
+    answer.currency = "EUR";
+    answer.advancePayment = {
+      enabled: true,
+      amountType: "PERCENTAGE",
+      value: "20",
+      dueTiming: "AFTER_ACCEPTANCE",
+      dueDaysBeforeCheckIn: null,
+    };
+    answer.damageDeposit = {
+      enabled: true,
+      amountType: "FIXED",
+      value: "200",
+      dueTiming: "AT_CHECK_IN",
+      dueDaysBeforeCheckIn: null,
+      returnDaysAfterCheckout: 7,
+    };
+    return answer;
+  }
+
+  function step() {
+    return renderToStaticMarkup(
+      <PaymentArrangementsStep propertyType={house} spaceType="ENTIRE_PLACE" />,
+    );
+  }
+
+  it("saves the deposit answer alongside the methods, and navigates", async () => {
+    const depositPolicies = bothDeposits();
+    draft.data = {
+      ...METHODS,
+      currency: "EUR",
+      freeCancellationDaysBeforeCheckIn: "7",
+      depositPolicies,
+    } as ListingDraftData;
+    step();
+
+    await advance();
+
+    expect(draft.patches[0]).toMatchObject({
+      acceptedPaymentMethods: ["PAYPAL"],
+      depositPolicies,
+      freeCancellationDaysBeforeCheckIn: "7",
+      currentStepId: "specialOffer",
+      // The screen after this one — not `availability`'s own id, which is what the
+      // shared vocabulary used to collapse four screens onto.
+      currentRoute: "availability",
+    });
+    expect(wentTo()).toEqual([`/host/start/availability?${QUERY}`]);
+  });
+
+  it("lets a fresh draft continue on a payment method alone, recording the safe defaults", async () => {
+    // The deposit questions used to hold a host here until they ticked a confirmation
+    // box, which is the one thing this screen is not allowed to do: the safe answers
+    // are shown as the selected choice, and continuing is what confirms them.
+    draft.data = { ...METHODS } as ListingDraftData;
+    step();
+
+    expect(footer.nextHref).toBe(`/host/start/availability?${QUERY}`);
+    await advance();
+
+    expect(draft.patches[0]).toMatchObject({
+      depositPolicies: {
+        advancePayment: { enabled: false },
+        damageDeposit: { enabled: false },
+      },
+      freeCancellationDaysBeforeCheckIn: "0",
+    });
+    expect(wentTo()).toHaveLength(1);
+  });
+
+  it("treats an explicit 'neither' as the answer it already is", async () => {
+    draft.data = {
+      ...METHODS,
+      depositPolicies: emptyDepositPoliciesDraft(),
+    } as ListingDraftData;
+    step();
+
+    await advance();
+
+    expect(draft.patches[0]).toMatchObject({
+      depositPolicies: { advancePayment: { enabled: false }, damageDeposit: { enabled: false } },
+    });
+    expect(wentTo()).toHaveLength(1);
+  });
+
+  it("neither saves nor navigates on a switched-on section with no amount", async () => {
+    const incomplete = bothDeposits();
+    incomplete.advancePayment.value = "";
+    draft.data = { ...METHODS, currency: "EUR", depositPolicies: incomplete } as ListingDraftData;
+    step();
+
+    expect(footer.nextHref).toBeUndefined();
+    await advance();
+
+    expect(draft.patches).toEqual([]);
+    expect(wentTo()).toEqual([]);
+  });
+
+  it("neither saves nor navigates on a percentage above 100", async () => {
+    const incomplete = bothDeposits();
+    incomplete.advancePayment.value = "120";
+    draft.data = { ...METHODS, currency: "EUR", depositPolicies: incomplete } as ListingDraftData;
+    step();
+
+    await advance();
+
+    expect(draft.patches).toEqual([]);
+    expect(wentTo()).toEqual([]);
+  });
+
+  it("neither saves nor navigates with a deposit answer but no payment method", async () => {
+    draft.data = { depositPolicies: emptyDepositPoliciesDraft() } as ListingDraftData;
+    step();
+
+    // The CTA still has a handler: pressing it is how the host finds out why.
+    expect(footer.onNext).not.toBeNull();
+    expect(footer.nextHref).toBeUndefined();
+    await advance();
+
+    expect(draft.patches).toEqual([]);
+    expect(wentTo()).toEqual([]);
+  });
+
+  it("neither saves nor navigates on an unusable stored cancellation deadline", async () => {
+    draft.data = {
+      ...METHODS,
+      depositPolicies: emptyDepositPoliciesDraft(),
+      freeCancellationDaysBeforeCheckIn: "9999",
+    } as ListingDraftData;
+    step();
+
+    await advance();
+
+    expect(draft.patches).toEqual([]);
+    expect(wentTo()).toEqual([]);
+  });
+
+  it("stays on the step when the save fails", async () => {
+    draft.saveSucceeds = false;
+    draft.data = {
+      ...METHODS,
+      depositPolicies: emptyDepositPoliciesDraft(),
+    } as ListingDraftData;
+    step();
+
+    await advance();
+
+    expect(wentTo()).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------------
 // House rules
 // ---------------------------------------------------------------------------------
 
@@ -666,7 +906,7 @@ describe("HouseRulesStep", () => {
     await advance();
 
     expect(draft.patches).toEqual([
-      { ...ANSWERED, currentStepId: "specialOffer" },
+      { ...ANSWERED, currentStepId: "specialOffer", currentRoute: "review" },
     ]);
     expect(wentTo()).toHaveLength(1);
   });
@@ -738,6 +978,53 @@ describe("HouseRulesStep", () => {
     // what a host sees after the blocked press.
     expect(footer.nextHref).toBeUndefined();
   });
+
+  it("keeps the CTA live rather than letting it look broken", () => {
+    draft.data = { ...ANSWERED, petPolicy: "" };
+    step();
+
+    // No destination, so it cannot navigate — but it still has a handler, which is the
+    // whole difference between a screen that explains itself and one that looks dead.
+    expect(footer.nextHref).toBeUndefined();
+    expect(footer.onNext).not.toBeNull();
+  });
+
+  it("scrolls the first unanswered rule into view and puts the cursor on it", async () => {
+    draft.data = { ...ANSWERED, smokingPolicy: "", petPolicy: "" };
+    step();
+
+    await advance();
+
+    // Pets is above smoking on the page, so pets is where the host is sent — and only
+    // there: one row, not a jump through all of them.
+    expect(scrolledTo).toEqual(["flow-house-rules-pets"]);
+    expect(focused).toEqual(["flow-house-rules-pets"]);
+  });
+
+  it("sends the host to the quiet-hours row for a half-set range", async () => {
+    draft.data = {
+      ...ANSWERED,
+      quietHoursPolicy: "SET",
+      quietHoursStart: "22:00",
+      quietHoursEnd: "",
+    };
+    step();
+
+    await advance();
+
+    expect(scrolledTo).toEqual(["flow-house-rules-quiet-hours"]);
+    expect(focused).toEqual(["flow-house-rules-quiet-hours"]);
+  });
+
+  it("does not move the page at all once every rule is answered", async () => {
+    draft.data = ANSWERED;
+    step();
+
+    await advance();
+
+    expect(scrolledTo).toEqual([]);
+    expect(wentTo()).toHaveLength(1);
+  });
 });
 
 // ---------------------------------------------------------------------------------
@@ -775,6 +1062,27 @@ describe("ReviewStep", () => {
       acceptedPaymentMethods: ["BANK_TRANSFER_LOCAL_SEPA", "PAYPAL"],
       paymentMethodOther: null,
       paymentInstructionTemplates: {},
+      freeCancellationDaysBeforeCheckIn: "7",
+      // The host answered the deposit questions with "neither". Present-and-both-off
+      // is a complete answer; the field being absent is the unanswered state, and
+      // Review blocks on that — see the deposit cases below.
+      depositPolicies: {
+        advancePayment: {
+          enabled: false,
+          amountType: "FIXED",
+          value: "",
+          dueTiming: "AFTER_ACCEPTANCE",
+          dueDaysBeforeCheckIn: null,
+        },
+        damageDeposit: {
+          enabled: false,
+          amountType: "FIXED",
+          value: "",
+          dueTiming: "AFTER_ACCEPTANCE",
+          dueDaysBeforeCheckIn: null,
+          returnDaysAfterCheckout: null,
+        },
+      },
       prePublishPlan: {
         availabilityStart: { mode: "now" },
         blocks: [],

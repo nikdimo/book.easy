@@ -10,6 +10,7 @@ import {
 import { useLanguage } from "@/context/language-context";
 import { useApiError } from "@/lib/use-api-error";
 import { apiFetch, formatRelativeTime } from "@/lib/api";
+import type { UserRole } from "@/lib/roles";
 import { colors, radii, spacing, type } from "@/theme";
 
 interface AdminConversation {
@@ -19,7 +20,7 @@ interface AdminConversation {
   createdAt: string;
   listing: { id: string; title: string } | null;
   booking: { id: string; status: string } | null;
-  participants: { id: string; name: string | null; role: string }[];
+  participants: { id: string; name: string | null; role: UserRole }[];
   messageCount: number;
   safetyCaseCount: number;
   hasSupport: boolean;

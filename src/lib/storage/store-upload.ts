@@ -106,11 +106,121 @@ const ALLOWED_TYPES: Record<
 export interface StoredUpload {
   url: string;
   mediaType: ListingMediaTypeValue;
+  isPanorama: boolean;
 }
 
 export type StoreUploadResult =
   | ({ ok: true } & StoredUpload)
   | { ok: false; status: number; error: string };
+
+type Dimensions = { width: number; height: number };
+
+function pngDimensions(buffer: Buffer): Dimensions | null {
+  if (
+    buffer.length < 24 ||
+    buffer[0] !== 0x89 ||
+    buffer.toString("ascii", 1, 4) !== "PNG"
+  ) {
+    return null;
+  }
+  return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
+}
+
+/** Reads only JPEG segment headers and stops after a bounded number of segments. */
+function jpegDimensions(buffer: Buffer): Dimensions | null {
+  if (buffer.length < 10 || buffer[0] !== 0xff || buffer[1] !== 0xd8) return null;
+  const startOfFrame = new Set([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf]);
+  let offset = 2;
+  for (let segment = 0; segment < 1024 && offset + 3 < buffer.length; segment += 1) {
+    while (offset < buffer.length && buffer[offset] !== 0xff) offset += 1;
+    while (offset < buffer.length && buffer[offset] === 0xff) offset += 1;
+    if (offset >= buffer.length) return null;
+    const marker = buffer[offset];
+    offset += 1;
+    if (marker === 0xd8 || marker === 0x01) continue;
+    if (marker === 0xd9 || marker === 0xda || offset + 2 > buffer.length) return null;
+    const length = buffer.readUInt16BE(offset);
+    if (length < 2 || offset + length > buffer.length) return null;
+    if (startOfFrame.has(marker) && length >= 7) {
+      return {
+        height: buffer.readUInt16BE(offset + 3),
+        width: buffer.readUInt16BE(offset + 5),
+      };
+    }
+    offset += length;
+  }
+  return null;
+}
+
+function readUInt24LE(buffer: Buffer, offset: number): number {
+  return buffer[offset] | (buffer[offset + 1] << 8) | (buffer[offset + 2] << 16);
+}
+
+function webpDimensions(buffer: Buffer): Dimensions | null {
+  if (
+    buffer.length < 30 ||
+    buffer.toString("ascii", 0, 4) !== "RIFF" ||
+    buffer.toString("ascii", 8, 12) !== "WEBP"
+  ) {
+    return null;
+  }
+  const kind = buffer.toString("ascii", 12, 16);
+  if (kind === "VP8X") {
+    return {
+      width: readUInt24LE(buffer, 24) + 1,
+      height: readUInt24LE(buffer, 27) + 1,
+    };
+  }
+  if (
+    kind === "VP8 " &&
+    buffer[23] === 0x9d &&
+    buffer[24] === 0x01 &&
+    buffer[25] === 0x2a
+  ) {
+    return {
+      width: buffer.readUInt16LE(26) & 0x3fff,
+      height: buffer.readUInt16LE(28) & 0x3fff,
+    };
+  }
+  if (kind === "VP8L" && buffer[20] === 0x2f) {
+    const b0 = buffer[21];
+    const b1 = buffer[22];
+    const b2 = buffer[23];
+    const b3 = buffer[24];
+    return {
+      width: 1 + b0 + ((b1 & 0x3f) << 8),
+      height: 1 + ((b1 & 0xc0) >> 6) + (b2 << 2) + ((b3 & 0x0f) << 10),
+    };
+  }
+  return null;
+}
+
+function safeImageDimensions(buffer: Buffer): Dimensions | null {
+  return pngDimensions(buffer) ?? jpegDimensions(buffer) ?? webpDimensions(buffer);
+}
+
+/** Full spherical equirectangular photos are conventionally 2:1. A small tolerance
+ * covers camera stitching and exports that shave a few pixels from either edge. XMP
+ * wins when a 360 camera explicitly identifies the projection. Tiny 2:1 graphics are
+ * excluded so banners and screenshots are not accidentally turned into panoramas. */
+export function detectEquirectangularPanorama(buffer: Buffer): boolean {
+  const xmp = buffer.toString("utf8");
+  if (
+    /GPano:ProjectionType[=\"'>\s]+equirectangular/i.test(xmp) ||
+    /<GPano:ProjectionType>\s*equirectangular\s*</i.test(xmp)
+  ) {
+    return true;
+  }
+
+  try {
+    const dimensions = safeImageDimensions(buffer);
+    if (!dimensions) return false;
+    const ratio = dimensions.width / dimensions.height;
+    return dimensions.width >= 1600 && dimensions.height >= 800 && ratio >= 1.9 && ratio <= 2.1;
+  } catch {
+    return false;
+  }
+}
 
 /** Validates and stores one browser-supplied file. Never throws for a bad file — a
  *  rejected upload is an expected outcome with a status the caller passes straight on. */
@@ -155,6 +265,8 @@ export async function storeUploadedFile(file: File): Promise<StoreUploadResult> 
   }
 
   let outputMimeType = file.type || "image/heic";
+  const hasPanoramaMetadata =
+    typeInfo.mediaType === "IMAGE" && detectEquirectangularPanorama(buffer);
   if (typeInfo.convertToJpeg) {
     try {
       buffer = Buffer.from(await convertHeic({ buffer, format: "JPEG", quality: 0.9 }));
@@ -168,13 +280,17 @@ export async function storeUploadedFile(file: File): Promise<StoreUploadResult> 
     outputMimeType = "image/jpeg";
   }
 
+  const isPanorama =
+    typeInfo.mediaType === "IMAGE" &&
+    (hasPanoramaMetadata || detectEquirectangularPanorama(buffer));
+
   // Never trust the client-supplied filename for the on-disk path — it's attacker
   // controlled and a `../` in it could otherwise escape the upload directory.
   const safeName = `${randomUUID()}.${typeInfo.ext}`;
   try {
     const storage = getStorageAdapter();
     const url = await storage.upload(buffer, safeName, outputMimeType);
-    return { ok: true, url, mediaType: typeInfo.mediaType };
+    return { ok: true, url, mediaType: typeInfo.mediaType, isPanorama };
   } catch (error) {
     console.error("Unable to store uploaded file", error);
     return {

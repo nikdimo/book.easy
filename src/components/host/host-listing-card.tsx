@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/tooltip";
 import { DeleteListingButton } from "@/components/host/delete-listing-button";
 import { ListingArchiveButton } from "@/components/host/listing-archive-button";
+import { FacebookPromoteButton } from "@/components/host/facebook-promote-button";
 import {
   ListingVisibilityToggle,
   isHostVisibilityToggleable,
@@ -140,30 +141,36 @@ export function HostListingCard({ listing }: HostListingCardProps) {
           </Tooltip>
 
           {listing.status === "APPROVED" && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" asChild>
-                  <Link
-                    href={`/properties/${listing.slug}`}
-                    aria-label={
-                      interpolate(
-                        resolve("host.listing_card.preview_label", "Preview {title}"),
-                        { title: listing.title },
-                      ).text
-                    }
-                  >
-                    <Eye className="h-3 w-3" />
-                    <Tx k="host.workspace.preview" source="Preview" />
-                  </Link>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-64">
-                <Tx
-                  k="host.listing_card.preview_tooltip"
-                  source="Open the public page for this listing, exactly as guests see it."
-                />
-              </TooltipContent>
-            </Tooltip>
+            <>
+              <FacebookPromoteButton
+                listingId={listing.id}
+                title={listing.title}
+              />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link
+                      href={`/properties/${listing.slug}`}
+                      aria-label={
+                        interpolate(
+                          resolve("host.listing_card.preview_label", "Preview {title}"),
+                          { title: listing.title },
+                        ).text
+                      }
+                    >
+                      <Eye className="h-3 w-3" />
+                      <Tx k="host.workspace.preview" source="Preview" />
+                    </Link>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-64">
+                  <Tx
+                    k="host.listing_card.preview_tooltip"
+                    source="Open the public page for this listing, exactly as guests see it."
+                  />
+                </TooltipContent>
+              </Tooltip>
+            </>
           )}
 
           {canToggleVisibility && (

@@ -94,10 +94,6 @@ export function visibilityLabel(
         "host.v2.calendar.visibility.hidden",
         "Hidden from guests",
       );
-    case "IN_REVIEW":
-      return i18n.resolve("host.v2.calendar.visibility.in_review", "In review");
-    case "REJECTED":
-      return i18n.resolve("host.v2.calendar.visibility.rejected", "Rejected");
     case "SUSPENDED":
       return i18n.resolve("host.v2.calendar.visibility.suspended", "Suspended");
     case "ARCHIVED":

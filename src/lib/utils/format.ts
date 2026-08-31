@@ -1,5 +1,10 @@
-import { differenceInDays, parseISO } from "date-fns";
+import { parseISO } from "date-fns";
 import { Decimal } from "@prisma/client/runtime/library";
+import {
+  isValidYmd,
+  nightsBetweenYmd,
+  ymdToDbDate,
+} from "@/lib/utils/date-only";
 
 /* Constructing an Intl formatter costs far more than formatting with one, and these
  * run once per cell on list screens that render hundreds of rows. The combinations in
@@ -52,10 +57,93 @@ export function formatDateRange(checkIn: Date | string, checkOut: Date | string,
   return `${formatDateShort(checkIn, locale)} - ${formatDateShort(checkOut, locale)}`;
 }
 
+/**
+ * Formats a stored calendar date without letting the reader's time zone rename it.
+ *
+ * Booking check-in/check-out and Prisma `@db.Date` values are days, not moments. They
+ * are represented as UTC midnight only for storage and transport; formatting that
+ * instant in Chicago turns June 10 into June 9. Pinning the formatter to UTC preserves
+ * the calendar fields while still applying the reader's language and month names.
+ * Use `formatDate` for real timestamps such as createdAt, submittedAt and deadlines.
+ */
+export function formatCalendarDate(
+  date: Date | string,
+  locale = "en",
+): string {
+  const value = calendarDateValue(date);
+  return dateFormatter(locale, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(value);
+}
+
+export function formatCalendarDateShort(
+  date: Date | string,
+  locale = "en",
+): string {
+  const value = calendarDateValue(date);
+  return dateFormatter(locale, {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(value);
+}
+
+export function formatCalendarMonth(
+  date: Date | string,
+  locale = "en",
+): string {
+  const value = calendarDateValue(date);
+  return dateFormatter(locale, { month: "short", timeZone: "UTC" }).format(value);
+}
+
+export function formatCalendarDay(
+  date: Date | string,
+  locale = "en",
+): string {
+  const value = calendarDateValue(date);
+  return dateFormatter(locale, { day: "2-digit", timeZone: "UTC" }).format(value);
+}
+
+export function formatCalendarDateRange(
+  checkIn: Date | string,
+  checkOut: Date | string,
+  locale = "en",
+): string {
+  return `${formatCalendarDateShort(checkIn, locale)} - ${formatCalendarDateShort(checkOut, locale)}`;
+}
+
+function calendarDateValue(date: Date | string): Date {
+  if (typeof date !== "string") return date;
+  // `parseISO("2026-06-10")` means local midnight. Formatting that in UTC can move
+  // the value back to June 9 in zones east of UTC, so date-only strings need their
+  // storage representation explicitly. Serialized Prisma dates already carry `Z`.
+  return isValidYmd(date) ? ymdToDbDate(date) : parseISO(date);
+}
+
+/**
+ * Nights in `[checkIn, checkOut)`, counted as calendar days.
+ *
+ * Not `differenceInDays`, which counts *local* days: over the UTC-midnight values a
+ * `@db.Date` column reads back as, an autumn daylight-saving change makes the last day
+ * look short and the count comes back one night low (M6). Dates are read the way the
+ * rest of the calendar layer reads them — local fields, which is what a picker and
+ * `parseLocalYmd` both produce.
+ */
 export function getNightCount(checkIn: Date | string, checkOut: Date | string): number {
-  const start = typeof checkIn === "string" ? parseISO(checkIn) : checkIn;
-  const end = typeof checkOut === "string" ? parseISO(checkOut) : checkOut;
-  return differenceInDays(end, start);
+  return nightsBetweenYmd(calendarDayKey(checkIn), calendarDayKey(checkOut));
+}
+
+function calendarDayKey(value: Date | string): string {
+  if (typeof value === "string") {
+    if (isValidYmd(value)) return value;
+    return calendarDayKey(parseISO(value));
+  }
+  const month = String(value.getMonth() + 1).padStart(2, "0");
+  const day = String(value.getDate()).padStart(2, "0");
+  return `${value.getFullYear()}-${month}-${day}`;
 }
 
 export function formatGuestCount(count: number): string {

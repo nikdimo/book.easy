@@ -16,6 +16,8 @@ const mocks = vi.hoisted(() => ({
   revalidatePublicListingCaches: vi.fn(),
   generateUniqueSlug: vi.fn(),
   archiveOrDeleteListing: vi.fn(),
+  archiveOwnedListing: vi.fn(),
+  unpublishOwnedListing: vi.fn(),
   enqueueUploadDeletions: vi.fn(async () => [] as string[]),
   sweepUploads: vi.fn(async () => ({ scanned: 0, deleted: 0, kept: 0, failed: 0 })),
 }));
@@ -64,6 +66,10 @@ vi.mock("@/lib/utils/revalidate-public-listing-caches", () => ({
 vi.mock("@/lib/services/listing.service", () => ({
   generateUniqueSlug: mocks.generateUniqueSlug,
   archiveOrDeleteListing: mocks.archiveOrDeleteListing,
+}));
+vi.mock("@/lib/services/listing-lifecycle.service", () => ({
+  archiveOwnedListing: mocks.archiveOwnedListing,
+  unpublishOwnedListing: mocks.unpublishOwnedListing,
 }));
 
 import {
@@ -123,6 +129,14 @@ describe("updateListing pricing ownership", () => {
     mocks.imageFindMany.mockResolvedValue([]);
     mocks.imageDeleteMany.mockResolvedValue({ count: 0 });
     mocks.imageCreateMany.mockResolvedValue({ count: 0 });
+    mocks.archiveOwnedListing.mockResolvedValue({
+      success: true,
+      listingTitle: "Listing",
+    });
+    mocks.unpublishOwnedListing.mockResolvedValue({
+      success: true,
+      listingTitle: "Listing",
+    });
   });
 
   it("accepts a detail edit with no standard-pricing fields", async () => {
@@ -163,6 +177,14 @@ describe("submitForReview availability safety", () => {
     vi.clearAllMocks();
     mocks.auth.mockResolvedValue({ user: { id: "host-1", isHost: true } });
     mocks.listingUpdate.mockResolvedValue({});
+    mocks.archiveOwnedListing.mockResolvedValue({
+      success: true,
+      listingTitle: "Listing",
+    });
+    mocks.unpublishOwnedListing.mockResolvedValue({
+      success: true,
+      listingTitle: "Listing",
+    });
   });
 
   function publishableListing(overrides: Record<string, unknown> = {}) {
@@ -216,6 +238,53 @@ describe("submitForReview availability safety", () => {
     await expect(submitForReview("listing-1")).resolves.toEqual({ success: true });
     expect(mocks.listingUpdate).toHaveBeenCalledTimes(1);
   });
+
+  // L4: moderation is post-publication. Both publish paths go straight to APPROVED with
+  // the review flag raised — there is no queued state in between, and never was.
+  it("republishes an unpublished listing as approved and flagged for review", async () => {
+    mocks.listingFindFirst.mockResolvedValue(
+      publishableListing({
+        status: "UNPUBLISHED",
+        publishedAt: new Date("2026-07-01T10:00:00.000Z"),
+      }),
+    );
+
+    await expect(submitForReview("listing-1")).resolves.toEqual({ success: true });
+    expect(mocks.listingUpdate).toHaveBeenCalledWith({
+      where: { id: "listing-1" },
+      data: expect.objectContaining({ status: "APPROVED", needsReview: true }),
+    });
+  });
+
+  it("never writes a retired moderation status on any publish", async () => {
+    for (const status of ["DRAFT", "UNPUBLISHED"]) {
+      mocks.listingUpdate.mockClear();
+      mocks.listingFindFirst.mockResolvedValue(
+        publishableListing({ status, availabilityMode: "CLOSED" }),
+      );
+
+      await expect(submitForReview("listing-1")).resolves.toEqual({ success: true });
+      const written = mocks.listingUpdate.mock.calls[0][0].data;
+      expect(written.status).toBe("APPROVED");
+      expect(["PENDING_REVIEW", "REJECTED"]).not.toContain(written.status);
+    }
+  });
+
+  // L4: the retired statuses are not a route back onto the site, and neither are the
+  // admin-owned ones. Only DRAFT and UNPUBLISHED publish.
+  it.each(["PENDING_REVIEW", "REJECTED", "APPROVED", "SUSPENDED", "ARCHIVED"])(
+    "refuses to publish a listing stored as %s",
+    async (status) => {
+      mocks.listingFindFirst.mockResolvedValue(
+        publishableListing({ status, availabilityMode: "CLOSED" }),
+      );
+
+      await expect(submitForReview("listing-1")).resolves.toEqual({
+        error: "Only draft or unpublished listings can be published",
+      });
+      expect(mocks.listingUpdate).not.toHaveBeenCalled();
+    },
+  );
 });
 
 // G2: the v2 listings overview stopped reflecting archive/unarchive/delete/publish/
@@ -247,22 +316,30 @@ describe("overview revalidation targets both /host/listings and /host/listings",
   });
 
   it("unpublishListing revalidates both listings routes", async () => {
-    mocks.listingFindFirst.mockResolvedValue({ id: "listing-1", hostId: "host-1", status: "APPROVED" });
-
     await expect(unpublishListing("listing-1")).resolves.toEqual({ success: true });
+    expect(mocks.unpublishOwnedListing).toHaveBeenCalledWith("listing-1", "host-1");
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/host/listings");
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/host/listings");
   });
 
-  it("archiveListing revalidates both listings routes", async () => {
-    mocks.listingFindFirst.mockResolvedValue({
-      id: "listing-1",
-      hostId: "host-1",
-      status: "APPROVED",
-      bookings: [],
+  it("unpublishListing surfaces a pending-request block without revalidation", async () => {
+    mocks.unpublishOwnedListing.mockResolvedValue({
+      success: false,
+      error:
+        "Accept or decline pending booking requests before unpublishing this listing.",
     });
 
+    await expect(unpublishListing("listing-1")).resolves.toEqual({
+      error:
+        "Accept or decline pending booking requests before unpublishing this listing.",
+    });
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+    expect(mocks.revalidatePublicListingCaches).not.toHaveBeenCalled();
+  });
+
+  it("archiveListing revalidates both listings routes", async () => {
     await expect(archiveListing("listing-1")).resolves.toEqual({ success: true });
+    expect(mocks.archiveOwnedListing).toHaveBeenCalledWith("listing-1", "host-1");
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/host/listings");
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/host/listings");
   });

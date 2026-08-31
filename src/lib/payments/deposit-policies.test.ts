@@ -23,6 +23,7 @@ const OFF_ROW: ListingDepositPoliciesRow = {
   damageDepositReturnDaysAfterCheckout: null,
   depositPoliciesCurrency: null,
   depositPoliciesReviewedAt: new Date("2026-08-27T10:00:00.000Z"),
+  pricingRule: { currency: "EUR" },
 };
 
 const advanceSection = {
@@ -424,7 +425,7 @@ describe("calculating the two amounts", () => {
     expect(validation.success).toBe(true);
     if (!validation.success) return;
 
-    const amounts = calculateDepositAmounts(validation.value, "480");
+    const amounts = calculateDepositAmounts(validation.value, "480", "EUR");
     expect(amounts).toEqual({
       advancePaymentAmount: "120.00",
       damageDepositAmount: "200.00",
@@ -437,7 +438,11 @@ describe("calculating the two amounts", () => {
 
   it("returns null for a policy that is switched off", () => {
     expect(
-      calculateDepositAmounts({ advancePayment: null, damageDeposit: null }, "500"),
+      calculateDepositAmounts(
+        { advancePayment: null, damageDeposit: null },
+        "500",
+        "EUR",
+      ),
     ).toEqual({ advancePaymentAmount: null, damageDepositAmount: null });
   });
 
@@ -453,7 +458,8 @@ describe("calculating the two amounts", () => {
       },
     });
     expect(
-      eur.success && calculateDepositAmounts(eur.value, "99.99").advancePaymentAmount,
+      eur.success &&
+        calculateDepositAmounts(eur.value, "99.99", "EUR").advancePaymentAmount,
     ).toBe("12.50");
 
     // A zero-decimal currency rounds to whole minor units.
@@ -469,7 +475,8 @@ describe("calculating the two amounts", () => {
       },
     });
     expect(
-      jpy.success && calculateDepositAmounts(jpy.value, "100").damageDepositAmount,
+      jpy.success &&
+        calculateDepositAmounts(jpy.value, "100", "JPY").damageDepositAmount,
     ).toBe("150");
   });
 });

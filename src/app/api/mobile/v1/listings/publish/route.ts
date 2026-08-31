@@ -43,6 +43,7 @@ const TEXT_FIELDS = [
   "baseNightlyRate",
   "cleaningFee",
   "minNights",
+  "freeCancellationDaysBeforeCheckIn",
   "promotionType",
   "promotionPercent",
   "promotionMinimumNights",
@@ -95,6 +96,12 @@ export async function POST(request: Request) {
   // availability is never inferred as "available now".
   if (body.prePublishPlan !== undefined) {
     formData.set("prePublishPlan", JSON.stringify(body.prePublishPlan));
+  }
+  // Keep the canonical action responsible for validating the answer. The route's job
+  // is only to preserve it on the JSON -> FormData hop, including an explicit choice
+  // to ask for neither deposit.
+  if (body.depositPolicies !== undefined) {
+    formData.set("depositPolicies", JSON.stringify(body.depositPolicies));
   }
 
   const draftId = typeof body.draftId === "string" ? body.draftId : null;

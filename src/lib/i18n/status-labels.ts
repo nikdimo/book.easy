@@ -10,9 +10,7 @@ export function resolveListingStatus(
 ): Resolved {
   switch (status) {
     case "DRAFT": return translator.resolve("statuses.listing.draft", "Draft");
-    case "PENDING_REVIEW": return translator.resolve("statuses.listing.pending_review", "Pending review");
     case "APPROVED": return translator.resolve("statuses.listing.approved", "Approved");
-    case "REJECTED": return translator.resolve("statuses.listing.rejected", "Rejected");
     case "UNPUBLISHED": return translator.resolve("statuses.listing.unpublished", "Unpublished");
     case "SUSPENDED": return translator.resolve("statuses.listing.suspended", "Suspended");
     case "ARCHIVED": return translator.resolve("statuses.listing.archived", "Archived");

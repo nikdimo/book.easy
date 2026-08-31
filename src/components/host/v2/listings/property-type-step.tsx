@@ -194,7 +194,14 @@ export function PropertyTypeStep({
             groupRef.current?.querySelector<HTMLElement>('[role="radio"]')?.focus();
             return;
           }
-          const saved = await save({ propertyType: selectedType, currentStepId: "spaceType" });
+          const saved = await save({
+            propertyType: selectedType,
+            currentStepId: "spaceType",
+            // Literal rather than read off `nextHref`: this step hands off to the
+            // space type even when it was reached from Review, so its href carries
+            // the return marker and its route never varies.
+            currentRoute: "space-type",
+          });
           if (saved) window.location.assign(nextHref);
         }}
         phaseOneProgress={20}

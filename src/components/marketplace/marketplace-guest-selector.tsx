@@ -50,7 +50,6 @@ export function MarketplaceGuestSelector({
   layout,
   value,
   active = false,
-  sharedPillActive = false,
   onOpenRequest,
   dialogContentId,
   className,
@@ -58,7 +57,6 @@ export function MarketplaceGuestSelector({
   layout: Layout;
   value: GuestCounts;
   active?: boolean;
-  sharedPillActive?: boolean;
   onOpenRequest: () => void;
   dialogContentId?: string;
   className?: string;
@@ -68,13 +66,9 @@ export function MarketplaceGuestSelector({
   const triggerActive = active;
 
   const pillClass = cn(
-    "flex min-w-0 items-center rounded-full px-6 py-2.5 text-left outline-none transition-[background-color,box-shadow,transform] duration-200 ease-out",
+    "flex min-w-0 items-center rounded-full pl-6 py-[15px] text-left outline-none transition-colors duration-200 ease-out",
     "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-    triggerActive
-      ? sharedPillActive
-        ? ""
-        : "bg-white shadow-[0_2px_10px_rgba(15,23,42,0.12)]"
-      : "hover:bg-black/[0.035]"
+    triggerActive ? "bg-white shadow-[0_3px_12px_rgba(0,0,0,0.1),0_1px_2px_rgba(0,0,0,0.08)]" : "hover:bg-[#EBEBEB] group-data-[panel-open=true]/pill:hover:bg-[#DDDDDD]"
   );
 
   const heroClass = cn(
@@ -98,10 +92,10 @@ export function MarketplaceGuestSelector({
       aria-controls={dialogContentId}
       onClick={onOpenRequest}
     >
-      <span className="min-w-0 flex-1 text-left">
+      <span className="min-w-0 flex-1">
           <span
           className={cn(
-            "block text-[0.72rem] font-semibold leading-4 text-foreground",
+            "block text-xs font-medium leading-4 text-[#222222]",
             labels.whosComing.translated && "notranslate"
           )}
         >
@@ -109,8 +103,8 @@ export function MarketplaceGuestSelector({
         </span>
         <span
           className={cn(
-            "mt-px block truncate text-sm leading-5 font-normal",
-            totalParty(value) === 0 && "text-muted-foreground",
+            "block truncate text-sm font-normal leading-[18px]",
+            totalParty(value) === 0 ? "text-[#6C6C6C]" : "text-[#222222]",
             summary.translated && "notranslate"
           )}
         >

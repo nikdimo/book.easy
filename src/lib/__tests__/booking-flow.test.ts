@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { applyPetPolicy, guestStepDestination } from "@/lib/booking-flow";
+import {
+  applyPetPolicy,
+  datesStepDestination,
+  guestStepDestination,
+} from "@/lib/booking-flow";
 
 describe("guestStepDestination", () => {
   it("returns listing guests to dates until the stay is valid", () => {
@@ -12,6 +16,28 @@ describe("guestStepDestination", () => {
 
   it("leaves search to its caller because search has no review step", () => {
     expect(guestStepDestination(false, false)).toBeNull();
+  });
+});
+
+describe("datesStepDestination", () => {
+  it("asks for the party first when it has not been answered", () => {
+    expect(datesStepDestination(true, false, true, true)).toBe("guests");
+  });
+
+  it("goes on to review rather than back to a party already answered", () => {
+    expect(datesStepDestination(true, true, true, true)).toBe("review");
+  });
+
+  it("returns to the party when the stay cannot enter review yet", () => {
+    expect(datesStepDestination(true, true, true, false)).toBe("guests");
+  });
+
+  it("leaves search to its caller once its party is answered", () => {
+    expect(datesStepDestination(false, true, false, false)).toBeNull();
+  });
+
+  it("keeps search's calendar pointed at its guest step", () => {
+    expect(datesStepDestination(true, false, false, false)).toBe("guests");
   });
 });
 

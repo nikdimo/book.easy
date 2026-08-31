@@ -29,10 +29,12 @@ import {
   parsePropertyTypesFromSearchParams,
 } from "@/lib/property-type-filter";
 import {
+  clearPriceParams,
   PRICE_RANGE_MAX,
   PRICE_RANGE_MIN,
   PRICE_RANGE_STEP,
   resolvePriceRange,
+  setPriceParams,
 } from "@/lib/search-filter-config";
 import { cn } from "@/lib/utils";
 import { PropertiesMap } from "@/components/marketplace/properties-map";
@@ -441,16 +443,12 @@ export function PropertiesExplorerClient({
   }, [mutateQuery]);
 
   const clearPrice = useCallback(() => {
-    mutateQuery((nextParams) => {
-      nextParams.delete("minPrice");
-      nextParams.delete("maxPrice");
-    });
+    mutateQuery(clearPriceParams);
   }, [mutateQuery]);
 
   const clearAllFilters = useCallback(() => {
     mutateQuery((nextParams) => {
-      nextParams.delete("minPrice");
-      nextParams.delete("maxPrice");
+      clearPriceParams(nextParams);
       nextParams.delete("bedrooms");
       nextParams.delete("propertyType");
       nextParams.delete("propertyTypes");
@@ -465,13 +463,11 @@ export function PropertiesExplorerClient({
         nextRange[0] <= PRICE_RANGE_MIN &&
         nextRange[1] >= PRICE_RANGE_MAX
       ) {
-        nextParams.delete("minPrice");
-        nextParams.delete("maxPrice");
+        clearPriceParams(nextParams);
         return;
       }
 
-      nextParams.set("minPrice", String(nextRange[0]));
-      nextParams.set("maxPrice", String(nextRange[1]));
+      setPriceParams(nextParams, nextRange);
     });
   };
 

@@ -8,17 +8,20 @@ import { toggleFavorite } from "@/lib/actions/favorite.actions";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Tx, useI18n } from "@/lib/i18n/client";
+import { FacebookPromoteButton } from "@/components/host/facebook-promote-button";
 
 export function ListingActions({
   title,
   listingId,
   initialSaved = false,
   isAuthenticated,
+  isOwnListing = false,
 }: {
   title: string;
   listingId: string;
   initialSaved?: boolean;
   isAuthenticated: boolean;
+  isOwnListing?: boolean;
 }) {
   const i18n = useI18n();
   const router = useRouter();
@@ -69,16 +72,28 @@ export function ListingActions({
   // different weight entirely — leading them. That one moved next to the host.
   return (
     <div className="flex shrink-0 items-center gap-0.5 sm:gap-2">
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="rounded-full gap-1.5 px-2 font-medium underline-offset-4 hover:underline sm:gap-2 sm:px-3"
-        onClick={() => void share()}
-      >
-        <Share className="h-4 w-4" />
-        <Tx k="listing.share" source="Share" />
-      </Button>
+      {/* A host on their own listing gets the promotion workspace rather than the
+          guest Share action: the thing they came to do is advertise the place, and
+          "copy this link" is a much smaller answer than the one screen that writes
+          the post, checks the dates and opens Facebook. */}
+      {isOwnListing ? (
+        <FacebookPromoteButton
+          listingId={listingId}
+          title={title}
+          className="rounded-full border-0 bg-transparent px-2 font-medium underline-offset-4 hover:bg-transparent hover:underline sm:px-3"
+        />
+      ) : (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="rounded-full gap-1.5 px-2 font-medium underline-offset-4 hover:underline sm:gap-2 sm:px-3"
+          onClick={() => void share()}
+        >
+          <Share className="h-4 w-4" />
+          <Tx k="listing.share" source="Share" />
+        </Button>
+      )}
       <Button
         type="button"
         variant="ghost"

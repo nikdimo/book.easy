@@ -166,7 +166,7 @@ describe("payment methods on a booking request", () => {
       selectedPaymentMethod: "BANK_TRANSFER_INTERNATIONAL",
     });
 
-    await confirmBooking(booking.id, storedListing.hostId);
+    await confirmBooking(booking.id, storedListing.hostId, { decision: "SEND_LATER" });
 
     const accepted = await db.booking.findUniqueOrThrow({ where: { id: booking.id } });
     expect(accepted.paymentInstructionsStatus).toBe("PENDING");

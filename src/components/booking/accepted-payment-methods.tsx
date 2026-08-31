@@ -41,7 +41,13 @@ export interface AcceptedPaymentMethodsProps {
    * A null object is reserved for an old booking that has no frozen snapshot.
    */
   data: AcceptedPaymentMethodsPresentation | null;
-  appearance?: "plain" | "card";
+  /**
+   * `plain` is a page section and takes a page's heading. `card` is the raised tile the
+   * account and listing pages stack. `inline` is neither: no surface at all, and the
+   * smaller heading of a section inside a dialog — for the booking review, where a card
+   * would be the third border a guest is reading through.
+   */
+  appearance?: "plain" | "card" | "inline";
   headingAs?: "h2" | "h3";
   className?: string;
 }
@@ -179,7 +185,7 @@ export function AcceptedPaymentMethods({
       <Heading
         className={cn(
           "font-semibold text-foreground",
-          appearance === "card" ? "text-base" : "text-xl",
+          appearance === "plain" ? "text-xl" : "text-base",
         )}
       >
         <ResolvedCopy

@@ -20,6 +20,10 @@ import {
 } from "@/lib/property-type-filter";
 import { getMapCoordinatesForListing } from "@/lib/utils/listing-map-coords";
 import { MAP_BOUNDS_PARAM, parseMapBounds } from "@/lib/map-bounds";
+import {
+  PRICE_CURRENCY_PARAM,
+  PRICE_FILTER_CURRENCY,
+} from "@/lib/search-filter-config";
 import { getNightCount } from "@/lib/utils/format";
 import type { MapPin } from "@/components/marketplace/properties-map";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -90,6 +94,12 @@ export default async function PropertiesPage({
     guests: params.guests ? Number(params.guests) : undefined,
     minPrice: params.minPrice ? Number(params.minPrice) : undefined,
     maxPrice: params.maxPrice ? Number(params.maxPrice) : undefined,
+    // The current slider is authored in euros (10–800) and only converts its labels
+    // for display. Keep the server on that same currency even if a hand-edited URL
+    // supplies another supported code; otherwise `100` could be shown as 100 EUR by
+    // the controls while the result query interprets it as 100 DKK. Generated links
+    // still carry `priceCurrency=EUR` explicitly so the URL documents its units.
+    currency: PRICE_FILTER_CURRENCY,
     bedrooms: params.bedrooms ? Number(params.bedrooms) : undefined,
     propertyTypes: propertyTypesFilter,
     amenities: params.amenities
@@ -146,8 +156,13 @@ export default async function PropertiesPage({
     Object.entries(guestBreakdownParams).forEach(([key, value]) =>
       p.set(key, value),
     );
-    if (filters.minPrice) p.set("minPrice", String(filters.minPrice));
-    if (filters.maxPrice) p.set("maxPrice", String(filters.maxPrice));
+    // `!= null`, not truthiness: a zero upper bound is a real filter, and the page
+    // links dropping it silently would take the guest to a different result set than
+    // the one they are paging through.
+    if (filters.minPrice != null) p.set("minPrice", String(filters.minPrice));
+    if (filters.maxPrice != null) p.set("maxPrice", String(filters.maxPrice));
+    if (filters.minPrice != null || filters.maxPrice != null)
+      p.set(PRICE_CURRENCY_PARAM, filters.currency);
     if (filters.bedrooms) p.set("bedrooms", String(filters.bedrooms));
     if (propertyTypesQuery) p.set("propertyTypes", propertyTypesQuery);
     if (filters.amenities)
@@ -215,7 +230,14 @@ export default async function PropertiesPage({
               promotions: l.promotions,
             })
           : null;
-      pinPrice = { amount: quote ? quote.total : nightly, currency: cur };
+      // Dated: the stay total, which is the figure the card leads with too. Undated:
+      // the low end of the card's nightly range — the same number printed on the card,
+      // not the base rate. A listing whose nights are all overridden below its base
+      // otherwise showed one price on the card and another on its own map marker.
+      pinPrice = {
+        amount: quote ? quote.total : l.nightlyRange?.min ?? nightly,
+        currency: cur,
+      };
     }
     return [
       {
@@ -275,6 +297,24 @@ export default async function PropertiesPage({
             availablePropertyTypesByCity={availablePropertyTypesByCity}
             featuredMarket={params.featured === "1"}
           >
+            {/* A price filter that quietly dropped listings it could not convert would
+                be the same silent mixed-currency comparison in a nicer costume. When
+                the rate table is unreachable, say so where the results are. */}
+            {results.priceComparison.applied &&
+            !results.priceComparison.complete ? (
+              <div className="mb-8 flex items-start gap-3 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-muted-foreground">
+                <span className="mt-0.5 text-base" aria-hidden="true">
+                  ⚠️
+                </span>
+                <p>
+                  <T
+                    t={t}
+                    k="properties.price_filter_rates_unavailable"
+                    source="Live exchange rates are unavailable, so homes priced in another currency are not matched against your price range right now."
+                  />
+                </p>
+              </div>
+            ) : null}
             {results.listings.length > 0 ? (
               <>
                 {!filters.checkIn && !filters.checkOut && (

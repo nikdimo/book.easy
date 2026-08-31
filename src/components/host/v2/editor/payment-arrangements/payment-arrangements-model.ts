@@ -55,6 +55,17 @@ export type OtherPaymentLabelIssue =
   | "contact_or_payment_details"
   | "payment_instructions";
 
+/**
+ * The DOM id stem a method's controls are built from.
+ *
+ * Exported because the wizard has to be able to send focus to one of those controls
+ * without owning the markup that renders it, and a second copy of this transform is
+ * exactly how a focus target ends up pointing at an element that no longer exists.
+ */
+export function paymentMethodRowId(code: PaymentMethodCode): string {
+  return `payment-method-${code.toLowerCase().replaceAll("_", "-")}`;
+}
+
 const PAYMENT_METHOD_SET = new Set<string>(PAYMENT_METHOD_CODES);
 const INSTRUCTION =
   /\b(?:(?:pay|send|transfer|wire|deposit)\s+(?:me|us|to|the|via|at|by|before|after|on)|(?:send|make)\s+(?:a\s+)?payment|(?:contact|message|call|email|text|whatsapp)\s+(?:me|us|the\s+host)|(?:use|enter|include)\s+(?:the\s+)?(?:reference|code)|cash\s+on\s+arrival)\b/i;

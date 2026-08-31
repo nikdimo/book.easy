@@ -1,0 +1,113 @@
+"use client";
+
+import { useState, type FormEvent } from "react";
+import { CircleAlert, LoaderCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tx } from "@/lib/i18n/client";
+import { validateCancellationPolicy } from "@/lib/payments/cancellation-policy";
+
+export function CancellationPolicyEditor({
+  initialDays,
+  reviewedAt,
+  onSave,
+}: {
+  initialDays: number | null;
+  reviewedAt: string | null;
+  onSave: (days: number) => Promise<void>;
+}) {
+  const [value, setValue] = useState(initialDays === null ? "" : String(initialDays));
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(reviewedAt !== null);
+  const [error, setError] = useState(false);
+  const valid = validateCancellationPolicy(value);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!valid.success) {
+      setError(true);
+      return;
+    }
+    setSaving(true);
+    setError(false);
+    try {
+      await onSave(valid.value);
+      setSaved(true);
+    } catch {
+      setError(true);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <section className="mx-auto w-full max-w-3xl border-t border-slate-200 py-8 pb-14">
+      <h2 className="text-base font-semibold text-slate-900">
+        <Tx k="host.editor.cancellation.heading" source="Cancellation policy" />
+      </h2>
+      <p className="mt-1 text-sm leading-6 text-slate-600">
+        <Tx
+          k="host.editor.cancellation.intro"
+          source="Choose how many whole days before check-in the guest can cancel for a full refund. Enter 0 to allow a full refund until check-in begins."
+        />
+      </p>
+      <form onSubmit={submit} className="mt-4 space-y-4">
+        <div className="max-w-sm">
+          <Label htmlFor="listing-free-cancellation-days" className="mb-1.5 block">
+            <Tx
+              k="host.editor.cancellation.days"
+              source="Free cancellation until this many days before check-in"
+            />
+          </Label>
+          <Input
+            id="listing-free-cancellation-days"
+            type="number"
+            min="0"
+            max="3650"
+            step="1"
+            value={value}
+            disabled={saving}
+            aria-invalid={error}
+            onChange={(event) => {
+              setValue(event.currentTarget.value);
+              setSaved(false);
+              setError(false);
+            }}
+          />
+          <p className="mt-2 text-sm text-slate-500">
+            <Tx
+              k="host.editor.cancellation.after_deadline"
+              source="After that deadline, you may keep only an advance payment already received. A damage deposit is always separate and refundable."
+            />
+          </p>
+        </div>
+        {error ? (
+          <p role="alert" className="flex items-center gap-2 text-sm text-rose-700">
+            <CircleAlert className="size-4" aria-hidden />
+            <Tx
+              k="host.editor.cancellation.error"
+              source="Enter a whole number from 0 to 3650 and try again."
+            />
+          </p>
+        ) : null}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-slate-500">
+            {saved ? (
+              <Tx k="host.editor.cancellation.saved" source="Cancellation policy saved" />
+            ) : (
+              <Tx
+                k="host.editor.cancellation.review"
+                source="Cancellation policy needs review"
+              />
+            )}
+          </p>
+          <Button type="submit" disabled={saving} className="rounded-full bg-slate-900 px-6">
+            {saving ? <LoaderCircle className="animate-spin" aria-hidden /> : null}
+            <Tx k="host.editor.cancellation.save" source="Save cancellation policy" />
+          </Button>
+        </div>
+      </form>
+    </section>
+  );
+}

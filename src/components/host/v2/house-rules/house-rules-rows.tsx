@@ -30,6 +30,7 @@ import {
   FLEXIBLE_STAY_TIME,
   MAX_GUESTS_MAX,
   MAX_GUESTS_MIN,
+  houseRuleRowId,
   stayTimeChoices,
   type EventPolicy,
   type ListingHouseRulesInput,
@@ -49,8 +50,10 @@ import {
   quietHoursChoices,
   quietHoursNoneLabel,
   quietHoursRangeLabel,
+  requiredBadgeLabel,
   smokingPolicyChoices,
   smokingPolicyLabel,
+  unansweredActionLabel,
   unansweredLabel,
   type RuleChoice,
 } from "@/lib/i18n/house-rules-labels";
@@ -81,6 +84,9 @@ export function HouseRulesRows({
   issues,
   showIssues = true,
   idPrefix,
+  requireAnswers = false,
+  arrivalHeader,
+  rulesHeader,
   guestFooter,
 }: {
   rules: ListingHouseRulesInput;
@@ -99,6 +105,25 @@ export function HouseRulesRows({
   /** Distinguishes DOM ids when both screens exist in one test file, and keeps the
    *  editor's ids stable for anything that targets them. */
   idPrefix: string;
+  /**
+   * Whether the four policies are being *asked* on this screen.
+   *
+   * True in the create flow, and it changes three things: each policy row is marked
+   * Required, an unanswered one reads as something to do rather than as a blank, and
+   * the row errors stop being live regions — the flow raises one summary for the whole
+   * screen, and four alerts firing at once leave a screen-reader user assembling the
+   * page from fragments.
+   *
+   * False in the post-publish editor, where a listing published before these columns
+   * existed has never been asked and must not be held hostage over it.
+   */
+  requireAnswers?: boolean;
+  /** Rendered above the arrival rows. The flow says here that these three already
+   *  carry usable values, so a host knows they are looking at defaults, not blanks. */
+  arrivalHeader?: React.ReactNode;
+  /** Rendered above the four policy rows. The flow puts its progress line and its one
+   *  error summary here, which is where a host is looking when they are stuck. */
+  rulesHeader?: React.ReactNode;
   /** Shown under the guest stepper. The editor puts its booked-party warning here; the
    *  flow has no bookings to warn about. */
   guestFooter?: React.ReactNode;
@@ -106,8 +131,13 @@ export function HouseRulesRows({
   const i18n = useI18n();
   const titles = houseRulesRowTitles(i18n);
   const sections = houseRulesSectionTitles(i18n);
-  const unanswered = unansweredLabel(i18n);
+  // "Not set" states a fact; "Choose an answer" states a task. Where the screen is
+  // going to refuse to move on, the row should say which one it is.
+  const unanswered = requireAnswers
+    ? unansweredActionLabel(i18n)
+    : unansweredLabel(i18n);
   const flexible = flexibleTimeLabel(i18n);
+  const requiredBadge = requireAnswers ? requiredBadgeLabel(i18n) : undefined;
 
   const set = (patch: Partial<ListingHouseRulesInput>, immediate = true) =>
     onChange({ ...rules, ...patch }, immediate);
@@ -142,9 +172,10 @@ export function HouseRulesRows({
         </button>
       </div>
 
-      <RuleSection title={sections.arrival} id={`${idPrefix}-arrival`}>
+      <RuleSection title={sections.arrival} id={`${idPrefix}-arrival`} header={arrivalHeader}>
         <RuleRow
-          id={`${idPrefix}-check-in`}
+          announce={!requireAnswers}
+          id={houseRuleRowId(idPrefix, "checkInTime")}
           icon={CalendarCheck}
           title={titles.checkIn}
           value={rules.checkInTime === FLEXIBLE_STAY_TIME ? flexible : rules.checkInTime}
@@ -152,7 +183,8 @@ export function HouseRulesRows({
           onOpen={() => setOpenRow("check-in")}
         />
         <RuleRow
-          id={`${idPrefix}-check-out`}
+          announce={!requireAnswers}
+          id={houseRuleRowId(idPrefix, "checkOutTime")}
           icon={CalendarClock}
           title={titles.checkOut}
           value={
@@ -164,7 +196,13 @@ export function HouseRulesRows({
       </RuleSection>
 
       <RuleSection title={sections.guests} id={`${idPrefix}-guests`}>
-        <div className="flex items-center justify-between gap-4 py-3.5">
+        {/* `tabIndex={-1}`: the guest limit is a pair of buttons rather than one
+            control, so the row itself is what a summary sends the cursor to. */}
+        <div
+          id={houseRuleRowId(idPrefix, "maxGuests")}
+          tabIndex={-1}
+          className="flex items-center justify-between gap-4 py-3.5 outline-none"
+        >
           <span className="flex min-w-0 items-center gap-3">
             <Users className="size-[1.15rem] shrink-0 text-slate-400" aria-hidden />
             <span className="truncate text-sm font-medium text-slate-900">
@@ -221,9 +259,11 @@ export function HouseRulesRows({
         {guestFooter}
       </RuleSection>
 
-      <RuleSection title={sections.rules} id={`${idPrefix}-policies`}>
+      <RuleSection title={sections.rules} id={`${idPrefix}-policies`} header={rulesHeader}>
         <RuleRow
-          id={`${idPrefix}-pets`}
+          required={requiredBadge}
+          announce={!requireAnswers}
+          id={houseRuleRowId(idPrefix, "petPolicy")}
           icon={PawPrint}
           title={titles.pets}
           value={rules.petPolicy ? petPolicyLabel(i18n, rules.petPolicy) : unanswered}
@@ -232,7 +272,9 @@ export function HouseRulesRows({
           onOpen={() => setOpenRow("pets")}
         />
         <RuleRow
-          id={`${idPrefix}-smoking`}
+          required={requiredBadge}
+          announce={!requireAnswers}
+          id={houseRuleRowId(idPrefix, "smokingPolicy")}
           icon={CigaretteOff}
           title={titles.smoking}
           value={
@@ -245,7 +287,9 @@ export function HouseRulesRows({
           onOpen={() => setOpenRow("smoking")}
         />
         <RuleRow
-          id={`${idPrefix}-events`}
+          required={requiredBadge}
+          announce={!requireAnswers}
+          id={houseRuleRowId(idPrefix, "eventPolicy")}
           icon={PartyPopper}
           title={titles.events}
           value={
@@ -256,7 +300,9 @@ export function HouseRulesRows({
           onOpen={() => setOpenRow("events")}
         />
         <RuleRow
-          id={`${idPrefix}-quiet-hours`}
+          required={requiredBadge}
+          announce={!requireAnswers}
+          id={houseRuleRowId(idPrefix, "quietHoursPolicy")}
           icon={VolumeX}
           title={titles.quietHours}
           value={quietHoursValue(i18n, rules, unanswered)}
@@ -275,7 +321,13 @@ export function HouseRulesRows({
 
       <RuleSection title={sections.additional} id={`${idPrefix}-additional`}>
         <RuleRow
-          id={`${idPrefix}-additional-rules`}
+          announce={!requireAnswers}
+          optional={
+            requireAnswers
+              ? i18n.resolve("listing.house_rules.optional", "Optional").text
+              : undefined
+          }
+          id={houseRuleRowId(idPrefix, "additionalRules")}
           icon={ClipboardList}
           title={titles.additionalRules}
           subtitle={
@@ -407,10 +459,14 @@ export function HouseRulesRows({
 function RuleSection({
   id,
   title,
+  header,
   children,
 }: {
   id: string;
   title: string;
+  /** Sits between the section heading and its rows — a note, a progress line, or the
+   *  screen's error summary, depending on which screen is rendering. */
+  header?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
@@ -421,6 +477,7 @@ function RuleSection({
       >
         {title}
       </h2>
+      {header}
       <div className="mt-1 divide-y divide-slate-100">{children}</div>
     </section>
   );
@@ -441,6 +498,9 @@ function RuleRow({
   value,
   subtitle,
   unanswered = false,
+  required,
+  optional,
+  announce = true,
   error,
   onOpen,
 }: {
@@ -450,6 +510,14 @@ function RuleRow({
   value?: string;
   subtitle?: string;
   unanswered?: boolean;
+  /** "Required", when the screen is asking. A word, not a colour: the mark has to
+   *  survive a greyscale screenshot and a screen reader alike. */
+  required?: string;
+  /** The counterpart, for the one row that genuinely is not required. */
+  optional?: string;
+  /** Whether this row's own error announces itself. False on a screen that raises one
+   *  summary for all of them; see `requireAnswers`. */
+  announce?: boolean;
   error?: string | null;
   onOpen: () => void;
 }) {
@@ -460,16 +528,40 @@ function RuleRow({
         type="button"
         onClick={onOpen}
         // No `aria-invalid`: the implicit button role does not support it, and a screen
-        // reader would ignore it. The error is announced instead — it is a live region,
-        // and `aria-describedby` reads it out as part of the row's description.
+        // reader would ignore it. `aria-describedby` reads the error out as part of the
+        // row's description instead, which is also what a summary elsewhere on the page
+        // relies on once the row itself has stopped announcing.
         aria-describedby={error ? `${id}-error` : undefined}
-        className="flex w-full items-center justify-between gap-4 py-3.5 text-left transition-colors hover:bg-slate-50/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400"
+        className={cn(
+          "flex w-full items-center justify-between gap-4 py-3.5 text-left transition-colors hover:bg-slate-50/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400",
+          // The invalid state is a rule, an icon and a word as well as a colour, so it
+          // reads the same to anyone who cannot tell rose from slate.
+          error && "border-l-2 border-rose-500 pl-3",
+        )}
       >
         <span className="flex min-w-0 items-center gap-3">
-          <Icon className="size-[1.15rem] shrink-0 text-slate-400" aria-hidden />
+          <Icon
+            className={cn(
+              "size-[1.15rem] shrink-0",
+              error ? "text-rose-500" : "text-slate-400",
+            )}
+            aria-hidden
+          />
           <span className="min-w-0">
-            <span className="block truncate text-sm font-medium text-slate-900">
-              {title}
+            <span className="flex min-w-0 items-center gap-2">
+              <span className="truncate text-sm font-medium text-slate-900">
+                {title}
+              </span>
+              {required ? (
+                <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[0.6875rem] font-semibold uppercase tracking-[0.04em] text-slate-600">
+                  {required}
+                </span>
+              ) : null}
+              {optional ? (
+                <span className="shrink-0 text-[0.6875rem] font-medium uppercase tracking-[0.04em] text-slate-400">
+                  {optional}
+                </span>
+              ) : null}
             </span>
             {subtitle ? (
               <span className="mt-0.5 block truncate text-xs leading-5 text-slate-500">
@@ -483,7 +575,11 @@ function RuleRow({
             <span
               className={cn(
                 "text-sm",
-                unanswered ? "text-slate-400" : "text-slate-600",
+                error
+                  ? "font-medium text-rose-600"
+                  : unanswered
+                    ? "text-slate-500"
+                    : "text-slate-600",
               )}
             >
               {value}
@@ -495,8 +591,7 @@ function RuleRow({
       {error ? (
         <p
           id={`${id}-error`}
-          role="alert"
-          aria-live="polite"
+          {...(announce ? { role: "alert", "aria-live": "polite" as const } : {})}
           className="pb-3 text-sm text-rose-600"
         >
           {error}

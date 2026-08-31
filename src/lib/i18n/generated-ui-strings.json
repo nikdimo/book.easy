@@ -1385,6 +1385,31 @@
     "filePath": "src/components/public/booking-widget.tsx"
   },
   {
+    "key": "booking.cancellation.after_deadline",
+    "sourceText": "After the deadline, the host may keep only an advance payment already received. A refundable damage deposit is separate and cannot be used as a cancellation fee.",
+    "filePath": "src/components/booking/cancellation-policy-summary.tsx"
+  },
+  {
+    "key": "booking.cancellation.days_before",
+    "sourceText": "Cancel at least {days} days before check-in for a full refund of accommodation payments already made.",
+    "filePath": "src/components/booking/cancellation-policy-summary.tsx"
+  },
+  {
+    "key": "booking.cancellation.heading",
+    "sourceText": "Cancellation policy",
+    "filePath": "src/components/booking/cancellation-policy-summary.tsx"
+  },
+  {
+    "key": "booking.cancellation.unanswered",
+    "sourceText": "The host has not reviewed a cancellation deadline for this listing.",
+    "filePath": "src/components/booking/cancellation-policy-summary.tsx"
+  },
+  {
+    "key": "booking.cancellation.zero_days",
+    "sourceText": "Cancel before check-in begins for a full refund of accommodation payments already made.",
+    "filePath": "src/components/booking/cancellation-policy-summary.tsx"
+  },
+  {
     "key": "booking.check_in",
     "sourceText": "Check-in",
     "filePath": "src/app/(public)/bookings/confirm/page.tsx"
@@ -1825,6 +1850,11 @@
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
+    "key": "booking.payment_progress.confirm_refund",
+    "sourceText": "Confirm accommodation refund received",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
     "key": "booking.payment_progress.damage_note",
     "sourceText": "Additional to the payment total above, and returned by the host.",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
@@ -1885,8 +1915,43 @@
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
+    "key": "booking.payment_progress.edit_advance_report",
+    "sourceText": "Edit advance-payment report",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.edit_damage_report",
+    "sourceText": "Edit damage-deposit report",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.edit_damage_return",
+    "sourceText": "Edit damage-deposit return report",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.edit_payment_report",
+    "sourceText": "Edit payment report",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.edit_refund_report",
+    "sourceText": "Edit accommodation-refund report",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.event.cancellation_opened_refund",
+    "sourceText": "Cancellation created an accommodation refund obligation",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
     "key": "booking.payment_progress.event.guest_confirm_damage_returned",
     "sourceText": "Confirmed the damage deposit was returned",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.event.guest_confirm_refund_received",
+    "sourceText": "Confirmed receiving the accommodation refund",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
@@ -1950,6 +2015,11 @@
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
+    "key": "booking.payment_progress.event.host_report_refund_sent",
+    "sourceText": "Reported sending the accommodation refund",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
     "key": "booking.payment_progress.frozen_amount",
     "sourceText": "Agreed amount",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
@@ -1962,6 +2032,11 @@
   {
     "key": "booking.payment_progress.instructions_failed",
     "sourceText": "Could not share payment instructions",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.instructions_not_required",
+    "sourceText": "No private payment instructions are needed for this payment method.",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
@@ -2080,6 +2155,36 @@
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
+    "key": "booking.payment_progress.refund_note",
+    "sourceText": "Created by the frozen cancellation terms for this booking.",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.refund_status.awaiting",
+    "sourceText": "Awaiting host refund",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.refund_status.confirmed",
+    "sourceText": "Guest confirmed receiving the refund",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.refund_status.not_required",
+    "sourceText": "No refund due",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.refund_status.reported",
+    "sourceText": "Host reported sending the refund",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.refund_title",
+    "sourceText": "Accommodation refund",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
     "key": "booking.payment_progress.report_advance_sent",
     "sourceText": "Report advance payment sent",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
@@ -2095,6 +2200,16 @@
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
+    "key": "booking.payment_progress.report_refund_sent",
+    "sourceText": "Report accommodation refund sent",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.reported_by_admin",
+    "sourceText": "Recorded by support",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
     "key": "booking.payment_progress.reported_by_guest",
     "sourceText": "Reported by guest",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
@@ -2102,6 +2217,16 @@
   {
     "key": "booking.payment_progress.reported_by_host",
     "sourceText": "Reported by host",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.reported_by_system",
+    "sourceText": "Recorded automatically",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.retainable_advance",
+    "sourceText": "The frozen cancellation calculation allows the host to retain up to {amount} of the received advance payment.",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
@@ -2130,6 +2255,16 @@
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
+    "key": "booking.payment_request.advance",
+    "sourceText": "Advance payment",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_request.balance",
+    "sourceText": "Remaining accommodation balance",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
     "key": "booking.payment_request.choose_method",
     "sourceText": "Payment method for this booking",
     "filePath": "src/components/booking/payment-request-composer.tsx"
@@ -2138,6 +2273,11 @@
     "key": "booking.payment_request.choose_method_placeholder",
     "sourceText": "Choose a method",
     "filePath": "src/components/booking/payment-request-composer.tsx"
+  },
+  {
+    "key": "booking.payment_request.damage",
+    "sourceText": "Refundable damage deposit",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
     "key": "booking.payment_request.edit_for_booking",
@@ -2245,6 +2385,11 @@
     "filePath": "src/components/public/booking-widget.tsx"
   },
   {
+    "key": "booking.review_total",
+    "sourceText": "Total",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
     "key": "booking.select_dates_cta",
     "sourceText": "Select dates",
     "filePath": "src/components/public/booking-widget.tsx"
@@ -2275,9 +2420,69 @@
     "filePath": "src/components/public/booking-widget.tsx"
   },
   {
+    "key": "booking.summary_edit",
+    "sourceText": "Edit",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
     "key": "booking.total",
     "sourceText": "Total",
     "filePath": "src/app/(public)/bookings/confirm/page.tsx"
+  },
+  {
+    "key": "booking.transaction.date",
+    "sourceText": "Transaction date",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.transaction.deleted_account",
+    "sourceText": "deleted account",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.transaction.no_receipt",
+    "sourceText": "No receipt upload is required. The other participant must confirm the report.",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.transaction.note",
+    "sourceText": "Note (optional)",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.transaction.reason_short",
+    "sourceText": "Reason:",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.transaction.reference",
+    "sourceText": "Transaction reference (optional)",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.transaction.reference_short",
+    "sourceText": "Reference:",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.transaction.reported_by",
+    "sourceText": "Reported by",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.transaction.reports",
+    "sourceText": "Transaction reports",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.transaction.retention_reason",
+    "sourceText": "Reason for retaining the deposit",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.transaction.submit",
+    "sourceText": "Submit report",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
     "key": "booking.variable_rate_notice",
@@ -2360,9 +2565,24 @@
     "filePath": "src/components/shared/date-picker-field.tsx"
   },
   {
+    "key": "common.guest",
+    "sourceText": "guest",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "common.host",
+    "sourceText": "host",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
     "key": "common.loading",
     "sourceText": "Loading...",
     "filePath": "src/components/communication/conversation-thread.tsx"
+  },
+  {
+    "key": "common.on",
+    "sourceText": "on",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
     "key": "common.saving",
@@ -3955,6 +4175,41 @@
     "filePath": "src/components/public/image-gallery.tsx"
   },
   {
+    "key": "gallery.panorama_badge",
+    "sourceText": "360° photo",
+    "filePath": "src/components/public/panorama-viewer.tsx"
+  },
+  {
+    "key": "gallery.panorama_fullscreen",
+    "sourceText": "Fullscreen",
+    "filePath": "src/components/public/panorama-viewer.tsx"
+  },
+  {
+    "key": "gallery.panorama_loading",
+    "sourceText": "Loading 360° view…",
+    "filePath": "src/components/public/panorama-viewer.tsx"
+  },
+  {
+    "key": "gallery.panorama_move",
+    "sourceText": "Move",
+    "filePath": "src/components/public/panorama-viewer.tsx"
+  },
+  {
+    "key": "gallery.panorama_zoom",
+    "sourceText": "Zoom",
+    "filePath": "src/components/public/panorama-viewer.tsx"
+  },
+  {
+    "key": "gallery.panorama_zoom_in",
+    "sourceText": "Zoom in",
+    "filePath": "src/components/public/panorama-viewer.tsx"
+  },
+  {
+    "key": "gallery.panorama_zoom_out",
+    "sourceText": "Zoom out",
+    "filePath": "src/components/public/panorama-viewer.tsx"
+  },
+  {
     "key": "gallery.photos",
     "sourceText": "Photos",
     "filePath": "src/app/(gallery)/properties/[slug]/photos/page.tsx"
@@ -3963,6 +4218,11 @@
     "key": "gallery.previous",
     "sourceText": "Previous photo",
     "filePath": "src/components/public/photo-tour.tsx"
+  },
+  {
+    "key": "gallery.property_panorama",
+    "sourceText": "360° property photo",
+    "filePath": "src/components/public/gallery-media.tsx"
   },
   {
     "key": "gallery.property_photo",
@@ -5755,6 +6015,46 @@
     "filePath": "src/lib/i18n/editor-label.ts"
   },
   {
+    "key": "host.editor.cancellation.after_deadline",
+    "sourceText": "After that deadline, you may keep only an advance payment already received. A damage deposit is always separate and refundable.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/cancellation-policy-editor.tsx"
+  },
+  {
+    "key": "host.editor.cancellation.days",
+    "sourceText": "Free cancellation until this many days before check-in",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/cancellation-policy-editor.tsx"
+  },
+  {
+    "key": "host.editor.cancellation.error",
+    "sourceText": "Enter a whole number from 0 to 3650 and try again.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/cancellation-policy-editor.tsx"
+  },
+  {
+    "key": "host.editor.cancellation.heading",
+    "sourceText": "Cancellation policy",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/cancellation-policy-editor.tsx"
+  },
+  {
+    "key": "host.editor.cancellation.intro",
+    "sourceText": "Choose how many whole days before check-in the guest can cancel for a full refund. Enter 0 to allow a full refund until check-in begins.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/cancellation-policy-editor.tsx"
+  },
+  {
+    "key": "host.editor.cancellation.review",
+    "sourceText": "Cancellation policy needs review",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/cancellation-policy-editor.tsx"
+  },
+  {
+    "key": "host.editor.cancellation.save",
+    "sourceText": "Save cancellation policy",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/cancellation-policy-editor.tsx"
+  },
+  {
+    "key": "host.editor.cancellation.saved",
+    "sourceText": "Cancellation policy saved",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/cancellation-policy-editor.tsx"
+  },
+  {
     "key": "host.editor.deposit.advance.description",
     "sourceText": "Part of the booking price, paid early. It counts toward what the guest owes for the stay — it is not a refundable damage deposit.",
     "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policies-editor.tsx"
@@ -6471,7 +6771,7 @@
   },
   {
     "key": "host.editor.payment_arrangements.method_required",
-    "sourceText": "Choose at least one payment method to complete this section.",
+    "sourceText": "Choose at least one way guests can pay.",
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
   },
   {
@@ -6596,7 +6896,7 @@
   },
   {
     "key": "host.editor.payment_arrangements.status_missing",
-    "sourceText": "Missing details",
+    "sourceText": "Optional details",
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
   },
   {
@@ -6606,7 +6906,7 @@
   },
   {
     "key": "host.editor.payment_arrangements.status_ready",
-    "sourceText": "Ready",
+    "sourceText": "Details saved",
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
   },
   {
@@ -7010,6 +7310,11 @@
     "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
   },
   {
+    "key": "host.editor.photos.disable_360",
+    "sourceText": "Show as regular photo",
+    "filePath": "src/components/host/v2/editor/photos/photo-tile.tsx"
+  },
+  {
     "key": "host.editor.photos.dismiss",
     "sourceText": "Dismiss",
     "filePath": "src/components/host/v2/editor/photos/photo-tile.tsx"
@@ -7028,6 +7333,11 @@
     "key": "host.editor.photos.empty_title",
     "sourceText": "Add photos of your place",
     "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.enable_360",
+    "sourceText": "Show as 360° photo",
+    "filePath": "src/components/host/v2/editor/photos/photo-tile.tsx"
   },
   {
     "key": "host.editor.photos.more_spaces",
@@ -7653,6 +7963,21 @@
     "key": "host.editor.your_listings",
     "sourceText": "Your listings",
     "filePath": "src/components/host/v2/editor/editor-header.tsx"
+  },
+  {
+    "key": "host.facebook_promote.action",
+    "sourceText": "Promote",
+    "filePath": "src/components/host/facebook-promote-button.tsx"
+  },
+  {
+    "key": "host.facebook_promote.label",
+    "sourceText": "Promote {title} on Facebook",
+    "filePath": "src/components/host/facebook-promote-button.tsx"
+  },
+  {
+    "key": "host.facebook_promote.tooltip",
+    "sourceText": "Prepare a post for Facebook — we write the text, you paste and post it.",
+    "filePath": "src/components/host/facebook-promote-button.tsx"
   },
   {
     "key": "host.form.back",
@@ -9403,6 +9728,321 @@
     "key": "host.preview.select_date",
     "sourceText": "Select date",
     "filePath": "src/components/host/listing-form.tsx"
+  },
+  {
+    "key": "host.promote.availability.add",
+    "sourceText": "Add availability",
+    "filePath": "src/components/host/promotion/promotion-availability-picker.tsx"
+  },
+  {
+    "key": "host.promote.availability.cancel",
+    "sourceText": "Cancel",
+    "filePath": "src/components/host/promotion/promotion-availability-picker.tsx"
+  },
+  {
+    "key": "host.promote.availability.change",
+    "sourceText": "Change dates",
+    "filePath": "src/components/host/promotion/promotion-availability-picker.tsx"
+  },
+  {
+    "key": "host.promote.availability.heading",
+    "sourceText": "Availability",
+    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+  },
+  {
+    "key": "host.promote.availability.hint",
+    "sourceText": "Optional. Pick a range from your real calendar — nothing is added to the post unless you choose dates.",
+    "filePath": "src/components/host/promotion/promotion-availability-picker.tsx"
+  },
+  {
+    "key": "host.promote.availability.remove",
+    "sourceText": "Remove dates",
+    "filePath": "src/components/host/promotion/promotion-availability-picker.tsx"
+  },
+  {
+    "key": "host.promote.availability.use",
+    "sourceText": "Use these dates",
+    "filePath": "src/components/host/promotion/promotion-availability-picker.tsx"
+  },
+  {
+    "key": "host.promote.copied",
+    "sourceText": "Post text copied. Paste it into Facebook with Ctrl+V.",
+    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+  },
+  {
+    "key": "host.promote.copy",
+    "sourceText": "Copy text",
+    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+  },
+  {
+    "key": "host.promote.copy_failed",
+    "sourceText": "The text could not be copied. Select it in the box and copy it manually.",
+    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+  },
+  {
+    "key": "host.promote.custom_message",
+    "sourceText": "Your opening line (optional)",
+    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+  },
+  {
+    "key": "host.promote.custom_message_placeholder",
+    "sourceText": "Last-minute opening after a cancellation!",
+    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+  },
+  {
+    "key": "host.promote.destination.add",
+    "sourceText": "Save a Facebook group",
+    "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
+  },
+  {
+    "key": "host.promote.destination.cancel",
+    "sourceText": "Cancel",
+    "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
+  },
+  {
+    "key": "host.promote.destination.custom",
+    "sourceText": "Paste another group link",
+    "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
+  },
+  {
+    "key": "host.promote.destination.custom_label",
+    "sourceText": "Facebook group link",
+    "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
+  },
+  {
+    "key": "host.promote.destination.error_duplicate",
+    "sourceText": "You already saved that group.",
+    "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
+  },
+  {
+    "key": "host.promote.destination.error_generic",
+    "sourceText": "That could not be saved. Try again.",
+    "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
+  },
+  {
+    "key": "host.promote.destination.error_invalid",
+    "sourceText": "That is not a Facebook group link. It should look like facebook.com/groups/…",
+    "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
+  },
+  {
+    "key": "host.promote.destination.error_limit",
+    "sourceText": "You have saved as many groups as we keep. Remove one first.",
+    "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
+  },
+  {
+    "key": "host.promote.destination.error_missing",
+    "sourceText": "That group is no longer saved.",
+    "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
+  },
+  {
+    "key": "host.promote.destination.error_name",
+    "sourceText": "Give the group a name so you can recognise it later.",
+    "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
+  },
+  {
+    "key": "host.promote.destination.favorite_label",
+    "sourceText": "Pin {name} to the top",
+    "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
+  },
+  {
+    "key": "host.promote.destination.form_hint",
+    "sourceText": "Paste the group address from your browser. Only facebook.com group links can be saved.",
+    "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
+  },
+  {
+    "key": "host.promote.destination.legend",
+    "sourceText": "Where do you want to post?",
+    "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
+  },
+  {
+    "key": "host.promote.destination.name",
+    "sourceText": "Group name",
+    "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
+  },
+  {
+    "key": "host.promote.destination.no_matches",
+    "sourceText": "No saved group matches that search.",
+    "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
+  },
+  {
+    "key": "host.promote.destination.privacy",
+    "sourceText": "Private groups are fine. We only store the name and the link, and open it in a new tab — we never read the group or post for you.",
+    "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
+  },
+  {
+    "key": "host.promote.destination.profile",
+    "sourceText": "My Facebook profile",
+    "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
+  },
+  {
+    "key": "host.promote.destination.remove_label",
+    "sourceText": "Remove {name}",
+    "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
+  },
+  {
+    "key": "host.promote.destination.rename_label",
+    "sourceText": "Rename {name}",
+    "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
+  },
+  {
+    "key": "host.promote.destination.save",
+    "sourceText": "Save group",
+    "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
+  },
+  {
+    "key": "host.promote.destination.save_changes",
+    "sourceText": "Save changes",
+    "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
+  },
+  {
+    "key": "host.promote.destination.search",
+    "sourceText": "Search saved groups",
+    "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
+  },
+  {
+    "key": "host.promote.destination.unfavorite_label",
+    "sourceText": "Unpin {name} from the top",
+    "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
+  },
+  {
+    "key": "host.promote.destination.url",
+    "sourceText": "Group link",
+    "filePath": "src/components/host/promotion/facebook-destination-picker.tsx"
+  },
+  {
+    "key": "host.promote.details.guests",
+    "sourceText": "Sleeps up to {count} guests",
+    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+  },
+  {
+    "key": "host.promote.details.heading",
+    "sourceText": "Include in the post",
+    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+  },
+  {
+    "key": "host.promote.details.price",
+    "sourceText": "Starting price per night",
+    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+  },
+  {
+    "key": "host.promote.instructions",
+    "sourceText": "Copy the text first. Then open Facebook, paste with Ctrl+V, add your photos if desired, and post.",
+    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+  },
+  {
+    "key": "host.promote.loading",
+    "sourceText": "Loading promotion tools",
+    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+  },
+  {
+    "key": "host.promote.open_group",
+    "sourceText": "Open selected group",
+    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+  },
+  {
+    "key": "host.promote.open_profile",
+    "sourceText": "Post on Facebook profile",
+    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+  },
+  {
+    "key": "host.promote.post.available",
+    "sourceText": "📅 Available: {range}",
+    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+  },
+  {
+    "key": "host.promote.post.checked",
+    "sourceText": "Availability checked {date} — dates can be taken at any time.",
+    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+  },
+  {
+    "key": "host.promote.post.count",
+    "sourceText": "{count} characters. Facebook hides anything past about {limit} behind “See more”.",
+    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+  },
+  {
+    "key": "host.promote.post.cta",
+    "sourceText": "Check availability and send an inquiry:",
+    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+  },
+  {
+    "key": "host.promote.post.guests",
+    "sourceText": "👥 Sleeps up to {count} guests",
+    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+  },
+  {
+    "key": "host.promote.post.heading",
+    "sourceText": "Post text",
+    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+  },
+  {
+    "key": "host.promote.post.price",
+    "sourceText": "💶 From {price} per night",
+    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+  },
+  {
+    "key": "host.promote.post.regenerate",
+    "sourceText": "Reset to generated text",
+    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+  },
+  {
+    "key": "host.promote.post.review_old_dates",
+    "sourceText": "Your edited post may still contain old dates. Update the text or reset it before copying.",
+    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+  },
+  {
+    "key": "host.promote.range_error.booked",
+    "sourceText": "Those dates were booked or blocked in the meantime. Pick another range.",
+    "filePath": "src/components/host/promotion/promotion-availability-picker.tsx"
+  },
+  {
+    "key": "host.promote.range_error.invalid",
+    "sourceText": "Those dates are not a valid stay. Pick a check-in and a check-out.",
+    "filePath": "src/components/host/promotion/promotion-availability-picker.tsx"
+  },
+  {
+    "key": "host.promote.range_error.not_open",
+    "sourceText": "Those dates are not open on your calendar. Pick a range inside your available dates.",
+    "filePath": "src/components/host/promotion/promotion-availability-picker.tsx"
+  },
+  {
+    "key": "host.promote.range_error.not_promotable",
+    "sourceText": "This property is no longer published, so it cannot be promoted.",
+    "filePath": "src/components/host/promotion/promotion-availability-picker.tsx"
+  },
+  {
+    "key": "host.promote.range_error.past",
+    "sourceText": "That range has already started. Pick dates in the future.",
+    "filePath": "src/components/host/promotion/promotion-availability-picker.tsx"
+  },
+  {
+    "key": "host.promote.range_error.too_long",
+    "sourceText": "Your maximum stay is {nights} nights. Pick a shorter range.",
+    "filePath": "src/components/host/promotion/promotion-availability-picker.tsx"
+  },
+  {
+    "key": "host.promote.range_error.too_short",
+    "sourceText": "Your minimum stay is {nights} nights. Pick a longer range.",
+    "filePath": "src/components/host/promotion/promotion-availability-picker.tsx"
+  },
+  {
+    "key": "host.promote.range_error.verify",
+    "sourceText": "We could not verify those dates. Check your connection and try again.",
+    "filePath": "src/components/host/promotion/promotion-availability-picker.tsx"
+  },
+  {
+    "key": "host.promote.subtitle",
+    "sourceText": "We prepare the text and open Facebook. You paste it and post it yourself — we never post for you.",
+    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+  },
+  {
+    "key": "host.promote.title",
+    "sourceText": "Promote your property",
+    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
+  },
+  {
+    "key": "host.promote.unavailable",
+    "sourceText": "Only published properties can be promoted. Publish this one first, then try again.",
+    "filePath": "src/components/host/promotion/promotion-workspace.tsx"
   },
   {
     "key": "host.promotion.all_stays",
@@ -13795,18 +14435,8 @@
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
-    "key": "host.v2.calendar.visibility.in_review",
-    "sourceText": "In review",
-    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
-  },
-  {
     "key": "host.v2.calendar.visibility.live",
     "sourceText": "Live on the site",
-    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
-  },
-  {
-    "key": "host.v2.calendar.visibility.rejected",
-    "sourceText": "Rejected",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
@@ -13858,6 +14488,36 @@
     "key": "host.v2.flow.save_and_review",
     "sourceText": "Save and review",
     "filePath": "src/components/host/v2/listings/listing-flow-footer.tsx"
+  },
+  {
+    "key": "host.v2.house_rules.defaults_note",
+    "sourceText": "These start at the usual times and party size. Change any of them if yours are different.",
+    "filePath": "src/components/host/v2/listings/house-rules-step.tsx"
+  },
+  {
+    "key": "host.v2.house_rules.errors_heading",
+    "sourceText": "Answer these house-rule questions to continue",
+    "filePath": "src/components/host/v2/listings/house-rules-step.tsx"
+  },
+  {
+    "key": "host.v2.house_rules.progress",
+    "sourceText": "{answered} of {total} answered",
+    "filePath": "src/components/host/v2/listings/house-rules-step.tsx"
+  },
+  {
+    "key": "host.v2.house_rules.required_note",
+    "sourceText": "Guests agree to these when they book, so all four need an answer before you continue.",
+    "filePath": "src/components/host/v2/listings/house-rules-step.tsx"
+  },
+  {
+    "key": "host.v2.house_rules.save_failed",
+    "sourceText": "Nothing you answered was lost. Check your connection and try again.",
+    "filePath": "src/components/host/v2/listings/house-rules-step.tsx"
+  },
+  {
+    "key": "host.v2.house_rules.save_failed_heading",
+    "sourceText": "Your house rules were not saved",
+    "filePath": "src/components/host/v2/listings/house-rules-step.tsx"
   },
   {
     "key": "host.v2.import.back",
@@ -14005,11 +14665,6 @@
     "filePath": "src/components/host/v2/listings/listing-moderation-notice.tsx"
   },
   {
-    "key": "host.v2.listings.moderation.rejected_title",
-    "sourceText": "Rejected by our team",
-    "filePath": "src/components/host/v2/listings/listing-moderation-notice.tsx"
-  },
-  {
     "key": "host.v2.listings.moderation.suspended_title",
     "sourceText": "Suspended by our team",
     "filePath": "src/components/host/v2/listings/listing-moderation-notice.tsx"
@@ -14132,16 +14787,6 @@
   {
     "key": "host.v2.listings.state.out_of_dates_short",
     "sourceText": "No dates",
-    "filePath": "src/components/host/v2/listings/listing-state-label.ts"
-  },
-  {
-    "key": "host.v2.listings.state.rejected",
-    "sourceText": "Changes were rejected — open the listing to see why",
-    "filePath": "src/components/host/v2/listings/listing-state-label.ts"
-  },
-  {
-    "key": "host.v2.listings.state.rejected_short",
-    "sourceText": "Rejected",
     "filePath": "src/components/host/v2/listings/listing-state-label.ts"
   },
   {
@@ -14400,6 +15045,186 @@
     "filePath": "src/components/host/v2/host-v2-nav.tsx"
   },
   {
+    "key": "host.v2.payment.advance_off_note",
+    "sourceText": "No advance payment required. Guests settle with you as you agree once you accept.",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.advance_on",
+    "sourceText": "Require advance payment",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.advance_on_note",
+    "sourceText": "Guests see the amount and when it is due before they send a request.",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.cancel_custom",
+    "sourceText": "Another deadline",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.cancel_custom_error",
+    "sourceText": "Enter a whole number of days from 0 to 3650.",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.cancel_custom_hint",
+    "sourceText": "A whole number from 0 to 3650.",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.cancel_custom_label",
+    "sourceText": "Days before check-in",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.cancel_custom_note",
+    "sourceText": "Set your own number of days before check-in.",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.cancel_days_note",
+    "sourceText": "Guests can cancel for a full refund until {days} days before check-in.",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.cancel_zero_note",
+    "sourceText": "Guests can cancel for a full refund until check-in begins.",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.cancellation_intro",
+    "sourceText": "Choose how late a guest can cancel and still get a full refund.",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.cancellation_unset",
+    "sourceText": "Not set",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.currency_changed",
+    "sourceText": "This listing now prices in {currency}. Check the amounts below before you continue.",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.damage_off_note",
+    "sourceText": "No damage deposit required. Guests owe nothing beyond the booking price.",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.damage_on",
+    "sourceText": "Require damage deposit",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.damage_on_note",
+    "sourceText": "Guests see the amount, when it is due, and when you give it back.",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.days_before",
+    "sourceText": "{days} days before check-in",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.deposits_intro",
+    "sourceText": "Most hosts ask for neither. Turn either of them on only if you want the money before or at the stay.",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.error_advance",
+    "sourceText": "Enter the advance payment amount and when it is due.",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.error_damage",
+    "sourceText": "Enter the damage deposit amount and when it is due.",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.error_details",
+    "sourceText": "Check the payment details you entered, or clear them and add them later.",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.error_other_label",
+    "sourceText": "Give your other payment method a short public name.",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.errors_heading",
+    "sourceText": "Finish this before you continue",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.heading",
+    "sourceText": "How guests pay, and how they cancel",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.intro",
+    "sourceText": "Only one answer is needed here: how guests can pay you. The rest is already set to the safest option, and you can change any of it.",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.not_required",
+    "sourceText": "Not required",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.required",
+    "sourceText": "Required",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.save_failed",
+    "sourceText": "Nothing you entered was lost. Check your connection and try again.",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.save_failed_heading",
+    "sourceText": "Your answers were not saved",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.summary_advance",
+    "sourceText": "Advance payment",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.summary_cancellation",
+    "sourceText": "Free cancellation deadline",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.summary_damage",
+    "sourceText": "Damage deposit",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.summary_heading",
+    "sourceText": "Your payment terms",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.summary_methods",
+    "sourceText": "Accepted payment method",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.summary_methods_empty",
+    "sourceText": "Not chosen yet",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
+    "key": "host.v2.payment.until_check_in",
+    "sourceText": "Until check-in begins",
+    "filePath": "src/components/host/v2/listings/payment-arrangements-step.tsx"
+  },
+  {
     "key": "host.v2.phase_one_complete.eyebrow",
     "sourceText": "Phase 1 complete",
     "filePath": "src/components/host/v2/listings/phase-one-complete.tsx"
@@ -14487,6 +15312,11 @@
   {
     "key": "host.v2.photos.minimum_met",
     "sourceText": "Minimum reached",
+    "filePath": "src/components/host/v2/listings/photos-step.tsx"
+  },
+  {
+    "key": "host.v2.photos.panorama_badge",
+    "sourceText": "360° detected",
     "filePath": "src/components/host/v2/listings/photos-step.tsx"
   },
   {
@@ -16015,6 +16845,11 @@
     "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
   },
   {
+    "key": "listing.house_rules.choose_an_answer",
+    "sourceText": "Choose an answer",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
     "key": "listing.house_rules.error_additional_rules",
     "sourceText": "Your additional rules are too long. Shorten them and save again.",
     "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
@@ -16095,6 +16930,11 @@
     "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
   },
   {
+    "key": "listing.house_rules.optional",
+    "sourceText": "Optional",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
     "key": "listing.house_rules.pets.allowed",
     "sourceText": "Allowed",
     "filePath": "src/lib/i18n/house-rules-labels.ts"
@@ -16163,6 +17003,11 @@
     "key": "listing.house_rules.quiet_hours.start",
     "sourceText": "From",
     "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "listing.house_rules.required",
+    "sourceText": "Required",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
   },
   {
     "key": "listing.house_rules.row.additional_rules",
@@ -16312,6 +17157,11 @@
   {
     "key": "listing.minimum_nights.zero",
     "sourceText": "{n} nights minimum",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
+  },
+  {
+    "key": "listing.own_listing_notice",
+    "sourceText": "You host this listing, so you can't send a booking request for it.",
     "filePath": "src/app/(public)/properties/[slug]/page.tsx"
   },
   {
@@ -16507,6 +17357,46 @@
   {
     "key": "mobile.bookings.no_bookings_description",
     "sourceText": "Bookings will appear here when guests request to stay at your listings.",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.bookings.party.adult",
+    "sourceText": "{count} adult",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.bookings.party.adults",
+    "sourceText": "{count} adults",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.bookings.party.child",
+    "sourceText": "{count} child",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.bookings.party.children",
+    "sourceText": "{count} children",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.bookings.party.infant",
+    "sourceText": "{count} infant",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.bookings.party.infants",
+    "sourceText": "{count} infants",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.bookings.party.pet",
+    "sourceText": "{count} pet",
+    "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
+  },
+  {
+    "key": "mobile.bookings.party.pets",
+    "sourceText": "{count} pets",
     "filePath": "src/lib/i18n/mobile-ui-catalog.ts"
   },
   {
@@ -17875,6 +18765,11 @@
     "filePath": "src/components/marketplace/properties-explorer-client.tsx"
   },
   {
+    "key": "properties.price_filter_rates_unavailable",
+    "sourceText": "Live exchange rates are unavailable, so homes priced in another currency are not matched against your price range right now.",
+    "filePath": "src/app/(public)/properties/page.tsx"
+  },
+  {
     "key": "properties.results_with_dates.few",
     "sourceText": "{n} homes · dates applied in filters",
     "filePath": "src/app/(public)/properties/page.tsx"
@@ -19032,16 +19927,6 @@
   {
     "key": "statuses.listing.draft",
     "sourceText": "Draft",
-    "filePath": "src/lib/i18n/status-labels.ts"
-  },
-  {
-    "key": "statuses.listing.pending_review",
-    "sourceText": "Pending review",
-    "filePath": "src/lib/i18n/status-labels.ts"
-  },
-  {
-    "key": "statuses.listing.rejected",
-    "sourceText": "Rejected",
     "filePath": "src/lib/i18n/status-labels.ts"
   },
   {

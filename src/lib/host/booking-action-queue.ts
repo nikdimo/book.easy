@@ -1,3 +1,9 @@
+import {
+  dbDateToYmd,
+  marketplaceYmd,
+  nightsBetweenYmd,
+} from "@/lib/utils/date-only";
+
 /**
  * Derives the "needs your action" queue for the host bookings screen.
  *
@@ -55,22 +61,19 @@ export type HostActionItem = {
 };
 
 const HOUR_MS = 60 * 60 * 1000;
-const DAY_MS = 24 * HOUR_MS;
 
 /** A request with less than this left is shown as critical (red) rather than amber. */
 const CRITICAL_HOURS = 6;
 /** How far ahead a check-in counts as "prepare now". */
 const CHECK_IN_HORIZON_DAYS = 1;
 
-/** `checkIn` is a `@db.Date` (UTC midnight), so the comparison has to happen in UTC
- *  too — using local midnight would shift every date by a day for negative offsets. */
-function utcDayStart(at: Date): number {
-  return Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate());
-}
-
 /** Whole days from today to `date`; 0 = today, 1 = tomorrow, negative = past. */
 export function daysUntil(date: Date, now: Date): number {
-  return Math.round((utcDayStart(date) - utcDayStart(now)) / DAY_MS);
+  // `date` is a Prisma `@db.Date`, while `now` is an instant. Read each in its own
+  // terms: the stored UTC fields name the check-in day, and the instant belongs to the
+  // marketplace's civil day. Using UTC for both called a Skopje check-in “tomorrow”
+  // during the first two hours when it was already today (M6).
+  return nightsBetweenYmd(marketplaceYmd(now), dbDateToYmd(date));
 }
 
 /** Every reason this one booking is asking for attention, already in priority order. */

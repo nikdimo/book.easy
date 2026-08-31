@@ -2,10 +2,21 @@ import "server-only";
 
 import type { MarketingAudience, NotificationType, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import {
-  recordBookingTimelineEvent,
-  type BookingNotificationEvent,
-} from "@/lib/services/booking-timeline.service";
+
+/**
+ * The lifecycle moments that are announced to somebody. Deliberately narrower than
+ * `BookingTimelineEventType` — there is no "the stay ended" notification — and it no
+ * longer has anything to do with what gets written to the booking's permanent history,
+ * which each transition now writes inside its own transaction.
+ */
+export type BookingNotificationEvent =
+  | "request"
+  | "confirmed"
+  | "rejected"
+  | "expired"
+  | "cancelled-by-guest"
+  | "cancelled-by-host"
+  | "cancelled-by-admin";
 
 const EXPO_PUSH_ENDPOINT = "https://exp.host/--/api/v2/push/send";
 const EXPO_TOKEN_PATTERN = /^(ExponentPushToken|ExpoPushToken)\[[A-Za-z0-9_-]+\]$/;
@@ -279,11 +290,17 @@ async function sendPushNotification(input: PushNotificationInput): Promise<void>
   }
 }
 
+/**
+ * Delivery only. Every caller reaches this through a fire-and-forget wrapper, so
+ * nothing here is allowed to be the only record of anything: the booking's permanent
+ * history entry is written by the transition itself, inside the same transaction as
+ * the status change (`recordBookingTimelineEvent`). This used to open by writing that
+ * entry, which put the audit surface that matters most behind an error nobody sees (M7).
+ */
 export async function notifyBookingEvent(
   bookingId: string,
   event: BookingNotificationEvent
 ) {
-  await recordBookingTimelineEvent({ bookingId, event });
   const booking = await db.booking.findUnique({
     where: { id: bookingId },
     select: {
@@ -328,6 +345,28 @@ export async function notifyBookingEvent(
       data: commonData,
     });
     return;
+  }
+
+  if (event === "cancelled-by-admin") {
+    const [guestNotification, hostNotification] = await Promise.all([
+      createUserNotification({
+        userId: booking.guestId,
+        type: "BOOKING_CANCELLED",
+        title: "Booking cancelled by support",
+        body: `Support cancelled your booking for ${booking.listing.title}.`,
+        route: `/account/bookings/${booking.id}`,
+        data: commonData,
+      }),
+      createUserNotification({
+        userId: booking.listing.hostId,
+        type: "BOOKING_CANCELLED",
+        title: "Booking cancelled by support",
+        body: `Support cancelled the booking for ${booking.listing.title}.`,
+        route: `/host/reservations/${booking.id}`,
+        data: commonData,
+      }),
+    ]);
+    return [guestNotification, hostNotification];
   }
 
   const copy = {

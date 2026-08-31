@@ -34,6 +34,8 @@ export function PhotoTour({ slug, images }: PhotoTourProps) {
   const i18n = useI18n();
   const searchParams = useSearchParams();
   const activeIndex = activeIndexFrom(searchParams.get("photo"), images.length);
+  const activeIsPanorama =
+    activeIndex !== null && images[activeIndex]?.isPanorama === true;
 
   const listingHref = `/properties/${slug}`;
   const filmstripRef = useRef<HTMLDivElement | null>(null);
@@ -105,7 +107,9 @@ export function PhotoTour({ slug, images }: PhotoTourProps) {
   const handleWheel = useCallback(
     (event: WheelEvent<HTMLDivElement>) => {
       // Ctrl+wheel is a browser/trackpad pinch gesture; leave page zoom alone.
-      if (images.length < 2 || event.ctrlKey) return;
+      // The panorama owns its wheel for zoom. A zoom gesture must never also jump to
+      // the next gallery item underneath it.
+      if (images.length < 2 || event.ctrlKey || activeIsPanorama) return;
 
       const direction = photoStepFromWheel(wheelStateRef.current, {
         deltaX: event.deltaX,
@@ -116,7 +120,7 @@ export function PhotoTour({ slug, images }: PhotoTourProps) {
       });
       if (direction !== 0) step(direction);
     },
-    [images.length, step]
+    [activeIsPanorama, images.length, step]
   );
 
   useEffect(() => {
@@ -226,15 +230,19 @@ export function PhotoTour({ slug, images }: PhotoTourProps) {
       <div
         ref={photoRef}
         className="absolute inset-0 touch-none overflow-hidden"
-        onTouchStart={gestures.handlers.onTouchStart}
-        onTouchMove={gestures.handlers.onTouchMove}
-        onTouchEnd={gestures.handlers.onTouchEnd}
+        onTouchStart={activeIsPanorama ? undefined : gestures.handlers.onTouchStart}
+        onTouchMove={activeIsPanorama ? undefined : gestures.handlers.onTouchMove}
+        onTouchEnd={activeIsPanorama ? undefined : gestures.handlers.onTouchEnd}
       >
-        <div className="absolute inset-0" style={gestures.style}>
+        <div
+          className="absolute inset-0"
+          style={activeIsPanorama ? undefined : gestures.style}
+        >
           <GalleryMedia
             item={images[activeIndex]}
             fill
             contain
+            panoramaInteractive
             eager
             fetchPriority="high"
             sizes="100vw"

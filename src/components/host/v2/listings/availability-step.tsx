@@ -70,7 +70,7 @@ export function AvailabilityStep({
   const query = `propertyType=${encodeURIComponent(propertyType.value)}&spaceType=${encodeURIComponent(spaceType)}`;
   /** Where the CTA goes, and what it says: on to the next question, or back to the
    *  summary the host came from. */
-  const { href: nextHref, label: nextLabel } = stepNextTarget(
+  const { href: nextHref, label: nextLabel, route: nextRoute } = stepNextTarget(
     returnToReview,
     query,
     `/host/start/house-rules?${query}`,
@@ -331,7 +331,12 @@ export function AvailabilityStep({
           : { nextHref, onNext: async () => {
               const availabilityStart = mode === "from" ? { mode, startDate } : { mode: mode! };
               const prePublishPlan = { ...(data.prePublishPlan ?? EMPTY_PRE_PUBLISH_PLAN), availabilityStart };
-              if (await save({ prePublishPlan, minNights: String(minNights), currentStepId: "specialOffer" })) {
+              if (await save({
+                prePublishPlan,
+                minNights: String(minNights),
+                currentStepId: "specialOffer",
+                currentRoute: nextRoute,
+              })) {
                 window.location.assign(nextHref);
               }
             } })}

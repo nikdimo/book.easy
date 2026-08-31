@@ -24,11 +24,11 @@ import {
 } from "@/lib/actions/booking.actions";
 import { PaymentMethodName } from "@/components/booking/accepted-payment-methods";
 import type { PaymentMethodCode } from "@/lib/payments/payment-methods";
-import {
-  paymentMethodCanNeedNoInstructions,
-  type BookingPaymentDecision,
-  type BookingPaymentRequestPrefill,
+import type {
+  BookingPaymentDecision,
+  BookingPaymentRequestPrefill,
 } from "@/lib/payments/booking-payment-request";
+import type { AcceptanceDecisionRule } from "@/lib/payments/booking-acceptance";
 import {
   PaymentRequestComposer,
   type PaymentRequestValue,
@@ -51,6 +51,10 @@ type AcceptanceData = {
   savedInstructions: string;
   savedDetailsKind: "STRUCTURED" | "LEGACY_TEXT" | "NONE";
   savedDetailFields: Record<string, string>;
+  /** Which answers this booking may be accepted with, decided on the server. The same
+   *  rule runs again on submit, so this only keeps the dialog from offering one the
+   *  service would refuse — a zero-value stay has nothing to send, either way. */
+  decisionRule: AcceptanceDecisionRule;
 };
 
 /** The acceptance payload, in the shape the shared composer expects. */
@@ -117,11 +121,9 @@ export function HostBookingActions({ bookingId }: { bookingId: string }) {
       isReady: false,
     });
     setDueDate(next.checkIn);
-    setPaymentDecision(
-      paymentMethodCanNeedNoInstructions(next.selectedPaymentMethod)
-        ? "NO_INSTRUCTIONS"
-        : "SEND_NOW",
-    );
+    // A preselection, not a decision: the host still confirms it below and the server
+    // still requires it on the wire. It is only ever one of the allowed answers.
+    setPaymentDecision(next.decisionRule.suggested);
   }
 
   function close() {
@@ -314,45 +316,47 @@ export function HostBookingActions({ bookingId }: { bookingId: string }) {
                       source="Payment instructions"
                     />
                   </legend>
-                  <PaymentDecisionOption
-                    value="SEND_NOW"
-                    current={paymentDecision}
-                    icon={Send}
-                    title={
-                      resolve(
-                        "host.booking.payment_send_now",
-                        "Accept and send payment request",
-                      ).text
-                    }
-                    description={
-                      resolve(
-                        "host.booking.payment_send_now_hint",
-                        "Review the private details below and send them with the booking total and reference.",
-                      ).text
-                    }
-                    onChange={setPaymentDecision}
-                  />
-                  <PaymentDecisionOption
-                    value="SEND_LATER"
-                    current={paymentDecision}
-                    icon={Clock3}
-                    title={
-                      resolve(
-                        "host.booking.payment_send_later",
-                        "Accept and send later",
-                      ).text
-                    }
-                    description={
-                      resolve(
-                        "host.booking.payment_send_later_hint",
-                        "The booking is accepted now and remains in your action list until instructions are sent.",
-                      ).text
-                    }
-                    onChange={setPaymentDecision}
-                  />
-                  {paymentMethodCanNeedNoInstructions(
-                    payment.selectedPaymentMethod,
-                  ) ? (
+                  {payment.decisionRule.allowed.includes("SEND_NOW") ? (
+                    <PaymentDecisionOption
+                      value="SEND_NOW"
+                      current={paymentDecision}
+                      icon={Send}
+                      title={
+                        resolve(
+                          "host.booking.payment_send_now",
+                          "Accept and send payment request",
+                        ).text
+                      }
+                      description={
+                        resolve(
+                          "host.booking.payment_send_now_hint",
+                          "Review the private details below and send them with the booking total and reference.",
+                        ).text
+                      }
+                      onChange={setPaymentDecision}
+                    />
+                  ) : null}
+                  {payment.decisionRule.allowed.includes("SEND_LATER") ? (
+                    <PaymentDecisionOption
+                      value="SEND_LATER"
+                      current={paymentDecision}
+                      icon={Clock3}
+                      title={
+                        resolve(
+                          "host.booking.payment_send_later",
+                          "Accept and send later",
+                        ).text
+                      }
+                      description={
+                        resolve(
+                          "host.booking.payment_send_later_hint",
+                          "The booking is accepted now and remains in your action list until instructions are sent.",
+                        ).text
+                      }
+                      onChange={setPaymentDecision}
+                    />
+                  ) : null}
+                  {payment.decisionRule.allowed.includes("NO_INSTRUCTIONS") ? (
                     <PaymentDecisionOption
                       value="NO_INSTRUCTIONS"
                       current={paymentDecision}

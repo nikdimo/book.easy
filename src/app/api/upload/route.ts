@@ -46,5 +46,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: stored.error }, { status: stored.status });
   }
 
-  return NextResponse.json({ url: stored.url, mediaType: stored.mediaType });
+  return NextResponse.json({
+    url: stored.url,
+    mediaType: stored.mediaType,
+    isPanorama: stored.isPanorama,
+  });
 }

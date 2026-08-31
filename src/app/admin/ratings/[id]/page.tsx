@@ -10,7 +10,7 @@ import {
   getAdminReview,
   markReviewRead,
 } from "@/lib/services/review.service";
-import { formatDate, formatPrice } from "@/lib/utils/format";
+import { formatCalendarDate, formatDate, formatPrice } from "@/lib/utils/format";
 
 export default async function AdminRatingPage({
   params,
@@ -64,7 +64,7 @@ export default async function AdminRatingPage({
           <span className="text-muted-foreground">Stay</span>
           <p className="flex items-center gap-1">
             <CalendarDays className="h-4 w-4" />
-            {formatDate(review.booking.checkIn)} – {formatDate(review.booking.checkOut)}
+            {formatCalendarDate(review.booking.checkIn)} – {formatCalendarDate(review.booking.checkOut)}
           </p>
         </div>
         <div>

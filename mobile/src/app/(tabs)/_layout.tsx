@@ -5,6 +5,7 @@ import { useLanguage } from "@/context/language-context";
 import { Icon } from "@/components/icon";
 import { FloatingTabBar } from "@/components/tab-bar";
 import { clearMobileSessionToken, startAuth } from "@/lib/api";
+import { isAdminRole } from "@/lib/roles";
 import { colors, radii, spacing, type } from "@/theme";
 
 export default function TabLayout() {
@@ -17,7 +18,7 @@ export default function TabLayout() {
   // plainly what happened.
   if (user && !user.canManageProperties) return <NoHostAccess />;
 
-  const isAdmin = user?.role === "ADMIN" || user?.role === "SUPERADMIN";
+  const isAdmin = isAdminRole(user?.role);
 
   return (
     <Tabs

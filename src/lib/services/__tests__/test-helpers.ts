@@ -9,7 +9,7 @@ import { db } from "@/lib/db";
  */
 
 export async function createTestHostAndListing(overrides?: {
-  status?: "APPROVED" | "DRAFT" | "PENDING_REVIEW";
+  status?: "APPROVED" | "DRAFT" | "UNPUBLISHED";
 }) {
   const id = randomUUID();
 

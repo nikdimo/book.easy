@@ -107,18 +107,36 @@ export default function TermsPage() {
 
             <h3 className="text-xl font-semibold mb-3 mt-6">4.2 Cancellations</h3>
             <p>
-              Cancellation terms are determined by the host's policy (Flexible, Moderate, or
-              Strict), as shown on the listing at the time you send your request.
+              The listing states a whole-number deadline before check-in for free cancellation.
+              The policy shown when you request the booking is frozen onto that booking.
             </p>
             <ul className="list-disc pl-6 space-y-2">
-              <li>Host must approve most cancellations within 48 hours</li>
               <li>
-                Because we never hold your money, we cannot issue a refund. Anything you paid
-                the host is returned, or not, by the host under their own policy
+                If the guest cancels on or before the free-cancellation deadline, all
+                accommodation payments already made must be returned
               </li>
               <li>
-                We are not a party to any payment between you and a host and are not responsible
-                for the outcome of one
+                After the deadline, the host may retain no more than an advance payment already
+                received and must return any other accommodation payment already received
+              </li>
+              <li>
+                If the host or an administrator cancels, all accommodation payments already made
+                must be returned
+              </li>
+              <li>
+                A refundable damage deposit is separate, is never a cancellation fee, and must be
+                returned when cancellation leaves no damage claim
+              </li>
+              <li>
+                Ordinary self-service cancellation is unavailable after check-in; exceptional
+                cases require support review
+              </li>
+              <li>
+                Cancellation creates a refund or return obligation in the Service but does not
+                claim that money moved. The host reports sending it and the guest confirms receipt
+              </li>
+              <li>
+                Because we never hold your money, we cannot issue, verify, or guarantee a refund
               </li>
             </ul>
 
@@ -175,7 +193,12 @@ export default function TermsPage() {
               Hosts are responsible for:
             </p>
             <ul className="list-disc pl-6 space-y-2">
-              <li>Agreeing payment terms and a method with the guest</li>
+              <li>Sending each booking-specific payment request only after reviewing it</li>
+              <li>
+                Keeping an advance payment, the remaining accommodation balance, and a refundable
+                damage deposit as separate amounts
+              </li>
+              <li>Reporting direct transactions accurately; the other participant confirms them</li>
               <li>Issuing any receipt or invoice the guest is entitled to</li>
               <li>Handling their own refunds under their stated cancellation policy</li>
               <li>Applicable taxes on the amount they receive</li>

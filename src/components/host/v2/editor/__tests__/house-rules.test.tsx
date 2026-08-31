@@ -174,6 +174,30 @@ describe("HouseRulesWorkspace save reporting", () => {
 
     expect(html).not.toContain("Choose an answer so guests know where they stand.");
   });
+
+  it("does not import the create flow's Required marks onto an existing listing", () => {
+    // The flow marks these four Required and calls an unanswered one "Choose an
+    // answer", because the flow is the screen doing the asking. Carrying that here
+    // would tell a host of a listing published years ago that it is now incomplete.
+    const html = workspace({ rules: emptyListingHouseRules() });
+
+    expect(html).not.toContain(">Required<");
+    expect(html).not.toContain("Choose an answer");
+    expect(html).not.toContain("of 4 answered");
+    expect(html).not.toContain("Answer these house-rule questions to continue");
+    // It still says what it always said: nothing was set, and nothing is refused.
+    expect((html.match(/Not set/g) ?? []).length).toBe(4);
+  });
+
+  it("keeps announcing its own row errors, having no summary to defer to", () => {
+    // The flow silences these because it raises one alert for the whole screen. The
+    // editor has no such summary, so a row that goes wrong here has to speak.
+    const html = workspace({
+      rules: { ...ANSWERED, quietHoursStart: "", quietHoursEnd: "" },
+    });
+
+    expect(html).toContain('role="alert"');
+  });
 });
 
 describe("HouseRulesElsewhere", () => {

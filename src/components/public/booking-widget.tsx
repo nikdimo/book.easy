@@ -1,16 +1,27 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  useTransition,
+} from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { addMonths, startOfDay } from "date-fns";
+import { addMonthsToYmd, todayYmd } from "@/lib/utils/date-only";
 import {
   computeNightlyRateRange,
   computeStayQuote,
   parseLocalYmd,
   type StayPromotion,
 } from "@/lib/utils/stay-pricing";
-import { validateBookingSelection } from "@/lib/utils/booking-selection";
+import {
+  bookableStayFromSearch,
+  stayLengthCap,
+  validateBookingSelection,
+} from "@/lib/utils/booking-selection";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,8 +39,14 @@ import { LocalizedPrice } from "@/components/shared/localized-price";
 import { OfficialAmountNotice } from "@/components/shared/official-amount-notice";
 import { createBookingAction } from "@/lib/actions/booking.actions";
 import { toast } from "sonner";
-import { Check, ChevronDown, ChevronRight, ChevronUp, X } from "lucide-react";
-import { updateActiveSearchState } from "@/lib/marketplace-search-state";
+import { ChevronDown, ChevronUp, X } from "lucide-react";
+import {
+  ACTIVE_SEARCH_STORAGE_KEY,
+  parseActiveSearchState,
+  updateActiveSearchState,
+  type ActiveSearchState,
+} from "@/lib/marketplace-search-state";
+import type { GuestCounts } from "@/components/marketplace/marketplace-guest-selector";
 import {
   clearBookingResumeDraft,
   takeBookingResumeDraft,
@@ -50,6 +67,7 @@ import {
   type AcceptedPaymentMethodsPresentation,
 } from "@/components/booking/accepted-payment-methods";
 import type { DepositPoliciesSnapshotV2 } from "@/lib/payments/deposit-policies";
+import type { CancellationPolicySnapshotV1 } from "@/lib/payments/cancellation-policy";
 import {
   useCellCurrencyNote,
   useListingDayPrices,
@@ -68,8 +86,15 @@ interface BookingWidgetProps {
   cleaningFee: number;
   currency: string;
   minNights: number;
+  /** The host's stay-length cap, when the pricing rule sets one. The server has always
+   *  enforced it; passing it here is what stops the guest meeting it for the first time
+   *  as an error after they pressed request to book. */
+  maxNights?: number | null;
   promotions?: StayPromotion[];
-  disabledDateRanges: { from: Date; to: Date }[];
+  /** Blocked runs as calendar dates — see `BlockedDateRange`. Kept as `yyyy-MM-dd`
+   *  across the server boundary so a browser behind UTC does not read the server's
+   *  midnight as the day before. */
+  disabledDateRanges: { from: string; to: string }[];
   /** yyyy-MM-dd → override nightly rate for that night */
   priceOverrides?: { date: string; rate: number }[];
   /** Seeds the widget from the search the guest arrived with (checkIn/checkOut/guests query params). */
@@ -88,6 +113,7 @@ interface BookingWidgetProps {
   acceptedPaymentMethods: AcceptedPaymentMethodsPresentation;
   /** Validated public terms only; no payment destination or operational payment data. */
   depositPolicies: DepositPoliciesSnapshotV2;
+  cancellationPolicy?: CancellationPolicySnapshotV1;
   /**
    * The "message host" button, already built by the server so this widget does not
    * have to know who the host is. Rendered only in the phone's sticky bar — the
@@ -192,57 +218,50 @@ function Txt({ value }: { value: Resolved }) {
 
 /**
  * A row that says where one part of the stay stands and leads back to the step that
- * sets it. Deliberately the same shape as the guests row: to a guest, the dates and
- * the party are the same kind of thing — one line, and a way in.
+ * sets it.
+ *
+ * Quiet label over the value, with the way back named as `Edit` on the right. It used
+ * to be a chevron row carrying a tick, inside a box with the others — which read as a
+ * checklist a guest still had work left in. Nothing on this step is unconfirmed: the
+ * dates and the party are both already chosen, and the row is only there for the guest
+ * who wants to change one.
  */
 function BookingSummaryRow({
   label,
   value,
   detail,
-  done = false,
+  editLabel,
   onOpen,
 }: {
   label: Resolved;
   value: Resolved;
   /** A quieter second line, for what the value on its own leaves out. */
   detail?: Resolved | null;
-  done?: boolean;
+  editLabel: Resolved;
   onOpen: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onOpen}
-      className="flex w-full items-center justify-between gap-3 bg-background px-4 py-3 text-left text-sm transition-colors hover:bg-muted/30 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+      className="-mx-2 flex w-[calc(100%+1rem)] items-start justify-between gap-3 rounded-lg px-2 py-3 text-left transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <span className="flex min-w-0 items-start gap-2">
-        {done ? (
-          <Check
-            className="mt-0.5 size-4 shrink-0 text-primary"
-            aria-hidden="true"
-          />
-        ) : null}
-        <span className="min-w-0">
-          <span className="block truncate">
-            <span className="font-medium text-foreground">
-              <Txt value={label} />
-            </span>
-            <span className="text-muted-foreground">
-              {" · "}
-              <Txt value={value} />
-            </span>
-          </span>
-          {detail ? (
-            <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-              <Txt value={detail} />
-            </span>
-          ) : null}
+      <span className="min-w-0">
+        <span className="block text-xs text-muted-foreground">
+          <Txt value={label} />
         </span>
+        <span className="mt-0.5 block truncate text-sm text-foreground">
+          <Txt value={value} />
+        </span>
+        {detail ? (
+          <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+            <Txt value={detail} />
+          </span>
+        ) : null}
       </span>
-      <ChevronRight
-        className="mt-0.5 size-4 shrink-0 text-foreground"
-        aria-hidden="true"
-      />
+      <span className="shrink-0 text-sm font-medium text-foreground underline underline-offset-4">
+        <Txt value={editLabel} />
+      </span>
     </button>
   );
 }
@@ -282,6 +301,35 @@ function BookingPanelHeader({
   );
 }
 
+/**
+ * The stay the header's search bar is still showing, or null when there is none and
+ * whenever the URL already carried one of its own.
+ *
+ * Read through `useSyncExternalStore` rather than in an effect: the server has no
+ * storage to read, so it returns null there and through hydration, and the card fills
+ * in on the first client render instead of a beat later. The subscription is the same
+ * `storage` event the search bar listens on, which keeps a second tab's search from
+ * leaving the two disagreeing.
+ */
+function useRememberedSearch(skip: boolean): ActiveSearchState | null {
+  const raw = useSyncExternalStore(
+    (onChange) => {
+      window.addEventListener("storage", onChange);
+      return () => window.removeEventListener("storage", onChange);
+    },
+    () => {
+      try {
+        return window.localStorage.getItem(ACTIVE_SEARCH_STORAGE_KEY);
+      } catch {
+        // Storage off or full: the card simply opens on no dates, as before.
+        return null;
+      }
+    },
+    () => null,
+  );
+  return useMemo(() => (skip ? null : parseActiveSearchState(raw)), [skip, raw]);
+}
+
 export function BookingWidget({
   listingId,
   maxGuests,
@@ -289,6 +337,7 @@ export function BookingWidget({
   cleaningFee,
   currency,
   minNights,
+  maxNights,
   promotions = [],
   disabledDateRanges,
   priceOverrides = [],
@@ -296,10 +345,12 @@ export function BookingWidget({
   initialCheckOut = "",
   initialGuests,
   initialGuestDetails = { adults: 0, children: 0, infants: 0, pets: 0 },
+  hasExplicitSearchSelection = false,
   petsAllowed = true,
   requestToBookTooltip,
   acceptedPaymentMethods,
   depositPolicies,
+  cancellationPolicy,
   messageHost,
   houseRules,
   houseRulesVersion,
@@ -340,7 +391,28 @@ export function BookingWidget({
       checkIn: initialCheckIn,
       checkOut: initialCheckOut,
     });
-  const [guestDetails, setGuestDetails] = useState(() => {
+  // The stay the search bar is still showing. It keeps it in browser storage rather
+  // than in the URL, so a listing opened from anywhere the results grid did not build
+  // the link — the home page, a carousel, favourites, a link followed back — arrives
+  // with nothing while the header above it reads "6 sep - 12 sep, 2 guests". Read from
+  // the same place the header does, and the card no longer asks for a stay the guest
+  // has already given. Only when the URL asked for nothing: an explicit `?checkIn=`
+  // wins, and so does one this page dropped on purpose for having gone by.
+  const rememberedSearch = useRememberedSearch(hasExplicitSearchSelection);
+  const rememberedGuests = useMemo(() => {
+    const counts = rememberedSearch?.guestCounts;
+    if (!counts || counts.adults + counts.children < 1) return null;
+    return applyPetPolicy(
+      {
+        adults: Math.min(Math.max(counts.adults, 1), maxGuests),
+        children: Math.min(counts.children, maxGuests),
+        infants: counts.infants,
+        pets: counts.pets,
+      },
+      petsAllowed,
+    );
+  }, [rememberedSearch, maxGuests, petsAllowed]);
+  const urlGuests = useMemo(() => {
     const seed = applyPetPolicy(initialGuestDetails, petsAllowed);
     const occupancy = seed.adults + seed.children;
     if (occupancy > 0) return seed;
@@ -350,19 +422,27 @@ export function BookingWidget({
         ? Math.min(Math.max(initialGuests, 1), maxGuests)
         : 1,
     };
-  });
+  }, [initialGuestDetails, initialGuests, maxGuests, petsAllowed]);
+  // Null until the guest edits the party themselves, so a remembered search can still
+  // seed it after hydration without the card overwriting a choice already made here.
+  const [chosenGuestDetails, setGuestDetails] = useState<GuestCounts | null>(
+    null,
+  );
+  const guestDetails = chosenGuestDetails ?? rememberedGuests ?? urlGuests;
   // Guests always hold a valid value, so the guest step is about intent rather
   // than validity: it is already satisfied when the guest arrived from a search
   // that carried guest counts, and otherwise the moment they open the editor.
-  const [guestsConfirmed, setGuestsConfirmed] = useState(
-    () =>
+  // Null the same way: untouched, and answered by whatever the guest arrived with.
+  const [guestsAnswered, setGuestsConfirmed] = useState<boolean | null>(null);
+  const guestsConfirmed =
+    guestsAnswered ??
+    (Boolean(rememberedGuests) ||
       Boolean(initialGuests) ||
       initialGuestDetails.adults +
         initialGuestDetails.children +
         initialGuestDetails.infants +
         initialGuestDetails.pets >
-        0,
-  );
+        0);
   const [note, setNote] = useState("");
   const selectablePaymentMethods = useMemo(
     () =>
@@ -403,20 +483,73 @@ export function BookingWidget({
       hasSyncedSearchRef.current = true;
       return;
     }
-    updateActiveSearchState({
-      checkIn: checkInStr,
-      checkOut: checkOutStr,
-      guestCounts: guestDetails,
-    });
+    // Dates travel back only when there are dates. The card renders empty for the
+    // render before it adopts a remembered stay, and stays empty for good on a listing
+    // whose calendar has those nights taken — neither is the guest giving up their
+    // search, and writing the emptiness back would take the stay out of the header
+    // they can still see it in. Clearing on purpose is published by `clearSelection`.
+    updateActiveSearchState(
+      checkInStr || checkOutStr
+        ? {
+            checkIn: checkInStr,
+            checkOut: checkOutStr,
+            guestCounts: guestDetails,
+          }
+        : { guestCounts: guestDetails },
+    );
   }, [checkInStr, checkOutStr, guestDetails]);
+
+  // The dates half of the same seed. The selection is shared with the page's
+  // availability calendar through a provider above, so it is set rather than derived.
+  const hasSeededRememberedRef = useRef(false);
+  useEffect(() => {
+    if (hasSeededRememberedRef.current) return;
+    if (!rememberedSearch) return;
+    hasSeededRememberedRef.current = true;
+    if (checkInStr || checkOutStr) return;
+    const stay = bookableStayFromSearch(
+      rememberedSearch.checkIn,
+      rememberedSearch.checkOut,
+      todayYmd(),
+    );
+    // A stay remembered from a search across listings can land on nights this one has
+    // taken. Those open an empty picker rather than a selection the card refuses on
+    // sight — the guest has not asked this listing anything yet.
+    if (
+      stay.checkIn &&
+      stay.checkOut &&
+      validateBookingSelection(
+        parseLocalYmd(stay.checkIn),
+        parseLocalYmd(stay.checkOut),
+        minNights,
+        disabledDateRanges,
+        maxNights,
+      ).status !== "unavailable"
+    ) {
+      setStayRange({ checkIn: stay.checkIn, checkOut: stay.checkOut });
+    }
+    // Arrival only: every later change to the dates is the guest's own.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rememberedSearch]);
 
   const checkIn = checkInStr ? parseLocalYmd(checkInStr) : undefined;
   const checkOut = checkOutStr ? parseLocalYmd(checkOutStr) : undefined;
+  // Turned into this browser's own midnights once, here, for the picker below — which
+  // works in `Date`s throughout and must compare them against the days it renders.
+  const disabledDayRanges = useMemo(
+    () =>
+      disabledDateRanges.map((range) => ({
+        from: parseLocalYmd(range.from),
+        to: parseLocalYmd(range.to),
+      })),
+    [disabledDateRanges],
+  );
   const selectionValidation = validateBookingSelection(
     checkIn,
     checkOut,
     minNights,
     disabledDateRanges,
+    maxNights,
   );
   const nights = Math.max(0, selectionValidation.nights);
 
@@ -450,13 +583,17 @@ export function BookingWidget({
   // extra payload — and a flat-rate listing collapses back to one number.
   const rateRange = useMemo(() => {
     if (hasStayQuote) return null;
-    const from = startOfDay(new Date());
+    // The marketplace's day and the marketplace's horizon — the same two the server
+    // builds the card's `nightlyRange` from. Off the browser's own midnight these two
+    // readings of the same listing could span different days and print different
+    // numbers on the card and in the widget beside it.
+    const fromYmd = todayYmd();
     const range = computeNightlyRateRange({
       baseNightly: nightlyRate,
       overrides: overrideMap,
       blockedRanges: disabledDateRanges,
-      from,
-      to: addMonths(from, RATE_RANGE_HORIZON_MONTHS),
+      from: parseLocalYmd(fromYmd),
+      to: parseLocalYmd(addMonthsToYmd(fromYmd, RATE_RANGE_HORIZON_MONTHS)),
     });
     return range && range.max > range.min ? range : null;
   }, [hasStayQuote, nightlyRate, overrideMap, disabledDateRanges]);
@@ -542,6 +679,10 @@ export function BookingWidget({
   };
   // "The selection is wrong" (worth an error message) is a different thing from
   // "the selection isn't finished yet" (the primary button says what's next).
+  // `maximum-stay` deliberately takes the generic "pick your dates" line rather than a
+  // maximum of its own: the calendar refuses to *draw* an over-cap range (it reads the
+  // second click as a new check-in), so the only way to arrive here is a stay carried in
+  // on a shared link — and the answer to that is the same, reopen the picker at dates.
   const reserveProblem: Resolved | null =
     selectionValidation.status === "unavailable"
       ? unavailableDatesMessage
@@ -562,9 +703,12 @@ export function BookingWidget({
       ? "dates"
       : // A party of nobody is not a party: infants and pets don't consume capacity,
         // so a selection made only of them has no one the booking is for. The server
-        // refuses `guestCount: 0` outright, and this is what keeps the guest from
-        // meeting that refusal as a validation error after they pressed request to book.
-        !guestsConfirmed || guests < 1
+        // refuses a party with no adult in it outright, and this is what keeps the
+        // guest from meeting that refusal as a validation error after they pressed
+        // request to book. The adult check is its own condition rather than folded into
+        // the count: the counters let adults fall to zero while children stand, which
+        // is a party of two that still has nobody who can hold the booking.
+        !guestsConfirmed || guests < 1 || guestDetails.adults < 1
         ? "guests"
         : "review";
   /**
@@ -626,6 +770,9 @@ export function BookingWidget({
       : i18n.resolve("booking.select_dates_cta", "Select dates");
   const datesRowLabel = i18n.resolve("booking.dates", "Dates");
   const guestsRowLabel = i18n.resolve("booking.guests_label", "Guests");
+  // Names the way back to a step, in place of a chevron that only pointed at one.
+  const editRowLabel = i18n.resolve("booking.summary_edit", "Edit");
+  const totalRowLabel = i18n.resolve("booking.review_total", "Total");
   const addDatesLabel = i18n.resolve("search.add_dates", "Add dates");
   const stayRangeFormatter = useMemo(
     () =>
@@ -828,7 +975,13 @@ export function BookingWidget({
       formData.set("listingId", listingId);
       formData.set("checkIn", checkInStr);
       formData.set("checkOut", checkOutStr);
-      formData.set("guestCount", String(guests));
+      // All four counters, not the sum of two of them. The server derives the capacity
+      // from adults + children and stores infants and pets on their own, so the host
+      // finally learns about the cot and the dog the guest picked here.
+      formData.set("adults", String(guestDetails.adults));
+      formData.set("children", String(guestDetails.children));
+      formData.set("infants", String(guestDetails.infants));
+      formData.set("pets", String(guestDetails.pets));
       formData.set("houseRulesAccepted", "true");
       formData.set("houseRulesVersion", houseRulesVersion);
       if (selectedPaymentMethod) {
@@ -849,6 +1002,9 @@ export function BookingWidget({
     // not outlive the selection it belonged to.
     clearBookingResumeDraft();
     setStayRange({ checkIn: "", checkOut: "" });
+    // The one clearing the header follows, since the effect above leaves an empty
+    // selection alone.
+    updateActiveSearchState({ checkIn: "", checkOut: "" });
     setGuestDetails({ adults: 1, children: 0, infants: 0, pets: 0 });
     setGuestsConfirmed(false);
     setNote("");
@@ -1108,8 +1264,15 @@ export function BookingWidget({
               nextActionLabel={whosComingLabel}
               guestStepTitle={whosComingLabel}
               finalActionLabel={guestStepActionLabel}
-              finalActionDisabled={isPending || guests < 1}
+              finalActionDisabled={
+                isPending || guests < 1 || guestDetails.adults < 1
+              }
               reviewStepEnabled={selectionValidation.status === "valid"}
+              // Set the moment the guest reaches the party step, and already true for a
+              // guest who arrived from a search carrying one. The calendar reads it so
+              // stepping back to fix dates goes on to the review instead of asking for
+              // the party a second time.
+              guestsAnswered={guestsConfirmed}
               showFinalActionIcon={false}
               // The guest step is a step, not a checkout: it gets the title and the way
               // back to the dates that the search pill's own version does without.
@@ -1119,8 +1282,9 @@ export function BookingWidget({
               pagedCalendarOnDesktop
               searchPresentation
               showPillGuestAction
-              disabledDateRanges={disabledDateRanges}
+              disabledDateRanges={disabledDayRanges}
               minimumStayNights={minNights}
+              maximumStayNights={stayLengthCap(maxNights) ?? undefined}
               minimumStayMessage={minimumStayMessage}
               onRangeStringsChange={({ checkIn: ci, checkOut: co }) => {
                 setStayRange({ checkIn: ci, checkOut: co });
@@ -1195,83 +1359,87 @@ export function BookingWidget({
   }) {
     return (
       <>
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 md:px-6">
-          {/* What the request is made of, in one stack: the two things a guest can go
-              back and change, and under them what it comes to. The rows navigate, the
-              price folds open in place — a press on the price should not cost the
-              guest their place in the step. */}
-          <div className="overflow-hidden rounded-xl border border-border/50">
+        {/* One column of sections divided by hairlines, and no box anywhere in it.
+            Every part of this step used to sit in a rounded border of its own — the
+            summary, the rules, each block of the payment terms, and the terms around
+            them — which put three frames between the guest and a sentence. The rule
+            here is that a border is for something you can press; everything else is
+            separated by the line above it and the space around it. */}
+        <div className="min-h-0 flex-1 divide-y divide-border/60 overflow-y-auto px-4 py-1 md:px-6">
+          {/* What the request is made of: the two things a guest can go back and
+              change, and under them what it comes to. The rows navigate, the price
+              folds open in place — a press on the price should not cost the guest
+              their place in the step. */}
+          <div className="py-3">
             <BookingSummaryRow
               label={datesRowLabel}
               value={stayRangeSummary}
-              done={selectionValidation.status === "valid"}
+              editLabel={editRowLabel}
               onOpen={() => goToStep("dates")}
             />
-            <div className="border-t border-border/50">
-              <BookingSummaryRow
-                label={guestsRowLabel}
-                value={guestSummary}
-                detail={guestBreakdownSummary}
-                done={guests > 0}
-                onOpen={() => goToStep("guests")}
-              />
-            </div>
-            {hasStayQuote ? (
-              <div className="border-t border-border/50">
-                <button
-                  type="button"
-                  onClick={() => setReviewPriceOpen((open) => !open)}
-                  aria-expanded={reviewPriceOpen}
-                  className="flex w-full items-center justify-between gap-3 bg-muted/20 px-4 py-3 text-left text-sm transition-colors hover:bg-muted/30 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-                >
-                  <span className="min-w-0 truncate">
-                    <span className="font-medium text-foreground">
-                      <Txt value={nightLabel} />
-                    </span>
-                    <span className="text-muted-foreground">{" · "}</span>
-                    <LocalizedPrice
-                      exact
-                      amount={total}
-                      currency={currency}
-                      locale={i18n.locale}
-                      className="font-medium text-foreground"
-                    />
+            <BookingSummaryRow
+              label={guestsRowLabel}
+              value={guestSummary}
+              detail={guestBreakdownSummary}
+              editLabel={editRowLabel}
+              onOpen={() => goToStep("guests")}
+            />
+          </div>
+
+          {hasStayQuote ? (
+            <div className="py-1">
+              <button
+                type="button"
+                onClick={() => setReviewPriceOpen((open) => !open)}
+                aria-expanded={reviewPriceOpen}
+                className="-mx-2 flex w-[calc(100%+1rem)] items-center justify-between gap-3 rounded-lg px-2 py-3 text-left transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <span className="min-w-0 truncate text-base font-semibold text-foreground">
+                  <Txt value={totalRowLabel} />
+                  <span className="font-normal text-muted-foreground">
+                    {" · "}
+                    <Txt value={nightLabel} />
                   </span>
+                </span>
+                <span className="flex shrink-0 items-center gap-1.5">
+                  <LocalizedPrice
+                    exact
+                    amount={total}
+                    currency={currency}
+                    locale={i18n.locale}
+                    className="text-base font-semibold text-foreground"
+                  />
                   {reviewPriceOpen ? (
                     <ChevronUp
-                      className="size-4 shrink-0 text-foreground"
+                      className="size-4 text-foreground"
                       aria-hidden="true"
                     />
                   ) : (
                     <ChevronDown
-                      className="size-4 shrink-0 text-foreground"
+                      className="size-4 text-foreground"
                       aria-hidden="true"
                     />
                   )}
-                </button>
-                {reviewPriceOpen ? (
-                  <div className="border-t border-border/50 bg-muted/20 px-4 py-3">
-                    {renderPriceBreakdown()}
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
+                </span>
+              </button>
+              {reviewPriceOpen ? (
+                <div className="pb-3 pt-1">{renderPriceBreakdown()}</div>
+              ) : null}
+            </div>
+          ) : null}
 
           {houseRules ? (
-            <div>
-              <p className="mb-2 text-sm font-semibold">
+            <div className="py-4">
+              <p className="mb-1 text-base font-semibold">
                 <Txt value={houseRulesTitle} />
               </p>
-              <div className="rounded-xl border border-border/40 bg-muted/15 px-4">
-                {houseRules}
-              </div>
+              {houseRules}
             </div>
           ) : null}
 
           {noteOpen || note ? (
-            <div>
-              <p className="mb-2 text-sm font-semibold">
+            <div className="py-4">
+              <p className="mb-2 text-base font-semibold">
                 <Txt value={messageTitle} />
               </p>
               <Textarea
@@ -1292,8 +1460,13 @@ export function BookingWidget({
 
           <BookingReviewPaymentTerms
             t={i18n}
+            // The listing page keeps the cards; in here they were the third frame
+            // deep, so the terms are printed as the sections they are. Not a word of
+            // them is dropped — a guest agrees to what this step showed them.
+            appearance="plain"
             acceptedPaymentMethods={acceptedPaymentMethods}
             depositPolicies={depositPolicies}
+            cancellationPolicy={cancellationPolicy}
             selectedPaymentMethod={selectedPaymentMethod}
             onSelectedPaymentMethodChange={(method) => {
               setSelectedPaymentMethod(method);
@@ -1312,48 +1485,53 @@ export function BookingWidget({
             </p>
           ) : null}
 
-          {houseRules ? (
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              <Txt value={rulesAgreementNotice} />
-            </p>
-          ) : null}
+          {/* One button, at full width. The note used to stand beside it as an
+              outlined pill of the same height, which halved the weight of the only
+              thing this step is for — and the note is an escape hatch a minority of
+              guests want, not a second way out of the step. It is a link in the fine
+              print now, where the rest of the optional reading is. */}
+          <Button
+            type="button"
+            className="w-full rounded-lg py-6 text-base font-semibold"
+            onClick={handleSubmit}
+            disabled={isPending}
+          >
+            {isPending ? (
+              <Tx k="booking.sending_request" source="Sending request…" />
+            ) : (
+              requestToBookLabel.text
+            )}
+          </Button>
 
-          <div className="flex items-center gap-3">
-            {/* The note rides along with the request rather than opening a
-                conversation: the guest is one press from booking, and a thread is
-                where a guest goes when they are not. It takes only the width of its
-                own label — the request is what this step is for, and gets the rest. */}
-            <Button
-              type="button"
-              variant="outline"
-              className="shrink-0 rounded-full px-5"
-              onClick={() => {
-                setNoteOpen(true);
-                noteRef.current?.focus();
-              }}
-              disabled={isPending}
-            >
-              <Txt value={addNoteLabel} />
-            </Button>
-            <Button
-              type="button"
-              className="min-w-0 flex-1 rounded-full font-semibold"
-              onClick={handleSubmit}
-              disabled={isPending}
-            >
-              {isPending ? (
-                <Tx k="booking.sending_request" source="Sending request…" />
-              ) : (
-                requestToBookLabel.text
-              )}
-            </Button>
-          </div>
+          {noteOpen || note ? null : (
+            <p className="text-center text-sm">
+              <button
+                type="button"
+                onClick={() => {
+                  setNoteOpen(true);
+                  // The box is rendered by the state above, so the focus has to wait
+                  // for the paint that creates it.
+                  requestAnimationFrame(() => noteRef.current?.focus());
+                }}
+                disabled={isPending}
+                className="font-medium text-foreground underline underline-offset-4 hover:no-underline disabled:opacity-60"
+              >
+                <Txt value={addNoteLabel} />
+              </button>
+            </p>
+          )}
 
           <p className="text-center text-xs leading-relaxed text-muted-foreground">
             <Tx
               k="booking.host_review_notice"
               source="The host will review your request and share payment instructions if it is accepted."
             />
+            {houseRules ? (
+              <>
+                {" "}
+                <Txt value={rulesAgreementNotice} />
+              </>
+            ) : null}
           </p>
         </div>
       </>
@@ -1480,7 +1658,7 @@ export function BookingWidget({
   return (
     <>
       <Card
-        className="notranslate hidden overflow-hidden rounded-2xl border border-border/50 shadow-[0_2px_12px_rgba(15,23,42,0.06)] lg:sticky lg:top-24 lg:flex"
+        className="notranslate hidden overflow-hidden rounded-2xl border-0 shadow-[0_6px_16px_rgba(15,23,42,0.12)] lg:sticky lg:top-24 lg:flex dark:border dark:border-border/50 dark:shadow-none"
         translate="no"
       >
         <CardHeader className="pb-2">

@@ -46,6 +46,7 @@ vi.mock("@/lib/utils/revalidate-public-listing-caches", () => ({
 
 import { submitNewListing } from "@/lib/actions/listing.actions";
 import { MIN_PUBLISH_PHOTOS } from "@/lib/host/v2/photo-draft";
+import { emptyDepositPoliciesDraft } from "@/lib/host/v2/listing-deposit-draft";
 
 /** Tomorrow, so the availability answer is never the reason a case fails. */
 function tomorrow(): string {
@@ -74,6 +75,7 @@ function publishableForm(overrides: Record<string, string> = {}): FormData {
     beds: "2",
     currency: "EUR",
     baseNightlyRate: "60",
+    freeCancellationDaysBeforeCheckIn: "7",
     ...overrides,
   };
   for (const [key, value] of Object.entries(fields)) formData.set(key, value);
@@ -335,6 +337,136 @@ describe("submitNewListing — the structured house rules", () => {
     );
 
     expect(result).toHaveProperty("error");
+    wroteNothing();
+  });
+});
+
+describe("the deposit answer", () => {
+  /** The listing row the publish wrote. */
+  function created() {
+    return mocks.listingCreate.mock.calls[0][0].data;
+  }
+
+  function withDeposits(answer: unknown): FormData {
+    const formData = publishableForm();
+    formData.set("depositPolicies", JSON.stringify(answer));
+    return formData;
+  }
+
+  it("writes both policies and marks the question reviewed", async () => {
+    const answer = emptyDepositPoliciesDraft();
+    answer.currency = "EUR";
+    answer.advancePayment = {
+      enabled: true,
+      amountType: "PERCENTAGE",
+      value: "20",
+      dueTiming: "DAYS_BEFORE_CHECK_IN",
+      dueDaysBeforeCheckIn: 7,
+    };
+    answer.damageDeposit = {
+      enabled: true,
+      amountType: "FIXED",
+      value: "200",
+      dueTiming: "AT_CHECK_IN",
+      dueDaysBeforeCheckIn: null,
+      returnDaysAfterCheckout: 7,
+    };
+
+    await submitNewListing(withDeposits(answer));
+
+    expect(created()).toMatchObject({
+      advancePaymentEnabled: true,
+      advancePaymentType: "PERCENTAGE",
+      advancePaymentValue: "20",
+      advancePaymentDueTiming: "DAYS_BEFORE_CHECK_IN",
+      advancePaymentDueDaysBeforeCheckIn: 7,
+      damageDepositEnabled: true,
+      damageDepositType: "FIXED",
+      damageDepositValue: "200",
+      damageDepositDueTiming: "AT_CHECK_IN",
+      damageDepositReturnDaysAfterCheckout: 7,
+      // The listing's own currency, not one the client chose.
+      depositPoliciesCurrency: "EUR",
+    });
+    expect(created().depositPoliciesReviewedAt).toBeInstanceOf(Date);
+  });
+
+  it("refuses to relabel deposit amounts reviewed in another currency", async () => {
+    const answer = emptyDepositPoliciesDraft();
+    answer.damageDeposit = {
+      enabled: true,
+      amountType: "FIXED",
+      value: "5000",
+      dueTiming: "AT_CHECK_IN",
+      dueDaysBeforeCheckIn: null,
+      returnDaysAfterCheckout: null,
+    };
+    const formData = publishableForm({ currency: "USD" });
+    formData.set("depositPolicies", JSON.stringify({ ...answer, currency: "EUR" }));
+
+    const result = await submitNewListing(formData);
+
+    expect(result).toEqual({
+      error:
+        "Review the advance payment and damage deposit amounts after changing the listing currency.",
+    });
+    wroteNothing();
+  });
+
+  it("marks an explicit 'neither' reviewed and stores no currency", async () => {
+    // This is the answer that stops a new listing quoting UNANSWERED terms to guests
+    // and raising an incomplete payment-arrangements task the day it goes live.
+    await submitNewListing(withDeposits(emptyDepositPoliciesDraft()));
+
+    expect(created()).toMatchObject({
+      advancePaymentEnabled: false,
+      damageDepositEnabled: false,
+      depositPoliciesCurrency: null,
+    });
+    expect(created().depositPoliciesReviewedAt).toBeInstanceOf(Date);
+  });
+
+  it("leaves the marker alone for a publisher that never asked", async () => {
+    // The mobile app and the classic wizard have no deposit screen. Their listings
+    // stay publishable and keep the Today task that collects the answer.
+    await submitNewListing(publishableForm());
+
+    expect(created()).not.toHaveProperty("depositPoliciesReviewedAt");
+    expect(created()).not.toHaveProperty("advancePaymentEnabled");
+  });
+
+  it("refuses an answer whose amounts do not stand up, and writes nothing", async () => {
+    const answer = emptyDepositPoliciesDraft();
+    answer.currency = "EUR";
+    answer.advancePayment = {
+      enabled: true,
+      amountType: "PERCENTAGE",
+      value: "150",
+      dueTiming: "AFTER_ACCEPTANCE",
+      dueDaysBeforeCheckIn: null,
+    };
+
+    const result = await submitNewListing(withDeposits(answer));
+
+    expect(result).toHaveProperty("error");
+    wroteNothing();
+  });
+
+  it("refuses a malformed answer rather than reading it as 'neither'", async () => {
+    const formData = publishableForm();
+    formData.set("depositPolicies", "{not json");
+
+    expect(await submitNewListing(formData)).toHaveProperty("error");
+    wroteNothing();
+
+    vi.clearAllMocks();
+    mocks.auth.mockResolvedValue({ user: { id: "host-1", isHost: true } });
+    mocks.getExchangeRates.mockResolvedValue({ rates: { USD: 1.08 } });
+    mocks.generateUniqueSlug.mockResolvedValue("sunny-house");
+    mocks.propertyCreate.mockResolvedValue({ id: "property-1" });
+    mocks.listingCreate.mockResolvedValue({ id: "listing-1", slug: "sunny-house" });
+
+    expect(await submitNewListing(withDeposits({ reviewed: true }))).toHaveProperty("error");
     wroteNothing();
   });
 });

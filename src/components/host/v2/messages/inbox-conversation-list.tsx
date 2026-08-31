@@ -47,7 +47,12 @@ function formatStamp(value: string, locale: string) {
 function formatStayRange(checkIn: string, checkOut: string, locale: string) {
   const from = new Date(checkIn);
   const to = new Date(checkOut);
-  const day = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" });
+  const day = new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "short",
+    // Booking check-in/out values are calendar dates serialized at UTC midnight.
+    timeZone: "UTC",
+  });
   return `${day.format(from)} – ${day.format(to)}`;
 }
 

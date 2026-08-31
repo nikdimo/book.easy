@@ -15,6 +15,11 @@ export default defineConfig({
     // focused runs still complete in seconds and failures remain bounded.
     testTimeout: 30000,
     hookTimeout: 30000,
+    // Test files share one real database. Running them in parallel lets a global
+    // operation in one file (for example, completing every booking whose checkout has
+    // passed) mutate another file's fixtures between its action and assertion. Keep
+    // files serial until each worker has an isolated database/schema.
+    fileParallelism: false,
   },
   resolve: {
     alias: {

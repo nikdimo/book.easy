@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/shared/empty-state";
-import { formatDate, formatPrice } from "@/lib/utils/format";
+import { formatCalendarDate, formatPrice } from "@/lib/utils/format";
 import { BOOKING_STATUSES } from "@/lib/constants";
 import { getT, T, t as text } from "@/lib/i18n/t";
 import { resolveBookingStatus } from "@/lib/i18n/status-labels";
@@ -76,7 +76,7 @@ export default async function MyBookingsPage() {
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-sm">
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
-                        {formatDate(booking.checkIn, t.locale)} – {formatDate(booking.checkOut, t.locale)}
+                        {formatCalendarDate(booking.checkIn, t.locale)} – {formatCalendarDate(booking.checkOut, t.locale)}
                       </span>
                       <span className="font-medium">{formatPrice(Number(booking.totalPrice), booking.currency, t.locale)}</span>
                     </div>

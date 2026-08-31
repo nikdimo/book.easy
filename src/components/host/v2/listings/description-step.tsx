@@ -55,7 +55,7 @@ export function DescriptionStep({
   const query = `propertyType=${encodeURIComponent(propertyType.value)}&spaceType=${encodeURIComponent(spaceType)}`;
   /** Where the CTA goes, and what it says: on to the next question, or back to the
    *  summary the host came from. */
-  const { href: nextHref, label: nextLabel } = stepNextTarget(
+  const { href: nextHref, label: nextLabel, route: nextRoute } = stepNextTarget(
     returnToReview,
     query,
     `/host/start/phase-two-complete?${query}`,
@@ -200,7 +200,12 @@ export function DescriptionStep({
             setView("title");
             return;
           }
-          if (await save({ title: title.trim(), description: description.trim(), currentStepId: "pricing" })) {
+          if (await save({
+            title: title.trim(),
+            description: description.trim(),
+            currentStepId: "pricing",
+            currentRoute: nextRoute,
+          })) {
             router.push(nextHref);
           }
         }}

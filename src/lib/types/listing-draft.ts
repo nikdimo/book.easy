@@ -3,6 +3,39 @@ import type { PrePublishPlan } from "@/lib/types/listing-prepublish-plan";
 import type { ImportedPriceQuote } from "@/lib/listing-import/types";
 import type { PaymentMethodCode } from "@/lib/payments/payment-methods";
 import type { PaymentInstructionTemplates } from "@/lib/payments/payment-instruction-templates";
+import type {
+  DepositAmountType,
+  DepositDueTiming,
+} from "@/lib/payments/deposit-policies";
+
+/**
+ * One deposit section exactly as the wizard's form holds it.
+ *
+ * `enabled: false` is a complete answer, not an absent one — the numbers stay beside it
+ * so a host who switches a section off and back on gets their values returned rather
+ * than an empty form. The amount is a string for the same reason every other money
+ * field on a draft is: it is whatever the host typed, and it is validated once, at
+ * publish, by `validateDepositPolicies`.
+ */
+export interface ListingDraftDepositSection {
+  enabled: boolean;
+  amountType: DepositAmountType;
+  value: string;
+  dueTiming: DepositDueTiming;
+  dueDaysBeforeCheckIn: number | null;
+}
+
+export interface ListingDraftDamageDepositSection extends ListingDraftDepositSection {
+  returnDaysAfterCheckout: number | null;
+}
+
+/** The host's answer to both deposit questions, carried as one object. */
+export interface ListingDraftDepositPolicies {
+  /** Currency in which the host last reviewed any enabled monetary amount. */
+  currency?: string;
+  advancePayment: ListingDraftDepositSection;
+  damageDeposit: ListingDraftDamageDepositSection;
+}
 
 /** Shape of ListingDraft.data — a new listing's in-progress form state, autosaved on
  * blur before it's complete enough to become a real Listing/Property row. Every field
@@ -13,6 +46,17 @@ export interface ListingDraftData {
    *  one that's written now, and this is only read when that's missing. */
   currentStep?: number;
   currentStepId?: string;
+  /**
+   * The host-start wizard's own route, and the authority on where a draft resumes.
+   *
+   * `currentStepId` speaks the eleven-step `LISTING_STEPS` vocabulary the mobile app
+   * shares, which has no name for four of this wizard's screens — payment
+   * arrangements, availability, house rules and review all collapsed onto one id and
+   * resumed on the wrong screen. This field names the screen itself. It is written
+   * alongside `currentStepId`, never instead of it, so the mobile app keeps resolving
+   * the same draft through the vocabulary it understands.
+   */
+  currentRoute?: string;
   title?: string;
   description?: string;
   propertyType?: string;
@@ -44,6 +88,21 @@ export interface ListingDraftData {
   paymentInstructionTemplates?: PaymentInstructionTemplates;
   /** Raw V2 field text per method, exactly as the wizard's inputs hold it. */
   paymentDetails?: Partial<Record<PaymentMethodCode, Record<string, string>>>;
+  /**
+   * The advance-payment and damage-deposit answer, and the draft's own review marker:
+   * this field is written only when the host has been shown both questions and given a
+   * complete answer to each, which includes explicitly asking for neither.
+   *
+   * Absent therefore means genuinely unasked — a draft started before the wizard posed
+   * the question, or one imported from a provider — and publishing such a draft would
+   * freeze `UNANSWERED` deposit terms onto every booking it takes. That is what the
+   * Review screen's deposit blocker exists to catch. See
+   * `lib/host/v2/listing-deposit-draft.ts`, which owns the conversion in both
+   * directions.
+   */
+  depositPolicies?: ListingDraftDepositPolicies;
+  /** Whole days before check-in through which a guest may cancel for a full refund. */
+  freeCancellationDaysBeforeCheckIn?: string;
   checkInTime?: string;
   checkOutTime?: string;
   /**

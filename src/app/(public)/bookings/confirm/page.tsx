@@ -9,7 +9,12 @@ import { Separator } from "@/components/ui/separator";
 import { LocalizedPrice } from "@/components/shared/localized-price";
 import { auth } from "@/lib/auth";
 import { getGuestBookingForConfirmation } from "@/lib/services/booking.service";
-import { formatDate } from "@/lib/utils/format";
+import {
+  bookingPartyDetailLine,
+  resolveBookingParty,
+} from "@/lib/booking-party";
+import { resolveBookingPricing } from "@/lib/booking-pricing";
+import { formatCalendarDate } from "@/lib/utils/format";
 import { formatMoney } from "@/lib/currency/convert";
 import { getTForLocale, T, TWithValues, ti, tPlural } from "@/lib/i18n/t";
 import { BookingStatusHero } from "@/components/booking/booking-status-hero";
@@ -35,16 +40,20 @@ export default async function BookingConfirmPage({ searchParams }: ConfirmPagePr
   if (!booking) redirect("/");
   const t = await getTForLocale(booking.guestLocale ?? "en");
   const guests = tPlural(t, "booking.guests", booking.guestCount, "{n} guest", "{n} guests");
+  // The confirmation shows the guest what was actually sent, so it shows the whole
+  // party — not just the two counters that make up the capacity number above it.
+  const partyDetail = bookingPartyDetailLine(t, resolveBookingParty(booking));
   const nights = tPlural(t, "booking.nights", booking.numberOfNights, "{n} night", "{n} nights");
   const reference = ti(t, "booking.reference", "Booking reference: {reference}", {
     reference: booking.reference,
   });
-  const priceBreakdown = booking.priceBreakdown as {
-    accommodationSubtotal?: number;
-  } | null;
-  const accommodationSubtotal =
-    priceBreakdown?.accommodationSubtotal ??
-    Number(booking.nightlyRate) * booking.numberOfNights;
+  // One resolver, shared with the account page, the host page and the mobile API.
+  // `nightlyRate` is a rounded average and the old fallback multiplied it by the nights,
+  // which misses the total by a cent or more on an uneven stay (audit L2). The rows
+  // below print the *gross* accommodation and cleaning figures because the promotion has
+  // a line of its own: gross + gross - discount is `totalPrice`, while the net figures
+  // beside that same line would subtract the promotion twice.
+  const pricing = resolveBookingPricing(booking);
   const status = BOOKING_STATUSES.find((item) => item.value === booking.status);
   const isPending = booking.status === "PENDING";
 
@@ -133,7 +142,7 @@ export default async function BookingConfirmPage({ searchParams }: ConfirmPagePr
                 translate="no"
               >
                 <Calendar className="h-3 w-3" />
-                {formatDate(booking.checkIn, t.requestedLocale)}
+                {formatCalendarDate(booking.checkIn, t.requestedLocale)}
               </p>
             </div>
             <div>
@@ -143,7 +152,7 @@ export default async function BookingConfirmPage({ searchParams }: ConfirmPagePr
                 translate="no"
               >
                 <Calendar className="h-3 w-3" />
-                {formatDate(booking.checkOut, t.requestedLocale)}
+                {formatCalendarDate(booking.checkOut, t.requestedLocale)}
               </p>
             </div>
             <div>
@@ -152,6 +161,13 @@ export default async function BookingConfirmPage({ searchParams }: ConfirmPagePr
                 <Users className="h-3 w-3" />
                 <span className={guests.translated ? "notranslate" : undefined}>{guests.text}</span>
               </p>
+              {partyDetail ? (
+                <p
+                  className={`mt-0.5 text-xs text-muted-foreground ${partyDetail.translated ? "notranslate" : ""}`}
+                >
+                  {partyDetail.text}
+                </p>
+              ) : null}
             </div>
             <div>
               <p className="text-muted-foreground"><T t={t} k="booking.nights_label" source="Nights" /></p>
@@ -164,22 +180,22 @@ export default async function BookingConfirmPage({ searchParams }: ConfirmPagePr
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span><T t={t} k="booking.accommodation" source="Accommodation" /> · <span className={nights.translated ? "notranslate" : undefined}>{nights.text}</span></span>
-              <LocalizedPrice official exact amount={accommodationSubtotal} currency={booking.currency} locale={t.locale} />
+              <LocalizedPrice official exact amount={pricing.originalAccommodationSubtotal} currency={booking.currency} locale={t.locale} />
             </div>
-            {Number(booking.cleaningFee) > 0 && (
+            {pricing.originalCleaningFee > 0 && (
               <div className="flex justify-between">
                 <span><T t={t} k="booking.cleaning_fee" source="Cleaning fee" /></span>
-                <LocalizedPrice official exact amount={Number(booking.cleaningFee)} currency={booking.currency} locale={t.locale} />
+                <LocalizedPrice official exact amount={pricing.originalCleaningFee} currency={booking.currency} locale={t.locale} />
               </div>
             )}
-            {Number(booking.discountAmount) > 0 && (
+            {pricing.discountAmount > 0 && (
               <div className="flex justify-between text-green-700">
                 <span>
                   {booking.promotionType === "FREE_CLEANING"
                     ? <T t={t} k="promotion.free_cleaning" source="Free cleaning" />
                     : <T t={t} k="promotion.special_offer" source="Special offer" />}
                 </span>
-                <span>−<LocalizedPrice official exact amount={Number(booking.discountAmount)} currency={booking.currency} locale={t.locale} /></span>
+                <span>−<LocalizedPrice official exact amount={pricing.discountAmount} currency={booking.currency} locale={t.locale} /></span>
               </div>
             )}
             <Separator />

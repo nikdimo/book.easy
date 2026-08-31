@@ -46,12 +46,19 @@ describe("isVisibilitySwitchable", () => {
     expect(isVisibilitySwitchable("APPROVED")).toBe(true);
     expect(isVisibilitySwitchable("UNPUBLISHED")).toBe(true);
     expect(isVisibilitySwitchable("DRAFT")).toBe(true);
-    expect(isVisibilitySwitchable("REJECTED")).toBe(true);
   });
 
   it("is not switchable for admin-owned states", () => {
     expect(isVisibilitySwitchable("SUSPENDED")).toBe(false);
-    expect(isVisibilitySwitchable("PENDING_REVIEW")).toBe(false);
     expect(isVisibilitySwitchable("ARCHIVED")).toBe(false);
   });
+
+  // L4: the retired moderation statuses must not hand the host a publish control that
+  // `submitForReview` would now refuse.
+  it.each(["PENDING_REVIEW", "REJECTED"])(
+    "is not switchable for the retired status %s",
+    (status) => {
+      expect(isVisibilitySwitchable(status)).toBe(false);
+    },
+  );
 });

@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUserPage } from "@/lib/auth-helpers";
 import { getPostStayReviewContext } from "@/lib/services/review.service";
-import { formatDate, formatPrice } from "@/lib/utils/format";
+import { formatCalendarDate, formatDate, formatPrice } from "@/lib/utils/format";
 import { formatMoney } from "@/lib/currency/convert";
 import { getT, T, TWithValues, t, ti, type Translator } from "@/lib/i18n/t";
 
@@ -117,7 +117,7 @@ export default async function AfterStayPage({
         <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
           <span className="flex items-center gap-1.5">
             <CalendarDays className="h-4 w-4" />
-            {formatDate(booking.checkIn, translator.locale)} – {formatDate(booking.checkOut, translator.locale)}
+            {formatCalendarDate(booking.checkIn, translator.locale)} – {formatCalendarDate(booking.checkOut, translator.locale)}
           </span>
           <span className="flex items-center gap-1.5">
             <MapPin className="h-4 w-4" />

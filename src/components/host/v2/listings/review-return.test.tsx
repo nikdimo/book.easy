@@ -37,13 +37,17 @@ describe("listing-flow-return", () => {
   it("sends a marked step back to Review and says so", () => {
     const query = "propertyType=HOUSE&spaceType=ENTIRE_PLACE";
 
+    // `route` is the same destination named as a wizard route, for the step to record
+    // on the draft so a host who leaves resumes where they were going.
     expect(stepNextTarget(true, query, "/host/start/photos?x")).toEqual({
       href: `/host/start/review?${query}`,
       label: "Save and review",
+      route: "review",
     });
     expect(stepNextTarget(false, query, "/host/start/photos?x")).toEqual({
       href: "/host/start/photos?x",
       label: "Next",
+      route: "photos",
     });
   });
 

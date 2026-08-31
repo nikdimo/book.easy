@@ -16,7 +16,6 @@ export type ListingStateTone = "error" | "warning" | "waiting" | "neutral";
 export type ListingStateCode =
   | "SYNC_FAILED"
   | "SUSPENDED"
-  | "REJECTED"
   | "NO_PRICE"
   | "OUT_OF_DATES"
   | "FEW_PHOTOS"
@@ -54,9 +53,6 @@ export function resolveListingState(
   if (listing.status === "SUSPENDED") {
     return { code: "SUSPENDED", tone: "error", values: {} };
   }
-  if (listing.status === "REJECTED") {
-    return { code: "REJECTED", tone: "error", values: {} };
-  }
 
   // ── Blocked: live, or nearly so, but a guest cannot complete a booking ─────────
   if (listing.status !== "ARCHIVED" && listing.baseNightlyRate === null) {
@@ -80,7 +76,9 @@ export function resolveListingState(
   if (listing.status === "ARCHIVED") {
     return { code: "ARCHIVED", tone: "waiting", values: {} };
   }
-  if (listing.status === "PENDING_REVIEW" || listing.needsReview) {
+  // Moderation is post-publication, so "waiting for review" is a flag on a live
+  // listing rather than a status of its own.
+  if (listing.needsReview) {
     return { code: "NEEDS_REVIEW", tone: "waiting", values: {} };
   }
   if (listing.status === "UNPUBLISHED" || listing.status === "DRAFT") {

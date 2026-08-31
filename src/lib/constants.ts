@@ -1,8 +1,9 @@
+/** Mirrors `ListingStatus`. Moderation is post-publication, so there is no queued or
+ *  rejected listing state — an approved listing carries `needsReview` until an admin
+ *  clears it, and anything unsafe is SUSPENDED. */
 export const LISTING_STATUSES = [
   { value: "DRAFT", label: "Draft", color: "secondary" },
-  { value: "PENDING_REVIEW", label: "Pending Review", color: "warning" },
   { value: "APPROVED", label: "Approved", color: "success" },
-  { value: "REJECTED", label: "Rejected", color: "destructive" },
   { value: "UNPUBLISHED", label: "Unpublished", color: "secondary" },
   { value: "SUSPENDED", label: "Suspended", color: "destructive" },
   { value: "ARCHIVED", label: "Archived", color: "secondary" },

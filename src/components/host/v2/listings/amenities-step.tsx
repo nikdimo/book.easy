@@ -78,7 +78,7 @@ export function AmenitiesStep({
   const query = `propertyType=${encodeURIComponent(propertyType.value)}&spaceType=${encodeURIComponent(spaceType)}`;
   /** Where the CTA goes, and what it says: on to the next question, or back to the
    *  summary the host came from. */
-  const { href: nextHref, label: nextLabel } = stepNextTarget(
+  const { href: nextHref, label: nextLabel, route: nextRoute } = stepNextTarget(
     returnToReview,
     query,
     `/host/start/photos?${query}`,
@@ -312,7 +312,7 @@ export function AmenitiesStep({
         nextHref={nextHref}
         backHref={returnToReview ? reviewHref(query) : `/host/start/phase-one-complete?${query}`}
         onNext={async () => {
-          if (await save({ amenityIds: [...selected], currentStepId: "photos" })) {
+          if (await save({ amenityIds: [...selected], currentStepId: "photos", currentRoute: nextRoute })) {
             window.location.assign(nextHref);
           }
         }}

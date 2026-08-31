@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { createAuditLog } from "@/lib/services/audit.service";
 import { cancelBooking } from "@/lib/services/booking.service";
+import { suspendListingForAdmin } from "@/lib/services/listing-lifecycle.service";
 import { revalidatePublicListingCaches } from "@/lib/utils/revalidate-public-listing-caches";
 import { revalidatePath } from "next/cache";
 
@@ -37,22 +38,15 @@ export async function suspendListing(listingId: string, reason: string) {
 
   if (!reason) return { error: "Suspension reason is required" };
 
-  const listing = await db.listing.findUnique({ where: { id: listingId } });
-  if (!listing || listing.status !== "APPROVED") {
-    return { error: "Only approved listings can be suspended" };
-  }
-
-  await db.listing.update({
-    where: { id: listingId },
-    data: { status: "SUSPENDED", moderationNote: reason, needsReview: false },
-  });
+  const result = await suspendListingForAdmin(listingId, reason);
+  if (!result.success) return { error: result.error };
 
   await createAuditLog({
     userId: admin.id,
     action: "listing.suspend",
     entityType: "Listing",
     entityId: listingId,
-    metadata: { listingTitle: listing.title, reason },
+    metadata: { listingTitle: result.listingTitle, reason },
   });
 
   revalidatePath("/admin/listings");

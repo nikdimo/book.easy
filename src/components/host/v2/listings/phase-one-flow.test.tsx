@@ -1,5 +1,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
 import { AddressStep } from "@/components/host/v2/listings/address-step";
 import { BasicsStep } from "@/components/host/v2/listings/basics-step";
 import { PhaseOneComplete } from "@/components/host/v2/listings/phase-one-complete";

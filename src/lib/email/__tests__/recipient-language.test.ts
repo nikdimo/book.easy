@@ -5,7 +5,11 @@ import { guestEmailLocale } from "@/lib/email/i18n/recipient-locale";
 import { getEmailT } from "@/lib/email/i18n";
 import { resolveEmailLocale, SUPPORTED_EMAIL_LOCALES } from "@/lib/email/i18n/locales";
 import { guestCountKey, guestCountSource } from "@/lib/email/i18n/dynamic-keys";
-import { formatDate, formatPrice } from "@/lib/utils/format";
+import {
+  formatCalendarDate,
+  formatDate,
+  formatPrice,
+} from "@/lib/utils/format";
 
 /**
  * Which language a recipient's mail goes out in, and whether the dates and money
@@ -97,6 +101,7 @@ describe("every send site picks a recipient's own language", () => {
   it("formats every date and price in the email's own language", () => {
     // A German confirmation with American dates in it is still a bug.
     const calls = [
+      ...callArguments(source, "formatCalendarDate"),
       ...callArguments(source, "formatDate"),
       ...callArguments(source, "formatPrice"),
       // The host response deadline formats itself, with its own Intl call.
@@ -125,6 +130,12 @@ describe("dates and money inside an email", () => {
   it("produces a date in every supported email language", () => {
     for (const locale of SUPPORTED_EMAIL_LOCALES) {
       expect(formatDate(checkIn, locale), locale).toMatch(/2026/);
+    }
+  });
+
+  it("formats a booking calendar day in every supported email language", () => {
+    for (const locale of SUPPORTED_EMAIL_LOCALES) {
+      expect(formatCalendarDate("2026-08-25", locale), locale).toMatch(/2026/);
     }
   });
 

@@ -11,6 +11,7 @@ import { useRouter } from "expo-router";
 import { AppScreen, EmptyNotice, LoadingState, Pill, SectionHeader } from "@/components/ui";
 import { useLanguage } from "@/context/language-context";
 import { AdminUserItem, fetchAdminUsers, toggleUserStatus } from "@/lib/api";
+import { isAdminRole } from "@/lib/roles";
 import { colors, radii, spacing, type } from "@/theme";
 
 type UserFilter = "all" | "hosts" | "admins" | "deactivated";
@@ -68,7 +69,7 @@ export default function AdminUsersScreen() {
     if (!matchesSearch) return false;
 
     if (filterTab === "hosts") return u.isHost;
-    if (filterTab === "admins") return u.role === "ADMIN" || u.role === "SUPERADMIN";
+    if (filterTab === "admins") return isAdminRole(u.role);
     if (filterTab === "deactivated") return !u.isActive;
     return true;
   });
@@ -171,7 +172,7 @@ export default function AdminUsersScreen() {
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                   <Text style={styles.userName}>{item.name || "Unnamed User"}</Text>
-                  {item.role === "ADMIN" || item.role === "SUPERADMIN" ? (
+                  {isAdminRole(item.role) ? (
                     <Pill label="ADMIN" tone="warning" />
                   ) : item.isHost ? (
                     <Pill label="HOST" tone="success" />

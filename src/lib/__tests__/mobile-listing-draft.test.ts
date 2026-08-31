@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
+import type { Prisma } from "@prisma/client";
 import {
   listingDraftData,
   mergeMobileListingDraft,
   parseMobileListingDraftPatch,
 } from "@/lib/mobile-listing-draft";
 import { LISTING_STEP, LISTING_STEPS } from "@/lib/constants/listing-steps";
+import { HOST_START_ROUTES } from "@/lib/host-start-draft";
+import { emptyDepositPoliciesDraft } from "@/lib/host/v2/listing-deposit-draft";
 
 describe("mobile listing draft patches", () => {
   it("merges stable native fields without overwriting web location or photos", () => {
@@ -345,5 +348,63 @@ describe("house rules in the mobile draft contract", () => {
       quietHoursPolicy: "NONE",
       additionalRules: "Bins out on Tuesday.",
     });
+  });
+});
+
+describe("the web wizard's own fields on a shared draft", () => {
+  it("accepts every route the wizard defines, alongside the shared step id", () => {
+    for (const route of HOST_START_ROUTES) {
+      expect(
+        parseMobileListingDraftPatch({ currentRoute: route, currentStepId: "specialOffer" }),
+        route,
+      ).toEqual({
+        data: {
+          currentRoute: route,
+          currentStep: LISTING_STEP.specialOffer,
+          currentStepId: "specialOffer",
+        },
+      });
+    }
+  });
+
+  it("rejects a route the wizard does not have", () => {
+    expect(parseMobileListingDraftPatch({ currentRoute: "a-screen-we-removed" })).toEqual({
+      error: "Invalid listing draft data",
+    });
+  });
+
+  it("carries a complete deposit answer through untouched", () => {
+    const depositPolicies = emptyDepositPoliciesDraft();
+    depositPolicies.damageDeposit = {
+      enabled: true,
+      amountType: "FIXED",
+      value: "200",
+      dueTiming: "AT_CHECK_IN",
+      dueDaysBeforeCheckIn: null,
+      returnDaysAfterCheckout: 7,
+    };
+
+    expect(parseMobileListingDraftPatch({ depositPolicies })).toEqual({
+      data: { depositPolicies },
+    });
+  });
+
+  it("refuses half an answer, because half of one reads as 'off' for the other", () => {
+    expect(
+      parseMobileListingDraftPatch({
+        depositPolicies: { advancePayment: emptyDepositPoliciesDraft().advancePayment },
+      }),
+    ).toEqual({ error: "Invalid listing draft data" });
+  });
+
+  it("leaves an older draft's stored answer alone when a patch does not mention it", () => {
+    const depositPolicies = emptyDepositPoliciesDraft();
+
+    expect(
+      mergeMobileListingDraft(
+        { title: "Sunny loft", depositPolicies } as unknown as Prisma.JsonValue,
+        { title: "Sunnier" },
+      ),
+    ).toEqual({ title: "Sunnier", depositPolicies });
   });
 });

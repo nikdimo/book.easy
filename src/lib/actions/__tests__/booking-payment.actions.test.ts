@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
   isBookingPaymentEvent: vi.fn(),
   recordBookingPaymentEvent: vi.fn(),
+  paymentEventNeedsPrivateRecord: vi.fn(),
   createAuditLog: vi.fn(),
   revalidatePath: vi.fn(),
 }));
@@ -12,6 +13,7 @@ vi.mock("@/lib/auth", () => ({ auth: mocks.auth }));
 vi.mock("@/lib/services/booking-payment-status.service", () => ({
   isBookingPaymentEvent: mocks.isBookingPaymentEvent,
   recordBookingPaymentEvent: mocks.recordBookingPaymentEvent,
+  paymentEventNeedsPrivateRecord: mocks.paymentEventNeedsPrivateRecord,
 }));
 vi.mock("@/lib/services/audit.service", () => ({ createAuditLog: mocks.createAuditLog }));
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
@@ -23,6 +25,7 @@ describe("record booking payment event action", () => {
     vi.clearAllMocks();
     mocks.auth.mockResolvedValue({ user: { id: "guest-1" } });
     mocks.isBookingPaymentEvent.mockReturnValue(true);
+    mocks.paymentEventNeedsPrivateRecord.mockReturnValue(false);
     mocks.recordBookingPaymentEvent.mockResolvedValue({ changed: true });
   });
 

@@ -41,6 +41,12 @@ export async function POST(req: Request) {
       guests: parseNumber(body.guests),
       minPrice: parseNumber(body.minPrice),
       maxPrice: parseNumber(body.maxPrice),
+      // The two bounds mean nothing without the currency they are stated in — the
+      // preview count would otherwise compare them against whatever each host quoted
+      // in and promise a number of homes the results page does not deliver. A body
+      // written before this field existed carries euro numbers, which is what the
+      // service's own fallback reads a missing value as.
+      currency: parseString(body.currency),
       bedrooms: parseNumber(body.bedrooms),
       propertyTypes: parseStringArray(body.propertyTypes),
       amenities: parseStringArray(body.amenities),

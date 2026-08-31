@@ -1,6 +1,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
-import { HouseRulesStep } from "@/components/host/v2/listings/house-rules-step";
+import { describe, expect, it, vi } from "vitest";
+import {
+  HouseRulesStep,
+  RulesHeader,
+} from "@/components/host/v2/listings/house-rules-step";
 import { HostStartDraftProvider } from "@/components/host/v2/listings/host-start-draft-provider";
 import { MAX_GUESTS_MAX, MAX_GUESTS_MIN } from "@/lib/host/v2/listing-house-rules";
 import { houseRulesDraftPatch } from "@/lib/host/v2/listing-house-rules-draft";
@@ -191,5 +194,149 @@ describe("HouseRulesStep required answers", () => {
     const html = step({}, UNANSWERED);
 
     expect(html).not.toContain("Choose an answer so guests know where they stand.");
+    expect(html).not.toContain('role="alert"');
+    expect(html).not.toContain("Answer these house-rule questions to continue");
+  });
+
+  it("says up front that four answers are needed, and marks the rows that need them", () => {
+    const html = step({}, UNANSWERED);
+
+    expect(html).toContain(
+      "Guests agree to these when they book, so all four need an answer before you continue.",
+    );
+    // One mark per required policy, and none on the row that is genuinely optional.
+    expect((html.match(/>Required</g) ?? []).length).toBe(4);
+    expect(html).toContain(">Optional<");
+  });
+
+  it("asks for an answer rather than reporting a blank", () => {
+    const html = step({}, UNANSWERED);
+
+    // "Not set" describes; four rows of it give a host no clue which ones are the
+    // reason Next is not moving.
+    expect(html).not.toContain("Not set");
+    expect((html.match(/Choose an answer/g) ?? []).length).toBe(4);
+  });
+
+  it("says that the arrival times and party size already carry values", () => {
+    expect(step({}, UNANSWERED)).toContain(
+      "These start at the usual times and party size. Change any of them if yours are different.",
+    );
+  });
+
+  it("counts the answers, and the count moves with them", () => {
+    expect(step({}, UNANSWERED)).toContain("0 of 4 answered");
+    expect(step({}, { ...UNANSWERED, petPolicy: "ALLOWED" })).toContain("1 of 4 answered");
+    expect(
+      step({}, { ...UNANSWERED, petPolicy: "ALLOWED", smokingPolicy: "NOT_ALLOWED" }),
+    ).toContain("2 of 4 answered");
+    expect(step({}, ANSWERED)).toContain("4 of 4 answered");
+  });
+
+  it("does not count 'set quiet hours' with a missing end as an answer", () => {
+    const html = step({}, {
+      ...ANSWERED,
+      quietHoursPolicy: "SET",
+      quietHoursStart: "22:00",
+      quietHoursEnd: "",
+    });
+
+    expect(html).toContain("3 of 4 answered");
+  });
+
+  it("keeps the last card clear of the sticky footer at every width", () => {
+    expect(step()).toContain("pb-40 pt-6 md:px-8 md:pb-32");
+  });
+});
+
+describe("the house-rules error summary", () => {
+  const goTo = vi.fn();
+
+  it("names every unanswered rule in one alert", () => {
+    const html = renderToStaticMarkup(
+      <RulesHeader
+        answered={1}
+        showIssues
+        saveFailed={false}
+        onGoToRow={goTo}
+        issues={{
+          petPolicy: "REQUIRED",
+          eventPolicy: "REQUIRED",
+          quietHoursPolicy: "REQUIRED",
+        }}
+      />,
+    );
+
+    expect(html).toContain("Answer these house-rule questions to continue");
+    expect(html).toContain(">Pets<");
+    expect(html).toContain(">Parties and events<");
+    expect(html).toContain(">Quiet hours<");
+    expect(html).not.toContain(">Smoking<");
+    // One live region for the whole screen. Four rows each announcing the same refusal
+    // is what a screen-reader user was left assembling the page from.
+    expect((html.match(/role="alert"/g) ?? []).length).toBe(1);
+    // Each entry is a control, so the rule it names is one press away.
+    expect((html.match(/<button/g) ?? []).length).toBe(3);
+  });
+
+  it("lists a half-set quiet-hours range once, not twice", () => {
+    const html = renderToStaticMarkup(
+      <RulesHeader
+        answered={3}
+        showIssues
+        saveFailed={false}
+        onGoToRow={goTo}
+        issues={{ quietHoursStart: "REQUIRED", quietHoursEnd: "REQUIRED" }}
+      />,
+    );
+
+    expect((html.match(/>Quiet hours</g) ?? []).length).toBe(1);
+  });
+
+  it("takes the cursor, so its announcement has somewhere to land", () => {
+    const html = renderToStaticMarkup(
+      <RulesHeader
+        answered={4}
+        showIssues={false}
+        saveFailed
+        onGoToRow={goTo}
+        issues={{}}
+      />,
+    );
+
+    expect(html).toContain('id="house-rules-error-summary"');
+    expect(html).toContain('tabindex="-1"');
+  });
+
+  it("says a failed save lost nothing and can be retried", () => {
+    const html = renderToStaticMarkup(
+      <RulesHeader
+        answered={4}
+        showIssues={false}
+        saveFailed
+        onGoToRow={goTo}
+        issues={{}}
+      />,
+    );
+
+    expect(html).toContain("Your house rules were not saved");
+    expect(html).toContain(
+      "Nothing you answered was lost. Check your connection and try again.",
+    );
+  });
+
+  it("stays quiet, and marks the step done, once all four are in", () => {
+    const html = renderToStaticMarkup(
+      <RulesHeader
+        answered={4}
+        showIssues
+        saveFailed={false}
+        onGoToRow={goTo}
+        issues={{}}
+      />,
+    );
+
+    expect(html).toContain("4 of 4 answered");
+    expect(html).not.toContain('role="alert"');
   });
 });

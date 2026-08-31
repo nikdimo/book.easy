@@ -38,10 +38,24 @@ import { getExchangeRates } from "@/lib/currency/rates";
 import { MIN_PUBLISH_PHOTOS } from "@/lib/host/v2/photo-draft";
 import { validateListingPaymentMethods } from "@/lib/payments/payment-methods";
 import {
+  validateDepositPolicies,
+  type DepositPoliciesConfig,
+} from "@/lib/payments/deposit-policies";
+import {
+  depositPoliciesDraftMatchesCurrency,
+  depositPoliciesPayload,
+  parseDepositPoliciesDraft,
+} from "@/lib/host/v2/listing-deposit-draft";
+import {
   paymentInstructionStoreSnapshot,
   validatePaymentInstructionTemplates,
   validatePaymentMethodDetailsMap,
 } from "@/lib/payments/payment-instruction-templates";
+import { validateCancellationPolicy } from "@/lib/payments/cancellation-policy";
+import {
+  archiveOwnedListing,
+  unpublishOwnedListing,
+} from "@/lib/services/listing-lifecycle.service";
 
 async function currencyIsCurrentlyQuotable(currency: string): Promise<boolean> {
   const rates = await getExchangeRates();
@@ -91,6 +105,9 @@ function draftDataFromForm(formData: FormData): Prisma.InputJsonValue {
     baseNightlyRate: str("baseNightlyRate"),
     cleaningFee: str("cleaningFee"),
     minNights: str("minNights"),
+    freeCancellationDaysBeforeCheckIn: str(
+      "freeCancellationDaysBeforeCheckIn",
+    ),
     checkInTime: str("checkInTime"),
     checkOutTime: str("checkOutTime"),
     petPolicy: str("petPolicy"),
@@ -221,11 +238,15 @@ function parseMediaItemsFromForm(formData: FormData): ListingMediaItem[] {
 
   return raw.flatMap((value) => {
     try {
-      const parsed = JSON.parse(value) as { url?: unknown; mediaType?: unknown };
+      const parsed = JSON.parse(value) as {
+        url?: unknown;
+        mediaType?: unknown;
+        isPanorama?: unknown;
+      };
       const url = typeof parsed.url === "string" ? parsed.url.trim() : "";
       const mediaType = parsed.mediaType === "VIDEO" ? "VIDEO" : parsed.mediaType === "IMAGE" ? "IMAGE" : null;
       if (!mediaType || !isValidUploadUrl(url)) return [];
-      return [{ url, mediaType }];
+      return [{ url, mediaType, isPanorama: mediaType === "IMAGE" && parsed.isPanorama === true }];
     } catch {
       return [];
     }
@@ -379,6 +400,61 @@ export async function submitNewListing(
       return { error: "Review the saved private payment details." };
     }
   }
+  /*
+   * The deposit answer, when the publisher had a screen to ask it on.
+   *
+   * Absent is a real state, not a missing field: the mobile app and the classic wizard
+   * do not ask, and their listings stay publishable with `depositPoliciesReviewedAt`
+   * null so the host's Today list collects the answer afterwards. The current wizard
+   * always sends it, which is what stops a freshly published listing from freezing
+   * `UNANSWERED` deposit terms onto its first booking and raising an "incomplete
+   * payment arrangements" task pointing back at a screen the host just finished.
+   *
+   * The currency is the listing's own, exactly as `saveListingDepositPolicies` takes it
+   * from the pricing rule. A percentage resolved against a total in one currency and
+   * labelled with another is the drift that rule exists to prevent, and this is the one
+   * moment where the two are guaranteed to agree.
+   */
+  const rawDepositPolicies = formData.get("depositPolicies");
+  let depositPolicies: DepositPoliciesConfig | null = null;
+  if (typeof rawDepositPolicies === "string" && rawDepositPolicies.trim() !== "") {
+    let parsedDepositPolicies: unknown;
+    try {
+      parsedDepositPolicies = JSON.parse(rawDepositPolicies);
+    } catch {
+      return { error: "Review your advance payment and damage deposit settings." };
+    }
+    const draft = parseDepositPoliciesDraft(parsedDepositPolicies);
+    if (!draft) {
+      return { error: "Review your advance payment and damage deposit settings." };
+    }
+    if (!depositPoliciesDraftMatchesCurrency(draft, data.currency)) {
+      return {
+        error:
+          "Review the advance payment and damage deposit amounts after changing the listing currency.",
+      };
+    }
+    const validation = validateDepositPolicies(
+      depositPoliciesPayload(draft, data.currency),
+    );
+    if (!validation.success) {
+      return { error: "Check the deposit amounts and timing before publishing." };
+    }
+    depositPolicies = validation.value;
+  }
+
+  const cancellationPolicy = validateCancellationPolicy(
+    formData.get("freeCancellationDaysBeforeCheckIn"),
+  );
+  if (!cancellationPolicy.success) {
+    return {
+      error:
+        cancellationPolicy.issue === "REQUIRED"
+          ? "Choose the free-cancellation deadline before publishing."
+          : "Free-cancellation days must be a whole number from 0 to 3650.",
+    };
+  }
+
   if (!(await currencyIsCurrentlyQuotable(data.currency))) {
     return { error: "That currency is not currently available. Choose another currency." };
   }
@@ -567,6 +643,39 @@ export async function submitNewListing(
             }) as unknown as Prisma.InputJsonObject,
           }
         : {}),
+      // Written only when the host was asked. Every column here has a schema default
+      // that already says "no deposit"; what a publisher without the screen must not
+      // get is `depositPoliciesReviewedAt`, because that marker is the whole difference
+      // between a host who chose to ask for nothing and one who was never asked.
+      ...(depositPolicies
+        ? {
+            advancePaymentEnabled: depositPolicies.advancePayment !== null,
+            advancePaymentType: depositPolicies.advancePayment?.amountType ?? null,
+            advancePaymentValue: depositPolicies.advancePayment?.value ?? null,
+            advancePaymentDueTiming:
+              depositPolicies.advancePayment?.dueTiming ?? "AFTER_ACCEPTANCE",
+            advancePaymentDueDaysBeforeCheckIn:
+              depositPolicies.advancePayment?.dueDaysBeforeCheckIn ?? null,
+            damageDepositEnabled: depositPolicies.damageDeposit !== null,
+            damageDepositType: depositPolicies.damageDeposit?.amountType ?? null,
+            damageDepositValue: depositPolicies.damageDeposit?.value ?? null,
+            damageDepositDueTiming:
+              depositPolicies.damageDeposit?.dueTiming ?? "AFTER_ACCEPTANCE",
+            damageDepositDueDaysBeforeCheckIn:
+              depositPolicies.damageDeposit?.dueDaysBeforeCheckIn ?? null,
+            damageDepositReturnDaysAfterCheckout:
+              depositPolicies.damageDeposit?.returnDaysAfterCheckout ?? null,
+            // Null when nothing is charged, so a listing that asks for neither keeps no
+            // stale quote — the same rule `saveListingDepositPolicies` applies.
+            depositPoliciesCurrency:
+              depositPolicies.advancePayment || depositPolicies.damageDeposit
+                ? data.currency
+                : null,
+            depositPoliciesReviewedAt: new Date(),
+          }
+        : {}),
+      freeCancellationDaysBeforeCheckIn: cancellationPolicy.value,
+      cancellationPolicyReviewedAt: new Date(),
       // "" is the host choosing to stay flexible; null is how that reads everywhere it
       // is displayed, so the empty string never reaches the database.
       checkInTime: data.checkInTime || null,
@@ -606,6 +715,7 @@ export async function submitNewListing(
         create: mediaItems.map((item, i) => ({
           url: item.url,
           mediaType: item.mediaType as ListingMediaType,
+          isPanorama: item.mediaType === "IMAGE" && item.isPanorama === true,
           displayOrder: i,
           isPrimary: i === primaryImageIndex,
         })),
@@ -788,6 +898,7 @@ export async function updateListing(listingId: string, formData: FormData) {
           listingId,
           url: item.url,
           mediaType: item.mediaType as ListingMediaType,
+          isPanorama: item.mediaType === "IMAGE" && item.isPanorama === true,
           displayOrder: i,
           isPrimary: i === primaryImageIndex,
         })),
@@ -805,6 +916,12 @@ export async function updateListing(listingId: string, formData: FormData) {
   return { success: true };
 }
 
+/**
+ * Publishes — or republishes — a listing. Named for a review queue this product does not
+ * run: moderation is post-publication, so this writes APPROVED with `needsReview` and the
+ * listing is live immediately. Only DRAFT and UNPUBLISHED are eligible; SUSPENDED and
+ * ARCHIVED are admin-owned and APPROVED is already live.
+ */
 export async function submitForReview(listingId: string) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Not authorized" };
@@ -822,12 +939,8 @@ export async function submitForReview(listingId: string) {
 
   if (!listing) return { error: "Listing not found" };
 
-  if (
-    listing.status !== "DRAFT" &&
-    listing.status !== "REJECTED" &&
-    listing.status !== "UNPUBLISHED"
-  ) {
-    return { error: "Only draft, rejected, or unpublished listings can be submitted for review" };
+  if (listing.status !== "DRAFT" && listing.status !== "UNPUBLISHED") {
+    return { error: "Only draft or unpublished listings can be published" };
   }
 
   if (!listing.pricingRule) return { error: "Please set pricing before submitting" };
@@ -864,16 +977,8 @@ export async function unpublishListing(listingId: string) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Not authorized" };
 
-  const listing = await db.listing.findFirst({
-    where: { id: listingId, hostId: session.user.id, status: "APPROVED" },
-  });
-
-  if (!listing) return { error: "Listing not found or cannot be unpublished" };
-
-  await db.listing.update({
-    where: { id: listingId },
-    data: { status: "UNPUBLISHED" },
-  });
+  const result = await unpublishOwnedListing(listingId, session.user.id);
+  if (!result.success) return { error: result.error };
 
   revalidatePath("/host/listings");
   revalidatePath("/host/listings");
@@ -890,28 +995,8 @@ export async function archiveListing(listingId: string) {
   const session = await auth();
   if (!session?.user?.id) return { error: "Not authorized" };
 
-  const listing = await db.listing.findFirst({
-    where: { id: listingId, hostId: session.user.id },
-    include: { bookings: { select: { status: true } } },
-  });
-
-  if (!listing) return { error: "Listing not found" };
-  if (listing.status === "ARCHIVED") return { success: true };
-
-  const hasActiveBooking = listing.bookings.some(
-    (b) => b.status === "PENDING" || b.status === "CONFIRMED",
-  );
-  if (hasActiveBooking) {
-    return {
-      error:
-        "Cannot archive a listing with active bookings. Cancel or complete pending bookings first.",
-    };
-  }
-
-  await db.listing.update({
-    where: { id: listingId },
-    data: { status: "ARCHIVED" },
-  });
+  const result = await archiveOwnedListing(listingId, session.user.id);
+  if (!result.success) return { error: result.error };
 
   revalidatePath("/host/listings");
   revalidatePath("/host/listings");

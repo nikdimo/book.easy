@@ -7,8 +7,17 @@ import {
   type ReviewReminderStage,
   type ReviewStatus,
 } from "@prisma/client";
-import { addDays } from "date-fns";
 import { db } from "@/lib/db";
+import {
+  addDaysToYmd,
+  marketplaceYmd,
+  ymdToDbDate,
+} from "@/lib/utils/date-only";
+import {
+  REVIEW_WINDOW_DAYS,
+  reviewWindowForBooking,
+  reviewWindowOpensAt,
+} from "@/lib/services/review-window";
 import { createAuditLog } from "@/lib/services/audit.service";
 import { createUserNotification } from "@/lib/services/notification.service";
 
@@ -29,15 +38,40 @@ export const HOST_REVIEW_CATEGORIES = [
   "HOUSE_RULES",
 ] as const satisfies readonly ReviewRatingCategory[];
 
-const REVIEW_WINDOW_DAYS = 14;
+/**
+ * When this stay's review window opens and closes, from the booking alone.
+ *
+ * Re-exported rather than reimplemented: `review-window.ts` is the single rule that
+ * completion, invitations, this page's context, submission and publication all read.
+ * Callers that already hold a stored invitation must prefer *its* deadline — see
+ * `deadlineForDirection`.
+ */
+export { reviewWindowForBooking, reviewWindowOpensAt } from "@/lib/services/review-window";
 
-export function getReviewDeadline(checkOut: Date) {
-  // Checkout is currently stored as a date. Until listing-specific checkout times
-  // are introduced, use the marketplace's standard 10:00 checkout as the opening
-  // instant, then grant the full fourteen days.
-  const checkoutInstant = new Date(checkOut);
-  checkoutInstant.setUTCHours(10, 0, 0, 0);
-  return addDays(checkoutInstant, REVIEW_WINDOW_DAYS);
+/** The fields the window rule needs, wherever a booking is selected for it. */
+const reviewWindowSelect = {
+  checkOut: true,
+  houseRulesSnapshot: true,
+} as const;
+
+/**
+ * The deadline that governs one direction of one booking.
+ *
+ * A stored invitation is authoritative. Its `deadline` column was written when the
+ * window opened and is what the recipient was told, in the notification and in the
+ * email; recomputing it would let a later change to the rule — or to the listing's
+ * checkout time — silently move a deadline someone is already counting on. Only a
+ * direction with no invitation yet falls back to the computed window.
+ */
+async function deadlineForDirection(
+  booking: { id: string; checkOut: Date; houseRulesSnapshot?: unknown },
+  direction: ReviewDirection,
+): Promise<Date> {
+  const invitation = await db.reviewInvitation.findUnique({
+    where: { bookingId_direction: { bookingId: booking.id, direction } },
+    select: { deadline: true },
+  });
+  return invitation?.deadline ?? reviewWindowForBooking(booking).deadline;
 }
 
 function cleanReviewText(value: string, label: string, min: number, max: number) {
@@ -78,6 +112,15 @@ function validateRatings(
 }
 
 async function getEligibleBooking(bookingId: string, userId: string) {
+  // A direct link to the after-stay flow must not depend on a scheduler having run.
+  // The sweep is idempotent and guarded, so running it here costs one indexed read on
+  // the overwhelming majority of visits and is the whole difference between "your stay
+  // ended an hour ago" and "Ratings open after the stay is completed" (L7). The booking
+  // is read *after* it, never before, or the status below would be the stale one.
+  const { completePastBookings } = await import("@/lib/services/booking.service");
+  const now = new Date();
+  await completePastBookings(now);
+
   const booking = await db.booking.findUnique({
     where: { id: bookingId },
     select: {
@@ -86,7 +129,7 @@ async function getEligibleBooking(bookingId: string, userId: string) {
       status: true,
       guestId: true,
       checkIn: true,
-      checkOut: true,
+      ...reviewWindowSelect,
       totalPrice: true,
       currency: true,
       displayCurrency: true,
@@ -111,26 +154,45 @@ async function getEligibleBooking(bookingId: string, userId: string) {
   if (!booking || !directionForUser(booking, userId)) {
     throw new Error("Completed stay not found");
   }
-  if (booking.status !== "COMPLETED") {
+  // Do not trust status alone. Rows completed by the old midnight rule, imported
+  // history, or an administrative correction can already say COMPLETED before this
+  // booking's frozen checkout time. The review window itself still starts at checkout.
+  if (
+    booking.status !== "COMPLETED" ||
+    reviewWindowOpensAt(booking).getTime() > now.getTime()
+  ) {
     throw new Error("Ratings open after the stay is completed");
   }
   return booking;
 }
 
-export async function ensureReviewInvitationsForBooking(bookingId: string) {
+export async function ensureReviewInvitationsForBooking(
+  bookingId: string,
+  now = new Date(),
+) {
   const booking = await db.booking.findUnique({
     where: { id: bookingId },
     select: {
       id: true,
       status: true,
-      checkOut: true,
+      ...reviewWindowSelect,
       guestId: true,
       listing: { select: { hostId: true } },
     },
   });
-  if (!booking || booking.status !== "COMPLETED") return [];
+  if (
+    !booking ||
+    booking.status !== "COMPLETED" ||
+    reviewWindowOpensAt(booking).getTime() > now.getTime()
+  ) {
+    return [];
+  }
 
-  const deadline = getReviewDeadline(booking.checkOut);
+  // Fourteen full days from the moment the stay actually ended. Written once, on the
+  // run that creates the row: `skipDuplicates` below means a booking that already has
+  // invitations keeps the deadline it was given, so no rerun and no later change to
+  // this rule rewrites a deadline a guest or host has already been told.
+  const deadline = reviewWindowForBooking(booking).deadline;
   await db.reviewInvitation.createMany({
     data: [
       {
@@ -248,7 +310,13 @@ export async function processDueReviewReminders(now = new Date()) {
   const missingInvitationBookings = await db.booking.findMany({
     where: {
       status: "COMPLETED",
-      checkOut: { gte: addDays(now, -REVIEW_WINDOW_DAYS), lte: now },
+      // `checkOut` is `@db.Date`: a calendar column, so the backfill window is
+      // bounded by calendar days rather than by the instant this sweep happens to run
+      // at, which slid the boundary by up to a day with the server's zone.
+      checkOut: {
+        gte: ymdToDbDate(addDaysToYmd(marketplaceYmd(now), -REVIEW_WINDOW_DAYS)),
+        lte: ymdToDbDate(marketplaceYmd(now)),
+      },
       reviewInvitations: { none: {} },
     },
     select: { id: true },
@@ -258,7 +326,7 @@ export async function processDueReviewReminders(now = new Date()) {
   );
   await Promise.allSettled(
     missingInvitationBookings.map((booking) =>
-      ensureReviewInvitationsForBooking(booking.id)
+      ensureReviewInvitationsForBooking(booking.id, now)
     )
   );
 
@@ -298,6 +366,7 @@ export async function getPostStayReviewContext(bookingId: string, userId: string
   const booking = await getEligibleBooking(bookingId, userId);
   await ensureReviewInvitationsForBooking(booking.id);
   const direction = directionForUser(booking, userId)!;
+  const deadline = await deadlineForDirection(booking, direction);
   const [ownReview, otherReview] = await Promise.all([
     db.review.findUnique({
       where: { bookingId_direction: { bookingId, direction } },
@@ -320,7 +389,7 @@ export async function getPostStayReviewContext(bookingId: string, userId: string
   return {
     booking,
     direction,
-    deadline: getReviewDeadline(booking.checkOut),
+    deadline,
     ownReview,
     otherPartySubmitted: Boolean(otherReview),
     otherReview: otherReview?.publishedAt ? otherReview : null,
@@ -336,7 +405,9 @@ export async function submitReview(input: {
 }) {
   const booking = await getEligibleBooking(input.bookingId, input.authorId);
   const direction = directionForUser(booking, input.authorId)!;
-  const deadline = getReviewDeadline(booking.checkOut);
+  // The invitation's own deadline when there is one — the same instant the recipient
+  // was shown — and the computed window only for a direction never invited.
+  const deadline = await deadlineForDirection(booking, direction);
   if (deadline <= new Date()) throw new Error("The 14-day rating window has closed");
 
   const ratings = validateRatings(direction, input.ratings);

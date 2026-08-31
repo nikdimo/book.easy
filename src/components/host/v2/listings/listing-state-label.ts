@@ -79,14 +79,6 @@ export function useListingStateLabel() {
         const s = resolve("host.v2.listings.state.suspended_short", "Suspended");
         return { text: r.text, short: s.text, className, translated: r.translated };
       }
-      case "REJECTED": {
-        const r = resolve(
-          "host.v2.listings.state.rejected",
-          "Changes were rejected — open the listing to see why",
-        );
-        const s = resolve("host.v2.listings.state.rejected_short", "Rejected");
-        return { text: r.text, short: s.text, className, translated: r.translated };
-      }
       case "NO_PRICE": {
         const r = resolve(
           "host.v2.listings.state.no_price",

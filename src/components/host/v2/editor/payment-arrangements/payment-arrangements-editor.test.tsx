@@ -161,7 +161,7 @@ describe("PaymentArrangementsEditor", () => {
     expect(html).toContain(
       "Payment is arranged directly with the host after the booking request is accepted.",
     );
-    expect(html).toContain("Choose at least one payment method to complete this section.");
+    expect(html).toContain("Choose at least one way guests can pay.");
   });
 
   it("shows an existing reviewed answer and the reviewed public explanation", () => {
@@ -232,7 +232,7 @@ describe("PaymentArrangementsEditor", () => {
     expect(html).toContain("DK50 •••• 6243");
   });
 
-  it("labels each row Ready or Missing details without calling it an error", () => {
+  it("names saved details as saved and unsaved ones as optional, never as missing", () => {
     const html = renderEditor({
       methodCodes: ["BANK_TRANSFER_INTERNATIONAL", "PAYPAL"],
       details: {
@@ -246,8 +246,11 @@ describe("PaymentArrangementsEditor", () => {
       reviewedAt: "2026-08-24T10:00:00.000Z",
     });
 
-    expect(html).toContain("Ready");
-    expect(html).toContain("Missing details");
+    expect(html).toContain("Details saved");
+    // "Missing details" read as a blocker on a screen where these are genuinely
+    // optional, and sent hosts hunting for a Next that was never waiting on them.
+    expect(html).toContain("Optional details");
+    expect(html).not.toContain("Missing details");
     expect(html).toContain("Edit details");
     expect(html).toContain("Add details");
     expect(html).not.toContain("Not ready");
@@ -255,6 +258,24 @@ describe("PaymentArrangementsEditor", () => {
     // failure: nothing is flagged as an error and nothing demands a value.
     expect(html).not.toContain('role="alert"');
     expect(html).not.toContain("Fill this in");
+  });
+
+  it("holds back the required message and the guest preview when the wizard asks it to", () => {
+    // The wizard opens this screen with nothing selected on purpose, and shows its own
+    // summary above. Red text before the host has been asked anything, and a second
+    // restatement of the same answer half way down, are both its to suppress.
+    const html = renderEditor(
+      {},
+      { showRequiredError: false, showGuestPreview: false, showHeader: false },
+    );
+
+    expect(html).not.toContain("Choose at least one way guests can pay.");
+    expect(html).not.toContain('id="payment-methods-error"');
+    expect(html).not.toContain('aria-invalid="true"');
+    expect(html).not.toContain("What guests will see");
+    expect(html).not.toContain("Payment arrangements");
+    // The methods themselves are untouched: only the commentary around them moved.
+    expect(html).toContain('id="payment-method-cash-at-property"');
   });
 
   it("keeps the checkbox and the disclosure button as separate controls", () => {

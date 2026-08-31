@@ -19,6 +19,7 @@
 
 import type {
   EventPolicy,
+  HouseRuleRow,
   HouseRulesSnapshot,
   PetPolicy,
   SmokingPolicy,
@@ -71,6 +72,44 @@ export function houseRulesRowTitles(t: RuleLabelResolver) {
  *  apart everywhere they are shown. */
 export function unansweredLabel(t: RuleLabelResolver): string {
   return t.resolve("listing.house_rules.unanswered", "Not set").text;
+}
+
+/**
+ * The same row, on a screen that is going to insist on an answer.
+ *
+ * "Not set" describes; this instructs. A host looking at four rows that all read "Not
+ * set" has no way to tell that three of them are the reason Next is not moving.
+ */
+export function unansweredActionLabel(t: RuleLabelResolver): string {
+  return t.resolve("listing.house_rules.choose_an_answer", "Choose an answer").text;
+}
+
+/** The mark on a row the create flow will not let a host past. */
+export function requiredBadgeLabel(t: RuleLabelResolver): string {
+  return t.resolve("listing.house_rules.required", "Required").text;
+}
+
+/** The rule name as an error summary lists it. */
+export function houseRuleRowTitle(t: RuleLabelResolver, row: HouseRuleRow): string {
+  const titles = houseRulesRowTitles(t);
+  switch (row) {
+    case "checkInTime":
+      return titles.checkIn;
+    case "checkOutTime":
+      return titles.checkOut;
+    case "maxGuests":
+      return titles.maxGuests;
+    case "petPolicy":
+      return titles.pets;
+    case "smokingPolicy":
+      return titles.smoking;
+    case "eventPolicy":
+      return titles.events;
+    case "quietHoursPolicy":
+      return titles.quietHours;
+    case "additionalRules":
+      return titles.additionalRules;
+  }
 }
 
 /** The stay time a host has not committed to. Matches how the public page already

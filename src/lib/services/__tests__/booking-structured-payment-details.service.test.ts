@@ -183,7 +183,7 @@ describe("structured payment details on a booking", () => {
         { BANK_TRANSFER_INTERNATIONAL: "IBAN DK5000400440116243" },
       ),
     });
-    await confirmBooking(booking.id, host.id);
+    await confirmBooking(booking.id, host.id, { decision: "SEND_LATER" });
 
     await saveBookingPaymentInstructionTemplate({
       bookingId: booking.id,
@@ -212,7 +212,7 @@ describe("structured payment details on a booking", () => {
       methods: ["BANK_TRANSFER_INTERNATIONAL", "PAYPAL"],
       selectedPaymentMethod: "BANK_TRANSFER_INTERNATIONAL",
     });
-    await confirmBooking(booking.id, host.id);
+    await confirmBooking(booking.id, host.id, { decision: "SEND_LATER" });
 
     await expect(
       saveBookingPaymentInstructionTemplate({
@@ -229,7 +229,7 @@ describe("structured payment details on a booking", () => {
       methods: ["BANK_TRANSFER_INTERNATIONAL"],
       selectedPaymentMethod: "BANK_TRANSFER_INTERNATIONAL",
     });
-    await confirmBooking(booking.id, host.id);
+    await confirmBooking(booking.id, host.id, { decision: "SEND_LATER" });
 
     await expect(
       saveBookingPaymentInstructionTemplate({

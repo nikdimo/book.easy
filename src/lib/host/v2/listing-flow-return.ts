@@ -17,6 +17,8 @@
  * before the host is shown it again.
  */
 
+import { hostStartRouteOf, type HostStartRoute } from "@/lib/host-start-draft";
+
 /** The parameter's only accepted value. Present means "came from Review". */
 export const FLOW_REVIEW_RETURN = "review";
 
@@ -43,19 +45,26 @@ export function withReviewReturn(query: string, active: boolean): string {
 }
 
 /**
- * Where a step's CTA goes and what it says.
+ * Where a step's CTA goes, what it says, and which route that is.
  *
  * `query` is the flow's own query without the marker: the Review screen is where the
  * return trip ends, so linking to it with `returnTo` still set would leave the marker
  * on every edit link it then renders.
+ *
+ * `route` is the same destination named as a wizard route, for the step to record on
+ * the draft so a resumed host lands where they were going. It is read back off the href
+ * rather than passed in beside it — a step that stated its destination twice would
+ * eventually state it two different ways, which is exactly the class of bug the route
+ * sequence replaced.
  */
 export function stepNextTarget(
   active: boolean,
   query: string,
   defaultHref: string,
   defaultLabel: FlowNextLabel = "Next",
-): { href: string; label: FlowNextLabel } {
-  return active
-    ? { href: reviewHref(query), label: "Save and review" }
+): { href: string; label: FlowNextLabel; route: HostStartRoute | undefined } {
+  const { href, label } = active
+    ? { href: reviewHref(query), label: "Save and review" as const }
     : { href: defaultHref, label: defaultLabel };
+  return { href, label, route: hostStartRouteOf(href) };
 }

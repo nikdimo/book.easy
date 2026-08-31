@@ -30,7 +30,8 @@ interface ListingAvailabilityCalendarProps {
   /** City the listing is in — the heading names it, the way a search result would. */
   placeName: string;
   minNights: number;
-  disabledDateRanges: { from: Date; to: Date }[];
+  /** Blocked runs as calendar dates — see `BlockedDateRange`. */
+  disabledDateRanges: { from: string; to: string }[];
   /** Nightly pricing, so each open day can show what it costs. */
   baseNightlyRate: number;
   currency: string;
@@ -63,6 +64,16 @@ export function ListingAvailabilityCalendar({
     showCurrencySymbol: true,
   });
   const priceNote = useCellCurrencyNote(currency);
+  // The calendar compares against the days it renders, so the blocked runs become this
+  // browser's own midnights here rather than staying the server's instants.
+  const disabledDayRanges = React.useMemo(
+    () =>
+      disabledDateRanges.map((range) => ({
+        from: parseLocalYmd(range.from),
+        to: parseLocalYmd(range.to),
+      })),
+    [disabledDateRanges],
+  );
   const [{ checkIn, checkOut }, setStayRange] = useListingStayRange({
     checkIn: "",
     checkOut: "",
@@ -232,7 +243,7 @@ export function ListingAvailabilityCalendar({
               checkOut: range?.to ? dateKey(range.to) : "",
             })
           }
-          disabledDateRanges={disabledDateRanges}
+          disabledDateRanges={disabledDayRanges}
           dayMeta={dayPrice}
           priceNote={priceNote}
           minimumStayNights={minNights}

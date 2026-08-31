@@ -1,5 +1,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
 import { PhaseTwoComplete } from "@/components/host/v2/listings/phase-two-complete";
 
 const house = { value: "HOUSE", label: "House", icon: "House", description: "A house." };
@@ -57,7 +61,7 @@ describe("PhaseTwoComplete", () => {
     expect(next).toBeGreaterThan(back);
   });
 
-  it("stays UI only — nothing is submitted or persisted", () => {
+  it("uses client navigation without a form submission", () => {
     const html = markup();
 
     expect(html).not.toContain("<form");

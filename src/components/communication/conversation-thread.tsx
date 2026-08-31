@@ -451,12 +451,14 @@ export function ConversationThread({
                 {new Intl.DateTimeFormat(locale, {
                   month: "short",
                   day: "numeric",
+                  timeZone: "UTC",
                 }).format(new Date(booking.checkIn))}
                 {" – "}
                 {new Intl.DateTimeFormat(locale, {
                   month: "short",
                   day: "numeric",
                   year: "numeric",
+                  timeZone: "UTC",
                 }).format(new Date(booking.checkOut))}
               </p>
               <p className="mt-1 text-sm">

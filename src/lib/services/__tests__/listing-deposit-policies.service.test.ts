@@ -213,4 +213,83 @@ describe("listing deposit-policies service", () => {
     });
     expect(again).toMatchObject({ changed: false });
   });
+
+  it("refuses a fixed advance larger than the dearest stay the listing permits", async () => {
+    // The fixture allows 365 nights at 50 plus a 10 cleaning fee, so nothing this
+    // listing can ever sell reaches 20000. Booking creation would cap such an advance
+    // for every booking; this is the screen on which the host can still correct it.
+    const { host, listing } = await setup();
+    const result = await saveListingDepositPolicies(listing.id, host.id, {
+      advancePayment: { ...ADVANCE, amountType: "FIXED", value: "20000" },
+    });
+    expect(result).toEqual({
+      issues: { advancePayment: { value: "ADVANCE_EXCEEDS_STAY_TOTAL" } },
+    });
+    const stored = await db.listing.findUniqueOrThrow({ where: { id: listing.id } });
+    expect(stored.depositPoliciesReviewedAt).toBeNull();
+    expect(stored.advancePaymentEnabled).toBe(false);
+  });
+
+  it("accepts a large fixed advance a long stay could still cover", async () => {
+    const { host, listing } = await setup();
+    await expect(
+      saveListingDepositPolicies(listing.id, host.id, {
+        advancePayment: { ...ADVANCE, amountType: "FIXED", value: "5000" },
+      }),
+    ).resolves.toMatchObject({
+      policies: { advancePayment: { value: "5000", currency: "EUR" } },
+    });
+  });
+
+  it("places no such bound on a damage deposit", async () => {
+    // Security against damage is money on top of the stay, and no documented rule ties
+    // its size to the price of the stay.
+    const { host, listing } = await setup();
+    await expect(
+      saveListingDepositPolicies(listing.id, host.id, {
+        damageDeposit: { ...DAMAGE, value: "20000" },
+      }),
+    ).resolves.toMatchObject({
+      policies: { damageDeposit: { value: "20000", currency: "EUR" } },
+    });
+  });
+
+  it("asks the host to restate amounts after the pricing currency changed", async () => {
+    const { host, listing } = await setup();
+    await saveListingDepositPolicies(listing.id, host.id, {
+      advancePayment: ADVANCE,
+      damageDeposit: DAMAGE,
+    });
+    await db.pricingRule.update({
+      where: { listingId: listing.id },
+      data: { currency: "MKD" },
+    });
+
+    // The stored 200 was quoted in EUR. It is neither re-served as 200 MKD nor
+    // converted: the screen reads as unanswered and quotes the live currency.
+    const drifted = await getListingDepositPoliciesData(listing.id, host.id);
+    expect(drifted?.listingCurrency).toBe("MKD");
+    expect(drifted?.policies).toEqual({
+      version: 2,
+      status: "UNANSWERED",
+      advancePayment: null,
+      damageDeposit: null,
+    });
+    // Nothing was rewritten in the database by reading it.
+    const untouched = await db.listing.findUniqueOrThrow({ where: { id: listing.id } });
+    expect(untouched.depositPoliciesCurrency).toBe("EUR");
+    expect(Number(untouched.damageDepositValue)).toBe(200);
+
+    // Saving again re-stamps both the amounts and the label together.
+    await saveListingDepositPolicies(listing.id, host.id, {
+      advancePayment: ADVANCE,
+      damageDeposit: DAMAGE,
+    });
+    const restated = await getListingDepositPoliciesData(listing.id, host.id);
+    expect(restated?.policies).toMatchObject({
+      status: "REVIEWED",
+      advancePayment: { currency: "MKD" },
+      damageDeposit: { currency: "MKD" },
+    });
+  });
 });

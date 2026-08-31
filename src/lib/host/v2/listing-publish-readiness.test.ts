@@ -7,6 +7,7 @@ import {
   type FlowStepId,
 } from "@/lib/host/v2/listing-publish-readiness";
 import { MIN_PUBLISH_PHOTOS, RECOMMENDED_LISTING_PHOTOS } from "@/lib/host/v2/photo-draft";
+import { emptyDepositPoliciesDraft } from "@/lib/host/v2/listing-deposit-draft";
 import type { ListingDraftData } from "@/lib/types/listing-draft";
 
 /** A draft that walked every step of the flow and answered everything. */
@@ -35,6 +36,9 @@ function completeDraft(overrides: Partial<ListingDraftData> = {}): ListingDraftD
     acceptedPaymentMethods: ["BANK_TRANSFER_LOCAL_SEPA", "PAYPAL"],
     paymentMethodOther: null,
     paymentInstructionTemplates: {},
+    // Both sections off, but *present*: the host was asked and answered "neither".
+    depositPolicies: emptyDepositPoliciesDraft(),
+    freeCancellationDaysBeforeCheckIn: "7",
     checkInTime: "15:00",
     checkOutTime: "11:00",
     // The house rules the step refuses to move on without. A draft that walked the flow
@@ -311,6 +315,86 @@ describe("house rules", () => {
 
     expect(blockers).toEqual([
       { step: "house-rules", message: "Your additional house rules are too long." },
+    ]);
+  });
+});
+
+describe("the deposit question", () => {
+  it("blocks a draft that was never asked it", () => {
+    // Absent is not "no deposit". Publishing this freezes UNANSWERED terms onto every
+    // booking the listing takes, and raises an incomplete payment-arrangements task
+    // the moment it goes live.
+    const { depositPolicies, ...withoutAnswer } = completeDraft();
+    void depositPolicies;
+
+    expect(publishBlockers(withoutAnswer)).toEqual([
+      {
+        step: "payment-arrangements",
+        message: "Answer the advance payment and damage deposit questions.",
+      },
+    ]);
+  });
+
+  it("passes a host who explicitly asked for neither", () => {
+    expect(publishBlockers(completeDraft({ depositPolicies: emptyDepositPoliciesDraft() }))).toEqual([]);
+  });
+
+  it("passes a host who asked for both", () => {
+    const answer = emptyDepositPoliciesDraft();
+    answer.currency = "EUR";
+    answer.advancePayment = {
+      enabled: true,
+      amountType: "PERCENTAGE",
+      value: "20",
+      dueTiming: "AFTER_ACCEPTANCE",
+      dueDaysBeforeCheckIn: null,
+    };
+    answer.damageDeposit = {
+      enabled: true,
+      amountType: "FIXED",
+      value: "200",
+      dueTiming: "AT_CHECK_IN",
+      dueDaysBeforeCheckIn: null,
+      returnDaysAfterCheckout: 7,
+    };
+
+    expect(publishBlockers(completeDraft({ depositPolicies: answer }))).toEqual([]);
+  });
+
+  it("blocks monetary terms reviewed before the listing currency changed", () => {
+    const answer = emptyDepositPoliciesDraft();
+    answer.currency = "EUR";
+    answer.advancePayment = {
+      enabled: true,
+      amountType: "FIXED",
+      value: "100",
+      dueTiming: "AFTER_ACCEPTANCE",
+      dueDaysBeforeCheckIn: null,
+    };
+
+    expect(
+      publishBlockers(completeDraft({ currency: "MKD", depositPolicies: answer })),
+    ).toEqual([
+      {
+        step: "payment-arrangements",
+        message: "Review the deposit amounts after changing the listing currency.",
+      },
+    ]);
+  });
+
+  it("blocks an answer whose amounts no longer stand up", () => {
+    const answer = emptyDepositPoliciesDraft();
+    answer.currency = "EUR";
+    answer.advancePayment = {
+      enabled: true,
+      amountType: "PERCENTAGE",
+      value: "150",
+      dueTiming: "AFTER_ACCEPTANCE",
+      dueDaysBeforeCheckIn: null,
+    };
+
+    expect(publishBlockers(completeDraft({ depositPolicies: answer }))).toEqual([
+      { step: "payment-arrangements", message: "Check the deposit amounts and timing." },
     ]);
   });
 });

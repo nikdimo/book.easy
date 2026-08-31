@@ -16,6 +16,7 @@ export interface EditorPhoto {
   id: string;
   url: string;
   mediaType: ListingMediaTypeValue;
+  isPanorama?: boolean;
   alt: string | null;
   displayOrder: number;
   isPrimary: boolean;
@@ -65,6 +66,7 @@ export async function getListingEditorData(
       houseRulesReviewedAt: true,
       paymentMethodsReviewedAt: true,
       depositPoliciesReviewedAt: true,
+      cancellationPolicyReviewedAt: true,
       property: {
         select: {
           propertyType: true,
@@ -80,6 +82,7 @@ export async function getListingEditorData(
           id: true,
           url: true,
           mediaType: true,
+          isPanorama: true,
           alt: true,
           displayOrder: true,
           isPrimary: true,
@@ -113,6 +116,7 @@ export async function getListingEditorData(
     id: image.id,
     url: image.url,
     mediaType: image.mediaType,
+    isPanorama: image.isPanorama,
     alt: image.alt,
     displayOrder: image.displayOrder,
     isPrimary: image.isPrimary,
@@ -183,7 +187,8 @@ export async function getListingEditorData(
       locationComplete: listingLocationComplete(listing.property),
       paymentMethodsReviewed:
         listing.paymentMethodsReviewedAt !== null &&
-        listing.depositPoliciesReviewedAt !== null,
+        listing.depositPoliciesReviewedAt !== null &&
+        listing.cancellationPolicyReviewedAt !== null,
       houseRulesReviewed: listing.houseRulesReviewedAt !== null,
     });
 const attention = editorAttentionSlugs({
@@ -261,6 +266,7 @@ export async function getListingEditorHeader(listingId: string, hostId: string) 
       houseRulesReviewedAt: true,
       paymentMethodsReviewedAt: true,
       depositPoliciesReviewedAt: true,
+      cancellationPolicyReviewedAt: true,
       property: {
         select: {
           propertyType: true,
@@ -300,7 +306,8 @@ export async function getListingEditorHeader(listingId: string, hostId: string) 
     locationComplete: listingLocationComplete(listing.property),
     paymentMethodsReviewed:
       listing.paymentMethodsReviewedAt !== null &&
-      listing.depositPoliciesReviewedAt !== null,
+      listing.depositPoliciesReviewedAt !== null &&
+      listing.cancellationPolicyReviewedAt !== null,
     houseRulesReviewed: listing.houseRulesReviewedAt !== null,
   });
 const attention = editorAttentionSlugs({
@@ -378,6 +385,7 @@ export async function getListingEditorOverview(
       houseRulesReviewedAt: true,
       paymentMethodsReviewedAt: true,
       depositPoliciesReviewedAt: true,
+      cancellationPolicyReviewedAt: true,
       property: {
         select: {
           propertyType: true,
@@ -427,7 +435,8 @@ export async function getListingEditorOverview(
     locationComplete: listingLocationComplete(listing.property),
     paymentMethodsReviewed:
       listing.paymentMethodsReviewedAt !== null &&
-      listing.depositPoliciesReviewedAt !== null,
+      listing.depositPoliciesReviewedAt !== null &&
+      listing.cancellationPolicyReviewedAt !== null,
     houseRulesReviewed: listing.houseRulesReviewedAt !== null,
   });
 const attention = editorAttentionSlugs({
@@ -456,7 +465,8 @@ const attention = editorAttentionSlugs({
     houseRulesReviewed: listing.houseRulesReviewedAt !== null,
     paymentMethodsReviewed:
       listing.paymentMethodsReviewedAt !== null &&
-      listing.depositPoliciesReviewedAt !== null,
+      listing.depositPoliciesReviewedAt !== null &&
+      listing.cancellationPolicyReviewedAt !== null,
     completeSections,
     attention,
   };

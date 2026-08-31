@@ -15,12 +15,17 @@ import { getExchangeRates } from "@/lib/currency/rates";
 import { BASE_CURRENCY } from "@/lib/currency/currency-preference";
 import { parseDepositPoliciesSnapshot } from "@/lib/payments/deposit-policies";
 import {
+  parseCancellationPolicySnapshot,
+  parseCancellationSettlementSnapshot,
+} from "@/lib/payments/cancellation-policy";
+import {
   parsePaymentInstructionStore,
   parsePaymentInstructionTemplates,
   resolvePaymentInstructionsForMethod,
   savedPaymentInstructionTemplateEntries,
 } from "@/lib/payments/payment-instruction-templates";
 import {
+  isNoInstructionsPaymentRequestSnapshot,
   parseBookingPaymentDetailsSnapshot,
   type BookingPaymentRequestPrefill,
 } from "@/lib/payments/booking-payment-request";
@@ -29,7 +34,12 @@ import type {
   HostReservationProperty,
   HostReservationsData,
 } from "@/lib/host/v2/reservation-types";
+import { resolveBookingPricing } from "@/lib/booking-pricing";
 import { dbDateToYmd, todayYmd } from "@/lib/utils/date-only";
+import {
+  bookingPartyPayload,
+  resolveBookingParty,
+} from "@/lib/booking-party";
 import {
   isPaymentMethodCode,
   parsePaymentMethodsSnapshot,
@@ -93,12 +103,20 @@ export async function getHostReservations(
         checkOut: true,
         numberOfNights: true,
         guestCount: true,
+        adults: true,
+        children: true,
+        infants: true,
+        pets: true,
         currency: true,
         nightlyRate: true,
         cleaningFee: true,
         serviceFee: true,
         discountAmount: true,
         totalPrice: true,
+        // The frozen quote. Read for one reason: `nightlyRate` is a rounded average and
+        // multiplying it by the nights does not reconstruct the accommodation subtotal
+        // (audit L2), so the panel's first price row comes from here instead.
+        priceBreakdown: true,
         paymentStatus: true,
         paymentInstructionsStatus: true,
         paymentInstructionsSnapshot: true,
@@ -106,9 +124,13 @@ export async function getHostReservations(
         paymentMethodsSnapshot: true,
         advancePaymentStatus: true,
         damageDepositStatus: true,
+        accommodationRefundStatus: true,
+        accommodationRefundAmount: true,
         advancePaymentAmount: true,
         damageDepositAmount: true,
         depositPolicySnapshot: true,
+        cancellationPolicySnapshot: true,
+        cancellationSettlementSnapshot: true,
         guestNote: true,
         cancellationReason: true,
         createdAt: true,
@@ -139,8 +161,39 @@ export async function getHostReservations(
           orderBy: { createdAt: "asc" },
           select: {
             id: true,
+            actorId: true,
             eventType: true,
             createdAt: true,
+          },
+        },
+        paymentRequests: {
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            type: true,
+            amount: true,
+            currency: true,
+            dueAt: true,
+            status: true,
+            instructionsSnapshot: true,
+            reminders: {
+              orderBy: { sentAt: "desc" },
+              select: { kind: true, sentAt: true },
+            },
+          },
+        },
+        paymentPrivateRecords: {
+          orderBy: { createdAt: "asc" },
+          select: {
+            id: true,
+            track: true,
+            reporterId: true,
+            amount: true,
+            currency: true,
+            transactionDate: true,
+            reference: true,
+            note: true,
+            retainedReason: true,
           },
         },
       },
@@ -175,6 +228,7 @@ export async function getHostReservations(
 
   const reservations: HostReservation[] = bookings.map((booking) => {
     const details = listingDetails.get(booking.listingId);
+    const pricing = resolveBookingPricing(booking);
     return {
       id: booking.id,
       reference: booking.reference,
@@ -185,14 +239,26 @@ export async function getHostReservations(
       checkOut: dbDateToYmd(booking.checkOut),
       nights: booking.numberOfNights,
       guestCount: booking.guestCount,
-      currency: booking.currency,
+      // The party alongside the count rather than folded into it. `null` for a booking
+      // taken before the columns existed, which is the difference between "no infants"
+      // and "never recorded" — the panel prints the plain count for those.
+      party: bookingPartyPayload(resolveBookingParty(booking)),
+      currency: pricing.currency,
       // Decimal crosses the server/client boundary as a plain number, the same way the
       // inbox service hands the reservation rail its total.
       nightlyRate: Number(booking.nightlyRate),
-      cleaningFee: Number(booking.cleaningFee),
-      serviceFee: Number(booking.serviceFee),
-      discountAmount: Number(booking.discountAmount),
-      total: Number(booking.totalPrice),
+      cleaningFee: pricing.cleaningFee,
+      serviceFee: pricing.serviceFee,
+      discountAmount: pricing.discountAmount,
+      total: pricing.totalPrice,
+      // Resolved on the server, once, so the panel prints price rows rather than
+      // computing them. `originalAccommodationSubtotal` and `originalCleaningFee` are
+      // the gross pair the panel needs, because it itemises the promotion on its own
+      // line — the net figures beside a discount row would subtract it twice.
+      accommodationSubtotal: pricing.accommodationSubtotal,
+      originalAccommodationSubtotal: pricing.originalAccommodationSubtotal,
+      originalCleaningFee: pricing.originalCleaningFee,
+      averageNightlyRate: pricing.averageNightlyRate,
       paymentStatus: booking.paymentStatus,
       paymentInstructionsStatus: booking.paymentInstructionsStatus,
       selectedPaymentMethod: isPaymentMethodCode(booking.selectedPaymentMethod)
@@ -203,6 +269,11 @@ export async function getHostReservations(
         null,
       advancePaymentStatus: booking.advancePaymentStatus,
       damageDepositStatus: booking.damageDepositStatus,
+      accommodationRefundStatus: booking.accommodationRefundStatus,
+      accommodationRefundAmount:
+        booking.accommodationRefundAmount === null
+          ? null
+          : Number(booking.accommodationRefundAmount),
       advancePaymentAmount:
         booking.advancePaymentAmount === null
           ? null
@@ -212,9 +283,26 @@ export async function getHostReservations(
           ? null
           : Number(booking.damageDepositAmount),
       depositPolicies: parseDepositPoliciesSnapshot(booking.depositPolicySnapshot),
+      cancellationPolicy: parseCancellationPolicySnapshot(
+        booking.cancellationPolicySnapshot,
+      ),
+      cancellationSettlement: parseCancellationSettlementSnapshot(
+        booking.cancellationSettlementSnapshot,
+      ),
       paymentStatusEvents: booking.paymentStatusEvents.map((event) => ({
         id: event.id,
-        actor: event.eventType.startsWith("GUEST_") ? "GUEST" : "HOST",
+        actor:
+          event.actorId === booking.guest.id
+            ? "GUEST"
+            : event.actorId === hostId
+              ? "HOST"
+              : event.actorId
+                ? "ADMIN"
+                : event.eventType.startsWith("GUEST_")
+                  ? "GUEST"
+                  : event.eventType.startsWith("HOST_")
+                    ? "HOST"
+                    : "SYSTEM",
         eventType: event.eventType,
         createdAt: event.createdAt.toISOString(),
       })),
@@ -248,6 +336,40 @@ export async function getHostReservations(
       sentPaymentDetails: parseBookingPaymentDetailsSnapshot(
         booking.paymentInstructionsSnapshot,
       ),
+      paymentRequests: (booking.paymentRequests ?? []).map((request) => ({
+        id: request.id,
+        type: request.type,
+        amount: Number(request.amount),
+        currency: request.currency,
+        dueAt: request.dueAt.toISOString(),
+        status: request.status,
+        sentPaymentDetails: parseBookingPaymentDetailsSnapshot(
+          request.instructionsSnapshot,
+        ),
+        instructionsNotRequired: isNoInstructionsPaymentRequestSnapshot(
+          request.instructionsSnapshot,
+        ),
+        reminders: request.reminders.map((reminder) => ({
+          kind: reminder.kind,
+          sentAt: reminder.sentAt.toISOString(),
+        })),
+      })),
+      transactionReports: (booking.paymentPrivateRecords ?? []).map((report) => ({
+        id: report.id,
+        track: report.track,
+        reporter:
+          report.reporterId === null
+            ? "REDACTED"
+            : report.reporterId === booking.guest.id
+              ? "GUEST"
+              : "HOST",
+        amount: Number(report.amount),
+        currency: report.currency,
+        transactionDate: report.transactionDate.toISOString(),
+        reference: report.reference,
+        note: report.note,
+        retainedReason: report.retainedReason,
+      })),
     };
   });
 

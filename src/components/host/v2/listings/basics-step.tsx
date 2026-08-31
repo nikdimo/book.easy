@@ -44,7 +44,7 @@ export function BasicsStep({
   const query = `propertyType=${encodeURIComponent(propertyType.value)}&spaceType=${encodeURIComponent(spaceType)}`;
   /** Where the CTA goes, and what it says: on to the next question, or back to the
    *  summary the host came from. */
-  const { href: nextHref, label: nextLabel } = stepNextTarget(
+  const { href: nextHref, label: nextLabel, route: nextRoute } = stepNextTarget(
     returnToReview,
     query,
     `/host/start/phase-one-complete?${query}`,
@@ -97,6 +97,7 @@ export function BasicsStep({
             beds: String(counts.beds),
             bathrooms: String(counts.bathrooms),
             currentStepId: "amenities",
+            currentRoute: nextRoute,
           });
           if (saved) window.location.assign(nextHref);
         }}

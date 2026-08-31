@@ -81,10 +81,6 @@ function visibilityNote(t: Translator, visibility: HostListingVisibility): strin
       );
     case "HIDDEN":
       return text(t, "host.editor.availability.visibility_hidden", "Hidden from guests. Availability is kept and applies again once it is published.");
-    case "IN_REVIEW":
-      return text(t, "host.editor.availability.visibility_in_review", "Waiting for review. Guests cannot book it yet.");
-    case "REJECTED":
-      return text(t, "host.editor.availability.visibility_rejected", "Not approved, so no date can be booked.");
     case "SUSPENDED":
       return text(t, "host.editor.availability.visibility_suspended", "Suspended by support, so no date can be booked.");
     case "ARCHIVED":

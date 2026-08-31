@@ -34,6 +34,7 @@ import {
   reorderListingPhotos,
   reorderRoomPhotos,
   setListingCoverPhoto,
+  setListingPhotoPanorama,
   setRoomCoverPhoto,
 } from "@/lib/actions/listing-photos.actions";
 import { roomDisplayName } from "@/lib/rooms/room-name";
@@ -195,7 +196,11 @@ export function PhotosWorkspace({
   );
 
   const commitUpload = useCallback(
-    async (item: { url: string; mediaType: ListingMediaTypeValue }) => {
+    async (item: {
+      url: string;
+      mediaType: ListingMediaTypeValue;
+      isPanorama: boolean;
+    }) => {
       const result = await withSaveState(() => addListingPhotos(listingId, [item]));
       if (result.error || !result.ids?.length) {
         toast.error(result.error ?? "That photo could not be saved.");
@@ -208,6 +213,7 @@ export function PhotosWorkspace({
           id,
           url: item.url,
           mediaType: item.mediaType,
+          isPanorama: item.isPanorama,
           alt: null,
           displayOrder: current.length,
           isPrimary: current.length === 0 && item.mediaType === "IMAGE",
@@ -370,6 +376,31 @@ export function PhotosWorkspace({
       }
     },
     [commit, listingId, photos, resolve],
+  );
+
+  const togglePanorama = useCallback(
+    async (photoId: string, isPanorama: boolean) => {
+      const ok = await commit(
+        () =>
+          setPhotos((current) =>
+            current.map((photo) =>
+              photo.id === photoId ? { ...photo, isPanorama } : photo,
+            ),
+          ),
+        () => setListingPhotoPanorama(listingId, photoId, isPanorama),
+      );
+      if (ok) {
+        toast.success(
+          resolve(
+            isPanorama
+              ? "host.editor.photos.panorama_enabled"
+              : "host.editor.photos.panorama_disabled",
+            isPanorama ? "Guests can now explore this photo in 360°." : "Photo set to regular view.",
+          ).text,
+        );
+      }
+    },
+    [commit, listingId, resolve],
   );
 
   /** Creates the room and hands the caller the new row, so a drop onto a suggested space
@@ -864,6 +895,7 @@ export function PhotosWorkspace({
                       onToggleSelect={toggleSelect}
                       onSetListingCover={makeListingCover}
                       onSetRoomCover={makeRoomCover}
+                      onTogglePanorama={togglePanorama}
                       onMoveTo={(id, roomId) => void moveToRoom(targets(id), roomId)}
                       onMoveToRoomType={(id, roomTypeId) =>
                         void dropOnSuggestion(roomTypeId, targets(id))
@@ -893,6 +925,7 @@ export function PhotosWorkspace({
                     onToggleSelect={toggleSelect}
                     onSetListingCover={makeListingCover}
                     onSetRoomCover={makeRoomCover}
+                    onTogglePanorama={togglePanorama}
                     onMoveTo={(id, roomId) => void moveToRoom(targets(id), roomId)}
                     onMoveToRoomType={(id, roomTypeId) =>
                       void dropOnSuggestion(roomTypeId, targets(id))
@@ -912,6 +945,7 @@ export function PhotosWorkspace({
                   onToggleSelect={toggleSelect}
                   onSetListingCover={makeListingCover}
                   onSetRoomCover={makeRoomCover}
+                  onTogglePanorama={togglePanorama}
                   onMoveTo={(id, roomId) => void moveToRoom(targets(id), roomId)}
                   onMoveToRoomType={(id, roomTypeId) =>
                     void dropOnSuggestion(roomTypeId, targets(id))

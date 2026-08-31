@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
+import { addDaysToYmd, todayYmd, ymdToDbDate } from "@/lib/utils/date-only";
 
 /**
  * Everything the listings overview needs that a host cannot already know by heart.
@@ -18,18 +19,19 @@ export type HostListingOverviewItem = Awaited<
   ReturnType<typeof getHostListingsOverview>
 >[number];
 
-/** Midnight today in server time — bookings and windows are `@db.Date`, so comparing
- *  them against `new Date()` would drop anything checking out earlier the same day. */
+/** Today in the marketplace's zone, as the UTC midnight `@db.Date` columns read back
+ *  as. Comparing them against `new Date()` would drop anything checking out earlier
+ *  the same day; comparing them against the *server's* midnight moved the boundary
+ *  with the host process's zone (M6). */
 function startOfToday() {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return today;
+  return ymdToDbDate(todayYmd());
 }
 
 export async function getHostListingsOverview(hostId: string) {
   const today = startOfToday();
-  const horizon = new Date(today);
-  horizon.setDate(horizon.getDate() + UPCOMING_WINDOW_DAYS);
+  // Stepped in calendar days rather than with `setDate`, which walks *local* ones over
+  // a UTC-midnight anchor and lands an hour off across a daylight-saving change.
+  const horizon = ymdToDbDate(addDaysToYmd(todayYmd(), UPCOMING_WINDOW_DAYS));
 
   const listings = await db.listing.findMany({
     where: { hostId },

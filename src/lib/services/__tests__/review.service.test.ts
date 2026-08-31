@@ -11,6 +11,15 @@ import {
   moderateReview,
   submitReview,
 } from "@/lib/services/review.service";
+import { addDaysToYmd, todayYmd, ymdToDbDate } from "@/lib/utils/date-only";
+
+function recentlyCompletedStay() {
+  const today = todayYmd();
+  return {
+    checkIn: ymdToDbDate(addDaysToYmd(today, -3)),
+    checkOut: ymdToDbDate(addDaysToYmd(today, -1)),
+  };
+}
 
 describe("sealed review workflow", () => {
   let fixtures: TestFixtures | undefined;
@@ -46,8 +55,7 @@ describe("sealed review workflow", () => {
       data: {
         listingId: listing.id,
         guestId: guest.id,
-        checkIn: new Date("2030-07-01"),
-        checkOut: new Date("2030-07-03"),
+        ...recentlyCompletedStay(),
         guestCount: 2,
         nightlyRate: 50,
         cleaningFee: 10,
@@ -127,8 +135,7 @@ describe("sealed review workflow", () => {
       data: {
         listingId: listing.id,
         guestId: guest.id,
-        checkIn: new Date("2030-07-01"),
-        checkOut: new Date("2030-07-03"),
+        ...recentlyCompletedStay(),
         guestCount: 2,
         currency: "USD",
         nightlyRate: 50,

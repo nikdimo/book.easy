@@ -32,6 +32,7 @@ export default async function EditListingPage({
     id: img.id,
     url: img.url,
     mediaType: img.mediaType,
+    isPanorama: img.isPanorama,
     alt: img.alt,
   }));
 

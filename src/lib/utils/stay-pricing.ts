@@ -1,26 +1,83 @@
-import { format, eachDayOfInterval, addDays, startOfDay } from "date-fns";
+import {
+  compareYmd,
+  dbDateToYmd,
+  eachYmdExclusive,
+  eachYmdInclusive,
+  isValidYmd,
+  ymdToLocalDate,
+} from "@/lib/utils/date-only";
 
+/**
+ * **Every `Date` in this module is a calendar date held in *local* fields.**
+ *
+ * That is one rule, and it is the one the pickers already produce: react-day-picker
+ * hands back local midnight, `parseLocalYmd` builds local midnight, and `dateKey`
+ * reads local fields back out. A ymd that goes in comes out unchanged in any zone,
+ * because both ends read the same clock.
+ *
+ * The flavour that must *not* reach these functions is a Prisma `@db.Date` value.
+ * Those come back as UTC midnight, which on a server or browser behind UTC is the
+ * previous calendar day locally — so a June 10 override would be keyed "2026-06-09"
+ * and priced onto the wrong night. Convert at the boundary instead:
+ *
+ * - a key:  `dbDateToYmd(row.date)`
+ * - a Date: `dbDateToLocalDate(row.date)`
+ * - a whole promotion row: `toStayPromotion(row)` below
+ *
+ * Arithmetic runs on `yyyy-MM-dd` strings rather than on `Date`s, so nothing here can
+ * drift across a daylight-saving change either (see `eachYmdExclusive`).
+ */
 export function parseLocalYmd(ymd: string): Date {
-  const [y, m, d] = ymd.split("-").map(Number);
-  return new Date(y, m - 1, d);
+  // Deliberately lenient about anything that is not a well-formed date-only value:
+  // callers pass user-supplied and legacy strings here and rely on getting an Invalid
+  // Date back rather than a throw.
+  if (!isValidYmd(ymd)) return new Date(Number.NaN);
+  return ymdToLocalDate(ymd);
 }
 
 export function dateKey(d: Date): string {
-  return format(d, "yyyy-MM-dd");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${month}-${day}`;
+}
+
+/**
+ * `dateKey`, or null for a date that is not one.
+ *
+ * `parseLocalYmd` hands back an Invalid Date for the garbage that reaches it from
+ * edited URLs and stale links, and the day walkers below step a `yyyy-MM-dd` cursor
+ * until it passes an end key — which a "NaN-NaN-NaN" end never is. Refusing the
+ * value here is what keeps that a no-op rather than a hung render.
+ */
+function dateKeyOrNull(d: Date): string | null {
+  return Number.isNaN(d.getTime()) ? null : dateKey(d);
 }
 
 /** Nights are [checkIn, checkOut) — same convention as bookings. */
 export function eachStayNight(checkIn: Date, checkOut: Date): Date[] {
-  if (checkOut <= checkIn) return [];
-  return eachDayOfInterval({ start: checkIn, end: addDays(checkOut, -1) });
+  return eachStayNightKey(checkIn, checkOut).map(parseLocalYmd);
 }
 
+/** The same nights as `eachStayNight`, as the keys everything here is indexed by. */
+export function eachStayNightKey(checkIn: Date, checkOut: Date): string[] {
+  const start = dateKeyOrNull(checkIn);
+  const end = dateKeyOrNull(checkOut);
+  if (start === null || end === null) return [];
+  return eachYmdExclusive(start, end);
+}
+
+/**
+ * Nightly overrides keyed by the calendar date they are stored against.
+ *
+ * `date` is a `@db.Date` column, so its UTC fields — not the server's local reading of
+ * them — are the day the host set the price for.
+ */
 export function buildPriceOverrideMap(
   rows: { date: Date; nightlyRate: unknown }[],
 ): Map<string, number> {
   const map = new Map<string, number>();
   for (const row of rows) {
-    map.set(dateKey(row.date), Number(row.nightlyRate));
+    map.set(dbDateToYmd(row.date), Number(row.nightlyRate));
   }
   return map;
 }
@@ -36,9 +93,7 @@ export function computeStayPricing(
   averageNightly: number;
   nightlyBreakdown: { date: string; rate: number }[];
 } {
-  const nights = eachStayNight(checkIn, checkOut);
-  const nightlyBreakdown = nights.map((d) => {
-    const key = dateKey(d);
+  const nightlyBreakdown = eachStayNightKey(checkIn, checkOut).map((key) => {
     const rate = overrides.has(key) ? overrides.get(key)! : baseNightly;
     return { date: key, rate };
   });
@@ -62,6 +117,17 @@ export interface NightlyRateRange {
 }
 
 /**
+ * An inclusive run of calendar days, as either a date-only key or a local-fields
+ * `Date`. Blocked ranges reach here both ways — as keys from the availability service,
+ * and as the `Date`s a picker already holds — and both mean the same day.
+ */
+export type CalendarDayRange = { from: Date | string; to: Date | string };
+
+function dayKeyOf(value: Date | string): string {
+  return typeof value === "string" ? value : dateKey(value);
+}
+
+/**
  * The span of nightly rates a guest could actually book, used wherever a listing is
  * shown without dates. Only bookable nights count: a blocked night's rate is not on
  * offer, so including it would advertise a price the calendar refuses to sell. Nights
@@ -77,20 +143,24 @@ export function computeNightlyRateRange({
 }: {
   baseNightly: number;
   overrides: Map<string, number>;
-  /** Inclusive day ranges the calendar refuses — same shape the pickers consume. */
-  blockedRanges: { from: Date; to: Date }[];
+  /** Inclusive day ranges the calendar refuses — same shape the pickers consume,
+   *  in either flavour a caller holds them in (see `dayKeyOf`). */
+  blockedRanges: CalendarDayRange[];
   from: Date;
   to: Date;
 }): NightlyRateRange | null {
   const blocked = blockedRanges.map((range) => ({
-    from: dateKey(range.from),
-    to: dateKey(range.to),
+    from: dayKeyOf(range.from),
+    to: dayKeyOf(range.to),
   }));
   let min = Number.POSITIVE_INFINITY;
   let max = Number.NEGATIVE_INFINITY;
 
-  for (const day of eachDayOfInterval({ start: from, end: to })) {
-    const key = dateKey(day);
+  const fromKey = dateKeyOrNull(from);
+  const toKey = dateKeyOrNull(to);
+  if (fromKey === null || toKey === null) return null;
+
+  for (const key of eachYmdInclusive(fromKey, toKey)) {
     if (blocked.some((range) => key >= range.from && key <= range.to)) continue;
     const rate = overrides.get(key) ?? baseNightly;
     if (rate < min) min = rate;
@@ -112,10 +182,64 @@ export type StayPromotion = {
   createdAt?: Date | string;
 };
 
-function promotionDate(value: Date | string | null | undefined): Date | null {
+/**
+ * One end of a promotion window, as a calendar-date key.
+ *
+ * A `Date` is already in this module's convention (local fields — see the note at the
+ * top), so it is read locally. A *string* is the serialized form of a `@db.Date`
+ * column — either `"2026-06-10"` or the `"2026-06-10T00:00:00.000Z"` an ISO round-trip
+ * produces — so its UTC fields are the stored day, whatever zone the reader is in.
+ * That is what lets a promotion window survive the trip from the server to a browser
+ * in Chicago without moving a day.
+ */
+function promotionDateKey(value: Date | string | null | undefined): string | null {
+  if (!value) return null;
+  if (value instanceof Date) return dateKeyOrNull(value);
+  return storedDayKey(value);
+}
+
+/** `createdAt` is a moment, not a calendar date — it only ever breaks a tie. */
+function promotionInstant(value: Date | string | null | undefined): Date | null {
   if (!value) return null;
   const parsed = value instanceof Date ? value : new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+/**
+ * A stored promotion row as a `StayPromotion`.
+ *
+ * `startDate`/`endDate` are `@db.Date` columns, so Prisma hands them back as UTC
+ * midnight — the one flavour this module must not be given raw. Carrying them as
+ * date-only keys is also what makes them safe to hand to a client component: a `Date`
+ * crosses the server/client boundary as an *instant*, and a browser behind UTC would
+ * read that instant as the day before.
+ */
+export function toStayPromotion(row: {
+  id?: string;
+  type: "PERCENT_DISCOUNT" | "FREE_CLEANING";
+  discountPercent?: number | null;
+  minimumNights?: number | null;
+  freeCleaning?: boolean;
+  roundToWholeUnit?: boolean;
+  startDate?: Date | string | null;
+  endDate?: Date | string | null;
+  createdAt?: Date | string;
+}): StayPromotion {
+  return {
+    ...row,
+    startDate: storedDayKey(row.startDate),
+    endDate: storedDayKey(row.endDate),
+  };
+}
+
+/** The calendar day a `@db.Date` value holds, read from its UTC fields. */
+function storedDayKey(value: Date | string | null | undefined): string | null {
+  if (!value) return null;
+  try {
+    return dbDateToYmd(value);
+  } catch {
+    return null;
+  }
 }
 
 function promotionHasFreeCleaning(promotion: StayPromotion): boolean {
@@ -142,8 +266,8 @@ function comparePromotionBenefit(
     (right.minimumNights ?? 1) - (left.minimumNights ?? 1);
   if (minimumDifference !== 0) return minimumDifference;
 
-  const leftCreated = promotionDate(left.createdAt)?.getTime() ?? 0;
-  const rightCreated = promotionDate(right.createdAt)?.getTime() ?? 0;
+  const leftCreated = promotionInstant(left.createdAt)?.getTime() ?? 0;
+  const rightCreated = promotionInstant(right.createdAt)?.getTime() ?? 0;
   if (leftCreated !== rightCreated) return rightCreated - leftCreated;
 
   return (right.id ?? "").localeCompare(left.id ?? "");
@@ -161,12 +285,19 @@ export function promotionCoversNight(
   promotion: StayPromotion,
   night: Date,
 ): boolean {
-  const startDate = promotionDate(promotion.startDate);
-  const endDate = promotionDate(promotion.endDate);
-  if (!startDate && !endDate) return true;
-  if (!startDate || !endDate) return false;
-  const target = startOfDay(night);
-  return target >= startOfDay(startDate) && target < startOfDay(endDate);
+  return promotionCoversNightKey(promotion, dateKey(night));
+}
+
+/** The same window test against a night that is already a calendar-date key. */
+export function promotionCoversNightKey(
+  promotion: StayPromotion,
+  nightKey: string,
+): boolean {
+  const startKey = promotionDateKey(promotion.startDate);
+  const endKey = promotionDateKey(promotion.endDate);
+  if (!startKey && !endKey) return true;
+  if (!startKey || !endKey) return false;
+  return compareYmd(nightKey, startKey) >= 0 && compareYmd(nightKey, endKey) < 0;
 }
 
 /** The best eligible offer for one night of a longer booking. */
@@ -196,12 +327,15 @@ export function selectApplicablePromotion(
     const minimumNights = promotion.minimumNights ?? 1;
     if (nights < minimumNights) return false;
 
-    const startDate = promotionDate(promotion.startDate);
-    const endDate = promotionDate(promotion.endDate);
-    if (!startDate && !endDate) return true;
-    if (!startDate || !endDate) return false;
+    const startKey = promotionDateKey(promotion.startDate);
+    const endKey = promotionDateKey(promotion.endDate);
+    if (!startKey && !endKey) return true;
+    if (!startKey || !endKey) return false;
 
-    return checkIn >= startDate && checkOut <= endDate;
+    return (
+      compareYmd(dateKey(checkIn), startKey) >= 0 &&
+      compareYmd(dateKey(checkOut), endKey) <= 0
+    );
   });
 
   eligible.sort(comparePromotionBenefit);
@@ -229,15 +363,15 @@ export function computeDayRate({
   day: Date;
   promotions?: StayPromotion[];
 }): { rate: number; originalRate: number | null } {
-  const original = overrides.get(dateKey(day)) ?? baseNightly;
-  const target = startOfDay(day);
+  const target = dateKey(day);
+  const original = overrides.get(target) ?? baseNightly;
 
   const percentOff = promotions.reduce((best, promotion) => {
     const percent = promotion.discountPercent ?? 0;
     if (percent <= 0) return best;
     if ((promotion.minimumNights ?? 1) > 1) return best;
 
-    if (!promotionCoversNight(promotion, target)) return best;
+    if (!promotionCoversNightKey(promotion, target)) return best;
 
     return percent > best.percent
       ? { percent, roundToWholeUnit: Boolean(promotion.roundToWholeUnit) }
@@ -315,14 +449,13 @@ export function computeStayQuote({
     return originalNightCents - chargedNightCents;
   }
 
-  const candidatesByNight = stay.nightlyBreakdown.map((night) => {
-    const date = parseLocalYmd(night.date);
-    return activePromotions.filter(
+  const candidatesByNight = stay.nightlyBreakdown.map((night) =>
+    activePromotions.filter(
       (candidate) =>
         promotionMeetsStayLength(candidate, stay.nights) &&
-        promotionCoversNight(candidate, date),
-    );
-  });
+        promotionCoversNightKey(candidate, night.date),
+    ),
+  );
   const winners = candidatesByNight.map(
     (candidates) => [...candidates].sort(comparePromotionBenefit)[0] ?? null,
   );
@@ -356,7 +489,7 @@ export function computeStayQuote({
       let cheapestLoss = Number.POSITIVE_INFINITY;
       for (let index = 0; index < stay.nightlyBreakdown.length; index += 1) {
         const night = stay.nightlyBreakdown[index];
-        if (!promotionCoversNight(candidate, parseLocalYmd(night.date))) continue;
+        if (!promotionCoversNightKey(candidate, night.date)) continue;
         const candidateDiscount = nightDiscountCents(night.rate, candidate);
         const loss = baselineDiscounts[index] - candidateDiscount;
         if (loss < cheapestLoss) {

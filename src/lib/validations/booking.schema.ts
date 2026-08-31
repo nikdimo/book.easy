@@ -1,14 +1,38 @@
 import { z } from "zod";
-import { format } from "date-fns";
-import { compareYmd } from "@/lib/utils/date-only";
+import { compareYmd, isValidYmd, todayYmd } from "@/lib/utils/date-only";
 import { PAYMENT_METHOD_CODES } from "@/lib/payments/payment-methods";
+import { BOOKING_PARTY_COUNT_MAX } from "@/lib/booking-party";
+
+/** One of the three counters that may legitimately be zero. */
+const partyCountSchema = z.coerce
+  .number()
+  .int()
+  .min(0)
+  .max(BOOKING_PARTY_COUNT_MAX);
 
 export const createBookingSchema = z
   .object({
     listingId: z.string().min(1),
-    checkIn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format"),
-    checkOut: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format"),
-    guestCount: z.coerce.number().int().min(1).max(20),
+    checkIn: z.string().refine(isValidYmd, "Invalid date format"),
+    checkOut: z.string().refine(isValidYmd, "Invalid date format"),
+    /**
+     * The party, as four separate numbers.
+     *
+     * `guestCount` is deliberately absent: it is adults + children and the server
+     * derives it, so a request cannot claim a party of six and a capacity of one. The
+     * booking's stored `guestCount` still means exactly what it always meant.
+     *
+     * At least one adult, always. Infants and pets cannot hold a booking, and a
+     * "party" made only of them has nobody the stay is for.
+     */
+    adults: z.coerce
+      .number()
+      .int()
+      .min(1, "Add at least one adult to the booking.")
+      .max(BOOKING_PARTY_COUNT_MAX),
+    children: partyCountSchema.optional().default(0),
+    infants: partyCountSchema.optional().default(0),
+    pets: partyCountSchema.optional().default(0),
     guestNote: z.string().max(1000).optional(),
     selectedPaymentMethod: z.enum(PAYMENT_METHOD_CODES).optional(),
     /**
@@ -28,7 +52,15 @@ export const createBookingSchema = z
       .string()
       .regex(/^[a-f0-9]{64}$/, "The house rules could not be verified. Reload and try again."),
   })
-  .refine((data) => compareYmd(data.checkIn, format(new Date(), "yyyy-MM-dd")) >= 0, {
+  .refine((data) => data.adults + data.children <= BOOKING_PARTY_COUNT_MAX, {
+    message: `Maximum ${BOOKING_PARTY_COUNT_MAX} guests allowed`,
+    path: ["adults"],
+  })
+  // The marketplace's day, not the server's. `format(new Date(), ...)` read the host
+  // process's clock, so a container in UTC refused a stay starting today for the first
+  // two hours of every Skopje morning — while the browser's date picker, which follows
+  // the same shared rule this now does, was still offering it (M6).
+  .refine((data) => compareYmd(data.checkIn, todayYmd()) >= 0, {
     message: "Check-in date cannot be in the past",
     path: ["checkIn"],
   })
@@ -52,9 +84,17 @@ const paymentDetailFieldsSchema = z.record(
   z.string().max(500),
 );
 
+/**
+ * Both host transports post this: the web dialog through its server action, and the
+ * mobile PATCH route. `decision` has no default here and none downstream — an
+ * acceptance that does not say what happens to the payment instructions is refused
+ * rather than guessed at from the payment method (M1).
+ */
 export const acceptBookingWithPaymentSchema = z.object({
   bookingId: z.string().trim().min(1),
-  decision: z.enum(["SEND_NOW", "SEND_LATER", "NO_INSTRUCTIONS"]),
+  decision: z.enum(["SEND_NOW", "SEND_LATER", "NO_INSTRUCTIONS"], {
+    message: "Choose what happens with payment instructions before accepting.",
+  }),
   instructions: z.string().trim().max(1200).optional(),
   detailFields: paymentDetailFieldsSchema.optional(),
   /** Only honoured for a booking whose guest never chose a method. */
@@ -64,11 +104,19 @@ export const acceptBookingWithPaymentSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Choose a valid payment deadline")
     .optional(),
   saveForFuture: z.boolean().optional().default(false),
+  /**
+   * Send the details the host already reviewed and saved for this booking's method,
+   * resolved server-side. The mobile sheet previews that exact text before the host
+   * taps, so the send is still reviewed without the phone ever holding the host's
+   * private coordinates.
+   */
+  useSavedInstructions: z.boolean().optional().default(false),
 });
 
 export const sendBookingPaymentRequestSchema = z
   .object({
     bookingId: z.string().trim().min(1),
+    paymentRequestId: z.string().trim().min(1).optional(),
     instructions: z.string().trim().max(1200).optional(),
     detailFields: paymentDetailFieldsSchema.optional(),
     method: z.enum(PAYMENT_METHOD_CODES).optional(),

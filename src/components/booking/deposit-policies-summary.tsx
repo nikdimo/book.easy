@@ -11,7 +11,13 @@ export interface DepositPoliciesSummaryProps {
   t: PaymentMethodLabelResolver;
   /** A validated, serializable public snapshot. Never pass raw listing fields here. */
   data: DepositPoliciesSnapshotV2;
-  appearance?: "plain" | "card";
+  /**
+   * `plain` is a page section, `card` the raised tile. `inline` drops both the surface
+   * and the border around each policy block — inside the booking review those two were
+   * a frame within a frame within the dialog, around what is only ever two short
+   * paragraphs. The copy is identical in all three; only the chrome differs.
+   */
+  appearance?: "plain" | "card" | "inline";
   headingAs?: "h2" | "h3";
   className?: string;
 }
@@ -55,7 +61,7 @@ export function DepositPoliciesSummary({
       <Heading
         className={cn(
           "font-semibold text-foreground",
-          appearance === "card" ? "text-base" : "text-xl",
+          appearance === "plain" ? "text-xl" : "text-base",
         )}
       >
         <ResolvedCopy
@@ -85,10 +91,11 @@ export function DepositPoliciesSummary({
           />
         </p>
       ) : (
-        <div className="mt-3 space-y-3">
+        <div className={cn("mt-3", appearance === "inline" ? "space-y-4" : "space-y-3")}>
           {data.advancePayment ? (
             <PolicyBlock
               kind="advance-payment"
+              bordered={appearance !== "inline"}
               headingAs={BlockHeading}
               title={
                 <ResolvedCopy
@@ -114,6 +121,7 @@ export function DepositPoliciesSummary({
           {data.damageDeposit ? (
             <PolicyBlock
               kind="damage-deposit"
+              bordered={appearance !== "inline"}
               headingAs={BlockHeading}
               title={
                 <ResolvedCopy
@@ -178,6 +186,7 @@ export function DepositPoliciesSummary({
 
 function PolicyBlock({
   kind,
+  bordered = true,
   headingAs,
   title,
   explanation,
@@ -186,6 +195,8 @@ function PolicyBlock({
   extra,
 }: {
   kind: "advance-payment" | "damage-deposit";
+  /** Off inside a dialog, where the block is already two borders deep. */
+  bordered?: boolean;
   headingAs: "h3" | "h4";
   title: React.ReactNode;
   explanation: React.ReactNode;
@@ -197,7 +208,7 @@ function PolicyBlock({
   return (
     <div
       data-deposit-policy={kind}
-      className="rounded-lg border border-border/80 p-3 sm:p-4"
+      className={cn(bordered && "rounded-lg border border-border/80 p-3 sm:p-4")}
     >
       <Heading className="text-sm font-semibold text-foreground">{title}</Heading>
       <p className="mt-1 text-sm leading-6 text-muted-foreground">{explanation}</p>

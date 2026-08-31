@@ -228,8 +228,55 @@ describe("booking conversation", () => {
     expect(updatedBooking.paymentInstructionsSentAt).not.toBeNull();
     expect(
       (await getConversationMessages(conversation.id, guest.id)).messages.at(-1)
-        ?.kind
+      ?.kind
     ).toBe("PAYMENT_INSTRUCTIONS");
+  });
+
+  it("cannot resend or activate a typed request after its obligation changed", async () => {
+    const { host, guest, booking } = await setup();
+    await ensureBookingConversation(booking.id, guest.id);
+    await db.booking.update({
+      where: { id: booking.id },
+      data: {
+        status: "CONFIRMED",
+        acceptedAt: new Date(),
+        paymentStatus: "AWAITING_PAYMENT",
+        selectedPaymentMethod: "BANK_TRANSFER_INTERNATIONAL",
+      },
+    });
+    const request = await db.bookingPaymentRequest.create({
+      data: {
+        bookingId: booking.id,
+        type: "ACCOMMODATION_BALANCE",
+        amount: 110,
+        currency: "EUR",
+        dueAt: new Date("2030-09-10"),
+        method: "BANK_TRANSFER_INTERNATIONAL",
+      },
+    });
+    const input = {
+      bookingId: booking.id,
+      hostId: host.id,
+      paymentRequestId: request.id,
+      body: "IBAN: MK07250120000058984",
+    };
+
+    await shareBookingPaymentInstructions(input);
+    await expect(
+      shareBookingPaymentInstructions({ ...input, clientId: randomUUID() }),
+    ).rejects.toThrow("no longer awaiting instructions");
+
+    await db.bookingPaymentRequest.update({
+      where: { id: request.id },
+      data: { status: "DRAFT" },
+    });
+    await db.booking.update({
+      where: { id: booking.id },
+      data: { paymentStatus: "PAYMENT_REPORTED" },
+    });
+    await expect(
+      shareBookingPaymentInstructions({ ...input, clientId: randomUUID() }),
+    ).rejects.toThrow("already been reported or settled");
   });
 
   it("freezes the structured details it sent onto the booking", async () => {

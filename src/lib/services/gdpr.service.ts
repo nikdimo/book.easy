@@ -1,6 +1,13 @@
+import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { enqueueUserDraftUploads } from '@/lib/listing-draft-cleanup';
-import { processPendingUploadDeletions, sweepUploads } from '@/lib/storage/upload-cleanup';
+import {
+  enqueueUploadDeletions,
+  processPendingUploadDeletions,
+  sweepUploads,
+} from '@/lib/storage/upload-cleanup';
+import { dbDateToYmd, todayYmd, ymdToDbDate } from '@/lib/utils/date-only';
+import { recordBookingTimelineEvent } from '@/lib/services/booking-timeline.service';
 
 export interface UserDataExport {
   account: {
@@ -112,6 +119,17 @@ export interface UserDataExport {
     damageDepositStatus?: string;
     createdAt: Date;
   }>;
+  transactionReports: Array<{
+    bookingId: string;
+    track: string;
+    amount: string;
+    currency: string;
+    transactionDate: string;
+    reference?: string;
+    note?: string;
+    retainedReason?: string;
+    createdAt: Date;
+  }>;
 }
 
 /**
@@ -149,6 +167,10 @@ export async function exportUserData(userId: string): Promise<UserDataExport> {
         orderBy: { createdAt: 'desc' },
         take: 1000,
         include: { booking: { include: { listing: true } } },
+      },
+      bookingPaymentPrivateRecords: {
+        orderBy: { createdAt: 'desc' },
+        take: 1000,
       },
     },
   });
@@ -300,26 +322,207 @@ export async function exportUserData(userId: string): Promise<UserDataExport> {
       damageDepositStatus: event.damageDepositStatus ?? undefined,
       createdAt: event.createdAt,
     })),
+    transactionReports: user.bookingPaymentPrivateRecords.map((record) => ({
+      bookingId: record.bookingId,
+      track: record.track,
+      amount: record.amount.toString(),
+      currency: record.currency,
+      transactionDate: dbDateToYmd(record.transactionDate),
+      reference: record.reference ?? undefined,
+      note: record.note ?? undefined,
+      retainedReason: record.retainedReason ?? undefined,
+      createdAt: record.createdAt,
+    })),
   };
 }
 
+/** The display name every erased account collapses to.
+ *
+ *  Deliberately the same literal the messaging UI already falls back to for a null
+ *  sender (`conversation.deleted_user`), so a host reading an old reservation sees one
+ *  phrase for "this person is gone" rather than two. */
+export const ERASED_USER_NAME = 'Deleted user';
+
 /**
- * Safely delete a user account and all associated data
- * Preserves referential integrity by anonymizing instead of hard-deleting where needed
+ * The address an erased account is left holding.
+ *
+ * `.invalid` is reserved by RFC 2606 and can never resolve, so nothing we send can
+ * reach a husk. It is derived from the user id, which makes it unique without a lookup
+ * and keeps the write idempotent. The point of moving the address at all is that
+ * `User.email` is unique: parking it here releases the real address, so somebody who
+ * erases their account can sign up again with the same mailbox afterwards.
  */
-export async function deleteUserAccount(userId: string): Promise<{
+export function erasedEmailFor(userId: string): string {
+  return `deleted-${userId}@deleted.invalid`;
+}
+
+export type AccountDeletionRefusal =
+  | 'ACTIVE_BOOKING'
+  | 'TOKEN_INVALID'
+  | 'TOKEN_ALREADY_USED'
+  | 'ACCOUNT_NOT_FOUND';
+
+/**
+ * A refusal the person who asked is entitled to read.
+ *
+ * Separate from the generic failure because the messages differ in kind: "something
+ * broke, contact support" is an apology, while "you have a guest arriving on Friday"
+ * is an instruction the user can act on. `confirmAccountDeletion` passes `message`
+ * straight through to the UI, so anything thrown here is user-facing copy.
+ */
+export class AccountDeletionBlockedError extends Error {
+  readonly reason: AccountDeletionRefusal;
+
+  constructor(reason: AccountDeletionRefusal, message: string) {
+    super(message);
+    this.name = 'AccountDeletionBlockedError';
+    this.reason = reason;
+  }
+}
+
+/** Confirmed stays that have not finished yet, on either side of the booking. */
+interface BlockingBooking {
+  guestId: string;
+  checkOut: Date;
+}
+
+function describeBlockingBookings(userId: string, rows: BlockingBooking[]): string {
+  const asGuest = rows.filter((row) => row.guestId === userId).length;
+  const asHost = rows.length - asGuest;
+  const last = dbDateToYmd(
+    rows.reduce((latest, row) => (row.checkOut > latest ? row.checkOut : latest), rows[0].checkOut)
+  );
+
+  const parts: string[] = [];
+  if (asGuest > 0) {
+    parts.push(`${asGuest} ${asGuest === 1 ? 'stay' : 'stays'} you booked`);
+  }
+  if (asHost > 0) {
+    parts.push(
+      `${asHost} ${asHost === 1 ? 'reservation' : 'reservations'} at your ${
+        asHost === 1 ? 'listing' : 'listings'
+      }`
+    );
+  }
+
+  const one = rows.length === 1;
+  return (
+    `Your account still has ${parts.join(' and ')} that ${one ? 'has' : 'have'} not ` +
+    `finished yet — the last one ends on ${last}. Cancel or complete ${one ? 'it' : 'them'} ` +
+    `first, then request deletion again.`
+  );
+}
+
+export interface DeleteUserAccountResult {
   success: boolean;
+  /** True when the account was already a husk and this call changed nothing. */
+  alreadyErased: boolean;
   deletedRecords: Record<string, number>;
   anonymizedRecords: Record<string, number>;
-}> {
+}
+
+/**
+ * Erase an account: strip every trace of the person, keep the records the business is
+ * required to keep.
+ *
+ * **Why the row survives.** Four foreign keys onto `User` are `ON DELETE RESTRICT` —
+ * `Booking.guestId`, `Listing.hostId`, `Property.ownerId`, `Suggestion.hostId` — and a
+ * fifth, `AuditLog.userId`, is handled by deleting the logs outright. `DELETE FROM
+ * "User"` therefore raised a foreign-key violation for any account that had ever booked
+ * or hosted, which is very nearly every real account. Three ways out were on the table:
+ *
+ *   - *Make the columns nullable.* Pushes `null` through every read of a booking's guest
+ *     and a listing's host, across the booking, search, messaging and mobile-API layers.
+ *   - *Reassign to one shared tombstone user.* Merges unrelated people into a single
+ *     identity, which defeats the point of keeping booking records distinguishable for
+ *     seven years.
+ *   - *Anonymize the row in place.* What this does. Every relation stays valid, each
+ *     erased account keeps its own meaningless key, and `booking.guest.name` still
+ *     resolves — to "Deleted user".
+ *
+ * A side effect worth naming: `SafetyCase.reporterId` is a required `ON DELETE CASCADE`,
+ * so the old hard delete silently destroyed the safety cases an erased user had filed.
+ * They now survive with an anonymous reporter.
+ *
+ * **What is refused.** A confirmed stay that has not finished yet — on either side —
+ * blocks erasure before anything is written, so nobody erases their way out of a
+ * reservation somebody else is relying on. The check runs inside the transaction, so a
+ * booking confirmed while this was in flight cannot slip past it.
+ *
+ * **Atomicity.** Pass `consumeTokenHash` and the confirmation token is spent in this
+ * same transaction. A refusal or a crash rolls the token back with everything else, so a
+ * failed attempt leaves the emailed link still usable.
+ *
+ * **Idempotency.** Erasing an already-erased account reports success and writes nothing.
+ */
+export async function deleteUserAccount(
+  userId: string,
+  options: { consumeTokenHash?: string } = {}
+): Promise<DeleteUserAccountResult> {
   const deletedRecords: Record<string, number> = {};
+  const anonymizedRecords: Record<string, number> = {};
   // Filled inside the transaction, swept after it commits.
   let queuedUploads: string[] = [];
-  const anonymizedRecords: Record<string, number> = {};
+  let alreadyErased = false;
 
   try {
-    // Start a transaction to ensure atomicity
     await db.$transaction(async (tx) => {
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        select: { id: true, image: true, deletedAt: true },
+      });
+      if (!user) {
+        throw new AccountDeletionBlockedError('ACCOUNT_NOT_FOUND', 'Account not found.');
+      }
+
+      // Re-running against a husk is a no-op rather than an error: a retry after a
+      // dropped connection should not tell the user their erasure failed.
+      if (user.deletedAt) {
+        alreadyErased = true;
+        return;
+      }
+
+      // ── Refusals, before a single write ───────────────────────────────────────
+      // Inside the transaction on purpose. Checking outside it would leave a window
+      // in which a host accepts a request between the check and the erasure.
+      const blocking = await tx.booking.findMany({
+        where: {
+          status: 'CONFIRMED',
+          checkOut: { gte: ymdToDbDate(todayYmd()) },
+          OR: [{ guestId: userId }, { listing: { hostId: userId } }],
+        },
+        select: { guestId: true, checkOut: true },
+      });
+      if (blocking.length > 0) {
+        throw new AccountDeletionBlockedError(
+          'ACTIVE_BOOKING',
+          describeBlockingBookings(userId, blocking)
+        );
+      }
+
+      // ── Spend the confirmation link, atomically with the erasure ──────────────
+      // `usedAt: null` in the filter is what makes it single-use under concurrency:
+      // two simultaneous confirmations both reach here, one updates a row and one
+      // updates none, and the loser rolls back without having touched the account.
+      if (options.consumeTokenHash) {
+        const now = new Date();
+        const consumed = await tx.accountDeletionToken.updateMany({
+          where: {
+            tokenHash: options.consumeTokenHash,
+            userId,
+            usedAt: null,
+            expires: { gt: now },
+          },
+          data: { usedAt: now },
+        });
+        if (consumed.count !== 1) {
+          throw new AccountDeletionBlockedError(
+            'TOKEN_INVALID',
+            'This confirmation link is no longer valid. Please request a new one.'
+          );
+        }
+      }
+
       // Preserve a minimal suppression record after deletion so the address cannot
       // accidentally be re-imported into marketing. Consent evidence remains detached
       // from the deleted account for the applicable limitation period.
@@ -375,113 +578,313 @@ export async function deleteUserAccount(userId: string): Promise<{
         anonymizedRecords['marketingConsent'] = marketingContact.preferences.length;
       }
 
-      // 1. Anonymize audit logs (keep for compliance, remove user ID linkage)
-      const auditLogsToUpdate = await tx.auditLog.findMany({
-        where: { userId },
-      });
-      if (auditLogsToUpdate.length > 0) {
-        await tx.auditLog.deleteMany({
-          where: { userId },
-        });
-        anonymizedRecords['auditLogs'] = auditLogsToUpdate.length;
-      }
+      // ── Purely personal rows: deleted outright ────────────────────────────────
+      // Each of these carries no business, tax or dispute value once its owner is
+      // gone. All of them used to disappear through `ON DELETE CASCADE` on the user
+      // row; with the row surviving, every one has to be named explicitly, and a
+      // relation missed here would be personal data left behind.
+      const auditLogs = await tx.auditLog.deleteMany({ where: { userId } });
+      // Named as anonymization because that is what it achieves for the audit trail —
+      // the entries are dropped rather than detached because they carry the IP address
+      // the action came from.
+      if (auditLogs.count > 0) anonymizedRecords['auditLogs'] = auditLogs.count;
 
-      // 2. Delete/anonymize user consent records
-      const consentRecords = await tx.userConsent.findMany({
-        where: { userId },
-      });
-      if (consentRecords.length > 0) {
-        await tx.userConsent.deleteMany({
-          where: { userId },
-        });
-        deletedRecords['consentRecords'] = consentRecords.length;
-      }
+      deletedRecords['consentRecords'] = (
+        await tx.userConsent.deleteMany({ where: { userId } })
+      ).count;
+      deletedRecords['favorites'] = (await tx.favorite.deleteMany({ where: { userId } })).count;
+      deletedRecords['notifications'] = (
+        await tx.notification.deleteMany({ where: { userId } })
+      ).count;
+      deletedRecords['pushTokens'] = (await tx.pushToken.deleteMany({ where: { userId } })).count;
+      deletedRecords['communicationPreferences'] = (
+        await tx.communicationPreference.deleteMany({ where: { userId } })
+      ).count;
+      deletedRecords['messageEmailDeliveries'] = (
+        await tx.messageEmailDelivery.deleteMany({ where: { recipientId: userId } })
+      ).count;
+      deletedRecords['conversationMemberships'] = (
+        await tx.conversationParticipant.deleteMany({ where: { userId } })
+      ).count;
+      deletedRecords['reviewInvitations'] = (
+        await tx.reviewInvitation.deleteMany({ where: { recipientId: userId } })
+      ).count;
+      deletedRecords['reviewAdminReads'] = (
+        await tx.reviewAdminRead.deleteMany({ where: { adminId: userId } })
+      ).count;
 
-      // 3. Anonymize listing reports from this user
-      const reportCount = await tx.listingReport.count({
-        where: { reporterId: userId },
+      // ── Content that stays, with its author detached ──────────────────────────
+      // Every column below is already nullable with `onDelete: SetNull`, so the schema
+      // was always designed for the author to disappear from under the record. The
+      // records themselves are the other party's history — a guest's chat thread, a
+      // host's review, an admin's moderation trail — and are not this user's to erase.
+      const nulled = async (label: string, count: Promise<{ count: number }>) => {
+        const { count: n } = await count;
+        if (n > 0) anonymizedRecords[label] = (anonymizedRecords[label] ?? 0) + n;
+      };
+
+      await nulled(
+        'listingReports',
+        tx.listingReport.updateMany({ where: { reporterId: userId }, data: { reporterId: null } })
+      );
+      await nulled(
+        'reviewedListingReports',
+        tx.listingReport.updateMany({
+          where: { reviewedById: userId },
+          data: { reviewedById: null },
+        })
+      );
+      await nulled(
+        'reviewedSuggestions',
+        tx.suggestion.updateMany({ where: { reviewedById: userId }, data: { reviewedById: null } })
+      );
+      // Payment-instruction messages can contain account numbers and other reusable
+      // payment coordinates. Redact their body before detaching the sender; after the
+      // senderId becomes null there is no reliable way to identify which erased host
+      // supplied that private text.
+      const redactedPaymentMessages = await tx.message.updateMany({
+        where: { senderId: userId, kind: 'PAYMENT_INSTRUCTIONS' },
+        data: {
+          body: 'Payment details removed after account deletion',
+          deletedAt: new Date(),
+        },
       });
-      if (reportCount > 0) {
-        await tx.listingReport.updateMany({
+      if (redactedPaymentMessages.count > 0) {
+        anonymizedRecords['paymentInstructionMessages'] =
+          redactedPaymentMessages.count;
+      }
+      await nulled(
+        'messages',
+        tx.message.updateMany({ where: { senderId: userId }, data: { senderId: null } })
+      );
+      await nulled(
+        'conversations',
+        tx.conversation.updateMany({ where: { startedById: userId }, data: { startedById: null } })
+      );
+      await nulled(
+        'conversations',
+        tx.conversation.updateMany({
+          where: { inquiryGuestId: userId },
+          data: { inquiryGuestId: null },
+        })
+      );
+      await nulled(
+        'bookingTimelineEvents',
+        tx.bookingTimelineEvent.updateMany({ where: { actorId: userId }, data: { actorId: null } })
+      );
+      await nulled(
+        'bookingPaymentStatusEvents',
+        tx.bookingPaymentStatusEvent.updateMany({
+          where: { actorId: userId },
+          data: { actorId: null },
+        })
+      );
+      await nulled(
+        'bookingPaymentPrivateRecords',
+        tx.bookingPaymentPrivateRecord.updateMany({
           where: { reporterId: userId },
-          data: { reporterId: null },
-        });
-        anonymizedRecords['listingReports'] = reportCount;
-      }
+          data: {
+            reporterId: null,
+            reference: null,
+            note: null,
+            retainedReason: null,
+          },
+        })
+      );
+      deletedRecords['bookingPaymentReminders'] = (
+        await tx.bookingPaymentReminderDelivery.deleteMany({
+          where: { recipientId: userId },
+        })
+      ).count;
+      await nulled(
+        'damageReports',
+        tx.damageReport.updateMany({ where: { reporterId: userId }, data: { reporterId: null } })
+      );
+      await nulled(
+        'safetyCases',
+        tx.safetyCase.updateMany({
+          where: { reportedUserId: userId },
+          data: { reportedUserId: null },
+        })
+      );
+      await nulled(
+        'safetyCases',
+        tx.safetyCase.updateMany({
+          where: { assignedAdminId: userId },
+          data: { assignedAdminId: null },
+        })
+      );
+      await nulled(
+        'safetyCaseUpdates',
+        tx.safetyCaseUpdate.updateMany({ where: { authorId: userId }, data: { authorId: null } })
+      );
+      await nulled(
+        'reviewsWritten',
+        tx.review.updateMany({ where: { authorId: userId }, data: { authorId: null } })
+      );
+      await nulled(
+        'reviewsReceived',
+        tx.review.updateMany({ where: { subjectUserId: userId }, data: { subjectUserId: null } })
+      );
+      await nulled(
+        'moderatedReviews',
+        tx.review.updateMany({ where: { approvedById: userId }, data: { approvedById: null } })
+      );
+      await nulled(
+        'contactMessages',
+        tx.contactMessage.updateMany({ where: { userId }, data: { userId: null } })
+      );
 
-      // 4. Delete favorites
-      const favoriteCount = await tx.favorite.deleteMany({
-        where: { userId },
-      });
-      deletedRecords['favorites'] = favoriteCount.count;
-
-      // 5. Remove transient notifications and registered devices. Sent chat messages
-      // keep the booking record intact but lose their sender identity through SetNull.
-      const notificationCount = await tx.notification.deleteMany({ where: { userId } });
-      deletedRecords['notifications'] = notificationCount.count;
-      const pushTokenCount = await tx.pushToken.deleteMany({ where: { userId } });
-      deletedRecords['pushTokens'] = pushTokenCount.count;
-
-      // 6. Handle listings (listings should be anonymized, not deleted, to preserve history)
-      const listingCount = await tx.listing.count({
-        where: { hostId: userId },
-      });
+      // ── Listings: archived, kept, owner anonymized ────────────────────────────
+      // Archiving takes them off the marketplace. The rows stay because a listing is
+      // the other end of every booking record being retained; the host identity on
+      // them is emptied by the user write at the bottom of this transaction.
+      const listingCount = await tx.listing.count({ where: { hostId: userId } });
       if (listingCount > 0) {
-        // Unpublish all listings
         await tx.listing.updateMany({
           where: { hostId: userId },
           data: {
             status: 'ARCHIVED',
-            hostId: userId, // Will be handled in user deletion
+            // Reusable private payment destinations are personal data and no longer
+            // have an owner after erasure.
+            paymentInstructionTemplates: Prisma.DbNull,
+            paymentMethodOther: null,
           },
         });
         anonymizedRecords['listings'] = listingCount;
+        const privateRequests = await tx.bookingPaymentRequest.updateMany({
+          where: { booking: { listing: { hostId: userId } } },
+          data: { instructionsSnapshot: Prisma.DbNull },
+        });
+        if (privateRequests.count > 0) {
+          anonymizedRecords['bookingPaymentRequests'] = privateRequests.count;
+        }
+        const legacyBookingSnapshots = await tx.booking.updateMany({
+          where: { listing: { hostId: userId } },
+          data: { paymentInstructionsSnapshot: Prisma.DbNull },
+        });
+        if (legacyBookingSnapshots.count > 0) {
+          anonymizedRecords['bookingPaymentInstructionSnapshots'] =
+            legacyBookingSnapshots.count;
+        }
       }
 
-      // 7. Anonymize bookings (cancel pending, keep history for records)
-      const pendingBookings = await tx.booking.updateMany({
-        where: {
-          guestId: userId,
-          status: 'PENDING',
-        },
-        data: {
-          status: 'CANCELLED_BY_GUEST',
-        },
+      // ── Bookings: history kept, guest identity and free text removed ──────────
+      // Pending *guest* requests are withdrawn — the person asking to be erased is
+      // the one who made them, and leaving them live would ask a host to accept a
+      // reservation for somebody who no longer exists. The availability hold goes
+      // with them, exactly as `cancelBooking` releases it.
+      //
+      // Pending requests *at this user's listings* are deliberately left alone. They
+      // expire on `responseDueAt` through the normal sweep, which sends the guest the
+      // expiry mail they would otherwise never get.
+      const pendingGuestBookings = await tx.booking.findMany({
+        where: { guestId: userId, status: 'PENDING' },
+        select: { id: true },
       });
-      anonymizedRecords['bookingsCancelled'] = pendingBookings.count;
+      if (pendingGuestBookings.length > 0) {
+        const ids = pendingGuestBookings.map((booking) => booking.id);
+        await tx.booking.updateMany({
+          where: { id: { in: ids } },
+          data: {
+            status: 'CANCELLED_BY_GUEST',
+            cancellationReason: 'Guest account deleted',
+          },
+        });
+        // The host keeps a booking whose status says the guest cancelled it, so the
+        // history has to say the same — written here, in the erasure's own transaction,
+        // because nothing else on this path will ever announce it. No actor id: this
+        // guest's id is being erased a few statements from now, and the timeline rows
+        // pointing at it were nulled above. The role is what survives, and it is the
+        // part a host reading this months later actually needs.
+        for (const bookingId of ids) {
+          await recordBookingTimelineEvent(tx, {
+            bookingId,
+            type: 'CANCELLED_BY_GUEST',
+            actor: { role: 'GUEST' },
+            data: { reason: 'ACCOUNT_DELETION' },
+          });
+        }
+        await tx.availabilityBlock.deleteMany({
+          where: { bookingId: { in: ids }, blockType: 'BOOKING_HOLD' },
+        });
+      }
+      anonymizedRecords['bookingsCancelled'] = pendingGuestBookings.length;
 
-      // 8. Delete user profile
-      await tx.profile.deleteMany({
+      // The dates, amounts and statuses are the record being retained; the note is
+      // free text the guest wrote about themselves ("arriving late, call me on …")
+      // and has no retention justification once the stay is over.
+      const bookingCount = await tx.booking.count({ where: { guestId: userId } });
+      if (bookingCount > 0) {
+        await tx.booking.updateMany({
+          where: { guestId: userId, guestNote: { not: null } },
+          data: { guestNote: null },
+        });
+        anonymizedRecords['bookings'] = bookingCount;
+      }
+
+      // ── Profile, credentials and sessions ─────────────────────────────────────
+      const profile = await tx.profile.findUnique({
         where: { userId },
+        select: { avatarUrl: true },
       });
-      deletedRecords['profiles'] = 1;
+      deletedRecords['profiles'] = (await tx.profile.deleteMany({ where: { userId } })).count;
+      deletedRecords['sessions'] = (await tx.session.deleteMany({ where: { userId } })).count;
+      // Removes the Google linkage, so the provider can no longer resolve to this row.
+      deletedRecords['accounts'] = (await tx.account.deleteMany({ where: { userId } })).count;
 
-      // 9. Delete auth-related records
-      const sessionsDeleted = await tx.session.deleteMany({
-        where: { userId },
-      });
-      deletedRecords['sessions'] = sessionsDeleted.count;
+      // 10. Record the uploads this erasure is about to strand.
+      // Listing drafts used to disappear through `ListingDraft.host`'s cascade, taking
+      // their photos off every index without any draft-delete path running. The user
+      // row now survives, so the drafts are deleted here explicitly — after their URLs
+      // have been read off them, and in the same transaction, so a rollback queues
+      // nothing and a crash after the commit still leaves the files discoverable.
+      // The two avatar fields join them: they are pictures of the person, and nothing
+      // else was ever going to unlink them.
+      //
+      // Nothing is unlinked here: the reference sweep runs per file afterwards, so a
+      // photo also held by a published listing, another host's draft, an avatar or a
+      // case attachment survives.
+      queuedUploads = [
+        ...(await enqueueUserDraftUploads(tx, userId)),
+        ...(await enqueueUploadDeletions(
+          tx,
+          [user.image, profile?.avatarUrl].filter((url): url is string => Boolean(url)),
+          'account-deletion'
+        )),
+      ];
+      deletedRecords['listingDrafts'] = (
+        await tx.listingDraft.deleteMany({ where: { hostId: userId } })
+      ).count;
 
-      const accountsDeleted = await tx.account.deleteMany({
-        where: { userId },
-      });
-      deletedRecords['accounts'] = accountsDeleted.count;
-
-      // 10. Record the uploads the account's listing drafts are about to strand.
-      // `ListingDraft.host` is `onDelete: Cascade`, so those rows disappear with the user
-      // without any draft-delete path running. Queued inside this transaction, so a
-      // deletion that rolls back queues nothing — and a crash after the commit still
-      // leaves the files discoverable. Nothing is unlinked here: the reference sweep runs
-      // per file afterwards, so a photo also held by a published listing, another host's
-      // draft, an avatar or a case attachment survives.
-      queuedUploads = await enqueueUserDraftUploads(tx, userId);
-
-      // 11. Finally delete the user account
-      await tx.user.delete({
+      // ── Finally, the account itself ───────────────────────────────────────────
+      // Not a delete. Everything identifying is overwritten in one statement, and the
+      // row is left as a key that the retained bookings and listings can keep pointing
+      // at. `isActive: false` is what the sign-in callback checks, so the husk cannot
+      // be signed into even with a live Google session; `email` moves to an unroutable
+      // placeholder, which also releases the real address for a future signup.
+      await tx.user.update({
         where: { id: userId },
+        data: {
+          email: erasedEmailFor(userId),
+          name: ERASED_USER_NAME,
+          image: null,
+          locale: null,
+          displayCurrency: null,
+          emailVerified: null,
+          isActive: false,
+          isHost: false,
+          deletedAt: new Date(),
+        },
       });
-      deletedRecords['user'] = 1;
-    });
+      anonymizedRecords['user'] = 1;
+
+      // Every confirmation link for this account, spent or not. Keeping them would
+      // leave rows keyed to a husk, and the one just consumed has nothing left to do.
+      deletedRecords['deletionTokens'] = (
+        await tx.accountDeletionToken.deleteMany({ where: { userId } })
+      ).count;
+    }, { isolationLevel: 'Serializable', timeout: 20_000 });
 
     // After the commit, never inside it: unlinking a file cannot be rolled back, and a
     // failure here must not undo an erasure the user is legally owed.
@@ -492,10 +895,14 @@ export async function deleteUserAccount(userId: string): Promise<{
 
     return {
       success: true,
+      alreadyErased,
       deletedRecords,
       anonymizedRecords,
     };
   } catch (error) {
+    // A refusal is the user's answer, not a fault: pass it through untouched rather
+    // than burying "you have a guest arriving on Friday" under a support message.
+    if (error instanceof AccountDeletionBlockedError) throw error;
     console.error('Error deleting user account:', error);
     throw new Error('Failed to delete user account. Contact support for assistance.');
   }
@@ -619,12 +1026,17 @@ export function getDataRetentionPolicy() {
     accountData: {
       retention: '7 years',
       reason: 'Tax compliance and legal records',
-      note: 'Kept after account deletion',
+      note: 'Deleting an account empties its record rather than removing the row: the name, email, avatar and profile are gone, and what remains is an unnamed key the retained bookings and listings point at',
     },
     bookingRecords: {
       retention: '7 years',
       reason: 'Tax, audit, and dispute resolution',
-      note: 'Guest/host identifiers removed, bookings kept',
+      note: 'Dates, amounts and statuses are kept; the guest is shown as a deleted user and their booking note is removed',
+    },
+    listingRecords: {
+      retention: '7 years',
+      reason: 'The other end of every retained booking',
+      note: 'Archived and taken off the marketplace when the host deletes their account; the listing itself is kept because the bookings on it are',
     },
     listingViews: {
       retention: '14 months',

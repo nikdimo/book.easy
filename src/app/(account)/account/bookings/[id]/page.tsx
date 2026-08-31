@@ -4,12 +4,17 @@ import Image from "next/image";
 import { Calendar, MapPin, Users, ArrowLeft, Star } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { getGuestBookingWithHost } from "@/lib/services/booking.service";
+import {
+  bookingPartyDetailLine,
+  resolveBookingParty,
+} from "@/lib/booking-party";
+import { resolveBookingPricing } from "@/lib/booking-pricing";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { CancelBookingButton } from "@/components/account/cancel-booking-button";
-import { formatDate, formatPrice } from "@/lib/utils/format";
+import { formatCalendarDate, formatPrice } from "@/lib/utils/format";
 import { formatMoney } from "@/lib/currency/convert";
 import { BOOKING_STATUSES } from "@/lib/constants";
 import { StartConversationButton } from "@/components/communication/start-conversation-button";
@@ -22,8 +27,15 @@ import {
 import { getT, T, TWithValues, t, ti, tPlural } from "@/lib/i18n/t";
 import { resolveBookingStatus } from "@/lib/i18n/status-labels";
 import { getBookingPaymentProgress } from "@/lib/services/booking-payment-status.service";
-import { parseBookingPaymentDetailsSnapshot } from "@/lib/payments/booking-payment-request";
+import {
+  isNoInstructionsPaymentRequestSnapshot,
+  parseBookingPaymentDetailsSnapshot,
+} from "@/lib/payments/booking-payment-request";
 import { parseDepositPoliciesSnapshot } from "@/lib/payments/deposit-policies";
+import {
+  parseCancellationPolicySnapshot,
+  parseCancellationSettlementSnapshot,
+} from "@/lib/payments/cancellation-policy";
 import { BookingPaymentProgress } from "@/components/booking/booking-payment-progress";
 
 interface BookingDetailProps {
@@ -46,12 +58,21 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
   const statusConfig = BOOKING_STATUSES.find((s) => s.value === booking.status);
   const canCancel = booking.status === "PENDING" || booking.status === "CONFIRMED";
   const guests = tPlural(translator, "booking.guests", booking.guestCount, "{n} guest", "{n} guests");
-  const priceBreakdown = booking.priceBreakdown as {
-    accommodationSubtotal?: number;
-  } | null;
-  const accommodationSubtotal =
-    priceBreakdown?.accommodationSubtotal ??
-    Number(booking.nightlyRate) * booking.numberOfNights;
+  // What the guest count leaves out, and only when it leaves something out. A booking
+  // taken before the party columns existed resolves to "not recorded" and returns null
+  // here, so it keeps printing exactly the one number it has always printed rather than
+  // gaining an invented "0 infants".
+  const partyDetail = bookingPartyDetailLine(
+    translator,
+    resolveBookingParty(booking),
+  );
+  // One resolver, shared with the host panel and the mobile API. `nightlyRate` is a
+  // rounded average and the old fallback multiplied it by the nights, which misses the
+  // total by a cent or more on an uneven stay (audit L2). The rows below print the
+  // *gross* accommodation and cleaning figures because the promotion has a line of its
+  // own: gross + gross - discount is `totalPrice`, while the net figures beside that
+  // same line would subtract the promotion twice.
+  const pricing = resolveBookingPricing(booking);
   const paymentMethods = acceptedPaymentMethodsFromSnapshot(
     booking.paymentMethodsSnapshot,
     booking.createdAt,
@@ -131,11 +152,11 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-muted-foreground"><T t={translator} k="account.booking.check_in" source="Check-in" /></p>
-              <p className="font-medium flex items-center gap-1"><Calendar className="h-3 w-3" />{formatDate(booking.checkIn, translator.locale)}</p>
+              <p className="font-medium flex items-center gap-1"><Calendar className="h-3 w-3" />{formatCalendarDate(booking.checkIn, translator.locale)}</p>
             </div>
             <div>
               <p className="text-muted-foreground"><T t={translator} k="account.booking.check_out" source="Check-out" /></p>
-              <p className="font-medium flex items-center gap-1"><Calendar className="h-3 w-3" />{formatDate(booking.checkOut, translator.locale)}</p>
+              <p className="font-medium flex items-center gap-1"><Calendar className="h-3 w-3" />{formatCalendarDate(booking.checkOut, translator.locale)}</p>
             </div>
             <div>
               <p className="text-muted-foreground"><T t={translator} k="account.booking.guests" source="Guests" /></p>
@@ -143,6 +164,13 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
                 <Users className="h-3 w-3" />
                 <span className={guests.translated ? "notranslate" : undefined}>{guests.text}</span>
               </p>
+              {partyDetail ? (
+                <p
+                  className={`mt-0.5 text-xs text-muted-foreground ${partyDetail.translated ? "notranslate" : ""}`}
+                >
+                  {partyDetail.text}
+                </p>
+              ) : null}
             </div>
             <div>
               <p className="text-muted-foreground"><T t={translator} k="account.booking.nights" source="Nights" /></p>
@@ -155,18 +183,18 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span>{ti(translator, "account.booking.accommodation_nights", "Accommodation · {count} nights", { count: booking.numberOfNights }).text}</span>
-              <span>{formatPrice(accommodationSubtotal, booking.currency, translator.locale)}</span>
+              <span>{formatPrice(pricing.originalAccommodationSubtotal, booking.currency, translator.locale)}</span>
             </div>
-            {Number(booking.cleaningFee) > 0 && (
+            {pricing.originalCleaningFee > 0 && (
               <div className="flex justify-between">
                 <span><T t={translator} k="account.booking.cleaning_fee" source="Cleaning fee" /></span>
-                <span>{formatPrice(Number(booking.cleaningFee), booking.currency, translator.locale)}</span>
+                <span>{formatPrice(pricing.originalCleaningFee, booking.currency, translator.locale)}</span>
               </div>
             )}
-            {Number(booking.discountAmount) > 0 && (
+            {pricing.discountAmount > 0 && (
               <div className="flex justify-between text-green-700">
                 <span>{booking.promotionType === "FREE_CLEANING" ? t(translator, "account.booking.free_cleaning", "Free cleaning") : t(translator, "account.booking.special_offer", "Special offer")}</span>
-                <span>−{formatPrice(Number(booking.discountAmount), booking.currency, translator.locale)}</span>
+                <span>−{formatPrice(pricing.discountAmount, booking.currency, translator.locale)}</span>
               </div>
             )}
             <Separator />
@@ -266,6 +294,12 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
                   ? null
                   : Number(paymentProgress.damageDepositAmount),
               depositPolicies: parseDepositPoliciesSnapshot(paymentProgress.depositPolicySnapshot),
+              cancellationPolicy: parseCancellationPolicySnapshot(
+                paymentProgress.cancellationPolicySnapshot,
+              ),
+              cancellationSettlement: parseCancellationSettlementSnapshot(
+                paymentProgress.cancellationSettlementSnapshot,
+              ),
               paymentStatus: paymentProgress.paymentStatus,
               paymentInstructionsStatus: paymentProgress.paymentInstructionsStatus,
               paymentInstructionsDueAt:
@@ -278,11 +312,61 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
               paymentMethodOtherLabel: paymentMethods?.otherLabel ?? null,
               advancePaymentStatus: paymentProgress.advancePaymentStatus,
               damageDepositStatus: paymentProgress.damageDepositStatus,
+              accommodationRefundStatus: paymentProgress.accommodationRefundStatus,
+              accommodationRefundAmount:
+                paymentProgress.accommodationRefundAmount === null
+                  ? null
+                  : Number(paymentProgress.accommodationRefundAmount),
               paymentStatusEvents: paymentProgress.paymentStatusEvents.map((event) => ({
                 id: event.id,
-                actor: event.eventType.startsWith("GUEST_") ? "GUEST" : "HOST",
+                actor:
+                  event.actorId === paymentProgress.guestId
+                    ? "GUEST"
+                    : event.actorId === paymentProgress.listing.hostId
+                      ? "HOST"
+                      : event.actorId
+                        ? "ADMIN"
+                        : event.eventType.startsWith("GUEST_")
+                          ? "GUEST"
+                          : event.eventType.startsWith("HOST_")
+                            ? "HOST"
+                            : "SYSTEM",
                 eventType: event.eventType,
                 createdAt: event.createdAt.toISOString(),
+              })),
+              paymentRequests: paymentProgress.paymentRequests.map((request) => ({
+                id: request.id,
+                type: request.type,
+                amount: Number(request.amount),
+                currency: request.currency,
+                dueAt: request.dueAt.toISOString(),
+                status: request.status,
+                sentPaymentDetails: parseBookingPaymentDetailsSnapshot(
+                  request.instructionsSnapshot,
+                ),
+                instructionsNotRequired: isNoInstructionsPaymentRequestSnapshot(
+                  request.instructionsSnapshot,
+                ),
+                reminders: request.reminders.map((reminder) => ({
+                  kind: reminder.kind,
+                  sentAt: reminder.sentAt.toISOString(),
+                })),
+              })),
+              transactionReports: paymentProgress.paymentPrivateRecords.map((report) => ({
+                id: report.id,
+                track: report.track,
+                reporter:
+                  report.reporterId === null
+                    ? "REDACTED"
+                    : report.reporterId === paymentProgress.guestId
+                      ? "GUEST"
+                      : "HOST",
+                amount: Number(report.amount),
+                currency: report.currency,
+                transactionDate: report.transactionDate.toISOString(),
+                reference: report.reference,
+                note: report.note,
+                retainedReason: report.retainedReason,
               })),
             }}
           />

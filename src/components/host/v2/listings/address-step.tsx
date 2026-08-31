@@ -55,7 +55,7 @@ export function AddressStep({
   const query = `propertyType=${encodeURIComponent(propertyType.value)}&spaceType=${encodeURIComponent(spaceType)}`;
   /** Where the CTA goes, and what it says: on to the next question, or back to the
    *  summary the host came from. */
-  const { href: nextHref, label: nextLabel } = stepNextTarget(
+  const { href: nextHref, label: nextLabel, route: nextRoute } = stepNextTarget(
     returnToReview,
     query,
     `/host/start/basics?${query}`,
@@ -206,6 +206,7 @@ export function AddressStep({
             city: city.trim(),
             country: country.trim(),
             currentStepId: "details",
+            currentRoute: nextRoute,
           });
           // A failed save keeps the host here with the toast the provider raised, rather
           // than navigating on to a step built on an address that was never stored.

@@ -30,11 +30,13 @@ enum SuggestionScope {
   LISTING_ONLY
 }
 
+// Moderation is post-publication: publishing writes APPROVED with `needsReview`, an
+// admin clears that flag, and safety problems go to SUSPENDED. There is deliberately no
+// PENDING_REVIEW/REJECTED pair here — reintroducing either would turn this back into a
+// pre-publication queue that no code path implements.
 enum ListingStatus {
   DRAFT
-  PENDING_REVIEW
   APPROVED
-  REJECTED
   UNPUBLISHED
   SUSPENDED
   ARCHIVED
@@ -122,6 +124,44 @@ enum BookingDepositStatus {
   RETURN_REPORTED
   RETURN_CONFIRMED
   RETAINED
+}
+
+/// Manual refund progress created by a cancellation policy. A due refund is an
+/// obligation, while reported and confirmed remain participant statements.
+enum BookingRefundStatus {
+  NOT_REQUIRED
+  AWAITING_REFUND
+  REFUND_REPORTED
+  REFUND_CONFIRMED
+}
+
+enum BookingPaymentRequestType {
+  ADVANCE_PAYMENT
+  ACCOMMODATION_BALANCE
+  DAMAGE_DEPOSIT
+}
+
+enum BookingPaymentRequestStatus {
+  DRAFT
+  SENT
+  CANCELLED
+  SETTLED
+}
+
+enum BookingPaymentTrack {
+  ADVANCE_PAYMENT
+  ACCOMMODATION_BALANCE
+  DAMAGE_DEPOSIT
+  ACCOMMODATION_REFUND
+  DAMAGE_DEPOSIT_RETURN
+  DAMAGE_DEPOSIT_RETENTION
+}
+
+enum BookingPaymentReminderKind {
+  DUE_SOON
+  DUE_DATE
+  OVERDUE
+  RETURN_DUE
 }
 
 enum MessageKind {
@@ -416,49 +456,73 @@ model User {
   /// listing's official currency regardless of what this says. Null means the
   /// visitor has never chosen, and detection applies.
   displayCurrency String?
+  /// When this account was erased under the right to erasure, and the marker that the
+  /// row is a husk rather than a person.
+  ///
+  /// Erasure anonymizes in place instead of deleting the row. Four foreign keys onto
+  /// `User` are `ON DELETE RESTRICT` — `Booking.guestId`, `Listing.hostId`,
+  /// `Property.ownerId`, `Suggestion.hostId` — and the records behind them have to
+  /// outlive the account for tax, audit and dispute purposes. Nulling those columns
+  /// would push `null` through every read of a booking's guest or a listing's host;
+  /// pointing them all at one shared tombstone would merge distinct people into a
+  /// single identity. Keeping one meaningless row per erased account preserves the
+  /// history, keeps each record distinguishable from the next, and lets
+  /// `booking.guest.name` keep resolving — to "Deleted user", the same string the
+  /// messaging UI already shows for a null sender.
+  ///
+  /// Everything identifying is gone by the time this is set: `email` becomes an
+  /// unroutable `deleted-<id>@deleted.invalid` placeholder (which also frees the real
+  /// address for a fresh signup), `name` becomes "Deleted user", and the avatar,
+  /// locale, currency and profile are removed. `isActive` goes false in the same write,
+  /// which is what stops the row being signed into again.
+  deletedAt       DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  profile                    Profile?
-  properties                 Property[]
-  listings                   Listing[]
-  bookings                   Booking[]
-  auditLogs                  AuditLog[]
-  accounts                   Account[]
-  sessions                   Session[]
-  suggestions                Suggestion[]                @relation("SuggestionHost")
-  reviewedSuggestions        Suggestion[]                @relation("SuggestionReviewer")
-  listingDrafts              ListingDraft[]
-  listingReports             ListingReport[]             @relation("ListingReportReporter")
-  reviewedListingReports     ListingReport[]             @relation("ListingReportReviewer")
-  favorites                  Favorite[]
-  userConsents               UserConsent[]
-  notifications              Notification[]
-  pushTokens                 PushToken[]
-  conversationMemberships    ConversationParticipant[]
-  sentMessages               Message[]                   @relation("MessageSender")
-  messageEmailDeliveries     MessageEmailDelivery[]      @relation("MessageEmailRecipient")
-  bookingTimelineEvents      BookingTimelineEvent[]      @relation("BookingTimelineActor")
-  bookingPaymentStatusEvents BookingPaymentStatusEvent[] @relation("BookingPaymentStatusActor")
-  damageReports              DamageReport[]              @relation("DamageReporter")
-  startedConversations       Conversation[]              @relation("ConversationStarter")
-  inquiryConversations       Conversation[]              @relation("ConversationInquiryGuest")
-  submittedSafetyCases       SafetyCase[]                @relation("SafetyCaseReporter")
-  reportedSafetyCases        SafetyCase[]                @relation("SafetyCaseReportedUser")
-  assignedSafetyCases        SafetyCase[]                @relation("SafetyCaseAssignedAdmin")
-  safetyCaseUpdates          SafetyCaseUpdate[]          @relation("SafetyCaseUpdateAuthor")
-  authoredReviews            Review[]                    @relation("ReviewAuthor")
-  receivedReviews            Review[]                    @relation("ReviewSubject")
-  moderatedReviews           Review[]                    @relation("ReviewModerator")
-  reviewInvitations          ReviewInvitation[]
-  reviewAdminReads           ReviewAdminRead[]
-  communicationPreference    CommunicationPreference?
-  marketingContact           MarketingContact?
-  contactMessages            ContactMessage[]
-  deletionTokens             AccountDeletionToken[]
+  profile                      Profile?
+  properties                   Property[]
+  listings                     Listing[]
+  bookings                     Booking[]
+  auditLogs                    AuditLog[]
+  accounts                     Account[]
+  sessions                     Session[]
+  suggestions                  Suggestion[]                     @relation("SuggestionHost")
+  reviewedSuggestions          Suggestion[]                     @relation("SuggestionReviewer")
+  listingDrafts                ListingDraft[]
+  listingReports               ListingReport[]                  @relation("ListingReportReporter")
+  reviewedListingReports       ListingReport[]                  @relation("ListingReportReviewer")
+  favorites                    Favorite[]
+  userConsents                 UserConsent[]
+  notifications                Notification[]
+  pushTokens                   PushToken[]
+  conversationMemberships      ConversationParticipant[]
+  sentMessages                 Message[]                        @relation("MessageSender")
+  messageEmailDeliveries       MessageEmailDelivery[]           @relation("MessageEmailRecipient")
+  bookingTimelineEvents        BookingTimelineEvent[]           @relation("BookingTimelineActor")
+  bookingPaymentStatusEvents   BookingPaymentStatusEvent[]      @relation("BookingPaymentStatusActor")
+  bookingPaymentPrivateRecords BookingPaymentPrivateRecord[]    @relation("BookingPaymentPrivateRecordReporter")
+  bookingPaymentReminders      BookingPaymentReminderDelivery[] @relation("BookingPaymentReminderRecipient")
+  damageReports                DamageReport[]                   @relation("DamageReporter")
+  startedConversations         Conversation[]                   @relation("ConversationStarter")
+  inquiryConversations         Conversation[]                   @relation("ConversationInquiryGuest")
+  submittedSafetyCases         SafetyCase[]                     @relation("SafetyCaseReporter")
+  reportedSafetyCases          SafetyCase[]                     @relation("SafetyCaseReportedUser")
+  assignedSafetyCases          SafetyCase[]                     @relation("SafetyCaseAssignedAdmin")
+  safetyCaseUpdates            SafetyCaseUpdate[]               @relation("SafetyCaseUpdateAuthor")
+  authoredReviews              Review[]                         @relation("ReviewAuthor")
+  receivedReviews              Review[]                         @relation("ReviewSubject")
+  moderatedReviews             Review[]                         @relation("ReviewModerator")
+  reviewInvitations            ReviewInvitation[]
+  reviewAdminReads             ReviewAdminRead[]
+  communicationPreference      CommunicationPreference?
+  marketingContact             MarketingContact?
+  contactMessages              ContactMessage[]
+  deletionTokens               AccountDeletionToken[]
+  facebookDestinations         HostFacebookDestination[]        @relation("HostFacebookDestination")
 
   @@index([email])
   @@index([role])
+  @@index([deletedAt])
 }
 
 /// Confirmation link for self-service account deletion. Deliberately separate from
@@ -734,6 +798,10 @@ model Listing {
    * different fact from having answered "neither", and guests are told which it is.
    */
   depositPoliciesReviewedAt            DateTime?
+  /// Exact host-authored free-cancellation window. Null reviewedAt means the host has
+  /// never answered; no default policy is invented for existing listings.
+  freeCancellationDaysBeforeCheckIn    Int?
+  cancellationPolicyReviewedAt         DateTime?
   moderationNote                       String?
   /**
    * True whenever the live content was created/edited since an admin last looked at
@@ -916,6 +984,10 @@ model ListingImage {
   listingId    String
   url          String
   mediaType    ListingMediaType @default(IMAGE)
+  /// Equirectangular 2:1 image rendered as an interactive 360-degree panorama.
+  /// Kept separate from mediaType because it is still an image for covers, counts,
+  /// search cards, metadata, and every non-interactive fallback.
+  isPanorama   Boolean          @default(false)
   alt          String?
   /**
    * Listing-level sequence: the order a guest sees in the gallery, and the order the
@@ -1433,80 +1505,101 @@ model ListingAvailabilityWindow {
 // ─── Booking ────────────────────────────────────────────────────────────────────
 
 model Booking {
-  id                            String                           @id @default(cuid())
-  reference                     String                           @unique @default(cuid())
-  listingId                     String
-  guestId                       String
-  checkIn                       DateTime                         @db.Date
-  checkOut                      DateTime                         @db.Date
-  guestCount                    Int
-  currency                      String                           @default("EUR")
-  nightlyRate                   Decimal                          @db.Decimal(14, 3)
-  cleaningFee                   Decimal                          @default(0) @db.Decimal(14, 3)
-  serviceFee                    Decimal                          @default(0) @db.Decimal(14, 3)
-  totalPrice                    Decimal                          @db.Decimal(14, 3)
-  originalTotal                 Decimal?                         @db.Decimal(14, 3)
-  discountAmount                Decimal                          @default(0) @db.Decimal(14, 3)
-  promotionId                   String?
-  promotionType                 PromotionType?
-  priceBreakdown                Json?
-  priceBreakdownVersion         Int?
+  id                                 String                           @id @default(cuid())
+  reference                          String                           @unique @default(cuid())
+  listingId                          String
+  guestId                            String
+  checkIn                            DateTime                         @db.Date
+  checkOut                           DateTime                         @db.Date
+  /// The capacity number every pricing, `maxGuests` and search rule already works
+  /// from: adults + children. Infants and pets are deliberately not in it — a cot and
+  /// a dog do not consume a bed — so this stays exactly the figure it has always been.
+  guestCount                         Int
+  /// The party the guest actually chose, kept beside `guestCount` rather than folded
+  /// into it. Adults and children are the two that add up to `guestCount`; infants and
+  /// pets are informational counts the host needs for cots, cleaning and access, and
+  /// are never summed into capacity.
+  ///
+  /// All four are nullable together, and they are nullable for one reason: a booking
+  /// taken before these columns existed has no record of the party, and NULL says
+  /// exactly that. A zero would claim the guest brought no infant and no pet — a
+  /// statement nobody ever asked them to make. The migration performs no backfill for
+  /// the same reason. `adults` is the discriminator: every booking written since these
+  /// columns exist carries at least one adult, so `adults == null` means "not recorded".
+  adults                             Int?
+  children                           Int?
+  infants                            Int?
+  pets                               Int?
+  currency                           String                           @default("EUR")
+  nightlyRate                        Decimal                          @db.Decimal(14, 3)
+  cleaningFee                        Decimal                          @default(0) @db.Decimal(14, 3)
+  serviceFee                         Decimal                          @default(0) @db.Decimal(14, 3)
+  totalPrice                         Decimal                          @db.Decimal(14, 3)
+  originalTotal                      Decimal?                         @db.Decimal(14, 3)
+  discountAmount                     Decimal                          @default(0) @db.Decimal(14, 3)
+  promotionId                        String?
+  promotionType                      PromotionType?
+  priceBreakdown                     Json?
+  priceBreakdownVersion              Int?
   /// What the guest was browsing in when they booked, plus the rate used to show it.
   /// Frozen at confirmation so the confirmation page and email keep showing the same
   /// approximate figure the guest saw, instead of silently re-converting at today's
   /// rate every time the page is opened. `currency` above remains the official,
   /// payable amount; these three are a record of a display, never of an obligation.
   /// Null when the guest was already browsing in the official currency.
-  displayCurrency               String?
-  displayRate                   Decimal?                         @db.Decimal(20, 10)
-  displayTotal                  Decimal?                         @db.Decimal(14, 3)
+  displayCurrency                    String?
+  displayRate                        Decimal?                         @db.Decimal(20, 10)
+  displayTotal                       Decimal?                         @db.Decimal(14, 3)
   /// Language selected by the guest at booking time. Confirmation pages and
   /// transactional email use this snapshot, not a later account preference.
-  guestLocale                   String?
-  numberOfNights                Int
-  status                        BookingStatus                    @default(PENDING)
-  responseDueAt                 DateTime                         @default(dbgenerated("(CURRENT_TIMESTAMP + INTERVAL '24 hours')"))
-  respondedAt                   DateTime?
-  hostReminderSentAt            DateTime?
+  guestLocale                        String?
+  numberOfNights                     Int
+  status                             BookingStatus                    @default(PENDING)
+  responseDueAt                      DateTime                         @default(dbgenerated("(CURRENT_TIMESTAMP + INTERVAL '24 hours')"))
+  respondedAt                        DateTime?
+  hostReminderSentAt                 DateTime?
   /// The listing's house rules exactly as they stood when this guest accepted them,
   /// plus the moment they did. Built on the server from the listing row — never from
   /// anything the client posted — and never rewritten afterwards: a host editing their
   /// rules changes what future guests agree to, not what this one already did. Null on
   /// every booking taken before acceptance was recorded, which is why it is nullable
   /// rather than defaulted. Same JSON-snapshot pattern as `priceBreakdown` above.
-  houseRulesSnapshot            Json?
-  houseRulesAcceptedAt          DateTime?
+  houseRulesSnapshot                 Json?
+  houseRulesAcceptedAt               DateTime?
   /// The listing's accepted-payment-method answer as it stood when this request was
   /// created. Built server-side from the listing row, never from request input. Null
   /// only for bookings created before this snapshot was introduced.
-  paymentMethodsSnapshot        Json?
+  paymentMethodsSnapshot             Json?
   /// The method the guest chose from the frozen list above. Null only for legacy or
   /// unanswered listings; a host cannot silently replace it during acceptance.
-  selectedPaymentMethod         ListingPaymentMethod?
+  selectedPaymentMethod              ListingPaymentMethod?
   /// The listing's deposit answer exactly as it stood when this request was created.
   /// It stays null on bookings created before manual payment tracking was introduced.
   ///
   /// Written as a V1 object before the deposit split and as a V2 object since; readers
   /// go through `parseDepositPoliciesSnapshot`, which understands both. Historical rows
   /// are never rewritten: what this guest agreed to stays exactly as they agreed it.
-  depositPolicySnapshot         Json?
+  depositPolicySnapshot              Json?
+  /// The listing's cancellation terms frozen when the guest sends the request.
+  cancellationPolicySnapshot         Json?
   /// DEPRECATED (V1): the single frozen deposit amount, whichever purpose it had.
   /// Superseded by the two independent amounts below and frozen in place.
-  depositAmount                 Decimal?                         @db.Decimal(14, 3)
+  depositAmount                      Decimal?                         @db.Decimal(14, 3)
   /// The two frozen amounts, computed independently from the V2 snapshot in the listing
   /// currency. Deliberately never summed: the advance payment is part of `totalPrice`,
   /// while the damage deposit is additional security money on top of it. Neither is a
   /// charge, authorization, payout, or transfer processed by Linger Homes.
-  advancePaymentAmount          Decimal?                         @db.Decimal(14, 3)
-  damageDepositAmount           Decimal?                         @db.Decimal(14, 3)
-  acceptedAt                    DateTime?
+  advancePaymentAmount               Decimal?                         @db.Decimal(14, 3)
+  damageDepositAmount                Decimal?                         @db.Decimal(14, 3)
+  acceptedAt                         DateTime?
+  cancelledAt                        DateTime?
   /// Progress on the booking price as a whole. The advance payment below is a part of
   /// this sum, not a separate debt, and is tracked separately because a host confirms
   /// receiving it at a different moment.
-  paymentStatus                 BookingPaymentStatus             @default(UNTRACKED)
-  paymentInstructionsStatus     BookingPaymentInstructionsStatus @default(NOT_DECIDED)
-  paymentInstructionsSentAt     DateTime?
-  paymentInstructionsDueAt      DateTime?                        @db.Date
+  paymentStatus                      BookingPaymentStatus             @default(UNTRACKED)
+  paymentInstructionsStatus          BookingPaymentInstructionsStatus @default(NOT_DECIDED)
+  paymentInstructionsSentAt          DateTime?
+  paymentInstructionsDueAt           DateTime?                        @db.Date
   /// The structured payment details this guest was actually sent, frozen at send time.
   ///
   /// Written server-side from the host's reviewed input — never read back from the
@@ -1517,38 +1610,48 @@ model Booking {
   ///
   /// Private financial data. It belongs to the two booking participants and appears in
   /// no public listing DTO, notification preview, email body, audit entry, or log line.
-  paymentInstructionsSnapshot   Json?
+  paymentInstructionsSnapshot        Json?
   /// DEPRECATED (V1): the single deposit track, shared by whichever purpose the listing
   /// had. The migration copied it into whichever of the two tracks below its frozen
   /// snapshot names, and nothing writes it again.
-  depositStatus                 BookingDepositStatus             @default(UNTRACKED)
+  depositStatus                      BookingDepositStatus             @default(UNTRACKED)
   /// The two independent manual tracks. A booking with both policies has both running
   /// at once, which is the whole reason they are separate columns: "the guest sent the
   /// damage deposit" must never imply anything about the advance payment.
-  advancePaymentStatus          BookingPaymentStatus             @default(UNTRACKED)
-  damageDepositStatus           BookingDepositStatus             @default(UNTRACKED)
-  paymentStatusUpdatedAt        DateTime?
-  depositStatusUpdatedAt        DateTime?
-  advancePaymentStatusUpdatedAt DateTime?
-  damageDepositStatusUpdatedAt  DateTime?
-  guestNote                     String?
-  hostNote                      String?
-  cancellationReason            String?
-  createdAt                     DateTime                         @default(now())
-  updatedAt                     DateTime                         @updatedAt
+  advancePaymentStatus               BookingPaymentStatus             @default(UNTRACKED)
+  damageDepositStatus                BookingDepositStatus             @default(UNTRACKED)
+  accommodationRefundAmount          Decimal?                         @db.Decimal(14, 3)
+  accommodationRefundStatus          BookingRefundStatus              @default(NOT_REQUIRED)
+  /// Frozen explanation of the refund amount and any maximum advance-payment amount
+  /// the policy permitted the host to retain. It is an obligation calculation, never
+  /// a claim that a refund or retention occurred.
+  cancellationSettlementSnapshot     Json?
+  paymentStatusUpdatedAt             DateTime?
+  depositStatusUpdatedAt             DateTime?
+  advancePaymentStatusUpdatedAt      DateTime?
+  damageDepositStatusUpdatedAt       DateTime?
+  accommodationRefundStatusUpdatedAt DateTime?
+  guestNote                          String?
+  hostNote                           String?
+  cancellationReason                 String?
+  createdAt                          DateTime                         @default(now())
+  updatedAt                          DateTime                         @updatedAt
 
-  listing             Listing                     @relation(fields: [listingId], references: [id])
-  guest               User                        @relation(fields: [guestId], references: [id])
-  promotion           ListingPromotion?           @relation(fields: [promotionId], references: [id], onDelete: SetNull)
-  availabilityBlocks  AvailabilityBlock[]
-  conversation        Conversation?
-  safetyCases         SafetyCase[]
-  reviews             Review[]
-  reviewInvitations   ReviewInvitation[]
-  emailDeliveries     BookingEmailDelivery[]
-  timelineEvents      BookingTimelineEvent[]
-  paymentStatusEvents BookingPaymentStatusEvent[]
-  damageReports       DamageReport[]
+  listing                   Listing                          @relation(fields: [listingId], references: [id])
+  guest                     User                             @relation(fields: [guestId], references: [id])
+  promotion                 ListingPromotion?                @relation(fields: [promotionId], references: [id], onDelete: SetNull)
+  availabilityBlocks        AvailabilityBlock[]
+  conversation              Conversation?
+  safetyCases               SafetyCase[]
+  reviews                   Review[]
+  reviewInvitations         ReviewInvitation[]
+  emailDeliveries           BookingEmailDelivery[]
+  timelineEvents            BookingTimelineEvent[]
+  paymentStatusEvents       BookingPaymentStatusEvent[]
+  paymentRequests           BookingPaymentRequest[]
+  paymentPrivateRecords     BookingPaymentPrivateRecord[]
+  paymentReminderDeliveries BookingPaymentReminderDelivery[]
+  damageReports             DamageReport[]
 
   @@index([listingId, status])
   @@index([guestId])
@@ -1741,29 +1844,110 @@ model BookingTimelineEvent {
  * copied into a ledger owned by Linger Homes.
  */
 model BookingPaymentStatusEvent {
-  id                   String                @id @default(cuid())
-  bookingId            String
-  actorId              String?
+  id                        String                @id @default(cuid())
+  bookingId                 String
+  actorId                   String?
   /// The exact actor-labelled action (for example GUEST_REPORT_DAMAGE_DEPOSIT_SENT).
   /// Status values alone cannot reveal which side changed on this event.
-  eventType            String
-  paymentStatus        BookingPaymentStatus
+  eventType                 String
+  paymentStatus             BookingPaymentStatus
   /// DEPRECATED (V1): the shared deposit track. Still written on every event so the
   /// column stays non-null and legible, but `damageDepositStatus` below is the value a
   /// reader should trust once both policies can exist at once.
-  depositStatus        BookingDepositStatus
+  depositStatus             BookingDepositStatus
   /// The two independent tracks as they stood immediately after this event. Null only
   /// on events recorded before the deposit split, which had no per-policy state to
   /// report — a real distinction, and why these are nullable rather than defaulted.
-  advancePaymentStatus BookingPaymentStatus?
-  damageDepositStatus  BookingDepositStatus?
-  createdAt            DateTime              @default(now())
+  advancePaymentStatus      BookingPaymentStatus?
+  damageDepositStatus       BookingDepositStatus?
+  accommodationRefundStatus BookingRefundStatus?
+  createdAt                 DateTime              @default(now())
 
-  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  actor   User?   @relation("BookingPaymentStatusActor", fields: [actorId], references: [id], onDelete: SetNull)
+  booking       Booking                      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  actor         User?                        @relation("BookingPaymentStatusActor", fields: [actorId], references: [id], onDelete: SetNull)
+  privateRecord BookingPaymentPrivateRecord?
 
   @@index([bookingId, createdAt])
   @@index([actorId])
+}
+
+/// One booking-specific, host-reviewed request. Structured coordinates are frozen on
+/// this row only after review; reusable listing templates are never sent automatically.
+model BookingPaymentRequest {
+  id                   String                      @id @default(cuid())
+  bookingId            String
+  type                 BookingPaymentRequestType
+  amount               Decimal                     @db.Decimal(14, 3)
+  currency             String
+  dueAt                DateTime                    @db.Date
+  status               BookingPaymentRequestStatus @default(DRAFT)
+  method               ListingPaymentMethod?
+  otherLabel           String?
+  instructionsSnapshot Json?
+  reviewedAt           DateTime?
+  sentAt               DateTime?
+  createdAt            DateTime                    @default(now())
+  updatedAt            DateTime                    @updatedAt
+
+  booking        Booking                          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  privateRecords BookingPaymentPrivateRecord[]
+  reminders      BookingPaymentReminderDelivery[]
+
+  @@unique([bookingId, type])
+  @@index([status, dueAt])
+}
+
+/// Participant-private transaction metadata. The immutable event ledger contains only
+/// statuses; reference, note and retention reason live here and are GDPR-redacted.
+model BookingPaymentPrivateRecord {
+  id              String              @id @default(cuid())
+  bookingId       String
+  requestId       String?
+  eventId         String              @unique
+  track           BookingPaymentTrack
+  reporterId      String?
+  amount          Decimal             @db.Decimal(14, 3)
+  currency        String
+  transactionDate DateTime            @db.Date
+  reference       String?
+  note            String?             @db.Text
+  retainedReason  String?             @db.Text
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  booking  Booking                   @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  request  BookingPaymentRequest?    @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  event    BookingPaymentStatusEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  reporter User?                     @relation("BookingPaymentPrivateRecordReporter", fields: [reporterId], references: [id], onDelete: SetNull)
+
+  @@index([bookingId, track, createdAt])
+  @@index([requestId])
+  @@index([reporterId])
+}
+
+/// Delivery deduplication only. Reminder state itself is always derived from the due
+/// date and live settlement status; this table never becomes another payment status.
+model BookingPaymentReminderDelivery {
+  id            String                     @id @default(cuid())
+  bookingId     String
+  requestId     String?
+  recipientId   String
+  obligationKey String
+  kind          BookingPaymentReminderKind
+  dueAt         DateTime                   @db.Date
+  sentAt        DateTime                   @default(now())
+
+  booking   Booking                @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  request   BookingPaymentRequest? @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  recipient User                   @relation("BookingPaymentReminderRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  // Postgres truncates identifiers at 63 bytes, so the name this index was created
+  // under in 20260828230000 lost its `_key` suffix. Naming it explicitly keeps the
+  // datamodel matching what a fresh `migrate deploy` actually builds, instead of
+  // leaving every `migrate diff` reporting a rename that nothing needs.
+  @@unique([obligationKey, kind, recipientId], map: "BookingPaymentReminderDelivery_obligationKey_kind_recipientId_k")
+  @@index([bookingId, sentAt])
+  @@index([requestId])
 }
 
 model DamageReport {
@@ -2299,4 +2483,44 @@ model ExchangeRateSnapshot {
   fetchedAt DateTime
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ─── Facebook promotion destinations ────────────────────────────────────────────
+
+/// A Facebook place a host promotes their properties into: a group they belong to,
+/// saved once and reused across every listing they own.
+///
+/// Host-level rather than listing-level on purpose. A host who sells in three local
+/// rental groups sells *all* of their properties there, and hanging the list off a
+/// listing would make them retype the same three URLs for each new one.
+///
+/// Linger Homes never reads a group. Nothing here is an integration: no token, no
+/// membership check, no posting. The row stores a name the host chose and a
+/// normalized URL, and the workspace opens that URL in a tab so the host can paste
+/// their own text and post it themselves. A private group is therefore fine — the
+/// URL is opened in the host's own logged-in browser, which is the only place the
+/// group's privacy is decided.
+model HostFacebookDestination {
+  id         String    @id @default(cuid())
+  hostId     String
+  /// What the host calls this group. Their words, shown back to them verbatim.
+  name       String
+  /// The canonical `https://www.facebook.com/groups/<id>` form. Normalized on write
+  /// (see lib/facebook-destinations.ts) so `m.`/`web.` variants, tracking query
+  /// parameters and fragments cannot smuggle the same group in twice.
+  url        String
+  /// Pinned to the top of the picker. Optional convenience, not a category.
+  favorite   Boolean   @default(false)
+  /// When the host last opened this group from the promotion workspace. Drives the
+  /// "recently used first" ordering, so the group someone actually posts in surfaces
+  /// without being marked a favourite.
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  host User @relation("HostFacebookDestination", fields: [hostId], references: [id], onDelete: Cascade)
+
+  /// One row per group per host. Two hosts may of course save the same group.
+  @@unique([hostId, url])
+  @@index([hostId, favorite, lastUsedAt])
 }

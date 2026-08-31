@@ -47,7 +47,13 @@ export async function POST(request: NextRequest) {
       status: 'deleted',
       message: 'Account and personal data successfully deleted',
     });
-    response.cookies.set('next-auth.session-token', '', { maxAge: 0, path: '/' });
+    // Secure deployments use a different prefix, and large JWTs can be split into
+    // numbered chunks. Expire the exact session cookies that arrived in this request.
+    for (const cookie of request.cookies.getAll()) {
+      if (/session-token(?:\.\d+)?$/.test(cookie.name)) {
+        response.cookies.set(cookie.name, '', { maxAge: 0, path: '/' });
+      }
+    }
     return response;
   } catch (error) {
     console.error('Account deletion error:', error);

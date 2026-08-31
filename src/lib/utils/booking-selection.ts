@@ -1,22 +1,51 @@
-import { differenceInCalendarDays, startOfDay } from "date-fns";
-import { compareYmd } from "@/lib/utils/date-only";
+import { compareYmd, isValidYmd, nightsBetweenYmd } from "@/lib/utils/date-only";
+import { dateKey, type CalendarDayRange } from "@/lib/utils/stay-pricing";
 
 export type BookingSelectionStatus =
   | "incomplete"
   | "invalid"
   | "minimum-stay"
+  | "maximum-stay"
   | "unavailable"
   | "valid";
+
+/**
+ * The host's stay-length cap, or `null` when they have not set one.
+ *
+ * A cap counts only from one night up. The stored column is non-nullable
+ * (`maxNights Int @default(365)`), so "no maximum" reaches the database as a zero, and
+ * reading that zero literally would mean "no stay is ever bookable" — a rule no host
+ * means to state. `null`/`undefined` cover the callers that have no pricing rule to
+ * read at all.
+ *
+ * `createBooking`, the booking widget and the search filter all resolve the cap through
+ * here (search spells the same test in SQL), and the host calendar's own ABOVE_MAXIMUM
+ * check applies the identical `>= 1` reading.
+ */
+export function stayLengthCap(
+  maxNights: number | null | undefined,
+): number | null {
+  return typeof maxNights === "number" && maxNights >= 1 ? maxNights : null;
+}
+
+/** Whether `nights` is over the host's cap, if they set one. */
+export function exceedsMaxNights(
+  nights: number,
+  maxNights: number | null | undefined,
+): boolean {
+  const cap = stayLengthCap(maxNights);
+  return cap !== null && nights > cap;
+}
 
 export interface BookingSelectionValidation {
   status: BookingSelectionStatus;
   nights: number;
 }
 
-interface DisabledDateRange {
-  from: Date;
-  to: Date;
-}
+type DisabledDateRange = CalendarDayRange;
+
+const dayKey = (value: Date | string): string =>
+  typeof value === "string" ? value : dateKey(value);
 
 /**
  * Validates a prospective stay using the same interval convention as the server:
@@ -26,27 +55,37 @@ export function validateBookingSelection(
   checkIn: Date | undefined,
   checkOut: Date | undefined,
   minNights: number,
-  disabledDateRanges: DisabledDateRange[]
+  disabledDateRanges: DisabledDateRange[],
+  /** The host's cap, when they set one. Optional so a caller that has no pricing rule
+   * to read it from keeps the minimum-only behaviour rather than inventing a limit. */
+  maxNights?: number | null
 ): BookingSelectionValidation {
   if (!checkIn || !checkOut) {
     return { status: "incomplete", nights: 0 };
   }
 
-  const normalizedCheckIn = startOfDay(checkIn);
-  const normalizedCheckOut = startOfDay(checkOut);
-  const nights = differenceInCalendarDays(
-    normalizedCheckOut,
-    normalizedCheckIn
-  );
+  // Compared as calendar dates throughout. Both ends come from the picker as local
+  // midnight, and the blocked runs arrive as the date-only keys the availability
+  // service publishes, so nothing here can be pulled onto a neighbouring day by the
+  // reader's own zone or by a daylight-saving change inside the stay.
+  if (Number.isNaN(checkIn.getTime()) || Number.isNaN(checkOut.getTime())) {
+    return { status: "invalid", nights: Number.NaN };
+  }
+  const checkInKey = dateKey(checkIn);
+  const checkOutKey = dateKey(checkOut);
+  const nights = nightsBetweenYmd(checkInKey, checkOutKey);
 
-  if (nights <= 0) {
+  if (!Number.isFinite(nights) || nights <= 0) {
     return { status: "invalid", nights };
   }
 
   const overlapsUnavailableNight = disabledDateRanges.some((range) => {
-    const blockedFrom = startOfDay(range.from);
-    const blockedTo = startOfDay(range.to);
-    return normalizedCheckIn <= blockedTo && normalizedCheckOut > blockedFrom;
+    const blockedFrom = dayKey(range.from);
+    const blockedTo = dayKey(range.to);
+    return (
+      compareYmd(checkInKey, blockedTo) <= 0 &&
+      compareYmd(checkOutKey, blockedFrom) > 0
+    );
   });
 
   if (overlapsUnavailableNight) {
@@ -57,13 +96,19 @@ export function validateBookingSelection(
     return { status: "minimum-stay", nights };
   }
 
+  // The other end of the same rule. `createBooking` has always refused a stay over the
+  // cap, but nothing said so until the guest had picked their dates, filled in the
+  // party, accepted the house rules and pressed request to book — so the refusal
+  // arrived after the only steps that could have avoided it.
+  if (exceedsMaxNights(nights, maxNights)) {
+    return { status: "maximum-stay", nights };
+  }
+
   return { status: "valid", nights };
 }
 
-const YMD_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-
 const asYmd = (value: unknown): string | undefined =>
-  typeof value === "string" && YMD_PATTERN.test(value) ? value : undefined;
+  isValidYmd(value) ? value : undefined;
 
 /**
  * The stay a listing page may seed its booking widget from, given the `checkIn` and

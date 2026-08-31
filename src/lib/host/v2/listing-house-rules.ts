@@ -94,6 +94,28 @@ export const HOUSE_RULE_POLICY_FIELDS = [
 ] as const;
 export type HouseRulePolicyField = (typeof HOUSE_RULE_POLICY_FIELDS)[number];
 
+/**
+ * Every row on the screen, in the order a host reads down it.
+ *
+ * The order is the point: a screen that has to send a host to "the first thing that
+ * needs an answer" needs to agree with the page about which one that is, and a second
+ * list written somewhere else would eventually disagree.
+ */
+export const HOUSE_RULE_ROW_ORDER = [
+  "checkInTime",
+  "checkOutTime",
+  "maxGuests",
+  "petPolicy",
+  "smokingPolicy",
+  "eventPolicy",
+  "quietHoursPolicy",
+  "additionalRules",
+] as const;
+export type HouseRuleRow = (typeof HOUSE_RULE_ROW_ORDER)[number];
+
+/** How many policies the create flow insists on. */
+export const REQUIRED_POLICY_COUNT = HOUSE_RULE_POLICY_FIELDS.length;
+
 export interface ListingHouseRulesInput {
   /** "HH:MM", or `FLEXIBLE_STAY_TIME` for a host who agrees arrival with the guest. */
   checkInTime: string;
@@ -321,6 +343,65 @@ export function listingHouseRulesPayloadIssues(
     }
   }
   return issues;
+}
+
+/**
+ * The DOM id of one row, built the same way by the rows and by anything that focuses
+ * them.
+ *
+ * A row a host is sent to has to exist, and the surest way for it not to is two copies
+ * of this mapping drifting apart.
+ */
+export function houseRuleRowId(idPrefix: string, row: HouseRuleRow): string {
+  switch (row) {
+    case "checkInTime":
+      return `${idPrefix}-check-in`;
+    case "checkOutTime":
+      return `${idPrefix}-check-out`;
+    case "maxGuests":
+      return `${idPrefix}-max-guests`;
+    case "petPolicy":
+      return `${idPrefix}-pets`;
+    case "smokingPolicy":
+      return `${idPrefix}-smoking`;
+    case "eventPolicy":
+      return `${idPrefix}-events`;
+    case "quietHoursPolicy":
+      return `${idPrefix}-quiet-hours`;
+    case "additionalRules":
+      return `${idPrefix}-additional-rules`;
+  }
+}
+
+/**
+ * The rows a set of issues belongs to, in page order and without repeats.
+ *
+ * Both quiet-hours times are edited in the quiet-hours row, so a half-set pair is one
+ * problem to fix rather than two entries in a summary pointing at the same sheet.
+ */
+export function houseRuleRowsWithIssues(
+  issues: ListingHouseRulesIssues,
+): HouseRuleRow[] {
+  const rows = new Set<HouseRuleRow>();
+  for (const row of HOUSE_RULE_ROW_ORDER) {
+    if (issues[row] !== undefined) rows.add(row);
+  }
+  if (issues.quietHoursStart || issues.quietHoursEnd) rows.add("quietHoursPolicy");
+  return HOUSE_RULE_ROW_ORDER.filter((row) => rows.has(row));
+}
+
+/** How many of the required policies now carry an answer. Drives the progress line. */
+export function answeredPolicyCount(input: ListingHouseRulesInput): number {
+  const value = normalizeListingHouseRules(input);
+  return HOUSE_RULE_POLICY_FIELDS.filter((field) => {
+    if (value[field] === null) return false;
+    // "Set quiet hours" with a missing end is not an answered rule: no guest could
+    // follow it, and publishing it would print half a sentence on the listing.
+    if (field === "quietHoursPolicy" && value.quietHoursPolicy === "SET") {
+      return value.quietHoursStart !== "" && value.quietHoursEnd !== "";
+    }
+    return true;
+  }).length;
 }
 
 /** Whether anything at all is wrong. Saves every caller an `Object.keys(...).length`. */

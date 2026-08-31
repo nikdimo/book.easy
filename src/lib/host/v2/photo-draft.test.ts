@@ -284,6 +284,23 @@ describe("uploadPendingPhotos", () => {
 });
 
 describe("draftMediaItems", () => {
+  it("keeps an automatically detected panorama flag through the draft", async () => {
+    const run = await uploadPendingPhotos(draft("tour.jpg"), async () => ({
+      url: "/uploads/tour.jpg",
+      mediaType: "IMAGE" as const,
+      isPanorama: true,
+    }));
+
+    expect(draftMediaItems(run.photos)).toEqual([
+      {
+        url: "/uploads/tour.jpg",
+        mediaType: "IMAGE",
+        isPanorama: true,
+        alt: "tour.jpg",
+      },
+    ]);
+  });
+
   it("saves the list in the order the grid is showing", async () => {
     const run = await uploadPendingPhotos(draft("a.jpg", "b.jpg", "c.jpg"), uploader());
 

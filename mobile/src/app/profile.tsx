@@ -12,13 +12,14 @@ import { useLanguage } from "@/context/language-context";
 import { useAuth } from "@/context/auth-context";
 import { useApiError } from "@/lib/use-api-error";
 import { apiFetch } from "@/lib/api";
+import { isAdminRole, type UserRole } from "@/lib/roles";
 import { spacing } from "@/theme";
 
 interface ProfileResponse {
   profile: {
     name: string;
     email: string;
-    role: string;
+    role: UserRole;
     isHost: boolean;
     phone: string;
     bio: string;
@@ -100,7 +101,7 @@ export default function ProfileScreen() {
         <View style={styles.form}>
           <View style={styles.badges}>
             <Pill
-              label={data.role === "ADMIN" || data.role === "SUPERADMIN" ? "Admin" : "Host"}
+              label={isAdminRole(data.role) ? "Admin" : "Host"}
               tone="success"
             />
             <Pill label={data.email} />

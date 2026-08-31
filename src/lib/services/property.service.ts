@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { db } from "@/lib/db";
 import { ListingStatus } from "@prisma/client";
+import { todayYmd, ymdToDbDate } from "@/lib/utils/date-only";
 
 /**
  * Request-scoped memoization, not a cross-request cache: the listing detail route
@@ -61,7 +62,9 @@ export async function getListingAvailabilityBlocks(listingId: string) {
   return db.availabilityBlock.findMany({
     where: {
       listingId,
-      endDate: { gte: new Date() },
+      // `endDate` is `@db.Date`, so this is a calendar comparison: against a raw
+      // instant, a block ending today dropped out of the list part-way through it.
+      endDate: { gte: ymdToDbDate(todayYmd()) },
     },
     select: {
       startDate: true,

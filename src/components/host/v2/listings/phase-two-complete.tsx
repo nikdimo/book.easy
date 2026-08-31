@@ -1,8 +1,12 @@
+"use client";
+
 import { Tx } from "@/lib/i18n/client";
+import { useRouter } from "next/navigation";
 import type { ListingSpaceTypeValue } from "@/lib/types/listing-space-type";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 import { ListingFlowFooter } from "./listing-flow-footer";
 import { PhaseTwoIllustration } from "./phase-two-illustration";
+import { useHostStartDraft } from "./host-start-draft-provider";
 
 /**
  * The transition between phase two and phase three, and the twin of
@@ -21,7 +25,10 @@ export function PhaseTwoComplete({
   propertyType: PropertyTypeOption;
   spaceType: ListingSpaceTypeValue;
 }) {
+  const { save } = useHostStartDraft();
+  const router = useRouter();
   const query = `propertyType=${encodeURIComponent(propertyType.value)}&spaceType=${encodeURIComponent(spaceType)}`;
+  const nextHref = `/host/start/price?${query}`;
 
   return (
     <>
@@ -48,7 +55,12 @@ export function PhaseTwoComplete({
 
       <ListingFlowFooter
         backHref={`/host/start/description?${query}&descriptionView=description`}
-        nextHref={`/host/start/price?${query}`}
+        nextHref={nextHref}
+        onNext={async () => {
+          if (await save({ currentStepId: "pricing", currentRoute: "price" })) {
+            router.push(nextHref);
+          }
+        }}
         phaseOneProgress={100}
         phaseTwoProgress={100}
         nextLabel="Next"

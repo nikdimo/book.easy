@@ -58,6 +58,7 @@ import {
   publishHostStartDraft,
   saveHostStartDraftPatch,
 } from "@/lib/actions/host-start.actions";
+import { emptyDepositPoliciesDraft } from "@/lib/host/v2/listing-deposit-draft";
 
 /** The JSON the create call was handed — the draft as it is first written to disk. */
 function createdDraftData(): Record<string, unknown> {
@@ -181,7 +182,13 @@ describe("publishing prices the listing in the draft's currency", () => {
   it("carries a seeded currency through to the pricing rule", async () => {
     mocks.cookieStore.get.mockReturnValue({ value: "draft-1" });
     mocks.draftFindFirst.mockResolvedValue(
-      existingDraft({ title: "Sunny loft", currency: "DKK", baseNightlyRate: "800" }),
+      existingDraft({
+        title: "Sunny loft",
+        currency: "DKK",
+        baseNightlyRate: "800",
+        depositPolicies: emptyDepositPoliciesDraft(),
+        freeCancellationDaysBeforeCheckIn: "7",
+      }),
     );
 
     await expect(publishHostStartDraft()).resolves.toMatchObject({ listingId: "listing-1" });
@@ -193,7 +200,13 @@ describe("publishing prices the listing in the draft's currency", () => {
     mocks.displayCurrency.mockResolvedValue("USD");
     mocks.cookieStore.get.mockReturnValue({ value: "draft-1" });
     mocks.draftFindFirst.mockResolvedValue(
-      existingDraft({ title: "Sunny loft", currency: "DKK", baseNightlyRate: "800" }),
+      existingDraft({
+        title: "Sunny loft",
+        currency: "DKK",
+        baseNightlyRate: "800",
+        depositPolicies: emptyDepositPoliciesDraft(),
+        freeCancellationDaysBeforeCheckIn: "7",
+      }),
     );
 
     await publishHostStartDraft();

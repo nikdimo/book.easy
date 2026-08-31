@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { completePastBookings } from "@/lib/services/booking.service";
+import { todayYmd, ymdToDbDate } from "@/lib/utils/date-only";
 
 export async function getAdminDashboardStats() {
   await completePastBookings();
@@ -91,8 +92,9 @@ export async function getListingForAdminReview(id: string) {
 
   if (!listing) return null;
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // `endDate` and `date` are `@db.Date`, read back as UTC midnight; server-local
+  // midnight is an instant beside them and moved this cut-off with the host's zone.
+  const today = ymdToDbDate(todayYmd());
 
   const [availabilityBlocks, availabilityWindows, datePrices] = await Promise.all([
     db.availabilityBlock.findMany({

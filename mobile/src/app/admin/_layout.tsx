@@ -2,6 +2,7 @@ import { ActivityIndicator, View } from "react-native";
 import { Redirect, Stack } from "expo-router";
 import { useAuth } from "@/context/auth-context";
 import { useLanguage } from "@/context/language-context";
+import { isAdminRole } from "@/lib/roles";
 import { colors } from "@/theme";
 
 /** Hiding the Admin tab keeps these screens out of a host's way, but in the Expo web
@@ -23,7 +24,7 @@ export default function AdminLayout() {
 
   if (!user) return <Redirect href="/login" />;
 
-  const isAdmin = user.role === "ADMIN" || user.role === "SUPERADMIN";
+  const isAdmin = isAdminRole(user.role);
   if (!isAdmin) return <Redirect href="/(tabs)/dashboard" />;
 
   return (

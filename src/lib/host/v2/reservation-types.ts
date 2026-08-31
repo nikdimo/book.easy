@@ -1,5 +1,10 @@
 import type { CalendarFormats } from "@/lib/host/v2/calendar-format";
+import type { BookingParty } from "@/lib/booking-party";
 import type { DepositPoliciesSnapshotV2 } from "@/lib/payments/deposit-policies";
+import type {
+  CancellationPolicySnapshotV1,
+  CancellationSettlementSnapshotV1,
+} from "@/lib/payments/cancellation-policy";
 import type { SavedPaymentInstructionTemplate } from "@/lib/payments/payment-instruction-templates";
 import type { PaymentMethodCode } from "@/lib/payments/payment-methods";
 import type {
@@ -41,10 +46,39 @@ export interface HostReservation {
   checkIn: string;
   checkOut: string;
   nights: number;
+  /** Capacity: adults + children, the number `maxGuests` was checked against. */
   guestCount: number;
+  /**
+   * The rest of the party, or null for a booking taken before it was recorded. Never
+   * summed into `guestCount` — infants and pets consume no capacity — and never
+   * defaulted to zeroes, because "no pets" and "never asked" are different answers.
+   *
+   * Optional as well as nullable so a fixture that predates it still describes a valid
+   * reservation; readers treat a missing field exactly as they treat null.
+   */
+  party?: BookingParty | null;
   currency: string;
+  /**
+   * @deprecated Compatibility data. A rounded effective average, not a price component:
+   * `nightlyRate * nights` does not reconstruct the accommodation subtotal (audit L2).
+   * Read `accommodationSubtotal` for the amount and `averageNightlyRate` for the
+   * average, and never multiply either.
+   */
   nightlyRate: number;
+  /** The average per night, for a line that says so. Display only. */
+  averageNightlyRate: number;
+  /**
+   * What the nights are worth, net of any promotion — from the frozen `priceBreakdown`,
+   * or derived from the stored totals for a booking that predates it.
+   * `accommodationSubtotal + cleaningFee + serviceFee === total`.
+   */
+  accommodationSubtotal: number;
+  /** The same, before the promotion. Print this beside an itemised discount row; the
+   *  net figure there would subtract the promotion twice. */
+  originalAccommodationSubtotal: number;
   cleaningFee: number;
+  /** `cleaningFee` before the promotion, for the same reason. */
+  originalCleaningFee: number;
   serviceFee: number;
   discountAmount: number;
   total: number;
@@ -55,14 +89,18 @@ export interface HostReservation {
   paymentMethodOtherLabel: string | null;
   advancePaymentStatus: string;
   damageDepositStatus: string;
+  accommodationRefundStatus?: string;
+  accommodationRefundAmount?: number | null;
   /** The booking-time amounts, never recomputed from a later listing policy and never
    *  summed: the advance payment is part of `total`, the damage deposit is on top. */
   advancePaymentAmount: number | null;
   damageDepositAmount: number | null;
   depositPolicies: DepositPoliciesSnapshotV2 | null;
+  cancellationPolicy?: CancellationPolicySnapshotV1 | null;
+  cancellationSettlement?: CancellationSettlementSnapshotV1 | null;
   paymentStatusEvents: Array<{
     id: string;
-    actor: "HOST" | "GUEST";
+    actor: "HOST" | "GUEST" | "ADMIN" | "SYSTEM";
     eventType: string;
     createdAt: string;
   }>;
@@ -88,6 +126,28 @@ export interface HostReservation {
   paymentRequestPrefill?: BookingPaymentRequestPrefill;
   /** The structured details already sent to this guest, if any. Both participants. */
   sentPaymentDetails?: BookingPaymentDetailsSnapshotV2 | null;
+  paymentRequests?: Array<{
+    id: string;
+    type: "ADVANCE_PAYMENT" | "ACCOMMODATION_BALANCE" | "DAMAGE_DEPOSIT";
+    amount: number;
+    currency: string;
+    dueAt: string;
+    status: "DRAFT" | "SENT" | "CANCELLED" | "SETTLED";
+    sentPaymentDetails: BookingPaymentDetailsSnapshotV2 | null;
+    instructionsNotRequired?: boolean;
+    reminders: Array<{ kind: string; sentAt: string }>;
+  }>;
+  transactionReports?: Array<{
+    id: string;
+    track: string;
+    reporter: "HOST" | "GUEST" | "REDACTED";
+    amount: number;
+    currency: string;
+    transactionDate: string;
+    reference: string | null;
+    note: string | null;
+    retainedReason: string | null;
+  }>;
 }
 
 export interface HostReservationsData {

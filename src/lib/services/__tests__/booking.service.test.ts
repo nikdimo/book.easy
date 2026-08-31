@@ -162,7 +162,7 @@ describe("booking response deadline and delivery guarantees", () => {
       data: { responseDueAt: new Date(Date.now() - 60_000) },
     });
 
-    await expect(confirmBooking(booking.id, host.id)).rejects.toThrow(/expired/i);
+    await expect(confirmBooking(booking.id, host.id, { decision: "NO_INSTRUCTIONS" })).rejects.toThrow(/expired/i);
 
     const [stored, hold, expiredDeliveries] = await Promise.all([
       db.booking.findUniqueOrThrow({ where: { id: booking.id } }),

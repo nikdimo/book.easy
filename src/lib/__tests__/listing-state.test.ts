@@ -87,7 +87,32 @@ describe("resolveListingState", () => {
   });
 
   it("treats an admin decision as an error the host must see", () => {
+    expect(resolveListingState(listing({ status: "SUSPENDED" })).code).toBe("SUSPENDED");
     expect(resolveListingState(listing({ status: "SUSPENDED" })).tone).toBe("error");
-    expect(resolveListingState(listing({ status: "REJECTED" })).tone).toBe("error");
+  });
+
+  // L4: moderation is post-publication. A listing awaiting review is APPROVED with
+  // `needsReview`, so NEEDS_REVIEW must come from the flag and from nothing else.
+  it("derives 'waiting for review' from needsReview, not from a status", () => {
+    expect(resolveListingState(listing({ needsReview: true })).code).toBe("NEEDS_REVIEW");
+    expect(resolveListingState(listing({ needsReview: false })).code).not.toBe(
+      "NEEDS_REVIEW"
+    );
+  });
+
+  it("has no listing state left that reports a rejection", () => {
+    const codes = [
+      listing(),
+      listing({ needsReview: true }),
+      listing({ status: "SUSPENDED" }),
+      listing({ status: "UNPUBLISHED" }),
+      listing({ status: "DRAFT" }),
+      listing({ status: "ARCHIVED" }),
+      listing({ baseNightlyRate: null }),
+      listing({ outOfBookableDates: true }),
+      listing({ photoCount: 1 }),
+      listing({ failingFeedName: "Airbnb" }),
+    ].map((item) => resolveListingState(item).code);
+    expect(codes).not.toContain("REJECTED");
   });
 });

@@ -49,6 +49,15 @@ import {
   saveHostStartDraftPatch,
 } from "@/lib/actions/host-start.actions";
 import { HOST_START_DRAFT_COOKIE } from "@/lib/host-start-draft";
+import { emptyDepositPoliciesDraft } from "@/lib/host/v2/listing-deposit-draft";
+
+function answeredDeposits<T extends Record<string, unknown>>(data: T) {
+  return {
+    ...data,
+    depositPolicies: emptyDepositPoliciesDraft(),
+    freeCancellationDaysBeforeCheckIn: "7",
+  };
+}
 
 /** The currency the publish carried into `submitNewListing`, which is the value the
  *  `PricingRule` is created with (`pricingRule: { create: { currency: data.currency } }`). */
@@ -122,7 +131,7 @@ describe("publishHostStartDraft — the draft's currency", () => {
     mocks.draftFindFirst.mockResolvedValue({
       id: "draft-1",
       hostId: "host-1",
-      data: { title: "Sunny loft", currency: "USD", baseNightlyRate: "120" },
+      data: answeredDeposits({ title: "Sunny loft", currency: "USD", baseNightlyRate: "120" }),
     });
 
     await expect(publishHostStartDraft()).resolves.toMatchObject({ listingId: "listing-1" });
@@ -134,7 +143,7 @@ describe("publishHostStartDraft — the draft's currency", () => {
     mocks.draftFindFirst.mockResolvedValue({
       id: "draft-1",
       hostId: "host-1",
-      data: { title: "Sunny loft", baseNightlyRate: "120" },
+      data: answeredDeposits({ title: "Sunny loft", baseNightlyRate: "120" }),
     });
 
     await publishHostStartDraft();
@@ -158,7 +167,7 @@ describe("publishHostStartDraft — the pin is the confirmation", () => {
     mocks.draftFindFirst.mockResolvedValue({
       id: "draft-1",
       hostId: "host-1",
-      data: { title: "Sunny loft", latitude: "41.9981", longitude: "21.4254" },
+      data: answeredDeposits({ title: "Sunny loft", latitude: "41.9981", longitude: "21.4254" }),
     });
 
     await publishHostStartDraft();
@@ -171,12 +180,12 @@ describe("publishHostStartDraft — the pin is the confirmation", () => {
     mocks.draftFindFirst.mockResolvedValue({
       id: "draft-1",
       hostId: "host-1",
-      data: {
+      data: answeredDeposits({
         title: "Sunny loft",
         latitude: "41.9981",
         longitude: "21.4254",
         locationSource: "AUTOCOMPLETE",
-      },
+      }),
     });
 
     await publishHostStartDraft();
@@ -190,7 +199,7 @@ describe("publishHostStartDraft — the pin is the confirmation", () => {
     mocks.draftFindFirst.mockResolvedValue({
       id: "draft-1",
       hostId: "host-1",
-      data: { title: "Sunny loft", latitude: "0", longitude: "0" },
+      data: answeredDeposits({ title: "Sunny loft", latitude: "0", longitude: "0" }),
     });
 
     await publishHostStartDraft();
@@ -202,7 +211,7 @@ describe("publishHostStartDraft — the pin is the confirmation", () => {
     mocks.draftFindFirst.mockResolvedValue({
       id: "draft-1",
       hostId: "host-1",
-      data: { title: "Sunny loft" },
+      data: answeredDeposits({ title: "Sunny loft" }),
     });
 
     await publishHostStartDraft();
@@ -257,7 +266,7 @@ describe("publishHostStartDraft — the house rules reach the publish", () => {
     mocks.draftFindFirst.mockResolvedValue({
       id: "draft-1",
       hostId: "host-1",
-      data: {
+      data: answeredDeposits({
         title: "Sunny loft",
         checkInTime: "16:00",
         checkOutTime: "10:00",
@@ -269,7 +278,7 @@ describe("publishHostStartDraft — the house rules reach the publish", () => {
         quietHoursStart: "22:00",
         quietHoursEnd: "08:00",
         additionalRules: "No shoes indoors.",
-      },
+      }),
     });
 
     await publishHostStartDraft();
@@ -290,7 +299,7 @@ describe("publishHostStartDraft — the house rules reach the publish", () => {
     mocks.draftFindFirst.mockResolvedValue({
       id: "draft-1",
       hostId: "host-1",
-      data: { title: "Sunny loft", petPolicy: "", quietHoursPolicy: "" },
+      data: answeredDeposits({ title: "Sunny loft", petPolicy: "", quietHoursPolicy: "" }),
     });
 
     await publishHostStartDraft();
@@ -299,5 +308,122 @@ describe("publishHostStartDraft — the house rules reach the publish", () => {
     // refusal invented on the host's behalf.
     expect(carried("petPolicy")).toBe("");
     expect(carried("quietHoursPolicy")).toBe("");
+  });
+});
+
+describe("publishHostStartDraft — the deposit answer", () => {
+  /** What the publish carried into `submitNewListing` for a given field. */
+  function published(field: string): string | null {
+    const formData = mocks.submitNewListing.mock.calls.at(-1)?.[0];
+    const value = formData?.get(field);
+    return typeof value === "string" ? value : null;
+  }
+
+  it("carries an answer that asks for both", async () => {
+    const depositPolicies = emptyDepositPoliciesDraft();
+    depositPolicies.currency = "EUR";
+    depositPolicies.advancePayment = {
+      enabled: true,
+      amountType: "PERCENTAGE",
+      value: "20",
+      dueTiming: "AFTER_ACCEPTANCE",
+      dueDaysBeforeCheckIn: null,
+    };
+    depositPolicies.damageDeposit = {
+      enabled: true,
+      amountType: "FIXED",
+      value: "200",
+      dueTiming: "AT_CHECK_IN",
+      dueDaysBeforeCheckIn: null,
+      returnDaysAfterCheckout: 7,
+    };
+    mocks.draftFindFirst.mockResolvedValue({
+      id: "draft-1",
+      hostId: "host-1",
+      data: {
+        title: "Sunny loft",
+        currency: "EUR",
+        depositPolicies,
+        freeCancellationDaysBeforeCheckIn: "7",
+      },
+    });
+
+    await publishHostStartDraft();
+
+    expect(JSON.parse(published("depositPolicies") ?? "null")).toEqual(depositPolicies);
+  });
+
+  it("reopens monetary terms after the draft currency changes", async () => {
+    const depositPolicies = emptyDepositPoliciesDraft();
+    depositPolicies.currency = "EUR";
+    depositPolicies.advancePayment = {
+      enabled: true,
+      amountType: "FIXED",
+      value: "100",
+      dueTiming: "AFTER_ACCEPTANCE",
+      dueDaysBeforeCheckIn: null,
+    };
+    mocks.draftFindFirst.mockResolvedValue({
+      id: "draft-1",
+      hostId: "host-1",
+      data: {
+        title: "Sunny loft",
+        currency: "MKD",
+        depositPolicies,
+        freeCancellationDaysBeforeCheckIn: "7",
+      },
+    });
+
+    await expect(publishHostStartDraft()).resolves.toEqual({
+      error:
+        "Review the advance payment and damage deposit amounts after changing the listing currency.",
+    });
+    expect(mocks.submitNewListing).not.toHaveBeenCalled();
+  });
+
+  it("carries an explicit 'neither', which is an answer like any other", async () => {
+    mocks.draftFindFirst.mockResolvedValue({
+      id: "draft-1",
+      hostId: "host-1",
+      data: {
+        title: "Sunny loft",
+        depositPolicies: emptyDepositPoliciesDraft(),
+        freeCancellationDaysBeforeCheckIn: "7",
+      },
+    });
+
+    await publishHostStartDraft();
+
+    const sent = JSON.parse(published("depositPolicies") ?? "null");
+    expect(sent.advancePayment.enabled).toBe(false);
+    expect(sent.damageDeposit.enabled).toBe(false);
+  });
+
+  it("blocks a draft that predates the question instead of publishing UNANSWERED", async () => {
+    mocks.draftFindFirst.mockResolvedValue({
+      id: "draft-1",
+      hostId: "host-1",
+      data: { title: "Sunny loft", currentStepId: "specialOffer" },
+    });
+
+    const result = await publishHostStartDraft();
+
+    expect(result).toEqual({
+      error: "Answer the advance payment and damage deposit questions before publishing.",
+    });
+    expect(mocks.submitNewListing).not.toHaveBeenCalled();
+  });
+
+  it("blocks a stored value that is not a two-section answer", async () => {
+    mocks.draftFindFirst.mockResolvedValue({
+      id: "draft-1",
+      hostId: "host-1",
+      data: { title: "Sunny loft", depositPolicies: { reviewed: true } },
+    });
+
+    const result = await publishHostStartDraft();
+
+    expect(result).toHaveProperty("error");
+    expect(mocks.submitNewListing).not.toHaveBeenCalled();
   });
 });

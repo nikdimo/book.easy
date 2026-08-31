@@ -1,10 +1,16 @@
 import "server-only";
-import { addDays } from "date-fns";
 import { db } from "@/lib/db";
 import { getBlockedDateRangesForListings } from "@/lib/services/availability.service";
 import {
+  addDaysToYmd,
+  addMonthsToYmd,
+  dbDateToYmd,
+  todayYmd,
+  ymdToDbDate,
+} from "@/lib/utils/date-only";
+import {
   computeNightlyRateRange,
-  dateKey,
+  parseLocalYmd,
   type NightlyRateRange,
 } from "@/lib/utils/stay-pricing";
 
@@ -42,14 +48,19 @@ export async function getNightlyRateRangesForListings(
   if (listings.length === 0) return ranges;
 
   const listingIds = listings.map((listing) => listing.id);
-  const from = new Date();
-  from.setHours(0, 0, 0, 0);
-  const to = new Date(from);
-  to.setMonth(to.getMonth() + RATE_RANGE_HORIZON_MONTHS);
+  // The marketplace's day and a horizon counted off it, in the terms `date` is stored
+  // in. The old server-local midnight was an instant offset from the UTC midnight
+  // Prisma reads a `@db.Date` back as, so both the window and the keys built from it
+  // moved with the host's zone (M6).
+  const fromYmd = todayYmd();
+  const toYmd = addMonthsToYmd(fromYmd, RATE_RANGE_HORIZON_MONTHS);
 
   const [datePrices, blockedByListing] = await Promise.all([
     db.listingDatePrice.findMany({
-      where: { listingId: { in: listingIds }, date: { gte: from, lte: to } },
+      where: {
+        listingId: { in: listingIds },
+        date: { gte: ymdToDbDate(fromYmd), lte: ymdToDbDate(toYmd) },
+      },
       select: { listingId: true, date: true, nightlyRate: true },
     }),
     getBlockedDateRangesForListings(listingIds),
@@ -58,10 +69,12 @@ export async function getNightlyRateRangesForListings(
   const overridesByListing = new Map<string, Map<string, number>>();
   for (const row of datePrices) {
     const overrides = overridesByListing.get(row.listingId) ?? new Map();
-    overrides.set(dateKey(row.date), Number(row.nightlyRate));
+    overrides.set(dbDateToYmd(row.date), Number(row.nightlyRate));
     overridesByListing.set(row.listingId, overrides);
   }
 
+  const from = parseLocalYmd(fromYmd);
+  const to = parseLocalYmd(toYmd);
   for (const listing of listings) {
     const range = computeNightlyRateRange({
       baseNightly: listing.baseNightlyRate,
@@ -77,13 +90,12 @@ export async function getNightlyRateRangesForListings(
 }
 
 export async function getFutureDatePriceRowsForListing(listingId: string, monthsAhead = 18) {
-  const from = new Date();
-  from.setHours(0, 0, 0, 0);
-  const to = addDays(from, monthsAhead * 31);
+  const from = todayYmd();
+  const to = addDaysToYmd(from, monthsAhead * 31);
   return db.listingDatePrice.findMany({
     where: {
       listingId,
-      date: { gte: from, lte: to },
+      date: { gte: ymdToDbDate(from), lte: ymdToDbDate(to) },
     },
     select: { id: true, date: true, nightlyRate: true },
     orderBy: { date: "asc" },

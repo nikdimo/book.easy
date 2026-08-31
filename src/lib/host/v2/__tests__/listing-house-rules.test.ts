@@ -2,10 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   ADDITIONAL_RULES_MAX,
   FLEXIBLE_STAY_TIME,
+  HOUSE_RULE_ROW_ORDER,
   MAX_GUESTS_MAX,
   MAX_GUESTS_MIN,
+  REQUIRED_POLICY_COUNT,
   STAY_TIME_OPTIONS,
+  answeredPolicyCount,
   conflictsWithBookedParty,
+  houseRuleRowId,
+  houseRuleRowsWithIssues,
   emptyListingHouseRules,
   houseRulesFromRow,
   houseRulesRowData,
@@ -472,5 +477,99 @@ describe("sameListingHouseRules", () => {
     expect(
       sameListingHouseRules(VALID, { ...VALID, additionalRules: "Something else." }),
     ).toBe(false);
+  });
+});
+
+// ─── Sending a host to the rule that needs them ──────────────────────────────────
+
+describe("rows, order and progress", () => {
+  it("lists the rows in the order the page shows them", () => {
+    expect(HOUSE_RULE_ROW_ORDER).toEqual([
+      "checkInTime",
+      "checkOutTime",
+      "maxGuests",
+      "petPolicy",
+      "smokingPolicy",
+      "eventPolicy",
+      "quietHoursPolicy",
+      "additionalRules",
+    ]);
+    expect(REQUIRED_POLICY_COUNT).toBe(4);
+  });
+
+  it("builds the same id the rows render", () => {
+    expect(houseRuleRowId("flow-house-rules", "petPolicy")).toBe(
+      "flow-house-rules-pets",
+    );
+    expect(houseRuleRowId("flow-house-rules", "quietHoursPolicy")).toBe(
+      "flow-house-rules-quiet-hours",
+    );
+    expect(houseRuleRowId("editor", "additionalRules")).toBe(
+      "editor-additional-rules",
+    );
+  });
+
+  it("reports the rows with problems in page order, first one first", () => {
+    const rules = emptyListingHouseRules();
+    const issues = listingHouseRulesIssues(rules, { requireAnswers: true });
+
+    expect(houseRuleRowsWithIssues(issues)).toEqual([
+      "petPolicy",
+      "smokingPolicy",
+      "eventPolicy",
+      "quietHoursPolicy",
+    ]);
+  });
+
+  it("collapses a half-set quiet-hours range onto the one row that edits it", () => {
+    // Both ends are broken, but there is one sheet to open and one thing to fix.
+    const issues = listingHouseRulesIssues(
+      {
+        ...emptyListingHouseRules(),
+        petPolicy: "ALLOWED",
+        smokingPolicy: "ALLOWED",
+        eventPolicy: "ALLOWED",
+        quietHoursPolicy: "SET",
+        quietHoursStart: "",
+        quietHoursEnd: "",
+      },
+      { requireAnswers: true },
+    );
+
+    expect(houseRuleRowsWithIssues(issues)).toEqual(["quietHoursPolicy"]);
+  });
+
+  it("says nothing is wrong when nothing is", () => {
+    expect(houseRuleRowsWithIssues({})).toEqual([]);
+  });
+
+  it("counts each answered policy, including an explicit refusal", () => {
+    const rules = emptyListingHouseRules();
+
+    expect(answeredPolicyCount(rules)).toBe(0);
+    expect(answeredPolicyCount({ ...rules, petPolicy: "NOT_ALLOWED" })).toBe(1);
+    expect(
+      answeredPolicyCount({
+        ...rules,
+        petPolicy: "ALLOWED",
+        smokingPolicy: "OUTDOORS_ONLY",
+        eventPolicy: "NOT_ALLOWED",
+        quietHoursPolicy: "NONE",
+      }),
+    ).toBe(4);
+  });
+
+  it("does not count quiet hours that are set but have no times", () => {
+    const rules = {
+      ...emptyListingHouseRules(),
+      quietHoursPolicy: "SET" as const,
+      quietHoursStart: "22:00",
+      quietHoursEnd: "",
+    };
+
+    expect(answeredPolicyCount(rules)).toBe(0);
+    expect(
+      answeredPolicyCount({ ...rules, quietHoursEnd: "08:00" }),
+    ).toBe(1);
   });
 });

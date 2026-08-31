@@ -7,14 +7,15 @@ import {
   sendBookingPaymentRequestSchema,
 } from "@/lib/validations/booking.schema";
 import { firstZodMessage } from "@/lib/utils/zod-error";
+import { todayYmd, ymdToDbDate } from "@/lib/utils/date-only";
 import {
   createBooking,
   cancelBooking,
-  confirmBooking,
   getBookingAcceptancePaymentData,
   rejectBooking,
   saveBookingPaymentInstructionTemplate,
 } from "@/lib/services/booking.service";
+import { acceptBookingAsHost } from "@/lib/services/booking-acceptance.service";
 import { createAuditLog } from "@/lib/services/audit.service";
 import { getPriceFormatter } from "@/lib/currency/price";
 import { getLocale } from "@/lib/i18n/t";
@@ -25,15 +26,11 @@ import {
   bookingPaymentDetailsSnapshot,
   buildBookingPaymentRequest,
   buildStructuredBookingPaymentRequest,
-  paymentMethodCanNeedNoInstructions,
 } from "@/lib/payments/booking-payment-request";
 import {
-  methodSupportsPaymentDetails,
-  paymentDetailsAreComplete,
-  validatePaymentMethodDetails,
-  type PaymentDetailFieldValues,
-} from "@/lib/payments/payment-details";
-import type { PaymentMethodCode } from "@/lib/payments/payment-methods";
+  resolveRequestMethod,
+  resolveStructuredDetails,
+} from "@/lib/payments/booking-acceptance";
 import {
   ensureBookingConversation,
   shareBookingPaymentInstructions,
@@ -55,7 +52,17 @@ export async function createBookingAction(formData: FormData) {
     listingId: formData.get("listingId") as string,
     checkIn: formData.get("checkIn") as string,
     checkOut: formData.get("checkOut") as string,
-    guestCount: formData.get("guestCount") as string,
+    // The party, four numbers rather than one. `guestCount` is no longer posted — the
+    // server derives it from adults + children — but a page loaded before this shipped
+    // still posts it and nothing else, so it stands in for the adults on that one
+    // request rather than failing a guest mid-booking over a deploy boundary.
+    adults:
+      (formData.get("adults") as string | null) ??
+      (formData.get("guestCount") as string | null) ??
+      undefined,
+    children: (formData.get("children") as string | null) ?? undefined,
+    infants: (formData.get("infants") as string | null) ?? undefined,
+    pets: (formData.get("pets") as string | null) ?? undefined,
     guestNote: (formData.get("guestNote") as string) || undefined,
     selectedPaymentMethod:
       (formData.get("selectedPaymentMethod") as string) || undefined,
@@ -77,9 +84,20 @@ export async function createBookingAction(formData: FormData) {
     const booking = await createBooking({
       listingId: parsed.data.listingId,
       guestId: session.user.id,
-      checkIn: new Date(parsed.data.checkIn),
-      checkOut: new Date(parsed.data.checkOut),
-      guestCount: parsed.data.guestCount,
+      // Through the shared helper: `@db.Date` columns take UTC midnight, and naming
+      // that rather than leaning on `new Date("2026-06-10")`'s parsing keeps the one
+      // conversion the rest of the booking flow reads back with `dbDateToYmd`.
+      checkIn: ymdToDbDate(parsed.data.checkIn),
+      checkOut: ymdToDbDate(parsed.data.checkOut),
+      // Passed whole. `createBooking` derives the capacity from adults + children,
+      // checks the party against the listing's own house rules, and stores all four —
+      // this action does no arithmetic on them.
+      party: {
+        adults: parsed.data.adults,
+        children: parsed.data.children,
+        infants: parsed.data.infants,
+        pets: parsed.data.pets,
+      },
       guestNote: parsed.data.guestNote,
       selectedPaymentMethod: parsed.data.selectedPaymentMethod,
       guestLocale,
@@ -121,33 +139,6 @@ export async function cancelBookingAction(bookingId: string) {
   }
 }
 
-export async function confirmBookingAction(bookingId: string) {
-  const session = await auth();
-  if (!session?.user?.id || !session.user.isHost) {
-    return { error: "Not authorized" };
-  }
-
-  try {
-    await confirmBooking(bookingId, session.user.id);
-    await createAuditLog({
-      userId: session.user.id,
-      action: "booking.confirm",
-      entityType: "Booking",
-      entityId: bookingId,
-      metadata: { confirmedBy: "host" },
-    });
-    revalidatePath("/host/bookings");
-    revalidatePath("/host/reservations");
-    revalidatePath(`/host/bookings/${bookingId}`);
-    revalidatePath(`/host/reservations/${bookingId}`);
-    revalidatePath(`/account/bookings/${bookingId}`);
-    return { success: true };
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Failed to confirm";
-    return { error: message };
-  }
-}
-
 export async function getBookingAcceptancePaymentDataAction(bookingId: string) {
   const session = await auth();
   if (!session?.user?.id || !session.user.isHost) {
@@ -173,61 +164,14 @@ function revalidateAcceptedBooking(bookingId: string) {
   revalidatePath(`/account/bookings/${bookingId}`);
 }
 
-type AcceptancePaymentData = Awaited<
-  ReturnType<typeof getBookingAcceptancePaymentData>
->;
-
 /**
- * Which method this request is actually for.
+ * The web transport over the one acceptance workflow.
  *
- * A guest's recorded choice is returned unchanged and a posted `method` is ignored — the
- * host cannot silently swap it. Only a booking with no recorded choice consults the
- * posted value, and only if it is on that booking's own frozen list.
+ * Session, input shape and cache revalidation only. The payment decision, every rule
+ * that decides whether it may be applied, the send and the audit trail all live in
+ * `acceptBookingAsHost`, which the mobile PATCH route calls with the same payload — so
+ * a host accepting the same booking from either place lands in the same state.
  */
-function resolveRequestMethod(
-  payment: AcceptancePaymentData,
-  posted: PaymentMethodCode | undefined,
-): PaymentMethodCode | null {
-  if (payment.selectedPaymentMethod) return payment.selectedPaymentMethod;
-  if (!posted) return null;
-  return payment.availableMethods.includes(posted) ? posted : null;
-}
-
-type ResolvedStructuredDetails =
-  | { fields: PaymentDetailFieldValues }
-  | { error: string };
-
-/**
- * Validates the structured fields the host reviewed, against the method in play.
- *
- * Returns null when the request carries no structured data at all, which is what routes
- * a legacy free-text send down the original path. Errors are generic on purpose: an
- * action's error string can be surfaced in a toast or a log, and payment values must
- * never reach either.
- */
-function resolveStructuredDetails(
-  method: PaymentMethodCode,
-  detailFields: Record<string, string> | undefined,
-): ResolvedStructuredDetails | null {
-  if (!detailFields) return null;
-  const hasValue = Object.values(detailFields).some((value) => value.trim() !== "");
-  if (!hasValue) return null;
-  if (!methodSupportsPaymentDetails(method)) {
-    return { error: "This payment method does not take saved details." };
-  }
-
-  const validated = validatePaymentMethodDetails(method, detailFields);
-  if (!validated.success) {
-    return { error: "Check the payment details and try again." };
-  }
-  if (!paymentDetailsAreComplete(method, validated.value)) {
-    return { error: "Fill in every required payment detail before sending." };
-  }
-  return { fields: validated.value };
-}
-
-/** One deliberate host decision: accept, then either send reviewed private instructions,
- * keep a visible send-later task, or record that no instructions are needed. */
 export async function acceptBookingWithPaymentAction(input: unknown) {
   const session = await auth();
   if (!session?.user?.id || !session.user.isHost) {
@@ -238,142 +182,19 @@ export async function acceptBookingWithPaymentAction(input: unknown) {
     return { error: firstZodMessage(parsed.error) } as const;
   }
 
-  const { bookingId, decision, dueDate, saveForFuture } = parsed.data;
-  const instructions = parsed.data.instructions?.trim() ?? "";
-  try {
-    const payment = await getBookingAcceptancePaymentData(
-      bookingId,
-      session.user.id,
-    );
-    if (payment.status !== "PENDING") {
-      return { error: "Only pending bookings can be accepted." } as const;
-    }
-    // The guest's own choice always wins. A `method` on the wire is only consulted for
-    // a booking that never recorded one, and only against that booking's own list.
-    const method = resolveRequestMethod(payment, parsed.data.method);
-    if (decision === "NO_INSTRUCTIONS" &&
-        !paymentMethodCanNeedNoInstructions(method)) {
-      return {
-        error: "Choose send now or send later for this payment method.",
-      } as const;
-    }
-    let structured: ResolvedStructuredDetails | null = null;
-    if (decision === "SEND_NOW") {
-      if (!method) {
-        return { error: "Choose the payment method for this booking." } as const;
-      }
-      structured = resolveStructuredDetails(method, parsed.data.detailFields);
-      if (structured && "error" in structured) {
-        return { error: structured.error } as const;
-      }
-      if (!structured && !instructions) {
-        return { error: "Add the payment details before accepting and sending." } as const;
-      }
-      if (!dueDate) {
-        return { error: "Choose when payment is due." } as const;
-      }
-      const today = new Date().toISOString().slice(0, 10);
-      if (dueDate < today || dueDate > payment.checkIn) {
-        return {
-          error: "Choose a payment deadline between today and check-in.",
-        } as const;
-      }
-      if (!structured) assertSafePaymentInstructions(instructions);
-    }
+  const result = await acceptBookingAsHost({
+    ...parsed.data,
+    hostId: session.user.id,
+    source: "WEB",
+  });
+  if (!result.success) return { error: result.error } as const;
 
-    await confirmBooking(bookingId, session.user.id, {
-      paymentInstructionsStatus:
-        decision === "NO_INSTRUCTIONS" ? "NOT_NEEDED" : "PENDING",
-    });
-
-    let instructionsSent = false;
-    let warning: string | undefined;
-    if (decision === "SEND_NOW" && method && dueDate) {
-      try {
-        await ensureBookingConversation(bookingId);
-        const fields = structured && "fields" in structured ? structured.fields : null;
-        const message = await shareBookingPaymentInstructions({
-          bookingId,
-          hostId: session.user.id,
-          body: fields
-            ? buildStructuredBookingPaymentRequest({
-                reference: payment.reference,
-                method,
-                otherLabel: payment.otherLabel,
-                total: payment.total,
-                currency: payment.currency,
-                dueDate,
-                fields,
-              })
-            : buildBookingPaymentRequest({
-                reference: payment.reference,
-                method,
-                otherLabel: payment.otherLabel,
-                total: payment.total,
-                currency: payment.currency,
-                dueDate,
-                instructions,
-              }),
-          dueAt: new Date(`${dueDate}T00:00:00.000Z`),
-          detailsSnapshot: fields
-            ? bookingPaymentDetailsSnapshot({
-                method,
-                otherLabel: payment.otherLabel,
-                fields,
-              })
-            : null,
-        });
-        instructionsSent = true;
-        await createAuditLog({
-          userId: session.user.id,
-          action: "booking.payment_instructions_shared",
-          entityType: "Message",
-          entityId: message.id,
-          // Metadata records that a send happened and in which format — never a field,
-          // a label, or a value from the instructions themselves.
-          metadata: {
-            kind: "PAYMENT_INSTRUCTIONS",
-            duringAcceptance: true,
-            format: fields ? "STRUCTURED" : "FREE_TEXT",
-          },
-        });
-        if (saveForFuture) {
-          try {
-            await saveBookingPaymentInstructionTemplate({
-              bookingId,
-              hostId: session.user.id,
-              method,
-              ...(fields ? { fields } : { body: instructions }),
-            });
-          } catch {
-            warning =
-              "Booking accepted and instructions sent, but the reusable copy was not saved.";
-          }
-        }
-      } catch {
-        warning =
-          "Booking accepted, but the payment instructions were not sent. They remain in your action list.";
-      }
-    }
-
-    await createAuditLog({
-      userId: session.user.id,
-      action: "booking.confirm",
-      entityType: "Booking",
-      entityId: bookingId,
-      metadata: {
-        confirmedBy: "host",
-        paymentDecision: decision,
-        instructionsSent,
-      },
-    });
-    revalidateAcceptedBooking(bookingId);
-    return { success: true, instructionsSent, warning } as const;
-  } catch (error) {
-    return {
-      error: error instanceof Error ? error.message : "Failed to confirm booking",
-    } as const;
-  }
+  revalidateAcceptedBooking(parsed.data.bookingId);
+  return {
+    success: true,
+    instructionsSent: result.instructionsSent,
+    warning: result.warning,
+  } as const;
 }
 
 export async function sendBookingPaymentRequestAction(input: unknown) {
@@ -401,7 +222,18 @@ export async function sendBookingPaymentRequestAction(input: unknown) {
         error: "Choose the payment method for this booking.",
       } as const;
     }
-    const today = new Date().toISOString().slice(0, 10);
+    const paymentRequest = parsed.data.paymentRequestId
+      ? payment.requests.find(
+          (request) => request.id === parsed.data.paymentRequestId,
+        )
+      : payment.requests.find((request) => request.status === "DRAFT");
+    if (!paymentRequest || paymentRequest.status !== "DRAFT") {
+      return { error: "Choose a payment request that still needs to be sent." } as const;
+    }
+    // The same day the acceptance dialog floors its picker at — read in the
+    // marketplace zone rather than in UTC, which put the floor a day early for the
+    // first two hours of every local morning (M6).
+    const today = todayYmd();
     if (parsed.data.dueDate < today || parsed.data.dueDate > payment.checkIn) {
       return {
         error: "Choose a payment deadline between today and check-in.",
@@ -427,7 +259,7 @@ export async function sendBookingPaymentRequestAction(input: unknown) {
             reference: payment.reference,
             method,
             otherLabel: payment.otherLabel,
-            total: payment.total,
+            total: paymentRequest.amount,
             currency: payment.currency,
             dueDate: parsed.data.dueDate,
             fields,
@@ -436,12 +268,12 @@ export async function sendBookingPaymentRequestAction(input: unknown) {
             reference: payment.reference,
             method,
             otherLabel: payment.otherLabel,
-            total: payment.total,
+            total: paymentRequest.amount,
             currency: payment.currency,
             dueDate: parsed.data.dueDate,
             instructions,
           }),
-      dueAt: new Date(`${parsed.data.dueDate}T00:00:00.000Z`),
+      dueAt: ymdToDbDate(parsed.data.dueDate),
       detailsSnapshot: fields
         ? bookingPaymentDetailsSnapshot({
             method,
@@ -449,6 +281,9 @@ export async function sendBookingPaymentRequestAction(input: unknown) {
             fields,
           })
         : null,
+      paymentRequestId: paymentRequest.id,
+      paymentRequestType: paymentRequest.type,
+      method,
     });
     let warning: string | undefined;
     if (parsed.data.saveForFuture) {

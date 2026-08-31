@@ -81,6 +81,7 @@ export async function POST(request: Request) {
     draftId: result.draftId,
     url: result.url,
     mediaType: result.mediaType,
+    isPanorama: result.isPanorama,
     data: result.data,
   });
 }

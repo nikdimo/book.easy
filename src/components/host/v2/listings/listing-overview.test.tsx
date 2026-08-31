@@ -52,7 +52,7 @@ function listing(
   };
 }
 
-const labels = { APPROVED: "Approved", REJECTED: "Rejected", SUSPENDED: "Suspended" };
+const labels = { APPROVED: "Approved", SUSPENDED: "Suspended" };
 
 function render(listings: HostListingOverviewItem[]) {
   return renderToStaticMarkup(
@@ -75,27 +75,27 @@ describe("ListingOverview add-listing entry point", () => {
   });
 });
 
-describe("ListingOverview rejected listings", () => {
-  it("shows the moderator's note on the rejected row instead of sending the host away", () => {
+describe("ListingOverview suspended listings", () => {
+  it("shows the moderator's note on the suspended row instead of sending the host away", () => {
     const html = render([
-      listing({ status: "REJECTED", moderationNote: "Photos show another property." }),
+      listing({ status: "SUSPENDED", moderationNote: "Photos show another property." }),
     ]);
-    expect(html).toContain("Rejected by our team");
+    expect(html).toContain("Suspended by our team");
     expect(html).toContain("Photos show another property.");
     // The old line told the host to go and look; the note is now right here.
-    expect(html).not.toContain("open the listing to see why");
+    expect(html).not.toContain("check your email for details");
   });
 
   it("falls back to guidance when the note is blank", () => {
-    const html = render([listing({ status: "REJECTED", moderationNote: "  " })]);
-    expect(html).toContain("Rejected by our team");
+    const html = render([listing({ status: "SUSPENDED", moderationNote: "  " })]);
+    expect(html).toContain("Suspended by our team");
     expect(html).toContain("Contact support");
   });
 
-  it("keeps a broken calendar visible on a rejected listing", () => {
+  it("keeps a broken calendar visible on a suspended listing", () => {
     const html = render([
       listing({
-        status: "REJECTED",
+        status: "SUSPENDED",
         moderationNote: "Photos show another property.",
         failingFeedName: "Airbnb",
       }),
@@ -106,7 +106,15 @@ describe("ListingOverview rejected listings", () => {
 
   it("shows no moderation note on a healthy listing", () => {
     const html = render([listing()]);
-    expect(html).not.toContain("Rejected by our team");
     expect(html).not.toContain("Suspended by our team");
+  });
+
+  // L4: a listing waiting on an admin is live and flagged, not blocked — it gets the
+  // review line, never a moderation box.
+  it("shows the review line rather than a moderation box while needsReview is set", () => {
+    const html = render([listing({ needsReview: true })]);
+    expect(html).toContain("waiting for review");
+    expect(html).not.toContain("Suspended by our team");
+    expect(html).not.toContain("Rejected by our team");
   });
 });

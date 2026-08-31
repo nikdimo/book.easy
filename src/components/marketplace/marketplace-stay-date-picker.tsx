@@ -29,7 +29,8 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { guestStepDestination } from "@/lib/booking-flow";
+import { datesStepDestination, guestStepDestination } from "@/lib/booking-flow";
+import { isValidYmd, ymdToLocalDate } from "@/lib/utils/date-only";
 import {
   blockedRangeStarts,
   disabledRangesForSelection,
@@ -60,10 +61,7 @@ import type { Resolved } from "@/lib/i18n/t";
 import { dayPickerLocaleFor } from "@/lib/i18n/day-picker-locale";
 
 function parseLocalYmd(s: string): Date | undefined {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return undefined;
-  const [y, m, d] = s.split("-").map(Number);
-  const dt = new Date(y, m - 1, d);
-  return Number.isNaN(dt.getTime()) ? undefined : dt;
+  return isValidYmd(s) ? ymdToLocalDate(s) : undefined;
 }
 
 function toYmd(d: Date): string {
@@ -865,8 +863,8 @@ function MarketplaceRangeDayButton({
             "hover:border-foreground/30 hover:bg-muted/20 focus-visible:border-primary/70 focus-visible:ring-2 focus-visible:ring-primary/20",
           // Taken and past nights recede rather than disappear: the shape of a booked
           // week is itself information a guest reads before they pick anything.
-          taken && "cursor-not-allowed border-border/40 bg-muted/25 text-muted-foreground/60 hover:bg-muted/25",
-          block && "cursor-not-allowed border-border/50 text-muted-foreground",
+          taken && "cursor-not-allowed border-border/60 bg-muted/40 text-muted-foreground/80 hover:bg-muted/40",
+          block && "cursor-not-allowed border-border/70 text-muted-foreground",
           inRange && "border-primary/30 bg-primary/[0.07] text-foreground hover:bg-primary/[0.09]",
           isEndpoint &&
             "border-primary bg-primary text-primary-foreground hover:bg-primary/90",
@@ -1119,6 +1117,7 @@ export function DateRangeCalendarStep({
   dateModifiers,
   dateModifiersClassNames,
   minimumStayNights,
+  maximumStayNights,
   minimumStayMessage,
   onMinimumStayBlocked,
   fitViewport = false,
@@ -1142,6 +1141,9 @@ export function DateRangeCalendarStep({
     typeof Calendar
   >["modifiersClassNames"];
   minimumStayNights?: number;
+  /** The host's stay-length cap. A click that would complete a longer range starts a
+   *  new check-in on that day instead — see commitRange. */
+  maximumStayNights?: number;
   minimumStayMessage?: Resolved;
   onMinimumStayBlocked?: (block: DayBlock) => void;
   fitViewport?: boolean;
@@ -1457,11 +1459,33 @@ export function DateRangeCalendarStep({
         return;
       }
 
+      // The other end of the same rule. A check-out past the host's cap is read as the
+      // guest starting a new stay on that day rather than as a stay nobody can book —
+      // the same move the minimum makes above, and the one that keeps an over-cap range
+      // from being drawn at all. Days are not greyed out to achieve it: everything
+      // beyond the cap is still a perfectly good *check-in*, and disabling the rest of
+      // the calendar to protect one check-out would cost the guest far more than it
+      // saves. A range that arrives some other way (a shared link, a drag) is caught by
+      // validateBookingSelection, which blocks the request before it is sent.
+      if (
+        maximumStayNights &&
+        maximumStayNights >= 1 &&
+        range?.from &&
+        range.to &&
+        differenceInCalendarDays(startOfDay(range.to), startOfDay(range.from)) >
+          maximumStayNights
+      ) {
+        onRangeChange({ from: startOfDay(range.to), to: undefined });
+        onFromOnlySelected?.();
+        return;
+      }
+
       onRangeChange(range);
       if (range?.from && !range?.to) onFromOnlySelected?.();
     },
     [
       disabledDateRanges,
+      maximumStayNights,
       minimumStayAnchor,
       minimumStayNights,
       onRangeChange,
@@ -2176,10 +2200,10 @@ export function MarketplaceStayDatePicker({
   dateModifiers,
   dateModifiersClassNames,
   minimumStayNights,
+  maximumStayNights,
   minimumStayMessage,
   renderDateFooter,
   pagedCalendarOnDesktop = false,
-  sharedPillActive = false,
   hidePillDivider = false,
   desktopContentRef,
   desktopContentStyle,
@@ -2189,6 +2213,7 @@ export function MarketplaceStayDatePicker({
   reviewStepTitle,
   renderReviewStep,
   reviewStepEnabled = true,
+  guestsAnswered = false,
   searchPresentation = false,
   dialogContentId,
   className,
@@ -2237,6 +2262,8 @@ export function MarketplaceStayDatePicker({
     typeof Calendar
   >["modifiersClassNames"];
   minimumStayNights?: number;
+  /** The host's stay-length cap, passed straight through to the calendar. */
+  maximumStayNights?: number;
   minimumStayMessage?: Resolved;
   renderDateFooter?: (controls: {
     canGoNext: boolean;
@@ -2245,7 +2272,6 @@ export function MarketplaceStayDatePicker({
     summaryText: Resolved;
   }) => React.ReactNode;
   pagedCalendarOnDesktop?: boolean;
-  sharedPillActive?: boolean;
   hidePillDivider?: boolean;
   desktopContentRef?: React.Ref<HTMLDivElement>;
   desktopContentStyle?: React.CSSProperties;
@@ -2278,6 +2304,9 @@ export function MarketplaceStayDatePicker({
   }) => React.ReactNode;
   /** When false, the guest action returns to dates instead of entering review. */
   reviewStepEnabled?: boolean;
+  /** Whether the party is already settled — from an earlier step, or from the search
+   *  the guest arrived on. The calendar skips over the counts when it is. */
+  guestsAnswered?: boolean;
   /** Keep the caller's trigger while using the streamlined search calendar and guest panels. */
   searchPresentation?: boolean;
   dialogContentId?: string;
@@ -2344,6 +2373,38 @@ export function MarketplaceStayDatePicker({
    * the last press in here, which is search's case — it fires the final action and
    * closes. Both footers below share it so the two presentations cannot drift.
    */
+  /**
+   * What the calendar's forward button does, and what it should say it does.
+   *
+   * Both presentations share it, so the desktop pill and the dialog footer cannot send
+   * the same press to two different places.
+   */
+  const datesStepGoesTo = datesStepDestination(
+    showGuestStep,
+    guestsAnswered,
+    Boolean(renderReviewStep),
+    reviewStepEnabled,
+  );
+  const resolvedDatesActionLabel =
+    datesStepGoesTo === "guests"
+      ? resolvedNextActionLabel
+      : resolvedFinalActionLabel;
+  const leaveDatesStep = React.useCallback(() => {
+    if (datesStepGoesTo) {
+      changeStep(datesStepGoesTo);
+      return;
+    }
+    if (onFinalAction) onFinalAction();
+    else onSearchRequest();
+    closePicker();
+  }, [
+    changeStep,
+    closePicker,
+    datesStepGoesTo,
+    onFinalAction,
+    onSearchRequest,
+  ]);
+
   const leaveGuestStep = React.useCallback(() => {
     const destination = guestStepDestination(
       Boolean(renderReviewStep),
@@ -2557,12 +2618,8 @@ export function MarketplaceStayDatePicker({
 
   const pillSeg = (seg: "checkin" | "checkout") =>
     cn(
-      "flex-1 min-w-0 rounded-full px-6 py-2.5 text-left outline-none transition-[background-color,box-shadow,transform] duration-200 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-      segmentActive(seg)
-        ? sharedPillActive
-          ? ""
-          : "bg-white shadow-[0_2px_10px_rgba(15,23,42,0.12)]"
-        : "hover:bg-black/[0.035]",
+      "flex min-w-0 flex-1 items-center rounded-full px-6 py-[15px] text-left outline-none transition-colors duration-200 ease-out focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+      segmentActive(seg) ? "bg-white shadow-[0_3px_12px_rgba(0,0,0,0.1),0_1px_2px_rgba(0,0,0,0.08)]" : "hover:bg-[#EBEBEB] group-data-[panel-open=true]/pill:hover:bg-[#DDDDDD]",
     );
 
   const heroSeg = (seg: "checkin" | "checkout") =>
@@ -2577,6 +2634,15 @@ export function MarketplaceStayDatePicker({
           ? "border-transparent bg-transparent hover:border-border/60 hover:bg-muted/25"
           : "hover:bg-muted/25",
     );
+
+  /**
+   * Empty, the two date segments are one prompt printed under two headings, and there
+   * is nothing yet to divide between them. The card collapses them into a single row
+   * that says what pressing it does; they split apart again the moment a date exists.
+   * Only the card: the search bar's segments are what a guest scans that pill by.
+   */
+  const collapseEmptyDates =
+    layout === "compact" && !checkIn && !checkOut && !hasDateSelection;
 
   const triggers = (
     <>
@@ -2615,33 +2681,35 @@ export function MarketplaceStayDatePicker({
             aria-haspopup="dialog"
             aria-controls={dialogContentId}
           >
-            <span
-              className={cn(
-                "block text-[0.72rem] font-semibold leading-4 text-foreground",
-                labels.when.translated && "notranslate",
-              )}
-            >
-              {labels.when.text}
-            </span>
-            <span
-              className={cn(
-                "mt-px block truncate text-sm leading-5 font-normal",
-                !hasFullDateRange && "text-muted-foreground",
-                (hasFullDateRange || mobileDatesLabel.translated) && "notranslate",
-              )}
-              translate={
-                hasFullDateRange || mobileDatesLabel.translated ? "no" : undefined
-              }
-              suppressHydrationWarning
-            >
-              {mobileDatesLabel.text}
+            <span className="min-w-0 flex-1">
+              <span
+                className={cn(
+                  "block text-xs font-medium leading-4 text-[#222222]",
+                  labels.when.translated && "notranslate",
+                )}
+              >
+                {labels.when.text}
+              </span>
+              <span
+                className={cn(
+                  "block truncate text-sm font-normal leading-[18px]",
+                  hasFullDateRange ? "text-[#222222]" : "text-[#6C6C6C]",
+                  (hasFullDateRange || mobileDatesLabel.translated) && "notranslate",
+                )}
+                translate={
+                  hasFullDateRange || mobileDatesLabel.translated ? "no" : undefined
+                }
+                suppressHydrationWarning
+              >
+                {mobileDatesLabel.text}
+              </span>
             </span>
           </button>
           <button
             type="button"
             className={cn(
               pillSeg("checkin"),
-              "relative hidden sm:block after:absolute after:right-0 after:top-1/2 after:h-8 after:w-px after:-translate-y-1/2 after:bg-black/8 after:transition-opacity after:duration-150",
+              "relative hidden sm:flex after:absolute after:-right-[3px] after:top-1/2 after:h-8 after:w-px after:-translate-y-1/2 after:bg-[#DDDDDD] after:transition-opacity after:duration-150",
               segmentActive("checkin") && "after:opacity-0",
               segmentActive("checkout") && "after:opacity-0",
               hidePillDivider && "after:opacity-0",
@@ -2651,9 +2719,45 @@ export function MarketplaceStayDatePicker({
             aria-haspopup="dialog"
             aria-controls={dialogContentId}
           >
+            <span className="min-w-0 flex-1">
+              <span
+                className={cn(
+                  "block text-xs font-medium leading-4 text-[#222222]",
+                  labels.when.translated && "notranslate",
+                )}
+              >
+                {labels.when.text}
+              </span>
+              <span
+                className={cn(
+                  "block truncate text-sm font-normal leading-[18px]",
+                  hasDateSelection ? "text-[#222222]" : "text-[#6C6C6C]",
+                  (hasDateSelection || summaryText.translated) && "notranslate",
+                )}
+                translate={
+                  hasDateSelection || summaryText.translated ? "no" : undefined
+                }
+                suppressHydrationWarning
+              >
+                {summaryText.text}
+              </span>
+            </span>
+          </button>
+        </div>
+      ) : collapseEmptyDates ? (
+        <button
+          type="button"
+          className={cn(heroSeg("checkin"), "w-full")}
+          onClick={() => openSegment("checkin")}
+          aria-expanded={open}
+          aria-haspopup="dialog"
+          aria-controls={dialogContentId}
+        >
+          <CalendarRange className="mt-0.5 hidden h-5 w-5 shrink-0 text-muted-foreground sm:block" />
+          <div className="min-w-0 flex-1">
             <span
               className={cn(
-                "block text-[0.72rem] font-semibold leading-4 text-foreground",
+                "block text-xs font-semibold tracking-wide",
                 labels.when.translated && "notranslate",
               )}
             >
@@ -2661,19 +2765,14 @@ export function MarketplaceStayDatePicker({
             </span>
             <span
               className={cn(
-                "mt-px block truncate text-sm leading-5 font-normal",
-                !hasDateSelection && "text-muted-foreground",
-                (hasDateSelection || summaryText.translated) && "notranslate",
+                "text-sm font-medium text-muted-foreground md:text-base",
+                labels.chooseDates.translated && "notranslate",
               )}
-              translate={
-                hasDateSelection || summaryText.translated ? "no" : undefined
-              }
-              suppressHydrationWarning
             >
-              {summaryText.text}
+              {labels.chooseDates.text}
             </span>
-          </button>
-        </div>
+          </div>
+        </button>
       ) : (
         <div
           className={cn(
@@ -3072,6 +3171,7 @@ export function MarketplaceStayDatePicker({
                   dateModifiers={dateModifiers}
                   dateModifiersClassNames={dateModifiersClassNames}
                   minimumStayNights={minimumStayNights}
+                  maximumStayNights={maximumStayNights}
                   minimumStayMessage={minimumStayMessage}
                   onMinimumStayBlocked={nudgeMinimumStayHint}
                   fitViewport={useSearchPresentation}
@@ -3127,12 +3227,12 @@ export function MarketplaceStayDatePicker({
                         className={cn(
                           PILL_STEP_ACTION,
                           "hidden justify-self-end md:inline-flex",
-                          resolvedNextActionLabel.translated && "notranslate",
+                          resolvedDatesActionLabel.translated && "notranslate",
                         )}
                         disabled={!canGoNext}
-                        onClick={() => changeStep("guests")}
+                        onClick={leaveDatesStep}
                       >
-                        {resolvedNextActionLabel.text}
+                        {resolvedDatesActionLabel.text}
                       </Button>
                     ) : null}
                   </div>
@@ -3183,29 +3283,12 @@ export function MarketplaceStayDatePicker({
                             type="button"
                             className={cn(
                               "min-w-[7rem] rounded-full",
-                              (showGuestStep
-                                ? resolvedNextActionLabel
-                                : resolvedFinalActionLabel
-                              ).translated && "notranslate",
+                              resolvedDatesActionLabel.translated && "notranslate",
                             )}
                             disabled={!canGoNext}
-                            onClick={() => {
-                              if (showGuestStep) {
-                                changeStep("guests");
-                                return;
-                              }
-
-                              if (onFinalAction) {
-                                onFinalAction();
-                              } else {
-                                onSearchRequest();
-                              }
-                              closePicker();
-                            }}
+                            onClick={leaveDatesStep}
                           >
-                            {showGuestStep
-                              ? resolvedNextActionLabel.text
-                              : resolvedFinalActionLabel.text}
+                            {resolvedDatesActionLabel.text}
                           </Button>
                         </div>
                       </div>

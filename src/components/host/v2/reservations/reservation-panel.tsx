@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Clock, ExternalLink, House, MessageCircle, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { interpolate, useI18n } from "@/lib/i18n/client";
+import { bookingPartyDetailLine } from "@/lib/booking-party";
 import { Button } from "@/components/ui/button";
 import { HostBookingActions } from "@/components/host/host-booking-actions";
 import { HostCancelBookingButton } from "@/components/host/host-cancel-booking-button";
@@ -123,7 +124,12 @@ export function ReservationPanel({
   const code = rowStatusOf(reservation, data.today);
   const status = rowStatusLabel(i18n, code, reservation);
   const stay = stayLine(i18n, reservation);
-  const accommodation = reservation.nightlyRate * reservation.nights;
+  // The gross accommodation figure, resolved on the server from the frozen price
+  // breakdown. Never `nightlyRate * nights`: that column is a rounded average and the
+  // product misses the total by a cent or more on an uneven stay (audit L2). Gross
+  // rather than net because the discount is itemised on its own line below, so these
+  // rows add up to `reservation.total` exactly.
+  const accommodation = reservation.originalAccommodationSubtotal;
   const currency = reservation.currency;
   const messageLabel = i18n.resolve(
     "host.v2.reservations.message_guest",
@@ -131,6 +137,14 @@ export function ReservationPanel({
   ).text;
   const respondDeadline =
     action?.kind === "RESPOND_TO_REQUEST" ? action.dueAt : null;
+  // Null when the guest count already says everything — a party of three adults is
+  // "3 guests" twice — and null again for a booking whose party predates the columns.
+  const partyDetail = bookingPartyDetailLine(
+    i18n,
+    reservation.party
+      ? { recorded: true, guestCount: reservation.guestCount, ...reservation.party }
+      : { recorded: false, guestCount: reservation.guestCount },
+  );
 
   return (
     <div
@@ -273,6 +287,15 @@ export function ReservationPanel({
                 ).text
               }
             </span>
+            {/* The rest of the party, on its own line beneath the count that cannot
+                hold it: the children inside the count, and the infants and pets that
+                are deliberately outside it. Absent for a booking taken before the
+                party was recorded rather than shown as zeroes. */}
+            {partyDetail ? (
+              <span className="block text-[0.71875rem] text-slate-500">
+                {partyDetail.text}
+              </span>
+            ) : null}
           </span>
           {reservation.conversationId ? (
             <Button asChild variant="outline" size="sm">
@@ -325,12 +348,12 @@ export function ReservationPanel({
             }
             value={money(accommodation, currency, data.formats)}
           />
-          {reservation.cleaningFee > 0 ? (
+          {reservation.originalCleaningFee > 0 ? (
             <Line
               label={
                 i18n.resolve("host.v2.reservations.cleaning_fee", "Cleaning fee").text
               }
-              value={money(reservation.cleaningFee, currency, data.formats)}
+              value={money(reservation.originalCleaningFee, currency, data.formats)}
             />
           ) : null}
           {reservation.discountAmount > 0 ? (
@@ -378,7 +401,13 @@ export function ReservationPanel({
         </div>
       </Section>
 
-      {reservation.status === "CONFIRMED" ? (
+      {[
+        "CONFIRMED",
+        "COMPLETED",
+        "CANCELLED_BY_GUEST",
+        "CANCELLED_BY_HOST",
+        "CANCELLED_BY_ADMIN",
+      ].includes(reservation.status) ? (
         <BookingPaymentProgress
           actor="HOST"
           compact
@@ -397,11 +426,15 @@ export function ReservationPanel({
             paymentMethodOtherLabel: reservation.paymentMethodOtherLabel,
             advancePaymentStatus: reservation.advancePaymentStatus,
             damageDepositStatus: reservation.damageDepositStatus,
+            accommodationRefundStatus: reservation.accommodationRefundStatus,
+            accommodationRefundAmount: reservation.accommodationRefundAmount,
             paymentStatusEvents: reservation.paymentStatusEvents,
             savedPaymentInstructionTemplates:
               reservation.savedPaymentInstructionTemplates ?? [],
             paymentRequestPrefill: reservation.paymentRequestPrefill,
             sentPaymentDetails: reservation.sentPaymentDetails ?? null,
+            paymentRequests: reservation.paymentRequests,
+            transactionReports: reservation.transactionReports,
             reference: reservation.reference,
           }}
         />

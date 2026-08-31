@@ -6,6 +6,7 @@ import { useRef, useState } from "react";
 import { Tx, useI18n } from "@/lib/i18n/client";
 import type { ListingSpaceTypeValue } from "@/lib/types/listing-space-type";
 import type { PropertyTypeOption } from "@/lib/types/property-type";
+import { hostStartRouteOf } from "@/lib/host-start-draft";
 import { reviewHref } from "@/lib/host/v2/listing-flow-return";
 import { ListingFlowFooter } from "./listing-flow-footer";
 import { LocationPreviewAnimation } from "./location-preview-animation";
@@ -135,6 +136,7 @@ export function LocationStep({
             geocodingProvider: location.pin.provider,
             geocodingPlaceId: location.pin.placeId,
             currentStepId: "details",
+            currentRoute: hostStartRouteOf(nextHref),
           });
           if (saved) window.location.assign(nextHref);
         }}

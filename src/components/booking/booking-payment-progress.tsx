@@ -7,7 +7,12 @@ import { AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { recordBookingPaymentEventAction } from "@/lib/actions/booking-payment.actions";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  recordBookingPaymentEventAction,
+  reportBookingTransactionAction,
+} from "@/lib/actions/booking-payment.actions";
 import { sendBookingPaymentRequestAction } from "@/lib/actions/booking.actions";
 import type { DepositPoliciesSnapshotV2 } from "@/lib/payments/deposit-policies";
 import type { SavedPaymentInstructionTemplate } from "@/lib/payments/payment-instruction-templates";
@@ -22,8 +27,15 @@ import {
 import { GuestPaymentCard } from "./guest-payment-card";
 import type { PaymentMethodCode } from "@/lib/payments/payment-methods";
 import { DepositPoliciesSummary } from "./deposit-policies-summary";
+import { CancellationPolicySummary } from "./cancellation-policy-summary";
 import { PaymentMethodName } from "./accepted-payment-methods";
 import { useI18n } from "@/lib/i18n/client";
+import { derivePaymentReminderState } from "@/lib/payments/payment-reminders";
+import { todayYmd } from "@/lib/utils/date-only";
+import type {
+  CancellationPolicySnapshotV1,
+  CancellationSettlementSnapshotV1,
+} from "@/lib/payments/cancellation-policy";
 
 type PaymentEvent =
   | "HOST_MARK_PAYMENT_DUE"
@@ -38,7 +50,9 @@ type PaymentEvent =
   | "HOST_CONFIRM_DAMAGE_DEPOSIT_RECEIVED"
   | "HOST_REPORT_DAMAGE_DEPOSIT_RETURNED"
   | "GUEST_CONFIRM_DAMAGE_DEPOSIT_RETURNED"
-  | "HOST_MARK_DAMAGE_DEPOSIT_RETAINED";
+  | "HOST_MARK_DAMAGE_DEPOSIT_RETAINED"
+  | "HOST_REPORT_ACCOMMODATION_REFUND_SENT"
+  | "GUEST_CONFIRM_ACCOMMODATION_REFUND_RECEIVED";
 
 export interface BookingPaymentProgressView {
   bookingId: string;
@@ -50,15 +64,19 @@ export interface BookingPaymentProgressView {
   advancePaymentAmount: number | null;
   damageDepositAmount: number | null;
   depositPolicies: DepositPoliciesSnapshotV2 | null;
+  cancellationPolicy?: CancellationPolicySnapshotV1 | null;
+  cancellationSettlement?: CancellationSettlementSnapshotV1 | null;
   paymentStatus: string;
   paymentInstructionsStatus: string;
   selectedPaymentMethod: PaymentMethodCode | null;
   paymentMethodOtherLabel?: string | null;
   advancePaymentStatus: string;
   damageDepositStatus: string;
+  accommodationRefundStatus?: string;
+  accommodationRefundAmount?: number | null;
   paymentStatusEvents: Array<{
     id: string;
-    actor: "HOST" | "GUEST";
+    actor: "HOST" | "GUEST" | "ADMIN" | "SYSTEM";
     eventType: string;
     createdAt: string;
   }>;
@@ -78,6 +96,53 @@ export interface BookingPaymentProgressView {
   paymentInstructionsDueAt?: string | null;
   /** The booking reference the guest quotes on the transfer. */
   reference?: string;
+  paymentRequests?: Array<{
+    id: string;
+    type: "ADVANCE_PAYMENT" | "ACCOMMODATION_BALANCE" | "DAMAGE_DEPOSIT";
+    amount: number;
+    currency: string;
+    dueAt: string;
+    status: "DRAFT" | "SENT" | "CANCELLED" | "SETTLED";
+    sentPaymentDetails?: BookingPaymentDetailsSnapshotV2 | null;
+    instructionsNotRequired?: boolean;
+    reminders?: Array<{ kind: string; sentAt: string }>;
+  }>;
+  transactionReports?: Array<{
+    id: string;
+    track: string;
+    reporter: "HOST" | "GUEST" | "REDACTED";
+    amount: number;
+    currency: string;
+    transactionDate: string;
+    reference: string | null;
+    note: string | null;
+    retainedReason: string | null;
+  }>;
+}
+
+function paymentRequestTitle(
+  resolve: ReturnType<typeof useI18n>["resolve"],
+  type: "ADVANCE_PAYMENT" | "ACCOMMODATION_BALANCE" | "DAMAGE_DEPOSIT",
+) {
+  if (type === "ADVANCE_PAYMENT") {
+    return resolve("booking.payment_request.advance", "Advance payment").text;
+  }
+  if (type === "DAMAGE_DEPOSIT") {
+    return resolve("booking.payment_request.damage", "Refundable damage deposit").text;
+  }
+  return resolve("booking.payment_request.balance", "Remaining accommodation balance").text;
+}
+
+function requestDisplayState(
+  request: NonNullable<BookingPaymentProgressView["paymentRequests"]>[number],
+) {
+  if (request.status === "DRAFT") return "Missing host review";
+  if (request.status === "CANCELLED") return "Cancelled";
+  if (request.status === "SETTLED") return "Settled";
+  return derivePaymentReminderState({
+    dueDate: request.dueAt.slice(0, 10),
+    today: todayYmd(),
+  }).replaceAll("_", " ").toLowerCase();
 }
 
 /** The sent deadline as a plain date, or null when none was recorded. */
@@ -99,6 +164,40 @@ function money(value: number, currency: string, locale: string) {
     return `${value} ${currency}`;
   }
 }
+
+/**
+ * The booking phases in which payment progress can still move. Mirrors
+ * `bookingPaymentPhase` in booking-payment-status.service.ts, which is the authority —
+ * this only decides which buttons to draw.
+ *
+ * A completed stay keeps its controls: the damage deposit is returned after checkout by
+ * design, and cash taken at the property is usually confirmed then too.
+ */
+function paymentPhase(status: string): "ACCEPTED" | "COMPLETED" | "CANCELLED" | null {
+  if (status === "CONFIRMED") return "ACCEPTED";
+  if (status === "COMPLETED") return "COMPLETED";
+  if (status.startsWith("CANCELLED_BY_")) return "CANCELLED";
+  return null;
+}
+
+/**
+ * The events that *open* a track. Mirrors `BEFORE_COMPLETION` in the service: announcing
+ * that money is due once the guest has left reopens collection on a finished stay, so
+ * these three drop away at completion while everything else stays.
+ */
+const OPENS_COLLECTION = new Set<PaymentEvent>([
+  "HOST_MARK_PAYMENT_DUE",
+  "HOST_MARK_ADVANCE_PAYMENT_DUE",
+  "HOST_MARK_DAMAGE_DEPOSIT_DUE",
+]);
+
+/**
+ * The statuses each track can still be reported or confirmed from, spelled out the same
+ * way for all three rather than as a mix of blacklists and whitelists.
+ */
+const PAYMENT_OPEN = ["UNTRACKED", "AWAITING_PAYMENT", "PAYMENT_REPORTED"];
+const PAYMENT_UNREPORTED = ["UNTRACKED", "AWAITING_PAYMENT"];
+const DAMAGE_OPEN = ["UNTRACKED", "AWAITING_DEPOSIT", "DEPOSIT_REPORTED"];
 
 /** Whether this booking froze a policy of each kind. Mirrors the server's own test. */
 function frozenPolicies(progress: BookingPaymentProgressView) {
@@ -157,11 +256,35 @@ function damageStatusCopy(
   }
 }
 
-function ActorLabel({ actor }: { actor: "HOST" | "GUEST" }) {
+function refundStatusCopy(
+  resolve: ReturnType<typeof useI18n>["resolve"],
+  value: string,
+) {
+  switch (value) {
+    case "NOT_REQUIRED": return resolve("booking.payment_progress.refund_status.not_required", "No refund due").text;
+    case "AWAITING_REFUND": return resolve("booking.payment_progress.refund_status.awaiting", "Awaiting host refund").text;
+    case "REFUND_REPORTED": return resolve("booking.payment_progress.refund_status.reported", "Host reported sending the refund").text;
+    case "REFUND_CONFIRMED": return resolve("booking.payment_progress.refund_status.confirmed", "Guest confirmed receiving the refund").text;
+    default: return value;
+  }
+}
+
+function ActorLabel({
+  actor,
+}: {
+  actor: "HOST" | "GUEST" | "ADMIN" | "SYSTEM";
+}) {
   const { resolve } = useI18n();
-  return actor === "HOST"
-    ? resolve("booking.payment_progress.reported_by_host", "Reported by host").text
-    : resolve("booking.payment_progress.reported_by_guest", "Reported by guest").text;
+  if (actor === "HOST") {
+    return resolve("booking.payment_progress.reported_by_host", "Reported by host").text;
+  }
+  if (actor === "GUEST") {
+    return resolve("booking.payment_progress.reported_by_guest", "Reported by guest").text;
+  }
+  if (actor === "ADMIN") {
+    return resolve("booking.payment_progress.reported_by_admin", "Recorded by support").text;
+  }
+  return resolve("booking.payment_progress.reported_by_system", "Recorded automatically").text;
 }
 
 function eventCopy(
@@ -182,6 +305,9 @@ function eventCopy(
     case "HOST_REPORT_DAMAGE_DEPOSIT_RETURNED": return resolve("booking.payment_progress.event.host_report_damage_returned", "Reported returning the damage deposit").text;
     case "GUEST_CONFIRM_DAMAGE_DEPOSIT_RETURNED": return resolve("booking.payment_progress.event.guest_confirm_damage_returned", "Confirmed the damage deposit was returned").text;
     case "HOST_MARK_DAMAGE_DEPOSIT_RETAINED": return resolve("booking.payment_progress.event.host_mark_damage_retained", "Marked the damage deposit retained").text;
+    case "HOST_REPORT_ACCOMMODATION_REFUND_SENT": return resolve("booking.payment_progress.event.host_report_refund_sent", "Reported sending the accommodation refund").text;
+    case "GUEST_CONFIRM_ACCOMMODATION_REFUND_RECEIVED": return resolve("booking.payment_progress.event.guest_confirm_refund_received", "Confirmed receiving the accommodation refund").text;
+    case "CANCELLATION_OPENED_ACCOMMODATION_REFUND": return resolve("booking.payment_progress.event.cancellation_opened_refund", "Cancellation created an accommodation refund obligation").text;
     default: return eventType;
   }
 }
@@ -222,11 +348,28 @@ function ProgressControls({
   const { resolve } = useI18n();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [reportEvent, setReportEvent] = useState<PaymentEvent | null>(null);
+  const [transactionDate, setTransactionDate] = useState(todayYmd());
+  const [reference, setReference] = useState("");
+  const [note, setNote] = useState("");
+  const [retainedReason, setRetainedReason] = useState("");
   const frozen = frozenPolicies(progress);
   const advance = progress.advancePaymentStatus;
   const damage = progress.damageDepositStatus;
 
   const send = (event: PaymentEvent) => {
+    if (TRANSACTION_REPORT_EVENTS.has(event)) {
+      const track = transactionTrack(event);
+      const existing = [...(progress.transactionReports ?? [])]
+        .reverse()
+        .find((report) => report.track === track && report.reporter === actor);
+      setTransactionDate(existing?.transactionDate.slice(0, 10) ?? todayYmd());
+      setReference(existing?.reference ?? "");
+      setNote(existing?.note ?? "");
+      setRetainedReason(existing?.retainedReason ?? "");
+      setReportEvent(event);
+      return;
+    }
     startTransition(async () => {
       try {
         const result = await recordBookingPaymentEventAction(progress.bookingId, event);
@@ -242,31 +385,104 @@ function ProgressControls({
     });
   };
 
-  if (progress.status !== "CONFIRMED") return null;
+  const phase = paymentPhase(progress.status);
+  if (!phase) return null;
 
+  const payment = progress.paymentStatus;
   const hostControls: Array<{ event: PaymentEvent; label: string; allowed: boolean }> = [
-    { event: "HOST_MARK_PAYMENT_DUE", label: resolve("booking.payment_progress.mark_payment_due", "Mark payment due").text, allowed: progress.paymentStatus === "UNTRACKED" },
-    { event: "HOST_MARK_PAYMENT_NOT_REQUIRED", label: resolve("booking.payment_progress.mark_payment_not_required", "Mark payment not required").text, allowed: progress.paymentStatus === "UNTRACKED" || progress.paymentStatus === "AWAITING_PAYMENT" },
-    { event: "HOST_CONFIRM_PAYMENT_RECEIVED", label: resolve("booking.payment_progress.mark_payment_received", "Mark payment received").text, allowed: progress.paymentStatus !== "NOT_REQUIRED" && progress.paymentStatus !== "PAYMENT_CONFIRMED" },
+    { event: "HOST_MARK_PAYMENT_DUE", label: resolve("booking.payment_progress.mark_payment_due", "Mark payment due").text, allowed: payment === "UNTRACKED" },
+    { event: "HOST_MARK_PAYMENT_NOT_REQUIRED", label: resolve("booking.payment_progress.mark_payment_not_required", "Mark payment not required").text, allowed: PAYMENT_UNREPORTED.includes(payment) },
+    { event: "HOST_CONFIRM_PAYMENT_RECEIVED", label: resolve("booking.payment_progress.mark_payment_received", "Mark payment received").text, allowed: PAYMENT_OPEN.includes(payment) },
     { event: "HOST_MARK_ADVANCE_PAYMENT_DUE", label: resolve("booking.payment_progress.mark_advance_due", "Mark advance payment due").text, allowed: frozen.advancePayment && advance === "UNTRACKED" },
-    { event: "HOST_CONFIRM_ADVANCE_PAYMENT_RECEIVED", label: resolve("booking.payment_progress.mark_advance_received", "Mark advance payment received").text, allowed: frozen.advancePayment && advance !== "NOT_REQUIRED" && advance !== "PAYMENT_CONFIRMED" },
+    { event: "HOST_CONFIRM_ADVANCE_PAYMENT_RECEIVED", label: resolve("booking.payment_progress.mark_advance_received", "Mark advance payment received").text, allowed: frozen.advancePayment && PAYMENT_OPEN.includes(advance) },
     { event: "HOST_MARK_DAMAGE_DEPOSIT_DUE", label: resolve("booking.payment_progress.mark_damage_due", "Mark damage deposit due").text, allowed: frozen.damageDeposit && damage === "UNTRACKED" },
-    { event: "HOST_CONFIRM_DAMAGE_DEPOSIT_RECEIVED", label: resolve("booking.payment_progress.mark_damage_received", "Mark damage deposit received").text, allowed: frozen.damageDeposit && (damage === "UNTRACKED" || damage === "AWAITING_DEPOSIT" || damage === "DEPOSIT_REPORTED") },
-    { event: "HOST_REPORT_DAMAGE_DEPOSIT_RETURNED", label: resolve("booking.payment_progress.mark_damage_returned", "Mark damage deposit returned").text, allowed: frozen.damageDeposit && damage === "DEPOSIT_CONFIRMED" },
+    { event: "HOST_CONFIRM_DAMAGE_DEPOSIT_RECEIVED", label: resolve("booking.payment_progress.mark_damage_received", "Mark damage deposit received").text, allowed: frozen.damageDeposit && DAMAGE_OPEN.includes(damage) },
+    { event: "HOST_REPORT_DAMAGE_DEPOSIT_RETURNED", label: damage === "RETURN_REPORTED" ? resolve("booking.payment_progress.edit_damage_return", "Edit damage-deposit return report").text : resolve("booking.payment_progress.mark_damage_returned", "Mark damage deposit returned").text, allowed: frozen.damageDeposit && ["DEPOSIT_CONFIRMED", "RETURN_REPORTED"].includes(damage) },
     { event: "HOST_MARK_DAMAGE_DEPOSIT_RETAINED", label: resolve("booking.payment_progress.mark_damage_retained", "Mark damage deposit retained").text, allowed: frozen.damageDeposit && damage === "DEPOSIT_CONFIRMED" },
   ];
+  // The three report buttons read the same way: offered while the track is open and the
+  // guest has not already said this. While a report is awaiting confirmation, the same
+  // control becomes an edit action and pre-fills the participant's latest private row.
   const guestControls: Array<{ event: PaymentEvent; label: string; allowed: boolean }> = [
-    { event: "GUEST_REPORT_PAYMENT_SENT", label: resolve("booking.payment_progress.report_payment_sent", "Report payment sent").text, allowed: progress.paymentStatus === "UNTRACKED" || progress.paymentStatus === "AWAITING_PAYMENT" },
-    { event: "GUEST_REPORT_ADVANCE_PAYMENT_SENT", label: resolve("booking.payment_progress.report_advance_sent", "Report advance payment sent").text, allowed: frozen.advancePayment && advance !== "NOT_REQUIRED" && advance !== "PAYMENT_CONFIRMED" },
-    { event: "GUEST_REPORT_DAMAGE_DEPOSIT_SENT", label: resolve("booking.payment_progress.report_damage_sent", "Report damage deposit sent").text, allowed: frozen.damageDeposit && (damage === "UNTRACKED" || damage === "AWAITING_DEPOSIT") },
+    { event: "GUEST_REPORT_PAYMENT_SENT", label: payment === "PAYMENT_REPORTED" ? resolve("booking.payment_progress.edit_payment_report", "Edit payment report").text : resolve("booking.payment_progress.report_payment_sent", "Report payment sent").text, allowed: PAYMENT_OPEN.includes(payment) && payment !== "PAYMENT_CONFIRMED" },
+    { event: "GUEST_REPORT_ADVANCE_PAYMENT_SENT", label: advance === "PAYMENT_REPORTED" ? resolve("booking.payment_progress.edit_advance_report", "Edit advance-payment report").text : resolve("booking.payment_progress.report_advance_sent", "Report advance payment sent").text, allowed: frozen.advancePayment && PAYMENT_OPEN.includes(advance) && advance !== "PAYMENT_CONFIRMED" },
+    { event: "GUEST_REPORT_DAMAGE_DEPOSIT_SENT", label: damage === "DEPOSIT_REPORTED" ? resolve("booking.payment_progress.edit_damage_report", "Edit damage-deposit report").text : resolve("booking.payment_progress.report_damage_sent", "Report damage deposit sent").text, allowed: frozen.damageDeposit && DAMAGE_OPEN.includes(damage) && damage !== "DEPOSIT_CONFIRMED" },
     { event: "GUEST_CONFIRM_DAMAGE_DEPOSIT_RETURNED", label: resolve("booking.payment_progress.confirm_damage_return", "Confirm damage deposit return").text, allowed: frozen.damageDeposit && damage === "RETURN_REPORTED" },
   ];
-  const controls = (actor === "HOST" ? hostControls : guestControls).filter((control) => control.allowed);
-  if (controls.length === 0) return null;
+  const cancellationControls: Array<{ event: PaymentEvent; label: string; allowed: boolean }> =
+    actor === "HOST"
+      ? [
+          {
+            event: "HOST_REPORT_ACCOMMODATION_REFUND_SENT",
+            label: progress.accommodationRefundStatus === "REFUND_REPORTED" ? resolve("booking.payment_progress.edit_refund_report", "Edit accommodation-refund report").text : resolve("booking.payment_progress.report_refund_sent", "Report accommodation refund sent").text,
+            allowed: ["AWAITING_REFUND", "REFUND_REPORTED"].includes(
+              progress.accommodationRefundStatus ?? "",
+            ),
+          },
+          {
+            event: "HOST_REPORT_DAMAGE_DEPOSIT_RETURNED",
+            label: damage === "RETURN_REPORTED" ? resolve("booking.payment_progress.edit_damage_return", "Edit damage-deposit return report").text : resolve("booking.payment_progress.mark_damage_returned", "Mark damage deposit returned").text,
+            allowed: frozen.damageDeposit && ["DEPOSIT_REPORTED", "DEPOSIT_CONFIRMED", "RETURN_REPORTED"].includes(damage),
+          },
+        ]
+      : [
+          {
+            event: "GUEST_CONFIRM_ACCOMMODATION_REFUND_RECEIVED",
+            label: resolve("booking.payment_progress.confirm_refund", "Confirm accommodation refund received").text,
+            allowed: progress.accommodationRefundStatus === "REFUND_REPORTED",
+          },
+          {
+            event: "GUEST_CONFIRM_DAMAGE_DEPOSIT_RETURNED",
+            label: resolve("booking.payment_progress.confirm_damage_return", "Confirm damage deposit return").text,
+            allowed: frozen.damageDeposit && damage === "RETURN_REPORTED",
+          },
+        ];
+  const controls = (phase === "CANCELLED"
+    ? cancellationControls
+    : actor === "HOST"
+      ? hostControls
+      : guestControls).filter(
+    (control) =>
+      control.allowed &&
+      (phase === "ACCEPTED" || !OPENS_COLLECTION.has(control.event)),
+  );
+  if (controls.length === 0 && !reportEvent) return null;
+
+  const reportAmount = reportEvent
+    ? transactionAmount(progress, reportEvent)
+    : 0;
+
+  function submitReport(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!reportEvent) return;
+    startTransition(async () => {
+      const result = await reportBookingTransactionAction({
+        bookingId: progress.bookingId,
+        event: reportEvent,
+        amount: reportAmount,
+        transactionDate,
+        reference,
+        note,
+        retainedReason,
+      });
+      if (result.error) {
+        toast.error(result.error);
+        return;
+      }
+      setReportEvent(null);
+      setTransactionDate(todayYmd());
+      setReference("");
+      setNote("");
+      setRetainedReason("");
+      toast.success(resolve("booking.payment_progress.updated", "Payment status updated").text);
+      router.refresh();
+    });
+  }
 
   return (
-    <div className="flex flex-wrap gap-2">
-      {controls.map((control) => (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-2">
+        {controls.map((control) => (
         <Button
           key={control.event}
           type="button"
@@ -278,9 +494,120 @@ function ProgressControls({
         >
           {control.label}
         </Button>
-      ))}
+        ))}
+      </div>
+      {reportEvent ? (
+        <form onSubmit={submitReport} className="space-y-3 rounded-lg border border-border p-3">
+          <p className="text-sm font-semibold">
+            {eventCopy(resolve, reportEvent)} · {money(reportAmount, progress.currency, "en")}
+          </p>
+          <div>
+            <Label htmlFor={`transaction-date-${progress.bookingId}`}>
+              {resolve("booking.transaction.date", "Transaction date").text}
+            </Label>
+            <Input
+              id={`transaction-date-${progress.bookingId}`}
+              type="date"
+              value={transactionDate}
+              max={todayYmd()}
+              required
+              onChange={(event) => setTransactionDate(event.currentTarget.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor={`transaction-reference-${progress.bookingId}`}>
+              {resolve("booking.transaction.reference", "Transaction reference (optional)").text}
+            </Label>
+            <Input
+              id={`transaction-reference-${progress.bookingId}`}
+              value={reference}
+              maxLength={140}
+              onChange={(event) => setReference(event.currentTarget.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor={`transaction-note-${progress.bookingId}`}>
+              {resolve("booking.transaction.note", "Note (optional)").text}
+            </Label>
+            <Textarea
+              id={`transaction-note-${progress.bookingId}`}
+              value={note}
+              maxLength={1200}
+              onChange={(event) => setNote(event.currentTarget.value)}
+            />
+          </div>
+          {reportEvent === "HOST_MARK_DAMAGE_DEPOSIT_RETAINED" ? (
+            <div>
+              <Label htmlFor={`retention-reason-${progress.bookingId}`}>
+                {resolve("booking.transaction.retention_reason", "Reason for retaining the deposit").text}
+              </Label>
+              <Textarea
+                id={`retention-reason-${progress.bookingId}`}
+                value={retainedReason}
+                required
+                maxLength={1200}
+                onChange={(event) => setRetainedReason(event.currentTarget.value)}
+              />
+            </div>
+          ) : null}
+          <div className="flex gap-2">
+            <Button
+              type="submit"
+              size="sm"
+              disabled={isPending || reportAmount <= 0 || !transactionDate}
+            >
+              {resolve("booking.transaction.submit", "Submit report").text}
+            </Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => setReportEvent(null)}>
+              {resolve("common.cancel", "Cancel").text}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {resolve(
+              "booking.transaction.no_receipt",
+              "No receipt upload is required. The other participant must confirm the report.",
+            ).text}
+          </p>
+        </form>
+      ) : null}
     </div>
   );
+}
+
+const TRANSACTION_REPORT_EVENTS = new Set<PaymentEvent>([
+  "GUEST_REPORT_PAYMENT_SENT",
+  "GUEST_REPORT_ADVANCE_PAYMENT_SENT",
+  "GUEST_REPORT_DAMAGE_DEPOSIT_SENT",
+  "HOST_REPORT_DAMAGE_DEPOSIT_RETURNED",
+  "HOST_MARK_DAMAGE_DEPOSIT_RETAINED",
+  "HOST_REPORT_ACCOMMODATION_REFUND_SENT",
+]);
+
+function transactionTrack(event: PaymentEvent): string | null {
+  if (event === "GUEST_REPORT_PAYMENT_SENT") return "ACCOMMODATION_BALANCE";
+  if (event === "GUEST_REPORT_ADVANCE_PAYMENT_SENT") return "ADVANCE_PAYMENT";
+  if (event === "GUEST_REPORT_DAMAGE_DEPOSIT_SENT") return "DAMAGE_DEPOSIT";
+  if (event === "HOST_REPORT_DAMAGE_DEPOSIT_RETURNED") return "DAMAGE_DEPOSIT_RETURN";
+  if (event === "HOST_MARK_DAMAGE_DEPOSIT_RETAINED") return "DAMAGE_DEPOSIT_RETENTION";
+  if (event === "HOST_REPORT_ACCOMMODATION_REFUND_SENT") return "ACCOMMODATION_REFUND";
+  return null;
+}
+
+function transactionAmount(progress: BookingPaymentProgressView, event: PaymentEvent) {
+  if (event === "GUEST_REPORT_ADVANCE_PAYMENT_SENT") {
+    return progress.advancePaymentAmount ?? 0;
+  }
+  if (
+    event === "GUEST_REPORT_DAMAGE_DEPOSIT_SENT" ||
+    event === "HOST_REPORT_DAMAGE_DEPOSIT_RETURNED" ||
+    event === "HOST_MARK_DAMAGE_DEPOSIT_RETAINED"
+  ) {
+    return progress.damageDepositAmount ?? 0;
+  }
+  if (event === "HOST_REPORT_ACCOMMODATION_REFUND_SENT") {
+    return progress.accommodationRefundAmount ?? 0;
+  }
+  return Math.max(0, progress.total - (progress.advancePaymentAmount ?? 0));
 }
 
 /**
@@ -294,11 +621,13 @@ function PaymentInstructionsForm({
   checkIn,
   prefill,
   initialTemplates,
+  paymentRequest,
 }: {
   bookingId: string;
   checkIn: string;
   prefill?: BookingPaymentRequestPrefill;
   initialTemplates?: SavedPaymentInstructionTemplate[];
+  paymentRequest?: NonNullable<BookingPaymentProgressView["paymentRequests"]>[number];
 }) {
   const { resolve } = useI18n();
   const router = useRouter();
@@ -319,7 +648,9 @@ function PaymentInstructionsForm({
     saveForFuture: false,
     isReady: false,
   });
-  const [dueDate, setDueDate] = useState(checkIn);
+  const [dueDate, setDueDate] = useState(
+    paymentRequest?.dueAt.slice(0, 10) ?? checkIn,
+  );
   const [isPending, startTransition] = useTransition();
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -329,6 +660,7 @@ function PaymentInstructionsForm({
       try {
         const result = await sendBookingPaymentRequestAction({
           bookingId,
+          ...(paymentRequest ? { paymentRequestId: paymentRequest.id } : {}),
           ...(request.mode === "STRUCTURED"
             ? { detailFields: request.fields }
             : { instructions: request.instructions }),
@@ -354,6 +686,16 @@ function PaymentInstructionsForm({
 
   return (
     <form onSubmit={submit} className="space-y-3">
+      {paymentRequest ? (
+        <div className="rounded-lg bg-muted/40 p-3 text-sm">
+          <p className="font-semibold">
+            {paymentRequestTitle(resolve, paymentRequest.type)}
+          </p>
+          <p className="mt-1 text-muted-foreground">
+            {money(paymentRequest.amount, paymentRequest.currency, "en")} · {requestDisplayState(paymentRequest)}
+          </p>
+        </div>
+      ) : null}
       <div className="space-y-1.5">
         <Label htmlFor={`payment-due-${bookingId}`}>
           {resolve("booking.payment_progress.due_date", "Payment due").text}
@@ -404,7 +746,7 @@ function TrackRow({
   currency,
   locale,
 }: {
-  kind: "advance-payment" | "damage-deposit";
+  kind: "advance-payment" | "damage-deposit" | "accommodation-refund";
   title: string;
   note: string;
   amount: number | null;
@@ -457,6 +799,10 @@ export function BookingPaymentProgress({
   const i18n = useI18n();
   const confirmed = progress.status === "CONFIRMED";
   const frozen = frozenPolicies(progress);
+  const typedRequests = progress.paymentRequests ?? [];
+  const draftRequests = typedRequests.filter((request) => request.status === "DRAFT");
+  const sentRequests = typedRequests.filter((request) => request.status === "SENT");
+  const hasTypedRequests = typedRequests.length > 0;
 
   return (
     <Card size={compact ? "sm" : "default"} data-payment-progress={actor.toLowerCase()}>
@@ -504,7 +850,46 @@ export function BookingPaymentProgress({
 
         {progress.depositPolicies ? <DepositPoliciesSummary t={i18n} data={progress.depositPolicies} headingAs="h3" /> : null}
 
-        {confirmed && progress.paymentInstructionsStatus === "PENDING" ? (
+        {progress.cancellationPolicy ? (
+          <CancellationPolicySummary t={i18n} data={progress.cancellationPolicy} />
+        ) : null}
+
+        {(progress.accommodationRefundAmount ?? 0) > 0 ||
+        (progress.accommodationRefundStatus &&
+          progress.accommodationRefundStatus !== "NOT_REQUIRED") ? (
+          <TrackRow
+            kind="accommodation-refund"
+            title={i18n.resolve("booking.payment_progress.refund_title", "Accommodation refund").text}
+            note={i18n.resolve("booking.payment_progress.refund_note", "Created by the frozen cancellation terms for this booking.").text}
+            amount={progress.accommodationRefundAmount ?? 0}
+            status={refundStatusCopy(
+              i18n.resolve,
+              progress.accommodationRefundStatus ?? "NOT_REQUIRED",
+            )}
+            currency={progress.currency}
+            locale={i18n.locale}
+          />
+        ) : null}
+
+        {(progress.cancellationSettlement?.retainableAdvanceAmount ?? 0) > 0 ? (
+          <p className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">
+            {i18n
+              .resolve(
+                "booking.payment_progress.retainable_advance",
+                "The frozen cancellation calculation allows the host to retain up to {amount} of the received advance payment.",
+              )
+              .text.replace(
+                "{amount}",
+                money(
+                  progress.cancellationSettlement?.retainableAdvanceAmount ?? 0,
+                  progress.currency,
+                  i18n.locale,
+                ),
+              )}
+          </p>
+        ) : null}
+
+        {confirmed && (hasTypedRequests ? draftRequests.length > 0 : progress.paymentInstructionsStatus === "PENDING") ? (
           <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
             <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
             <p>
@@ -515,7 +900,7 @@ export function BookingPaymentProgress({
           </div>
         ) : null}
 
-        {confirmed && progress.paymentInstructionsStatus === "SENT" ? (
+        {!hasTypedRequests && confirmed && progress.paymentInstructionsStatus === "SENT" ? (
           progress.sentPaymentDetails ? (
             <GuestPaymentCard
               details={progress.sentPaymentDetails}
@@ -532,7 +917,44 @@ export function BookingPaymentProgress({
           )
         ) : null}
 
-        {actor === "HOST" && confirmed && progress.paymentInstructionsStatus === "PENDING" ? (
+        {hasTypedRequests && sentRequests.length > 0 ? (
+          <div className="space-y-3">
+            {sentRequests.map((request) => (
+              <section key={request.id} className="space-y-2">
+                <p className="text-sm font-semibold">
+                  {paymentRequestTitle(i18n.resolve, request.type)} · {money(request.amount, request.currency, i18n.locale)}
+                </p>
+                <p className="text-xs capitalize text-muted-foreground">
+                  {requestDisplayState(request)}
+                  {request.reminders?.length
+                    ? ` · Reminder sent ${request.reminders[0].sentAt.slice(0, 10)}`
+                    : ""}
+                </p>
+                {request.sentPaymentDetails ? (
+                  <GuestPaymentCard
+                    details={request.sentPaymentDetails}
+                    amount={money(request.amount, request.currency, i18n.locale)}
+                    dueDate={formatDueDate(request.dueAt, i18n.locale)}
+                    reference={progress.reference ?? ""}
+                  />
+                ) : request.instructionsNotRequired ? (
+                  <p className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">
+                    {i18n.resolve(
+                      "booking.payment_progress.instructions_not_required",
+                      "No private payment instructions are needed for this payment method.",
+                    ).text}
+                  </p>
+                ) : (
+                  <p className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900">
+                    {i18n.resolve("booking.payment_progress.instructions_sent", "Payment instructions were sent in the private conversation.").text}
+                  </p>
+                )}
+              </section>
+            ))}
+          </div>
+        ) : null}
+
+        {actor === "HOST" && confirmed && !hasTypedRequests && progress.paymentInstructionsStatus === "PENDING" ? (
           <PaymentInstructionsForm
             bookingId={progress.bookingId}
             checkIn={progress.checkIn}
@@ -540,7 +962,61 @@ export function BookingPaymentProgress({
             initialTemplates={progress.savedPaymentInstructionTemplates}
           />
         ) : null}
-        {confirmed ? <ProgressControls progress={progress} actor={actor} /> : null}
+        {actor === "HOST" && confirmed && hasTypedRequests
+          ? draftRequests.map((request) => (
+              <PaymentInstructionsForm
+                key={request.id}
+                bookingId={progress.bookingId}
+                checkIn={progress.checkIn}
+                prefill={progress.paymentRequestPrefill}
+                initialTemplates={progress.savedPaymentInstructionTemplates}
+                paymentRequest={request}
+              />
+            ))
+          : null}
+        {progress.transactionReports?.length ? (
+          <section className="space-y-2">
+            <h3 className="text-sm font-semibold">
+              {i18n.resolve("booking.transaction.reports", "Transaction reports").text}
+            </h3>
+            {progress.transactionReports.map((report) => (
+              <div key={report.id} className="rounded-lg border border-border p-3 text-sm">
+                <p className="font-medium">
+                  {report.track.replaceAll("_", " ")} · {money(report.amount, report.currency, i18n.locale)}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {i18n.resolve("booking.transaction.reported_by", "Reported by").text}{" "}
+                  {report.reporter === "HOST"
+                    ? i18n.resolve("common.host", "host").text
+                    : report.reporter === "GUEST"
+                      ? i18n.resolve("common.guest", "guest").text
+                      : i18n.resolve("booking.transaction.deleted_account", "deleted account").text}{" "}
+                  {i18n.resolve("common.on", "on").text}{" "}
+                  {report.transactionDate.slice(0, 10)}
+                </p>
+                {report.reference ? (
+                  <p className="mt-2 break-all">
+                    {i18n.resolve("booking.transaction.reference_short", "Reference:").text}{" "}
+                    <span translate="no">{report.reference}</span>
+                  </p>
+                ) : null}
+                {report.note ? <p className="mt-1 whitespace-pre-wrap">{report.note}</p> : null}
+                {report.retainedReason ? (
+                  <p className="mt-1 whitespace-pre-wrap">
+                    {i18n.resolve("booking.transaction.reason_short", "Reason:").text}{" "}
+                    <span data-user-generated-content translate="yes">{report.retainedReason}</span>
+                  </p>
+                ) : null}
+              </div>
+            ))}
+          </section>
+        ) : null}
+        {/*
+          Not gated on `confirmed`: a completed stay still has a deposit to return and
+          cash to confirm. `ProgressControls` returns null for every other status, and
+          drops the collection-opening buttons once the booking has completed.
+        */}
+        <ProgressControls progress={progress} actor={actor} />
         <StatusHistory progress={progress} />
       </CardContent>
     </Card>

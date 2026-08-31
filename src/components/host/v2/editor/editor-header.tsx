@@ -32,8 +32,6 @@ import { Tx, useI18n } from "@/lib/i18n/client";
 
 const DOT: Record<string, string> = {
   APPROVED: "bg-emerald-500",
-  PENDING_REVIEW: "bg-amber-500",
-  REJECTED: "bg-rose-500",
   SUSPENDED: "bg-rose-500",
   UNPUBLISHED: "bg-slate-400",
   DRAFT: "bg-slate-400",

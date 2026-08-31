@@ -16,8 +16,10 @@ import { useI18n } from "@/lib/i18n/client";
  * rendered in a test without dragging the whole overview in.
  */
 
-/** The statuses where an admin, not the host, is the reason the listing is not live. */
-const BLOCKED = new Set(["REJECTED", "SUSPENDED"]);
+/** The statuses where an admin, not the host, is the reason the listing is not live.
+ *  Suspension is the only one: moderation happens after publication, so a listing an
+ *  admin has not cleared yet is still live and carries `needsReview` instead. */
+const BLOCKED = new Set(["SUSPENDED"]);
 
 export function isModerationBlocked(status: string) {
   return BLOCKED.has(status);
@@ -37,12 +39,12 @@ export function ListingModerationNotice({
   const { resolve } = useI18n();
   if (!isModerationBlocked(status)) return null;
 
-  const rejected = status === "REJECTED";
   const trimmed = note?.trim() ?? "";
 
-  const heading = rejected
-    ? resolve("host.v2.listings.moderation.rejected_title", "Rejected by our team")
-    : resolve("host.v2.listings.moderation.suspended_title", "Suspended by our team");
+  const heading = resolve(
+    "host.v2.listings.moderation.suspended_title",
+    "Suspended by our team"
+  );
 
   // A note is required when an admin suspends, but nothing guarantees one survives a
   // later edit, and older rows predate the field — so a missing note has to say what to

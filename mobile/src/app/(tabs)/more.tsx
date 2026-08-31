@@ -5,12 +5,13 @@ import { useAuth } from "@/context/auth-context";
 import { useLanguage } from "@/context/language-context";
 import { LanguageSelector } from "@/components/language-selector";
 import { clearMobileSessionToken, openControlPanel, startAuth } from "@/lib/api";
+import { isAdminRole } from "@/lib/roles";
 import { colors, radii, spacing, type } from "@/theme";
 
 export default function MoreScreen() {
   const { user, clearSession } = useAuth();
   const { t } = useLanguage();
-  const isAdmin = user?.role === "ADMIN" || user?.role === "SUPERADMIN";
+  const isAdmin = isAdminRole(user?.role);
 
   const initials =
     user?.name

@@ -122,7 +122,10 @@ export async function requireMobileAdmin(request: Request) {
   const access = await requireMobileUser(request);
   if ("response" in access) return access;
 
-  if (access.user.role !== "ADMIN" && access.user.role !== "SUPERADMIN") {
+  // `role` is typed `string` on the session, so this is an allowlist of exactly one:
+  // the sole admin role Prisma's `UserRole` has. Anything else — an unknown role a
+  // future build might send included — is not an admin.
+  if (access.user.role !== "ADMIN") {
     return {
       response: mobileJson(
         request,

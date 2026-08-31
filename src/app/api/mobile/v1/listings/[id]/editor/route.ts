@@ -60,6 +60,7 @@ export async function GET(request: Request, { params }: RouteContext) {
       id: image.id,
       url: image.url,
       mediaType: image.mediaType,
+      isPanorama: image.isPanorama,
       alt: image.alt,
     })),
     propertyTypes,
