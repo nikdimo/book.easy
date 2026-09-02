@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   beginSave,
   endSave,
@@ -23,6 +24,11 @@ import {
   type DepositPoliciesDraft,
 } from "./deposit-policies-editor";
 import { CancellationPolicyEditor } from "./cancellation-policy-editor";
+import {
+  PaymentArrangementsTabPanel,
+  PaymentArrangementsTabStrip,
+  type PaymentArrangementsTabId,
+} from "./payment-arrangements-tabs";
 
 /** Connects the reusable editor to the authenticated, owner-scoped Server Action. */
 export function PaymentArrangementsWorkspace({
@@ -42,6 +48,26 @@ export function PaymentArrangementsWorkspace({
   };
 }) {
   const { resolve } = useI18n();
+  const [tab, setTab] = useState<PaymentArrangementsTabId>("methods");
+  const tabs: { id: PaymentArrangementsTabId; label: string }[] = [
+    {
+      id: "methods",
+      label: resolve(
+        "host.editor.payment_arrangements.tab_methods",
+        "Payment methods",
+      ).text,
+    },
+    {
+      id: "deposits",
+      label: resolve("host.editor.payment_arrangements.tab_deposits", "Deposits")
+        .text,
+    },
+    {
+      id: "cancellation",
+      label: resolve("host.editor.cancellation.heading", "Cancellation policy")
+        .text,
+    },
+  ];
 
   async function save(draft: PaymentArrangementsDraft) {
     beginSave();
@@ -98,32 +124,41 @@ export function PaymentArrangementsWorkspace({
   }
 
   return (
-    // One column, three groups, a rule between them — the composition every other
-    // editor section uses. Each child still centres itself inside its own `max-w-3xl`,
-    // which is what lets the methods editor be shared with the create flow unchanged;
-    // nesting the same clamp twice changes nothing.
+    // Three tabs, one visible at a time. Each panel keeps the `max-w-3xl` clamp its
+    // editor already carried, which is what lets the methods editor stay shared with
+    // the create flow unchanged.
     <div className="py-6 md:py-10">
-      <PaymentArrangementsEditor
-        key={`${listingId}:${initialValue.reviewedAt ?? "unreviewed"}`}
-        initialValue={initialValue}
-        onSave={save}
-        errorMessage={
-          resolve(
-            "host.editor.payment_arrangements.status_error",
-            "Not saved. Check your connection and try again.",
-          ).text
-        }
-      />
-      <DepositPoliciesEditor
-        initialValue={initialDeposit}
-        listingCurrency={listingCurrency}
-        onSave={saveDeposit}
-      />
-      <CancellationPolicyEditor
-        initialDays={initialCancellation.freeCancellationDaysBeforeCheckIn}
-        reviewedAt={initialCancellation.reviewedAt}
-        onSave={saveCancellation}
-      />
+      <PaymentArrangementsTabStrip tabs={tabs} active={tab} onSelect={setTab} />
+
+      <PaymentArrangementsTabPanel id="methods" active={tab === "methods"}>
+        <PaymentArrangementsEditor
+          key={`${listingId}:${initialValue.reviewedAt ?? "unreviewed"}`}
+          initialValue={initialValue}
+          onSave={save}
+          errorMessage={
+            resolve(
+              "host.editor.payment_arrangements.status_error",
+              "Not saved. Check your connection and try again.",
+            ).text
+          }
+        />
+      </PaymentArrangementsTabPanel>
+
+      <PaymentArrangementsTabPanel id="deposits" active={tab === "deposits"}>
+        <DepositPoliciesEditor
+          initialValue={initialDeposit}
+          listingCurrency={listingCurrency}
+          onSave={saveDeposit}
+        />
+      </PaymentArrangementsTabPanel>
+
+      <PaymentArrangementsTabPanel id="cancellation" active={tab === "cancellation"}>
+        <CancellationPolicyEditor
+          initialDays={initialCancellation.freeCancellationDaysBeforeCheckIn}
+          reviewedAt={initialCancellation.reviewedAt}
+          onSave={saveCancellation}
+        />
+      </PaymentArrangementsTabPanel>
     </div>
   );
 }

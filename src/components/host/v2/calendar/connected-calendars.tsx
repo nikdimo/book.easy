@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { interpolate, useI18n } from "@/lib/i18n/client";
+import { FixedStaySyncWarning } from "./booking-method-editor";
 import {
   PLATFORM_LABEL,
   platformFromFeedUrl,
@@ -46,7 +47,21 @@ import { Disclosure, Field } from "./workbench-ui";
  * old page called, so feeds, their schedule and their failure states still have exactly
  * one implementation behind them.
  */
-export function ConnectedCalendars({ listingId }: { listingId: string }) {
+export function ConnectedCalendars({
+  listingId,
+  sellsFixedStays = false,
+}: {
+  listingId: string;
+  /**
+   * Whether this listing sells whole stays.
+   *
+   * Only changes what is *said* here, never what is allowed: the warning below is the
+   * whole intervention, because refusing to connect a channel — or demanding a tick to
+   * acknowledge the limitation — would be this product deciding a host's channel
+   * strategy for them.
+   */
+  sellsFixedStays?: boolean;
+}) {
   const i18n = useI18n();
   const { locale, resolve } = i18n;
   const [data, setData] = useState<CalendarConnectionsView | null>(null);
@@ -196,6 +211,9 @@ export function ConnectedCalendars({ listingId }: { listingId: string }) {
 
   return (
     <div className="flex flex-col gap-5 px-2">
+      {/* What this feed can and cannot carry for a listing that sells whole stays.
+          First, because it changes how a host should read everything under it. */}
+      {sellsFixedStays ? <FixedStaySyncWarning /> : null}
       {/* 1. Bring a calendar in. First because it is what the host came here to do —
           the link to hand out is only useful once something is listening for it. */}
       <div className="flex flex-col gap-2.5">

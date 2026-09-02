@@ -11,8 +11,16 @@ import {
   LISTING,
 } from "./fixtures";
 import { dayMonthYear } from "./display";
-import { HostPanel, type BookingMode } from "./host-panel";
+import { CalendarStage } from "./calendar-stage";
+import { HostPanel } from "./host-panel";
 import { GuestPanel, type GuestListingKind } from "./guest-panel";
+import {
+  MENU_VIEW,
+  backFrom,
+  openEditor,
+  type BookingMode,
+  type PanelView,
+} from "./panel-view";
 import type { FixedStayPeriod } from "./periods";
 
 // Throwaway interactive mockup for the fixed stay periods feature. Nothing outside
@@ -37,6 +45,15 @@ export function FixedStaysLab() {
   const [mode, setMode] = useState<BookingMode>("fixed");
   const [guestKind, setGuestKind] = useState<GuestListingKind>("fixed");
   const [periods, setPeriods] = useState<FixedStayPeriod[]>(FIXED_PERIODS);
+  /**
+   * Where the host is inside the panel, and the number the flexible half holds.
+   *
+   * Both live above the panel so neither is lost on the way through it: leaving the
+   * Booking method editor and coming back must not reset the minimum stay a host
+   * already set, and it must not silently reset the mode either.
+   */
+  const [view, setView] = useState<PanelView>(MENU_VIEW);
+  const [minNights, setMinNights] = useState(5);
 
   const changeScenario = (next: Scenario) => {
     setScenario(next);
@@ -84,20 +101,30 @@ export function FixedStaysLab() {
             </h1>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            {LISTING.title} · mockup, nothing is saved
+            {perspective === "host"
+              ? "Host → Calendar → select listing → editing panel → Booking method. Mockup, nothing is saved."
+              : `${LISTING.title} · mockup, nothing is saved`}
           </p>
         </header>
 
         {perspective === "host" ? (
-          <EditorStage>
-            <HostPanel
-              mode={mode}
-              onModeChange={setMode}
-              periods={periods}
-              blocks={CALENDAR_BLOCKS}
-              onPeriodsChange={setPeriods}
-            />
-          </EditorStage>
+          <CalendarStage>
+            {({ closeSheet }) => (
+              <HostPanel
+                view={view}
+                onOpenEditor={(editor) => setView(openEditor(editor))}
+                onBack={() => setView(backFrom(view))}
+                onClose={closeSheet}
+                mode={mode}
+                onModeChange={setMode}
+                minNights={minNights}
+                onMinNightsChange={setMinNights}
+                periods={periods}
+                blocks={CALENDAR_BLOCKS}
+                onPeriodsChange={setPeriods}
+              />
+            )}
+          </CalendarStage>
         ) : (
           <GuestPanel
             kind={guestKind}
@@ -108,18 +135,6 @@ export function FixedStaysLab() {
       </main>
     </div>
   );
-}
-
-/**
- * The host content on the width it wants.
- *
- * An editor page rather than the Calendar's 23rem pane: the stay list and the Quick
- * setup preview are both lists of dates, and a narrow column truncated every one of
- * them. White cards on the product's own white page, each carrying a hairline at rest and
- * gaining depth only on approach — see `surfaces.tsx` for why that edge has to exist.
- */
-function EditorStage({ children }: { children: React.ReactNode }) {
-  return <div className="mx-auto w-full max-w-[46rem]">{children}</div>;
 }
 
 function Pills<T extends string>({

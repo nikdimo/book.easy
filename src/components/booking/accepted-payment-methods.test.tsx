@@ -48,8 +48,8 @@ describe("AcceptedPaymentMethods", () => {
 
     expect(html).toContain("Accepted payment methods");
     expect(html).toContain("Cash at the property");
-    expect(html).toContain("Local or SEPA bank transfer");
-    expect(html).toContain("International bank transfer");
+    expect(html).toContain("Bank transfer (local or Europe)");
+    expect(html).toContain("Bank transfer (other countries)");
     expect(html).toContain("PayPal");
     expect(html).toContain("Revolut");
     expect(html).toContain("Wise");

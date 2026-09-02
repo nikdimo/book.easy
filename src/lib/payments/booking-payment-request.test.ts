@@ -17,7 +17,7 @@ describe("booking payment request", () => {
         instructions: "Account holder: Example Host\nIBAN: MK00 1234",
       }),
     ).toContain(
-      "Payment request for booking LH-ABC123\nMethod: International bank transfer\nAmount: 320.00 EUR\nPayment due: 2026-09-10",
+      "Payment request for booking LH-ABC123\nMethod: Bank transfer (other countries)\nAmount: 320.00 EUR\nPayment due: 2026-09-10",
     );
   });
 

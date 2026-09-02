@@ -45,6 +45,16 @@ export type HostCalendarDayReason =
   | "external"
   | "manual"
   | "closed_default"
+  /**
+   * A night this listing does not sell, because it lies outside every whole stay the
+   * host put on sale.
+   *
+   * Distinct from `closed_default` because the remedy is different, and that is the
+   * whole point of naming it: a closed-by-default night is opened by opening it, and a
+   * night outside a fixed stay is opened by *adding a stay*. The calendar offers no
+   * action for it, and the panel says where the action lives.
+   */
+  | "outside_fixed_stay"
   | null;
 
 export interface HostCalendarDay {
@@ -89,6 +99,16 @@ export interface ListingCalendarIndex {
   externalDates: Set<string>;
   manualBlockDates: Set<string>;
   openWindowDates: Set<string>;
+  /**
+   * The union of every night the host's enabled, still-future stays cover.
+   *
+   * A union, so two overlapping alternatives count their shared nights once and two
+   * back-to-back stays run together with no closed sliver at the changeover. Switched-off
+   * and already-begun stays contribute nothing — the same two tests the guest projection,
+   * the search filter and the booking transaction apply. Empty on a flexible listing,
+   * where nothing reads it.
+   */
+  offeredStayDates: Set<string>;
   priceByDate: Map<string, number>;
   /** Enabled date-specific promotions covering each night. */
   promotionCountByDate: Map<string, number>;
@@ -157,6 +177,7 @@ export function buildListingCalendarIndex(
     { name: string | null; platform: CalendarPlatform | null }
   >();
   const manualNoteByDate = new Map<string, string>();
+  const offeredStayDates = new Set<string>();
   const stayByDate = new Map<string, CalendarStayEdge>();
   // Held for a second pass. A reservation outranks an imported hold on the same night
   // — the same precedence `resolveDay` applies — so bookings taken here are written
@@ -205,6 +226,14 @@ export function buildListingCalendarIndex(
     addRange(openWindowDates, window.startDate, window.endDate);
   }
 
+  // Built from the server's own projection rather than re-derived here: `state` already
+  // carries the past and switched-off tests, so this cannot come to a different answer
+  // than the row the host is looking at in the panel.
+  for (const period of listing.fixedStayPeriods) {
+    if (period.state === "PAST" || period.state === "DISABLED") continue;
+    addRange(offeredStayDates, period.checkIn, period.checkOut);
+  }
+
   for (const row of listing.datePrices) {
     priceByDate.set(row.date, row.nightlyRate);
   }
@@ -230,9 +259,15 @@ export function buildListingCalendarIndex(
     manualNoteByDate,
     stayByDate,
     openWindowDates,
+    offeredStayDates,
     priceByDate,
     promotionCountByDate,
   };
+}
+
+/** Whether this listing sells whole stays rather than arbitrary date ranges. */
+export function sellsFixedStays(listing: HostCalendarListing): boolean {
+  return listing.bookingMode === "FIXED_STAYS";
 }
 
 /** Whether the calendar alone leaves a future date open, ignoring listing state. */
@@ -244,6 +279,12 @@ function calendarOpen(
   if (index.reservationDates.has(date)) return false;
   if (index.externalDates.has(date)) return false;
   if (index.manualBlockDates.has(date)) return false;
+  // A fixed-stay listing sells its stays and nothing else, so the union of them is the
+  // whole answer — `availabilityMode` and the windows are stored, unread settings here,
+  // exactly as they are for the booking transaction and for search.
+  if (sellsFixedStays(listing)) {
+    return index.offeredStayDates.has(date);
+  }
   if (listing.availabilityMode === "CLOSED") {
     return index.openWindowDates.has(date);
   }
@@ -295,7 +336,20 @@ export function resolveDay(
   if (index.manualBlockDates.has(date)) {
     return { ...base, state: "blocked", reason: "manual", editable: true };
   }
+  // A night outside every offered stay. Not editable from the grid: there is no such
+  // thing as opening one night on a listing that sells whole stays, and a control that
+  // pretended otherwise would write an availability window nothing reads. The panel's
+  // Booking method editor is where a host opens dates here, by adding a stay.
+  if (sellsFixedStays(listing) && !index.offeredStayDates.has(date)) {
+    return {
+      ...base,
+      state: "blocked",
+      reason: "outside_fixed_stay",
+      editable: false,
+    };
+  }
   if (
+    !sellsFixedStays(listing) &&
     listing.availabilityMode === "CLOSED" &&
     !index.openWindowDates.has(date)
   ) {
@@ -503,15 +557,18 @@ export type SelectionStayBookability =
   | { code: "BOOKABLE" }
   | { code: "LISTING_CANNOT_SELL"; saleBlockers: ListingSaleBlocker[] }
   | { code: "DATES_UNAVAILABLE"; blocked: number; booked: number }
+  | { code: "NOT_FIXED_STAY"; nights: number }
   | { code: "BELOW_MINIMUM"; nights: number; minNights: number }
   | { code: "ABOVE_MAXIMUM"; nights: number; maxNights: number };
 
 export function resolveSelectionStayBookability({
   listing,
   availability,
+  dates,
 }: {
   listing: HostCalendarListing;
   availability: SelectionAvailabilitySummary;
+  dates: readonly string[];
 }): SelectionStayBookability {
   if (availability.saleBlockers.length > 0) {
     return {
@@ -527,6 +584,25 @@ export function resolveSelectionStayBookability({
       booked: availability.booked,
     };
   }
+  // Stay length is a flexible-calendar rule. Fixed mode instead requires the exact
+  // dates of one available period: a two-night slice inside an offered week, or two
+  // adjacent seven-night stays selected as one range, is not something a guest may
+  // book even though every individual night is open on the grid.
+  if (sellsFixedStays(listing)) {
+    const selected = new Set(dates);
+    const matchesPeriod = listing.fixedStayPeriods.some((period) => {
+      if (period.state !== "AVAILABLE" || selected.size !== period.nights) {
+        return false;
+      }
+      return eachYmdExclusive(period.checkIn, period.checkOut).every((date) =>
+        selected.has(date),
+      );
+    });
+    return matchesPeriod
+      ? { code: "BOOKABLE" }
+      : { code: "NOT_FIXED_STAY", nights: availability.dates };
+  }
+
   const minNights = listing.pricing?.minNights ?? 1;
   if (availability.dates < minNights) {
     return { code: "BELOW_MINIMUM", nights: availability.dates, minNights };

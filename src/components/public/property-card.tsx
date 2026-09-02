@@ -15,6 +15,7 @@ import {
   parseLocalYmd,
   type StayPromotion,
 } from "@/lib/utils/stay-pricing";
+import { listingSearchLinkQuery } from "@/lib/fixed-stay-options";
 
 interface PropertyCardProps {
   listing: {
@@ -25,6 +26,10 @@ interface PropertyCardProps {
     bedrooms: number;
     bathrooms: number;
     spaceType?: "ENTIRE_PLACE" | "PRIVATE_ROOM" | "SHARED_ROOM" | "HOTEL_ROOM";
+    /** How the listing sells its dates. Absent means the flexible calendar. */
+    bookingMode?: "FLEXIBLE" | "FIXED_STAYS";
+    /** The stay a dated search matched exactly, carried into this card's link. */
+    matchedFixedStayPeriodId?: string | null;
     property: {
       city: string;
       area?: string | null;
@@ -78,7 +83,11 @@ export async function PropertyCard({
     listing.spaceType && listing.spaceType !== "ENTIRE_PLACE"
       ? resolveListingSpaceTypeLabel(t, listing.spaceType).text
       : typeLabel;
-  const href = `/properties/${slug}${searchQuery ? `?${searchQuery}` : ""}`;
+  const sellsFixedStays = listing.bookingMode === "FIXED_STAYS";
+  // A flexible card's link is untouched. A fixed-stay card's carries the stay it matched
+  // and drops the dates, which its listing page is required to ignore anyway.
+  const linkQuery = listingSearchLinkQuery(searchQuery, listing);
+  const href = `/properties/${slug}${linkQuery ? `?${linkQuery}` : ""}`;
 
   const session = await auth();
   const isSaved = session?.user
@@ -94,7 +103,7 @@ export async function PropertyCard({
     isValid(parseISO(checkOut));
   const dateLine =
     showTrip &&
-    `${formatCalendarDateShort(checkIn!, t.requestedLocale)} – ${formatCalendarDateShort(checkOut!, t.requestedLocale)}`;
+    `${formatCalendarDateShort(checkIn!, t.locale)} – ${formatCalendarDateShort(checkOut!, t.locale)}`;
 
   const nightly = pricingRule ? Number(pricingRule.baseNightlyRate) : 0;
   // A listing that charges one rate all year has nothing to span, so it keeps the
@@ -132,17 +141,26 @@ export async function PropertyCard({
       return (left.minimumNights ?? 1) - (right.minimumNights ?? 1);
     })[0] ??
     null;
+  // A minimum stay is a rule about ranges a guest may pick. A fixed-stay listing has
+  // none: the host chose each stay's length, and `createBooking` skips the minimum for
+  // exactly that reason — so a card that measured a matched stay against it would grey
+  // out the very result the search just proved bookable.
   const belowMinStay =
-    showTrip && pricingRule != null && nightCount! < pricingRule.minNights;
-  const minimumStay = pricingRule
-    ? tPlural(
-        t,
-        "property_card.minimum_nights",
-        pricingRule.minNights,
-        "{n}-night min.",
-        "{n}-night min.",
-      )
-    : null;
+    !sellsFixedStays &&
+    showTrip &&
+    pricingRule != null &&
+    nightCount! < pricingRule.minNights;
+  const minimumStay = sellsFixedStays
+    ? ti(t, "listing.fixed_stays_only", "Fixed stays only", {})
+    : pricingRule
+      ? tPlural(
+          t,
+          "property_card.minimum_nights",
+          pricingRule.minNights,
+          "{n}-night min.",
+          "{n}-night min.",
+        )
+      : null;
   const guestsLabel = tPlural(
     t,
     "listing.guests",

@@ -18,6 +18,11 @@ import type {
   HostCalendarWorkspaceData,
 } from "@/lib/host/v2/calendar-types";
 import { dbDateToYmd, todayYmd, ymdToDbDate } from "@/lib/utils/date-only";
+import {
+  blockKindFromBlockType,
+  projectHostFixedStayPeriods,
+  ACTIVE_FIXED_STAY_BOOKING_STATUSES,
+} from "@/lib/services/fixed-stay.service";
 
 /**
  * Everything the v2 calendar workspace needs, for every listing the host owns.
@@ -56,7 +61,9 @@ export async function getHostCalendarWorkspace(
     orderBy: { title: "asc" },
   });
 
-  const mapped: HostCalendarListing[] = listings.map(mapCalendarListing);
+  const mapped: HostCalendarListing[] = listings.map((listing) =>
+    mapCalendarListing(listing, today),
+  );
 
   return {
     today,
@@ -105,7 +112,7 @@ export async function getHostCalendarListingContext(
   });
   if (!listing) return null;
 
-  const mapped = mapCalendarListing(listing);
+  const mapped = mapCalendarListing(listing, today);
   return {
     today,
     horizonEnd,
@@ -132,6 +139,7 @@ function calendarListingSelect(todayDate: Date, horizonDate: Date) {
     slug: true,
     status: true,
     availabilityMode: true,
+    bookingMode: true,
     publishedAt: true,
     property: { select: { city: true } },
     images: {
@@ -167,7 +175,16 @@ function calendarListingSelect(todayDate: Date, horizonDate: Date) {
         blockType: true,
         reason: true,
         booking: {
-          select: { status: true, guest: { select: { name: true } } },
+          // `fixedStayPeriodId` rides along on the hold the booking already owns, which
+          // is why this needs no second query: a hold exists for exactly the PENDING and
+          // CONFIRMED bookings, and it is deleted when one is cancelled, rejected or
+          // expired. So the holds inside the horizon *are* the active bookings, and the
+          // period each one was sold as is right here.
+          select: {
+            status: true,
+            fixedStayPeriodId: true,
+            guest: { select: { name: true } },
+          },
         },
         // The URL is read here and resolved to a channel below; it is never put in
         // the payload, because it is the private token that reads the host's calendar.
@@ -183,6 +200,14 @@ function calendarListingSelect(todayDate: Date, horizonDate: Date) {
       where: { date: { gte: todayDate, lt: horizonDate } },
       orderBy: { date: "asc" },
       select: { date: true, nightlyRate: true },
+    },
+    // Load the host's complete stay history. Past rows are deliberately visible and
+    // locked in the editor, so filtering them out here would make the UI promise a
+    // history it can never render. Loaded in both modes — a listing that switched back
+    // to flexible still owns its stays, and switching forward again must restore them.
+    fixedStayPeriods: {
+      orderBy: [{ checkIn: "asc" }, { checkOut: "asc" }],
+      select: { id: true, checkIn: true, checkOut: true, disabledAt: true },
     },
     bookings: {
       where: { status: "CONFIRMED", checkOut: { gt: todayDate } },
@@ -203,14 +228,73 @@ type CalendarListingRow = Prisma.ListingGetPayload<{
   select: ReturnType<typeof calendarListingSelect>;
 }>;
 
-function mapCalendarListing(listing: CalendarListingRow): HostCalendarListing {
+function mapCalendarListing(
+  listing: CalendarListingRow,
+  today: string,
+): HostCalendarListing {
   const nextBooking = listing.bookings[0];
+  const blocks = listing.availabilityBlocks.map((block) => ({
+    id: block.id,
+    startDate: dbDateToYmd(block.startDate),
+    endDate: dbDateToYmd(block.endDate),
+    blockType: block.blockType as HostCalendarBlockType,
+    reason: block.reason,
+    guestName: block.booking?.guest?.name ?? null,
+    bookingStatus: block.booking?.status ?? null,
+    feedName: block.feed?.name ?? null,
+    feedPlatform: platformFromFeedUrl(block.feed?.url ?? null),
+  }));
+
+  /**
+   * Which stays an active booking was sold as — read off the holds already loaded.
+   *
+   * A hold exists for exactly the PENDING and CONFIRMED bookings and is deleted the
+   * moment one is cancelled, rejected or expired, so this is the same answer the host
+   * projection's own query gives, at the cost of no extra round trip.
+   */
+  const activeStatuses = new Set<string>(ACTIVE_FIXED_STAY_BOOKING_STATUSES);
+  const bookedPeriodIds = new Set<string>();
+  for (const block of listing.availabilityBlocks) {
+    const periodId = block.booking?.fixedStayPeriodId;
+    if (periodId && activeStatuses.has(block.booking?.status ?? "")) {
+      bookedPeriodIds.add(periodId);
+    }
+  }
+
+  // The shared projection, so the panel's five states and its locked rows are the same
+  // ones the host's own fixed-stay screen and every mutation's re-check already use.
+  const fixedStayPeriods = projectHostFixedStayPeriods(
+    listing.fixedStayPeriods.map((period) => ({
+      id: period.id,
+      checkIn: dbDateToYmd(period.checkIn),
+      checkOut: dbDateToYmd(period.checkOut),
+      disabledAt: period.disabledAt,
+    })),
+    {
+      today,
+      bookedPeriodIds,
+      blocks: blocks.map((block) => ({
+        start: block.startDate,
+        end: block.endDate,
+        kind: blockKindFromBlockType(block.blockType),
+      })),
+    },
+  ).map((period) => ({
+    id: period.id,
+    checkIn: period.checkIn,
+    checkOut: period.checkOut,
+    nights: period.nights,
+    state: period.state,
+    manageable: period.manageable,
+  }));
+
   return {
     id: listing.id,
     title: listing.title,
     slug: listing.slug,
     status: listing.status,
     availabilityMode: listing.availabilityMode,
+    bookingMode: listing.bookingMode,
     photoUrl: listing.images[0]?.url ?? null,
     photoAlt: listing.images[0]?.alt ?? null,
     photoCount: listing._count.images,
@@ -229,17 +313,7 @@ function mapCalendarListing(listing: CalendarListingRow): HostCalendarListing {
       date: dbDateToYmd(row.date),
       nightlyRate: Number(row.nightlyRate),
     })),
-    blocks: listing.availabilityBlocks.map((block) => ({
-      id: block.id,
-      startDate: dbDateToYmd(block.startDate),
-      endDate: dbDateToYmd(block.endDate),
-      blockType: block.blockType as HostCalendarBlockType,
-      reason: block.reason,
-      guestName: block.booking?.guest?.name ?? null,
-      bookingStatus: block.booking?.status ?? null,
-      feedName: block.feed?.name ?? null,
-      feedPlatform: platformFromFeedUrl(block.feed?.url ?? null),
-    })),
+    blocks,
     availabilityWindows: listing.availabilityWindows.map((window) => ({
       id: window.id,
       startDate: dbDateToYmd(window.startDate),
@@ -258,6 +332,7 @@ function mapCalendarListing(listing: CalendarListingRow): HostCalendarListing {
       endDate: promotion.endDate ? dbDateToYmd(promotion.endDate) : null,
       createdAt: promotion.createdAt.toISOString(),
     })),
+    fixedStayPeriods,
     nextReservation: nextBooking
       ? {
           id: nextBooking.id,

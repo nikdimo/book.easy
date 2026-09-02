@@ -18,6 +18,9 @@ export function makeListing(
     slug: "sea-view-apartment",
     status: "APPROVED",
     availabilityMode: "OPEN",
+    // Every listing sells by the night unless a test says otherwise, which is what the
+    // column defaults to and what every listing that existed before fixed stays holds.
+    bookingMode: "FLEXIBLE",
     photoUrl: null,
     photoAlt: null,
     // Enough photos and a publish history, so a fixture is publish-ready unless a
@@ -36,6 +39,7 @@ export function makeListing(
     blocks: [],
     availabilityWindows: [],
     promotions: [],
+    fixedStayPeriods: [],
     nextReservation: null,
     ...overrides,
   };

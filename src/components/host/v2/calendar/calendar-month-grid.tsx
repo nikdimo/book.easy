@@ -418,7 +418,7 @@ function CalendarMonthGridImpl({
               {priceText && day.state !== "past" ? (
                 <span
                   className={cn(
-                    "truncate text-[0.6875rem] tabular-nums md:text-xs",
+                    "max-w-full truncate text-[0.6875rem] tabular-nums md:text-xs",
                     occupied
                       ? "text-[#185fa5]"
                       : day.state === "blocked"

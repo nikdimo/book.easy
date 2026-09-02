@@ -33,6 +33,7 @@ import { ListingLocationMap } from "@/components/public/listing-location-map";
 import { BookingWidget } from "@/components/public/booking-widget";
 import { ListingStayProvider } from "@/components/public/listing-stay-context";
 import { ListingAvailabilityCalendar } from "@/components/public/listing-availability-calendar";
+import { getGuestFixedStayPeriods } from "@/lib/services/fixed-stay.service";
 import { ListingActions } from "@/components/public/listing-actions";
 import { ListingViewTracker } from "@/components/public/listing-view-tracker";
 import { StartConversationButton } from "@/components/communication/start-conversation-button";
@@ -109,13 +110,33 @@ export default async function ListingDetailPage({
   // agreed to the house rules and only then met the server's "check-in cannot be in the
   // past". Dropping it seeds nothing instead, which is what the page shows a guest who
   // arrived without dates at all.
+  /**
+   * Whether this listing sells whole stays rather than arbitrary date ranges.
+   *
+   * Everything below that differs between the two modes reads this one flag: the URL
+   * seed, the availability calendar, the minimum-nights fact and what the booking widget
+   * is handed. A FLEXIBLE listing — which is every listing unless a host deliberately
+   * switched — takes every branch it took before.
+   */
+  const sellsFixedStays = listing.bookingMode === "FIXED_STAYS";
+
   const seededStay = bookableStayFromSearch(
     search.checkIn,
     search.checkOut,
     todayYmd(),
   );
-  const initialCheckIn = seededStay.checkIn;
-  const initialCheckOut = seededStay.checkOut;
+  /**
+   * A stay named by a link from a dated search, still only a *request* at this point.
+   *
+   * Read as an opaque string and nothing else. It is not trusted until it has been found
+   * in this listing's own projection below — which is what makes an id from another
+   * listing, a guessed one, or one whose stay has since been taken produce no selection
+   * rather than a wrong one.
+   */
+  const requestedFixedStayPeriodId =
+    typeof search.fixedStayPeriodId === "string"
+      ? search.fixedStayPeriodId
+      : null;
   const hasExplicitSearchSelection = [
     "checkIn",
     "checkOut",
@@ -142,8 +163,14 @@ export default async function ListingDetailPage({
   // None of these depend on each other, so they run concurrently rather than as four
   // sequential round-trips (they were previously awaited one at a time, and each one's
   // latency added directly to this page's TTFB).
-  const [disabledDateRanges, priceRows, reviewSummary, rawTypeLabel, t] =
-    await Promise.all([
+  const [
+    disabledDateRanges,
+    priceRows,
+    reviewSummary,
+    rawTypeLabel,
+    t,
+    fixedStayOffer,
+  ] = await Promise.all([
       getBlockedDateRangesForListing(listing.id),
       listing.pricingRule
         ? getFutureDatePriceRowsForListing(listing.id)
@@ -151,7 +178,41 @@ export default async function ListingDetailPage({
       getPublishedListingReviews(listing.id),
       getPropertyTypeLabel(listing.property.propertyType),
       getT(),
+      // The host's whole stays, already narrowed to what a guest may see: past and
+      // switched-off stays never leave the server, and taken ones arrive marked
+      // unselectable with no reason attached. Empty for a FLEXIBLE listing.
+      sellsFixedStays
+        ? getGuestFixedStayPeriods(listing.id, todayYmd())
+        : Promise.resolve(null),
     ]);
+  const fixedStayOptions = fixedStayOffer?.periods ?? [];
+  /**
+   * The requested stay, resolved against what this listing is actually offering now.
+   *
+   * The link carries an id; the dates come from the row the server just read. That is
+   * the whole security of the deep link: a guest can put any id in the URL and the worst
+   * it can do is select nothing.
+   */
+  const preselectedFixedStay =
+    requestedFixedStayPeriodId === null
+      ? null
+      : (fixedStayOptions.find(
+          (period) =>
+            period.id === requestedFixedStayPeriodId && period.selectable,
+        ) ?? null);
+
+  // A fixed-stay listing has no arbitrary dates to seed. `?checkIn=` on a shared link
+  // names a range, and a range is not one of the host's stays however closely its dates
+  // resemble one — adopting it would put a selection in the card that the host never
+  // offered and that the server would refuse. The only dates a fixed-stay page ever
+  // opens with are the ones on the row above, which the host wrote. Guest counts still
+  // seed normally in both modes.
+  const initialCheckIn = sellsFixedStays
+    ? (preselectedFixedStay?.checkIn ?? "")
+    : seededStay.checkIn;
+  const initialCheckOut = sellsFixedStays
+    ? (preselectedFixedStay?.checkOut ?? "")
+    : seededStay.checkOut;
 
   // `date` is `@db.Date`; its UTC fields are the day the host priced. Read locally
   // this keyed a June 10 override as "2026-06-09" on any server behind UTC (M6).
@@ -201,13 +262,19 @@ export default async function ListingDetailPage({
     "{n} bath",
     "{n} baths",
   );
-  const minimumNights = tPlural(
-    t,
-    "listing.minimum_nights",
-    listing.pricingRule?.minNights ?? 1,
-    "{n} night minimum",
-    "{n} nights minimum",
-  );
+  // A minimum stay is a rule about ranges a guest may pick, and on a fixed-stay listing
+  // there are no ranges to pick: the host chose each stay's length themselves, and the
+  // booking transaction skips the minimum for exactly that reason. Advertising it here
+  // would state a rule that does not apply to anything on the page.
+  const minimumNights = sellsFixedStays
+    ? ti(t, "listing.fixed_stays_only", "Fixed stays only", {})
+    : tPlural(
+        t,
+        "listing.minimum_nights",
+        listing.pricingRule?.minNights ?? 1,
+        "{n} night minimum",
+        "{n} nights minimum",
+      );
   const cleaningFeeLabel = ti(t, "listing.cleaning_fee", "Cleaning fee", {});
   // Only shown when the host actually stated a time. A listing that says nothing here
   // is the host being flexible, and inventing "15:00" for it would be a promise the
@@ -327,11 +394,17 @@ export default async function ListingDetailPage({
       messageHost={messageHostButton}
       houseRules={<HouseRulesList t={t} rules={houseRules} />}
       houseRulesVersion={renderedHouseRulesVersion}
+      bookingMode={sellsFixedStays ? "FIXED_STAYS" : "FLEXIBLE"}
+      fixedStayOptions={fixedStayOptions}
+      initialFixedStayPeriodId={preselectedFixedStay?.id ?? null}
     />
   ) : null;
   // Airbnb-style: the open nights are on the page itself, so a guest who arrived
   // without dates can pick them here rather than through the widget's picker.
-  const availabilityCalendar = listing.pricingRule ? (
+  // No free calendar on a fixed-stay listing: there is nothing on it a guest could
+  // choose, and a grid of open nights beside a list of whole stays says two different
+  // things about what this place sells. The stays themselves are in the booking card.
+  const availabilityCalendar = listing.pricingRule && !sellsFixedStays ? (
     <ListingAvailabilityCalendar
       placeName={listing.property.city}
       minNights={listing.pricingRule.minNights}

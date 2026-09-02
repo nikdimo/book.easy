@@ -27,6 +27,7 @@ import { CALENDAR_ANCHOR, anchorProps } from "@/lib/host/v2/calendar-anchors";
 import type { CalendarFormats } from "@/lib/host/v2/calendar-format";
 import {
   resolveSelectionStayBookability,
+  sellsFixedStays,
   selectionManualBlockNote,
   summarizeSelectionAvailability,
   type ListingCalendarIndex,
@@ -647,10 +648,9 @@ export function PricingEditor({
   onUndo: () => void;
   onDismissResult: () => void;
   /**
-   * The listing editor's Pricing section, which owns the cleaning fee and the
-   * listing-wide minimum stay. A link out rather than a scope switch inside this
-   * panel: those two numbers are not this editor's to change, and neither ever
-   * becomes part of the date-price save.
+   * The listing editor's Pricing section, which owns the cleaning fee. Minimum stay is
+   * only stated in flexible mode and points the host to this calendar's Booking method
+   * editor. Neither number ever becomes part of the date-price save.
    */
   listingPricingHref: string;
 }) {
@@ -707,7 +707,7 @@ export function PricingEditor({
     dates,
     today,
   );
-  const stay = resolveSelectionStayBookability({ listing, availability });
+  const stay = resolveSelectionStayBookability({ listing, availability, dates });
   // The guest total for the amount the host is currently proposing, from the same
   // function the booking transaction prices with. Nothing is recomputed here.
   const quote = computeSelectionQuote({
@@ -970,32 +970,40 @@ export function PricingEditor({
           so naming it here beside the minimum stay is the only honest thing to do with
           it. The link leaves for the section that owns both; neither value ever
           becomes part of the date-price save. */}
-      <InfoRow
-        label={[
-          listing.pricing.cleaningFee > 0
-            ? interpolate(
-                i18n.resolve(
-                  "host.v2.calendar.editor.cleaning_fee_info",
-                  "Cleaning fee: {amount}",
-                ),
-                { amount: format(listing.pricing.cleaningFee) },
-              ).text
-            : null,
-          interpolate(
-            i18n.plural(
-              "host.v2.calendar.editor.minimum_stay_info",
-              listing.pricing.minNights,
-              "Minimum stay: {n} night · Listing-wide setting",
-              "Minimum stay: {n} nights · Listing-wide setting",
-            ),
-            {},
-          ).text,
-        ]
-          .filter(Boolean)
-          .join(" · ")}
-        action={i18n.resolve("host.v2.calendar.editor.change", "Change").text}
-        actionHref={listingPricingHref}
-      />
+      {listing.pricing.cleaningFee > 0 ? (
+        <InfoRow
+          label={
+            interpolate(
+              i18n.resolve(
+                "host.v2.calendar.editor.cleaning_fee_info",
+                "Cleaning fee: {amount}",
+              ),
+              { amount: format(listing.pricing.cleaningFee) },
+            ).text
+          }
+          action={i18n.resolve("host.v2.calendar.editor.change", "Change").text}
+          actionHref={listingPricingHref}
+        />
+      ) : null}
+
+      {/* A stored minimum is irrelevant in fixed mode. In flexible mode it is stated
+          here as context, but the live control now belongs to Booking method rather
+          than to the Pricing page linked by the cleaning-fee row above. */}
+      {!sellsFixedStays(listing) ? (
+        <InfoRow
+          label={
+            interpolate(
+              i18n.plural(
+                "host.v2.calendar.editor.minimum_stay_info",
+                listing.pricing.minNights,
+                "Minimum stay: {n} night · Change it in Booking method",
+                "Minimum stay: {n} nights · Change it in Booking method",
+              ),
+              {},
+            ).text
+          }
+        />
+      ) : null}
     </div>
   );
 }

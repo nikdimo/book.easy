@@ -53,6 +53,7 @@ import type { AvailabilityDirection } from "@/lib/host/v2/calendar-availability-
 import { ScheduledChanges } from "./scheduled-changes";
 import { ConnectedCalendars } from "./connected-calendars";
 import { QuietRow, SummaryRow } from "./workbench-ui";
+import { BookingMethodEditor } from "./booking-method-editor";
 import {
   availabilitySummaryWord,
   intentPromptLabel,
@@ -154,12 +155,10 @@ function ListingDefaultRow({
  * a time: a menu of where you can go, or the place you went, with a Back control and
  * one primary action that names what it will review.
  *
- * **Everything it edits belongs to the selected dates.** With no dates chosen the panel
- * used to grow a second set of editors for the listing's own defaults, which is how one
- * setting ended up with two homes: a host could change the base price from a screen
- * whose header said "All future dates" and again from the Pricing section of the
- * listing editor. Now the empty state reports those defaults and links to the section
- * that owns each of them, so this panel has exactly one job and says so.
+ * Date editors still act only on selected dates. With nothing selected, the panel has
+ * one listing-wide editor: Booking method, because it changes what every date in the
+ * adjacent calendar means. Other listing defaults remain read-only facts with links to
+ * the screens that own them, so none has two editable homes.
  */
 export function ManageCalendarPanel({
   listing,
@@ -333,6 +332,36 @@ export function ManageCalendarPanel({
           : money(prices.min ?? 0, currency, formats),
       };
     }
+    if (candidate === "booking-method") {
+      if (listing.bookingMode !== "FIXED_STAYS") {
+        return {
+          text: i18n.resolve(
+            "host.v2.calendar.booking_method.flexible",
+            "Flexible dates",
+          ).text,
+        };
+      }
+      // Offered means what a guest could actually be shown: a switched-off stay and one
+      // that has gone by are not options with a reason attached, they are not options.
+      const offered = listing.fixedStayPeriods.filter(
+        (period) => period.state !== "PAST" && period.state !== "DISABLED",
+      ).length;
+      return {
+        text: `${
+          i18n.resolve("host.v2.calendar.booking_method.fixed", "Fixed stays").text
+        } · ${
+          i18n.plural(
+            "host.v2.calendar.fixed_stays.offered",
+            offered,
+            "{n} offered",
+            "{n} offered",
+          ).text
+        }`,
+        // Nothing on sale is the one state worth flagging: the listing is live and
+        // bookable by nobody.
+        attention: offered === 0,
+      };
+    }
     if (candidate === "promotions" && selection) {
       const count = selectionPromotionSummaries(listing, selection).length;
       return {
@@ -366,7 +395,10 @@ export function ManageCalendarPanel({
    */
   const reviewable = editor === "promotions" && change?.kind === "PROMOTION_REMOVE";
   const canReview = reviewable && change !== null;
-  const ctaText = editor ? workbenchCtaLabel(i18n, ctaForEditor(editor)).text : "";
+  // Null for an editor that carries its own actions instead of one sticky review — see
+  // `ctaForEditor`. The footer below renders nothing at all in that case.
+  const cta = editor ? ctaForEditor(editor) : null;
+  const ctaText = cta ? workbenchCtaLabel(i18n, cta).text : "";
 
   return (
     <div
@@ -655,7 +687,19 @@ export function ManageCalendarPanel({
         ) : view.kind === "connections" ? (
           // Keyed on the listing: the feeds belong to one property, and switching
           // property while this is open must not show the previous one's calendars.
-          <ConnectedCalendars key={listing.id} listingId={listing.id} />
+          <ConnectedCalendars
+            key={listing.id}
+            listingId={listing.id}
+            sellsFixedStays={listing.bookingMode === "FIXED_STAYS"}
+          />
+        ) : editor === "booking-method" ? (
+          // The one editor that needs no selection. Keyed on the listing so switching
+          // property closes over the new one's stays rather than the previous one's.
+          <BookingMethodEditor
+            key={listing.id}
+            listing={listing}
+            today={today}
+          />
         ) : editor && scope === "DATES" && selection ? (
           <>
             {/* The same band as the menu, on every screen the menu leads to. A host

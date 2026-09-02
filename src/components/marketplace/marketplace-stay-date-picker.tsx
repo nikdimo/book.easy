@@ -2212,6 +2212,10 @@ export function MarketplaceStayDatePicker({
   showGuestStepChrome = false,
   reviewStepTitle,
   renderReviewStep,
+  renderDatesStep,
+  selectionCategoryLabel,
+  emptySelectionLabel,
+  onResetSelection,
   reviewStepEnabled = true,
   guestsAnswered = false,
   searchPresentation = false,
@@ -2302,6 +2306,25 @@ export function MarketplaceStayDatePicker({
     goToStep: (step: "dates" | "guests") => void;
     close: () => void;
   }) => React.ReactNode;
+  /**
+   * The first step, drawn by the caller instead of as a calendar.
+   *
+   * For a listing that does not sell arbitrary date ranges: the caller supplies whatever
+   * chooses the stay, and this picker keeps everything around it — the trigger, the
+   * dialog and sheet chrome, the guest step, the review step and the footer that moves
+   * between them. The date segment cards are suppressed while it is set, because there
+   * are no segments to open, and the footer's forward button still works off the range
+   * the caller commits through `checkIn`/`checkOut`.
+   *
+   * Absent everywhere but the fixed-stay booking widget; the search pill never sets it.
+   */
+  renderDatesStep?: (controls: { close: () => void }) => React.ReactNode;
+  /** Overrides the compact trigger's category (normally "When"). */
+  selectionCategoryLabel?: Resolved;
+  /** Overrides the compact trigger's empty prompt (normally "Choose dates"). */
+  emptySelectionLabel?: Resolved;
+  /** Lets a caller-drawn selection clear its own source of truth. */
+  onResetSelection?: () => void;
   /** When false, the guest action returns to dates instead of entering review. */
   reviewStepEnabled?: boolean;
   /** Whether the party is already settled — from an earlier step, or from the search
@@ -2323,6 +2346,8 @@ export function MarketplaceStayDatePicker({
   const resolvedNextActionLabel = nextActionLabel ?? labels.whosComing;
   const resolvedGuestStepTitle = guestStepTitle ?? labels.whosComing;
   const resolvedReviewStepTitle = reviewStepTitle ?? resolvedGuestStepTitle;
+  const resolvedSelectionCategoryLabel = selectionCategoryLabel ?? labels.when;
+  const resolvedEmptySelectionLabel = emptySelectionLabel ?? labels.chooseDates;
   const isPillLayout = layout === "pill";
   const [isDesktopViewport, setIsDesktopViewport] = React.useState(false);
   const useSearchPresentation =
@@ -2607,10 +2632,11 @@ export function MarketplaceStayDatePicker({
   };
 
   const resetDates = React.useCallback(() => {
-    onRangeStringsChange({ checkIn: "", checkOut: "" });
+    if (onResetSelection) onResetSelection();
+    else onRangeStringsChange({ checkIn: "", checkOut: "" });
     onDateFlexibilityChange(0);
     setActiveSegment("checkin");
-  }, [onDateFlexibilityChange, onRangeStringsChange]);
+  }, [onDateFlexibilityChange, onRangeStringsChange, onResetSelection]);
 
   const resetGuests = React.useCallback(() => {
     onGuestCountsChange({ adults: 0, children: 0, infants: 0, pets: 0 });
@@ -2758,18 +2784,18 @@ export function MarketplaceStayDatePicker({
             <span
               className={cn(
                 "block text-xs font-semibold tracking-wide",
-                labels.when.translated && "notranslate",
+                resolvedSelectionCategoryLabel.translated && "notranslate",
               )}
             >
-              {labels.when.text}
+              {resolvedSelectionCategoryLabel.text}
             </span>
             <span
               className={cn(
                 "text-sm font-medium text-muted-foreground md:text-base",
-                labels.chooseDates.translated && "notranslate",
+                resolvedEmptySelectionLabel.translated && "notranslate",
               )}
             >
-              {labels.chooseDates.text}
+              {resolvedEmptySelectionLabel.text}
             </span>
           </div>
         </button>
@@ -2974,7 +3000,7 @@ export function MarketplaceStayDatePicker({
               </div>
 
               {step === "review" ? null : step === "dates" ? (
-                hideDateSegmentCards ? null : (
+                hideDateSegmentCards || renderDatesStep ? null : (
                   <div className="grid grid-cols-2 gap-2 md:gap-3">
                     <button
                       type="button"
@@ -3103,7 +3129,9 @@ export function MarketplaceStayDatePicker({
           {/* The streamlined presentation drops the header, which suits a panel hanging
               under the search pill and leaves a centred booking dialog unnamed and with
               no way out. The dates step keeps its own chrome either way. */}
-          {useSearchPresentation && showGuestStepChrome && step !== "dates" ? (
+          {useSearchPresentation &&
+          showGuestStepChrome &&
+          (step !== "dates" || Boolean(renderDatesStep)) ? (
             <div className="flex shrink-0 items-start justify-between gap-4 px-4 pt-5 md:px-6 md:pt-6">
               <p
                 className={cn(
@@ -3135,6 +3163,14 @@ export function MarketplaceStayDatePicker({
               )}
             >
               <div className="relative flex min-h-0 flex-1 flex-col">
+                {/* A caller-drawn first step replaces the calendar and everything that
+                    guides one: there is no range to nudge and no minimum to hint at. */}
+                {renderDatesStep ? (
+                  <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 md:px-6">
+                    {renderDatesStep({ close: closePicker })}
+                  </div>
+                ) : (
+                  <>
                 {/* Keep guidance out of document flow. Inserting a banner above the
                     calendar after check-in moves every date under the guest's finger. */}
                 {datesBanner ? (
@@ -3178,6 +3214,8 @@ export function MarketplaceStayDatePicker({
                   pagedOnDesktop={pagedCalendarOnDesktop}
                   showEndpointHeader={useSearchPresentation}
                 />
+                  </>
+                )}
               </div>
 
               <div

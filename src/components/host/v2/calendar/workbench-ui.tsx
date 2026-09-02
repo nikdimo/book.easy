@@ -315,10 +315,9 @@ export function ConsequenceLine({
 /**
  * A read-only fact the editor has to state but does not own.
  *
- * `actionHref` rather than a callback, because the place these facts are owned is no
- * longer inside this panel: the cleaning fee and the listing-wide minimum stay are
- * edited in the listing editor's Pricing section. A link is also the honest control —
- * it goes somewhere, and it says so to a screen reader without the editor having to.
+ * `actionHref` rather than a callback when another screen owns the fact. A link is the
+ * honest control — it goes somewhere, and it says so to a screen reader without the
+ * editor having to imitate navigation with a button.
  */
 export function InfoRow({
   label,
@@ -601,6 +600,44 @@ export function ToggleRow({
         onClick={(event) => event.stopPropagation()}
         className="shrink-0"
       />
+    </div>
+  );
+}
+
+/**
+ * A number this form reports rather than edits.
+ *
+ * The shape of `NumberColumn` and `StepperColumn` beside it, so a column that has moved
+ * elsewhere does not leave a hole in the pair — but with no control in it, because the
+ * whole point is that this is not where the value is changed. `note` says where it is.
+ */
+export function ReadOnlyColumn({
+  label,
+  value,
+  caption,
+  note,
+}: {
+  label: string;
+  value: string;
+  caption?: string;
+  note?: React.ReactNode;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <p className="text-[0.8125rem] font-semibold text-slate-700">{label}</p>
+      <p className="flex min-h-11 items-baseline gap-1.5 rounded-xl bg-slate-50 px-3 text-[0.9375rem] font-semibold text-slate-900">
+        <span className="notranslate" translate="no">
+          {value}
+        </span>
+        {caption ? (
+          <span className="text-[0.75rem] font-normal text-slate-500">
+            {caption}
+          </span>
+        ) : null}
+      </p>
+      {note ? (
+        <p className="text-[0.75rem] leading-4 text-slate-500">{note}</p>
+      ) : null}
     </div>
   );
 }

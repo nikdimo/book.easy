@@ -35,9 +35,12 @@ describe("parseBookingResumeDraft", () => {
   };
 
   it("round-trips a draft written moments ago", () => {
-    expect(parseBookingResumeDraft(JSON.stringify(draft), now + 5_000)).toEqual(
-      draft,
-    );
+    // A flexible draft carries no fixed stay, and parsing fills that in as null —
+    // which is also what every draft written before fixed stays existed reads as.
+    expect(parseBookingResumeDraft(JSON.stringify(draft), now + 5_000)).toEqual({
+      ...draft,
+      fixedStayPeriodId: null,
+    });
   });
 
   it("drops a draft older than the time-to-live", () => {
@@ -63,7 +66,13 @@ describe("parseBookingResumeDraft", () => {
   it("fills in the optional halves a draft may have been written without", () => {
     expect(
       parseBookingResumeDraft(JSON.stringify({ listingId: "l", savedAt: now }), now),
-    ).toEqual({ listingId: "l", note: "", paymentMethod: null, savedAt: now });
+    ).toEqual({
+      listingId: "l",
+      note: "",
+      paymentMethod: null,
+      fixedStayPeriodId: null,
+      savedAt: now,
+    });
   });
 });
 

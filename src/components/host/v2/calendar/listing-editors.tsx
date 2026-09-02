@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { BASE_CURRENCY } from "@/lib/currency/currency-preference";
 import { ChevronDown } from "lucide-react";
 import { interpolate, useI18n } from "@/lib/i18n/client";
@@ -23,11 +24,13 @@ import {
   type OngoingPromotionForm,
 } from "@/lib/host/v2/calendar-listing-draft";
 import { addDaysToYmd } from "@/lib/utils/date-only";
+import { hostCalendarHref } from "@/lib/host/v2/calendar-href";
 import {
   ColumnPair,
   ConsequenceLine,
   Disclosure,
   NumberColumn,
+  ReadOnlyColumn,
   StepperColumn,
   ToggleRow,
 } from "./workbench-ui";
@@ -53,8 +56,8 @@ import {
  * `workbench-ui`, the panel slider, the calendar's own labels and its quote engine —
  * but the calendar no longer mounts them. **The listing editor does:** these are the
  * insides of `/host/listings/<id>/pricing`, which is the one editable home for the
- * base price, the cleaning fee, the minimum stay and the always-active offers. The
- * calendar shows those values as read-only context and links here.
+ * base price, the cleaning fee and the always-active offers. Minimum stay is stated
+ * here as read-only context and links back to Booking method in the calendar.
  *
  * They were not copied for that move, and deliberately so: a second implementation is
  * a second answer to "what does a 15% offer cost me", and the whole point of the
@@ -250,7 +253,10 @@ export function DefaultPricingEditor({
   const [percentDraft, setPercentDraft] = useState<string | null>(null);
   const [cleaningFee, setCleaningFee] = useState(saved?.cleaningFee ?? 0);
   const [cleaningDraft, setCleaningDraft] = useState<string | null>(null);
-  const [minNights, setMinNights] = useState(saved?.minNights ?? 1);
+  // Read, never written, from this form: the stepper moved to Booking method. Kept in
+  // the staged change so the review still states the value it is saving alongside the
+  // price and the fee, exactly as before.
+  const minNights = saved?.minNights ?? 1;
   const minNightsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -412,38 +418,55 @@ export function DefaultPricingEditor({
             }}
             onBlur={() => setCleaningDraft(null)}
           />
-          <StepperColumn
+          {/* The minimum stay is *stated* here and edited in the calendar's Booking
+              method editor, which is the one place it can be weighed against how the
+              listing sells: it is a rule about which stays a guest may choose, and it
+              stops applying entirely once the host chooses the stays themselves. Two
+              editable homes for one number is how the two eventually disagree. */}
+          <ReadOnlyColumn
             label={
               i18n.resolve(
                 "host.v2.calendar.promotion_minimum",
                 "Minimum stay",
               ).text
             }
-            caption={
+            value={
               minNights <= 1
                 ? i18n.resolve(
                     "host.v2.calendar.listing.any_length",
                     "any length",
                   ).text
+                : `${minNights}`
+            }
+            caption={
+              minNights <= 1
+                ? undefined
                 : i18n.resolve(
                     "host.v2.calendar.listing.nights_minimum",
                     "nights minimum",
                   ).text
             }
-            value={minNights}
-            decrementLabel={
-              i18n.resolve(
-                "host.v2.calendar.promotion_fewer_nights",
-                "Fewer nights",
-              ).text
+            note={
+              <>
+                {
+                  i18n.resolve(
+                    "host.v2.calendar.listing.minimum_moved",
+                    "This is managed with how the listing sells.",
+                  ).text
+                }{" "}
+                <Link
+                  href={hostCalendarHref(listing.id)}
+                  className="inline-flex min-h-11 items-center font-semibold text-[#0f172a] underline underline-offset-2 transition-colors duration-150 hover:text-slate-600 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]"
+                >
+                  {
+                    i18n.resolve(
+                      "host.v2.calendar.listing.change_booking_method",
+                      "Change it in Calendar → Booking method",
+                    ).text
+                  }
+                </Link>
+              </>
             }
-            incrementLabel={
-              i18n.resolve(
-                "host.v2.calendar.promotion_more_nights",
-                "More nights",
-              ).text
-            }
-            onChange={setMinNights}
           />
         </ColumnPair>
       </div>

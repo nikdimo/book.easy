@@ -22,20 +22,21 @@ describe("scope", () => {
     expect(scopeOfSelection(null)).toBe("ALL_FUTURE");
   });
 
-  it("offers the three date editors, and nothing at all without dates", () => {
+  it("offers the three date editors, and one listing-wide destination without dates", () => {
     expect(WORKBENCH_MENU.DATES).toEqual([
       "availability",
       "pricing",
       "promotions",
     ]);
-    // The calendar no longer edits anything listing-wide: the base price, the cleaning
-    // fee, the minimum stay, the always-active offers and the default availability all
-    // have exactly one home now, and it is the listing editor. With no dates chosen
-    // this panel reports those values and links to them.
-    expect(WORKBENCH_MENU.ALL_FUTURE).toEqual([]);
+    // The base price, the cleaning fee and the always-active offers still have exactly
+    // one home, and it is the listing editor; with no dates chosen this panel reports
+    // those and links to them. Booking method is the one exception, and it earns it:
+    // it decides what every cell of the grid beside it means, and the stays it manages
+    // are dates.
+    expect(WORKBENCH_MENU.ALL_FUTURE).toEqual(["booking-method"]);
   });
 
-  it("puts every editor in the date scope", () => {
+  it("puts every date editor in the date scope", () => {
     for (const editor of WORKBENCH_MENU.DATES) {
       expect(editorScope(editor)).toBe("DATES");
     }

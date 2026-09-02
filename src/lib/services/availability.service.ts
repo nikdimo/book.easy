@@ -9,39 +9,80 @@ import {
   ymdToDbDate,
 } from "@/lib/utils/date-only";
 import {
-  isStayWithinAvailabilityWindows,
   mergeAvailabilityWindows,
   windowsOverlappingStay,
 } from "@/lib/utils/availability-windows";
+import { decideStayAvailability } from "@/lib/utils/stay-availability";
 
+/**
+ * Whether a listing can take this stay — the shared read behind every "is it free?"
+ * question that is not the booking transaction itself.
+ *
+ * Two questions in order, and the order matters. First, does the listing *offer* these
+ * dates at all: a flexible listing offers whatever its availability windows cover, and a
+ * fixed-stay listing offers only the exact stays its host put on sale. That is answered
+ * by `decideStayAvailability`, the same rule `createBooking` and the guest projection go
+ * through, so this cannot drift from either. Second, is anything already holding those
+ * nights — bookings, holds, manual blocks and imported calendar blocks alike, which is
+ * one question in both modes and is unchanged.
+ *
+ * `fixedStayPeriodId` is additive: absent for every flexible listing, and the id of the
+ * matched stay when there is one. Keeping it absent preserves the exact response shape
+ * existing flexible callers received before fixed stays existed.
+ */
 export async function checkAvailability(
   listingId: string,
   checkIn: Date,
   checkOut: Date
-): Promise<{ available: boolean; conflictingDates?: { start: Date; end: Date }[] }> {
+): Promise<{
+  available: boolean;
+  conflictingDates?: { start: Date; end: Date }[];
+  fixedStayPeriodId?: string | null;
+}> {
+  const checkInYmd = dbDateToYmd(checkIn);
+  const checkOutYmd = dbDateToYmd(checkOut);
   const listing = await db.listing.findUnique({
     where: { id: listingId },
     select: {
+      bookingMode: true,
       availabilityMode: true,
       // Every window that touches the stay, not just one that spans it: the shared rule
       // merges them, so it has to see the neighbour a spanning-window query would drop.
+      // Read only for a flexible listing — a fixed-stay one is sold by its stays, and its
+      // windows are a stored-but-unread setting.
       availabilityWindows: {
         where: windowsOverlappingStay(checkIn, checkOut),
         select: { startDate: true, endDate: true },
       },
+      // The one stay these exact dates could be, if this listing sells whole stays.
+      // Scoped to the pair rather than loaded wholesale: the unique index means at most
+      // one row can match, so this is a point read however long the host's season is.
+      fixedStayPeriods: {
+        where: { checkIn, checkOut },
+        select: { id: true, checkIn: true, checkOut: true, disabledAt: true },
+      },
     },
   });
-  if (
-    !listing ||
-    !isStayWithinAvailabilityWindows({
-      availabilityMode: listing.availabilityMode,
-      windows: listing.availabilityWindows,
-      checkIn,
-      checkOut,
-    })
-  ) {
-    return { available: false };
-  }
+  if (!listing) return { available: false };
+
+  const decision = decideStayAvailability({
+    bookingMode: listing.bookingMode,
+    availabilityMode: listing.availabilityMode,
+    windows: listing.availabilityWindows.map((window) => ({
+      startDate: dbDateToYmd(window.startDate),
+      endDate: dbDateToYmd(window.endDate),
+    })),
+    fixedStayPeriods: listing.fixedStayPeriods.map((period) => ({
+      id: period.id,
+      checkIn: dbDateToYmd(period.checkIn),
+      checkOut: dbDateToYmd(period.checkOut),
+      disabledAt: period.disabledAt,
+    })),
+    checkIn: checkInYmd,
+    checkOut: checkOutYmd,
+    today: todayYmd(),
+  });
+  if (!decision.offered) return { available: false };
 
   const overlapping = await db.availabilityBlock.findMany({
     where: {
@@ -62,7 +103,9 @@ export async function checkAvailability(
     };
   }
 
-  return { available: true };
+  return decision.fixedStayPeriodId
+    ? { available: true, fixedStayPeriodId: decision.fixedStayPeriodId }
+    : { available: true };
 }
 
 /**

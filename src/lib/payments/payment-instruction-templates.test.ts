@@ -50,7 +50,7 @@ describe("private payment instruction templates", () => {
 
     expect(parsed).toEqual(snapshot.templates);
     expect(buildSavedPaymentInstructions(parsed)).toBe(
-      "Local or SEPA bank transfer\nIBAN: DK5000400440116243\n\n" +
+      "Bank transfer (local or Europe)\nIBAN: DK5000400440116243\n\n" +
         "Bitcoin\nbc1qar0srr7xfkvy5l643lydnw9re59gtzzwf5mdq",
     );
   });

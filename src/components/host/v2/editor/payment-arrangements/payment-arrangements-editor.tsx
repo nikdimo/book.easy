@@ -756,9 +756,9 @@ function methodSourceName(
     case "CASH_AT_PROPERTY":
       return resolve("host.editor.payment_arrangements.cash", "Cash at the property").text;
     case "BANK_TRANSFER_LOCAL_SEPA":
-      return resolve("host.editor.payment_arrangements.bank_local", "Local or SEPA bank transfer").text;
+      return resolve("host.editor.payment_arrangements.bank_local", "Bank transfer (local or Europe)").text;
     case "BANK_TRANSFER_INTERNATIONAL":
-      return resolve("host.editor.payment_arrangements.bank_international", "International bank transfer").text;
+      return resolve("host.editor.payment_arrangements.bank_international", "Bank transfer (other countries)").text;
     case "PAYPAL":
       return resolve("host.editor.payment_arrangements.paypal", "PayPal").text;
     case "REVOLUT":
@@ -803,13 +803,13 @@ function methodPresentation(code: PaymentMethodCode): MethodPresentation {
         label: (
           <Tx
             k="host.editor.payment_arrangements.bank_local"
-            source="Local or SEPA bank transfer"
+            source="Bank transfer (local or Europe)"
           />
         ),
         description: (
           <Tx
             k="host.editor.payment_arrangements.bank_local_description"
-            source="For domestic or SEPA transfers."
+            source="The guest sends money from their bank to yours. Use it for transfers inside your country and across Europe (also called SEPA)."
           />
         ),
       };
@@ -819,13 +819,13 @@ function methodPresentation(code: PaymentMethodCode): MethodPresentation {
         label: (
           <Tx
             k="host.editor.payment_arrangements.bank_international"
-            source="International bank transfer"
+            source="Bank transfer (other countries)"
           />
         ),
         description: (
           <Tx
             k="host.editor.payment_arrangements.bank_international_description"
-            source="For transfers between countries or banking regions."
+            source="For a guest whose bank is outside Europe. These transfers are usually slower and cost more."
           />
         ),
       };

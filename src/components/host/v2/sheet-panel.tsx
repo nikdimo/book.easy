@@ -61,6 +61,26 @@ export function SheetPanel({
 }) {
   const i18n = useI18n();
   const panelRef = useRef<HTMLDivElement>(null);
+  /**
+   * The live `onClose`, read through a ref so the trap effect below can depend on
+   * `open` alone.
+   *
+   * Callers pass an inline arrow — `onClose={() => setOpen(null)}` — which is a new
+   * function on every render of the *parent*. With `onClose` in the dependency array,
+   * a parent that re-renders on each keystroke (the payment details drawer writes
+   * every character into the editor's draft) tore the effect down and set it up again
+   * between keystrokes, and teardown ends with `trigger?.focus()`: focus left the field
+   * after a single character. The handler is called from an event, never during render,
+   * so a ref is the whole fix.
+   */
+  const onCloseRef = useRef(onClose);
+  const returnFocusRef = useRef(returnFocusTo);
+  // No dependency array: it runs after every render, which is exactly when a new
+  // handler can have arrived. Writing a ref during render is not allowed.
+  useEffect(() => {
+    onCloseRef.current = onClose;
+    returnFocusRef.current = returnFocusTo;
+  });
   // Unique per instance: two sheets can be mounted at once (one closed), and a shared
   // id would point `aria-labelledby` at whichever heading rendered last.
   const titleId = useId();
@@ -70,7 +90,7 @@ export function SheetPanel({
     if (!open) return;
     // Captured at open time: reading the ref in the cleanup instead would be a
     // stale-node hazard.
-    const trigger = returnFocusTo?.current ?? null;
+    const trigger = returnFocusRef.current?.current ?? null;
     const { body } = document;
     const previousOverflow = body.style.overflow;
     body.style.overflow = "hidden";
@@ -81,7 +101,7 @@ export function SheetPanel({
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         event.stopPropagation();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key !== "Tab") return;
@@ -111,15 +131,17 @@ export function SheetPanel({
       body.style.overflow = previousOverflow;
       trigger?.focus();
     };
-  }, [open, onClose, returnFocusTo]);
+    // `open` only: see `onCloseRef`. Re-running this effect steals focus, so it must
+    // run exactly when the sheet opens and tear down exactly when it closes.
+  }, [open]);
 
   // Only a press that starts and ends on the scrim itself — a drag out of the panel must
   // not be read as "dismiss".
   const onBackdropPointerDown = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
-      if (event.target === event.currentTarget) onClose();
+      if (event.target === event.currentTarget) onCloseRef.current();
     },
-    [onClose],
+    [],
   );
 
   if (!open) return null;

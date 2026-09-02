@@ -85,6 +85,35 @@ function coalesce(nights: Iterable<string>): { startYmd: string; endYmd: string 
 }
 
 /**
+ * The nights *not* in `open`, as the fewest events that can say so.
+ *
+ * Both closed-by-default modes end here. A listing that publishes no block row for the
+ * dates it simply never opened has to publish their complement instead, or the receiving
+ * channel reads the whole horizon as bookable and sells a night nobody offered.
+ *
+ * The UID is the dates, because there is no row to key on — the ranges are derived. It is
+ * deterministic, so a channel polling an unchanged calendar updates the same events
+ * rather than accumulating duplicates of them.
+ */
+function closedRangeEvents(
+  open: ReadonlySet<string>,
+  from: string,
+  to: string,
+  listingId: string,
+): IcsExportEvent[] {
+  const closed: string[] = [];
+  for (const night of eachYmdExclusive(from, to)) {
+    if (!open.has(night)) closed.push(night);
+  }
+  return coalesce(closed).map((range) => ({
+    uid: `closed-${range.startYmd}-${range.endYmd}-${listingId}@lingerhomes.com`,
+    startYmd: range.startYmd,
+    endYmd: range.endYmd,
+    summary: "Not available",
+  }));
+}
+
+/**
  * Everything that makes a night unbookable, as an export calendar.
  *
  * Blocks mirrored in *from* another channel are included rather than filtered out. It
@@ -92,18 +121,50 @@ function coalesce(nights: Iterable<string>): { startYmd: string; endYmd: string 
  * channels connected only gets Airbnb's bookings onto Booking.com by way of us, and a
  * platform re-reading nights it already holds is a no-op. Suppressing the echo would
  * quietly break exactly the cross-channel case this feature exists for.
+ *
+ * ── What a fixed-stay listing can and cannot tell a channel ──────────────────────
+ *
+ * A FIXED_STAYS listing sells whole stays: an exact check-in and checkout the host put
+ * on sale, 7 or 14 nights, take it or take another. This feed publishes the *nights*
+ * those stays cover and closes every other night in the horizon, which is the strongest
+ * statement iCalendar can make — and it is genuinely useful, because it stops another
+ * channel selling the weeks between two offered stays.
+ *
+ * **It cannot express the rule itself.** iCalendar has no vocabulary for "arrivals on
+ * Saturdays only" or "exactly 7 or 14 nights". A channel reading this feed sees a run of
+ * open nights and will happily sell nights 3 to 6 of an offered week, or join two
+ * back-to-back weeks into a ten-night stay. Nothing in this document prevents that, and
+ * nothing added to this document could.
+ *
+ * The consequence is a host instruction, not a code change: a host syncing a fixed-stay
+ * listing to Airbnb, Booking.com or Vrbo must set that channel's own changeover-day and
+ * minimum/maximum-stay rules to match the stays they offer here. Where the channel has
+ * no such rule, the feed is advisory and the host is accepting bookings this listing's
+ * own booking transaction would refuse — `createBooking` still enforces the exact match,
+ * so the risk is a double-sold night on the channel's side, never a wrong booking here.
  */
 export async function buildListingCalendar(token: string): Promise<{ body: string; listingId: string } | null> {
   const listing = await db.listing.findUnique({
     where: { calendarFeedToken: token },
-    select: { id: true, title: true, availabilityMode: true },
+    select: {
+      id: true,
+      title: true,
+      availabilityMode: true,
+      bookingMode: true,
+    },
   });
   if (!listing) return null;
 
   const from = todayYmd();
   const to = addDaysToYmd(from, HORIZON_DAYS);
+  // Which question this listing's open nights are the answer to. A fixed-stay listing is
+  // not governed by `availabilityMode` at all — its windows are a stored, unread setting
+  // left over from however it sold before — so the two branches are exclusive, and each
+  // loads only the rows it will read.
+  const sellsFixedStays = listing.bookingMode === "FIXED_STAYS";
+  const closedByDefault = !sellsFixedStays && listing.availabilityMode === "CLOSED";
 
-  const [blocks, windows] = await Promise.all([
+  const [blocks, windows, fixedStayPeriods] = await Promise.all([
     db.availabilityBlock.findMany({
       where: {
         listingId: listing.id,
@@ -113,7 +174,7 @@ export async function buildListingCalendar(token: string): Promise<{ body: strin
       select: { id: true, startDate: true, endDate: true, blockType: true },
       orderBy: { startDate: "asc" },
     }),
-    listing.availabilityMode === "CLOSED"
+    closedByDefault
       ? db.listingAvailabilityWindow.findMany({
           where: {
             listingId: listing.id,
@@ -122,6 +183,25 @@ export async function buildListingCalendar(token: string): Promise<{ body: strin
           },
           select: { startDate: true, endDate: true },
           orderBy: { startDate: "asc" },
+        })
+      : Promise.resolve([]),
+    // Every stay that could open a night inside the horizon, in one query.
+    //
+    // Narrowed in SQL rather than in memory, and by the same three rules the guest
+    // projection applies: switched-off stays open nothing, a stay whose check-in has
+    // already gone by is not on sale however long it runs, and a stay beginning past the
+    // horizon has no night in this document. What the range filter does not do is clip —
+    // a stay running past the horizon keeps its row here and loses its outlying nights to
+    // the expansion below, which never leaves `[from, to)`.
+    sellsFixedStays
+      ? db.listingFixedStayPeriod.findMany({
+          where: {
+            listingId: listing.id,
+            disabledAt: null,
+            checkIn: { gte: ymdToDbDate(from), lt: ymdToDbDate(to) },
+          },
+          select: { checkIn: true, checkOut: true },
+          orderBy: { checkIn: "asc" },
         })
       : Promise.resolve([]),
   ]);
@@ -141,10 +221,36 @@ export async function buildListingCalendar(token: string): Promise<{ body: strin
     };
   });
 
-  // A CLOSED listing has no block rows for the dates it simply never opened, so the
-  // complement of its open windows has to be published or the other channel would read
-  // the whole horizon as bookable.
-  if (listing.availabilityMode === "CLOSED") {
+  // Both closed-by-default modes publish the complement of whatever they *do* open. Only
+  // the definition of "open" differs, and only one of these branches can run.
+  if (sellsFixedStays) {
+    // The union of the stays on sale — union, so two stays sharing nights count them
+    // once and two back-to-back stays run together into one open stretch. Membership is
+    // per night in a set, which is what makes overlapping and adjacent stays fall out
+    // correctly without any interval arithmetic.
+    //
+    // A stay reaching past the horizon contributes only the nights inside it; a stay
+    // beginning past the horizon was never loaded. Everything else in the two years is
+    // closed — including the gaps before the first stay, between stays and after the
+    // last, which is precisely what stops a channel selling the weeks the host kept.
+    const open = new Set<string>();
+    for (const period of fixedStayPeriods) {
+      for (const night of eachYmdExclusive(
+        dbDateToYmd(period.checkIn),
+        dbDateToYmd(period.checkOut),
+      )) {
+        if (compareYmd(night, from) >= 0 && compareYmd(night, to) < 0) {
+          open.add(night);
+        }
+      }
+    }
+    // With no stays on sale the union is empty and the whole horizon closes, which is
+    // the honest statement: this listing currently offers nothing.
+    events.push(...closedRangeEvents(open, from, to, listing.id));
+  } else if (closedByDefault) {
+    // A CLOSED listing has no block rows for the dates it simply never opened, so the
+    // complement of its open windows has to be published or the other channel would read
+    // the whole horizon as bookable.
     const open = new Set<string>();
     for (const window of windows) {
       for (const night of eachYmdExclusive(
@@ -154,19 +260,7 @@ export async function buildListingCalendar(token: string): Promise<{ body: strin
         open.add(night);
       }
     }
-    const closed: string[] = [];
-    for (const night of eachYmdExclusive(from, to)) {
-      if (!open.has(night)) closed.push(night);
-    }
-    for (const range of coalesce(closed)) {
-      events.push({
-        // No stable row to key on — the ranges are derived — so the dates are the id.
-        uid: `closed-${range.startYmd}-${range.endYmd}-${listing.id}@lingerhomes.com`,
-        startYmd: range.startYmd,
-        endYmd: range.endYmd,
-        summary: "Not available",
-      });
-    }
+    events.push(...closedRangeEvents(open, from, to, listing.id));
   }
 
   return {

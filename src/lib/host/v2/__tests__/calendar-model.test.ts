@@ -211,6 +211,7 @@ describe("resolveSelectionStayBookability", () => {
     return resolveSelectionStayBookability({
       listing,
       availability: summarizeSelectionAvailability(listing, index, dates, TODAY),
+      dates,
     });
   }
 
@@ -227,7 +228,11 @@ describe("resolveSelectionStayBookability", () => {
     );
     expect(availability.available).toBe(1);
 
-    const stay = resolveSelectionStayBookability({ listing, availability });
+    const stay = resolveSelectionStayBookability({
+      listing,
+      availability,
+      dates: ["2026-03-12"],
+    });
     expect(stay).toEqual({ code: "BELOW_MINIMUM", nights: 1, minNights: 2 });
     expect(isSelectionStayBookable(stay)).toBe(false);
   });

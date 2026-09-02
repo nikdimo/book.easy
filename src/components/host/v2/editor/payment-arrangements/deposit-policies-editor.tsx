@@ -2,10 +2,7 @@
 
 import { useId, useState, type FormEvent, type ReactNode } from "react";
 import { CircleAlert } from "lucide-react";
-import {
-  EDITOR_GROUP_DIVIDER,
-  EDITOR_GROUP_HEADING,
-} from "@/components/host/v2/editor/editor-group";
+import { EDITOR_GROUP_HEADING } from "@/components/host/v2/editor/editor-group";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -17,7 +14,6 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tx, useI18n } from "@/lib/i18n/client";
-import { cn } from "@/lib/utils";
 import { SectionSaveRow, SectionStatusLine } from "./section-save-row";
 import {
   type DepositAmountType,
@@ -120,7 +116,7 @@ export function DepositPoliciesEditor({
   }
 
   return (
-    <section className={cn("mx-auto w-full max-w-3xl", EDITOR_GROUP_DIVIDER)}>
+    <section className="mx-auto w-full max-w-3xl pt-6">
       <h2 className={EDITOR_GROUP_HEADING}>
         <Tx
           k="host.editor.deposit.heading"

@@ -1490,6 +1490,126 @@
     "filePath": "src/app/(account)/account/bookings/[id]/after-stay/page.tsx"
   },
   {
+    "key": "booking.fixed_stay.available_count.few",
+    "sourceText": "{n} stays available",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.fixed_stay.available_count.many",
+    "sourceText": "{n} stays available",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.fixed_stay.available_count.one",
+    "sourceText": "{n} stay available",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.fixed_stay.available_count.other",
+    "sourceText": "{n} stays available",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.fixed_stay.available_count.two",
+    "sourceText": "{n} stays available",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.fixed_stay.available_count.zero",
+    "sourceText": "{n} stays available",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.fixed_stay.choose_cta",
+    "sourceText": "Choose a stay",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.fixed_stay.choose_prompt",
+    "sourceText": "Choose one of the stays the host offers",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.fixed_stay.from",
+    "sourceText": "From",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.fixed_stay.legend",
+    "sourceText": "Available stays",
+    "filePath": "src/components/public/fixed-stay-options.tsx"
+  },
+  {
+    "key": "booking.fixed_stay.none_open_body",
+    "sourceText": "This host offers set arrival and departure dates, and none are available at the moment. Message the host to ask about other dates.",
+    "filePath": "src/components/public/fixed-stay-options.tsx"
+  },
+  {
+    "key": "booking.fixed_stay.none_open_title",
+    "sourceText": "No stays are open right now",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.fixed_stay.open_count.few",
+    "sourceText": "{n} stays open",
+    "filePath": "src/components/public/fixed-stay-options.tsx"
+  },
+  {
+    "key": "booking.fixed_stay.open_count.many",
+    "sourceText": "{n} stays open",
+    "filePath": "src/components/public/fixed-stay-options.tsx"
+  },
+  {
+    "key": "booking.fixed_stay.open_count.one",
+    "sourceText": "{n} stay open",
+    "filePath": "src/components/public/fixed-stay-options.tsx"
+  },
+  {
+    "key": "booking.fixed_stay.open_count.other",
+    "sourceText": "{n} stays open",
+    "filePath": "src/components/public/fixed-stay-options.tsx"
+  },
+  {
+    "key": "booking.fixed_stay.open_count.two",
+    "sourceText": "{n} stays open",
+    "filePath": "src/components/public/fixed-stay-options.tsx"
+  },
+  {
+    "key": "booking.fixed_stay.open_count.zero",
+    "sourceText": "{n} stays open",
+    "filePath": "src/components/public/fixed-stay-options.tsx"
+  },
+  {
+    "key": "booking.fixed_stay.per_stay",
+    "sourceText": "per stay",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.fixed_stay.pick_heading",
+    "sourceText": "Choose one of the host's stays",
+    "filePath": "src/components/public/fixed-stay-options.tsx"
+  },
+  {
+    "key": "booking.fixed_stay.total",
+    "sourceText": "total",
+    "filePath": "src/components/public/fixed-stay-options.tsx"
+  },
+  {
+    "key": "booking.fixed_stay.trigger_label",
+    "sourceText": "Stay",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
+    "key": "booking.fixed_stay.unavailable",
+    "sourceText": "Unavailable",
+    "filePath": "src/components/public/fixed-stay-options.tsx"
+  },
+  {
+    "key": "booking.fixed_stay.view_cta",
+    "sourceText": "View stays",
+    "filePath": "src/components/public/booking-widget.tsx"
+  },
+  {
     "key": "booking.guest_payment_card.amount",
     "sourceText": "Amount",
     "filePath": "src/components/booking/guest-payment-card.tsx"
@@ -6736,22 +6856,22 @@
   },
   {
     "key": "host.editor.payment_arrangements.bank_international",
-    "sourceText": "International bank transfer",
+    "sourceText": "Bank transfer (other countries)",
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
   },
   {
     "key": "host.editor.payment_arrangements.bank_international_description",
-    "sourceText": "For transfers between countries or banking regions.",
+    "sourceText": "For a guest whose bank is outside Europe. These transfers are usually slower and cost more.",
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
   },
   {
     "key": "host.editor.payment_arrangements.bank_local",
-    "sourceText": "Local or SEPA bank transfer",
+    "sourceText": "Bank transfer (local or Europe)",
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
   },
   {
     "key": "host.editor.payment_arrangements.bank_local_description",
-    "sourceText": "For domestic or SEPA transfers.",
+    "sourceText": "The guest sends money from their bank to yours. Use it for transfers inside your country and across Europe (also called SEPA).",
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
   },
   {
@@ -6983,6 +7103,16 @@
     "key": "host.editor.payment_arrangements.status_unanswered",
     "sourceText": "Not answered yet",
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-editor.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.tab_deposits",
+    "sourceText": "Deposits",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-workspace.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.tab_methods",
+    "sourceText": "Payment methods",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-arrangements-workspace.tsx"
   },
   {
     "key": "host.editor.payment_arrangements.unanswered_fallback",
@@ -11455,6 +11585,56 @@
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
+    "key": "host.v2.calendar.booking_method.fixed",
+    "sourceText": "Fixed stays",
+    "filePath": "src/components/host/v2/calendar/booking-method-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.booking_method.fixed_body",
+    "sourceText": "Guests can only book the exact stays you add. Nothing else on the calendar is bookable.",
+    "filePath": "src/components/host/v2/calendar/booking-method-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.booking_method.flexible",
+    "sourceText": "Flexible dates",
+    "filePath": "src/components/host/v2/calendar/booking-method-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.booking_method.flexible_body",
+    "sourceText": "Guests choose their own check-in and checkout, within your minimum stay.",
+    "filePath": "src/components/host/v2/calendar/booking-method-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.booking_method.min_above_max",
+    "sourceText": "Your minimum stay cannot be longer than your maximum stay.",
+    "filePath": "src/components/host/v2/calendar/booking-method-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.booking_method.no_pricing",
+    "sourceText": "Set this listing's nightly price before choosing a minimum stay.",
+    "filePath": "src/components/host/v2/calendar/booking-method-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.booking_method.save_minimum",
+    "sourceText": "Save minimum stay",
+    "filePath": "src/components/host/v2/calendar/booking-method-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.booking_method.switch_safe",
+    "sourceText": "Switching keeps everything you have set. Your minimum stay, open dates, prices, offers and any stays you have added are all still here if you switch back.",
+    "filePath": "src/components/host/v2/calendar/booking-method-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.booking_method.switching",
+    "sourceText": "Updating how this listing sells…",
+    "filePath": "src/components/host/v2/calendar/booking-method-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.booking_method.sync_warning",
+    "sourceText": "Calendar sync shares open and blocked nights, but it cannot enforce Saturday arrivals or exact 7/14-night stays. Set the same arrival-day and stay-length rules on every connected channel.",
+    "filePath": "src/components/host/v2/calendar/booking-method-editor.tsx"
+  },
+  {
     "key": "host.v2.calendar.cancel",
     "sourceText": "Cancel",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
@@ -12786,32 +12966,32 @@
   },
   {
     "key": "host.v2.calendar.editor.minimum_stay_info.few",
-    "sourceText": "Minimum stay: {n} nights · Listing-wide setting",
+    "sourceText": "Minimum stay: {n} nights · Change it in Booking method",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
     "key": "host.v2.calendar.editor.minimum_stay_info.many",
-    "sourceText": "Minimum stay: {n} nights · Listing-wide setting",
+    "sourceText": "Minimum stay: {n} nights · Change it in Booking method",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
     "key": "host.v2.calendar.editor.minimum_stay_info.one",
-    "sourceText": "Minimum stay: {n} night · Listing-wide setting",
+    "sourceText": "Minimum stay: {n} night · Change it in Booking method",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
     "key": "host.v2.calendar.editor.minimum_stay_info.other",
-    "sourceText": "Minimum stay: {n} nights · Listing-wide setting",
+    "sourceText": "Minimum stay: {n} nights · Change it in Booking method",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
     "key": "host.v2.calendar.editor.minimum_stay_info.two",
-    "sourceText": "Minimum stay: {n} nights · Listing-wide setting",
+    "sourceText": "Minimum stay: {n} nights · Change it in Booking method",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
     "key": "host.v2.calendar.editor.minimum_stay_info.zero",
-    "sourceText": "Minimum stay: {n} nights · Listing-wide setting",
+    "sourceText": "Minimum stay: {n} nights · Change it in Booking method",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
@@ -13290,6 +13470,361 @@
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
+    "key": "host.v2.calendar.fixed_stays.add_how",
+    "sourceText": "How would you like to add stays?",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.add_stay",
+    "sourceText": "Add stay",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.add_title",
+    "sourceText": "Add stays",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.added_one",
+    "sourceText": "Stay added.",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.added.few",
+    "sourceText": "{n} stays added",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.added.many",
+    "sourceText": "{n} stays added",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.added.one",
+    "sourceText": "{n} stay added",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.added.other",
+    "sourceText": "{n} stays added",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.added.two",
+    "sourceText": "{n} stays added",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.added.zero",
+    "sourceText": "{n} stays added",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.already_offered",
+    "sourceText": "Already offered",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.both",
+    "sourceText": "Both",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.changeover",
+    "sourceText": "Changeover day",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.check_in",
+    "sourceText": "Check-in",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.checkout_derived",
+    "sourceText": "Checkout follows from the stay length you choose.",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.confirm_add.few",
+    "sourceText": "Add {n} stays",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.confirm_add.many",
+    "sourceText": "Add {n} stays",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.confirm_add.one",
+    "sourceText": "Add {n} stay",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.confirm_add.other",
+    "sourceText": "Add {n} stays",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.confirm_add.two",
+    "sourceText": "Add {n} stays",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.confirm_add.zero",
+    "sourceText": "Add {n} stays",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.confirm_remove",
+    "sourceText": "Remove stay",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.disable",
+    "sourceText": "Turn off",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.duration",
+    "sourceText": "Stay length",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.edit",
+    "sourceText": "Edit",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.editing",
+    "sourceText": "Editing an existing stay.",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.empty_body",
+    "sourceText": "Until you add one, this listing has nothing a guest can book.",
+    "filePath": "src/components/host/v2/calendar/booking-method-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.empty_title",
+    "sourceText": "No stays yet",
+    "filePath": "src/components/host/v2/calendar/booking-method-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.enable",
+    "sourceText": "Turn on",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.fourteen",
+    "sourceText": "14 nights",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.hidden.few",
+    "sourceText": "{n} hidden from guests",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.hidden.many",
+    "sourceText": "{n} hidden from guests",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.hidden.one",
+    "sourceText": "{n} hidden from guests",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.hidden.other",
+    "sourceText": "{n} hidden from guests",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.hidden.two",
+    "sourceText": "{n} hidden from guests",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.hidden.zero",
+    "sourceText": "{n} hidden from guests",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.last_checkout",
+    "sourceText": "Last checkout",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.last_checkout_hint",
+    "sourceText": "The last day a guest may leave.",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.list_title",
+    "sourceText": "Stay periods",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.manual",
+    "sourceText": "Add one",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.nights.few",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.nights.many",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.nights.one",
+    "sourceText": "{n} night",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.nights.other",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.nights.two",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.nights.zero",
+    "sourceText": "{n} nights",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.offered.few",
+    "sourceText": "{n} offered",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.offered.many",
+    "sourceText": "{n} offered",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.offered.one",
+    "sourceText": "{n} offered",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.offered.other",
+    "sourceText": "{n} offered",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.offered.two",
+    "sourceText": "{n} offered",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.offered.zero",
+    "sourceText": "{n} offered",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.overlap_warning.few",
+    "sourceText": "This shares nights with {n} other stays. Whichever a guest books withdraws the others.",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.overlap_warning.many",
+    "sourceText": "This shares nights with {n} other stays. Whichever a guest books withdraws the others.",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.overlap_warning.one",
+    "sourceText": "This shares nights with {n} other stay. Whichever a guest books withdraws the other.",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.overlap_warning.other",
+    "sourceText": "This shares nights with {n} other stays. Whichever a guest books withdraws the others.",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.overlap_warning.two",
+    "sourceText": "This shares nights with {n} other stays. Whichever a guest books withdraws the others.",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.overlap_warning.zero",
+    "sourceText": "This shares nights with {n} other stays. Whichever a guest books withdraws the others.",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.preview",
+    "sourceText": "Preview stays",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.preview_empty",
+    "sourceText": "No stays fit inside those dates.",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.quick",
+    "sourceText": "Quick setup",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.remove",
+    "sourceText": "Remove",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.save_stay",
+    "sourceText": "Save stay",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.season_start",
+    "sourceText": "Season start",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.seven",
+    "sourceText": "7 nights",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.state_available",
+    "sourceText": "Offered",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.state_booked",
+    "sourceText": "Booked",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.state_off",
+    "sourceText": "Switched off",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.state_past",
+    "sourceText": "Past",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.state_taken",
+    "sourceText": "Dates taken",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
+    "key": "host.v2.calendar.fixed_stays.updated",
+    "sourceText": "Stay updated.",
+    "filePath": "src/components/host/v2/calendar/fixed-stays-editor.tsx"
+  },
+  {
     "key": "host.v2.calendar.help.dated_fit",
     "sourceText": "A date-specific promotion discounts only the nights inside its date range. Nights outside it use their own best promotion or the normal price.",
     "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
@@ -13412,7 +13947,7 @@
   {
     "key": "host.v2.calendar.listing.any_length",
     "sourceText": "any length",
-    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+    "filePath": "src/components/host/v2/calendar/booking-method-editor.tsx"
   },
   {
     "key": "host.v2.calendar.listing.base_price",
@@ -13427,6 +13962,11 @@
   {
     "key": "host.v2.calendar.listing.change",
     "sourceText": "Change",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.change_booking_method",
+    "sourceText": "Change it in Calendar → Booking method",
     "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
   },
   {
@@ -13535,6 +14075,11 @@
     "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
   },
   {
+    "key": "host.v2.calendar.listing.minimum_moved",
+    "sourceText": "This is managed with how the listing sells.",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
     "key": "host.v2.calendar.listing.minimum_taken",
     "sourceText": "Another {percent}% promotion starts at {nights} nights. Both can run; the promotion that saves the guest more will win.",
     "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
@@ -13547,7 +14092,7 @@
   {
     "key": "host.v2.calendar.listing.nights_minimum",
     "sourceText": "nights minimum",
-    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+    "filePath": "src/components/host/v2/calendar/booking-method-editor.tsx"
   },
   {
     "key": "host.v2.calendar.listing.no_active_promotions",
@@ -13665,6 +14210,11 @@
     "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
   },
   {
+    "key": "host.v2.calendar.menu.booking_method",
+    "sourceText": "Booking method",
+    "filePath": "src/components/host/v2/calendar/booking-method-editor.tsx"
+  },
+  {
     "key": "host.v2.calendar.menu.price",
     "sourceText": "Nightly price",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
@@ -13772,7 +14322,7 @@
   {
     "key": "host.v2.calendar.promotion_fewer_nights",
     "sourceText": "Fewer nights",
-    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+    "filePath": "src/components/host/v2/calendar/booking-method-editor.tsx"
   },
   {
     "key": "host.v2.calendar.promotion_free_cleaning",
@@ -13787,12 +14337,12 @@
   {
     "key": "host.v2.calendar.promotion_minimum",
     "sourceText": "Minimum stay",
-    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+    "filePath": "src/components/host/v2/calendar/booking-method-editor.tsx"
   },
   {
     "key": "host.v2.calendar.promotion_more_nights",
     "sourceText": "More nights",
-    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+    "filePath": "src/components/host/v2/calendar/booking-method-editor.tsx"
   },
   {
     "key": "host.v2.calendar.promotion_nights_or_more",
@@ -14062,7 +14612,7 @@
   {
     "key": "host.v2.calendar.saved",
     "sourceText": "Your change is live.",
-    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
+    "filePath": "src/components/host/v2/calendar/booking-method-editor.tsx"
   },
   {
     "key": "host.v2.calendar.schedule.date_price",
@@ -14332,6 +14882,11 @@
   {
     "key": "host.v2.calendar.stay.reason_booked.zero",
     "sourceText": "{n} of these dates are already booked.",
+    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.stay.reason_fixed_exact",
+    "sourceText": "These dates are not one complete fixed stay. Guests can only book an exact stay from the list.",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
@@ -16666,12 +17221,12 @@
   },
   {
     "key": "listing.accepted_payment_methods.bank_transfer_international",
-    "sourceText": "International bank transfer",
+    "sourceText": "Bank transfer (other countries)",
     "filePath": "src/components/booking/accepted-payment-methods.tsx"
   },
   {
     "key": "listing.accepted_payment_methods.bank_transfer_local_sepa",
-    "sourceText": "Local or SEPA bank transfer",
+    "sourceText": "Bank transfer (local or Europe)",
     "filePath": "src/components/booking/accepted-payment-methods.tsx"
   },
   {
@@ -16973,6 +17528,11 @@
     "key": "listing.deposit_policy.due_days_before_check_in",
     "sourceText": "Due {days} days before check-in.",
     "filePath": "src/components/booking/deposit-policies-summary.tsx"
+  },
+  {
+    "key": "listing.fixed_stays_only",
+    "sourceText": "Fixed stays only",
+    "filePath": "src/app/(public)/properties/[slug]/page.tsx"
   },
   {
     "key": "listing.guest_reviews",

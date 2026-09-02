@@ -82,12 +82,43 @@ export interface HostCalendarPricing {
   maxNights: number;
 }
 
+/**
+ * One stay the host offers, as the calendar needs it.
+ *
+ * The state and the manageability are derived on the server by the same projection the
+ * rest of the product reads (`projectHostFixedStayPeriods`), so the panel cannot invent a
+ * fifth state or disagree about which rows a host may still touch. Deliberately narrower
+ * than the host projection: no `blockedBy`, because the editor never says *why* a stay's
+ * nights are taken — that is the calendar grid's job, and a guest's name has no business
+ * in a settings panel.
+ */
+export interface HostCalendarFixedStay {
+  id: string;
+  /** `YYYY-MM-DD`. */
+  checkIn: string;
+  /** `YYYY-MM-DD`, exclusive. */
+  checkOut: string;
+  /** Derived from the dates; 7 or 14 for every stay this product can create. */
+  nights: number;
+  state: "PAST" | "DISABLED" | "BOOKED" | "DATES_TAKEN" | "AVAILABLE";
+  /** False for booked and past stays, which no host action may change. */
+  manageable: boolean;
+}
+
 export interface HostCalendarListing {
   id: string;
   title: string;
   slug: string | null;
   status: string;
   availabilityMode: "OPEN" | "CLOSED";
+  /**
+   * How the listing sells its dates.
+   *
+   * FIXED_STAYS makes `fixedStayPeriods` the only thing that opens a night, and makes
+   * `availabilityMode`, the windows and the stay-length rule stored-but-unread — the
+   * same split every other surface applies.
+   */
+  bookingMode: "FLEXIBLE" | "FIXED_STAYS";
   photoUrl: string | null;
   photoAlt: string | null;
   city: string | null;
@@ -101,6 +132,14 @@ export interface HostCalendarListing {
   blocks: HostCalendarBlock[];
   availabilityWindows: HostCalendarWindow[];
   promotions: HostCalendarPromotion[];
+  /**
+   * Every whole stay this listing owns, including locked past rows kept for history.
+   *
+   * Loaded in both modes, because a listing that switched back to flexible still owns
+   * them and switching forward again must restore exactly what the host built. Empty for
+   * a listing that has never sold this way.
+   */
+  fixedStayPeriods: HostCalendarFixedStay[];
   nextReservation: HostCalendarReservation | null;
 }
 

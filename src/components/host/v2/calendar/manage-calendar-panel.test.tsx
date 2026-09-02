@@ -15,6 +15,19 @@ vi.mock("@/lib/actions/calendar-sync.actions", () => ({
   regenerateCalendarExportToken: vi.fn(),
   removeCalendarFeed: vi.fn(),
 }));
+// Same reason, for the Booking method editor's own actions.
+vi.mock("@/lib/actions/fixed-stay.actions", () => ({
+  setListingBookingMode: vi.fn(),
+  addFixedStayPeriod: vi.fn(),
+  updateFixedStayPeriod: vi.fn(),
+  setFixedStayPeriodEnabled: vi.fn(),
+  deleteFixedStayPeriod: vi.fn(),
+  previewFixedStayQuickSetup: vi.fn(),
+  confirmFixedStayQuickSetup: vi.fn(),
+}));
+vi.mock("@/lib/actions/pricing.actions", () => ({
+  saveListingPricing: vi.fn(),
+}));
 
 import { ManageCalendarPanel } from "@/components/host/v2/calendar/manage-calendar-panel";
 import { buildCalendarFormats } from "@/lib/host/v2/calendar-format";

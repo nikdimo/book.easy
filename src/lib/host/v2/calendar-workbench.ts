@@ -28,15 +28,26 @@ import type { CalendarSelection } from "@/lib/host/v2/calendar-selection";
  * with the calendar is a panel that can save "these three nights" against every date
  * the listing will ever have.
  *
- * `ALL_FUTURE` no longer has editors of its own — it is the state in which the panel
- * reports the listing's defaults and links to the pages that own them. It is still a
- * scope rather than a boolean because `viewAfterScopeChange` has to close a date
- * editor the moment the dates go away, which is exactly the same rule as before.
+ * `ALL_FUTURE` has exactly one editor: how the listing sells its dates. It earns a place
+ * here — rather than a link out with the other listing-wide facts — because it is the one
+ * listing-wide setting that changes what every cell of the grid beside it *means*, and
+ * because the stays it manages are dates. Everything else the listing owns is still
+ * reported and linked, not edited.
  */
 export type WorkbenchScope = "DATES" | "ALL_FUTURE";
 
-/** Every focused editor the panel can show. All three are about selected dates. */
-export type WorkbenchEditor = "availability" | "pricing" | "promotions";
+/**
+ * Every focused editor the panel can show.
+ *
+ * The first three act on selected dates; `booking-method` acts on the listing and is the
+ * only one reachable with nothing selected. `editorScope` is the single authority for
+ * which is which, so a destination can never be opened against the wrong target.
+ */
+export type WorkbenchEditor =
+  | "availability"
+  | "pricing"
+  | "promotions"
+  | "booking-method";
 
 export type WorkbenchView =
   | { kind: "menu" }
@@ -49,10 +60,11 @@ export type WorkbenchView =
 export const WORKBENCH_MENU: Readonly<Record<WorkbenchScope, readonly WorkbenchEditor[]>> =
   {
     DATES: ["availability", "pricing", "promotions"],
-    // Deliberately empty. With no dates chosen there is nothing this panel is entitled
-    // to change, so it offers context and two links out rather than a second home for
-    // settings the listing editor owns.
-    ALL_FUTURE: [],
+    // One row, and it is the question the rest of this panel's answers depend on: a
+    // listing selling whole stays has no arbitrary night to open, price differently by
+    // hand, or measure against a minimum. The listing's other defaults are still
+    // reported and linked below rather than edited here.
+    ALL_FUTURE: ["booking-method"],
   };
 
 export function scopeOfSelection(
@@ -62,11 +74,10 @@ export function scopeOfSelection(
 }
 
 export function editorScope(editor: WorkbenchEditor): WorkbenchScope {
-  // Keep the parameter in the API: callers use this function as the single authority
-  // for whether a destination belongs to the current scope, and adding a future
-  // editor should require making that decision here.
-  void editor;
-  return "DATES";
+  // The single authority for whether a destination belongs to the current scope. Adding
+  // an editor requires making that decision here, which is what keeps
+  // `viewAfterScopeChange` able to close one the moment its target goes away.
+  return editor === "booking-method" ? "ALL_FUTURE" : "DATES";
 }
 
 /** The sticky primary action at the foot of each focused editor. */
@@ -75,7 +86,14 @@ export type WorkbenchCta =
   | "REVIEW_PRICE"
   | "REVIEW_PROMOTION";
 
-export function ctaForEditor(editor: WorkbenchEditor): WorkbenchCta {
+/**
+ * The sticky primary action, where the editor has one.
+ *
+ * Null for `booking-method`: it holds several independent actions — a mode switch, a
+ * quick setup, one stay at a time — each of which takes effect when the host asks for
+ * it. A single footer button would have to mean whichever of them was last touched.
+ */
+export function ctaForEditor(editor: WorkbenchEditor): WorkbenchCta | null {
   switch (editor) {
     case "availability":
       return "REVIEW_AVAILABILITY";
@@ -83,6 +101,8 @@ export function ctaForEditor(editor: WorkbenchEditor): WorkbenchCta {
       return "REVIEW_PRICE";
     case "promotions":
       return "REVIEW_PROMOTION";
+    case "booking-method":
+      return null;
   }
 }
 

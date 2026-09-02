@@ -50,8 +50,14 @@ export async function createBookingAction(formData: FormData) {
 
   const raw = {
     listingId: formData.get("listingId") as string,
-    checkIn: formData.get("checkIn") as string,
-    checkOut: formData.get("checkOut") as string,
+    // The stay, one of two ways. Blank strings are what a form posts for an input it
+    // rendered but left empty, and the shared classifier reads a blank as absent — so a
+    // page carrying both controls posts a coherent request either way, and a page
+    // carrying neither is refused rather than defaulted.
+    checkIn: (formData.get("checkIn") as string | null) || undefined,
+    checkOut: (formData.get("checkOut") as string | null) || undefined,
+    fixedStayPeriodId:
+      (formData.get("fixedStayPeriodId") as string | null) || undefined,
     // The party, four numbers rather than one. `guestCount` is no longer posted — the
     // server derives it from adults + children — but a page loaded before this shipped
     // still posts it and nothing else, so it stands in for the adults on that one
@@ -81,14 +87,24 @@ export async function createBookingAction(formData: FormData) {
       getPriceFormatter(),
       getLocale(),
     ]);
+    // Exactly one of the two selections travels onward. The schema has already refused
+    // any other combination, so this is a translation rather than a second decision — and
+    // in particular this action derives no fixed-stay dates: a named stay travels as an
+    // id, and what it *is* is read from the database inside the booking transaction.
+    const stay = parsed.data.fixedStayPeriodId
+      ? { fixedStayPeriodId: parsed.data.fixedStayPeriodId }
+      : {
+          // Through the shared helper: `@db.Date` columns take UTC midnight, and naming
+          // that rather than leaning on `new Date("2026-06-10")`'s parsing keeps the one
+          // conversion the rest of the booking flow reads back with `dbDateToYmd`.
+          checkIn: ymdToDbDate(parsed.data.checkIn!),
+          checkOut: ymdToDbDate(parsed.data.checkOut!),
+        };
+
     const booking = await createBooking({
       listingId: parsed.data.listingId,
       guestId: session.user.id,
-      // Through the shared helper: `@db.Date` columns take UTC midnight, and naming
-      // that rather than leaning on `new Date("2026-06-10")`'s parsing keeps the one
-      // conversion the rest of the booking flow reads back with `dbDateToYmd`.
-      checkIn: ymdToDbDate(parsed.data.checkIn),
-      checkOut: ymdToDbDate(parsed.data.checkOut),
+      ...stay,
       // Passed whole. `createBooking` derives the capacity from adults + children,
       // checks the party against the listing's own house rules, and stores all four —
       // this action does no arithmetic on them.

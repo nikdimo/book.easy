@@ -47,6 +47,22 @@ enum ListingAvailabilityMode {
   CLOSED
 }
 
+/**
+ * How a listing sells its dates.
+ * FLEXIBLE is every listing that exists today: a guest picks any check-in and checkout
+ * the calendar allows. FIXED_STAYS means the host sells whole stays — an exact pair of
+ * dates the guest either takes or does not — and is the only mode in which
+ * `ListingFixedStayPeriod` rows are consulted.
+ * The mode changes *which dates may be chosen*, nothing else. Price, cleaning fee,
+ * promotions, taxes and the quote engine are identical in both, and a listing's
+ * availability windows and minimum-stay settings stay stored exactly as the host left
+ * them so switching back to FLEXIBLE restores the calendar they had.
+ */
+enum ListingBookingMode {
+  FLEXIBLE
+  FIXED_STAYS
+}
+
 enum ListingPaymentMethod {
   CASH_AT_PROPERTY
   BANK_TRANSFER_LOCAL_SEPA
@@ -822,6 +838,15 @@ model Listing {
   availabilityMode                     ListingAvailabilityMode   @default(OPEN)
 
   /**
+   * FLEXIBLE keeps the calendar every existing listing has. The default is what makes
+   * this column inert: no listing changes behaviour until a host deliberately switches
+   * to FIXED_STAYS and adds periods.
+   * Orthogonal to `availabilityMode`: that says which dates the host has opened at all,
+   * this says how the open dates are sold.
+   */
+  bookingMode ListingBookingMode @default(FLEXIBLE)
+
+  /**
    * Time-decayed demand signal (views + heavily-weighted bookings) recomputed by a
    * scheduled job — see lib/services/popularity.service.ts. Denormalised onto the
    * listing so the home page can order by it with a plain indexed query instead of
@@ -850,6 +875,7 @@ model Listing {
   datePrices          ListingDatePrice[]
   availabilityBlocks  AvailabilityBlock[]
   availabilityWindows ListingAvailabilityWindow[]
+  fixedStayPeriods    ListingFixedStayPeriod[]
   calendarFeeds       ListingCalendarFeed[]
   bookings            Booking[]
   suggestions         Suggestion[]
@@ -1503,6 +1529,43 @@ model ListingAvailabilityWindow {
   @@index([listingId, startDate, endDate])
 }
 
+/**
+ * One whole stay the host offers: an exact check-in and checkout pair, and nothing else.
+ * Read only when the listing's `bookingMode` is FIXED_STAYS.
+ * There is deliberately no price, currency, state, availability or nights column here.
+ * Price is the listing's existing nightly rate, date overrides, cleaning fee, promotions
+ * and taxes, quoted by the same engine a flexible stay goes through, so a period
+ * contributes two dates to that quote and no money of its own. Nights is
+ * `checkOut - checkIn`; storing it as well is storing the same fact twice, and the copy
+ * is the one that goes wrong. Availability stays where every other availability answer
+ * in this schema lives — `AvailabilityBlock` rows for bookings, manual blocks and
+ * imported calendars — which is what makes an overlapping alternative disappear the
+ * moment its neighbour is taken.
+ * Overlapping periods are legal and expected: "one week or two from the 1st" is two rows
+ * sharing seven nights. Only the exact same pair of dates is refused, by the unique index
+ * below, because that is the one pair a guest could not tell apart.
+ * `disabledAt` switches a period off without deleting it, matching `ListingPromotion`: a
+ * period a booking may already point at must remain readable.
+ */
+model ListingFixedStayPeriod {
+  id         String    @id @default(cuid())
+  listingId  String
+  /// Half-open `[checkIn, checkOut)`, the same convention bookings, availability
+  /// windows and blocks use — the checkout day is not an occupied night.
+  checkIn    DateTime  @db.Date
+  checkOut   DateTime  @db.Date
+  /// Set when the host switches the period off. Null means offered.
+  disabledAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  listing  Listing   @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@unique([listingId, checkIn, checkOut])
+  @@index([listingId, disabledAt])
+}
+
 // ─── Booking ────────────────────────────────────────────────────────────────────
 
 model Booking {
@@ -1540,6 +1603,13 @@ model Booking {
   discountAmount                     Decimal                          @default(0) @db.Decimal(14, 3)
   promotionId                        String?
   promotionType                      PromotionType?
+  /// Which fixed stay the guest took, when the listing was selling whole stays. Null
+  /// on every flexible booking, which is every booking that exists today.
+  fixedStayPeriodId                  String?
+  /// The period's dates frozen at booking time — `{ version, periodId, checkIn,
+  /// checkOut, nights }`. The relation below can go null when a host deletes a period;
+  /// what the guest actually booked must not go with it.
+  fixedStaySnapshot                  Json?
   priceBreakdown                     Json?
   priceBreakdownVersion              Int?
   /// What the guest was browsing in when they booked, plus the rate used to show it.
@@ -1641,6 +1711,7 @@ model Booking {
   listing                   Listing                          @relation(fields: [listingId], references: [id])
   guest                     User                             @relation(fields: [guestId], references: [id])
   promotion                 ListingPromotion?                @relation(fields: [promotionId], references: [id], onDelete: SetNull)
+  fixedStayPeriod           ListingFixedStayPeriod?          @relation(fields: [fixedStayPeriodId], references: [id], onDelete: SetNull)
   availabilityBlocks        AvailabilityBlock[]
   conversation              Conversation?
   safetyCases               SafetyCase[]
@@ -1658,6 +1729,7 @@ model Booking {
   @@index([guestId])
   @@index([status, responseDueAt])
   @@index([promotionId])
+  @@index([fixedStayPeriodId])
   @@index([listingId, checkIn, checkOut])
   @@index([status, paymentInstructionsStatus])
 }

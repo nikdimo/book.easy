@@ -150,6 +150,21 @@ export function addDaysToYmd(ymd: string, days: number): string {
   return dbDateToYmd(value);
 }
 
+/** Sunday = 0, the numbering `Date#getUTCDay` uses. */
+export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
+/**
+ * The weekday a calendar date falls on.
+ *
+ * Read off the UTC fields of the same instant `ymdToDbDate` builds, never off a
+ * server-local `Date`. `new Date("2026-06-06").getDay()` is read in the server's zone,
+ * so west of UTC it answers for the previous day — which for a Saturday-changeover
+ * season is the difference between generating Saturdays and generating Fridays.
+ */
+export function weekdayOfYmd(ymd: string): Weekday {
+  return ymdToDbDate(ymd).getUTCDay() as Weekday;
+}
+
 /**
  * Nights between two calendar dates, `[start, end)` — the booking convention.
  *

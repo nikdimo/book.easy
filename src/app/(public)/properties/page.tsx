@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PropertyCard } from "@/components/public/property-card";
+import { listingSearchLinkQuery } from "@/lib/fixed-stay-options";
 import { PropertiesExplorerClient } from "@/components/marketplace/properties-explorer-client";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Button } from "@/components/ui/button";
@@ -253,7 +254,9 @@ export default async function PropertiesPage({
           .join(", "),
         imageUrl: l.images.find((image) => image.url?.trim())?.url,
         imageAlt: l.images.find((image) => image.url?.trim())?.alt ?? undefined,
-        query: listingQueryString,
+        // The same per-listing rule the card beside it uses, so a pin and its card never
+        // open the listing on two different things.
+        query: listingSearchLinkQuery(listingQueryString, l),
       },
     ];
   });

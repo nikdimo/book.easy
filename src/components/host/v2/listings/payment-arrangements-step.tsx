@@ -979,12 +979,12 @@ function paymentMethodName(
     case "BANK_TRANSFER_LOCAL_SEPA":
       return resolve(
         "host.editor.payment_arrangements.bank_local",
-        "Local or SEPA bank transfer",
+        "Bank transfer (local or Europe)",
       ).text;
     case "BANK_TRANSFER_INTERNATIONAL":
       return resolve(
         "host.editor.payment_arrangements.bank_international",
-        "International bank transfer",
+        "Bank transfer (other countries)",
       ).text;
     case "PAYPAL":
       return resolve("host.editor.payment_arrangements.paypal", "PayPal").text;

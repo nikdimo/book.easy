@@ -2,14 +2,10 @@
 
 import { useState, type FormEvent } from "react";
 import { CircleAlert } from "lucide-react";
-import {
-  EDITOR_GROUP_DIVIDER,
-  EDITOR_GROUP_HEADING,
-} from "@/components/host/v2/editor/editor-group";
+import { EDITOR_GROUP_HEADING } from "@/components/host/v2/editor/editor-group";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tx } from "@/lib/i18n/client";
-import { cn } from "@/lib/utils";
 import { validateCancellationPolicy } from "@/lib/payments/cancellation-policy";
 import { SectionSaveRow, SectionStatusLine } from "./section-save-row";
 
@@ -50,7 +46,7 @@ export function CancellationPolicyEditor({
     // Below the deposits, deliberately: what a host may keep when a guest cancels
     // depends on what they took in advance, so the answer above is the one that has to
     // be read first.
-    <section className={cn("mx-auto w-full max-w-3xl pb-4", EDITOR_GROUP_DIVIDER)}>
+    <section className="mx-auto w-full max-w-3xl pb-4 pt-6">
       <h2 className={EDITOR_GROUP_HEADING}>
         <Tx k="host.editor.cancellation.heading" source="Cancellation policy" />
       </h2>

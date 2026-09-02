@@ -80,7 +80,7 @@ describe("frozen booking payment details", () => {
     });
 
     expect(body).toContain("Payment request for booking LH-ABC123");
-    expect(body).toContain("Method: International bank transfer");
+    expect(body).toContain("Method: Bank transfer (other countries)");
     expect(body).toContain("Amount: 320.00 EUR");
     expect(body).toContain("Account holder: Nikola Dimovski");
     expect(body).toContain("IBAN or account number: DK5000400440116243");

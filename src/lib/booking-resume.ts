@@ -14,6 +14,21 @@ export type BookingResumeDraft = {
   listingId: string;
   note: string;
   paymentMethod: string | null;
+  /**
+   * The whole stay the guest picked on a fixed-stay listing, when they picked one.
+   *
+   * It travels here rather than on the return URL for a reason the note does not share:
+   * a fixed stay is not a date range, and putting its dates on the URL would let them
+   * come back as an arbitrary selection on a listing that offers no such thing. An id is
+   * meaningless anywhere but this listing, and is re-checked against the server's current
+   * options before it is restored — so a stay that was booked while the guest read their
+   * email comes back as nothing at all rather than as a stale choice.
+   *
+   * Optional on the way in, so a flexible caller writes exactly the draft it always
+   * wrote. Always present on the way out: `parseBookingResumeDraft` fills it with null
+   * for the drafts — every one written before this existed — that do not carry it.
+   */
+  fixedStayPeriodId?: string | null;
   savedAt: number;
 };
 
@@ -44,6 +59,12 @@ export function parseBookingResumeDraft(
       note: typeof parsed.note === "string" ? parsed.note : "",
       paymentMethod:
         typeof parsed.paymentMethod === "string" ? parsed.paymentMethod : null,
+      // Absent in every draft written before fixed stays existed, and absent in every
+      // flexible draft written since. Reading it as null keeps those parsing unchanged.
+      fixedStayPeriodId:
+        typeof parsed.fixedStayPeriodId === "string" && parsed.fixedStayPeriodId
+          ? parsed.fixedStayPeriodId
+          : null,
       savedAt: parsed.savedAt,
     };
   } catch {

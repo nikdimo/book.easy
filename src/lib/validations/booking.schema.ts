@@ -1,5 +1,9 @@
 import { z } from "zod";
 import { compareYmd, isValidYmd, todayYmd } from "@/lib/utils/date-only";
+import {
+  bookingStayRequestIssueMessage,
+  classifyBookingStayRequest,
+} from "@/lib/utils/booking-stay-request";
 import { PAYMENT_METHOD_CODES } from "@/lib/payments/payment-methods";
 import { BOOKING_PARTY_COUNT_MAX } from "@/lib/booking-party";
 
@@ -13,8 +17,21 @@ const partyCountSchema = z.coerce
 export const createBookingSchema = z
   .object({
     listingId: z.string().min(1),
-    checkIn: z.string().refine(isValidYmd, "Invalid date format"),
-    checkOut: z.string().refine(isValidYmd, "Invalid date format"),
+    /**
+     * The stay, one of two ways — see `@/lib/utils/booking-stay-request`.
+     *
+     * All three are optional *here* because which pair is required depends on which the
+     * request chose, and a field-level `required` cannot see the other fields. The
+     * either/or itself is enforced by the refinement below, before any date rule runs.
+     */
+    checkIn: z.string().refine(isValidYmd, "Invalid date format").optional(),
+    checkOut: z.string().refine(isValidYmd, "Invalid date format").optional(),
+    /**
+     * One of the whole stays the host offers. Carries no dates and no length: what the
+     * period *is* is read from the database inside the booking transaction, so a
+     * request cannot name a stay and then describe it differently.
+     */
+    fixedStayPeriodId: z.string().min(1).optional(),
     /**
      * The party, as four separate numbers.
      *
@@ -56,18 +73,38 @@ export const createBookingSchema = z
     message: `Maximum ${BOOKING_PARTY_COUNT_MAX} guests allowed`,
     path: ["adults"],
   })
+  // The either/or, before either date rule below: a request that has not said what it is
+  // booking has no dates worth measuring, and one that sent a period *and* a date must
+  // not have the date quietly validated as though it counted.
+  .superRefine((data, ctx) => {
+    const classification = classifyBookingStayRequest(data);
+    if ("issue" in classification) {
+      ctx.addIssue({
+        code: "custom",
+        path: classification.issue === "MIXED_SELECTION" ? ["fixedStayPeriodId"] : ["checkIn"],
+        message: bookingStayRequestIssueMessage(classification.issue),
+      });
+    }
+  })
   // The marketplace's day, not the server's. `format(new Date(), ...)` read the host
   // process's clock, so a container in UTC refused a stay starting today for the first
   // two hours of every Skopje morning — while the browser's date picker, which follows
   // the same shared rule this now does, was still offering it (M6).
-  .refine((data) => compareYmd(data.checkIn, todayYmd()) >= 0, {
-    message: "Check-in date cannot be in the past",
-    path: ["checkIn"],
-  })
-  .refine((data) => compareYmd(data.checkOut, data.checkIn) > 0, {
-    message: "Check-out date must be after check-in date",
-    path: ["checkOut"],
-  });
+  .refine(
+    (data) => !data.checkIn || compareYmd(data.checkIn, todayYmd()) >= 0,
+    {
+      message: "Check-in date cannot be in the past",
+      path: ["checkIn"],
+    },
+  )
+  .refine(
+    (data) =>
+      !data.checkIn || !data.checkOut || compareYmd(data.checkOut, data.checkIn) > 0,
+    {
+      message: "Check-out date must be after check-in date",
+      path: ["checkOut"],
+    },
+  );
 
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
 

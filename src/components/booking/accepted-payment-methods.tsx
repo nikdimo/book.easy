@@ -285,7 +285,7 @@ export function PaymentMethodName({
         <ResolvedCopy
           value={t.resolve(
             "listing.accepted_payment_methods.bank_transfer_local_sepa",
-            "Local or SEPA bank transfer",
+            "Bank transfer (local or Europe)",
           )}
         />
       );
@@ -294,7 +294,7 @@ export function PaymentMethodName({
         <ResolvedCopy
           value={t.resolve(
             "listing.accepted_payment_methods.bank_transfer_international",
-            "International bank transfer",
+            "Bank transfer (other countries)",
           )}
         />
       );

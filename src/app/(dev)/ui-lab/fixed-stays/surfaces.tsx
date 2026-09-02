@@ -4,10 +4,10 @@ import { cn } from "@/lib/utils";
 import type { FixedStayPeriodState } from "./periods";
 
 /**
- * The mockup's visual language, in one file.
+ * The mockup's shared visual language, in one file.
  *
  * White surfaces on the product's own white page — `--background` is `#ffffff` and the
- * host shell is `bg-white`, so a card here has no tint to stand out against.
+ * guest listing is white too, so a card here has no tint to stand out against.
  *
  * That is what decides the resting edge. A shadow alone is nearly invisible white-on-
  * white, so each surface carries a hairline ring at rest and lets the shadow do the
@@ -17,6 +17,11 @@ import type { FixedStayPeriodState } from "./periods";
  * when you reach for one.
  *
  * Three steps and no more: at rest, under the pointer, chosen.
+ *
+ * **The cards are the guest's half.** The host half now lives inside the Calendar's
+ * 23rem editing panel, whose own vocabulary is tinted blocks and separators rather than
+ * elevation — see `host-panel.tsx`. What the two halves still share is here: the state
+ * badges, the month headings, and the two selection controls, sized to fit the panel.
  */
 
 /** A surface at rest. A hairline and almost no shadow — it separates, it does not enclose. */
@@ -35,9 +40,19 @@ export const CARD_PRESSABLE = cn(
 export const CARD_SELECTED =
   "ring-2 ring-slate-900 shadow-[0_2px_6px_rgba(15,23,42,0.06),0_10px_28px_rgba(15,23,42,0.08)]";
 
-/** A field the host types or picks into, wearing the same skin as everything else. */
+/**
+ * A field the host types or picks into, inside the panel.
+ *
+ * It is the date picker's own skin — `h-11`, `rounded-xl`, full width — restated so the
+ * select beside it matches, since the select is `w-fit` and drops to `h-8` at `md` and
+ * would otherwise sit in the same column at a different size.
+ *
+ * No border colour: the date picker owns that one, and it is how the field turns rose
+ * when the value is refused. A class here would win the merge and take the invalid
+ * state with it. The select states its own beside this one instead.
+ */
 export const FIELD_CONTROL =
-  "h-14 w-full max-w-none rounded-2xl border-transparent bg-white px-4 text-[0.9375rem] text-slate-950 ring-1 ring-slate-200/70 shadow-[0_1px_2px_rgba(15,23,42,0.03)] transition-all hover:border-transparent hover:ring-slate-300 focus-visible:ring-2 focus-visible:ring-slate-900";
+  "mt-0 h-11 w-full max-w-none rounded-xl bg-white px-3 text-sm text-slate-950";
 
 /**
  * The words a stay's state is told in, taken from the product rather than invented.
@@ -96,9 +111,9 @@ export function MonthHeading({
 }: {
   children: React.ReactNode;
   count?: number;
-  level?: 3 | 4;
+  level?: 3 | 4 | 5;
 }) {
-  const Heading = level === 3 ? "h3" : "h4";
+  const Heading = level === 3 ? "h3" : level === 4 ? "h4" : "h5";
 
   return (
     <div className="flex items-baseline gap-2 pt-2 pb-1 first:pt-0">
@@ -114,77 +129,34 @@ export function MonthHeading({
   );
 }
 
-/** Small, quiet, above the thing it names. */
-export function FieldLabel({
-  children,
-  htmlFor,
-}: {
-  children: React.ReactNode;
-  htmlFor?: string;
-}) {
-  return (
-    <label
-      htmlFor={htmlFor}
-      className="mb-2 block text-[0.8125rem] font-medium text-slate-500"
-    >
-      {children}
-    </label>
-  );
-}
-
-/** A section of the page: a heading, an optional sentence, and its content. */
-export function Section({
-  title,
-  description,
-  aside,
-  children,
-}: {
-  title: string;
-  description?: React.ReactNode;
-  aside?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <h2 className="font-heading text-[1.375rem] font-semibold tracking-[-0.02em] text-slate-950">
-          {title}
-        </h2>
-        {aside}
-      </div>
-      {description ? (
-        <p className="-mt-3 max-w-prose text-[0.9375rem] leading-6 text-slate-500">
-          {description}
-        </p>
-      ) : null}
-      {children}
-    </section>
-  );
-}
-
 /**
  * A row of mutually exclusive choices, as one floating pill.
  *
  * The lighter of the two selection shapes here, for a question whose answer only
  * changes what the host sees next — the big card choices are kept for answers that
  * change what a guest can do.
+ *
+ * `compact` is what lets three of these sit across a 23rem panel without the row
+ * deciding to scroll sideways: the same control, on the panel's own type scale.
  */
 export function PillChoice<T extends string>({
   label,
   value,
   options,
+  compact = false,
   onChange,
 }: {
   label: string;
   value: T;
   options: { value: T; label: string }[];
+  compact?: boolean;
   onChange: (value: T) => void;
 }) {
   return (
     <div
       role="group"
       aria-label={label}
-      className={cn("inline-flex w-full gap-1 rounded-full p-1 sm:w-auto", CARD)}
+      className={cn("flex w-full gap-1 rounded-full p-1", CARD)}
     >
       {options.map((option) => {
         const selected = value === option.value;
@@ -195,7 +167,8 @@ export function PillChoice<T extends string>({
             aria-pressed={selected}
             onClick={() => onChange(option.value)}
             className={cn(
-              "min-h-11 flex-1 rounded-full px-5 text-[0.9375rem] font-medium whitespace-nowrap transition-colors duration-150 motion-reduce:transition-none",
+              "min-h-11 min-w-0 flex-1 rounded-full font-medium whitespace-nowrap transition-colors duration-150 motion-reduce:transition-none",
+              compact ? "px-2 text-[0.8125rem]" : "px-5 text-[0.9375rem]",
               "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900",
               selected
                 ? "bg-slate-900 text-white"
@@ -215,6 +188,9 @@ export function PillChoice<T extends string>({
  *
  * A native radio underneath, kept `sr-only`, so arrow keys move between the answers and
  * the group is announced as one question — the card is the skin, never the mechanism.
+ *
+ * Sized for the panel it now lives in: the two answers stack in a 23rem column, so the
+ * padding and the type each came down a step.
  */
 export function ChoiceCard({
   name,
@@ -238,7 +214,7 @@ export function ChoiceCard({
     <div
       className={cn(
         CARD_PRESSABLE,
-        "focus-within:ring-2 focus-within:ring-slate-900/30",
+        "rounded-xl focus-within:ring-2 focus-within:ring-slate-900/30",
         checked && CARD_SELECTED,
       )}
     >
@@ -251,7 +227,7 @@ export function ChoiceCard({
         onChange={() => onSelect(value)}
         className="sr-only"
       />
-      <label htmlFor={id} className="flex cursor-pointer items-start gap-3 p-5">
+      <label htmlFor={id} className="flex cursor-pointer items-start gap-2.5 p-3">
         {icon ? (
           <span
             className={cn(
@@ -264,10 +240,10 @@ export function ChoiceCard({
           </span>
         ) : null}
         <span className="min-w-0">
-          <span className="block font-heading text-[1.0625rem] font-semibold text-slate-950">
+          <span className="block text-[0.875rem] font-semibold text-slate-950">
             {title}
           </span>
-          <span className="mt-1 block text-[0.875rem] leading-5 text-slate-500">
+          <span className="mt-0.5 block text-[0.75rem] leading-4 text-slate-500">
             {hint}
           </span>
         </span>

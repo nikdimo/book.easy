@@ -12,6 +12,24 @@ export type ListingCardSerialized = {
   bedrooms: number;
   bathrooms: number;
   spaceType: "ENTIRE_PLACE" | "PRIVATE_ROOM" | "SHARED_ROOM" | "HOTEL_ROOM";
+  /**
+   * How this listing sells its dates.
+   *
+   * Anything but FIXED_STAYS is the calendar every listing has always had. A fixed-stay
+   * card states that only the host's whole stays can be booked, and never prints a
+   * minimum-night rule — that rule governs ranges a guest may pick, and there are none.
+   */
+  bookingMode: "FLEXIBLE" | "FIXED_STAYS";
+  /**
+   * On a dated search, the fixed stay this listing matched *exactly*.
+   *
+   * Null on every flexible card and on every undated one. It exists so the card and its
+   * map pin can link to the stay the guest searched for rather than to a listing page
+   * that would have to re-derive it from dates it is told to ignore. The id alone is not
+   * a selection: the listing page re-checks it against its own projection before
+   * preselecting anything.
+   */
+  matchedFixedStayPeriodId: string | null;
   property: {
     city: string;
     area?: string | null;
@@ -79,6 +97,7 @@ export const listingCardSelect = {
   bedrooms: true,
   bathrooms: true,
   spaceType: true,
+  bookingMode: true,
   property: {
     select: {
       city: true,
@@ -123,6 +142,7 @@ export function serializeListingCard(
   videoUrl?: string | null,
   priceOverrides: { date: string; rate: number }[] = [],
   nightlyRange: { min: number; max: number } | null = null,
+  matchedFixedStayPeriodId: string | null = null,
 ): ListingCardSerialized {
   return {
     id: listing.id,
@@ -133,6 +153,10 @@ export function serializeListingCard(
     bedrooms: listing.bedrooms,
     bathrooms: listing.bathrooms,
     spaceType: listing.spaceType,
+    bookingMode: listing.bookingMode,
+    // Only ever set by a dated search that proved the match. Defaulted to null so every
+    // other caller — the home page, favourites, the carousels — is unchanged.
+    matchedFixedStayPeriodId,
     property: {
       city: listing.property.city,
       area: listing.property.area,

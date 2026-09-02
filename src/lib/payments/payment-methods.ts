@@ -74,8 +74,8 @@ export function paymentMethodSourceLabel(
 ): string {
   switch (code) {
     case "CASH_AT_PROPERTY": return "Cash at the property";
-    case "BANK_TRANSFER_LOCAL_SEPA": return "Local or SEPA bank transfer";
-    case "BANK_TRANSFER_INTERNATIONAL": return "International bank transfer";
+    case "BANK_TRANSFER_LOCAL_SEPA": return "Bank transfer (local or Europe)";
+    case "BANK_TRANSFER_INTERNATIONAL": return "Bank transfer (other countries)";
     case "PAYPAL": return "PayPal";
     case "REVOLUT": return "Revolut";
     case "WISE": return "Wise";

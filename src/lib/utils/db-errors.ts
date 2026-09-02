@@ -8,3 +8,22 @@ const OVERLAP_CONSTRAINT_NAME = "availability_block_no_overlap";
 export function isAvailabilityOverlapConstraintError(error: unknown): boolean {
   return error instanceof Error && error.message.includes(OVERLAP_CONSTRAINT_NAME);
 }
+
+/**
+ * True if `error` is Prisma's unique-constraint violation (P2002).
+ *
+ * Read off the error's own `code` rather than by importing `Prisma` — this module is
+ * imported by pure and server code alike, and matching the documented code keeps it
+ * dependency-free in the same way the check above does.
+ *
+ * Used where a unique index is a *rule*, not a bug: two hosts adding the same fixed stay
+ * at once, or a Quick setup run racing itself. The database refusing the second write is
+ * the correct outcome, and the caller turns it into "already offered" rather than a 500.
+ */
+export function isUniqueConstraintError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { code?: unknown }).code === "P2002"
+  );
+}

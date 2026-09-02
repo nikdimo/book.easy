@@ -245,7 +245,17 @@ describe("the drawer's dialog behaviour", () => {
 
   it("dismisses on Escape and on a press that starts and ends on the scrim", () => {
     expect(source).toContain('event.key === "Escape"');
-    expect(source).toContain("if (event.target === event.currentTarget) onClose();");
+    expect(source).toContain(
+      "if (event.target === event.currentTarget) onCloseRef.current();",
+    );
+  });
+
+  it("does not re-run its focus trap when the parent re-renders", () => {
+    // The trap's teardown returns focus to the trigger. Depending on the caller's
+    // inline `onClose` made every keystroke in a field tear it down and set it up
+    // again, which threw focus out of the field after one character.
+    expect(source).toContain("const onCloseRef = useRef(onClose);");
+    expect(source).toContain("}, [open]);");
   });
 
   it("traps Tab inside the panel in both directions", () => {

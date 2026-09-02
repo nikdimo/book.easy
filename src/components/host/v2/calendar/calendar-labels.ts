@@ -202,6 +202,11 @@ export function stayBookabilityReason(
               ),
               {},
             );
+    case "NOT_FIXED_STAY":
+      return i18n.resolve(
+        "host.v2.calendar.stay.reason_fixed_exact",
+        "These dates are not one complete fixed stay. Guests can only book an exact stay from the list.",
+      );
     case "BELOW_MINIMUM":
       return interpolate(
         i18n.plural(
@@ -513,6 +518,11 @@ export function workbenchEditorLabel(
       return i18n.resolve("host.v2.calendar.menu.price", "Nightly price");
     case "promotions":
       return i18n.resolve("host.v2.calendar.menu.promotion", "Promotion");
+    case "booking-method":
+      return i18n.resolve(
+        "host.v2.calendar.menu.booking_method",
+        "Booking method",
+      );
   }
 }
 
