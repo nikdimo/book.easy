@@ -522,6 +522,7 @@ export function BookingWidget({
    *  a textarea in the way of the total does not say so. */
   const [noteOpen, setNoteOpen] = useState(false);
   const noteRef = useRef<HTMLTextAreaElement>(null);
+  const pickerReturnFocusRef = useRef<HTMLElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   /**
    * Whether the card is showing its price breakdown in place of the summary.
@@ -1107,6 +1108,10 @@ export function BookingWidget({
   }
 
   function openPicker(step: PickerStep) {
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLElement && activeElement !== document.body) {
+      pickerReturnFocusRef.current = activeElement;
+    }
     setPickerStep(step);
     // Opening straight at guests counts as the confirmation the sticky button
     // was waiting for; the picker's own onStepChange covers the dates → guests path.
@@ -1494,6 +1499,15 @@ export function BookingWidget({
               checkOut={checkOutStr}
               open={datePickerOpen}
               onOpenChange={(next) => {
+                if (next) {
+                  const activeElement = document.activeElement;
+                  if (
+                    activeElement instanceof HTMLElement &&
+                    activeElement !== document.body
+                  ) {
+                    pickerReturnFocusRef.current = activeElement;
+                  }
+                }
                 setDatePickerOpen(next);
                 // Otherwise the next open from a date field would land on the
                 // step this one was left on.
@@ -1501,6 +1515,9 @@ export function BookingWidget({
                   setPickerStep("dates");
                   setNoteOpen(false);
                   setReviewPriceOpen(false);
+                  const returnFocusTo = pickerReturnFocusRef.current;
+                  pickerReturnFocusRef.current = null;
+                  requestAnimationFrame(() => returnFocusTo?.focus());
                 }
               }}
               initialSegment={checkInStr && !checkOutStr ? "checkout" : "checkin"}
