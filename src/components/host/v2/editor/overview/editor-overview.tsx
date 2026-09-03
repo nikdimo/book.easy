@@ -187,6 +187,7 @@ export function EditorOverview({
   const attention = editorAttentionItems({
     completeSections: overview.completeSections,
     hasPricing: overview.nightlyRate !== null,
+    bookingRulesReady: overview.bookingRulesReady,
     streetViewSet: overview.streetViewSet,
   });
 

@@ -7,6 +7,7 @@ import { getT } from "@/lib/i18n/t";
 import { EditorFrame } from "@/components/host/v2/editor/editor-frame";
 import { AvailabilitySummary } from "@/components/host/v2/editor/availability-summary";
 import { AvailabilityDefaultEditor } from "@/components/host/v2/editor/availability-default-editor";
+import { BookingRulesEditor } from "@/components/host/v2/editor/booking-rules-editor";
 
 /**
  * Availability: the listing's default here, particular dates on the calendar.
@@ -51,6 +52,7 @@ export default async function AvailabilityPage({
       <AvailabilitySummary
         overview={overview}
         defaultsEditor={<AvailabilityDefaultEditor context={context} />}
+        bookingRulesEditor={<BookingRulesEditor context={context} />}
         t={t}
       />
     </EditorFrame>

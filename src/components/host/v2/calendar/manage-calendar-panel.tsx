@@ -53,7 +53,7 @@ import type { AvailabilityDirection } from "@/lib/host/v2/calendar-availability-
 import { ScheduledChanges } from "./scheduled-changes";
 import { ConnectedCalendars } from "./connected-calendars";
 import { QuietRow, SummaryRow } from "./workbench-ui";
-import { BookingMethodEditor } from "./booking-method-editor";
+import { BookingRulesSummary } from "./booking-method-editor";
 import {
   availabilitySummaryWord,
   intentPromptLabel,
@@ -68,6 +68,17 @@ import {
  * and every editor under it put the same box in the same place and only the words
  * inside change.
  */
+/** English sources for the seven days; the catalog carries the translations. */
+const WEEKDAY_SUMMARY_SOURCE: Record<string, string> = {
+  MONDAY: "Monday",
+  TUESDAY: "Tuesday",
+  WEDNESDAY: "Wednesday",
+  THURSDAY: "Thursday",
+  FRIDAY: "Friday",
+  SATURDAY: "Saturday",
+  SUNDAY: "Sunday",
+};
+
 const BAND_CLASS =
   "mx-1 mb-2 flex items-center gap-2 rounded-[0.625rem] border px-3 py-2.5";
 
@@ -341,25 +352,31 @@ export function ManageCalendarPanel({
           ).text,
         };
       }
-      // Offered means what a guest could actually be shown: a switched-off stay and one
-      // that has gone by are not options with a reason attached, they are not options.
-      const offered = listing.fixedStayPeriods.filter(
-        (period) => period.state !== "PAST" && period.state !== "DISABLED",
-      ).length;
+      // The day the weeks turn over, which is the whole of what a host set. No day
+      // chosen is the one state worth flagging: the listing is live and bookable by
+      // nobody until the host picks one.
+      const weekly = i18n.resolve(
+        "host.v2.calendar.booking_method.weekly",
+        "Weekly stays",
+      ).text;
+      if (!listing.changeoverWeekday) {
+        return {
+          text: `${weekly} · ${
+            i18n.resolve(
+              "host.v2.calendar.changeover.none_short",
+              "no changeover day",
+            ).text
+          }`,
+          attention: true,
+        };
+      }
       return {
-        text: `${
-          i18n.resolve("host.v2.calendar.booking_method.fixed", "Fixed stays").text
-        } · ${
-          i18n.plural(
-            "host.v2.calendar.fixed_stays.offered",
-            offered,
-            "{n} offered",
-            "{n} offered",
+        text: `${weekly} · ${
+          i18n.resolve(
+            "host.v2.calendar.weekday." + listing.changeoverWeekday.toLowerCase(),
+            WEEKDAY_SUMMARY_SOURCE[listing.changeoverWeekday],
           ).text
         }`,
-        // Nothing on sale is the one state worth flagging: the listing is live and
-        // bookable by nobody.
-        attention: offered === 0,
       };
     }
     if (candidate === "promotions" && selection) {
@@ -693,13 +710,10 @@ export function ManageCalendarPanel({
             sellsFixedStays={listing.bookingMode === "FIXED_STAYS"}
           />
         ) : editor === "booking-method" ? (
-          // The one editor that needs no selection. Keyed on the listing so switching
-          // property closes over the new one's stays rather than the previous one's.
-          <BookingMethodEditor
-            key={listing.id}
-            listing={listing}
-            today={today}
-          />
+          // Not an editor any more: booking style, stay limits and the changeover day
+          // are edited on Availability, and this states them so the host can read the
+          // grid beside it. Keyed on the listing so switching property re-reads.
+          <BookingRulesSummary key={listing.id} listing={listing} />
         ) : editor && scope === "DATES" && selection ? (
           <>
             {/* The same band as the menu, on every screen the menu leads to. A host

@@ -24,14 +24,23 @@ export const createBookingSchema = z
      * request chose, and a field-level `required` cannot see the other fields. The
      * either/or itself is enforced by the refinement below, before any date rule runs.
      */
-    checkIn: z.string().refine(isValidYmd, "Invalid date format").optional(),
-    checkOut: z.string().refine(isValidYmd, "Invalid date format").optional(),
+    checkIn: z.string().refine(isValidYmd, "Invalid date format"),
+    checkOut: z.string().refine(isValidYmd, "Invalid date format"),
     /**
-     * One of the whole stays the host offers. Carries no dates and no length: what the
-     * period *is* is read from the database inside the booking transaction, so a
-     * request cannot name a stay and then describe it differently.
+     * Refused, not accepted.
+     *
+     * Weekly stays used to be booked by naming one of the host's stored stay rows. They
+     * are a rule about weekdays and length now, so every booking — in either mode — is an
+     * ordinary pair of dates. A request still carrying a period id is a stale page or
+     * someone probing the old shape, and it is rejected rather than half-honoured.
+     * `Booking.fixedStayPeriodId` remains in the schema for the bookings already sold
+     * that way.
      */
-    fixedStayPeriodId: z.string().min(1).optional(),
+    fixedStayPeriodId: z
+      .undefined({
+        error: "This place now takes bookings by date. Reload the page and choose your dates.",
+      })
+      .optional(),
     /**
      * The party, as four separate numbers.
      *
@@ -73,15 +82,15 @@ export const createBookingSchema = z
     message: `Maximum ${BOOKING_PARTY_COUNT_MAX} guests allowed`,
     path: ["adults"],
   })
-  // The either/or, before either date rule below: a request that has not said what it is
-  // booking has no dates worth measuring, and one that sent a period *and* a date must
-  // not have the date quietly validated as though it counted.
+  // Every booking names two dates again, in both modes. What differs between a flexible
+  // and a weekly listing is which pairs it accepts — checked on the server against the
+  // listing's changeover day and stay limits — not what a request is made of.
   .superRefine((data, ctx) => {
     const classification = classifyBookingStayRequest(data);
     if ("issue" in classification) {
       ctx.addIssue({
         code: "custom",
-        path: classification.issue === "MIXED_SELECTION" ? ["fixedStayPeriodId"] : ["checkIn"],
+        path: ["checkIn"],
         message: bookingStayRequestIssueMessage(classification.issue),
       });
     }
@@ -90,21 +99,14 @@ export const createBookingSchema = z
   // process's clock, so a container in UTC refused a stay starting today for the first
   // two hours of every Skopje morning — while the browser's date picker, which follows
   // the same shared rule this now does, was still offering it (M6).
-  .refine(
-    (data) => !data.checkIn || compareYmd(data.checkIn, todayYmd()) >= 0,
-    {
-      message: "Check-in date cannot be in the past",
-      path: ["checkIn"],
-    },
-  )
-  .refine(
-    (data) =>
-      !data.checkIn || !data.checkOut || compareYmd(data.checkOut, data.checkIn) > 0,
-    {
-      message: "Check-out date must be after check-in date",
-      path: ["checkOut"],
-    },
-  );
+  .refine((data) => compareYmd(data.checkIn, todayYmd()) >= 0, {
+    message: "Check-in date cannot be in the past",
+    path: ["checkIn"],
+  })
+  .refine((data) => compareYmd(data.checkOut, data.checkIn) > 0, {
+    message: "Check-out date must be after check-in date",
+    path: ["checkOut"],
+  });
 
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
 

@@ -450,6 +450,7 @@ export function StepperColumn({
   value,
   min = 1,
   max,
+  editable = false,
   disabled,
   decrementLabel,
   incrementLabel,
@@ -460,6 +461,8 @@ export function StepperColumn({
   value: number;
   min?: number;
   max?: number;
+  /** Lets large ranges be typed directly instead of requiring hundreds of taps. */
+  editable?: boolean;
   disabled?: boolean;
   decrementLabel: string;
   incrementLabel: string;
@@ -478,12 +481,33 @@ export function StepperColumn({
         >
           <Minus className="size-4" aria-hidden />
         </StepperButton>
-        <span
-          aria-live="polite"
-          className="min-w-8 text-center text-[1.5rem] font-semibold tabular-nums text-slate-900"
-        >
-          {value}
-        </span>
+        {editable ? (
+          <input
+            type="number"
+            inputMode="numeric"
+            aria-label={label}
+            min={min}
+            max={max}
+            value={value}
+            disabled={disabled}
+            onFocus={(event) => event.currentTarget.select()}
+            onChange={(event) => {
+              const next = event.currentTarget.valueAsNumber;
+              if (!Number.isInteger(next)) return;
+              onChange(
+                Math.min(max ?? Number.POSITIVE_INFINITY, Math.max(min, next)),
+              );
+            }}
+            className="h-10 w-16 rounded-lg border border-slate-200 bg-white px-1 text-center text-[1.25rem] font-semibold tabular-nums text-slate-900 outline-none focus-visible:border-slate-900 focus-visible:ring-2 focus-visible:ring-slate-900/15 disabled:bg-slate-50 disabled:opacity-50"
+          />
+        ) : (
+          <span
+            aria-live="polite"
+            className="min-w-8 text-center text-[1.5rem] font-semibold tabular-nums text-slate-900"
+          >
+            {value}
+          </span>
+        )}
         <StepperButton
           label={incrementLabel}
           disabled={disabled || (max !== undefined && value >= max)}

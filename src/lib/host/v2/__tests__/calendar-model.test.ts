@@ -99,6 +99,40 @@ describe("resolveDay", () => {
     expect(resolveDay(listing, index, "2026-04-10", TODAY).state).toBe("blocked");
   });
 
+  it("applies closed-by-default windows to weekly listings too", () => {
+    const listing = makeListing({
+      bookingMode: "FIXED_STAYS",
+      changeoverWeekday: "SATURDAY",
+      availabilityMode: "CLOSED",
+      availabilityWindows: [
+        { id: "w1", startDate: "2026-04-01", endDate: "2026-04-10" },
+      ],
+    });
+    const index = buildListingCalendarIndex(listing);
+
+    expect(resolveDay(listing, index, "2026-03-20", TODAY)).toMatchObject({
+      state: "blocked",
+      reason: "closed_default",
+      editable: true,
+    });
+    expect(resolveDay(listing, index, "2026-04-05", TODAY).state).toBe("available");
+  });
+
+  it("fails a weekly listing closed until its changeover day is configured", () => {
+    const listing = makeListing({
+      bookingMode: "FIXED_STAYS",
+      changeoverWeekday: null,
+      availabilityMode: "OPEN",
+    });
+    const index = buildListingCalendarIndex(listing);
+
+    expect(resolveDay(listing, index, "2026-04-05", TODAY)).toMatchObject({
+      state: "blocked",
+      reason: "outside_fixed_stay",
+      editable: false,
+    });
+  });
+
   it("lets a manual block override an open window, as the booking path does", () => {
     const listing = makeListing({
       availabilityMode: "CLOSED",

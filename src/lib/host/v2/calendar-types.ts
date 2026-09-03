@@ -13,6 +13,7 @@ import type { CalendarPlatform } from "./calendar-feed-platform";
  */
 
 import type { CalendarFormats } from "@/lib/host/v2/calendar-format";
+import type { ChangeoverWeekdayName } from "@/lib/utils/weekly-stay";
 
 export type HostCalendarBlockType =
   | "MANUAL_BLOCK"
@@ -82,29 +83,6 @@ export interface HostCalendarPricing {
   maxNights: number;
 }
 
-/**
- * One stay the host offers, as the calendar needs it.
- *
- * The state and the manageability are derived on the server by the same projection the
- * rest of the product reads (`projectHostFixedStayPeriods`), so the panel cannot invent a
- * fifth state or disagree about which rows a host may still touch. Deliberately narrower
- * than the host projection: no `blockedBy`, because the editor never says *why* a stay's
- * nights are taken — that is the calendar grid's job, and a guest's name has no business
- * in a settings panel.
- */
-export interface HostCalendarFixedStay {
-  id: string;
-  /** `YYYY-MM-DD`. */
-  checkIn: string;
-  /** `YYYY-MM-DD`, exclusive. */
-  checkOut: string;
-  /** Derived from the dates; 7 or 14 for every stay this product can create. */
-  nights: number;
-  state: "PAST" | "DISABLED" | "BOOKED" | "DATES_TAKEN" | "AVAILABLE";
-  /** False for booked and past stays, which no host action may change. */
-  manageable: boolean;
-}
-
 export interface HostCalendarListing {
   id: string;
   title: string;
@@ -114,11 +92,17 @@ export interface HostCalendarListing {
   /**
    * How the listing sells its dates.
    *
-   * FIXED_STAYS makes `fixedStayPeriods` the only thing that opens a night, and makes
-   * `availabilityMode`, the windows and the stay-length rule stored-but-unread — the
-   * same split every other surface applies.
+   * FIXED_STAYS is Weekly stays everywhere a person can read it. Availability still
+   * decides which nights open; the changeover day decides how guests may combine them.
+   * Minimum and maximum stay apply in both modes.
    */
   bookingMode: "FLEXIBLE" | "FIXED_STAYS";
+  /**
+   * The weekday a weekly listing's guests arrive and leave on, or null when its host has
+   * not chosen one. Null fails closed: nothing is bookable until a day is picked. Carried
+   * in both modes, so switching away and back restores the day the host had.
+   */
+  changeoverWeekday: ChangeoverWeekdayName | null;
   photoUrl: string | null;
   photoAlt: string | null;
   city: string | null;
@@ -132,14 +116,6 @@ export interface HostCalendarListing {
   blocks: HostCalendarBlock[];
   availabilityWindows: HostCalendarWindow[];
   promotions: HostCalendarPromotion[];
-  /**
-   * Every whole stay this listing owns, including locked past rows kept for history.
-   *
-   * Loaded in both modes, because a listing that switched back to flexible still owns
-   * them and switching forward again must restore exactly what the host built. Empty for
-   * a listing that has never sold this way.
-   */
-  fixedStayPeriods: HostCalendarFixedStay[];
   nextReservation: HostCalendarReservation | null;
 }
 

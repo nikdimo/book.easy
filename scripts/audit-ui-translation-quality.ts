@@ -12,8 +12,19 @@ const CYRILLIC_LOCALES = new Set(["mk", "sr", "bg", "uk", "ru"]);
 // still being rendered to the customer as raw syntax.
 const UNSUPPORTED_MESSAGE_FORMAT_RE =
   /\{[A-Za-z][A-Za-z0-9_]*\s*,\s*(?:plural|select|selectordinal)\b/i;
+/** Latin that is expected inside a Cyrillic locale: brand names, device and
+ * platform names, file formats, banking codes and keyboard shortcuts are spelled
+ * the same in every language, so transliterating them would be the bug.
+ *
+ * A bare domain such as "facebook.com/groups/…" is matched before the brand
+ * alternatives so its path does not leak through as stray Latin, and the
+ * shortcut form keeps its key ("Ctrl+V") rather than leaving the "V" behind.
+ *
+ * Kept deliberately in step with PROTECTED_TOKEN_RE in
+ * scripts/normalize-serbian-script.ts, which decides whether the same text is
+ * transliterated in the first place. */
 const ALLOWED_LATIN =
-  /lingerhomes\.com|Linger Homes|Airbnb|Booking(?:\.com)?|Vrbo|Facebook|Google|Maps|Street View|API|HTTPS?|EUR|Alt\+T|SMS|URL|Wi-?Fi|JPEG|JPG|PNG|WebP|HEIC|PDF|JSON|MP4|MOV|WebM|MB|push|X{1,3}|CVV|PIN|Ctrl|SEPA|IBAN|SWIFT|BIC|Bitcoin|Lightning|on-chain|seed|MobilePay|PayPal|Revolut|Revtag|Wise|e-?mail|cookie/gi;
+  /[A-Za-z0-9-]+\.(?:com|net|org|io|mk|eu)(?:\/[^\s]*)?|lingerhomes\.com|Linger Homes|Airbnb|Booking(?:\.com)?|Vrbo|Facebook|Messenger|Instagram|WhatsApp|Telegram|Viber|Google|Maps|Street View|iPhone|iPad|Android|API|HTTPS?|EUR|USD|GBP|Alt\+T|SMS|URL|Wi-?Fi|JPEG|JPG|PNG|WebP|HEIC|PDF|JSON|MP4|MOV|WebM|MB|GB|push|X{1,3}|CVV|PIN|Ctrl(?:\+[A-Za-z0-9]+)?|SEPA|IBAN|SWIFT|BIC|Bitcoin|Lightning|on-chain|seed|MobilePay|PayPal|Revolut|Revtag|Wise|e-?mail|cookie/gi;
 
 async function main() {
   const rows = await db.uiTranslation.findMany({

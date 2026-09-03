@@ -4,22 +4,20 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import {
-  addFixedStayPeriodForManagedListing,
-  confirmFixedStayQuickSetupForManagedListing,
-  deleteFixedStayPeriodForManagedListing,
-  previewFixedStayQuickSetupForManagedListing,
   setBookingModeForManagedListing,
-  setFixedStayPeriodDisabledForManagedListing,
-  updateFixedStayPeriodForManagedListing,
+  setChangeoverWeekdayForManagedListing,
+  setStayLimitsForManagedListing,
   verifyFixedStayManager,
   type ManagedFixedStayListing,
 } from "@/lib/services/fixed-stay-mutation.service";
 import { revalidatePublicListingCaches } from "@/lib/utils/revalidate-public-listing-caches";
-import type { Weekday } from "@/lib/utils/date-only";
-import type { FixedStayNights } from "@/lib/utils/fixed-stay-periods";
+import {
+  CHANGEOVER_WEEKDAY_NAMES,
+  type ChangeoverWeekdayName,
+} from "@/lib/utils/weekly-stay";
 
 /**
- * The fixed-stay write surface the host Calendar will call in Phase 3.
+ * The weekly-booking write surface used by the host Calendar.
  *
  * Thin on purpose. Each entry point does four things and no more: prove there is a
  * session, prove this session may manage this listing, parse the untrusted payload into
@@ -27,47 +25,37 @@ import type { FixedStayNights } from "@/lib/utils/fixed-stay-periods";
  * that were showing the old answer. Every product rule lives in the service, where it can
  * be re-checked inside the transaction that writes.
  *
- * Two things are deliberately *not* accepted from a client, anywhere in this file:
- *
- * - **A checkout date.** Add and edit take a check-in and a length; the checkout is
- *   derived on the server. A client that could send its own checkout could send a stay of
- *   any length past every rule that exists.
- * - **A list of generated periods.** Quick setup's confirm takes the same four answers
- *   the preview took and regenerates the rows itself, so an approved preview and a
- *   written season come from one function rather than from the browser's copy of one.
- *
- * There is no price parameter, and nothing here returns one: a fixed stay has no price of
- * its own, and Phase 2 does not quote.
+ * No package dates or package prices are accepted. Weekly mode is a listing-wide rule:
+ * booking mode, one changeover weekday, and the existing minimum/maximum stay.
  *
  * No UI strings are registered from this file — Phase 3 owns what the host reads.
  */
 
 const listingIdSchema = z.string().min(1);
-const ymdSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a valid date.");
-const nightsSchema = z.union([z.literal(7), z.literal(14)]);
-const periodIdSchema = z.string().min(1);
 
 const bookingModeSchema = z.union([
   z.literal("FLEXIBLE"),
   z.literal("FIXED_STAYS"),
 ]);
 
-const periodInputSchema = z.object({
-  checkIn: ymdSchema,
-  nights: nightsSchema,
-});
+/** One of the seven stored day names, and nothing else. */
+const changeoverSchema = z.enum(
+  CHANGEOVER_WEEKDAY_NAMES as unknown as [string, ...string[]],
+);
 
-const updatePeriodInputSchema = periodInputSchema.extend({
-  periodId: periodIdSchema,
-});
-
-const quickSetupSchema = z.object({
-  seasonStart: ymdSchema,
-  lastCheckOut: ymdSchema,
-  // 0–6, Sunday first, matching `weekdayOfYmd`. A value outside the week is a bad
-  // request, never a silently corrected one.
-  changeoverWeekday: z.number().int().min(0).max(6),
-  nights: z.array(nightsSchema).min(1).max(2),
+const stayLimitsSchema = z.object({
+  minNights: z.coerce
+    .number()
+    .int()
+    .min(1, "A minimum stay must be at least 1 night.")
+    .max(365),
+  // Zero is the stored spelling of "no maximum", which is how every other surface in the
+  // product already reads this column.
+  maxNights: z.coerce
+    .number()
+    .int()
+    .min(0, "A maximum stay must be at least 1 night.")
+    .max(365),
 });
 
 /**
@@ -107,8 +95,17 @@ async function managedListing(
  * guest-facing surface worth rebuilding.
  */
 function revalidateFixedStayPaths(listing: ManagedFixedStayListing): void {
+  // Both spellings of the editor routes, deliberately. `next.config` rewrites
+  // `/host/listings/:id/:section` onto `/host/v2/listings/:id/:section`, and
+  // `revalidatePath` matches the *destination* — the route file's own path — not the
+  // source the address bar shows. The `/host/listings/...` entries are what the rest of
+  // this codebase passes; the `/host/v2/...` ones are the paths that actually clear.
+  // Booking rules are read on the availability page, so this one has to land.
   revalidatePath(`/host/listings/${listing.id}/availability`);
   revalidatePath(`/host/listings/${listing.id}/pricing`);
+  revalidatePath(`/host/v2/listings/${listing.id}/availability`);
+  revalidatePath(`/host/v2/listings/${listing.id}/pricing`);
+  revalidatePath(`/host/v2/listings/${listing.id}`);
   revalidatePath(`/host/listings/${listing.id}`);
   revalidatePath("/host/calendar");
   revalidatePath("/host/listings");
@@ -120,7 +117,7 @@ function revalidateFixedStayPaths(listing: ManagedFixedStayListing): void {
 }
 
 /**
- * Switches the listing between flexible dates and fixed stays.
+ * Switches the listing between flexible dates and weekly stays.
  *
  * Only `Listing.bookingMode` changes. Availability windows, the minimum stay, prices,
  * promotions, blocks, bookings and every stored period survive the switch untouched, so
@@ -149,156 +146,58 @@ export async function setListingBookingMode(
   return result;
 }
 
-/** What a Quick setup run would produce. Reads only; nothing is written. */
-export async function previewFixedStayQuickSetup(
+/**
+ * Sets the day a weekly listing changes over on.
+ *
+ * The one weekly-specific setting there is. Everything else about how long a guest may
+ * stay is the listing's ordinary minimum and maximum, set below and shared with the
+ * flexible calendar.
+ */
+export async function setListingChangeoverWeekday(
   listingId: string,
-  input: {
-    seasonStart: string;
-    lastCheckOut: string;
-    changeoverWeekday: number;
-    nights: number[];
-  },
+  weekday: string | null,
 ) {
-  const parsed = quickSetupSchema.safeParse(input);
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Check the season dates." };
-  }
+  const parsed =
+    weekday === null ? { success: true as const, data: null } : changeoverSchema.safeParse(weekday);
+  if (!parsed.success) return { error: "Choose a changeover day." };
 
   const managed = await managedListing(listingId);
   if ("error" in managed) return { error: managed.error };
 
-  return previewFixedStayQuickSetupForManagedListing(managed.listing, {
-    seasonStart: parsed.data.seasonStart,
-    lastCheckOut: parsed.data.lastCheckOut,
-    changeoverWeekday: parsed.data.changeoverWeekday as Weekday,
-    nights: parsed.data.nights as FixedStayNights[],
-  });
+  const result = await setChangeoverWeekdayForManagedListing(
+    managed.listing,
+    managed.actorId,
+    parsed.data as ChangeoverWeekdayName | null,
+  );
+  if ("error" in result) return result;
+
+  revalidateFixedStayPaths(managed.listing);
+  return result;
 }
 
 /**
- * Applies a Quick setup run.
+ * Sets the listing's minimum and maximum stay.
  *
- * Takes the four answers, not the previewed rows: the server regenerates the season and
- * creates only the stays the listing does not already offer, so re-running the same setup
- * writes nothing and disturbs no existing period.
+ * One pair of numbers for both booking modes. On a flexible listing they bound any range
+ * a guest picks; on a weekly one they bound how many whole weeks are offered — which is
+ * how a host says "fortnights only" without a stay-length menu existing anywhere.
  */
-export async function confirmFixedStayQuickSetup(
+export async function setListingStayLimits(
   listingId: string,
-  input: {
-    seasonStart: string;
-    lastCheckOut: string;
-    changeoverWeekday: number;
-    nights: number[];
-  },
+  input: { minNights: number; maxNights: number },
 ) {
-  const parsed = quickSetupSchema.safeParse(input);
+  const parsed = stayLimitsSchema.safeParse(input);
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Check the season dates." };
+    return { error: parsed.error.issues[0]?.message ?? "Check the stay limits." };
   }
 
   const managed = await managedListing(listingId);
   if ("error" in managed) return { error: managed.error };
 
-  const result = await confirmFixedStayQuickSetupForManagedListing(
-    managed.listing,
-    managed.actorId,
-    {
-      seasonStart: parsed.data.seasonStart,
-      lastCheckOut: parsed.data.lastCheckOut,
-      changeoverWeekday: parsed.data.changeoverWeekday as Weekday,
-      nights: parsed.data.nights as FixedStayNights[],
-    },
-  );
-  if ("error" in result) return result;
-
-  revalidateFixedStayPaths(managed.listing);
-  return result;
-}
-
-/** Adds one stay. The checkout is derived from the check-in and the chosen length. */
-export async function addFixedStayPeriod(
-  listingId: string,
-  input: { checkIn: string; nights: number },
-) {
-  const parsed = periodInputSchema.safeParse(input);
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Check the stay dates." };
-  }
-
-  const managed = await managedListing(listingId);
-  if ("error" in managed) return { error: managed.error };
-
-  const result = await addFixedStayPeriodForManagedListing(
+  const result = await setStayLimitsForManagedListing(
     managed.listing,
     managed.actorId,
     parsed.data,
-  );
-  if ("error" in result) return result;
-
-  revalidateFixedStayPaths(managed.listing);
-  return result;
-}
-
-/** Moves one stay. The checkout is re-derived, never taken from the client. */
-export async function updateFixedStayPeriod(
-  listingId: string,
-  input: { periodId: string; checkIn: string; nights: number },
-) {
-  const parsed = updatePeriodInputSchema.safeParse(input);
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Check the stay dates." };
-  }
-
-  const managed = await managedListing(listingId);
-  if ("error" in managed) return { error: managed.error };
-
-  const result = await updateFixedStayPeriodForManagedListing(
-    managed.listing,
-    managed.actorId,
-    parsed.data,
-  );
-  if ("error" in result) return result;
-
-  revalidateFixedStayPaths(managed.listing);
-  return result;
-}
-
-/** Switches one stay off, or back on. The row and any booking that names it survive. */
-export async function setFixedStayPeriodEnabled(
-  listingId: string,
-  periodId: string,
-  enabled: boolean,
-) {
-  const parsedPeriodId = periodIdSchema.safeParse(periodId);
-  if (!parsedPeriodId.success) return { error: "Fixed stay not found." };
-  if (typeof enabled !== "boolean") return { error: "Choose on or off." };
-
-  const managed = await managedListing(listingId);
-  if ("error" in managed) return { error: managed.error };
-
-  const result = await setFixedStayPeriodDisabledForManagedListing(
-    managed.listing,
-    managed.actorId,
-    { periodId: parsedPeriodId.data, disabled: !enabled },
-  );
-  if ("error" in result) return result;
-
-  revalidateFixedStayPaths(managed.listing);
-  return result;
-}
-
-/** Removes one stay from the offer. Refused for a booked or already-started stay. */
-export async function deleteFixedStayPeriod(listingId: string, periodId: string) {
-  const parsedPeriodId = periodIdSchema.safeParse(periodId);
-  if (!parsedPeriodId.success) return { error: "Fixed stay not found." };
-
-  const managed = await managedListing(listingId);
-  if ("error" in managed) return { error: managed.error };
-
-  const result = await deleteFixedStayPeriodForManagedListing(
-    managed.listing,
-    managed.actorId,
-    parsedPeriodId.data,
   );
   if ("error" in result) return result;
 

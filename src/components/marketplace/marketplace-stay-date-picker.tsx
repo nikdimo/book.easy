@@ -206,7 +206,7 @@ type DragCtx = {
  * reached, which would otherwise let the guest start a stay they can never finish.
  */
 export type DayBlock = {
-  kind: "minimum-stay" | "too-short-gap";
+  kind: "minimum-stay" | "too-short-gap" | "weekly-changeover";
   message: Resolved;
 };
 
@@ -1112,6 +1112,8 @@ export function DateRangeCalendarStep({
   onRangeChange,
   onFromOnlySelected,
   disabledDateRanges = [],
+  changeoverWeekday,
+  changeoverMessage,
   dayMeta,
   dayVariant = "default",
   dateModifiers,
@@ -1134,6 +1136,18 @@ export function DateRangeCalendarStep({
   onRangeChange: (range: DateRange | undefined) => void;
   onFromOnlySelected?: () => void;
   disabledDateRanges?: { from: Date; to: Date }[];
+  /**
+   * The one weekday a weekly listing arrives and leaves on, 0-6 as `Date#getDay` counts.
+   *
+   * Set only by a weekly listing. Every other day is disabled at both ends of the
+   * selection, which — together with `minimumStayNights`/`maximumStayNights` — is the
+   * whole weekly rule expressed in the calendar a guest already knows. Same-weekday
+   * check-in and checkout *is* a whole number of weeks, so there is no second modulo test
+   * here to fall out of step with the server's.
+   */
+  changeoverWeekday?: number;
+  /** What a day says when it is refused for being the wrong weekday. */
+  changeoverMessage?: Resolved;
   dayMeta?: (date: Date) => MarketplaceDayMeta | undefined;
   dayVariant?: "default" | "availability" | "listing" | "booking";
   dateModifiers?: React.ComponentProps<typeof Calendar>["modifiers"];
@@ -1395,8 +1409,20 @@ export function DateRangeCalendarStep({
    * blocked; the dead-end rule would wrongly grey out days that are perfectly good
    * check-outs for the stay in progress. Between selections the reverse holds.
    */
+  const isWrongChangeoverDay = React.useCallback(
+    (date: Date) =>
+      changeoverWeekday !== undefined && date.getDay() !== changeoverWeekday,
+    [changeoverWeekday],
+  );
+
   const dayBlock = React.useCallback(
     (date: Date): DayBlock | undefined => {
+      // The weekly rule outranks the others: a Tuesday is not a short gap or a
+      // minimum-stay near miss, it is simply not a day this listing changes over on, and
+      // that is the only useful thing to say about it.
+      if (changeoverMessage && isWrongChangeoverDay(date)) {
+        return { kind: "weekly-changeover", message: changeoverMessage };
+      }
       if (minimumStayAnchor) {
         return minimumStayMessage && isMinimumStayRestricted(date)
           ? { kind: "minimum-stay", message: minimumStayMessage }
@@ -1407,6 +1433,8 @@ export function DateRangeCalendarStep({
         : undefined;
     },
     [
+      changeoverMessage,
+      isWrongChangeoverDay,
       isMinimumStayRestricted,
       isTooShortGap,
       minimumStayAnchor,
@@ -1811,7 +1839,10 @@ export function DateRangeCalendarStep({
       ? pluralText(labels.night, summaryNightCount, labels.locale)
       : undefined;
   const disabledMatcher = React.useMemo(
-    () => [{ before: startOfToday() }, ...effectiveDisabledRanges],
+    () => [
+      { before: startOfToday() },
+      ...effectiveDisabledRanges,
+    ],
     [effectiveDisabledRanges],
   );
 
@@ -2194,6 +2225,8 @@ export function MarketplaceStayDatePicker({
   dateDialogDescription,
   hideDateSegmentCards = false,
   disabledDateRanges = [],
+  changeoverWeekday,
+  changeoverMessage,
   dayMeta,
   priceNote,
   dayVariant = "default",
@@ -2319,6 +2352,18 @@ export function MarketplaceStayDatePicker({
    * Absent everywhere but the fixed-stay booking widget; the search pill never sets it.
    */
   renderDatesStep?: (controls: { close: () => void }) => React.ReactNode;
+  /**
+   * The one weekday a weekly listing arrives and leaves on, 0-6 as `Date#getDay` counts.
+   *
+   * Set only by a weekly listing. Every other day is disabled at both ends of the
+   * selection, which — together with `minimumStayNights`/`maximumStayNights` — is the
+   * whole weekly rule expressed in the calendar a guest already knows. Same-weekday
+   * check-in and checkout *is* a whole number of weeks, so there is no second modulo test
+   * here to fall out of step with the server's.
+   */
+  changeoverWeekday?: number;
+  /** What a day says when it is refused for being the wrong weekday. */
+  changeoverMessage?: Resolved;
   /** Overrides the compact trigger's category (normally "When"). */
   selectionCategoryLabel?: Resolved;
   /** Overrides the compact trigger's empty prompt (normally "Choose dates"). */
@@ -3196,6 +3241,8 @@ export function MarketplaceStayDatePicker({
                 ) : null}
 
                 <DateRangeCalendarStep
+                  changeoverWeekday={changeoverWeekday}
+                  changeoverMessage={changeoverMessage}
                   active={open && step === "dates"}
                   selected={selectedRange}
                   onRangeChange={commitRange}

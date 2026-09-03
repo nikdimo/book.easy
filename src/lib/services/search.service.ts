@@ -42,9 +42,10 @@ import {
 } from "@/lib/utils/availability-windows";
 import { getNightlyRateRangesForListings } from "@/lib/services/pricing.service";
 import {
-  fixedStayExactMatchFilter,
-  getMatchedFixedStayPeriodIds,
-} from "@/lib/services/fixed-stay.service";
+  changeoverWeekdayName,
+  NIGHTS_PER_WEEK,
+} from "@/lib/utils/weekly-stay";
+import { weekdayOfYmd } from "@/lib/utils/date-only";
 import { getExchangeRates } from "@/lib/currency/rates";
 import {
   BASE_CURRENCY,
@@ -221,11 +222,8 @@ async function buildListingWhere(
   // the comparison is not a number (it needs one exchange-rate snapshot shared by every
   // listing in the search). What is left here is the stay-length rule, which really is
   // a column comparison.
-  // The host's stay-length rule, as a column comparison — built here and applied only
-  // to the flexible arm below, never to a fixed-stay listing. A fixed stay's length was
-  // chosen by the host when they put it on sale, and `createBooking` skips the minimum
-  // and the maximum for exactly that reason; measuring it here would hide the very stay
-  // the host is offering, usually against a minimum left over from selling by the night.
+  // The host's listing-wide stay-length rule, as a column comparison. Both flexible and
+  // weekly arms apply it; weekly mode then adds the whole-week/changeover-day constraint.
   const stayLengthRule: Prisma.ListingWhereInput | null =
     requestedNights != null && requestedNights > 0
       ? {
@@ -254,19 +252,8 @@ async function buildListingWhere(
   // Closed-by-default listings are useful only to guests searching dates the host
   // explicitly opened. Keep them out of undated discovery and the home page.
   //
-  // A fixed-stay listing is exempt, because `availabilityMode` says nothing about it:
-  // what it sells is its list of whole stays, and its windows are stored-but-unread
-  // settings left over from however it sold before. Hiding it from undated discovery on
-  // the strength of a column nothing reads would make it findable only by guests who
-  // already knew its exact dates. It stays visible even when every stay is taken, which
-  // is exactly what its own public page does.
   if (!hasStayDates) {
-    andClauses.push({
-      OR: [
-        { bookingMode: FIXED_STAYS_MODE },
-        { availabilityMode: "OPEN" },
-      ],
-    });
+    andClauses.push({ availabilityMode: "OPEN" });
   }
 
   if (filters.amenities && filters.amenities.length > 0) {
@@ -323,26 +310,22 @@ async function buildListingWhere(
 
     // How a listing may satisfy these dates, which is a different question in each mode.
     //
-    // A FLEXIBLE listing offers whatever its windows cover and its stay-length rule
-    // permits — unchanged, down to the query it runs.
-    //
-    // A FIXED_STAYS listing offers the exact stays its host put on sale, and nothing
-    // else. Not a shorter range inside one, not a longer one spanning two, not two
-    // back-to-back weeks joined into a fortnight, and not a range that merely overlaps.
-    // Its windows and its stay-length settings are stored and unread, so neither is
-    // asked of it here — asking would refuse stays the host is deliberately offering.
+    // Availability and stay limits are listing-wide. Weekly mode adds one more rule:
+    // both ends must be the configured changeover weekday and the duration whole weeks.
+    const closedListingIds = await closedListingIdsOpenForStay(
+      stay.checkIn,
+      stay.checkOut,
+    );
+    const availabilityRule: Prisma.ListingWhereInput = {
+      OR: [
+        { availabilityMode: "OPEN" },
+        { availabilityMode: "CLOSED", id: { in: closedListingIds } },
+      ],
+    };
     const flexibleArm: Prisma.ListingWhereInput = {
       bookingMode: { not: FIXED_STAYS_MODE },
       ...(stayLengthRule ?? {}),
-      OR: [
-        { availabilityMode: "OPEN" },
-        {
-          availabilityMode: "CLOSED",
-          // Resolved against the shared rule rather than asked of one window at a
-          // time — see closedListingIdsOpenForStay for why this leg cannot stay in SQL.
-          id: { in: await closedListingIdsOpenForStay(stay.checkIn, stay.checkOut) },
-        },
-      ],
+      AND: [availabilityRule],
     };
 
     // A stay whose check-in has already gone by is not one anybody can take, whatever
@@ -350,16 +333,38 @@ async function buildListingWhere(
     // The requested date *is* the period's date under exact matching, so this is decided
     // once here rather than asked of every row.
     const staysInThePast = compareYmd(filters.checkIn!, todayYmd()) < 0;
-    const fixedArm: Prisma.ListingWhereInput = staysInThePast
-      ? { bookingMode: FIXED_STAYS_MODE, ...MATCHES_NOTHING }
-      : {
-          bookingMode: FIXED_STAYS_MODE,
-          fixedStayPeriods: {
-            some: fixedStayExactMatchFilter(stay.checkIn, stay.checkOut),
-          },
-        };
+    // The weekly rule, entirely in SQL and with no per-listing work.
+    //
+    // The requested range already fixes three of the four conditions for every listing at
+    // once: it has one check-in weekday, one checkout weekday and one night count. So a
+    // weekly listing matches exactly when its stored changeover day *is* that weekday and
+    // its own stay limits admit that many nights. When the range is not whole weeks — or
+    // its two ends fall on different weekdays — no weekly listing can match at all, and
+    // the arm collapses rather than running a query whose answer is known.
+    //
+    // A null changeover day never matches: `changeoverWeekday = 'SATURDAY'` excludes it,
+    // which is the same fail-closed reading the booking path applies.
+    const weeklyShape =
+      !staysInThePast && requestedNights != null && requestedNights % NIGHTS_PER_WEEK === 0
+        ? {
+            weekday: changeoverWeekdayName(weekdayOfYmd(filters.checkIn!)),
+            sameWeekday:
+              weekdayOfYmd(filters.checkIn!) === weekdayOfYmd(filters.checkOut!),
+          }
+        : null;
+    const weeklyArm: Prisma.ListingWhereInput =
+      weeklyShape && weeklyShape.sameWeekday
+        ? {
+            bookingMode: FIXED_STAYS_MODE,
+            changeoverWeekday: weeklyShape.weekday,
+            // The listing's own minimum and maximum, read exactly as the flexible arm
+            // reads them — one stay-length rule, applied in both modes.
+            ...(stayLengthRule ?? {}),
+            AND: [availabilityRule],
+          }
+        : { bookingMode: FIXED_STAYS_MODE, ...MATCHES_NOTHING };
 
-    andClauses.push({ OR: [flexibleArm, fixedArm] });
+    andClauses.push({ OR: [flexibleArm, weeklyArm] });
   }
 
   if (andClauses.length > 0) where.AND = andClauses;
@@ -709,7 +714,7 @@ export async function searchListings(filters: SearchFilters) {
   const listingIds = listings.map((l) => l.id);
   const stay = requestedStay(filters);
 
-  const [videoUrls, cardPricing, matchedFixedStays] = await Promise.all([
+  const [videoUrls, cardPricing] = await Promise.all([
     getFirstVideoUrlsByListingIds(listingIds),
     // The price stage already computed both of these for every candidate; only the
     // discovery path, which never ran it, has to pay for the page's own.
@@ -719,16 +724,6 @@ export async function searchListings(filters: SearchFilters) {
           stayPrices: scope.stayPrices,
         })
       : cardPricingFor(listings, stay),
-    // Which stay each fixed-stay result matched, for this page of cards in one query.
-    // The `where` above already proved a match exists; this only names it, so the card
-    // and its map pin can link straight to the stay the guest searched for instead of
-    // to a listing page that would have to guess from dates it is told to ignore.
-    //
-    // One read for the page, never one per card. It is also skipped entirely on an
-    // undated search, where there is no stay to match.
-    stay
-      ? getMatchedFixedStayPeriodIds(listingIds, stay.checkIn, stay.checkOut)
-      : Promise.resolve(new Map<string, string>()),
   ]);
 
   return {
@@ -738,7 +733,6 @@ export async function searchListings(filters: SearchFilters) {
         videoUrls.get(l.id),
         cardPricing.stayPrices.get(l.id) ?? [],
         cardPricing.nightlyRanges.get(l.id) ?? null,
-        matchedFixedStays.get(l.id) ?? null,
       )
     ),
     total,
@@ -829,10 +823,7 @@ export const getFeaturedListings = unstable_cache(
     const rows = await db.listing.findMany({
       where: {
         status: ListingStatus.APPROVED,
-        // Same exemption as undated search: a fixed-stay listing's `availabilityMode` is
-        // a stored-but-unread setting, so hiding it on that column would make it
-        // undiscoverable to anyone who did not already know its dates.
-        OR: [{ bookingMode: FIXED_STAYS_MODE }, { availabilityMode: "OPEN" }],
+        availabilityMode: "OPEN",
         ...(excludeIds.length > 0 ? { id: { notIn: excludeIds } } : {}),
       },
       select: cardSelectWithImages,
@@ -862,7 +853,7 @@ export const getPopularListings = unstable_cache(
     const rows = await db.listing.findMany({
       where: {
         status: ListingStatus.APPROVED,
-        OR: [{ bookingMode: FIXED_STAYS_MODE }, { availabilityMode: "OPEN" }],
+        availabilityMode: "OPEN",
         popularityScore: { gt: 0 },
       },
       select: cardSelectWithImages,
@@ -888,7 +879,7 @@ export const countApprovedListings = unstable_cache(
     db.listing.count({
       where: {
         status: ListingStatus.APPROVED,
-        OR: [{ bookingMode: FIXED_STAYS_MODE }, { availabilityMode: "OPEN" }],
+        availabilityMode: "OPEN",
       },
     }),
   ["approved-listing-count"],

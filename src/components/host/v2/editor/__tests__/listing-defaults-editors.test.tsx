@@ -44,6 +44,18 @@ function context(
   };
 }
 
+/** The fixture's pricing rule with only the named fields changed. */
+function pricingWith(
+  overrides: Partial<NonNullable<HostCalendarListing["pricing"]>>,
+): NonNullable<HostCalendarListing["pricing"]> {
+  return { ...makeListing().pricing!, ...overrides };
+}
+
+/** What the host reads, with markup and SVG path data stripped out. */
+function visibleText(html: string): string {
+  return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
 describe("AvailabilityDefaultEditor", () => {
   it("offers the two plain-language choices with their explanations", () => {
     const html = renderToStaticMarkup(
@@ -106,7 +118,7 @@ describe("AvailabilityDefaultEditor", () => {
 });
 
 describe("PricingDefaultsEditor", () => {
-  it("edits the base price, cleaning fee and minimum stay from the listing editor", () => {
+  it("edits the base price and the cleaning fee, and nothing else", () => {
     const html = renderToStaticMarkup(
       <PricingDefaultsEditor context={context()} />,
     );
@@ -114,9 +126,97 @@ describe("PricingDefaultsEditor", () => {
     expect(html).toContain("Default pricing");
     expect(html).toContain("Base price");
     expect(html).toContain("Cleaning fee");
-    expect(html).toContain("Minimum stay");
     expect(html).toContain('value="120"');
     expect(html).toContain('value="30"');
+  });
+
+  it("is only about money: no stay length, editable or otherwise", () => {
+    for (const html of [
+      renderToStaticMarkup(<PricingDefaultsEditor context={context()} />),
+      // The first-price form too — a listing with no rule yet is where a stay-length
+      // field is most tempting to add back.
+      renderToStaticMarkup(
+        <PricingDefaultsEditor context={context({ pricing: null })} />,
+      ),
+    ]) {
+      const text = visibleText(html);
+      expect(text).not.toContain("Minimum stay");
+      expect(text).not.toContain("Maximum stay");
+      // Not even as a disabled field explaining that it lives somewhere else. A
+      // control the host cannot operate is a signpost wearing the costume of an input.
+      expect(text).not.toContain("This is managed with how the listing sells");
+      expect(text).not.toContain("Change it in Calendar");
+      expect(html).not.toContain("data-stay-limits");
+    }
+  });
+
+  it("describes itself as money, not as how long a guest may stay", () => {
+    const html = renderToStaticMarkup(
+      <PricingDefaultsEditor context={context()} />,
+    );
+    expect(html).toContain(
+      "What a night costs and what cleaning costs, unless a particular date says otherwise.",
+    );
+    expect(html).not.toContain("the least a guest can book");
+  });
+
+  it("prices its example at the shortest stay a flexible listing accepts", () => {
+    const html = renderToStaticMarkup(
+      <PricingDefaultsEditor
+        context={context({ pricing: pricingWith({ minNights: 3 }) })}
+      />,
+    );
+    expect(visibleText(html)).toContain("A 3-night stay");
+  });
+
+  it("never implies a 1-night stay on a listing whose rules forbid one", () => {
+    // A weekly listing with a stored 1-night minimum still refuses everything shorter
+    // than one whole changeover-to-changeover week. Quoting "A 1-night stay" here would
+    // be the example telling the host something untrue about their own listing.
+    const html = renderToStaticMarkup(
+      <PricingDefaultsEditor
+        context={context({
+          bookingMode: "FIXED_STAYS",
+          changeoverWeekday: "SATURDAY",
+          pricing: pricingWith({ minNights: 1, maxNights: 28 }),
+        })}
+      />,
+    );
+    const text = visibleText(html);
+    expect(text).not.toContain("A 1-night stay");
+    expect(text).toContain("A 7-night stay");
+  });
+
+  it("rounds a weekly listing's example up to whole weeks", () => {
+    const html = renderToStaticMarkup(
+      <PricingDefaultsEditor
+        context={context({
+          bookingMode: "FIXED_STAYS",
+          changeoverWeekday: "SATURDAY",
+          pricing: pricingWith({ minNights: 10, maxNights: 28 }),
+        })}
+      />,
+    );
+    // Ten nights is not a whole number of weeks; the shortest stay this listing will
+    // actually take is a fortnight.
+    expect(visibleText(html)).toContain("A 14-night stay");
+  });
+
+  it("prices nothing when the limits leave no bookable length", () => {
+    const html = renderToStaticMarkup(
+      <PricingDefaultsEditor
+        context={context({
+          bookingMode: "FIXED_STAYS",
+          changeoverWeekday: "SATURDAY",
+          // The shortest whole week satisfying a 16-night minimum is three weeks,
+          // and three weeks is over the 20-night maximum — so nothing is bookable.
+          pricing: pricingWith({ minNights: 16, maxNights: 20 }),
+        })}
+      />,
+    );
+    const text = visibleText(html);
+    expect(text).not.toMatch(/A \d+-night stay/);
+    expect(text).toContain("leave no bookable length");
   });
 
   it("uses one explicit review for the grouped change", () => {
@@ -158,6 +258,9 @@ describe("PricingDefaultsEditor", () => {
     // A real form, not a sentence pointing back at the calendar.
     expect(html).toContain('id="host-v2-first-base-price"');
     expect(html).not.toContain("Open Calendar to set a nightly rate");
+    // The price and the fee, and no third question: stay length is a booking rule.
+    expect(html).toContain('id="host-v2-first-cleaning-fee"');
+    expect(visibleText(html)).not.toContain("Minimum stay");
   });
 });
 

@@ -227,6 +227,7 @@ function Panel({
 export function AvailabilitySummary({
   overview,
   defaultsEditor,
+  bookingRulesEditor,
   t,
 }: {
   overview: ListingAvailabilityOverview;
@@ -238,6 +239,14 @@ export function AvailabilitySummary({
    * ship to the browser.
    */
   defaultsEditor: React.ReactNode;
+  /**
+   * The listing-wide booking rules, mounted under the default.
+   *
+   * A second slot rather than a second page: "how a date starts out" and "what a guest
+   * may do with an open date" are the two halves of one question, and a host setting a
+   * four-week maximum is not going to look for it under Pricing.
+   */
+  bookingRulesEditor: React.ReactNode;
   t: Translator;
 }) {
   const locale = t.locale;
@@ -271,6 +280,8 @@ export function AvailabilitySummary({
       </header>
 
       {defaultsEditor}
+
+      {bookingRulesEditor}
 
       <dl className="mt-8 grid gap-3 sm:grid-cols-2">
         <Fact

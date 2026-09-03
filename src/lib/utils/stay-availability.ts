@@ -1,18 +1,17 @@
 import { windowsCoverStay } from "@/lib/utils/availability-windows";
 import { compareYmd, isValidYmd, ymdToDbDate } from "@/lib/utils/date-only";
 import {
-  isSameFixedStayPeriod,
-  type FixedStayPeriodRange,
-} from "@/lib/utils/fixed-stay-periods";
+  weeklyStayIssue,
+  type ChangeoverWeekdayName,
+  type WeeklyStayLimits,
+} from "@/lib/utils/weekly-stay";
 
 /**
  * The one rule that decides whether a listing *offers* a pair of dates at all.
  *
  * Two booking modes, one question. A FLEXIBLE listing offers whatever its availability
- * windows cover, exactly as it does today — this branch delegates to
- * `isStayWithinAvailabilityWindows`' own rule rather than restating it, so nothing about
- * an existing listing can change here. A FIXED_STAYS listing offers only the exact stays
- * its host has put on sale.
+ * windows cover. A weekly listing (stored as FIXED_STAYS) uses that same calendar, then
+ * additionally offers only whole weeks that begin and end on the weekday its host chose.
  *
  * What this deliberately does **not** answer:
  *
@@ -20,10 +19,6 @@ import {
  *   calendar blocks stay where they are, in `AvailabilityBlock`, and remain the
  *   authoritative negative answer. A stay this function calls offered may still be
  *   unbookable because someone took it, including through an overlapping fixed stay.
- * - **Is it long enough.** Minimum and maximum night rules are a flexible-calendar
- *   concept: a fixed stay's length was chosen by the host when they created it, and
- *   re-testing it against a minimum the host set for a different way of selling would
- *   refuse stays the host is deliberately offering. See `stayLengthRulesApply`.
  * - **What it costs.** Identical in both modes.
  *
  * Dates cross this boundary as `YYYY-MM-DD`, not as `Date`. Every question here is a
@@ -43,15 +38,6 @@ import {
 export const BOOKING_MODE_FLEXIBLE = "FLEXIBLE";
 export const BOOKING_MODE_FIXED_STAYS = "FIXED_STAYS";
 
-/**
- * A period as this rule needs it: the two dates, its id, and whether the host has
- * switched it off. `disabledAt` is the column itself — non-null means switched off.
- */
-export interface StayFixedStayPeriod extends FixedStayPeriodRange {
-  id: string;
-  disabledAt: Date | null;
-}
-
 /** An open window in the half-open `[startDate, endDate)` convention, as `YYYY-MM-DD`. */
 export interface StayAvailabilityWindowYmd {
   startDate: string;
@@ -61,12 +47,19 @@ export interface StayAvailabilityWindowYmd {
 export interface StayAvailabilityInput {
   /** `Listing.bookingMode`. Anything that is not FIXED_STAYS is treated as flexible. */
   bookingMode: string;
-  /** `Listing.availabilityMode`. Only consulted in the flexible branch. */
+  /** `Listing.availabilityMode`. Applies in both booking modes. */
   availabilityMode: string;
-  /** The listing's open windows. Only consulted in the flexible branch. */
+  /** The listing's open windows. Applies in both booking modes when CLOSED. */
   windows: readonly StayAvailabilityWindowYmd[];
-  /** The listing's fixed stays. Only consulted in the fixed-stay branch. */
-  fixedStayPeriods: readonly StayFixedStayPeriod[];
+  /**
+   * The weekday a weekly listing changes over on, and how long a stay may run.
+   *
+   * Both are only consulted in the weekly branch. `changeoverWeekday` null is a real
+   * state and it fails closed: a weekly listing whose host has not picked a day offers
+   * nothing at all.
+   */
+  changeoverWeekday?: ChangeoverWeekdayName | null;
+  limits?: WeeklyStayLimits;
   /** The stay being asked about, `[checkIn, checkOut)`. */
   checkIn: string;
   checkOut: string;
@@ -77,14 +70,20 @@ export interface StayAvailabilityInput {
 export type StayNotOfferedReason =
   /** Not two calendar dates, or the stay does not run forwards. */
   | "INVALID_RANGE"
-  /** FLEXIBLE: the host has not opened these dates. */
+  /** The host has not opened these dates on a CLOSED calendar. */
   | "OUTSIDE_AVAILABILITY_WINDOWS"
-  /** FIXED_STAYS: the host offers no stay with exactly these two dates. */
-  | "NO_MATCHING_FIXED_STAY"
-  /** FIXED_STAYS: the matching stay exists but the host switched it off. */
-  | "FIXED_STAY_DISABLED"
-  /** FIXED_STAYS: the matching stay's check-in has already gone by. */
-  | "FIXED_STAY_IN_PAST";
+  /** WEEKLY: the host has not chosen a changeover day, so nothing is offered. */
+  | "NO_CHANGEOVER_DAY"
+  /** WEEKLY: check-in is not on the listing's changeover weekday. */
+  | "WRONG_CHECK_IN_DAY"
+  /** WEEKLY: checkout is not on it either, so the stay is not whole weeks. */
+  | "WRONG_CHECK_OUT_DAY"
+  /** WEEKLY: shorter than the listing's minimum stay. */
+  | "BELOW_MINIMUM"
+  /** WEEKLY: longer than the listing's maximum stay. */
+  | "ABOVE_MAXIMUM"
+  /** The stay has already begun. */
+  | "STAY_IN_PAST";
 
 export type StayAvailabilityDecision =
   | {
@@ -100,39 +99,10 @@ export function isFixedStayBookingMode(bookingMode: string): boolean {
 }
 
 /**
- * Whether the listing's minimum and maximum night settings apply to a stay.
- *
- * They do not on a fixed-stay listing. The host chose each stay's length when they put
- * it on sale, so a stored minimum — very often left over from when the listing sold
- * flexibly — would refuse an option the host is deliberately offering. The settings stay
- * stored and untouched, which is what makes switching back to FLEXIBLE restore exactly
- * the calendar the host had.
- */
-export function stayLengthRulesApply(bookingMode: string): boolean {
-  return !isFixedStayBookingMode(bookingMode);
-}
-
-/**
- * The fixed stay a pair of dates refers to, or null.
- *
- * Matching is exact on both dates. A stay one night shorter than an offered fortnight is
- * not a smaller version of it; it is not on sale. The unique index means at most one row
- * can match, so this cannot be ambiguous.
- */
-export function findMatchingFixedStay<T extends FixedStayPeriodRange>(
-  periods: readonly T[],
-  stay: FixedStayPeriodRange,
-): T | null {
-  return periods.find((period) => isSameFixedStayPeriod(period, stay)) ?? null;
-}
-
-/**
- * Whether the listing offers these dates, and which fixed stay it offered them as.
+ * Whether the listing offers these dates.
  *
  * The reasons are ordered so the caller learns the most specific true thing: a stay that
- * matches nothing is told so, and a stay that matches a period the host switched off or
- * that has already begun is told which of those it is, rather than both being flattened
- * into "no such stay".
+ * Invalid ranges are refused first, then listing-wide availability, then weekly shape.
  */
 export function decideStayAvailability(
   input: StayAvailabilityInput,
@@ -144,12 +114,9 @@ export function decideStayAvailability(
     return { offered: false, reason: "INVALID_RANGE" };
   }
 
-  if (!isFixedStayBookingMode(input.bookingMode)) {
-    // Unchanged behaviour, and unchanged code: OPEN listings sell every date unless
-    // something blocks them, CLOSED listings only inside the union of their windows.
-    if (input.availabilityMode !== "CLOSED") {
-      return { offered: true, fixedStayPeriodId: null };
-    }
+  // Availability is listing-wide. OPEN calendars sell every unblocked night; CLOSED
+  // calendars sell only nights inside the union of their windows, in either booking mode.
+  if (input.availabilityMode === "CLOSED") {
     const covered = windowsCoverStay(
       input.windows.map((window) => ({
         startDate: ymdToDbDate(window.startDate),
@@ -158,43 +125,33 @@ export function decideStayAvailability(
       ymdToDbDate(input.checkIn),
       ymdToDbDate(input.checkOut),
     );
-    return covered
-      ? { offered: true, fixedStayPeriodId: null }
-      : { offered: false, reason: "OUTSIDE_AVAILABILITY_WINDOWS" };
+    if (!covered) {
+      return { offered: false, reason: "OUTSIDE_AVAILABILITY_WINDOWS" };
+    }
   }
 
-  const match = findMatchingFixedStay(input.fixedStayPeriods, {
+  if (!isFixedStayBookingMode(input.bookingMode)) {
+    return { offered: true, fixedStayPeriodId: null };
+  }
+
+  // A weekly listing sells whole weeks starting and ending on one day the host chose.
+  // The whole rule lives in `weekly-stay`, so this path, the search filter, the booking
+  // transaction and the guest calendar cannot come to four different answers about the
+  // same pair of dates.
+  const issue = weeklyStayIssue({
     checkIn: input.checkIn,
     checkOut: input.checkOut,
+    changeoverWeekday: input.changeoverWeekday,
+    limits: input.limits ?? { minNights: 1, maxNights: null },
   });
-  if (!match) return { offered: false, reason: "NO_MATCHING_FIXED_STAY" };
-  if (match.disabledAt !== null) {
-    return { offered: false, reason: "FIXED_STAY_DISABLED" };
-  }
-  // A stay whose check-in has gone by is not one anybody can still take. Check-in rather
-  // than checkout: a fortnight begun last week is in progress, not on sale.
-  if (compareYmd(match.checkIn, input.today) < 0) {
-    return { offered: false, reason: "FIXED_STAY_IN_PAST" };
+  if (issue) return { offered: false, reason: issue };
+
+  // A stay that has already begun is nobody's to take, whatever its shape.
+  if (compareYmd(input.checkIn, input.today) < 0) {
+    return { offered: false, reason: "STAY_IN_PAST" };
   }
 
-  return { offered: true, fixedStayPeriodId: match.id };
-}
-
-/**
- * The fixed stays a guest may still be shown: switched on, and not already begun.
- *
- * The same two tests `decideStayAvailability` applies, so a stay that appears in a list
- * is one the decision would accept. Occupancy is not tested here — a booked option stays
- * in the list, greyed by the blocks the caller already holds, because a list that
- * silently closed up around booked stays would tell a guest the host has less to offer
- * than they do.
- */
-export function offeredFixedStays<T extends StayFixedStayPeriod>(
-  periods: readonly T[],
-  today: string,
-): T[] {
-  return periods.filter(
-    (period) =>
-      period.disabledAt === null && compareYmd(period.checkIn, today) >= 0,
-  );
+  // No period id: a weekly booking is an ordinary pair of dates, and nothing about it
+  // points at a stored row.
+  return { offered: true, fixedStayPeriodId: null };
 }

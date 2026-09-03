@@ -3,7 +3,9 @@ import {
   addDaysToYmd,
   compareYmd,
   eachYmdExclusive,
+  nightsBetweenYmd,
 } from "@/lib/utils/date-only";
+import { weeklyStayIssue } from "@/lib/utils/weekly-stay";
 import type {
   HostCalendarBlock,
   HostCalendarDateCounts,
@@ -100,15 +102,11 @@ export interface ListingCalendarIndex {
   manualBlockDates: Set<string>;
   openWindowDates: Set<string>;
   /**
-   * The union of every night the host's enabled, still-future stays cover.
-   *
-   * A union, so two overlapping alternatives count their shared nights once and two
-   * back-to-back stays run together with no closed sliver at the changeover. Switched-off
-   * and already-begun stays contribute nothing — the same two tests the guest projection,
-   * the search filter and the booking transaction apply. Empty on a flexible listing,
-   * where nothing reads it.
+   * Whether the listing has enough booking-method configuration to offer any stay.
+   * Flexible listings always do. Weekly listings require a changeover day; their actual
+   * open nights still come from availability mode and windows, just like flexible ones.
    */
-  offeredStayDates: Set<string>;
+  offersAnyNight: boolean;
   priceByDate: Map<string, number>;
   /** Enabled date-specific promotions covering each night. */
   promotionCountByDate: Map<string, number>;
@@ -177,7 +175,8 @@ export function buildListingCalendarIndex(
     { name: string | null; platform: CalendarPlatform | null }
   >();
   const manualNoteByDate = new Map<string, string>();
-  const offeredStayDates = new Set<string>();
+  const offersAnyNight =
+    listing.bookingMode !== "FIXED_STAYS" || listing.changeoverWeekday !== null;
   const stayByDate = new Map<string, CalendarStayEdge>();
   // Held for a second pass. A reservation outranks an imported hold on the same night
   // — the same precedence `resolveDay` applies — so bookings taken here are written
@@ -226,13 +225,8 @@ export function buildListingCalendarIndex(
     addRange(openWindowDates, window.startDate, window.endDate);
   }
 
-  // Built from the server's own projection rather than re-derived here: `state` already
-  // carries the past and switched-off tests, so this cannot come to a different answer
-  // than the row the host is looking at in the panel.
-  for (const period of listing.fixedStayPeriods) {
-    if (period.state === "PAST" || period.state === "DISABLED") continue;
-    addRange(offeredStayDates, period.checkIn, period.checkOut);
-  }
+  // A listing whose host has not chosen a changeover day offers no weekly stay. Once it
+  // has one, availability mode and windows remain the source of which nights are open.
 
   for (const row of listing.datePrices) {
     priceByDate.set(row.date, row.nightlyRate);
@@ -259,7 +253,7 @@ export function buildListingCalendarIndex(
     manualNoteByDate,
     stayByDate,
     openWindowDates,
-    offeredStayDates,
+    offersAnyNight,
     priceByDate,
     promotionCountByDate,
   };
@@ -279,12 +273,8 @@ function calendarOpen(
   if (index.reservationDates.has(date)) return false;
   if (index.externalDates.has(date)) return false;
   if (index.manualBlockDates.has(date)) return false;
-  // A fixed-stay listing sells its stays and nothing else, so the union of them is the
-  // whole answer — `availabilityMode` and the windows are stored, unread settings here,
-  // exactly as they are for the booking transaction and for search.
-  if (sellsFixedStays(listing)) {
-    return index.offeredStayDates.has(date);
-  }
+  // Weekly mode controls the shape of a stay, while availability controls its dates.
+  if (!index.offersAnyNight) return false;
   if (listing.availabilityMode === "CLOSED") {
     return index.openWindowDates.has(date);
   }
@@ -336,11 +326,11 @@ export function resolveDay(
   if (index.manualBlockDates.has(date)) {
     return { ...base, state: "blocked", reason: "manual", editable: true };
   }
-  // A night outside every offered stay. Not editable from the grid: there is no such
-  // thing as opening one night on a listing that sells whole stays, and a control that
-  // pretended otherwise would write an availability window nothing reads. The panel's
-  // Booking method editor is where a host opens dates here, by adding a stay.
-  if (sellsFixedStays(listing) && !index.offeredStayDates.has(date)) {
+  // A weekly listing with no changeover day sells nothing at all. Not editable from the
+  // grid either: there is no such thing as opening one night on a listing that sells
+  // whole weeks, and a control that pretended otherwise would write an availability
+  // window nothing reads. The panel's Booking method editor is where this is fixed.
+  if (sellsFixedStays(listing) && !index.offersAnyNight) {
     return {
       ...base,
       state: "blocked",
@@ -349,7 +339,6 @@ export function resolveDay(
     };
   }
   if (
-    !sellsFixedStays(listing) &&
     listing.availabilityMode === "CLOSED" &&
     !index.openWindowDates.has(date)
   ) {
@@ -589,15 +578,28 @@ export function resolveSelectionStayBookability({
   // adjacent seven-night stays selected as one range, is not something a guest may
   // book even though every individual night is open on the grid.
   if (sellsFixedStays(listing)) {
-    const selected = new Set(dates);
-    const matchesPeriod = listing.fixedStayPeriods.some((period) => {
-      if (period.state !== "AVAILABLE" || selected.size !== period.nights) {
-        return false;
-      }
-      return eachYmdExclusive(period.checkIn, period.checkOut).every((date) =>
-        selected.has(date),
-      );
-    });
+    const selected = [...dates].sort(compareYmd);
+    const first = selected[0];
+    const last = selected[selected.length - 1];
+    // The selection has to *be* a bookable weekly stay: contiguous, starting on the
+    // changeover day, and a whole number of weeks inside the listing's limits. The
+    // checkout is the morning after the last selected night, which is the half-open end
+    // the rest of the product speaks.
+    const contiguous =
+      first !== undefined &&
+      last !== undefined &&
+      nightsBetweenYmd(first, last) === selected.length - 1;
+    const matchesPeriod =
+      contiguous &&
+      weeklyStayIssue({
+        checkIn: first,
+        checkOut: addDaysToYmd(last, 1),
+        changeoverWeekday: listing.changeoverWeekday,
+        limits: {
+          minNights: listing.pricing?.minNights ?? 1,
+          maxNights: listing.pricing?.maxNights ?? null,
+        },
+      }) === null;
     return matchesPeriod
       ? { code: "BOOKABLE" }
       : { code: "NOT_FIXED_STAY", nights: availability.dates };

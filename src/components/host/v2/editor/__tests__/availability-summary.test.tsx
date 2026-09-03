@@ -41,10 +41,16 @@ function overview(
  *  `translate="no"` because this is scaffolding, not product copy the catalog should
  *  ever be asked to carry. */
 const editorSlot = <div translate="no">Default availability form</div>;
+const rulesSlot = <div translate="no">Booking rules form</div>;
 
 function render(data: ListingAvailabilityOverview): string {
   return renderToStaticMarkup(
-    <AvailabilitySummary overview={data} defaultsEditor={editorSlot} t={t} />,
+    <AvailabilitySummary
+      overview={data}
+      defaultsEditor={editorSlot}
+      bookingRulesEditor={rulesSlot}
+      t={t}
+    />,
   );
 }
 
@@ -56,6 +62,18 @@ describe("AvailabilitySummary", () => {
     // of availability is set somewhere else.
     expect(html).toContain("Set how future dates start out here.");
     expect(html).not.toContain("Availability itself is set in Calendar");
+  });
+
+  it("mounts the booking rules under the default, both above the report", () => {
+    const html = render(overview());
+    // Order matters: the two editable questions ("how does a date start out", "what may
+    // a guest do with an open one") read as one section, and the report follows them.
+    expect(html.indexOf("Default availability form")).toBeLessThan(
+      html.indexOf("Booking rules form"),
+    );
+    expect(html.indexOf("Booking rules form")).toBeLessThan(
+      html.indexOf("Listing visibility"),
+    );
   });
 
   it("hands off to the calendar by naming the job, not the screen", () => {

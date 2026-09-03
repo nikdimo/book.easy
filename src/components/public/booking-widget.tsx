@@ -78,15 +78,13 @@ import {
   useListingStayRange,
   usePublishListingBooking,
 } from "./listing-stay-context";
-import { FixedStayOptions } from "./fixed-stay-options";
+import { bookingStayFormFields } from "@/lib/fixed-stay-options";
 import {
-  bookingStayFormFields,
-  findSelectableFixedStayOption,
-  fixedStaySelectionStatus,
-  hasSelectableFixedStayOption,
-  selectableFixedStayOptions,
-  type GuestFixedStayOption,
-} from "@/lib/fixed-stay-options";
+  changeoverWeekdayIndex,
+  weeklyStayIssue,
+  weeklyStayWeekRange,
+  type ChangeoverWeekdayName,
+} from "@/lib/utils/weekly-stay";
 
 interface BookingWidgetProps {
   listingId: string;
@@ -145,27 +143,17 @@ interface BookingWidgetProps {
   /**
    * How this listing sells its dates.
    *
-   * Anything but FIXED_STAYS is the calendar every listing has always had, and every
-   * branch below leaves that path exactly as it was. FIXED_STAYS swaps the calendar step
-   * for the host's list of whole stays and nothing else: the same card, the same sheet,
-   * the same guest step, review, payment terms, house rules and breakdown.
+   * Anything but FIXED_STAYS is the flexible calendar. FIXED_STAYS keeps the same date
+   * picker and booking flow, but constrains both ends to the host's changeover day and
+   * requires whole weeks within the listing-wide minimum and maximum stay.
    */
   bookingMode?: "FLEXIBLE" | "FIXED_STAYS";
   /**
-   * The host's whole stays, as the server projected them for a guest. Past and
-   * switched-off stays are already absent; taken ones arrive with `selectable: false`
-   * and no reason, which is deliberate.
+   * The weekday a weekly listing arrives and leaves on, or null when its host has not
+   * chosen one — in which case nothing is bookable, which is the same fail-closed
+   * reading the server applies.
    */
-  fixedStayOptions?: GuestFixedStayOption[];
-  /**
-   * A stay to open on, when the guest arrived from a dated search that matched one.
-   *
-   * A pointer, never a selection. It is resolved against `fixedStayOptions` — the
-   * projection this same render was handed — so an id that is unknown, switched off,
-   * already taken, belongs to another listing, or is simply stale selects nothing at all
-   * and leaves the guest choosing for themselves.
-   */
-  initialFixedStayPeriodId?: string | null;
+  changeoverWeekday?: ChangeoverWeekdayName | null;
 }
 
 type GuestDetails = {
@@ -388,10 +376,9 @@ export function BookingWidget({
   houseRules,
   houseRulesVersion,
   bookingMode = "FLEXIBLE",
-  fixedStayOptions = [],
-  initialFixedStayPeriodId = null,
+  changeoverWeekday = null,
 }: BookingWidgetProps) {
-  const isFixedMode = bookingMode === "FIXED_STAYS";
+  const isWeeklyMode = bookingMode === "FIXED_STAYS";
   const i18n = useI18n();
   const dayPrice = useListingDayPrices({
     baseNightlyRate: nightlyRate,
@@ -480,28 +467,6 @@ export function BookingWidget({
         initialGuestDetails.infants +
         initialGuestDetails.pets >
         0);
-  /**
-   * Which of the host's whole stays the guest picked. Null in flexible mode, always.
-   *
-   * The id and not the dates: the dates are the server's, and holding them here as the
-   * source of truth would let a stale copy in this browser outlive the stay it names.
-   * The shared range below is set *from* the chosen option, for the summary and the
-   * quote, and is cleared again the moment the option stops being selectable.
-   */
-  const [selectedFixedStayId, setSelectedFixedStayId] = useState<string | null>(
-    () =>
-      bookingMode === "FIXED_STAYS"
-        ? // Resolved, not trusted: only an id this listing is currently offering, and
-          // that a guest could actually take, survives into the selection. Everything
-          // else — a guessed id, one from another listing, one whose stay was booked
-          // between the search and the click — resolves to null, which is the same
-          // state as arriving with no link at all.
-          (findSelectableFixedStayOption(
-            fixedStayOptions,
-            initialFixedStayPeriodId,
-          )?.id ?? null)
-        : null,
-  );
   const [note, setNote] = useState("");
   const selectablePaymentMethods = useMemo(
     () =>
@@ -564,10 +529,6 @@ export function BookingWidget({
   const hasSeededRememberedRef = useRef(false);
   useEffect(() => {
     if (hasSeededRememberedRef.current) return;
-    // A remembered search carries dates, and dates are not a selection on a listing that
-    // sells whole stays. Seeding one would put a range in the card that matches no stay
-    // the host offers, and price it.
-    if (isFixedMode) return;
     if (!rememberedSearch) return;
     hasSeededRememberedRef.current = true;
     if (checkInStr || checkOutStr) return;
@@ -579,9 +540,18 @@ export function BookingWidget({
     // A stay remembered from a search across listings can land on nights this one has
     // taken. Those open an empty picker rather than a selection the card refuses on
     // sight — the guest has not asked this listing anything yet.
+    const weeklySeedIssue = isWeeklyMode && stay.checkIn && stay.checkOut
+      ? weeklyStayIssue({
+          checkIn: stay.checkIn,
+          checkOut: stay.checkOut,
+          changeoverWeekday,
+          limits: { minNights, maxNights },
+        })
+      : null;
     if (
       stay.checkIn &&
       stay.checkOut &&
+      !weeklySeedIssue &&
       validateBookingSelection(
         parseLocalYmd(stay.checkIn),
         parseLocalYmd(stay.checkOut),
@@ -608,35 +578,50 @@ export function BookingWidget({
       })),
     [disabledDateRanges],
   );
-  /** The chosen stay, but only while it is still one a guest may take. */
-  const selectedFixedStay = useMemo(
-    () =>
-      isFixedMode
-        ? findSelectableFixedStayOption(fixedStayOptions, selectedFixedStayId)
-        : null,
-    [isFixedMode, fixedStayOptions, selectedFixedStayId],
-  );
-  const anyFixedStayOpen = useMemo(
-    () => isFixedMode && hasSelectableFixedStayOption(fixedStayOptions),
-    [isFixedMode, fixedStayOptions],
-  );
   /**
-   * A fixed stay is measured against nothing the browser knows.
-   *
-   * The host chose its dates and its length when they put it on sale, so the minimum,
-   * the maximum and the blocked-night test have nothing to say about it — the server
-   * skips all three for exactly the same reason. What remains is whether a stay was
-   * chosen, in the shape the rest of this card already reads.
+   * Whether this listing sells at all right now. A weekly listing whose host has not
+   * chosen a changeover day offers nothing, exactly as the server decides.
    */
-  const selectionValidation = isFixedMode
-    ? fixedStaySelectionStatus(selectedFixedStay)
-    : validateBookingSelection(
-        checkIn,
-        checkOut,
-        minNights,
-        disabledDateRanges,
-        maxNights,
-      );
+  const weeklyReady =
+    !isWeeklyMode ||
+    (changeoverWeekday !== null &&
+      weeklyStayWeekRange({ minNights, maxNights }) !== null);
+
+  /**
+   * What is wrong with the picked dates on a weekly listing, beyond the ordinary rules.
+   *
+   * The shared rule, so this card and the booking transaction cannot disagree about a
+   * Tuesday. The blocked-night, minimum and maximum tests are *not* duplicated here —
+   * `validateBookingSelection` below already applies all three, in both modes, exactly
+   * as it always has.
+   */
+  const weeklyIssue = useMemo(
+    () =>
+      isWeeklyMode && checkInStr && checkOutStr
+        ? weeklyStayIssue({
+            checkIn: checkInStr,
+            checkOut: checkOutStr,
+            changeoverWeekday,
+            limits: { minNights, maxNights },
+          })
+        : null,
+    [isWeeklyMode, checkInStr, checkOutStr, changeoverWeekday, minNights, maxNights],
+  );
+
+  const baseValidation = validateBookingSelection(
+    checkIn,
+    checkOut,
+    minNights,
+    disabledDateRanges,
+    maxNights,
+  );
+  // A weekly stay of the wrong shape is not a valid selection, whatever the ordinary
+  // rules make of it. `incomplete` is deliberately preserved: a guest who has picked only
+  // a check-in has not made a mistake yet.
+  const selectionValidation =
+    weeklyIssue && baseValidation.status !== "incomplete"
+      ? { ...baseValidation, status: "invalid" as const }
+      : baseValidation;
   const nights = Math.max(0, selectionValidation.nights);
 
   const overrideMap = useMemo(() => {
@@ -646,32 +631,6 @@ export function BookingWidget({
     }
     return m;
   }, [priceOverrides]);
-
-  /**
-   * What one of the host's stays costs.
-   *
-   * The product's own quote engine, over the option's two dates, against this listing's
-   * ordinary nightly rate, date overrides, cleaning fee and promotions — the same call
-   * the selected stay is priced with below and the same one the server runs when the
-   * request lands. There is no fixed-stay price, and no second engine that could
-   * disagree with the total the guest is about to be shown.
-   */
-  const quoteFixedStayTotal = (option: GuestFixedStayOption) =>
-    computeStayQuote({
-      baseNightly: nightlyRate,
-      cleaningFee,
-      checkIn: parseLocalYmd(option.checkIn),
-      checkOut: parseLocalYmd(option.checkOut),
-      overrides: overrideMap,
-      promotions,
-    }).total;
-  const openFixedStayOptions = isFixedMode
-    ? selectableFixedStayOptions(fixedStayOptions)
-    : [];
-  const fixedStayStartingTotal =
-    openFixedStayOptions.length > 0
-      ? Math.min(...openFixedStayOptions.map(quoteFixedStayTotal))
-      : null;
 
   const stayPricing =
     checkIn && checkOut
@@ -785,22 +744,23 @@ export function BookingWidget({
     BOOKINGS_UNAVAILABLE_SOURCE,
   );
   const chooseStayMessage = i18n.resolve(
-    "booking.fixed_stay.choose_prompt",
-    "Choose one of the stays the host offers",
+    "booking.weekly.choose_prompt",
+    "Choose check-in and checkout on the host's changeover day.",
   );
   const noStaysOpenMessage = i18n.resolve(
-    "booking.fixed_stay.none_open_title",
+    "booking.weekly.none_open_title",
     "No stays are open right now",
   );
   /**
    * What is missing before a request can be sent, in this listing's own terms.
    *
    * One variable so every button, error line and step below asks the same question of
-   * both modes: a flexible listing wants dates, a fixed one wants one of the host's
-   * stays, and a fixed one with nothing left to offer says so instead of asking.
+   * both modes: a flexible listing wants any two dates, a weekly one wants two
+   * changeover days a whole number of weeks apart, and a weekly listing whose host has
+   * not chosen a day yet says so instead of asking for something impossible.
    */
-  const stayPromptMessage: Resolved = isFixedMode
-    ? anyFixedStayOpen
+  const stayPromptMessage: Resolved = isWeeklyMode
+    ? weeklyReady
       ? chooseStayMessage
       : noStaysOpenMessage
     : selectDatesMessage;
@@ -853,27 +813,6 @@ export function BookingWidget({
    * Waits for the session to be known: `useSession` reports "loading" first, and taking
    * the draft then would spend it on a visitor who turns out not to be signed in.
    */
-  /**
-   * Lets go of a stay that is no longer on offer.
-   *
-   * Runs whenever the server's list changes — which is what a `router.refresh()` after a
-   * refused request produces. The guest is left with nothing chosen and the card asking
-   * for a stay again, rather than being moved onto a different one behind their back.
-   */
-  useEffect(() => {
-    if (!isFixedMode || !selectedFixedStayId) return;
-    if (findSelectableFixedStayOption(fixedStayOptions, selectedFixedStayId)) {
-      return;
-    }
-    // Letting go of a stay the server has withdrawn is exactly the "subscribe to an
-    // external system" case an effect is for: the list arrives as new props after a
-    // `router.refresh()`, and this is the state that has to follow it. Deriving it
-    // instead would leave the withdrawn stay's dates in the summary row.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSelectedFixedStayId(null);
-    setStayRange({ checkIn: "", checkOut: "" });
-  }, [isFixedMode, fixedStayOptions, selectedFixedStayId, setStayRange]);
-
   const resumeHandledRef = useRef(false);
   useEffect(() => {
     if (resumeHandledRef.current || sessionStatus === "loading") return;
@@ -895,27 +834,11 @@ export function BookingWidget({
       setSelectedPaymentMethod(draft.paymentMethod as AcceptedPaymentMethodCode);
     }
 
-    // The chosen stay, restored only if the host still offers it and nobody has taken it
-    // in the meantime. Otherwise it is simply dropped: the guest comes back to a card
-    // asking them to choose, never to a different stay chosen on their behalf.
-    const restoredStay = isFixedMode
-      ? findSelectableFixedStayOption(fixedStayOptions, draft.fixedStayPeriodId)
-      : null;
-    if (restoredStay) {
-      setSelectedFixedStayId(restoredStay.id);
-      setStayRange({
-        checkIn: restoredStay.checkIn,
-        checkOut: restoredStay.checkOut,
-      });
-    }
-
     // Only when the stay itself survived the trip. Dates that were dropped on the way
     // back — a stay that fell into the past while the guest read their email, or an
     // option someone else booked — leave the guest on the card, whose button already
     // says which step is missing.
-    const stayReady = isFixedMode
-      ? Boolean(restoredStay ?? selectedFixedStay)
-      : selectionValidation.status === "valid";
+    const stayReady = selectionValidation.status === "valid";
     const partyReady =
       guestsConfirmed && guests >= 1 && guestDetails.adults >= 1;
     if (stayReady && partyReady) openPicker("review");
@@ -941,33 +864,15 @@ export function BookingWidget({
    * and says so.
    */
   const continueLabel = i18n.resolve("mobile.generic.continue", "Continue");
+  const changeoverDayMessage = i18n.resolve(
+    "booking.weekly.changeover_only",
+    "This place is booked by the week. Choose your changeover day.",
+  );
   const chooseStayCta = i18n.resolve(
-    "booking.fixed_stay.choose_cta",
+    "booking.weekly.choose_cta",
     "Choose a stay",
   );
-  const viewStaysCta = i18n.resolve(
-    "booking.fixed_stay.view_cta",
-    "View stays",
-  );
-  const stayCategoryLabel = i18n.resolve(
-    "booking.fixed_stay.trigger_label",
-    "Stay",
-  );
-  const fixedStayFromLabel = i18n.resolve(
-    "booking.fixed_stay.from",
-    "From",
-  );
-  const fixedStayPerStayLabel = i18n.resolve(
-    "booking.fixed_stay.per_stay",
-    "per stay",
-  );
-  const fixedStayAvailableCountLabel = i18n.plural(
-    "booking.fixed_stay.available_count",
-    openFixedStayOptions.length,
-    "{n} stay available",
-    "{n} stays available",
-  );
-  const pickStayCta = isFixedMode
+  const pickStayCta = isWeeklyMode
     ? chooseStayCta
     : i18n.resolve("booking.select_dates_cta", "Select dates");
   const guestStepActionLabel =
@@ -996,10 +901,8 @@ export function BookingWidget({
         ? { text: stayRangeFormatter.format(checkIn), translated: true }
         : addDatesLabel;
   const primaryActionLabel =
-    isFixedMode && !anyFixedStayOpen
-      ? fixedStayOptions.length > 0
-        ? viewStaysCta
-        : noStaysOpenMessage
+    isWeeklyMode && !weeklyReady
+      ? noStaysOpenMessage
       : reserveStep === "dates"
       ? pickStayCta
       : reserveStep === "guests"
@@ -1020,7 +923,7 @@ export function BookingWidget({
     },
     handlePrimaryAction,
   );
-  const pickerMessage = isFixedMode
+  const pickerMessage = isWeeklyMode
     ? stayPromptMessage
     : selectionValidation.status === "unavailable"
       ? unavailableDatesMessage
@@ -1084,29 +987,6 @@ export function BookingWidget({
     setPriceOpen(false);
   }
 
-  /**
-   * Takes one of the host's stays, and fills the shared range from it.
-   *
-   * The dates come from the option the server sent, never from anything this browser
-   * worked out: the summary, the breakdown and the review all read the shared range, so
-   * filling it here is what makes the rest of the card say the same thing it says for a
-   * flexible stay. The request itself still sends only the id.
-   */
-  function selectFixedStay(id: string) {
-    const option = findSelectableFixedStayOption(fixedStayOptions, id);
-    if (!option) return;
-    setSelectedFixedStayId(option.id);
-    setStayRange({ checkIn: option.checkIn, checkOut: option.checkOut });
-    setError(null);
-  }
-
-  /** Clears only the host-defined stay; the guest party and note remain intact. */
-  function clearFixedStaySelection() {
-    setSelectedFixedStayId(null);
-    setStayRange({ checkIn: "", checkOut: "" });
-    setError(null);
-  }
-
   function openPicker(step: PickerStep) {
     const activeElement = document.activeElement;
     if (activeElement instanceof HTMLElement && activeElement !== document.body) {
@@ -1133,16 +1013,10 @@ export function BookingWidget({
    */
   function goToLogin() {
     const returnUrl = new URL(window.location.href);
-    // A fixed stay is not a date range, so it does not travel as one. Its id goes into
-    // the draft below, where coming back can re-check it against what the host still
-    // offers; dates on the URL would come back as a selection this listing cannot make.
-    if (isFixedMode) {
-      returnUrl.searchParams.delete("checkIn");
-      returnUrl.searchParams.delete("checkOut");
-    } else {
-      returnUrl.searchParams.set("checkIn", checkInStr);
-      returnUrl.searchParams.set("checkOut", checkOutStr);
-    }
+    // Dates are the booking selection in both modes. Weekly mode constrains which date
+    // pairs are valid; it does not use a different payload or resume mechanism.
+    returnUrl.searchParams.set("checkIn", checkInStr);
+    returnUrl.searchParams.set("checkOut", checkOutStr);
     returnUrl.searchParams.set("adults", String(guestDetails.adults));
     returnUrl.searchParams.set("children", String(guestDetails.children));
     returnUrl.searchParams.set("infants", String(guestDetails.infants));
@@ -1154,7 +1028,6 @@ export function BookingWidget({
       listingId,
       note,
       paymentMethod: selectedPaymentMethod,
-      fixedStayPeriodId: isFixedMode ? selectedFixedStayId : null,
       savedAt: Date.now(),
     });
     // The login route is itself an intercepted modal. Unmount the booking dialog
@@ -1198,9 +1071,10 @@ export function BookingWidget({
       return;
     }
 
-    // The backstop for the same rule the button already applies: nothing may be sent for
-    // a fixed listing without a stay that is still on offer at this moment.
-    if (isFixedMode && !selectedFixedStay) {
+    // The backstop for the same rule the calendar already applies: a weekly listing that
+    // is not set up, or a pair of dates that is not whole weeks on its changeover day,
+    // never leaves this browser. The server refuses both again on arrival.
+    if (isWeeklyMode && (!weeklyReady || weeklyIssue)) {
       setError(stayPromptMessage.text);
       return;
     }
@@ -1225,15 +1099,13 @@ export function BookingWidget({
     startTransition(async () => {
       const formData = new FormData();
       formData.set("listingId", listingId);
-      // Exactly one of the two selections, never both — the server refuses a request
-      // carrying a period id beside a date, and rightly: which one is authoritative
-      // would be unanswerable. A fixed stay travels as an id alone, and the server reads
-      // its dates out of its own row.
-      const stayFields = bookingStayFormFields(
-        isFixedMode
-          ? { fixedStayPeriodId: selectedFixedStay!.id }
-          : { checkIn: checkInStr, checkOut: checkOutStr },
-      );
+      // Two dates, in both modes. A weekly listing's dates are still ordinary dates —
+      // what makes them a weekly stay is which pairs the server accepts, not a different
+      // kind of payload.
+      const stayFields = bookingStayFormFields({
+        checkIn: checkInStr,
+        checkOut: checkOutStr,
+      });
       for (const [field, value] of Object.entries(stayFields)) {
         formData.set(field, value);
       }
@@ -1258,7 +1130,7 @@ export function BookingWidget({
         // The refusal a fixed stay is most likely to meet is "someone took it while you
         // were reading". Re-fetch the host's list; the effect above drops the selection
         // if this stay is no longer among the ones a guest may take.
-        if (isFixedMode) router.refresh();
+        if (isWeeklyMode) router.refresh();
       }
     });
   }
@@ -1267,7 +1139,6 @@ export function BookingWidget({
     // Nothing left to come back to, so a draft written before an abandoned sign-in must
     // not outlive the selection it belonged to.
     clearBookingResumeDraft();
-    setSelectedFixedStayId(null);
     setStayRange({ checkIn: "", checkOut: "" });
     // The one clearing the header follows, since the effect above leaves an empty
     // selection alone.
@@ -1490,6 +1361,19 @@ export function BookingWidget({
    * to find both before the request could be sent.
    */
   function renderSummary() {
+    if (isWeeklyMode && !weeklyReady) {
+      return (
+        <div
+          role="status"
+          className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-6 text-amber-950"
+        >
+          {i18n.resolve(
+            "booking.weekly.schedule_incomplete",
+            "This listing is not accepting bookings yet because its weekly schedule is incomplete.",
+          ).text}
+        </div>
+      );
+    }
     return (
       <div className="space-y-2">
         <div className="overflow-hidden rounded-xl border border-border/50 bg-background">
@@ -1533,32 +1417,18 @@ export function BookingWidget({
                 setPickerStep(step);
               }}
               guestCounts={guestDetails}
-              // Only on a fixed-stay listing: the calendar step becomes the host's list
-              // of whole stays, and every other part of this overlay — the guest step,
-              // the review, the payment terms, the rules, the breakdown — is untouched.
-              renderDatesStep={
-                isFixedMode
-                  ? () => (
-                      <FixedStayOptions
-                        name={`fixed-stay-${listingId}-${isSmallScreen ? "sheet" : "card"}`}
-                        options={fixedStayOptions}
-                        selectedId={selectedFixedStayId}
-                        onSelect={selectFixedStay}
-                        quoteTotal={quoteFixedStayTotal}
-                        currency={currency}
-                      />
-                    )
+              // The same calendar in both modes. On a weekly listing every day but the
+              // changeover day is disabled at both ends of the selection, which — with
+              // the minimum and maximum already passed below — is the whole weekly rule
+              // expressed in the picker a guest already knows.
+              changeoverWeekday={
+                isWeeklyMode && changeoverWeekday
+                  ? changeoverWeekdayIndex(changeoverWeekday)
                   : undefined
               }
-              dateDialogTitle={isFixedMode ? chooseStayCta : undefined}
-              dateDialogDescription={isFixedMode ? chooseStayMessage : undefined}
-              selectionCategoryLabel={
-                isFixedMode ? stayCategoryLabel : undefined
-              }
-              emptySelectionLabel={isFixedMode ? chooseStayCta : undefined}
-              onResetSelection={
-                isFixedMode ? clearFixedStaySelection : undefined
-              }
+              changeoverMessage={isWeeklyMode ? changeoverDayMessage : undefined}
+              dateDialogTitle={isWeeklyMode ? chooseStayCta : undefined}
+              dateDialogDescription={isWeeklyMode ? chooseStayMessage : undefined}
               onGuestCountsChange={(next) => {
                 setGuestDetails(applyPetPolicy(next, petsAllowed));
                 setGuestsConfirmed(true);
@@ -1846,11 +1716,11 @@ export function BookingWidget({
   /**
    * Whether there is anything for the card's button to do.
    *
-   * A sold-out season can still be opened so the guest sees its disabled options. Only
-   * a listing with no guest-visible stays at all has nothing for this control to show.
+   * The one state with nothing to open is a weekly listing whose host has not chosen a
+   * changeover day: every date would be refused, and a calendar of refusals is not worth
+   * a press.
    */
-  const primaryActionDisabled =
-    isPending || (isFixedMode && fixedStayOptions.length === 0);
+  const primaryActionDisabled = isPending || (isWeeklyMode && !weeklyReady);
 
   /** The card's one button. It opens the overlay on the step this stay is up to;
    *  the request itself is sent from in there and never from here. */
@@ -1977,57 +1847,7 @@ export function BookingWidget({
       >
         <CardHeader className="pb-2">
           <CardTitle className="flex flex-col gap-1 font-normal">
-            {isFixedMode ? (
-              hasStayQuote && stayPricing ? (
-                <button
-                  type="button"
-                  onClick={() => (priceOpen ? closePrice() : openPrice())}
-                  aria-expanded={priceOpen}
-                  className="flex flex-col items-start gap-0.5 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <span className="flex items-baseline gap-1">
-                    <LocalizedPrice
-                      exact
-                      amount={total}
-                      currency={currency}
-                      locale={i18n.locale}
-                      className="text-2xl font-semibold"
-                    />
-                    <span className="text-base font-normal text-muted-foreground">
-                      / <Txt value={nightLabel} />
-                    </span>
-                  </span>
-                  <span className="inline-flex items-center gap-1 text-xs font-normal text-muted-foreground underline underline-offset-2">
-                    <Txt value={priceDetailsLabel} />
-                  </span>
-                </button>
-              ) : fixedStayStartingTotal !== null ? (
-                <div className="flex flex-col gap-0.5">
-                  <span className="flex flex-wrap items-baseline gap-1">
-                    <span className="text-base font-normal text-muted-foreground">
-                      <Txt value={fixedStayFromLabel} />
-                    </span>
-                    <LocalizedPrice
-                      exact
-                      amount={fixedStayStartingTotal}
-                      currency={currency}
-                      locale={i18n.locale}
-                      className="text-2xl font-semibold"
-                    />
-                    <span className="text-base font-normal text-muted-foreground">
-                      <Txt value={fixedStayPerStayLabel} />
-                    </span>
-                  </span>
-                  <span className="text-xs font-normal text-muted-foreground">
-                    <Txt value={fixedStayAvailableCountLabel} />
-                  </span>
-                </div>
-              ) : (
-                <span className="text-lg font-semibold">
-                  <Txt value={noStaysOpenMessage} />
-                </span>
-              )
-            ) : hasStayQuote && stayPricing ? (
+            {hasStayQuote && stayPricing ? (
               <button
                 type="button"
                 onClick={() => (priceOpen ? closePrice() : openPrice())}
@@ -2083,7 +1903,7 @@ export function BookingWidget({
                 </span>
               </div>
             )}
-            {!isFixedMode && hasVariableRates && !hasStayQuote && (
+            {!isWeeklyMode && hasVariableRates && !hasStayQuote && (
               <span className="text-xs font-normal text-muted-foreground">
                 <Tx
                   k="booking.variable_rate_notice"
@@ -2149,29 +1969,6 @@ export function BookingWidget({
                   <ChevronUp className="h-3 w-3" />
                 </span>
               </>
-            ) : isFixedMode ? (
-              fixedStayStartingTotal !== null ? (
-                <>
-                  <span className="flex items-baseline gap-1 text-base font-semibold">
-                    <span className="text-xs font-normal text-muted-foreground">
-                      <Txt value={fixedStayFromLabel} />
-                    </span>
-                    <LocalizedPrice
-                      exact
-                      amount={fixedStayStartingTotal}
-                      currency={currency}
-                      locale={i18n.locale}
-                    />
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    <Txt value={fixedStayAvailableCountLabel} />
-                  </span>
-                </>
-              ) : (
-                <span className="text-sm font-semibold">
-                  <Txt value={noStaysOpenMessage} />
-                </span>
-              )
             ) : (
               <>
                 <span className="flex items-baseline gap-1 text-base font-semibold">
@@ -2194,12 +1991,8 @@ export function BookingWidget({
                     / <Tx k="property_card.per_night" source="night" />
                   </span>
                 </span>
-                {/* The button already says "Select dates", so this line goes to
-                    the one constraint worth knowing before opening the picker. On a
-                    fixed-stay listing there is no such constraint: the host chose each
-                    stay's length, and the booking transaction skips the minimum for the
-                    same reason — so stating it here would be a rule about nothing. */}
-                {!isFixedMode && minNights > 1 && (
+                {/* Minimum stay is listing-wide and applies in both booking modes. */}
+                {minNights > 1 && (
                   <span
                     className={`text-xs text-muted-foreground ${
                       minimumStayMessage.translated ? "notranslate" : ""

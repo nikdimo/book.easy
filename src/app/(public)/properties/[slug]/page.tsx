@@ -33,7 +33,6 @@ import { ListingLocationMap } from "@/components/public/listing-location-map";
 import { BookingWidget } from "@/components/public/booking-widget";
 import { ListingStayProvider } from "@/components/public/listing-stay-context";
 import { ListingAvailabilityCalendar } from "@/components/public/listing-availability-calendar";
-import { getGuestFixedStayPeriods } from "@/lib/services/fixed-stay.service";
 import { ListingActions } from "@/components/public/listing-actions";
 import { ListingViewTracker } from "@/components/public/listing-view-tracker";
 import { StartConversationButton } from "@/components/communication/start-conversation-button";
@@ -125,18 +124,6 @@ export default async function ListingDetailPage({
     search.checkOut,
     todayYmd(),
   );
-  /**
-   * A stay named by a link from a dated search, still only a *request* at this point.
-   *
-   * Read as an opaque string and nothing else. It is not trusted until it has been found
-   * in this listing's own projection below — which is what makes an id from another
-   * listing, a guessed one, or one whose stay has since been taken produce no selection
-   * rather than a wrong one.
-   */
-  const requestedFixedStayPeriodId =
-    typeof search.fixedStayPeriodId === "string"
-      ? search.fixedStayPeriodId
-      : null;
   const hasExplicitSearchSelection = [
     "checkIn",
     "checkOut",
@@ -169,50 +156,21 @@ export default async function ListingDetailPage({
     reviewSummary,
     rawTypeLabel,
     t,
-    fixedStayOffer,
   ] = await Promise.all([
-      getBlockedDateRangesForListing(listing.id),
-      listing.pricingRule
-        ? getFutureDatePriceRowsForListing(listing.id)
-        : Promise.resolve([]),
-      getPublishedListingReviews(listing.id),
-      getPropertyTypeLabel(listing.property.propertyType),
-      getT(),
-      // The host's whole stays, already narrowed to what a guest may see: past and
-      // switched-off stays never leave the server, and taken ones arrive marked
-      // unselectable with no reason attached. Empty for a FLEXIBLE listing.
-      sellsFixedStays
-        ? getGuestFixedStayPeriods(listing.id, todayYmd())
-        : Promise.resolve(null),
-    ]);
-  const fixedStayOptions = fixedStayOffer?.periods ?? [];
-  /**
-   * The requested stay, resolved against what this listing is actually offering now.
-   *
-   * The link carries an id; the dates come from the row the server just read. That is
-   * the whole security of the deep link: a guest can put any id in the URL and the worst
-   * it can do is select nothing.
-   */
-  const preselectedFixedStay =
-    requestedFixedStayPeriodId === null
-      ? null
-      : (fixedStayOptions.find(
-          (period) =>
-            period.id === requestedFixedStayPeriodId && period.selectable,
-        ) ?? null);
-
-  // A fixed-stay listing has no arbitrary dates to seed. `?checkIn=` on a shared link
-  // names a range, and a range is not one of the host's stays however closely its dates
-  // resemble one — adopting it would put a selection in the card that the host never
-  // offered and that the server would refuse. The only dates a fixed-stay page ever
-  // opens with are the ones on the row above, which the host wrote. Guest counts still
-  // seed normally in both modes.
-  const initialCheckIn = sellsFixedStays
-    ? (preselectedFixedStay?.checkIn ?? "")
-    : seededStay.checkIn;
-  const initialCheckOut = sellsFixedStays
-    ? (preselectedFixedStay?.checkOut ?? "")
-    : seededStay.checkOut;
+    getBlockedDateRangesForListing(listing.id),
+    listing.pricingRule
+      ? getFutureDatePriceRowsForListing(listing.id)
+      : Promise.resolve([]),
+    getPublishedListingReviews(listing.id),
+    getPropertyTypeLabel(listing.property.propertyType),
+    getT(),
+  ]);
+  // Both modes seed from the URL. A weekly listing books by ordinary dates, so a shared
+  // link carrying a changeover-day range is a real selection on it — and one carrying a
+  // Tuesday fails the same rule the calendar and the server apply, and is refused rather
+  // than silently honoured. Guest counts seed as they always did.
+  const initialCheckIn = seededStay.checkIn;
+  const initialCheckOut = seededStay.checkOut;
 
   // `date` is `@db.Date`; its UTC fields are the day the host priced. Read locally
   // this keyed a June 10 override as "2026-06-09" on any server behind UTC (M6).
@@ -262,12 +220,10 @@ export default async function ListingDetailPage({
     "{n} bath",
     "{n} baths",
   );
-  // A minimum stay is a rule about ranges a guest may pick, and on a fixed-stay listing
-  // there are no ranges to pick: the host chose each stay's length themselves, and the
-  // booking transaction skips the minimum for exactly that reason. Advertising it here
-  // would state a rule that does not apply to anything on the page.
+  // The compact facts row names weekly mode. Its minimum and maximum still apply and are
+  // enforced by the picker and booking transaction just as they are in flexible mode.
   const minimumNights = sellsFixedStays
-    ? ti(t, "listing.fixed_stays_only", "Fixed stays only", {})
+    ? ti(t, "listing.weekly_stays_only", "Weekly stays only", {})
     : tPlural(
         t,
         "listing.minimum_nights",
@@ -395,15 +351,14 @@ export default async function ListingDetailPage({
       houseRules={<HouseRulesList t={t} rules={houseRules} />}
       houseRulesVersion={renderedHouseRulesVersion}
       bookingMode={sellsFixedStays ? "FIXED_STAYS" : "FLEXIBLE"}
-      fixedStayOptions={fixedStayOptions}
-      initialFixedStayPeriodId={preselectedFixedStay?.id ?? null}
+      changeoverWeekday={listing.changeoverWeekday}
     />
   ) : null;
   // Airbnb-style: the open nights are on the page itself, so a guest who arrived
   // without dates can pick them here rather than through the widget's picker.
-  // No free calendar on a fixed-stay listing: there is nothing on it a guest could
-  // choose, and a grid of open nights beside a list of whole stays says two different
-  // things about what this place sells. The stays themselves are in the booking card.
+  // Weekly mode uses the constrained picker in the booking card. The large calendar
+  // does not yet understand changeover days, so showing it here would invite invalid
+  // ranges even though the booking card and server correctly refuse them.
   const availabilityCalendar = listing.pricingRule && !sellsFixedStays ? (
     <ListingAvailabilityCalendar
       placeName={listing.property.city}

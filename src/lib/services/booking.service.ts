@@ -21,14 +21,9 @@ import { exceedsMaxNights } from "@/lib/utils/booking-selection";
 import {
   bookingStayRequestIssueMessage,
   classifyBookingStayRequest,
-  type BookingStayRequestKind,
 } from "@/lib/utils/booking-stay-request";
-import {
-  buildFixedStaySnapshot,
-  validateFixedStayPeriod,
-  type FixedStaySnapshot,
-} from "@/lib/utils/fixed-stay-periods";
 import { decideStayAvailability } from "@/lib/utils/stay-availability";
+import type { ChangeoverWeekdayName } from "@/lib/utils/weekly-stay";
 import {
   conversionRate,
   type ConversionContext,
@@ -366,7 +361,9 @@ export const SELF_BOOKING_ERROR =
   "You can't book your own listing.";
 
 /**
- * The stay, one of two ways — never both, and never neither.
+  * New bookings always carry dates. The legacy period-id arm remains accepted by the
+  * TypeScript boundary only so old callers receive an explicit migration error rather
+  * than an ambiguous missing-date error; it never creates a booking.
  *
  * A `never`-typed counterpart on each arm is what makes this a real either/or in
  * TypeScript rather than four optional fields: a caller cannot pass a checkout beside a
@@ -429,9 +426,7 @@ interface CreateBookingCommonInput {
   expectedHouseRulesVersion?: string | null;
 }
 
-/** A listing sells whole stays, so a request naming its own dates is asking for
- *  something this listing does not offer. Exported so tests can match on the rule
- *  rather than on prose. */
+/** @deprecated Weekly listings now book dates constrained by their weekly rule. */
 export const FIXED_STAYS_LISTING_ERROR =
   "This place is booked as whole stays. Reload the page and choose one of the stays the host offers.";
 
@@ -447,6 +442,55 @@ export const FLEXIBLE_LISTING_ERROR =
  * confirm that a period exists somewhere, and none of the three is a distinction the
  * guest can act on differently.
  */
+/** A request still shaped like the old period-based booking. */
+export const LEGACY_PERIOD_REQUEST_ERROR =
+  "This place now takes bookings by date. Reload the page and choose your dates.";
+
+/** The listing sells weekly stays but its host has not chosen a changeover day yet. */
+export const NO_CHANGEOVER_DAY_ERROR =
+  "This place is not taking bookings right now. Message the host about your dates.";
+
+/**
+ * One sentence per way a weekly stay can be the wrong shape.
+ *
+ * Each names the rule the guest tripped over and the day it turns on, because "that is
+ * not a valid stay" tells somebody looking at a calendar nothing they can act on.
+ */
+export function weeklyStayRefusal(
+  reason: string,
+  changeoverWeekday: ChangeoverWeekdayName | null,
+): string {
+  const day = changeoverWeekday
+    ? WEEKDAY_LABELS[changeoverWeekday]
+    : "the host's changeover day";
+  switch (reason) {
+    case "NO_CHANGEOVER_DAY":
+      return NO_CHANGEOVER_DAY_ERROR;
+    case "WRONG_CHECK_IN_DAY":
+      return `This place is booked by the week. Check-in must be on a ${day}.`;
+    case "WRONG_CHECK_OUT_DAY":
+      return `This place is booked by the week, so check-out must also be on a ${day}.`;
+    case "BELOW_MINIMUM":
+      return "That stay is shorter than this host's minimum stay.";
+    case "ABOVE_MAXIMUM":
+      return "That stay is longer than this host's maximum stay.";
+    case "STAY_IN_PAST":
+      return "Check-in date cannot be in the past";
+    default:
+      return "Those dates are not available. Please choose different dates.";
+  }
+}
+
+const WEEKDAY_LABELS: Record<ChangeoverWeekdayName, string> = {
+  MONDAY: "Monday",
+  TUESDAY: "Tuesday",
+  WEDNESDAY: "Wednesday",
+  THURSDAY: "Thursday",
+  FRIDAY: "Friday",
+  SATURDAY: "Saturday",
+  SUNDAY: "Sunday",
+};
+
 export const FIXED_STAY_UNAVAILABLE_ERROR =
   "That stay is no longer offered. Please choose another.";
 
@@ -454,16 +498,23 @@ export const FIXED_STAY_PAST_ERROR =
   "That stay has already started. Please choose another.";
 
 /** The stay a booking is actually for, resolved from the database inside the lock. */
+/**
+ * The stay a booking is for.
+ *
+ * One shape in both modes: two calendar dates and their length. Weekly listings used to
+ * resolve to a stored row and freeze a snapshot of it; they no longer do, because a
+ * weekly stay is a rule rather than a row. `Booking.fixedStayPeriodId` and
+ * `fixedStaySnapshot` are left in the schema and stay readable on the bookings that
+ * already carry them — nothing new writes either.
+ */
 type ResolvedBookingStay = {
+  kind: "FLEXIBLE" | "FIXED_STAYS";
   checkIn: Date;
   checkOut: Date;
   checkInYmd: string;
   checkOutYmd: string;
   numberOfNights: number;
-} & (
-  | { kind: "FLEXIBLE"; periodId?: undefined; snapshot?: undefined }
-  | { kind: "FIXED_STAYS"; periodId: string; snapshot: FixedStaySnapshot }
-);
+};
 
 /**
  * What is being booked, decided against the mode the listing has *right now*.
@@ -473,102 +524,66 @@ type ResolvedBookingStay = {
  * beside it. Everything downstream — the block query, the quote, the stored dates and the
  * hold — reads the dates this returns and never the request's.
  *
- * The two arms differ in exactly one way, and it is the important one. A flexible request
- * *states* its stay, so the dates come from the guest and the host's windows and stay
- * lengths decide whether they are allowed. A fixed request *names* one, so the dates come
- * out of the stored row and there is nothing left for a window or a minimum stay to
- * permit: the host already chose both when they put the stay on sale.
+ * Both modes use the guest's dates. Weekly mode adds the changeover-day/whole-week rule;
+ * the listing-wide availability calendar and stay limits still apply to both modes.
  */
 async function resolveBookingStay(
-  tx: Prisma.TransactionClient,
-  listing: { id: string; bookingMode: string; availabilityMode: string },
-  requested: BookingStayRequestKind,
+  listing: {
+    id: string;
+    bookingMode: string;
+    availabilityMode: string;
+    changeoverWeekday: ChangeoverWeekdayName | null;
+    pricingRule: { minNights: number; maxNights: number } | null;
+  },
   input: { checkIn?: Date; checkOut?: Date; fixedStayPeriodId?: string },
 ): Promise<ResolvedBookingStay> {
-  const listingSellsFixedStays = listing.bookingMode === "FIXED_STAYS";
-
-  if (requested === "FIXED_STAYS") {
-    if (!listingSellsFixedStays) throw new Error(FLEXIBLE_LISTING_ERROR);
-
-    // Scoped by listing as well as by id: a period id from another listing resolves to
-    // nothing here, and "nothing" is reported with the same sentence as a period that
-    // never existed.
-    const period = await tx.listingFixedStayPeriod.findFirst({
-      where: { id: input.fixedStayPeriodId!, listingId: listing.id },
-      select: { id: true, checkIn: true, checkOut: true, disabledAt: true },
-    });
-    if (!period) throw new Error(FIXED_STAY_UNAVAILABLE_ERROR);
-
-    const checkInYmd = dbDateToYmd(period.checkIn);
-    const checkOutYmd = dbDateToYmd(period.checkOut);
-
-    // Defensive, not expected: every write path refuses anything but 7 or 14 nights and
-    // the database refuses a backwards range. A row that is neither is corrupt, and a
-    // corrupt row must not be turned into a booking with a length nobody offered.
-    const validation = validateFixedStayPeriod({
-      checkIn: checkInYmd,
-      checkOut: checkOutYmd,
-    });
-    if (!validation.ok) throw new Error(FIXED_STAY_UNAVAILABLE_ERROR);
-
-    // The shared decision, so this path and the host/guest projections cannot drift.
-    // Windows are passed empty and `availabilityMode` is carried only so the shared rule
-    // receives the whole listing state it documents — in FIXED_STAYS it consults neither.
-    const decision = decideStayAvailability({
-      bookingMode: "FIXED_STAYS",
-      availabilityMode: listing.availabilityMode,
-      windows: [],
-      fixedStayPeriods: [
-        {
-          id: period.id,
-          checkIn: checkInYmd,
-          checkOut: checkOutYmd,
-          disabledAt: period.disabledAt,
-        },
-      ],
-      checkIn: checkInYmd,
-      checkOut: checkOutYmd,
-      today: todayYmd(),
-    });
-    if (!decision.offered) {
-      throw new Error(
-        decision.reason === "FIXED_STAY_IN_PAST"
-          ? FIXED_STAY_PAST_ERROR
-          : FIXED_STAY_UNAVAILABLE_ERROR,
-      );
-    }
-
-    return {
-      kind: "FIXED_STAYS",
-      // Rebuilt from the calendar dates rather than reusing the row's instants, so the
-      // one documented `ymd -> @db.Date` conversion is what everything downstream holds.
-      checkIn: ymdToDbDate(checkInYmd),
-      checkOut: ymdToDbDate(checkOutYmd),
-      checkInYmd,
-      checkOutYmd,
-      numberOfNights: validation.nights,
-      periodId: period.id,
-      // No price of any kind: what a fixed stay costs is the listing's own pricing,
-      // quoted below by the same engine a flexible booking goes through.
-      snapshot: buildFixedStaySnapshot({
-        id: period.id,
-        checkIn: checkInYmd,
-        checkOut: checkOutYmd,
-      }),
-    };
+  // A period id is no longer a way to book anything. Weekly stays are a rule about
+  // weekdays and length rather than a list of rows, so a request still carrying one is
+  // either a stale page or someone probing the old shape — and both are refused rather
+  // than quietly interpreted as the dates beside them.
+  if (input.fixedStayPeriodId) throw new Error(LEGACY_PERIOD_REQUEST_ERROR);
+  if (!input.checkIn || !input.checkOut) {
+    throw new Error("Choose your dates before sending your request.");
   }
 
-  if (listingSellsFixedStays) throw new Error(FIXED_STAYS_LISTING_ERROR);
-
-  const checkIn = input.checkIn!;
-  const checkOut = input.checkOut!;
+  const checkIn = input.checkIn;
+  const checkOut = input.checkOut;
   // The stay as calendar dates. `checkIn`/`checkOut` arrive as the UTC-midnight instants
   // the `@db.Date` columns take, so every night, price and length decision below reads
   // them here rather than off the server's own clock.
   const checkInYmd = dbDateToYmd(checkIn);
   const checkOutYmd = dbDateToYmd(checkOut);
+  const sellsWeeklyStays = listing.bookingMode === "FIXED_STAYS";
+
+  if (sellsWeeklyStays) {
+    // The shared rule, so this path, the search filter, `checkAvailability` and the guest
+    // calendar cannot come to four different answers about the same pair of dates. It
+    // fails closed on a listing whose host has not chosen a changeover day.
+    const decision = decideStayAvailability({
+      bookingMode: "FIXED_STAYS",
+      // Availability windows are checked once below for both booking modes. This call
+      // decides only whether the dates satisfy the weekly shape and stay limits.
+      availabilityMode: "OPEN",
+      windows: [],
+      changeoverWeekday: listing.changeoverWeekday,
+      limits: {
+        minNights: listing.pricingRule?.minNights ?? 1,
+        maxNights: listing.pricingRule?.maxNights ?? null,
+      },
+      checkIn: checkInYmd,
+      checkOut: checkOutYmd,
+      today: todayYmd(),
+    });
+    if (!decision.offered) {
+      throw new Error(weeklyStayRefusal(decision.reason, listing.changeoverWeekday));
+    }
+  }
+
   return {
-    kind: "FLEXIBLE",
+    // Both modes now book an ordinary pair of dates. What differs is which pairs the
+    // listing accepts, not what a booking is made of — which is why nothing below this
+    // line has a second shape to handle.
+    kind: sellsWeeklyStays ? "FIXED_STAYS" : "FLEXIBLE",
     checkIn,
     checkOut,
     checkInYmd,
@@ -633,11 +648,7 @@ export async function createBooking(input: CreateBookingInput) {
       // isolation does not prevent that on its own). Lock is released at commit/rollback.
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${listingId}))`;
 
-      // 1. Verify listing exists and is approved
-      // Windows are deliberately *not* included here any more: on a fixed-stay request
-      // the dates they would be filtered by are not known until the period is read, a
-      // few lines below. They are loaded in the flexible branch instead, with the same
-      // filter and the same rule as before.
+      // 1. Verify listing exists and is approved.
       const listing = await tx.listing.findFirst({
         where: { id: listingId, status: "APPROVED" },
         include: {
@@ -678,7 +689,7 @@ export async function createBooking(input: CreateBookingInput) {
       // 1b. The stay itself, resolved against the booking mode this listing has *now* —
       // inside the lock, so a host switching mode or switching a period off serializes
       // against this request rather than racing it. Everything below reads these dates.
-      const stay = await resolveBookingStay(tx, listing, requested.kind, input);
+      const stay = await resolveBookingStay(listing, input);
       const { checkIn, checkOut, numberOfNights } = stay;
 
       const currentHouseRules = houseRulesSnapshot(listing);
@@ -722,29 +733,23 @@ export async function createBooking(input: CreateBookingInput) {
         }
       }
 
-      // Availability windows say which dates a host opened for a guest to choose from,
-      // which is a question only a flexible request asks: a fixed stay *is* the host's
-      // own choice of dates, so there is nothing left for a window to permit or refuse.
-      // For a flexible request this is the identical rule, on the identical rows, as
-      // before — every window that touches the stay rather than one that spans it, so
-      // the shared merge sees the neighbour a spanning query would have discarded.
-      if (stay.kind === "FLEXIBLE") {
-        const availabilityWindows = await tx.listingAvailabilityWindow.findMany({
-          where: { listingId, ...windowsOverlappingStay(checkIn, checkOut) },
-          select: { startDate: true, endDate: true },
-        });
-        if (
-          !isStayWithinAvailabilityWindows({
-            availabilityMode: listing.availabilityMode,
-            windows: availabilityWindows,
-            checkIn,
-            checkOut,
-          })
-        ) {
-          throw new Error(
-            "These dates are not open for booking. Please select different dates.",
-          );
-        }
+      // Availability is listing-wide in both modes. Every window touching the stay is
+      // loaded so adjacent windows can be merged by the shared coverage rule.
+      const availabilityWindows = await tx.listingAvailabilityWindow.findMany({
+        where: { listingId, ...windowsOverlappingStay(checkIn, checkOut) },
+        select: { startDate: true, endDate: true },
+      });
+      if (
+        !isStayWithinAvailabilityWindows({
+          availabilityMode: listing.availabilityMode,
+          windows: availabilityWindows,
+          checkIn,
+          checkOut,
+        })
+      ) {
+        throw new Error(
+          "These dates are not open for booking. Please select different dates.",
+        );
       }
 
       // 2. Validate the party, then the capacity it adds up to.
@@ -977,18 +982,10 @@ export async function createBooking(input: CreateBookingInput) {
                 displayTotal: totalPrice * displayRate,
               }),
           numberOfNights,
-          // Null on every flexible booking, which is every booking that existed before
-          // fixed stays. On a fixed one the pointer records *which* stay was sold and
-          // the snapshot records what it was — the relation is `onDelete: SetNull`, so a
-          // host deleting the period later empties the pointer and leaves the snapshot
-          // standing. The snapshot carries dates and a length and no money at all.
-          ...(stay.kind === "FIXED_STAYS"
-            ? {
-                fixedStayPeriodId: stay.periodId,
-                fixedStaySnapshot:
-                  stay.snapshot as unknown as Prisma.InputJsonObject,
-              }
-            : {}),
+          // Deliberately absent. `fixedStayPeriodId` and `fixedStaySnapshot` stay in the
+          // schema so bookings sold under the old period model keep reading back exactly
+          // as they were sold, but a weekly booking is an ordinary pair of dates and
+          // writes neither. Both are left null on every booking taken from here on.
           status: BookingStatus.PENDING,
           responseDueAt,
           guestNote,

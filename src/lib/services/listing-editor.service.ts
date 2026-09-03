@@ -12,6 +12,7 @@ import {
 import { listingPropertyDetailsComplete } from "@/lib/host/v2/listing-property-details";
 import { editorCompletedSections } from "@/lib/host/v2/editor-sections";
 import { editorAttentionSlugs } from "@/lib/host/v2/editor-overview";
+import { weeklyStayWeekRange } from "@/lib/utils/weekly-stay";
 import type { CatalogRoomType, ListingRoomSummary } from "@/lib/types/room-catalog";
 import type { ListingMediaTypeValue } from "@/lib/types/listing-media";
 
@@ -44,6 +45,19 @@ export interface ListingEditorData {
   roomTypes: CatalogRoomType[];
 }
 
+function listingBookingRulesReady(listing: {
+  bookingMode: string;
+  changeoverWeekday: string | null;
+  pricingRule: { minNights: number; maxNights: number } | null;
+}): boolean {
+  if (listing.bookingMode !== "FIXED_STAYS") return true;
+  return (
+    listing.changeoverWeekday !== null &&
+    listing.pricingRule !== null &&
+    weeklyStayWeekRange(listing.pricingRule) !== null
+  );
+}
+
 /**
  * Everything the Photos workspace renders from, in one pass.
  *
@@ -66,6 +80,8 @@ export async function getListingEditorData(
       bedrooms: true,
       beds: true,
       bathrooms: true,
+      bookingMode: true,
+      changeoverWeekday: true,
       houseRulesReviewedAt: true,
       paymentMethodsReviewedAt: true,
       depositPoliciesReviewedAt: true,
@@ -108,7 +124,7 @@ export async function getListingEditorData(
         },
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
       },
-      pricingRule: { select: { id: true } },
+      pricingRule: { select: { id: true, minNights: true, maxNights: true } },
       _count: {
         select: { images: { where: { mediaType: "IMAGE" } } },
       },
@@ -200,6 +216,7 @@ export async function getListingEditorData(
 const attention = editorAttentionSlugs({
   completeSections,
   hasPricing: listing.pricingRule !== null,
+  bookingRulesReady: listingBookingRulesReady(listing),
   streetViewSet: listingStreetViewComplete(listing.property),
   });
 
@@ -270,6 +287,8 @@ export async function getListingEditorHeader(listingId: string, hostId: string) 
       bedrooms: true,
       beds: true,
       bathrooms: true,
+      bookingMode: true,
+      changeoverWeekday: true,
       houseRulesReviewedAt: true,
       paymentMethodsReviewedAt: true,
       depositPoliciesReviewedAt: true,
@@ -293,7 +312,7 @@ export async function getListingEditorHeader(listingId: string, hostId: string) 
         orderBy: [{ isPrimary: "desc" }, { displayOrder: "asc" }],
         take: 1,
       },
-      pricingRule: { select: { id: true } },
+      pricingRule: { select: { id: true, minNights: true, maxNights: true } },
       _count: {
         select: { images: { where: { mediaType: "IMAGE" } } },
       },
@@ -323,6 +342,7 @@ export async function getListingEditorHeader(listingId: string, hostId: string) 
 const attention = editorAttentionSlugs({
   completeSections,
   hasPricing: listing.pricingRule !== null,
+  bookingRulesReady: listingBookingRulesReady(listing),
   streetViewSet: listingStreetViewComplete(listing.property),
   });
 
@@ -359,6 +379,8 @@ export interface ListingEditorOverview {
   paymentMethodsReviewed: boolean;
   /** Whether the host has chosen a saved Street View approach. */
   streetViewSet?: boolean;
+  /** Whether the active booking rules leave at least one possible stay. */
+  bookingRulesReady?: boolean;
   completeSections: string[];
   /** Sections with an open task. Pricing can appear here; it has no checkmark of its
    *  own because it is not a completion section. */
@@ -395,6 +417,8 @@ export async function getListingEditorOverview(
       beds: true,
       bathrooms: true,
       availabilityMode: true,
+      bookingMode: true,
+      changeoverWeekday: true,
       houseRulesReviewedAt: true,
       paymentMethodsReviewedAt: true,
       depositPoliciesReviewedAt: true,
@@ -419,7 +443,14 @@ export async function getListingEditorOverview(
         orderBy: [{ isPrimary: "desc" }, { displayOrder: "asc" }],
         take: 1,
       },
-      pricingRule: { select: { currency: true, baseNightlyRate: true } },
+      pricingRule: {
+        select: {
+          currency: true,
+          baseNightlyRate: true,
+          minNights: true,
+          maxNights: true,
+        },
+      },
       _count: {
         select: {
           images: { where: { mediaType: "IMAGE" } },
@@ -458,6 +489,7 @@ export async function getListingEditorOverview(
 const attention = editorAttentionSlugs({
   completeSections,
   hasPricing: listing.pricingRule !== null,
+  bookingRulesReady: listingBookingRulesReady(listing),
   streetViewSet: listingStreetViewComplete(listing.property),
   });
 
@@ -485,6 +517,7 @@ const attention = editorAttentionSlugs({
       listing.depositPoliciesReviewedAt !== null &&
       listing.cancellationPolicyReviewedAt !== null,
     streetViewSet: listingStreetViewComplete(listing.property),
+    bookingRulesReady: listingBookingRulesReady(listing),
     completeSections,
     attention,
   };

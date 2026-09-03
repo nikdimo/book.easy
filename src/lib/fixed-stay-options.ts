@@ -139,14 +139,9 @@ export const FIXED_STAY_PERIOD_PARAM = "fixedStayPeriodId";
  * A flexible result keeps the search's own query byte for byte — the dates a guest
  * searched are the dates its page should open on, and nothing here touches that.
  *
- * A fixed-stay result is different in both directions. Its dates come out, because a
- * range is not a selection on a listing that offers no ranges and the page is required
- * to ignore them; and the matched stay's id goes in, so the page can open on the stay the
- * guest actually found. The id is a *pointer*, not a selection: the page re-checks it
- * against its own projection and preselects nothing if it no longer holds.
- *
- * Only that listing's own match travels. There is no global parameter here that could
- * follow a guest onto a card it does not belong to.
+ * Weekly stays are date ranges too. Search dates therefore travel unchanged for every
+ * booking mode; the weekly listing page validates them against its changeover day,
+ * availability and stay limits before adopting them.
  */
 export function listingSearchLinkQuery(
   searchQuery: string | undefined,
@@ -155,14 +150,6 @@ export function listingSearchLinkQuery(
     matchedFixedStayPeriodId?: string | null;
   },
 ): string {
-  if (listing.bookingMode !== "FIXED_STAYS") return searchQuery ?? "";
-
-  const params = new URLSearchParams(searchQuery ?? "");
-  params.delete("checkIn");
-  params.delete("checkOut");
-  params.delete(FIXED_STAY_PERIOD_PARAM);
-  if (listing.matchedFixedStayPeriodId) {
-    params.set(FIXED_STAY_PERIOD_PARAM, listing.matchedFixedStayPeriodId);
-  }
-  return params.toString();
+  void listing;
+  return searchQuery ?? "";
 }

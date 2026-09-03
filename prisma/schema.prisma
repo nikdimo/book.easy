@@ -58,6 +58,22 @@ enum ListingAvailabilityMode {
  * availability windows and minimum-stay settings stay stored exactly as the host left
  * them so switching back to FLEXIBLE restores the calendar they had.
  */
+/**
+ * The one day of the week a weekly listing changes over.
+ * Named days rather than a number: a stored `6` is only meaningful next to the
+ * convention that produced it, and this column is read by SQL, by the app, and by
+ * whoever opens the table next.
+ */
+enum ListingChangeoverWeekday {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
 enum ListingBookingMode {
   FLEXIBLE
   FIXED_STAYS
@@ -840,11 +856,23 @@ model Listing {
   /**
    * FLEXIBLE keeps the calendar every existing listing has. The default is what makes
    * this column inert: no listing changes behaviour until a host deliberately switches
-   * to FIXED_STAYS and adds periods.
+   * to FIXED_STAYS and chooses a changeover weekday.
    * Orthogonal to `availabilityMode`: that says which dates the host has opened at all,
-   * this says how the open dates are sold.
+   * this says how the open dates are sold. FIXED_STAYS is the legacy database value for
+   * the product's weekly-stay mode; it no longer depends on ListingFixedStayPeriod rows.
    */
   bookingMode ListingBookingMode @default(FLEXIBLE)
+
+  /**
+   * The weekday a weekly listing's guests arrive and leave on.
+   * Null is a real state and it fails closed: a listing selling weekly stays without a
+   * changeover day offers nothing at all until its host picks one. Guessing a day would
+   * open dates the host never agreed to. Ignored while the listing is FLEXIBLE, and kept
+   * there so switching back and forth restores it.
+   * The stay length is not stored beside it. How long a week-multiple stay may run is the
+   * listing's own `PricingRule.minNights`/`maxNights`, which apply in both booking modes.
+   */
+  changeoverWeekday ListingChangeoverWeekday?
 
   /**
    * Time-decayed demand signal (views + heavily-weighted bookings) recomputed by a
@@ -2581,7 +2609,7 @@ model ExchangeRateSnapshot {
 /// listing — a host who promotes into the same three groups does so for every property
 /// they own, and a per-listing copy would make them re-tick the list for each.
 model HostPromotionPreference {
-  hostId String @id
+  hostId         String   @id
   /// Channel codes, as `lib/promotion/channels.ts` defines them. Stored as written and
   /// filtered against the current list on read, so removing a channel from the product
   /// does not resurrect it here.

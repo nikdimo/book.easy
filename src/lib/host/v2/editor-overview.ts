@@ -20,6 +20,9 @@ export interface EditorOverviewFacts {
   /** Whether the listing has a pricing rule. Without one no date can be booked, which
    *  is a blocked sale rather than a matter of taste. */
   hasPricing: boolean;
+  /** False only when Weekly is active but its day or whole-week limits make every
+   *  possible stay invalid. This is an availability task, not an optional preference. */
+  bookingRulesReady?: boolean;
   /** A saved panorama and camera direction. Optional at publish time, but explicitly
    * checked afterwards so guests receive a useful approach view near check-in. */
   streetViewSet?: boolean;
@@ -67,6 +70,12 @@ const NO_PRICING: EditorAttentionItem = {
   source: "No nightly price is set, so no date can be booked.",
 };
 
+const BOOKING_RULES_INCOMPLETE: EditorAttentionItem = {
+  slug: "availability",
+  key: "host.editor.overview.attention.booking_rules",
+  source: "Finish the weekly booking rules before guests can choose dates.",
+};
+
 const STREET_VIEW_UNCHECKED: EditorAttentionItem = {
   slug: "location",
   key: "host.editor.overview.attention.street_view",
@@ -86,6 +95,7 @@ export function editorAttentionItems(
   const items: EditorAttentionItem[] = [];
 
   if (!facts.hasPricing) items.push(NO_PRICING);
+  if (facts.bookingRulesReady === false) items.push(BOOKING_RULES_INCOMPLETE);
 
   for (const section of EDITOR_COMPLETION_SECTIONS) {
     if (done.has(section.slug)) {

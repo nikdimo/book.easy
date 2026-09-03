@@ -4,7 +4,6 @@ import {
   AlertTriangle,
   BedDouble,
   CalendarRange,
-  Check,
   Clock,
   Home,
   Images,
@@ -33,6 +32,7 @@ import { LISTING_SPACE_TYPES, type ListingSpaceTypeValue } from "@/lib/types/lis
 import type { PropertyTypeOption } from "@/lib/types/property-type";
 import { cn } from "@/lib/utils";
 import { ListingFlowFooter } from "./listing-flow-footer";
+import { PhaseThreeIllustration } from "./phase-three-illustration";
 import { useHostStartDraft } from "./host-start-draft-provider";
 
 /**
@@ -415,12 +415,7 @@ function PublishedConfirmation({
               />
             </p>
           </section>
-          <div className="relative mx-auto grid aspect-square w-full max-w-[min(24rem,calc(100dvh-13rem))] place-items-center rounded-[2.5rem] bg-slate-100">
-            <Home className="size-36 text-slate-900" strokeWidth={1.1} aria-hidden />
-            <span className="absolute right-8 top-8 grid size-12 place-items-center rounded-full bg-slate-950 text-white">
-              <Check className="size-6" aria-hidden />
-            </span>
-          </div>
+          <PhaseThreeIllustration />
         </div>
       </main>
       <ListingFlowFooter

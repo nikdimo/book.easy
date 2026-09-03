@@ -18,11 +18,6 @@ import type {
   HostCalendarWorkspaceData,
 } from "@/lib/host/v2/calendar-types";
 import { dbDateToYmd, todayYmd, ymdToDbDate } from "@/lib/utils/date-only";
-import {
-  blockKindFromBlockType,
-  projectHostFixedStayPeriods,
-  ACTIVE_FIXED_STAY_BOOKING_STATUSES,
-} from "@/lib/services/fixed-stay.service";
 
 /**
  * Everything the v2 calendar workspace needs, for every listing the host owns.
@@ -62,7 +57,7 @@ export async function getHostCalendarWorkspace(
   });
 
   const mapped: HostCalendarListing[] = listings.map((listing) =>
-    mapCalendarListing(listing, today),
+    mapCalendarListing(listing),
   );
 
   return {
@@ -112,7 +107,7 @@ export async function getHostCalendarListingContext(
   });
   if (!listing) return null;
 
-  const mapped = mapCalendarListing(listing, today);
+  const mapped = mapCalendarListing(listing);
   return {
     today,
     horizonEnd,
@@ -140,6 +135,7 @@ function calendarListingSelect(todayDate: Date, horizonDate: Date) {
     status: true,
     availabilityMode: true,
     bookingMode: true,
+    changeoverWeekday: true,
     publishedAt: true,
     property: { select: { city: true } },
     images: {
@@ -228,10 +224,7 @@ type CalendarListingRow = Prisma.ListingGetPayload<{
   select: ReturnType<typeof calendarListingSelect>;
 }>;
 
-function mapCalendarListing(
-  listing: CalendarListingRow,
-  today: string,
-): HostCalendarListing {
+function mapCalendarListing(listing: CalendarListingRow): HostCalendarListing {
   const nextBooking = listing.bookings[0];
   const blocks = listing.availabilityBlocks.map((block) => ({
     id: block.id,
@@ -245,48 +238,6 @@ function mapCalendarListing(
     feedPlatform: platformFromFeedUrl(block.feed?.url ?? null),
   }));
 
-  /**
-   * Which stays an active booking was sold as — read off the holds already loaded.
-   *
-   * A hold exists for exactly the PENDING and CONFIRMED bookings and is deleted the
-   * moment one is cancelled, rejected or expired, so this is the same answer the host
-   * projection's own query gives, at the cost of no extra round trip.
-   */
-  const activeStatuses = new Set<string>(ACTIVE_FIXED_STAY_BOOKING_STATUSES);
-  const bookedPeriodIds = new Set<string>();
-  for (const block of listing.availabilityBlocks) {
-    const periodId = block.booking?.fixedStayPeriodId;
-    if (periodId && activeStatuses.has(block.booking?.status ?? "")) {
-      bookedPeriodIds.add(periodId);
-    }
-  }
-
-  // The shared projection, so the panel's five states and its locked rows are the same
-  // ones the host's own fixed-stay screen and every mutation's re-check already use.
-  const fixedStayPeriods = projectHostFixedStayPeriods(
-    listing.fixedStayPeriods.map((period) => ({
-      id: period.id,
-      checkIn: dbDateToYmd(period.checkIn),
-      checkOut: dbDateToYmd(period.checkOut),
-      disabledAt: period.disabledAt,
-    })),
-    {
-      today,
-      bookedPeriodIds,
-      blocks: blocks.map((block) => ({
-        start: block.startDate,
-        end: block.endDate,
-        kind: blockKindFromBlockType(block.blockType),
-      })),
-    },
-  ).map((period) => ({
-    id: period.id,
-    checkIn: period.checkIn,
-    checkOut: period.checkOut,
-    nights: period.nights,
-    state: period.state,
-    manageable: period.manageable,
-  }));
 
   return {
     id: listing.id,
@@ -295,6 +246,7 @@ function mapCalendarListing(
     status: listing.status,
     availabilityMode: listing.availabilityMode,
     bookingMode: listing.bookingMode,
+    changeoverWeekday: listing.changeoverWeekday,
     photoUrl: listing.images[0]?.url ?? null,
     photoAlt: listing.images[0]?.alt ?? null,
     photoCount: listing._count.images,
@@ -332,7 +284,6 @@ function mapCalendarListing(
       endDate: promotion.endDate ? dbDateToYmd(promotion.endDate) : null,
       createdAt: promotion.createdAt.toISOString(),
     })),
-    fixedStayPeriods,
     nextReservation: nextBooking
       ? {
           id: nextBooking.id,

@@ -141,17 +141,14 @@ export async function PropertyCard({
       return (left.minimumNights ?? 1) - (right.minimumNights ?? 1);
     })[0] ??
     null;
-  // A minimum stay is a rule about ranges a guest may pick. A fixed-stay listing has
-  // none: the host chose each stay's length, and `createBooking` skips the minimum for
-  // exactly that reason — so a card that measured a matched stay against it would grey
-  // out the very result the search just proved bookable.
+  // Minimum stay is listing-wide and applies in both booking modes. Dated search already
+  // enforces it; this keeps cards correct for direct and remembered date state too.
   const belowMinStay =
-    !sellsFixedStays &&
     showTrip &&
     pricingRule != null &&
     nightCount! < pricingRule.minNights;
   const minimumStay = sellsFixedStays
-    ? ti(t, "listing.fixed_stays_only", "Fixed stays only", {})
+    ? ti(t, "listing.weekly_stays_only", "Weekly stays only", {})
     : pricingRule
       ? tPlural(
           t,

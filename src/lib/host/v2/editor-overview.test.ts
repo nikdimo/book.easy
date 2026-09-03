@@ -64,6 +64,21 @@ describe("editorAttentionItems", () => {
     expect(items[0].source).toContain("no date can be booked");
   });
 
+  it("flags Availability when weekly rules leave no bookable stay", () => {
+    const items = editorAttentionItems({
+      completeSections: everything,
+      hasPricing: true,
+      bookingRulesReady: false,
+    });
+
+    expect(items).toEqual([
+      expect.objectContaining({
+        slug: "availability",
+        source: "Finish the weekly booking rules before guests can choose dates.",
+      }),
+    ]);
+  });
+
   it("orders the price above the unfinished sections", () => {
     const items = editorAttentionItems({ completeSections: [], hasPricing: false });
     expect(items[0].slug).toBe("pricing");
@@ -89,6 +104,7 @@ describe("editorAttentionItems", () => {
     const known = new Set([
       ...EDITOR_COMPLETION_SECTIONS.map((section) => section.slug),
       "pricing",
+      "availability",
     ]);
     for (const item of items) {
       expect(known.has(item.slug)).toBe(true);

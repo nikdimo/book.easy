@@ -1,6 +1,90 @@
 import { db } from "../src/lib/db";
 
-const PROTECTED_TOKEN_RE = /(\{[A-Za-z][A-Za-z0-9_]*\}|lingerhomes\.com|Linger Homes|EUR|Alt\+T|SMS|URL|Wi-?Fi)/gi;
+/** Everything the transliterator must copy through untouched.
+ *
+ * Latin script inside Serbian copy is not automatically Serbian: brand names,
+ * file formats, banking codes, URLs and addresses are the same in every locale,
+ * and transliterating them produces text no reader can act on ("ПаyПал",
+ * "СWИФТ/БИЦ", "хттпс://еxампле.цом"). URLs and e-mail addresses come first so a
+ * host inside one is never matched on its own, and the alternation is otherwise
+ * ordered longest-first so "Booking.com" wins over "Booking".
+ *
+ * Kept deliberately in step with ALLOWED_LATIN in
+ * scripts/audit-ui-translation-quality.ts, which decides whether the same text
+ * is reported as an issue. */
+const PROTECTED_TOKEN_RE = new RegExp(
+  "(" +
+    [
+      "https?:\\/\\/[^\\s]+",
+      "[^\\s@]+@[^\\s@]+\\.[A-Za-z]{2,}",
+      // Bare domains and paths, e.g. "facebook.com/groups/…".
+      "[A-Za-z0-9-]+\\.(?:com|net|org|io|mk|eu|co\\.uk)(?:\\/[^\\s]*)?",
+      "\\{[A-Za-z][A-Za-z0-9_]*\\}",
+      // Example IBAN, printed in the spaced groups a bank statement uses.
+      "\\b[A-Z]{2}[0-9]{2}(?:\\s?[A-Z0-9]{2,4}){2,}",
+      // Example on-chain address.
+      "bc1(?:[A-Za-z0-9]+|…)",
+      "lingerhomes\\.com",
+      "Linger Homes",
+      "Booking\\.com",
+      "Street View",
+      "Wi-?Fi",
+      "MobilePay",
+      "PayPal",
+      "Revolut",
+      "Revtag",
+      "Bitcoin",
+      "Lightning",
+      "on-chain",
+      "WhatsApp",
+      "Instagram",
+      "Facebook",
+      "Telegram",
+      "Messenger",
+      "Viber",
+      "Airbnb",
+      "Booking",
+      "Google",
+      "Android",
+      "iPhone",
+      "iPad",
+      "Vrbo",
+      "Wise",
+      "Maps",
+      // Codes, formats and units, which are written the same way everywhere.
+      "SWIFT",
+      "SEPA",
+      "IBAN",
+      "HTTPS?",
+      "WebP",
+      "WebM",
+      "JPEG",
+      "JSON",
+      "HEIC",
+      "JPG",
+      "PNG",
+      "PDF",
+      "MP4",
+      "MOV",
+      "CVV",
+      "PIN",
+      "BIC",
+      "API",
+      "SMS",
+      "URL",
+      "EUR",
+      "USD",
+      "GBP",
+      "MB",
+      "GB",
+      "Alt\\+T",
+      "Ctrl(?:\\+[A-Za-z0-9]+)?",
+      // Example account identifiers such as an IBAN or a SWIFT/BIC code.
+      "\\b[A-Z]{2}[A-Z0-9]{6,}\\b",
+    ].join("|") +
+    ")",
+  "gi",
+);
 
 const LETTERS: Record<string, string> = {
   A: "А", B: "Б", C: "Ц", Č: "Ч", Ć: "Ћ", D: "Д", Đ: "Ђ", E: "Е", F: "Ф",

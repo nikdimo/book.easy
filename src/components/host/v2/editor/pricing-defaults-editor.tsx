@@ -14,7 +14,6 @@ import { DefaultPricingEditor } from "@/components/host/v2/calendar/listing-edit
 import {
   ColumnPair,
   NumberColumn,
-  StepperColumn,
 } from "@/components/host/v2/calendar/workbench-ui";
 import { currencySymbol } from "@/components/host/v2/calendar/calendar-labels";
 import {
@@ -23,7 +22,7 @@ import {
 } from "@/components/host/v2/editor/listing-review";
 
 /**
- * Default pricing: the listing's base price, cleaning fee and minimum stay.
+ * Default pricing: the listing's base price and cleaning fee.
  *
  * The form itself is the calendar's DefaultPricingEditor, mounted here rather than
  * copied. That matters more than it looks: it carries the percentage field, the slider,
@@ -31,12 +30,16 @@ import {
  * dates the host has priced by hand and will therefore keep their own price. A second
  * implementation would have been a second answer to "what does this change cost me".
  *
- * Saving is explicit and grouped — one review for all three numbers — because they are
+ * Saving is explicit and grouped — one review for both numbers — because they are
  * weighed together and because each one reaches further than the page it is typed on:
  * the base price sets every night without a price of its own, the cleaning fee is
  * charged on every stay, and dropping that fee to zero ends any free-cleaning benefit
  * an active offer is promising. The review names all of that before anything is
- * written, and refuses a minimum stay longer than the listing's maximum.
+ * written.
+ *
+ * Stay length is deliberately absent. How long a guest may stay is a booking rule, not
+ * an amount, and it is edited under Availability → Booking rules — one editable home,
+ * and no disabled field here explaining that it is somewhere else.
  */
 export function PricingDefaultsEditor({
   context,
@@ -68,7 +71,7 @@ export function PricingDefaultsEditor({
         {
           i18n.resolve(
             "host.editor.pricing.defaults_lead",
-            "What a night costs, and the least a guest can book, unless a particular date says otherwise.",
+            "What a night costs and what cleaning costs, unless a particular date says otherwise.",
           ).text
         }
       </p>
@@ -78,9 +81,6 @@ export function PricingDefaultsEditor({
           listing={context.listing}
           formats={context.formats}
           today={context.today}
-          // Nothing sends the host to one field here — the page is the destination,
-          // not a deep link into it — so no field is singled out for focus.
-          focusMinimumStay={false}
           onDraftChange={setDraft}
         />
       </div>
@@ -144,19 +144,11 @@ function FirstPriceForm({ context }: { context: HostCalendarListingContext }) {
   const [pending, startTransition] = useTransition();
   const [baseNightlyRate, setBaseNightlyRate] = useState("");
   const [cleaningFee, setCleaningFee] = useState("0");
-  const [minNights, setMinNights] = useState(1);
 
   const symbol = currencySymbol(BASE_CURRENCY, context.formats);
   const base = wholeAmountFromInput(baseNightlyRate);
   const fee = wholeAmountFromInput(cleaningFee);
-  const valid =
-    base !== null &&
-    base >= 1 &&
-    fee !== null &&
-    fee >= 0 &&
-    Number.isInteger(minNights) &&
-    minNights >= 1 &&
-    minNights <= 365;
+  const valid = base !== null && base >= 1 && fee !== null && fee >= 0;
 
   function save() {
     if (!valid || base === null || fee === null) return;
@@ -164,7 +156,11 @@ function FirstPriceForm({ context }: { context: HostCalendarListingContext }) {
       const result = await createListingPricing(context.listing.id, {
         baseNightlyRate: base,
         cleaningFee: fee,
-        minNights,
+        // The rule has to be created with *some* minimum, and the one that constrains
+        // nothing is the honest default for a form that does not ask. How long a guest
+        // may stay is a booking rule, set under Availability → Booking rules; asking
+        // for it here would be a second editable home for it on the money screen.
+        minNights: 1,
       });
       if (result.error) {
         toast.error(result.error);
@@ -223,35 +219,6 @@ function FirstPriceForm({ context }: { context: HostCalendarListingContext }) {
             onChange={setCleaningFee}
           />
         </ColumnPair>
-        <div className="mt-4 border-t border-slate-100 pt-4">
-          <StepperColumn
-            label={
-              i18n.resolve("host.v2.calendar.promotion_minimum", "Minimum stay").text
-            }
-            caption={
-              minNights <= 1
-                ? i18n.resolve("host.v2.calendar.listing.any_length", "any length")
-                    .text
-                : i18n.resolve(
-                    "host.v2.calendar.listing.nights_minimum",
-                    "nights minimum",
-                  ).text
-            }
-            value={minNights}
-            max={365}
-            decrementLabel={
-              i18n.resolve(
-                "host.v2.calendar.promotion_fewer_nights",
-                "Fewer nights",
-              ).text
-            }
-            incrementLabel={
-              i18n.resolve("host.v2.calendar.promotion_more_nights", "More nights")
-                .text
-            }
-            onChange={setMinNights}
-          />
-        </div>
       </div>
 
       <button

@@ -39,7 +39,7 @@ export function makeListing(
     blocks: [],
     availabilityWindows: [],
     promotions: [],
-    fixedStayPeriods: [],
+    changeoverWeekday: null,
     nextReservation: null,
     ...overrides,
   };
