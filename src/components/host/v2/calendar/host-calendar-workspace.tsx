@@ -55,10 +55,8 @@ import {
   type SelectionResult,
 } from "@/lib/host/v2/calendar-selection";
 import {
-  buildAvailabilityAction,
-  datesFor,
-  stepsForDates,
-  undoStepsForDates,
+  batchesForPlan,
+  buildMultiAvailabilityPlan,
   type AvailabilityDirection,
 } from "@/lib/host/v2/calendar-availability-action";
 import {
@@ -107,12 +105,20 @@ import {
   CalendarMonthStream,
   scrollStreamToMonth,
 } from "./calendar-month-stream";
-import { ALL_LISTINGS, ListingChooserSheet, ListingRail } from "./listing-rail";
+import {
+  ALL_LISTINGS,
+  ListingChooserSheet,
+  ListingMultiSelectSheet,
+  ListingRail,
+} from "./listing-rail";
 import { ManageCalendarPanel } from "./manage-calendar-panel";
 import type { DateActionResult } from "./date-editors";
 import { AllListingsTimeline } from "./all-listings-timeline";
 import { ReviewDialog } from "./review-dialog";
-import { runMutationSteps } from "./calendar-actions";
+import {
+  runAvailabilityAcrossListings,
+  runMutationSteps,
+} from "./calendar-actions";
 import { ChannelChip } from "./channel-chip";
 import {
   bookabilityLine,
@@ -214,6 +220,8 @@ export function HostCalendarWorkspace({
   );
   const [chooserOpen, setChooserOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  /** The phone's version of the rail's checkboxes. */
+  const [targetSheetOpen, setTargetSheetOpen] = useState(false);
   const [change, setChange] = useState<DateChange | null>(null);
   const [reviewTarget, setReviewTarget] = useState<ReviewTarget>(null);
   /**
@@ -224,10 +232,19 @@ export function HostCalendarWorkspace({
    * the one control that reverses it.
    */
   const [dateAction, setDateAction] = useState<{
-    /** The property, range and editor it was performed in. See `actionScope`. */
+    /** The properties, range and editor it was performed in. See `actionScope`. */
     scope: string;
     result: DateActionResult;
-    undoSteps: MutationStep[];
+    /**
+     * The inverse, kept per property.
+     *
+     * One entry for everything except a multi-property block, and the same shape for
+     * that one entry — an availability act aimed at four properties is the same act,
+     * so it undoes through the same field rather than a second one beside it. Each
+     * entry holds only the nights that property actually moved, which is what stops an
+     * undo from reopening a block the host set on it weeks ago.
+     */
+    undo: { listingId: string; steps: MutationStep[] }[];
   } | null>(null);
   /**
    * Where the editing panel is: its summary menu, one focused editor, or the
@@ -262,6 +279,24 @@ export function HostCalendarWorkspace({
     closeDrawerOnDesktop();
     desktop.addEventListener("change", closeDrawerOnDesktop);
     return () => desktop.removeEventListener("change", closeDrawerOnDesktop);
+  }, []);
+
+  /**
+   * Whether the rail is on screen, which decides where properties are ticked.
+   *
+   * From `md` the rail is the list itself, so the checkboxes go there and no dialog is
+   * needed. Below it there is no rail, and the same choice is made in a sheet. One set,
+   * two presentations — the same split the editor already makes between its desktop
+   * column and its drawer. Defaults to true so the server and the first client render
+   * agree; nothing is drawn from it until the host asks for the mode.
+   */
+  const [railVisible, setRailVisible] = useState(true);
+  useEffect(() => {
+    const rail = window.matchMedia("(min-width: 768px)");
+    const sync = () => setRailVisible(rail.matches);
+    sync();
+    rail.addEventListener("change", sync);
+    return () => rail.removeEventListener("change", sync);
   }, []);
 
   useEffect(() => {
@@ -384,17 +419,150 @@ export function HostCalendarWorkspace({
   }, [hasDraft]);
 
   /**
+   * The act the extra properties would belong to: this property, these dates, this
+   * editor. Null whenever there is no availability change to aim anywhere.
+   */
+  const availabilityScope =
+    view.kind === "editor" && view.editor === "availability" && selection
+      ? `${selectedId}:${selection.start}:${selection.end}`
+      : null;
+
+  /**
+   * The chosen set, read through the act it was chosen for.
+   *
+   * Exactly the treatment `dateAction` gets below, and for the same reason: anything
+   * that moves the act — other dates, another property on screen, a different editor —
+   * leaves the set describing something the host never chose it for. Comparing scopes
+   * during render means such a set can never be *used* even once, where clearing it
+   * from an effect would leave one render in which it still applied.
+   */
+  const [targetChoice, setTargetChoice] = useState<{
+    scope: string;
+    ids: string[];
+  } | null>(null);
+  const liveTargets =
+    targetChoice && targetChoice.scope === availabilityScope
+      ? targetChoice
+      : null;
+  /** Extra properties, never including the one on screen. */
+  const companionIds = liveTargets?.ids ?? [];
+  /** Whether the host is currently choosing that set. */
+  const targetMode = liveTargets !== null;
+
+  /**
+   * Every property the availability editor would write to, in rail order.
+   *
+   * The shown property is always first and always present, so a plan built from this
+   * is the single-property plan when nothing else is ticked — one code path, not a
+   * multi-property path running beside the old one.
+   */
+  const availabilityTargets = useMemo(() => {
+    if (!active) return [];
+    const extra = new Set(companionIds);
+    return [
+      { listing: active.listing, index: active.index },
+      ...entries
+        .filter((entry) => extra.has(entry.listing.id))
+        .map((entry) => ({ listing: entry.listing, index: entry.index })),
+    ];
+    // `companionIds` is derived above and stable while the choice is unchanged.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, entries, liveTargets]);
+
+  /**
    * A result describes one act, on one range, of one property, in one editor.
    *
    * Moving any of those makes it stale — most importantly for Undo, whose steps still
    * name the old range. It is read through the scope rather than cleared by an effect,
-   * so a result belonging to dates the host has left cannot be rendered even once.
+   * so a result belonging to dates the host has left cannot be rendered even once. The
+   * set of properties is part of that identity too: a result from a three-property
+   * block must not be left standing over a panel that is now aimed at one.
    */
   const actionScope = `${selectedId}:${selection?.start ?? ""}:${
     selection?.end ?? ""
-  }:${view.kind === "editor" ? view.editor : view.kind}`;
+  }:${view.kind === "editor" ? view.editor : view.kind}:${[...companionIds]
+    .sort()
+    .join(",")}`;
   const liveDateAction =
     dateAction?.scope === actionScope ? dateAction : null;
+
+  /** Offered only where there is a second property to aim at. */
+  const canChooseTargets = Boolean(active) && entries.length > 1;
+
+  const openTargetChooser = useCallback(() => {
+    if (!availabilityScope) return;
+    setTargetChoice({ scope: availabilityScope, ids: [] });
+    // Checkboxes in a rail collapsed to 40px thumbnails is a target nobody can hit.
+    if (railVisible) setRailCompact(false);
+    else setTargetSheetOpen(true);
+  }, [availabilityScope, railVisible, setRailCompact]);
+
+  const toggleCompanion = useCallback(
+    (id: string) => {
+      if (id === selectedId || !availabilityScope) return;
+      setTargetChoice((current) => {
+        const ids =
+          current && current.scope === availabilityScope ? current.ids : [];
+        return {
+          scope: availabilityScope,
+          ids: ids.includes(id)
+            ? ids.filter((entry) => entry !== id)
+            : [...ids, id],
+        };
+      });
+    },
+    [availabilityScope, selectedId],
+  );
+
+  const selectAllCompanions = useCallback(() => {
+    if (!availabilityScope) return;
+    setTargetChoice({
+      scope: availabilityScope,
+      ids: entries
+        .map((entry) => entry.listing.id)
+        .filter((id) => id !== selectedId),
+    });
+  }, [availabilityScope, entries, selectedId]);
+
+  const clearCompanions = useCallback(() => {
+    if (!availabilityScope) return;
+    setTargetChoice({ scope: availabilityScope, ids: [] });
+  }, [availabilityScope]);
+
+  const exitTargetMode = useCallback(() => {
+    setTargetChoice(null);
+    setTargetSheetOpen(false);
+  }, []);
+
+  /**
+   * The rail's checkbox mode, assembled once for both surfaces that draw it.
+   *
+   * Present only while an availability change is actually being aimed: outside that
+   * editor the rail is a navigator again, and leaving checkboxes on it would offer a
+   * set to an act that cannot use one.
+   */
+  const listingMultiSelect = useMemo(
+    () =>
+      liveTargets && active
+        ? {
+            checkedIds: liveTargets.ids,
+            lockedId: active.listing.id,
+            total: liveTargets.ids.length + 1,
+            onToggle: toggleCompanion,
+            onSelectAll: selectAllCompanions,
+            onClearExtras: clearCompanions,
+            onExit: exitTargetMode,
+          }
+        : null,
+    [
+      liveTargets,
+      active,
+      toggleCompanion,
+      selectAllCompanions,
+      clearCompanions,
+      exitTargetMode,
+    ],
+  );
 
   const discardDraft = useCallback(() => {
     setChange(null);
@@ -742,7 +910,11 @@ export function HostCalendarWorkspace({
           toast.error(outcome.error);
           return;
         }
-        setDateAction({ scope, result, undoSteps });
+        setDateAction({
+          scope,
+          result,
+          undo: [{ listingId, steps: undoSteps }],
+        });
         // The selection stays put on purpose: a host who just blocked four nights is
         // very often about to price them, and taking their dates away would undo that.
         router.refresh();
@@ -762,26 +934,93 @@ export function HostCalendarWorkspace({
   const applyAvailability = useCallback(
     (direction: AvailabilityDirection, note: string | null) => {
       if (!active || !selection) return;
-      const model = buildAvailabilityAction({
-        listing: active.listing,
-        index: active.index,
+      const plan = buildMultiAvailabilityPlan({
+        entries: availabilityTargets,
         dates: selectionDates(selection),
         today: data.today,
+        direction,
       });
-      const targets = datesFor(model, direction);
-      if (targets.length === 0) return;
-      runDirectAction({
-        steps: stepsForDates(targets, direction, note),
-        undoSteps: undoStepsForDates(targets, direction),
-        result: {
-          kind: "AVAILABILITY",
-          direction,
-          dates: targets.length,
-          undoable: true,
-        },
+      const batches = batchesForPlan(plan, note);
+      if (batches.length === 0) return;
+      const scope = actionScope;
+      const titleOf = (listingId: string) =>
+        plan.targets.find((target) => target.listingId === listingId)?.title ??
+        listingId;
+
+      startTransition(async () => {
+        let outcome: Awaited<ReturnType<typeof runAvailabilityAcrossListings>>;
+        try {
+          outcome = await runAvailabilityAcrossListings({
+            batches,
+            direction,
+            note,
+          });
+        } catch {
+          toast.error(
+            i18n.resolve(
+              "host.v2.calendar.save_failed",
+              "Your change could not be saved. Nothing on this screen was cleared; try again.",
+            ).text,
+          );
+          return;
+        }
+        // A rejection that reached no property at all is the old total failure: the
+        // screen keeps everything it had and the host is told why.
+        if (outcome.error) {
+          toast.error(outcome.error);
+          return;
+        }
+
+        const written = new Set(
+          outcome.results
+            .filter((entry) => !entry.error)
+            .map((entry) => entry.listingId),
+        );
+        const failedTitles = outcome.results
+          .filter((entry) => entry.error)
+          .map((entry) => titleOf(entry.listingId));
+        if (written.size === 0) {
+          toast.error(
+            outcome.results[0]?.error ??
+              i18n.resolve(
+                "host.v2.calendar.save_failed",
+                "Your change could not be saved. Nothing on this screen was cleared; try again.",
+              ).text,
+          );
+          return;
+        }
+
+        const landed = batches.filter((batch) => written.has(batch.listingId));
+        setDateAction({
+          scope,
+          result: {
+            kind: "AVAILABILITY",
+            direction,
+            // What actually moved, not what was aimed at. A property that failed
+            // contributes none of its nights to the sentence the host reads.
+            dates: landed.reduce((total, batch) => total + batch.nights, 0),
+            properties: landed.length,
+            failed: failedTitles.length > 0 ? failedTitles : undefined,
+            undoable: true,
+          },
+          // Only what landed can be taken back.
+          undo: landed.map((batch) => ({
+            listingId: batch.listingId,
+            steps: batch.undoSteps,
+          })),
+        });
+        router.refresh();
       });
     },
-    [active, selection, data.today, runDirectAction],
+    [
+      active,
+      selection,
+      availabilityTargets,
+      actionScope,
+      data.today,
+      i18n,
+      router,
+    ],
   );
 
   /**
@@ -882,22 +1121,40 @@ export function HostCalendarWorkspace({
   const undoDateAction = useCallback(() => {
     const pendingUndo = liveDateAction;
     if (!pendingUndo || !active || !pendingUndo.result.undoable) return;
-    const listingId = active.listing.id;
+    const failed = i18n.resolve(
+      "host.v2.calendar.save_failed",
+      "Your change could not be saved. Nothing on this screen was cleared; try again.",
+    ).text;
     startTransition(async () => {
-      let outcome: Awaited<ReturnType<typeof runMutationSteps>>;
       try {
-        outcome = await runMutationSteps(listingId, pendingUndo.undoSteps);
+        // Availability is the one act that can span properties, so its inverse goes
+        // back through the same batched call. Everything else has exactly one entry
+        // and reverses the way it always did.
+        if (pendingUndo.result.kind === "AVAILABILITY") {
+          const outcome = await runAvailabilityAcrossListings({
+            batches: pendingUndo.undo,
+            direction:
+              pendingUndo.result.direction === "BLOCK" ? "OPEN" : "BLOCK",
+            note: null,
+          });
+          const error =
+            outcome.error ??
+            outcome.results.find((entry) => entry.error)?.error;
+          if (error) {
+            toast.error(error);
+            return;
+          }
+        } else {
+          for (const entry of pendingUndo.undo) {
+            const outcome = await runMutationSteps(entry.listingId, entry.steps);
+            if (outcome.error) {
+              toast.error(outcome.error);
+              return;
+            }
+          }
+        }
       } catch {
-        toast.error(
-          i18n.resolve(
-            "host.v2.calendar.save_failed",
-            "Your change could not be saved. Nothing on this screen was cleared; try again.",
-          ).text,
-        );
-        return;
-      }
-      if (outcome.error) {
-        toast.error(outcome.error);
+        toast.error(failed);
         return;
       }
       // Undoing an undo is not offered: the second inverse would be the first action
@@ -999,6 +1256,14 @@ export function HostCalendarWorkspace({
       onReviewDate={() => setReviewTarget({ kind: "date" })}
       actionPending={pending}
       actionResult={liveDateAction?.result ?? null}
+      availabilityTargets={availabilityTargets}
+      canChooseTargets={canChooseTargets}
+      // Once the rail is showing checkboxes it *is* the chooser, so the row stops
+      // being a second way in and becomes what it should be at that point: a summary
+      // of the set, with the rail's own banner owning the way out.
+      onChooseTargets={
+        railVisible && targetMode ? null : openTargetChooser
+      }
       onApplyAvailability={applyAvailability}
       onApplyPrice={applyPrice}
       onApplyPromotion={applyPromotion}
@@ -1086,6 +1351,7 @@ export function HostCalendarWorkspace({
             entries={entries}
             selectedId={selectedId}
             compact={railCompact}
+            multiSelect={listingMultiSelect}
             onSelect={selectListing}
             onToggleCompact={() => setRailCompact(!railCompact)}
           />
@@ -1429,6 +1695,20 @@ export function HostCalendarWorkspace({
         onSelect={selectListing}
         onOpenChange={setChooserOpen}
       />
+
+      {/* Choosing the set on a phone. Portalled above the editing drawer, which is
+          where the host pressed the control that opens it. Dismissing it — by Done, by
+          the backdrop, by Escape — keeps whatever was ticked: nothing here is written,
+          so there is no draft to protect and no discard prompt to raise. */}
+      {listingMultiSelect ? (
+        <ListingMultiSelectSheet
+          open={targetSheetOpen}
+          entries={entries}
+          multiSelect={listingMultiSelect}
+          rangeLabel={rangeLabel}
+          onOpenChange={setTargetSheetOpen}
+        />
+      ) : null}
 
       {plan && active ? (
         <ReviewDialog

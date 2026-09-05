@@ -1,5 +1,13 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
+
+// The picker asks the server which of the host's other listings have a payment answer.
+// There is no host and no database here, so it is stubbed with "none" — which is also
+// the state in which the picker renders nothing and leaves this markup untouched.
+vi.mock("@/lib/actions/listing-payment-copy.actions", () => ({
+  listPaymentCopySourcesAction: async () => ({ sources: [] }),
+  loadPaymentCopyPayloadAction: async () => ({ error: "Listing not found." }),
+}));
 import { PaymentArrangementsEditor } from "./payment-arrangements-editor";
 import {
   PAYMENT_METHOD_CODES,

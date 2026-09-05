@@ -70,7 +70,7 @@ async function safeFetch(
         Accept: options.providerOnly
           ? "text/html,application/xhtml+xml"
           : "image/avif,image/webp,image/png,image/jpeg",
-        "User-Agent": "BookEasy-Listing-Importer/1.0",
+        "User-Agent": "LingerHomes-Listing-Importer/1.0",
       },
     });
     if (![301, 302, 303, 307, 308].includes(response.status)) {

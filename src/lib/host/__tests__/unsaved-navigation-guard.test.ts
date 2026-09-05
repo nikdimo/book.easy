@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { shouldGuardNavigation } from "@/lib/host/use-unsaved-navigation-guard";
 
-const CURRENT = "https://book.easy.mk/host/listings/listing-1/edit?pane=edit";
+const CURRENT = "https://lingerhomes.com/host/listings/listing-1/edit?pane=edit";
 
 describe("shouldGuardNavigation", () => {
   it.each([

@@ -1,8 +1,8 @@
-# book.easy.mk — System Architecture
+# Linger Homes — System Architecture
 
 ## 1. Architecture Overview
 
-book.easy.mk (Book) is a two-sided property marketplace built as a modular monolith within a single Next.js application. The architecture prioritizes clean domain boundaries, ownership-scoped data access, and extensibility for future marketplace features, while avoiding premature complexity.
+Linger Homes is a two-sided property marketplace built as a modular monolith within a single Next.js application. The architecture prioritizes clean domain boundaries, ownership-scoped data access, and extensibility for future marketplace features, while avoiding premature complexity.
 
 ### Architecture Style: Modular Monolith
 

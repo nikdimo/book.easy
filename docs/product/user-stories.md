@@ -1,4 +1,4 @@
-# book.easy.mk — User Stories & Product Requirements
+# Linger Homes — User Stories & Product Requirements
 
 ## 1. User Roles
 

@@ -653,7 +653,7 @@ export default async function ListingDetailPage({
                         >
                           <div className="flex items-center justify-between gap-3">
                             <p className="font-medium">
-                              {review.author?.name || "BookEasy guest"}
+                              {review.author?.name || `${PRODUCT_NAME} guest`}
                             </p>
                             {overall ? (
                               <span className="flex items-center gap-1 text-sm font-semibold">

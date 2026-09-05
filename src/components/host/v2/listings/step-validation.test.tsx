@@ -55,6 +55,15 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: (href: string) => router.pushed.push(href) }),
 }));
 
+// The payment step's "copy from another listing" picker asks the server which of the
+// host's other listings have a payment answer. There is no host and no database here,
+// so it is stubbed with "none" — which is also the state in which the picker renders
+// nothing and leaves the step's markup untouched.
+vi.mock("@/lib/actions/listing-payment-copy.actions", () => ({
+  listPaymentCopySourcesAction: async () => ({ sources: [] }),
+  loadPaymentCopyPayloadAction: async () => ({ error: "Listing not found." }),
+}));
+
 const toasts = vi.hoisted(() => ({ errors: [] as string[] }));
 vi.mock("sonner", () => ({
   toast: { error: (message: string) => toasts.errors.push(message) },

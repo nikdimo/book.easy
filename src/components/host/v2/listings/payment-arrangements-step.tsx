@@ -210,6 +210,9 @@ export function PaymentArrangementsStep({
             showHeader={false}
             showGuestPreview={false}
             showRequiredError={showErrors}
+            // No listing to exclude: this draft is not a listing yet, and the picker
+            // only ever lists listings whose payment answer has been saved.
+            showCopyFromListing
           />
         </section>
 

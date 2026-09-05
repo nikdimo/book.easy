@@ -7645,6 +7645,46 @@
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-details-sheet.tsx"
   },
   {
+    "key": "host.editor.payment_arrangements.copy_button",
+    "sourceText": "Copy from another listing",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-copy-sheet.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.copy_failed",
+    "sourceText": "That listing could not be copied. Check your connection and try again.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-copy-sheet.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.copy_includes_details",
+    "sourceText": "Includes saved private details",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-copy-sheet.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.copy_prompt",
+    "sourceText": "Already set this up on another listing? Copy it here instead of typing it again.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-copy-sheet.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.copy_replaces",
+    "sourceText": "This replaces the methods and details currently in this form. Nothing changes until you save.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-copy-sheet.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.copy_sheet_description",
+    "sourceText": "Choose a listing. Its payment methods and saved details are copied into this form for you to check.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-copy-sheet.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.copy_sheet_title",
+    "sourceText": "Copy from another listing",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-copy-sheet.tsx"
+  },
+  {
+    "key": "host.editor.payment_arrangements.copy_snapshot_note",
+    "sourceText": "This copies the details as they are now. Changing them on the other listing later will not change them here.",
+    "filePath": "src/components/host/v2/editor/payment-arrangements/payment-copy-sheet.tsx"
+  },
+  {
     "key": "host.editor.payment_arrangements.details_done",
     "sourceText": "Done",
     "filePath": "src/components/host/v2/editor/payment-arrangements/payment-details-sheet.tsx"
@@ -12170,6 +12210,11 @@
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
+    "key": "host.v2.calendar.block_note_prompt_multi",
+    "sourceText": "This will block the dates on {properties} properties. Add a private note if you want to remember why — it is saved on each of them, only you can see it, and it is optional.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
     "key": "host.v2.calendar.blocked_dates.few",
     "sourceText": "{n} blocked dates in the next {months} months",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
@@ -13430,6 +13475,36 @@
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
+    "key": "host.v2.calendar.editor.done_blocked_multi.few",
+    "sourceText": "{n} nights blocked across {properties} properties.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_blocked_multi.many",
+    "sourceText": "{n} nights blocked across {properties} properties.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_blocked_multi.one",
+    "sourceText": "{n} night blocked across {properties} properties.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_blocked_multi.other",
+    "sourceText": "{n} nights blocked across {properties} properties.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_blocked_multi.two",
+    "sourceText": "{n} nights blocked across {properties} properties.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_blocked_multi.zero",
+    "sourceText": "{n} nights blocked across {properties} properties.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
     "key": "host.v2.calendar.editor.done_blocked.few",
     "sourceText": "{n} nights blocked.",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
@@ -13460,6 +13535,36 @@
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
+    "key": "host.v2.calendar.editor.done_opened_multi.few",
+    "sourceText": "{n} nights are available again across {properties} properties.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_opened_multi.many",
+    "sourceText": "{n} nights are available again across {properties} properties.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_opened_multi.one",
+    "sourceText": "{n} night is available again across {properties} properties.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_opened_multi.other",
+    "sourceText": "{n} nights are available again across {properties} properties.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_opened_multi.two",
+    "sourceText": "{n} nights are available again across {properties} properties.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_opened_multi.zero",
+    "sourceText": "{n} nights are available again across {properties} properties.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
     "key": "host.v2.calendar.editor.done_opened.few",
     "sourceText": "{n} nights are available again.",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
@@ -13487,6 +13592,11 @@
   {
     "key": "host.v2.calendar.editor.done_opened.zero",
     "sourceText": "{n} nights are available again.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.done_partial",
+    "sourceText": "{properties} could not be updated.",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
@@ -13707,6 +13817,156 @@
   {
     "key": "host.v2.calendar.editor.minimum_stay_info.zero",
     "sourceText": "Minimum stay: {n} nights · Change it in Booking method",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.multi_change",
+    "sourceText": "Tap to change which ones",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.multi_enter",
+    "sourceText": "Block on more properties",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.multi_enter_hint",
+    "sourceText": "Apply these dates to your other properties too",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.multi_locked.few",
+    "sourceText": "{n} nights will not change — {properties} already have them booked or held.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.multi_locked.many",
+    "sourceText": "{n} nights will not change — {properties} already have them booked or held.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.multi_locked.one",
+    "sourceText": "{n} night will not change — {properties} already has it booked or held.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.multi_locked.other",
+    "sourceText": "{n} nights will not change — {properties} already have them booked or held.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.multi_locked.two",
+    "sourceText": "{n} nights will not change — {properties} already have them booked or held.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.multi_locked.zero",
+    "sourceText": "{n} nights will not change — {properties} already have them booked or held.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.multi_rail_hint",
+    "sourceText": "Tick properties in the list on the left",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.multi_state_blocked.few",
+    "sourceText": "{n} nights are unavailable across {properties} properties.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.multi_state_blocked.many",
+    "sourceText": "{n} nights are unavailable across {properties} properties.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.multi_state_blocked.one",
+    "sourceText": "{n} night is unavailable across {properties} properties.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.multi_state_blocked.other",
+    "sourceText": "{n} nights are unavailable across {properties} properties.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.multi_state_blocked.two",
+    "sourceText": "{n} nights are unavailable across {properties} properties.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.multi_state_blocked.zero",
+    "sourceText": "{n} nights are unavailable across {properties} properties.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.multi_state_mixed",
+    "sourceText": "{open} open · {blocked} blocked, across {properties} properties",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.multi_state_open.few",
+    "sourceText": "{n} nights are open across {properties} properties.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.multi_state_open.many",
+    "sourceText": "{n} nights are open across {properties} properties.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.multi_state_open.one",
+    "sourceText": "{n} night is open across {properties} properties.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.multi_state_open.other",
+    "sourceText": "{n} nights are open across {properties} properties.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.multi_state_open.two",
+    "sourceText": "{n} nights are open across {properties} properties.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.multi_state_open.zero",
+    "sourceText": "{n} nights are open across {properties} properties.",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.names_overflow.few",
+    "sourceText": "{first}, {second} and {n} others",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.names_overflow.many",
+    "sourceText": "{first}, {second} and {n} others",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.names_overflow.one",
+    "sourceText": "{first}, {second} and {n} other",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.names_overflow.other",
+    "sourceText": "{first}, {second} and {n} others",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.names_overflow.two",
+    "sourceText": "{first}, {second} and {n} others",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.names_overflow.zero",
+    "sourceText": "{first}, {second} and {n} others",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.names_pair",
+    "sourceText": "{first} and {second}",
     "filePath": "src/components/host/v2/calendar/date-editors.tsx"
   },
   {
@@ -14615,6 +14875,86 @@
     "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
   },
   {
+    "key": "host.v2.calendar.multi_banner_label",
+    "sourceText": "Blocking on",
+    "filePath": "src/components/host/v2/calendar/listing-rail.tsx"
+  },
+  {
+    "key": "host.v2.calendar.multi_clear",
+    "sourceText": "Only this one",
+    "filePath": "src/components/host/v2/calendar/listing-rail.tsx"
+  },
+  {
+    "key": "host.v2.calendar.multi_exit",
+    "sourceText": "Just this property",
+    "filePath": "src/components/host/v2/calendar/listing-rail.tsx"
+  },
+  {
+    "key": "host.v2.calendar.multi_sheet_done.few",
+    "sourceText": "Done · {n} properties",
+    "filePath": "src/components/host/v2/calendar/listing-rail.tsx"
+  },
+  {
+    "key": "host.v2.calendar.multi_sheet_done.many",
+    "sourceText": "Done · {n} properties",
+    "filePath": "src/components/host/v2/calendar/listing-rail.tsx"
+  },
+  {
+    "key": "host.v2.calendar.multi_sheet_done.one",
+    "sourceText": "Done · {n} property",
+    "filePath": "src/components/host/v2/calendar/listing-rail.tsx"
+  },
+  {
+    "key": "host.v2.calendar.multi_sheet_done.other",
+    "sourceText": "Done · {n} properties",
+    "filePath": "src/components/host/v2/calendar/listing-rail.tsx"
+  },
+  {
+    "key": "host.v2.calendar.multi_sheet_done.two",
+    "sourceText": "Done · {n} properties",
+    "filePath": "src/components/host/v2/calendar/listing-rail.tsx"
+  },
+  {
+    "key": "host.v2.calendar.multi_sheet_done.zero",
+    "sourceText": "Done · {n} properties",
+    "filePath": "src/components/host/v2/calendar/listing-rail.tsx"
+  },
+  {
+    "key": "host.v2.calendar.multi_sheet_title",
+    "sourceText": "Block on more properties",
+    "filePath": "src/components/host/v2/calendar/listing-rail.tsx"
+  },
+  {
+    "key": "host.v2.calendar.multi_target_count.few",
+    "sourceText": "{n} properties",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.multi_target_count.many",
+    "sourceText": "{n} properties",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.multi_target_count.one",
+    "sourceText": "{n} property",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.multi_target_count.other",
+    "sourceText": "{n} properties",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.multi_target_count.two",
+    "sourceText": "{n} properties",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.multi_target_count.zero",
+    "sourceText": "{n} properties",
+    "filePath": "src/components/host/v2/calendar/date-editors.tsx"
+  },
+  {
     "key": "host.v2.calendar.next_month",
     "sourceText": "Next month",
     "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
@@ -14842,6 +15182,11 @@
   {
     "key": "host.v2.calendar.rail_label",
     "sourceText": "Your properties",
+    "filePath": "src/components/host/v2/calendar/listing-rail.tsx"
+  },
+  {
+    "key": "host.v2.calendar.rail_select_all",
+    "sourceText": "Select all",
     "filePath": "src/components/host/v2/calendar/listing-rail.tsx"
   },
   {

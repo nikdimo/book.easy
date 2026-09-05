@@ -1,7 +1,12 @@
 /* eslint-disable react/no-unescaped-entities -- Long-form legal prose is clearer in source form. */
 import { Metadata } from "next";
 import Link from "next/link";
-import { SITE_DOMAIN, SUPPORT_EMAIL } from "@/lib/branding";
+import {
+  LEGAL_JURISDICTION,
+  PRODUCT_NAME,
+  SITE_DOMAIN,
+  SUPPORT_EMAIL,
+} from "@/lib/branding";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
@@ -244,7 +249,7 @@ export default function TermsPage() {
             <h2 className="text-2xl font-semibold mb-4">7. Intellectual Property Rights</h2>
             <p>
               The Service, including all text, graphics, logos, images, and software, is owned or
-              licensed by book.easy and protected by copyright and trademark law. You may not:
+              licensed by {PRODUCT_NAME} and protected by copyright and trademark law. You may not:
             </p>
             <ul className="list-disc pl-6 space-y-2">
               <li>Reproduce, modify, or distribute our content without permission</li>
@@ -313,7 +318,7 @@ export default function TermsPage() {
 
             <h3 className="text-xl font-semibold mb-3 mt-6">10.2 Limitation of Liability</h3>
             <p>
-              To the maximum extent permitted by law, book.easy shall not be liable for:
+              To the maximum extent permitted by law, {PRODUCT_NAME} shall not be liable for:
             </p>
             <ul className="list-disc pl-6 space-y-2">
               <li>
@@ -346,7 +351,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-2xl font-semibold mb-4">11. Indemnification</h2>
             <p>
-              You agree to indemnify and hold harmless book.easy and its officers, employees, and
+              You agree to indemnify and hold harmless {PRODUCT_NAME} and its officers, employees, and
               agents from any claims, damages, or costs arising from:
             </p>
             <ul className="list-disc pl-6 space-y-2">
@@ -400,13 +405,13 @@ export default function TermsPage() {
           <section>
             <h2 className="text-2xl font-semibold mb-4">15. Governing Law & Dispute Resolution</h2>
             <p>
-              <strong>Governing Law:</strong> These Terms are governed by the laws of North
-              Macedonia, without regard to conflict of law principles.
+              <strong>Governing Law:</strong> These Terms are governed by the laws of{" "}
+              {LEGAL_JURISDICTION}, without regard to conflict of law principles.
             </p>
             <p className="mt-3">
               <strong>Dispute Resolution:</strong> Any dispute shall first be attempted to be
               resolved through our Resolution Center. If not resolved, disputes shall be governed
-              by the laws of North Macedonia and handled through our support process before any
+              by the laws of {LEGAL_JURISDICTION} and handled through our support process before any
               legal action.
             </p>
           </section>

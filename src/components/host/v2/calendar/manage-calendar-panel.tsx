@@ -188,6 +188,9 @@ export function ManageCalendarPanel({
   onReviewDate,
   actionPending,
   actionResult,
+  availabilityTargets,
+  canChooseTargets,
+  onChooseTargets,
   onApplyAvailability,
   onApplyPrice,
   onApplyPromotion,
@@ -227,6 +230,18 @@ export function ManageCalendarPanel({
    */
   actionPending: boolean;
   actionResult: DateActionResult | null;
+  /**
+   * Every property an availability change would reach, starting with this one. Blocking
+   * is the only edit here that can be aimed at more than one property — see
+   * `calendar-availability-action.ts` for why it is the only one.
+   */
+  availabilityTargets: {
+    listing: HostCalendarListing;
+    index: ListingCalendarIndex;
+  }[];
+  canChooseTargets: boolean;
+  /** Null while the rail is the chooser: the editor then only reports the set. */
+  onChooseTargets: (() => void) | null;
   onApplyAvailability: (
     direction: AvailabilityDirection,
     note: string | null,
@@ -753,6 +768,9 @@ export function ManageCalendarPanel({
                 selection={selection}
                 pending={actionPending}
                 result={actionResult}
+                targets={availabilityTargets}
+                canChooseTargets={canChooseTargets}
+                onChooseTargets={onChooseTargets}
                 onApply={onApplyAvailability}
                 onUndo={onUndoAction}
                 onDismissResult={onDismissActionResult}

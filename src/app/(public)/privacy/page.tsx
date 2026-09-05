@@ -1,7 +1,13 @@
 /* eslint-disable react/no-unescaped-entities -- Long-form legal prose is clearer in source form. */
 import { Metadata } from "next";
 import Link from "next/link";
-import { PRIVACY_EMAIL, SITE_DOMAIN } from "@/lib/branding";
+import {
+  LEGAL_ENTITY,
+  LEGAL_MAILING_ADDRESS,
+  PRIVACY_EMAIL,
+  PRODUCT_NAME,
+  SITE_DOMAIN,
+} from "@/lib/branding";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -21,7 +27,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-2xl font-semibold mb-4">1. Introduction</h2>
             <p>
-              book.easy ("we," "us," "our," or "Company") respects your privacy and is committed
+              {PRODUCT_NAME} ("we," "us," "our," or "Company") respects your privacy and is committed
               to protecting it through our compliance with this privacy policy. This policy
               describes the types of information we collect from you when you use our website at{" "}
               <strong>{SITE_DOMAIN}</strong> (the "Site"), our mobile applications, and related
@@ -215,7 +221,7 @@ export default function PrivacyPage() {
 
             <h3 className="text-xl font-semibold mb-3 mt-6">6.4 Business Transfers</h3>
             <p>
-              If book.easy is acquired or merged, your information may be transferred as part of
+              If {PRODUCT_NAME} is acquired or merged, your information may be transferred as part of
               that transaction. We will notify you of any such change.
             </p>
           </section>
@@ -344,7 +350,7 @@ export default function PrivacyPage() {
                 <strong>Data Protection Officer (DPO):</strong> {PRIVACY_EMAIL}
               </li>
               <li>
-                <strong>Mailing Address:</strong> book.easy, Inc., North Macedonia
+                <strong>Mailing Address:</strong> {LEGAL_ENTITY}, {LEGAL_MAILING_ADDRESS}
               </li>
               <li>
                 <strong>Response Time:</strong> We will respond to data requests within 30 days

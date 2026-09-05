@@ -3,11 +3,14 @@
 import { useState } from "react";
 import { BASE_CURRENCY } from "@/lib/currency/currency-preference";
 import {
+  Building2,
   Check,
   ChevronDown,
+  ChevronRight,
   LoaderCircle,
   LockKeyhole,
   StickyNote,
+  TriangleAlert,
   UnlockKeyhole,
   Undo2,
   X,
@@ -34,8 +37,10 @@ import {
 } from "@/lib/host/v2/calendar-model";
 import {
   buildAvailabilityAction,
+  buildMultiAvailabilityPlan,
   lockedCount,
   type AvailabilityDirection,
+  type MultiAvailabilityPlan,
 } from "@/lib/host/v2/calendar-availability-action";
 import {
   buildPriceAction,
@@ -113,7 +118,21 @@ export type DateActionResult = {
   /** Whether the inverse can still be offered. False once it has been taken. */
   undoable: boolean;
 } & (
-  | { kind: "AVAILABILITY"; direction: AvailabilityDirection }
+  | {
+      kind: "AVAILABILITY";
+      direction: AvailabilityDirection;
+      /**
+       * How many properties were actually written. Absent, or 1, is the ordinary
+       * single-property act and reads exactly as it always did.
+       */
+      properties?: number;
+      /**
+       * Properties the write did not reach, by title. A partial result is stated as
+       * one — the alternative is a host who believes all five were blocked because
+       * four of them were.
+       */
+      failed?: string[];
+    }
   /** `amount` is null when the dates were put back on the base price. */
   | { kind: "PRICE"; amount: string | null }
   /**
@@ -147,6 +166,9 @@ export function AvailabilityEditor({
   selection,
   pending,
   result,
+  targets,
+  canChooseTargets,
+  onChooseTargets,
   onApply,
   onUndo,
   onDismissResult,
@@ -160,6 +182,16 @@ export function AvailabilityEditor({
   /** A write is in flight. Both buttons and Undo are held shut until it lands. */
   pending: boolean;
   result: DateActionResult | null;
+  /**
+   * Every property this act would reach, in rail order, always starting with the one
+   * whose grid the dates came from. A single-entry list is the ordinary case and is
+   * rendered exactly as it always was.
+   */
+  targets: { listing: HostCalendarListing; index: ListingCalendarIndex }[];
+  /** False when there is only one property, or no grid to have chosen dates on. */
+  canChooseTargets: boolean;
+  /** Null while the rail is the chooser: the editor then only reports the set. */
+  onChooseTargets: (() => void) | null;
   onApply: (direction: AvailabilityDirection, note: string | null) => void;
   onUndo: () => void;
   onDismissResult: () => void;
@@ -167,9 +199,29 @@ export function AvailabilityEditor({
   const i18n = useI18n();
   const dates = selectionDates(selection);
   const model = buildAvailabilityAction({ listing, index, dates, today });
-  const locked = lockedCount(model);
-  const canBlock = model.blockable.length > 0;
-  const canOpen = model.openable.length > 0;
+  const multi = targets.length > 1;
+  /**
+   * The same two questions the single-property model answers, asked of every property
+   * at once. Built for both directions because the buttons are offered on what *can*
+   * move, and on a set of properties that is no longer the same answer twice.
+   */
+  const blockPlan = buildMultiAvailabilityPlan({
+    entries: targets,
+    dates,
+    today,
+    direction: "BLOCK",
+  });
+  const openPlan = buildMultiAvailabilityPlan({
+    entries: targets,
+    dates,
+    today,
+    direction: "OPEN",
+  });
+  const blockable = multi ? blockPlan.nights : model.blockable.length;
+  const openable = multi ? openPlan.nights : model.openable.length;
+  const locked = multi ? blockPlan.lockedNights : lockedCount(model);
+  const canBlock = blockable > 0;
+  const canOpen = openable > 0;
   /**
    * Whether an open date on this listing means anything to a guest.
    *
@@ -199,7 +251,7 @@ export function AvailabilityEditor({
   const blockLabel = interpolate(
     i18n.plural(
       "host.v2.calendar.editor.cta_block",
-      model.blockable.length,
+      blockable,
       "Block {n} night",
       "Block {n} nights",
     ),
@@ -249,7 +301,44 @@ export function AvailabilityEditor({
           }
         </h3>
         <ConsequenceLine tone={canBlock && sellable ? "good" : "neutral"}>
-          {canBlock && canOpen
+          {multi
+            ? canBlock && canOpen
+              ? interpolate(
+                  i18n.resolve(
+                    "host.v2.calendar.editor.multi_state_mixed",
+                    "{open} open · {blocked} blocked, across {properties} properties",
+                  ),
+                  {
+                    open: blockable,
+                    blocked: openable,
+                    properties: targets.length,
+                  },
+                ).text
+              : canBlock
+                ? interpolate(
+                    i18n.plural(
+                      "host.v2.calendar.editor.multi_state_open",
+                      blockable,
+                      "{n} night is open across {properties} properties.",
+                      "{n} nights are open across {properties} properties.",
+                    ),
+                    { properties: targets.length },
+                  ).text
+                : canOpen
+                  ? interpolate(
+                      i18n.plural(
+                        "host.v2.calendar.editor.multi_state_blocked",
+                        openable,
+                        "{n} night is unavailable across {properties} properties.",
+                        "{n} nights are unavailable across {properties} properties.",
+                      ),
+                      { properties: targets.length },
+                    ).text
+                  : i18n.resolve(
+                      "host.v2.calendar.editor.state_all_locked",
+                      "Nothing here can be changed from this panel.",
+                    ).text
+            : canBlock && canOpen
             ? interpolate(
                 i18n.resolve(
                   "host.v2.calendar.editor.state_mixed",
@@ -320,7 +409,7 @@ export function AvailabilityEditor({
                 interpolate(
                   i18n.plural(
                     "host.v2.calendar.editor.cta_open",
-                    model.openable.length,
+                    openable,
                     "Make {n} night available",
                     "Make {n} nights available",
                   ),
@@ -332,10 +421,26 @@ export function AvailabilityEditor({
         </div>
       ) : null}
 
+      {/* Who this applies to, offered only where it can mean something.
+
+          Deliberately below the buttons rather than above them: the common act is on
+          one property, and a control asking "which properties?" before the host has
+          asked for more than one would put a question in front of every ordinary
+          block. Here it reads as what it is — the same act, aimed wider. */}
+      {canChooseTargets ? (
+        <TargetChooserRow
+          count={targets.length}
+          disabled={pending}
+          onClick={onChooseTargets}
+        />
+      ) : null}
+
       {/* Why opening a date would still not sell it. Shown only when that is true —
           the "everything is fine" version of this line is exactly the reassurance the
           panel no longer spends space on. */}
-      {sellable ? null : (
+      {/* Only while one property is in scope. Across a set it would be an essay about
+          whichever one happens to be on screen, read as if it covered all of them. */}
+      {sellable || multi ? null : (
         <ListingSafetyExplanation
           listing={listing}
           summary={summary}
@@ -347,7 +452,17 @@ export function AvailabilityEditor({
           a reservation and an imported block are different problems for the host. */}
       {locked > 0 ? (
         <ConsequenceLine tone="warning">
-          {model.booked > 0 && model.external > 0
+          {multi
+            ? interpolate(
+                i18n.plural(
+                  "host.v2.calendar.editor.multi_locked",
+                  locked,
+                  "{n} night will not change — {properties} already has it booked or held.",
+                  "{n} nights will not change — {properties} already have them booked or held.",
+                ),
+                { properties: propertyNames(i18n, blockPlan) },
+              ).text
+            : model.booked > 0 && model.external > 0
             ? interpolate(
                 i18n.resolve(
                   "host.v2.calendar.editor.locked_mixed",
@@ -385,12 +500,18 @@ export function AvailabilityEditor({
           <DialogHeader>
             <DialogTitle>{blockLabel}</DialogTitle>
             <DialogDescription>
-              {
-                i18n.resolve(
-                  "host.v2.calendar.block_note_prompt",
-                  "Add a private note if you want to remember why. Only you can see it, and it is optional.",
-                ).text
-              }
+              {multi
+                ? interpolate(
+                    i18n.resolve(
+                      "host.v2.calendar.block_note_prompt_multi",
+                      "This will block the dates on {properties} properties. Add a private note if you want to remember why — it is saved on each of them, only you can see it, and it is optional.",
+                    ),
+                    { properties: blockPlan.properties },
+                  ).text
+                : i18n.resolve(
+                    "host.v2.calendar.block_note_prompt",
+                    "Add a private note if you want to remember why. Only you can see it, and it is optional.",
+                  ).text}
             </DialogDescription>
           </DialogHeader>
           <input
@@ -435,8 +556,9 @@ export function AvailabilityEditor({
         </DialogContent>
       </Dialog>
 
-      {/* A note the host already wrote against exactly these dates. */}
-      {storedNote ? (
+      {/* A note the host already wrote against exactly these dates. Belongs to the
+          property on screen, so it is not shown while the act is aimed at several. */}
+      {storedNote && !multi ? (
         <div className="flex items-start gap-2 rounded-xl bg-slate-50 px-3 py-2.5">
           <StickyNote className="mt-px size-4 shrink-0 text-slate-400" aria-hidden />
           <p className="min-w-0 flex-1 text-[0.8125rem] leading-5 text-slate-600">
@@ -454,6 +576,126 @@ export function AvailabilityEditor({
         </div>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * The properties a warning is about, named rather than counted.
+ *
+ * "3 nights will not change" is a number the host cannot act on; "Villa Ohrid has them
+ * booked" is. Two names is the most a line can carry before it stops being readable, so
+ * the rest become a count — still enough to know the list is longer than it looks.
+ */
+function propertyNames(
+  i18n: ReturnType<typeof useI18n>,
+  plan: MultiAvailabilityPlan,
+): string {
+  const names = plan.lockedTitles;
+  if (names.length <= 2) {
+    return names.length === 2
+      ? interpolate(
+          i18n.resolve("host.v2.calendar.editor.names_pair", "{first} and {second}"),
+          { first: names[0], second: names[1] },
+        ).text
+      : (names[0] ?? "");
+  }
+  return interpolate(
+    i18n.plural(
+      "host.v2.calendar.editor.names_overflow",
+      names.length - 2,
+      "{first}, {second} and {n} other",
+      "{first}, {second} and {n} others",
+    ),
+    { first: names[0], second: names[1] },
+  ).text;
+}
+
+/**
+ * The way into — and out of — aiming this act at more than one property.
+ *
+ * One row that both states the current scope and opens the chooser, rather than a
+ * control that appears and a separate label that reports. It reads as a setting on the
+ * act, which is what it is.
+ */
+function TargetChooserRow({
+  count,
+  disabled,
+  onClick,
+}: {
+  count: number;
+  disabled: boolean;
+  /** Null once the rail itself is the chooser: then this row only reports. */
+  onClick: (() => void) | null;
+}) {
+  const i18n = useI18n();
+  const many = count > 1;
+  const Row = onClick ? "button" : "div";
+  return (
+    <Row
+      {...(onClick
+        ? { type: "button" as const, disabled, onClick }
+        : { "aria-live": "polite" as const })}
+      className={cn(
+        "flex min-h-12 w-full items-center gap-2.5 rounded-xl px-3 text-left",
+        "transition-colors duration-150 motion-reduce:transition-none",
+        "focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[#0f172a]",
+        "disabled:cursor-not-allowed disabled:opacity-50",
+        many
+          ? "bg-[#0f172a] text-white"
+          : "bg-slate-50 text-slate-800",
+        onClick && (many ? "hover:bg-[#1e293b]" : "hover:bg-slate-100"),
+      )}
+    >
+      <Building2
+        className={cn("size-4 shrink-0", many ? "text-white/70" : "text-slate-400")}
+        aria-hidden
+      />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[0.8125rem] font-semibold">
+          {many
+            ? interpolate(
+                i18n.plural(
+                  "host.v2.calendar.multi_target_count",
+                  count,
+                  "{n} property",
+                  "{n} properties",
+                ),
+                {},
+              ).text
+            : i18n.resolve(
+                "host.v2.calendar.editor.multi_enter",
+                "Block on more properties",
+              ).text}
+        </span>
+        <span
+          className={cn(
+            "mt-0.5 block truncate text-[0.6875rem] leading-4",
+            many ? "text-white/60" : "text-slate-500",
+          )}
+        >
+          {!onClick
+            ? i18n.resolve(
+                "host.v2.calendar.editor.multi_rail_hint",
+                "Tick properties in the list on the left",
+              ).text
+            : many
+              ? i18n.resolve(
+                  "host.v2.calendar.editor.multi_change",
+                  "Tap to change which ones",
+                ).text
+              : i18n.resolve(
+                  "host.v2.calendar.editor.multi_enter_hint",
+                  "Apply these dates to your other properties too",
+                ).text}
+        </span>
+      </span>
+      {onClick ? (
+        <ChevronRight
+          className={cn("size-4 shrink-0", many ? "text-white/50" : "text-slate-400")}
+          aria-hidden
+        />
+      ) : null}
+    </Row>
   );
 }
 
@@ -531,25 +773,60 @@ function resultMessage(
           { amount: result.amount },
         ).text;
   }
-  return result.direction === "BLOCK"
-    ? interpolate(
-        i18n.plural(
-          "host.v2.calendar.editor.done_blocked",
-          result.dates,
-          "{n} night blocked.",
-          "{n} nights blocked.",
-        ),
-        {},
-      ).text
-    : interpolate(
-        i18n.plural(
-          "host.v2.calendar.editor.done_opened",
-          result.dates,
-          "{n} night is available again.",
-          "{n} nights are available again.",
-        ),
-        {},
-      ).text;
+  const properties = result.properties ?? 1;
+  const base =
+    result.direction === "BLOCK"
+      ? properties > 1
+        ? interpolate(
+            i18n.plural(
+              "host.v2.calendar.editor.done_blocked_multi",
+              result.dates,
+              "{n} night blocked across {properties} properties.",
+              "{n} nights blocked across {properties} properties.",
+            ),
+            { properties },
+          ).text
+        : interpolate(
+            i18n.plural(
+              "host.v2.calendar.editor.done_blocked",
+              result.dates,
+              "{n} night blocked.",
+              "{n} nights blocked.",
+            ),
+            {},
+          ).text
+      : properties > 1
+        ? interpolate(
+            i18n.plural(
+              "host.v2.calendar.editor.done_opened_multi",
+              result.dates,
+              "{n} night is available again across {properties} properties.",
+              "{n} nights are available again across {properties} properties.",
+            ),
+            { properties },
+          ).text
+        : interpolate(
+            i18n.plural(
+              "host.v2.calendar.editor.done_opened",
+              result.dates,
+              "{n} night is available again.",
+              "{n} nights are available again.",
+            ),
+            {},
+          ).text;
+
+  // Said in the same breath as the success, never as a separate toast that could be
+  // missed: what landed and what did not are one sentence about one press.
+  if (!result.failed?.length) return base;
+  return `${base} ${
+    interpolate(
+      i18n.resolve(
+        "host.v2.calendar.editor.done_partial",
+        "{properties} could not be updated.",
+      ),
+      { properties: result.failed.join(", ") },
+    ).text
+  }`;
 }
 
 /**
@@ -570,21 +847,38 @@ function ActionResult({
   onDismiss: () => void;
 }) {
   const i18n = useI18n();
+  // A write that reached some properties and not others is not a success, and dressing
+  // it in the same teal as one is how a host comes to trust a result that was wrong.
+  const partial =
+    result.kind === "AVAILABILITY" && (result.failed?.length ?? 0) > 0;
   return (
     <div
       role="status"
       aria-live="polite"
-      className="flex items-start gap-2 rounded-xl bg-teal-50 px-3 py-2.5"
+      className={cn(
+        "flex items-start gap-2 rounded-xl px-3 py-2.5",
+        partial ? "bg-amber-50" : "bg-teal-50",
+      )}
     >
       {pending ? (
         <LoaderCircle
-          className="mt-px size-4 shrink-0 animate-spin text-teal-700 motion-reduce:animate-none"
+          className={cn(
+            "mt-px size-4 shrink-0 animate-spin motion-reduce:animate-none",
+            partial ? "text-amber-700" : "text-teal-700",
+          )}
           aria-hidden
         />
+      ) : partial ? (
+        <TriangleAlert className="mt-px size-4 shrink-0 text-amber-700" aria-hidden />
       ) : (
         <Check className="mt-px size-4 shrink-0 text-teal-700" aria-hidden />
       )}
-      <p className="min-w-0 flex-1 text-[0.8125rem] leading-5 text-teal-900">
+      <p
+        className={cn(
+          "min-w-0 flex-1 text-[0.8125rem] leading-5",
+          partial ? "text-amber-900" : "text-teal-900",
+        )}
+      >
         {resultMessage(i18n, result)}
       </p>
       {result.undoable ? (
@@ -592,7 +886,12 @@ function ActionResult({
           type="button"
           disabled={pending}
           onClick={onUndo}
-          className="flex min-h-6 shrink-0 items-center gap-1 text-[0.8125rem] font-semibold text-teal-800 underline underline-offset-2 transition-colors duration-150 hover:text-teal-900 disabled:opacity-50 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700"
+          className={cn(
+            "flex min-h-6 shrink-0 items-center gap-1 text-[0.8125rem] font-semibold underline underline-offset-2 transition-colors duration-150 disabled:opacity-50 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
+            partial
+              ? "text-amber-800 hover:text-amber-900 focus-visible:outline-amber-700"
+              : "text-teal-800 hover:text-teal-900 focus-visible:outline-teal-700",
+          )}
         >
           <Undo2 className="size-3.5" aria-hidden />
           {i18n.resolve("host.v2.calendar.editor.undo", "Undo").text}
@@ -602,7 +901,12 @@ function ActionResult({
         type="button"
         onClick={onDismiss}
         aria-label={i18n.resolve("host.v2.calendar.editor.dismiss", "Dismiss").text}
-        className="-mr-1 -mt-0.5 grid size-6 shrink-0 place-items-center rounded-md text-teal-700 transition-colors duration-150 hover:bg-teal-100 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700"
+        className={cn(
+          "-mr-1 -mt-0.5 grid size-6 shrink-0 place-items-center rounded-md transition-colors duration-150 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
+          partial
+            ? "text-amber-700 hover:bg-amber-100 focus-visible:outline-amber-700"
+            : "text-teal-700 hover:bg-teal-100 focus-visible:outline-teal-700",
+        )}
       >
         <X className="size-3.5" aria-hidden />
       </button>

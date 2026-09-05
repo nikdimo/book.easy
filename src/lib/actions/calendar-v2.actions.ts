@@ -96,3 +96,107 @@ export async function openCalendarDatesForV2(
   );
   return normalizedResult(unblocked, "Dates are open for booking.");
 }
+
+/** One property's ranges, already narrowed to nights that can really move. */
+export interface ListingAvailabilityRanges {
+  listingId: string;
+  ranges: { startDate: string; endDate: string }[];
+}
+
+export interface ListingAvailabilityOutcome {
+  listingId: string;
+  /** Set when this property was not written. The others still were. */
+  error?: string;
+}
+
+/**
+ * The same availability act, across several properties, in one round trip.
+ *
+ * Blocking dates for a private stay is one decision about a portfolio, and looping the
+ * single-property action from the browser would turn it into N requests, N sessions and
+ * N chances to half-succeed without anyone noticing. This is that loop moved to where
+ * it can be reported honestly.
+ *
+ * Three things it deliberately does *not* do:
+ *
+ * 1. **Decide which nights may move.** The caller sends ranges already narrowed by
+ *    `buildAvailabilityAction`, exactly as the single-property path does. Re-deriving
+ *    them here from a different snapshot is how the two paths would drift apart.
+ * 2. **Trust the list of properties.** Ownership is re-checked per listing through the
+ *    same `verifyAvailabilityManager` every other action uses. A property the host does
+ *    not manage fails on its own and cannot be smuggled in beside ones they do.
+ * 3. **Stop at the first failure.** Each property is independent, so one that fails is
+ *    reported as failed and the rest are still written. A caller that abandoned the
+ *    remainder would leave the host with a partial result *and* no record of which part.
+ */
+export async function applyAvailabilityToListings(input: {
+  listings: ListingAvailabilityRanges[];
+  direction: "BLOCK" | "OPEN";
+  reason?: string | null;
+}): Promise<{ error?: string; results: ListingAvailabilityOutcome[] }> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return {
+      error: await actionText("action.error.not_authorized", "Not authorized"),
+      results: [],
+    };
+  }
+  const actor = { id: session.user.id, role: session.user.role };
+  const notFound = await actionText(
+    "action.error.listing_not_found",
+    "Listing not found",
+  );
+
+  const results: ListingAvailabilityOutcome[] = [];
+  // Sequential on purpose. A portfolio here is a handful of properties, and each write
+  // takes an advisory lock on its own listing; running them in parallel would buy
+  // nothing measurable and make the failure report harder to reason about.
+  for (const entry of input.listings) {
+    if (entry.ranges.length === 0) continue;
+    const listing = await verifyAvailabilityManager(actor, entry.listingId);
+    if (!listing) {
+      results.push({ listingId: entry.listingId, error: notFound });
+      continue;
+    }
+
+    let failure: string | undefined;
+    for (const range of entry.ranges) {
+      const outcome =
+        input.direction === "BLOCK"
+          ? await blockRangeForManagedListing(listing, {
+              startDate: range.startDate,
+              endDate: range.endDate,
+              reason: input.reason ?? undefined,
+            })
+          : await openRangeForManagedListing(listing, range);
+      if (outcome?.error) {
+        failure = outcome.error;
+        break;
+      }
+    }
+    results.push(
+      failure
+        ? { listingId: entry.listingId, error: failure }
+        : { listingId: entry.listingId },
+    );
+  }
+
+  return { results };
+}
+
+/**
+ * `openCalendarDatesForV2`'s body, without the per-call session lookup.
+ *
+ * Takes a listing the caller has already verified, so there is no not-found branch here
+ * to answer — and therefore no English sentence for this module to hand back untranslated.
+ */
+async function openRangeForManagedListing(
+  listing: NonNullable<Awaited<ReturnType<typeof verifyAvailabilityManager>>>,
+  range: { startDate: string; endDate: string },
+) {
+  if (listing.availabilityMode === "CLOSED") {
+    const opened = await openWindowForManagedListing(listing, range);
+    if (opened?.error) return { error: opened.error };
+  }
+  return removeManualBlocksForManagedListing(listing, range);
+}

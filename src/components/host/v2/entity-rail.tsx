@@ -98,16 +98,51 @@ function RailThumb({
   );
 }
 
+/**
+ * The tick a multi-select surface puts in `RailItem.trailing`.
+ *
+ * Drawn rather than borrowed from a form control: a native checkbox beside a photo and
+ * two lines of status is the one element on the card that would look like it came from
+ * somewhere else. `locked` is the property whose calendar is on screen — always part of
+ * the set, never something to argue with, so it is shown settled rather than disabled-
+ * looking.
+ */
+export function RailCheckbox({
+  checked,
+  locked,
+}: {
+  checked: boolean;
+  locked?: boolean;
+}) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "grid size-5 shrink-0 place-items-center rounded-md border-[1.5px] transition-colors duration-150 motion-reduce:transition-none",
+        checked
+          ? "border-[#0f172a] bg-[#0f172a] text-white"
+          : "border-slate-300 bg-white text-transparent",
+        locked && "opacity-45",
+      )}
+    >
+      <Check className="size-3.5" strokeWidth={3} />
+    </span>
+  );
+}
+
 export function RailCard({
   item,
   selected,
   compact,
+  disabled,
   onSelect,
   anchor,
 }: {
   item: RailItem;
   selected: boolean;
   compact: boolean;
+  /** The card is showing a settled state and has nothing to toggle. */
+  disabled?: boolean;
   onSelect: () => void;
   /** Anchor id for the selected card, if the surface publishes one. */
   anchor?: string;
@@ -128,6 +163,7 @@ export function RailCard({
       <button
         type="button"
         onClick={onSelect}
+        disabled={disabled}
         aria-pressed={selected}
         aria-label={accessibleName}
         title={accessibleName}
@@ -139,6 +175,7 @@ export function RailCard({
             : attention
               ? "bg-[#f8fafc]"
               : "hover:bg-slate-100/70",
+          disabled && "cursor-default",
         )}
         {...anchorProps}
       >
@@ -151,6 +188,11 @@ export function RailCard({
               toneDotClass(item.tone),
             )}
           />
+          {/* In the compact rail the card has no room for a trailing slot, so the
+              tick rides the corner of the photo the tone dot does not use. */}
+          {item.trailing ? (
+            <span className="absolute -bottom-1 -left-1">{item.trailing}</span>
+          ) : null}
         </span>
       </button>
     );
@@ -160,6 +202,7 @@ export function RailCard({
     <button
       type="button"
       onClick={onSelect}
+      disabled={disabled}
       aria-pressed={selected}
       aria-label={accessibleName}
       className={cn(
@@ -173,6 +216,7 @@ export function RailCard({
           : attention
             ? "bg-[#f8fafc] hover:bg-[#f1f5f9]"
             : "hover:bg-slate-100/70",
+        disabled && "cursor-default",
       )}
       {...anchorProps}
     >
@@ -351,6 +395,25 @@ export function useRailPreference(storageKey: string, defaultCompact = false) {
   return [compact, setCompact] as const;
 }
 
+/**
+ * The rail, temporarily answering a different question.
+ *
+ * Normally a card means "show me this one". While a surface is choosing several
+ * properties to act on, the same card means "include this one" — so the cards toggle
+ * instead of navigating, the portfolio card steps aside, and `lockedId` marks the
+ * property already on screen, which is part of every set and cannot be argued out of
+ * it. Nothing about the rail's shape changes, because the host is still reading the
+ * same list of properties.
+ */
+export interface RailMultiSelect {
+  checkedIds: string[];
+  /** The property being shown. Always included, never togglable. */
+  lockedId: string;
+  onToggle: (id: string) => void;
+  /** The mode's own controls, drawn above the list. */
+  banner?: React.ReactNode;
+}
+
 export function EntityRail({
   heading,
   ariaLabel,
@@ -358,6 +421,7 @@ export function EntityRail({
   allCard,
   selectedId,
   compact,
+  multiSelect,
   onSelect,
   onToggleCompact,
   anchor,
@@ -374,6 +438,8 @@ export function EntityRail({
   } | null;
   selectedId: string;
   compact: boolean;
+  /** Present only while the surface is choosing a set rather than one property. */
+  multiSelect?: RailMultiSelect | null;
   onSelect: (id: string) => void;
   onToggleCompact: () => void;
   anchor?: string;
@@ -383,6 +449,7 @@ export function EntityRail({
   const toggleLabel = compact
     ? i18n.resolve("host.v2.calendar.rail_expand", "Expand property list")
     : i18n.resolve("host.v2.calendar.rail_collapse", "Collapse property list");
+  const checked = new Set(multiSelect?.checkedIds ?? []);
 
   return (
     <aside
@@ -422,9 +489,13 @@ export function EntityRail({
         </button>
       </div>
 
+      {multiSelect?.banner}
+
       {/* The rail is fixed; only its list of properties scrolls. */}
       <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overscroll-contain pb-1">
-        {allCard ? (
+        {/* The portfolio card is a view, not a target. Offering it beside checkboxes
+            would read as "all properties" and mean something else entirely. */}
+        {allCard && !multiSelect ? (
           <AllEntitiesCard
             label={allCard.label}
             detail={allCard.detail}
@@ -434,16 +505,36 @@ export function EntityRail({
             onSelect={() => onSelect(ALL_ENTITIES)}
           />
         ) : null}
-        {items.map((item) => (
-          <RailCard
-            key={item.id}
-            item={item}
-            compact={compact}
-            selected={selectedId === item.id}
-            onSelect={() => onSelect(item.id)}
-            anchor={selectedAnchor}
-          />
-        ))}
+        {items.map((item) => {
+          if (!multiSelect) {
+            return (
+              <RailCard
+                key={item.id}
+                item={item}
+                compact={compact}
+                selected={selectedId === item.id}
+                onSelect={() => onSelect(item.id)}
+                anchor={selectedAnchor}
+              />
+            );
+          }
+          const locked = item.id === multiSelect.lockedId;
+          const isChecked = locked || checked.has(item.id);
+          return (
+            <RailCard
+              key={item.id}
+              item={{
+                ...item,
+                trailing: <RailCheckbox checked={isChecked} locked={locked} />,
+              }}
+              compact={compact}
+              selected={isChecked}
+              disabled={locked}
+              onSelect={() => multiSelect.onToggle(item.id)}
+              anchor={selectedAnchor}
+            />
+          );
+        })}
       </div>
     </aside>
   );
@@ -518,6 +609,128 @@ export function EntityChooserSheet({
             />
           ))}
         </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * Choosing a *set* of properties on a phone, where there is no rail to tick.
+ *
+ * A sibling of the chooser rather than a mode inside it, and the reason is written into
+ * the chooser above: it switches the pane on tap and closes, because an Apply button
+ * there "can only ever confirm what was just tapped". That is right for a navigator and
+ * wrong here — a set cannot tell when it is finished, so this one genuinely needs a way
+ * to say so, and giving both behaviours to one component would have meant taking the
+ * chooser's away from every other screen that uses it.
+ *
+ * Dismissing without pressing Done keeps whatever was ticked. Nothing here writes
+ * anything; the set is an argument to an action the host has not pressed yet, so there
+ * is no draft to lose and no discard prompt to raise.
+ */
+export function EntityMultiSelectSheet({
+  open,
+  title,
+  subtitle,
+  items,
+  lockedId,
+  checkedIds,
+  selectAllLabel,
+  clearLabel,
+  doneLabel,
+  onToggle,
+  onSelectAll,
+  onClearExtras,
+  onOpenChange,
+  anchor,
+}: {
+  open: boolean;
+  title: RailLine;
+  /** The dates the set is being chosen for. Never let it be chosen blind. */
+  subtitle?: RailLine | null;
+  items: RailItem[];
+  lockedId: string;
+  checkedIds: string[];
+  selectAllLabel: string;
+  clearLabel: string;
+  /** Already carries its own count — the sheet does not add one. */
+  doneLabel: string;
+  onToggle: (id: string) => void;
+  onSelectAll: () => void;
+  onClearExtras: () => void;
+  onOpenChange: (open: boolean) => void;
+  anchor?: string;
+}) {
+  const checked = new Set(checkedIds);
+  const everyOneChecked = items.every(
+    (item) => item.id === lockedId || checked.has(item.id),
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        variant="sheet"
+        // Three rows rather than a flowing column: the list is the only thing that
+        // scrolls, so Done stays on the glass whatever the portfolio's length.
+        className="grid h-dvh max-h-none grid-rows-[auto_minmax(0,1fr)_auto] gap-3 overflow-hidden rounded-none"
+        {...(anchor ? { id: anchor, "data-linger-anchor": anchor } : {})}
+      >
+        <DialogHeader>
+          <DialogTitle className={title.translated ? "notranslate" : undefined}>
+            {title.text}
+          </DialogTitle>
+          {subtitle ? (
+            <p
+              className={cn(
+                "text-[0.8125rem] leading-5 text-slate-500",
+                subtitle.translated && "notranslate",
+              )}
+            >
+              {subtitle.text}
+            </p>
+          ) : null}
+        </DialogHeader>
+
+        <div className="-mx-1 min-h-0 overflow-y-auto overscroll-contain px-1">
+          <div className="flex justify-end pb-1">
+            <button
+              type="button"
+              onClick={everyOneChecked ? onClearExtras : onSelectAll}
+              className="min-h-9 rounded-lg px-2 text-[0.8125rem] font-semibold text-[#0f172a] underline underline-offset-2 transition-colors duration-150 hover:bg-slate-50 motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]"
+            >
+              {everyOneChecked ? clearLabel : selectAllLabel}
+            </button>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            {items.map((item) => {
+              const locked = item.id === lockedId;
+              const isChecked = locked || checked.has(item.id);
+              return (
+                <RailCard
+                  key={item.id}
+                  item={{
+                    ...item,
+                    trailing: (
+                      <RailCheckbox checked={isChecked} locked={locked} />
+                    ),
+                  }}
+                  compact={false}
+                  selected={isChecked}
+                  disabled={locked}
+                  onSelect={() => onToggle(item.id)}
+                />
+              );
+            })}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onOpenChange(false)}
+          className="flex min-h-12 w-full items-center justify-center rounded-xl bg-[#0f172a] px-4 text-[0.875rem] font-semibold text-white transition-colors duration-150 hover:bg-[#1e293b] motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0f172a]"
+        >
+          {doneLabel}
+        </button>
       </DialogContent>
     </Dialog>
   );

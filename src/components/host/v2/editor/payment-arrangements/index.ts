@@ -15,6 +15,11 @@ export {
   type DepositSectionDraft,
 } from "./deposit-policies-editor";
 
+export {
+  PaymentCopyFromListing,
+  type PaymentCopyPatch,
+} from "./payment-copy-sheet";
+export { methodSourceName } from "./payment-method-names";
 export { PaymentDetailsSheet } from "./payment-details-sheet";
 export { SectionSaveRow, SectionStatusLine } from "./section-save-row";
 

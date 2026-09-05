@@ -17,7 +17,7 @@ const lines: ChannelPostLines = {
   freshnessLine: "Availability checked 30 August — dates can be taken at any time.",
   callToAction: "Check availability and send an inquiry:",
   linkInBioLine: "🔗 Link in bio",
-  propertyUrl: "https://book.easy.mk/properties/sea-view?checkIn=2026-09-21",
+  propertyUrl: "https://lingerhomes.com/properties/sea-view?checkIn=2026-09-21",
   city: "Nova Mudanja",
 };
 
@@ -77,8 +77,8 @@ describe("city hashtag", () => {
 });
 
 describe("messaging share links", () => {
-  const text = "Come and stay\n\nhttps://book.easy.mk/properties/sea-view";
-  const url = "https://book.easy.mk/properties/sea-view";
+  const text = "Come and stay\n\nhttps://lingerhomes.com/properties/sea-view";
+  const url = "https://lingerhomes.com/properties/sea-view";
 
   it("carries the whole post in the WhatsApp link, so nothing is copied", () => {
     const share = messagingShareUrl("WHATSAPP", text, url);

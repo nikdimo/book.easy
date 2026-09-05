@@ -67,10 +67,16 @@
 - Support participation inside the product is displayed as **Linger Homes Support**.
 - Communication identity is centralized in `src/lib/communication-brand.ts`
   without modifying the global branding files during the parallel rollout.
-- Email links use `NEXT_PUBLIC_APP_URL` while both domains operate in parallel and
-  fall back to `https://lingerhomes.com`.
-- The sender mailbox uses the address configured in `EMAIL_FROM`; the official
-  sender identity is `Linger Homes <hello@lingerhomes.com>`.
-- Replies use `EMAIL_REPLY_TO` and fall back to `hello@lingerhomes.com`.
-- Case escalation mail uses `SUPPORT_EMAIL` and falls back to
-  `hello@lingerhomes.com`.
+- Email links use `NEXT_PUBLIC_APP_URL` and fall back to `https://lingerhomes.com`.
+  This one can't be domain-locked — it has to be wherever the app is actually
+  served — so an off-brand value logs a one-time warning in production instead.
+- `EMAIL_FROM`, `EMAIL_REPLY_TO` and `SUPPORT_EMAIL` are honoured **only when the
+  address is on `lingerhomes.com`** (a sending subdomain such as
+  `mail.lingerhomes.com` counts). Anything else is ignored in favour of
+  `hello@lingerhomes.com`. The guard exists because the original deployment
+  mailbox `hello@book.easy.mk` was still configured after the rebrand and went out
+  as the sender of live booking mail.
+- The official sender identity is `Linger Homes <hello@lingerhomes.com>`; the
+  display name always comes from `communication-brand.ts`, never from the env.
+- Note that passing this guard does not make mail deliverable: the sending domain
+  must also be verified with the SMTP provider, with SPF/DKIM published.

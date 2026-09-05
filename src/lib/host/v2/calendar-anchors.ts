@@ -14,6 +14,8 @@ export const CALENDAR_ANCHOR = {
   listingRail: "host-calendar-listing-rail",
   selectedListing: "host-calendar-selected-listing",
   listingChooser: "host-calendar-listing-chooser",
+  /** Choosing the set of properties an availability change applies to. */
+  listingMultiSelect: "host-calendar-listing-multi-select",
   allListings: "host-calendar-all-listings",
   monthControls: "host-calendar-month-controls",
   dateGrid: "host-calendar-date-grid",

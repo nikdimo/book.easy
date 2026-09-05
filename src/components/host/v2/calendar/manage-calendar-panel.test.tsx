@@ -41,6 +41,7 @@ import type { CalendarSelection } from "@/lib/host/v2/calendar-selection";
 import type { CalendarIntent } from "@/lib/host/v2/calendar-href";
 import type { HostCalendarListing } from "@/lib/host/v2/calendar-types";
 import {
+  bookingBlock,
   HORIZON_END,
   makeListing,
   promotion,
@@ -55,11 +56,18 @@ function render({
   selection = null,
   view = MENU_VIEW,
   pendingIntent = null,
+  companions = [],
+  canChooseTargets = false,
+  onChooseTargets = noop,
 }: {
   listing?: HostCalendarListing;
   selection?: CalendarSelection | null;
   view?: WorkbenchView;
   pendingIntent?: CalendarIntent | null;
+  /** Extra properties the availability act is aimed at, beside `listing`. */
+  companions?: HostCalendarListing[];
+  canChooseTargets?: boolean;
+  onChooseTargets?: (() => void) | null;
 } = {}): string {
   const index = buildListingCalendarIndex(listing);
   const counts = countDates(listing, index, TODAY, HORIZON_END);
@@ -80,6 +88,15 @@ function render({
       onReviewDate={noop}
       actionPending={false}
       actionResult={null}
+      availabilityTargets={[
+        { listing, index },
+        ...companions.map((companion) => ({
+          listing: companion,
+          index: buildListingCalendarIndex(companion),
+        })),
+      ]}
+      canChooseTargets={canChooseTargets}
+      onChooseTargets={onChooseTargets}
       onApplyAvailability={noop}
       onApplyPrice={noop}
       onApplyPromotion={noop}
@@ -222,5 +239,122 @@ describe("dates selected", () => {
       view: { kind: "editor", editor: "promotions" },
     });
     expect(html).toContain("Editing these dates");
+  });
+});
+
+/**
+ * Blocking dates on more than one property.
+ *
+ * The panel's existing promise is that a press can never do less than its label says.
+ * Aiming the same press at several properties is the easiest way to break that, because
+ * the host can only see one property's calendar while they do it — so every test here
+ * is about the panel saying out loud what the host cannot see.
+ */
+describe("blocking across properties", () => {
+  const selection = { start: "2026-03-12", end: "2026-03-14" };
+  const availability = { kind: "editor", editor: "availability" } as const;
+
+  it("offers the way in only when there is somewhere else to go", () => {
+    expect(
+      render({ selection, view: availability, canChooseTargets: false }),
+    ).not.toContain("Block on more properties");
+    expect(
+      render({ selection, view: availability, canChooseTargets: true }),
+    ).toContain("Block on more properties");
+  });
+
+  it("counts every property's nights in the button that blocks them", () => {
+    // Three nights on each of two properties. A label naming only the one on screen
+    // would understate what the press is about to do.
+    const html = render({
+      selection,
+      view: availability,
+      canChooseTargets: true,
+      companions: [makeListing({ id: "listing-2", title: "Villa Ohrid" })],
+    });
+
+    expect(html).toContain("Block 6 nights");
+    expect(html).toContain("2 properties");
+  });
+
+  it("names the property holding nights it cannot move", () => {
+    const html = render({
+      selection,
+      view: availability,
+      canChooseTargets: true,
+      companions: [
+        makeListing({
+          id: "listing-2",
+          title: "Villa Ohrid",
+          blocks: [bookingBlock("2026-03-12", "2026-03-15")],
+        }),
+      ],
+    });
+
+    // Three of the six nights are booked elsewhere, and the host is told where.
+    expect(html).toContain("Block 3 nights");
+    expect(html).toContain("Villa Ohrid");
+    expect(html).toContain("will not change");
+  });
+
+  it("says nothing about other properties while only one is aimed at", () => {
+    const html = render({
+      selection,
+      view: availability,
+      canChooseTargets: true,
+    });
+
+    expect(html).toContain("Block 3 nights");
+    // The single-property wording is untouched by the feature existing.
+    expect(html).toContain("These 3 nights are open for booking.");
+    expect(html).not.toContain("across");
+  });
+
+  it("stops being a button once the rail itself is the chooser", () => {
+    // On desktop the checkboxes are in the property list, so a second control here
+    // would be a dead target. It becomes a summary of the set instead.
+    const html = render({
+      selection,
+      view: availability,
+      canChooseTargets: true,
+      onChooseTargets: null,
+      companions: [makeListing({ id: "listing-2", title: "Villa Ohrid" })],
+    });
+
+    expect(html).toContain("Tick properties in the list on the left");
+    expect(html).toContain("2 properties");
+  });
+
+  it("keeps the private note out of a set it does not describe", () => {
+    // The stored note belongs to the property on screen. Shown beside a summary of
+    // four properties it would read as all of theirs.
+    const noted = makeListing({
+      blocks: [
+        {
+          id: "m1",
+          startDate: "2026-03-12",
+          endDate: "2026-03-15",
+          blockType: "MANUAL_BLOCK" as const,
+          reason: "Repainting",
+          guestName: null,
+          bookingStatus: null,
+          feedName: null,
+          feedPlatform: null,
+        },
+      ],
+    });
+
+    expect(
+      render({ listing: noted, selection, view: availability }),
+    ).toContain("Repainting");
+    expect(
+      render({
+        listing: noted,
+        selection,
+        view: availability,
+        canChooseTargets: true,
+        companions: [makeListing({ id: "listing-2" })],
+      }),
+    ).not.toContain("Repainting");
   });
 });

@@ -1,4 +1,4 @@
-import { COMMUNICATION_BRAND } from "@/lib/communication-brand";
+import { COMMUNICATION_BRAND, LEGAL_IDENTITY } from "@/lib/communication-brand";
 
 /** Public identity shared by the website, mobile app, and transactional communication. */
 export const SITE_DOMAIN = "lingerhomes.com";
@@ -9,6 +9,10 @@ export const SUPPORT_NAME = COMMUNICATION_BRAND.supportName;
 export const PUBLIC_EMAIL = COMMUNICATION_BRAND.publicEmail;
 export const SUPPORT_EMAIL = COMMUNICATION_BRAND.supportEmail;
 export const PRIVACY_EMAIL = COMMUNICATION_BRAND.privacyEmail;
+/** Operating company named in Terms and Privacy — see LEGAL_IDENTITY. */
+export const LEGAL_ENTITY = LEGAL_IDENTITY.entity;
+export const LEGAL_JURISDICTION = LEGAL_IDENTITY.jurisdiction;
+export const LEGAL_MAILING_ADDRESS = LEGAL_IDENTITY.mailingAddress;
 /** Descriptive launch copy until a final campaign tagline is approved. */
 export const BRAND_TAGLINE = "Holiday homes and stays";
 export const BRAND_PRIMARY = "#B84A24";

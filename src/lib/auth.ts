@@ -10,7 +10,10 @@ import { db } from "@/lib/db";
 import { authConfig } from "@/lib/auth.config";
 import { rateLimit } from "@/lib/rate-limit";
 import { PRODUCT_NAME } from "@/lib/branding";
-import { communicationReplyToAddress } from "@/lib/communication-brand.server";
+import {
+  communicationFromAddress,
+  communicationReplyToAddress,
+} from "@/lib/communication-brand.server";
 import { getEmailT } from "@/lib/email/i18n";
 import { getRequestLocale } from "@/lib/email/i18n/request-locale";
 import { resolveEmailLocale } from "@/lib/email/i18n/locales";
@@ -89,7 +92,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           pass: process.env.EMAIL_SERVER_PASSWORD,
         },
       },
-      from: process.env.EMAIL_FROM,
+      from: communicationFromAddress(),
       // Rate-limit per recipient before sending — otherwise this endpoint lets anyone
       // email-bomb an arbitrary address (no auth required to request a magic link) and
       // burns SMTP sender reputation. The UI already has a 30s resend cooldown, but

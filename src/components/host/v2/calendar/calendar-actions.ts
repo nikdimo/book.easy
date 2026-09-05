@@ -9,9 +9,11 @@ import {
   setCalendarDatePrice,
 } from "@/lib/actions/calendar.actions";
 import {
+  applyAvailabilityToListings,
   blockCalendarDatesForV2,
   openCalendarDatesForV2,
 } from "@/lib/actions/calendar-v2.actions";
+import type { AvailabilityDirection } from "@/lib/host/v2/calendar-availability-action";
 import type { MutationStep } from "@/lib/host/v2/calendar-review";
 
 /**
@@ -106,4 +108,39 @@ export async function runMutationSteps(
     completed += 1;
   }
   return { completed };
+}
+
+/**
+ * The availability act, carried to every property it was aimed at.
+ *
+ * One call rather than one per property: the server can then report which properties
+ * were written and which were not, which is the only way a partial result can be told
+ * to the host truthfully. Steps arrive already narrowed to movable nights — this only
+ * unwraps them back into the `[start, end)` ranges the action takes.
+ */
+export async function runAvailabilityAcrossListings({
+  batches,
+  direction,
+  note,
+}: {
+  batches: { listingId: string; steps: MutationStep[] }[];
+  direction: AvailabilityDirection;
+  note: string | null;
+}): Promise<{
+  error?: string;
+  results: { listingId: string; error?: string }[];
+}> {
+  return applyAvailabilityToListings({
+    listings: batches.map((batch) => ({
+      listingId: batch.listingId,
+      ranges: batch.steps
+        .filter(
+          (step): step is Extract<MutationStep, { type: "BLOCK_RANGE" | "OPEN_RANGE" }> =>
+            step.type === "BLOCK_RANGE" || step.type === "OPEN_RANGE",
+        )
+        .map((step) => ({ startDate: step.startDate, endDate: step.endDate })),
+    })),
+    direction,
+    reason: note,
+  });
 }

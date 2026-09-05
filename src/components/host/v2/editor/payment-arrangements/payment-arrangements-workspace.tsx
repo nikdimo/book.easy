@@ -135,6 +135,8 @@ export function PaymentArrangementsWorkspace({
           key={`${listingId}:${initialValue.reviewedAt ?? "unreviewed"}`}
           initialValue={initialValue}
           onSave={save}
+          showCopyFromListing
+          copyExcludeListingId={listingId}
           errorMessage={
             resolve(
               "host.editor.payment_arrangements.status_error",

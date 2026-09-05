@@ -26,6 +26,8 @@ import {
   methodSupportsPaymentDetails,
   type PaymentDetailFieldValues,
 } from "@/lib/payments/payment-details";
+import { methodSourceName } from "./payment-method-names";
+import { PaymentCopyFromListing, type PaymentCopyPatch } from "./payment-copy-sheet";
 import { PaymentDetailsSheet } from "./payment-details-sheet";
 import { SectionSaveRow, SectionStatusLine } from "./section-save-row";
 import {
@@ -90,6 +92,16 @@ export type PaymentArrangementsEditorProps = {
   /** The wizard supplies the screen's own heading and intro above this editor, so it
    *  suppresses these rather than putting a second h1 in the middle of the page. */
   showHeader?: boolean;
+  /**
+   * Whether to offer "Copy from another listing".
+   *
+   * Opt-in rather than on by default: it needs a signed-in host with other listings, so
+   * the fixtures-driven UI lab and any future preview of this editor stay renderable
+   * without a session. The picker still hides itself when there is nothing to copy.
+   */
+  showCopyFromListing?: boolean;
+  /** The listing being edited, so a host is never offered a copy of itself. */
+  copyExcludeListingId?: string;
 };
 
 type MethodPresentation = {
@@ -113,6 +125,8 @@ export function PaymentArrangementsEditor({
   showRequiredError = true,
   showGuestPreview = true,
   showHeader = true,
+  showCopyFromListing = false,
+  copyExcludeListingId,
 }: PaymentArrangementsEditorProps) {
   const i18n = useI18n();
   const [draft, setDraft] = useState<PaymentArrangementsDraft>(() =>
@@ -160,6 +174,21 @@ export function PaymentArrangementsEditor({
     // normalizer removes anything left against a method that stays unselected.
     publishChange(draftAfterMethodToggle(draft, code, checked));
     setOpenDetails((open) => drawerAfterMethodToggle(open, code, checked));
+  }
+
+  /**
+   * Another listing's whole answer, dropped into this draft.
+   *
+   * A replacement, not a merge: half of one listing's methods beside half of another's
+   * is a state no host asked for and none would notice. Everything else is reset with
+   * it — the open drawer, because it may belong to a method that is no longer selected,
+   * and `converting`, because those decisions were made about text this draft no longer
+   * holds. Nothing is written; the section's Save still is the only thing that writes.
+   */
+  function applyCopy(patch: PaymentCopyPatch) {
+    publishChange(normalizePaymentArrangementsDraft(patch));
+    setOpenDetails(null);
+    setConverting([]);
   }
 
   function openDetailsFor(code: PaymentMethodCode, trigger: HTMLButtonElement | null) {
@@ -254,6 +283,17 @@ export function PaymentArrangementsEditor({
               source="Guests see only the payment method names while browsing. Private details are shared only after you accept a booking."
             />
           </p>
+
+          {/* Above the list, not below it: a host who has this set up elsewhere should
+              meet the offer before they start working down ten checkboxes, not after. */}
+          {showCopyFromListing ? (
+            <PaymentCopyFromListing
+              excludeListingId={copyExcludeListingId}
+              hasAnswer={draft.methodCodes.length > 0}
+              disabled={busy}
+              onCopy={applyCopy}
+            />
+          ) : null}
 
           <ul className="mt-3 divide-y divide-slate-100 border-y border-slate-100">
             {PAYMENT_METHOD_CODES.map((code) => (
@@ -744,39 +784,6 @@ function MethodLabel({
     );
   }
   return <>{methodPresentation(code).label}</>;
-}
-
-/** Plain-text method name, for an accessible label or an aria-label. */
-function methodSourceName(
-  code: PaymentMethodCode,
-  otherLabel: string | null,
-  resolve: ReturnType<typeof useI18n>["resolve"],
-): string {
-  switch (code) {
-    case "CASH_AT_PROPERTY":
-      return resolve("host.editor.payment_arrangements.cash", "Cash at the property").text;
-    case "BANK_TRANSFER_LOCAL_SEPA":
-      return resolve("host.editor.payment_arrangements.bank_local", "Bank transfer (local or Europe)").text;
-    case "BANK_TRANSFER_INTERNATIONAL":
-      return resolve("host.editor.payment_arrangements.bank_international", "Bank transfer (other countries)").text;
-    case "PAYPAL":
-      return resolve("host.editor.payment_arrangements.paypal", "PayPal").text;
-    case "REVOLUT":
-      return resolve("host.editor.payment_arrangements.revolut", "Revolut").text;
-    case "WISE":
-      return resolve("host.editor.payment_arrangements.wise", "Wise").text;
-    case "BITCOIN":
-      return resolve("host.editor.payment_arrangements.bitcoin", "Bitcoin").text;
-    case "HOST_SECURE_CARD_LINK":
-      return resolve("host.editor.payment_arrangements.secure_card_link", "Secure card payment link from host").text;
-    case "OTHER":
-      return (
-        (otherLabel ?? "").trim() ||
-        resolve("host.editor.payment_arrangements.other", "Another payment method").text
-      );
-    case "ARRANGE_DIRECTLY":
-      return resolve("host.editor.payment_arrangements.arrange_directly", "Arrange directly after the booking request").text;
-  }
 }
 
 function methodPresentation(code: PaymentMethodCode): MethodPresentation {

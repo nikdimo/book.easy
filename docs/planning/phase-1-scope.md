@@ -1,4 +1,4 @@
-# book.easy.mk — Phase 1 Scope
+# Linger Homes — Phase 1 Scope
 
 ## Objective
 
@@ -156,7 +156,7 @@ Even though these features are excluded, the Phase 1 architecture supports them:
 - [ ] Accessibility check (contrast, keyboard navigation, screen reader basics)
 - [ ] Analytics setup (simple page views at minimum)
 - [ ] Backup strategy for database
-- [ ] Domain and DNS configured for book.easy.mk
+- [ ] Domain and DNS configured for Linger Homes
 
 ### Post-Launch (Week 1)
 
