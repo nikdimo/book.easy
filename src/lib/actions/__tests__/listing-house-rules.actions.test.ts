@@ -25,6 +25,7 @@ import type { ListingHouseRulesInput } from "@/lib/host/v2/listing-house-rules";
 /** What the editor sends when the host has answered everything. */
 const VALID: ListingHouseRulesInput = {
   checkInTime: "16:00",
+  checkInEndTime: "",
   checkOutTime: "10:00",
   maxGuests: 6,
   petPolicy: "ASK_HOST",

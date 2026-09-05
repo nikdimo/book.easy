@@ -20,6 +20,7 @@ import {
 } from "@/components/public/expandable-description";
 import { AmenityList } from "@/components/public/amenity-list";
 import { HouseRulesList } from "@/components/public/house-rules-list";
+import { PublicArrivalSummary } from "@/components/public/public-arrival-summary";
 import {
   AcceptedPaymentMethods,
   toAcceptedPaymentMethodsPresentation,
@@ -579,6 +580,11 @@ export default async function ListingDetailPage({
                   never answered is absent from both rather than shown as a blank. */}
               <HouseRulesList t={t} rules={houseRules} />
             </section>
+
+            {/* What the host's arrival guide says in public. Renders nothing at all unless
+                they have answered one of the three questions a guest may see before
+                booking — see `ARRIVAL_FIELD_VISIBILITY`. */}
+            <PublicArrivalSummary listingId={listing.id} />
           </div>
 
           {/* One mount at every width. The widget is a sticky card in this column on

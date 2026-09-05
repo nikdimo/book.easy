@@ -187,13 +187,16 @@ export async function POST(
   // internal cores after their respective ownership checks. Validation therefore
   // stays canonical without exposing an actor-accepting Server Action.
   if (input.action === "saveDefaultPricing") {
+    // Amounts only, exactly as the web path sends them. A `minNights` in the body is
+    // accepted and ignored rather than rejected — an older build of the app still
+    // sends one, and the honest answer to that is to save the price without letting it
+    // overwrite a stay rule the host set under Availability → Booking rules.
     const result = await saveDefaultPricingForManagedListing(
       verifiedListing,
       access.user.id,
       {
         baseNightlyRate: Number(input.baseNightlyRate),
         cleaningFee: Number(input.cleaningFee ?? 0),
-        minNights: Number(input.minNights ?? 1),
       },
     );
     if (result?.error) return mobileJson(request, result, { status: 400 });

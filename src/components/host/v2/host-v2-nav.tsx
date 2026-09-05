@@ -63,7 +63,7 @@ export function HostV2Nav() {
      * breakpoint, so only one is ever visible.
      */
     <nav
-      aria-label={resolve("host.v2.nav.label", "New host panel").text}
+      aria-label={resolve("host.v2.nav.label", "Host panel").text}
       className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-slate-200 bg-white px-1 pb-[env(safe-area-inset-bottom)] md:static md:flex md:items-stretch md:gap-0 md:border-0 md:bg-transparent md:p-0"
     >
       {destinations.map((item) => {

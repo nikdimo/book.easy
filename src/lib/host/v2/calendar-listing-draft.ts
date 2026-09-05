@@ -61,44 +61,46 @@ export function availabilityDefaultDraft(
 }
 
 /* -------------------------------------------------------------------------- */
-/* Default price and stay rules                                                */
+/* Default price                                                               */
 /* -------------------------------------------------------------------------- */
 
 export interface DefaultsForm {
   baseNightlyRate: string;
   cleaningFee: string;
-  minNights: string;
 }
 
 export function defaultsFormOf(listing: HostCalendarListing): DefaultsForm {
   return {
     baseNightlyRate: String(listing.pricing?.baseNightlyRate ?? ""),
     cleaningFee: String(listing.pricing?.cleaningFee ?? ""),
-    minNights: String(listing.pricing?.minNights ?? 1),
   };
 }
 
 /**
  * The pricing rule the host has edited, carrying **only the fields they touched**.
  *
- * `saveCalendarDefaultPricing` writes the whole rule, so something has to supply the
- * untouched fields — and that something is the review model, which fills them from the
+ * `saveCalendarDefaultPricing` writes both amounts, so something has to supply the
+ * untouched one — and that something is the review model, which fills it from the
  * pricing rule actually loaded from the database. Sending a value from here that the
  * host did not type would mean re-saving whatever this screen happened to be showing,
  * which is not the same thing as what is stored.
+ *
+ * Two amounts and nothing else. The minimum and maximum stay are booking rules, saved
+ * from Availability → Booking rules by their own action; if this form carried them, a
+ * Pricing tab opened before that edit would write its stale copy back over it on the
+ * next price save.
  */
 export function defaultsDraft(
   form: DefaultsForm,
   listing: HostCalendarListing,
 ): ListingChange | null {
   const pricing = listing.pricing;
-  // Without a loaded rule there is nothing to merge omitted fields with, so there is
-  // no honest partial edit to make.
+  // Without a loaded rule there is nothing to merge the omitted amount with, so there
+  // is no honest partial edit to make.
   if (!pricing) return null;
 
   const stored = defaultsFormOf(listing);
-  const to: { baseNightlyRate?: number; cleaningFee?: number; minNights?: number } =
-    {};
+  const to: { baseNightlyRate?: number; cleaningFee?: number } = {};
 
   if (form.baseNightlyRate.trim() !== stored.baseNightlyRate) {
     const value = Number(form.baseNightlyRate.trim());
@@ -111,12 +113,6 @@ export function defaultsDraft(
     if (form.cleaningFee.trim() === "") return null;
     if (!Number.isFinite(value) || value < 0) return null;
     if (value !== pricing.cleaningFee) to.cleaningFee = value;
-  }
-  if (form.minNights.trim() !== stored.minNights) {
-    const value = Number(form.minNights.trim());
-    if (form.minNights.trim() === "") return null;
-    if (!positiveInteger(value, pricing.maxNights)) return null;
-    if (value !== pricing.minNights) to.minNights = value;
   }
 
   if (Object.keys(to).length === 0) return null;

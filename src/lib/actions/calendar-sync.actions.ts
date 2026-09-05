@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { CalendarFeedStatus } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { actionPlural, actionText } from "@/lib/actions/action-text";
 import {
   defaultFeedName,
   platformFromFeedUrl,
@@ -42,14 +43,14 @@ async function requireManagedListing(
   listingId: string,
 ): Promise<{ error: string } | { listing: { id: string; hostId: string } }> {
   const session = await auth();
-  if (!session?.user?.id) return { error: "Not authorized" as const };
+  if (!session?.user?.id) return { error: await actionText("action.error.not_authorized", "Not authorized") };
   const listing = await db.listing.findUnique({
     where: { id: listingId },
     select: { id: true, hostId: true },
   });
-  if (!listing) return { error: "Listing not found" as const };
+  if (!listing) return { error: await actionText("action.error.listing_not_found", "Listing not found") };
   if (session.user.role !== "ADMIN" && listing.hostId !== session.user.id) {
-    return { error: "Listing not found" as const };
+    return { error: await actionText("action.error.listing_not_found", "Listing not found") };
   }
   return { listing };
 }
@@ -151,10 +152,10 @@ export async function addCalendarFeed(
   try {
     parsed = new URL(url);
   } catch {
-    return { error: "Paste the full calendar link, starting with https://" };
+    return { error: await actionText("action.error.calendar_link_required", "Paste the full calendar link, starting with https://") };
   }
   if (parsed.protocol !== "https:") {
-    return { error: "A calendar link must start with https://" };
+    return { error: await actionText("action.error.calendar_link_https", "A calendar link must start with https://") };
   }
   // Named after the channel that served it when the host did not name it themselves:
   // pasting an Airbnb link and then typing "Airbnb" is work the URL already did.
@@ -165,14 +166,18 @@ export async function addCalendarFeed(
 
   const existing = await db.listingCalendarFeed.count({ where: { listingId } });
   if (existing >= MAX_FEEDS_PER_LISTING) {
-    return { error: `You can connect up to ${MAX_FEEDS_PER_LISTING} calendars to one listing.` };
+    return { error: await actionText(
+      "action.error.calendar_feed_limit",
+      "You can connect up to {max} calendars to one listing.",
+      { max: MAX_FEEDS_PER_LISTING },
+    ) };
   }
 
   const duplicate = await db.listingCalendarFeed.findFirst({
     where: { listingId, url: parsed.href },
     select: { id: true },
   });
-  if (duplicate) return { error: "That calendar is already connected." };
+  if (duplicate) return { error: await actionText("action.error.calendar_duplicate", "That calendar is already connected.") };
 
   const feed = await db.listingCalendarFeed.create({
     data: { listingId, name, url: parsed.href },
@@ -189,14 +194,24 @@ export async function addCalendarFeed(
     return {
       success:
         result.error ??
-        "Calendar connected, but it could not be read yet. It will be retried automatically.",
+        (await actionText(
+          "action.message.calendar_connected_unread",
+          "Calendar connected, but it could not be read yet. It will be retried automatically.",
+        )),
       connections,
     };
   }
   return {
-    success: `Calendar connected — ${result.blockedNights} ${
-      result.blockedNights === 1 ? "night" : "nights"
-    } blocked from ${result.events} ${result.events === 1 ? "reservation" : "reservations"}.`,
+    // Two counts in one sentence, so the noun that governs the grammar is the one the
+    // host is actually being told about — the nights. The reservation count rides along
+    // as a value rather than as a second English ternary.
+    success: await actionPlural(
+      "action.message.calendar_connected",
+      result.blockedNights,
+      "Calendar connected — {n} night blocked from {events} reservations.",
+      "Calendar connected — {n} nights blocked from {events} reservations.",
+      { events: result.events },
+    ),
     connections,
   };
 }
@@ -212,7 +227,7 @@ export async function refreshCalendarFeed(
     where: { id: feedId, listingId },
     select: { id: true },
   });
-  if (!feed) return { error: "That calendar is not connected to this listing." };
+  if (!feed) return { error: await actionText("action.error.calendar_not_connected", "That calendar is not connected to this listing.") };
 
   const result = await syncCalendarFeed(feed.id);
   revalidateCalendar(listingId);
@@ -220,10 +235,17 @@ export async function refreshCalendarFeed(
 
   return {
     success: result.ok
-      ? `Updated — ${result.blockedNights} ${
-          result.blockedNights === 1 ? "night" : "nights"
-        } blocked.`
-      : (result.error ?? "That calendar could not be read."),
+      ? await actionPlural(
+          "action.message.calendar_refreshed",
+          result.blockedNights,
+          "Updated — {n} night blocked.",
+          "Updated — {n} nights blocked.",
+        )
+      : (result.error ??
+        (await actionText(
+          "action.error.calendar_unreadable",
+          "That calendar could not be read.",
+        ))),
     connections,
   };
 }
@@ -245,13 +267,16 @@ export async function removeCalendarFeed(
     where: { id: feedId, listingId },
     select: { id: true },
   });
-  if (!feed) return { error: "That calendar is not connected to this listing." };
+  if (!feed) return { error: await actionText("action.error.calendar_not_connected", "That calendar is not connected to this listing.") };
 
   await db.listingCalendarFeed.delete({ where: { id: feed.id } });
   revalidateCalendar(listingId);
 
   return {
-    success: "Calendar disconnected. The dates it was holding are open again.",
+    success: await actionText(
+      "action.message.calendar_disconnected",
+      "Calendar disconnected. The dates it was holding are open again.",
+    ),
     connections: await connectionsFor(listingId),
   };
 }

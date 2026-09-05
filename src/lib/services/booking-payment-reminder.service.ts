@@ -2,6 +2,7 @@ import "server-only";
 
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
+import { parseCancellationSettlementSnapshot } from "@/lib/payments/cancellation-policy";
 import { parseDepositPoliciesSnapshot } from "@/lib/payments/deposit-policies";
 import { derivePaymentReminderState } from "@/lib/payments/payment-reminders";
 import {
@@ -85,29 +86,49 @@ export async function processBookingPaymentReminders(now = new Date()) {
   });
 
   for (const request of requests) {
-    const settled =
+    const status =
       request.type === "ADVANCE_PAYMENT"
-        ? ["PAYMENT_CONFIRMED", "NOT_REQUIRED"].includes(request.booking.advancePaymentStatus)
+        ? request.booking.advancePaymentStatus
         : request.type === "DAMAGE_DEPOSIT"
-          ? ["DEPOSIT_CONFIRMED", "RETURN_REPORTED", "RETURN_CONFIRMED", "RETAINED", "NOT_REQUIRED"].includes(request.booking.damageDepositStatus)
-          : ["PAYMENT_CONFIRMED", "NOT_REQUIRED"].includes(request.booking.paymentStatus);
-    if (settled) continue;
+          ? request.booking.damageDepositStatus
+          : request.booking.paymentStatus;
+    // Two thresholds, because the two recipients are being asked different things.
+    //
+    // The *guest* is being asked to send money. Once they have said they sent it, there
+    // is nothing further for them to do, and a "Payment reminder" that keeps arriving is
+    // the platform telling them their own report did not count. The *host* is being
+    // asked to confirm receipt, and that is still outstanding until they do — so their
+    // overdue notice continues through `*_REPORTED`.
+    //
+    // One vocabulary, two thresholds: a report means the same thing to both sides, and
+    // the sides differ only in what it discharges.
+    const guestSettled =
+      request.type === "DAMAGE_DEPOSIT"
+        ? ["DEPOSIT_REPORTED", "DEPOSIT_CONFIRMED", "RETURN_REPORTED", "RETURN_CONFIRMED", "RETAINED", "NOT_REQUIRED"].includes(status)
+        : ["PAYMENT_REPORTED", "PAYMENT_CONFIRMED", "NOT_REQUIRED"].includes(status);
+    const hostSettled =
+      request.type === "DAMAGE_DEPOSIT"
+        ? ["DEPOSIT_CONFIRMED", "RETURN_REPORTED", "RETURN_CONFIRMED", "RETAINED", "NOT_REQUIRED"].includes(status)
+        : ["PAYMENT_CONFIRMED", "NOT_REQUIRED"].includes(status);
+    if (guestSettled && hostSettled) continue;
     const state = derivePaymentReminderState({ dueDate: dbDateToYmd(request.dueAt), today });
     if (state === "SCHEDULED" || state === "RETURN_DUE") continue;
     const kind = state as Exclude<ReminderKind, "RETURN_DUE">;
-    const guest = await deliver({
-      bookingId: request.bookingId,
-      requestId: request.id,
-      recipientId: request.booking.guestId,
-      obligationKey: `request:${request.id}`,
-      kind,
-      dueAt: request.dueAt,
-      title: kind === "OVERDUE" ? "Payment date has passed" : "Payment reminder",
-      body: "A booking payment needs your attention. Open the booking for the amount and instructions.",
-      route: `/account/bookings/${request.bookingId}`,
-    });
-    if (guest) notificationIds.push(guest.id);
-    if (kind === "OVERDUE") {
+    if (!guestSettled) {
+      const guest = await deliver({
+        bookingId: request.bookingId,
+        requestId: request.id,
+        recipientId: request.booking.guestId,
+        obligationKey: `request:${request.id}`,
+        kind,
+        dueAt: request.dueAt,
+        title: kind === "OVERDUE" ? "Payment date has passed" : "Payment reminder",
+        body: "A booking payment needs your attention. Open the booking for the amount and instructions.",
+        route: `/account/bookings/${request.bookingId}`,
+      });
+      if (guest) notificationIds.push(guest.id);
+    }
+    if (kind === "OVERDUE" && !hostSettled) {
       const host = await deliver({
         bookingId: request.bookingId,
         requestId: request.id,
@@ -116,7 +137,9 @@ export async function processBookingPaymentReminders(now = new Date()) {
         kind,
         dueAt: request.dueAt,
         title: "Payment date has passed",
-        body: "A booking payment is overdue. Open the booking to review its reported status.",
+        body: guestSettled
+          ? "A guest has reported sending a booking payment that is now overdue. Open the booking to confirm whether it arrived."
+          : "A booking payment is overdue. Open the booking to review its reported status.",
         route: `/host/reservations/${request.bookingId}`,
       });
       if (host) notificationIds.push(host.id);
@@ -153,6 +176,7 @@ export async function processBookingPaymentReminders(now = new Date()) {
       damageDepositStatus: true,
       accommodationRefundAmount: true,
       accommodationRefundStatus: true,
+      cancellationSettlementSnapshot: true,
       listing: { select: { hostId: true } },
     },
   });
@@ -168,14 +192,26 @@ export async function processBookingPaymentReminders(now = new Date()) {
         today,
       });
       if (state !== "SCHEDULED" && state !== "DUE_SOON") {
+        // An obligation built on an unconfirmed report is still the host's to answer —
+        // but it is a claim, and the notice says so rather than presenting it as an
+        // established debt. `UNKNOWN` is a settlement written before provenance was
+        // recorded, and it is not evidence of confirmation either.
+        const settlement = parseCancellationSettlementSnapshot(
+          booking.cancellationSettlementSnapshot,
+        );
+        const provisional = settlement?.refundBasis !== "CONFIRMED";
         const sent = await deliver({
           bookingId: booking.id,
           recipientId: booking.listing.hostId,
           obligationKey: `refund:${booking.id}`,
           kind: state === "DUE_DATE" ? "DUE_DATE" : "OVERDUE",
           dueAt,
-          title: "Accommodation refund due",
-          body: "A cancelled booking has an accommodation refund awaiting your report.",
+          title: provisional
+            ? "Accommodation refund claimed"
+            : "Accommodation refund due",
+          body: provisional
+            ? "A cancelled booking has an accommodation refund based on a payment the guest reported and you have not confirmed. Open the booking to confirm what you received, or contact support if you disagree."
+            : "A cancelled booking has an accommodation refund awaiting your report.",
           route: `/host/reservations/${booking.id}`,
         });
         if (sent) notificationIds.push(sent.id);

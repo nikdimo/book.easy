@@ -254,7 +254,6 @@ export function PrePublishMenu({
   onEditPromotion,
   baseNightlyRate,
   cleaningFee,
-  minimumNights,
   promotionType,
   promotionPercent,
   promotionMinimumNights,
@@ -269,7 +268,6 @@ export function PrePublishMenu({
   onEditPromotion: () => void;
   baseNightlyRate: string;
   cleaningFee: string;
-  minimumNights: string;
   promotionType: string;
   promotionPercent: string;
   promotionMinimumNights: string;
@@ -310,9 +308,9 @@ export function PrePublishMenu({
             {interpolate(
               i18n.resolve(
                 "host.prepublish.review_fees",
-                "Cleaning fee: {cleaning} · Minimum stay: {nights} nights",
+                "Cleaning fee: {cleaning}",
               ),
-              { cleaning: money(cleaningFee), nights: minimumNights },
+              { cleaning: money(cleaningFee) },
             ).text}
           </span>
           {plan.datePrices.map((price, index) => (

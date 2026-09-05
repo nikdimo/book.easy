@@ -14,6 +14,7 @@ const house = { value: "HOUSE", label: "House", icon: "House", description: "A h
 /** A draft whose host has answered every rule the step requires. */
 const ANSWERED: ListingDraftData = houseRulesDraftPatch({
   checkInTime: "15:00",
+  checkInEndTime: "",
   checkOutTime: "11:00",
   maxGuests: 4,
   petPolicy: "NOT_ALLOWED",

@@ -29,11 +29,43 @@ export interface HostInboxConversation {
     checkIn: string;
     checkOut: string;
   } | null;
+  /** Preformatted on the server so browsers with partial ICU data hydrate exactly. */
+  display?: { lastMessageStamp: string | null; stayRange: string | null };
+}
+
+function formatConversationStamp(value: Date | null, locale: string, now: Date) {
+  if (!value) return null;
+  const sameDay =
+    value.getFullYear() === now.getFullYear() &&
+    value.getMonth() === now.getMonth() &&
+    value.getDate() === now.getDate();
+  if (sameDay) {
+    return new Intl.DateTimeFormat(locale, {
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(value);
+  }
+  const days = (now.getTime() - value.getTime()) / 86_400_000;
+  return new Intl.DateTimeFormat(
+    locale,
+    days < 7 ? { weekday: "long" } : { day: "numeric", month: "short" },
+  ).format(value);
+}
+
+function formatConversationStay(checkIn: Date, checkOut: Date, locale: string) {
+  const day = new Intl.DateTimeFormat(locale, {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+  });
+  return `${day.format(checkIn)} – ${day.format(checkOut)}`;
 }
 
 export async function listHostInboxConversations(
-  hostId: string
+  hostId: string,
+  locale = "en",
 ): Promise<HostInboxConversation[]> {
+  const now = new Date();
   const rows = await db.conversation.findMany({
     where: {
       listing: { hostId },
@@ -103,6 +135,12 @@ export async function listHostInboxConversations(
             checkOut: row.booking.checkOut.toISOString(),
           }
         : null,
+      display: {
+        lastMessageStamp: formatConversationStamp(row.lastMessageAt, locale, now),
+        stayRange: row.booking
+          ? formatConversationStay(row.booking.checkIn, row.booking.checkOut, locale)
+          : null,
+      },
     };
   });
 }

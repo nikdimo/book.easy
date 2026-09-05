@@ -27,16 +27,45 @@ export interface BookingPaymentObligation {
   dueDate: string;
 }
 
+/**
+ * The one range a deadline created at acceptance may fall in: from the day the host
+ * accepted, up to and including check-in.
+ *
+ * The same range the manual path already enforces — `sendBookingPaymentRequestAction`
+ * refuses `dueDate < today || dueDate > checkIn`. Automatic deadlines had no such floor
+ * on the `DAYS_BEFORE_CHECK_IN` branch, so a host with a "due 14 days before check-in"
+ * policy accepting three days out created a request `dueAt` eleven days in the past.
+ * `derivePaymentReminderState` returns OVERDUE immediately, and cash-at-property and
+ * arrange-directly requests are auto-marked SENT at acceptance — so both sides were
+ * notified about a deadline the guest was never given.
+ *
+ * A clamp rather than a refusal: the host's policy is still honoured wherever it can
+ * be, and where it cannot the deadline collapses to the earliest date that is real.
+ * `acceptedOn` wins the tie when a host accepts *after* check-in has passed, because
+ * the alternative is a deadline in the past again.
+ */
+function clampDueDate(dueDate: string, acceptedOn: string, checkIn: string) {
+  if (dueDate > checkIn) dueDate = checkIn;
+  if (dueDate < acceptedOn) dueDate = acceptedOn;
+  return dueDate;
+}
+
 function policyDueDate(
   policy: { dueTiming: string; dueDaysBeforeCheckIn: number | null },
   acceptedOn: string,
   checkIn: string,
 ) {
-  if (policy.dueTiming === "AFTER_ACCEPTANCE") return acceptedOn;
-  if (policy.dueTiming === "DAYS_BEFORE_CHECK_IN") {
-    return addDaysToYmd(checkIn, -(policy.dueDaysBeforeCheckIn ?? 0));
+  if (policy.dueTiming === "AFTER_ACCEPTANCE") {
+    return clampDueDate(acceptedOn, acceptedOn, checkIn);
   }
-  return checkIn;
+  if (policy.dueTiming === "DAYS_BEFORE_CHECK_IN") {
+    return clampDueDate(
+      addDaysToYmd(checkIn, -(policy.dueDaysBeforeCheckIn ?? 0)),
+      acceptedOn,
+      checkIn,
+    );
+  }
+  return clampDueDate(checkIn, acceptedOn, checkIn);
 }
 
 /**
@@ -95,7 +124,13 @@ export function bookingPaymentObligations(input: {
         : checkIn,
     });
   }
-  return obligations;
+  // The clamp again over every obligation, including the ones built without a policy,
+  // so the guarantee this function offers is one sentence rather than three: no
+  // deadline it returns is ever outside `[acceptedOn, checkIn]`.
+  return obligations.map((obligation) => ({
+    ...obligation,
+    dueDate: clampDueDate(obligation.dueDate, acceptedOn, checkIn),
+  }));
 }
 
 export type BookingPaymentDecision =

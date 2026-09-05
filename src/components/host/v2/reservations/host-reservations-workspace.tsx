@@ -374,6 +374,10 @@ export function HostReservationsWorkspace({
   if (data.properties.length === 0) {
     return (
       <section className="rounded-2xl border border-slate-200 bg-white p-6 text-center">
+        {/* The empty screen is still the Reservations page, so it still names itself. */}
+        <h1 className="sr-only">
+          {i18n.resolve("host.v2.reservations.heading", "Reservations").text}
+        </h1>
         <House className="mx-auto size-6 text-slate-400" aria-hidden />
         <p className="mt-2 text-sm font-medium text-slate-700">
           {
@@ -402,11 +406,20 @@ export function HostReservationsWorkspace({
       {...anchorProps(RESERVATION_ANCHOR.workspace)}
       className="flex flex-col gap-3 md:min-h-0 md:flex-1 md:gap-2.5"
     >
+      {/* No visible title — the header's underlined tab is the title, and the stream
+          needs the vertical space. A screen reader cannot see that tab, and without this
+          the heading outline on this page started at the stream's group labels. */}
+      <h1 className="sr-only">
+        {i18n.resolve("host.v2.reservations.heading", "Reservations").text}
+      </h1>
+
       {/* Below `md` the rail is hidden, so which properties are being shown has to
           live somewhere. This is that somewhere. */}
       <button
         type="button"
         onClick={() => setChooserOpen(true)}
+        inert={sheetOpen ? true : undefined}
+        aria-hidden={sheetOpen ? true : undefined}
         className="flex shrink-0 items-center gap-2.5 rounded-xl border border-slate-200 bg-white p-2 text-left md:hidden"
       >
         {selectedProperty?.photoUrl ? (
@@ -440,39 +453,51 @@ export function HostReservationsWorkspace({
       </button>
 
       <div className="flex min-w-0 items-start gap-4 md:min-h-0 md:flex-1 md:items-stretch xl:gap-5">
-        <EntityRail
-          heading={
-            i18n.resolve("host.v2.calendar.rail_heading", "Properties").text
-          }
-          ariaLabel={
-            i18n.resolve("host.v2.calendar.rail_label", "Your properties").text
-          }
-          items={railItems}
-          allCard={allCard}
-          selectedId={propertyId}
-          compact={railCompact}
-          onSelect={setPropertyId}
-          onToggleCompact={() => setRailCompact(!railCompact)}
-          anchor={RESERVATION_ANCHOR.propertyRail}
-          selectedAnchor={RESERVATION_ANCHOR.selectedProperty}
-        />
+        <div
+          className="contents"
+          inert={sheetOpen ? true : undefined}
+          aria-hidden={sheetOpen ? true : undefined}
+        >
+          <EntityRail
+            heading={
+              i18n.resolve("host.v2.calendar.rail_heading", "Properties").text
+            }
+            ariaLabel={
+              i18n.resolve("host.v2.calendar.rail_label", "Your properties").text
+            }
+            items={railItems}
+            allCard={allCard}
+            selectedId={propertyId}
+            compact={railCompact}
+            onSelect={setPropertyId}
+            onToggleCompact={() => setRailCompact(!railCompact)}
+            anchor={RESERVATION_ANCHOR.propertyRail}
+            selectedAnchor={RESERVATION_ANCHOR.selectedProperty}
+          />
+        </div>
 
-        <ReservationStream
-          data={data}
-          properties={properties}
-          showProperty={propertyId === ALL_ENTITIES}
-          sections={sections}
-          actionCards={actionCards}
-          counts={counts}
-          filter={filter}
-          sort={sort}
-          query={query}
-          activeId={active?.id ?? null}
-          onFilterChange={setFilter}
-          onSortChange={setSort}
-          onQueryChange={setQuery}
-          onSelect={selectReservation}
-        />
+        <div
+          className="contents"
+          inert={sheetOpen ? true : undefined}
+          aria-hidden={sheetOpen ? true : undefined}
+        >
+          <ReservationStream
+            data={data}
+            properties={properties}
+            showProperty={propertyId === ALL_ENTITIES}
+            sections={sections}
+            actionCards={actionCards}
+            counts={counts}
+            filter={filter}
+            sort={sort}
+            query={query}
+            activeId={active?.id ?? null}
+            onFilterChange={setFilter}
+            onSortChange={setSort}
+            onQueryChange={setQuery}
+            onSelect={selectReservation}
+          />
+        </div>
 
         <aside
           ref={panelRef}

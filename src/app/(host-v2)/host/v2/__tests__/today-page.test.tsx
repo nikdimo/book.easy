@@ -28,7 +28,7 @@ vi.mock("@/lib/i18n/t", async (importOriginal) => ({
   }),
 }));
 
-import HostV2TodayPage from "../page";
+import HostV2TodayPage, { metadata } from "../page";
 
 type Attention = Awaited<
   ReturnType<typeof import("@/lib/services/attention.service").getHostAttentionSummary>
@@ -253,6 +253,65 @@ describe("the rest of the Today page", () => {
     expect(html).not.toContain('href="/host/v2');
     expect(html).not.toContain('href="/host/bookings');
     expect(html).not.toContain('href="/host/inbox');
+  });
+});
+
+/**
+ * `getHostAttentionSummary` has always read the six newest unread notifications, and
+ * this screen never drew them: the query ran on every visit and the history it returned
+ * had no door into it from anywhere in the panel — the account menu had no entry for it
+ * either. The rows above are work a host can act on; these are the record of everything
+ * else, which is why they sit below and are quieter.
+ */
+describe("the notifications the page already reads", () => {
+  const notification = (overrides: Partial<Attention["recentNotifications"][number]> = {}) => ({
+    id: "n1",
+    type: "BOOKING_REQUEST" as Attention["recentNotifications"][number]["type"],
+    title: "New booking request",
+    body: "Ana asked to book Lake House.",
+    route: "/host/reservations/booking-1",
+    createdAt: new Date("2026-09-03T10:00:00Z"),
+    ...overrides,
+  });
+
+  it("renders them rather than fetching them for nothing", async () => {
+    mocks.getHostAttentionSummary.mockResolvedValue(
+      attention({ recentNotifications: [notification()] })
+    );
+
+    const html = await render();
+
+    expect(html).toContain("Latest notifications");
+    expect(html).toContain("New booking request");
+    expect(html).toContain("Ana asked to book Lake House.");
+    expect(html).toContain('href="/host/reservations/booking-1"');
+  });
+
+  it("offers the full history, which nothing in the panel used to link to", async () => {
+    mocks.getHostAttentionSummary.mockResolvedValue(
+      attention({ recentNotifications: [notification()] })
+    );
+
+    expect(await render()).toContain('href="/account/notifications"');
+  });
+
+  it("falls back to the history for a notification with nowhere of its own to go", async () => {
+    mocks.getHostAttentionSummary.mockResolvedValue(
+      attention({ recentNotifications: [notification({ route: null })] })
+    );
+
+    expect(await render()).toContain('href="/account/notifications"');
+  });
+
+  it("draws no section at all when there is nothing unread", async () => {
+    expect(await render()).not.toContain("Latest notifications");
+  });
+});
+
+describe("the browser tab", () => {
+  it("is named after the section rather than after the migration", () => {
+    expect(metadata.title).toBe("Today");
+    expect(metadata.title).not.toMatch(/preview/i);
   });
 });
 

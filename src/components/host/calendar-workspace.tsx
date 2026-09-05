@@ -556,7 +556,6 @@ function EditorDialog({
     String(state.initialPrice ?? baseNightlyRate),
   );
   const [fee, setFee] = useState(String(cleaningFee));
-  const [minimumStay, setMinimumStay] = useState(String(minNights));
   const [roundPrice, setRoundPrice] = useState(true);
   /** The multiplier behind the chosen quick adjustment, or `null` once the host types
    *  their own figure — the rounding toggle recomputes from it so switching rounding
@@ -733,21 +732,18 @@ function EditorDialog({
     }
 
     const cleaning = Number(fee);
-    const nights = Number(minimumStay);
     if (!Number.isFinite(cleaning) || cleaning < 0) {
       toast.error("Enter a valid cleaning fee.");
       return;
     }
-    if (!Number.isInteger(nights) || nights < 1) {
-      toast.error("Enter a valid minimum stay.");
-      return;
-    }
+    // Amounts only. The minimum stay is a booking rule with a single editing home —
+    // Availability → Booking rules — and sending it from here would let a price save
+    // write back whatever minimum this editor happened to be showing.
     report(
       () =>
         saveCalendarDefaultPricing(listingId, {
           baseNightlyRate: nightlyRate,
           cleaningFee: cleaning,
-          minNights: nights,
         }),
       i18n.resolve(
         "host.calendar.price_editor.standard_saved",
@@ -1182,33 +1178,22 @@ function EditorDialog({
                       source="Standard stay settings"
                     />
                   </p>
-                  <div className="mt-3 grid grid-cols-2 gap-3">
-                    <div>
-                      <Label htmlFor="cleaning-fee">
-                        <Tx k="host.calendar.cleaning_fee" source="Cleaning fee" />
-                      </Label>
-                      <Input
-                        id="cleaning-fee"
-                        className="mt-1.5 bg-background"
-                        type="number"
-                        min={0}
-                        value={fee}
-                        onChange={(event) => setFee(event.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="minimum-stay">
-                        <Tx k="host.calendar.minimum_nights" source="Minimum stay" />
-                      </Label>
-                      <Input
-                        id="minimum-stay"
-                        className="mt-1.5 bg-background"
-                        type="number"
-                        min={1}
-                        value={minimumStay}
-                        onChange={(event) => setMinimumStay(event.target.value)}
-                      />
-                    </div>
+                  {/* The cleaning fee alone: it is an amount, and this editor only
+                      writes amounts. The minimum stay used to sit beside it and was
+                      saved with the price, which is how a price save could undo a
+                      minimum set from Availability → Booking rules. */}
+                  <div className="mt-3">
+                    <Label htmlFor="cleaning-fee">
+                      <Tx k="host.calendar.cleaning_fee" source="Cleaning fee" />
+                    </Label>
+                    <Input
+                      id="cleaning-fee"
+                      className="mt-1.5 bg-background"
+                      type="number"
+                      min={0}
+                      value={fee}
+                      onChange={(event) => setFee(event.target.value)}
+                    />
                   </div>
                 </div>
               ) : null}
@@ -2236,7 +2221,6 @@ export function CalendarWorkspace({
         <StandardPricingSummary
           baseNightlyRate={baseNightlyRate}
           cleaningFee={cleaningFee}
-          minNights={minNights}
           currency={currency}
           locale={locale}
           onEdit={() => setEditor({ kind: "price", range: null })}

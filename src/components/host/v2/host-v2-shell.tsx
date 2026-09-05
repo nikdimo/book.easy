@@ -2,7 +2,6 @@ import Link from "next/link";
 import { BrandLogo } from "@/components/shared/brand-logo";
 import { HostV2Nav } from "@/components/host/v2/host-v2-nav";
 import { HostV2AccountMenu } from "@/components/host/v2/host-v2-account-menu";
-import { type getT } from "@/lib/i18n/t";
 import { SITE_DOMAIN } from "@/lib/branding";
 
 export function HostV2Shell({
@@ -11,7 +10,6 @@ export function HostV2Shell({
   userEmail,
   isAdmin,
   regionalSettings,
-  t,
 }: {
   children: React.ReactNode;
   userName?: string | null;
@@ -20,7 +18,6 @@ export function HostV2Shell({
   /** The language/currency dialog, built by the layout because it reads cookies and
    *  rates. Rendered triggerless — the account menu opens it. */
   regionalSettings?: React.ReactNode;
-  t: Awaited<ReturnType<typeof getT>>;
 }) {
   const initials = (userName || "Host")
     .split(" ")
@@ -38,7 +35,16 @@ export function HostV2Shell({
      * itself growing a second scrollbar behind them. Below `md` it stays an ordinary
      * scrolling document, which is what the phone layout and its fixed bottom nav want.
      */
-    <div className="flex min-h-dvh flex-col bg-white text-slate-950 md:h-dvh md:min-h-0 md:overflow-hidden">
+    /*
+     * `--host-panel-mobile-chrome` is what this shell occupies above and below a page's
+     * own content on a phone: the 3rem account row below, plus the 6rem of bottom
+     * padding on the content container that keeps the fixed navigation off the work.
+     * It is published as a variable because a page that wants to fill the viewport
+     * exactly has to subtract it, and the inbox previously subtracted only half of it
+     * (the padding, not the account row) and so overflowed the screen by 48px. Only
+     * meaningful below `md`, where the header is absent and the document scrolls.
+     */
+    <div className="flex min-h-dvh flex-col bg-white text-slate-950 [--host-panel-mobile-chrome:9rem] md:h-dvh md:min-h-0 md:overflow-hidden">
       {/*
        * Desktop only, and genuinely absent below it — `hidden` rather than a
        * zero-height or transparent row, so a phone gives every pixel of the viewport
@@ -95,7 +101,9 @@ export function HostV2Shell({
       {/* The phone has no header, by design — but it still needs somewhere to reach the
           account, and the bottom bar's five slots are all sections. A 3rem row with a
           single right-aligned avatar is the least chrome that does it, and it scrolls
-          away with the page rather than sitting on top of the content. */}
+          away with the page rather than sitting on top of the content. Its height is
+          `pt-3` plus the avatar's `size-9`; that 3rem is half of
+          `--host-panel-mobile-chrome` above, so the two have to move together. */}
       <div className="flex shrink-0 items-center justify-end px-5 pt-3 md:hidden">
         <HostV2AccountMenu
           initials={initials}

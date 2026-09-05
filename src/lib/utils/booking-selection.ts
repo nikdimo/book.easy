@@ -10,32 +10,13 @@ export type BookingSelectionStatus =
   | "valid";
 
 /**
- * The host's stay-length cap, or `null` when they have not set one.
- *
- * A cap counts only from one night up. The stored column is non-nullable
- * (`maxNights Int @default(365)`), so "no maximum" reaches the database as a zero, and
- * reading that zero literally would mean "no stay is ever bookable" — a rule no host
- * means to state. `null`/`undefined` cover the callers that have no pricing rule to
- * read at all.
- *
- * `createBooking`, the booking widget and the search filter all resolve the cap through
- * here (search spells the same test in SQL), and the host calendar's own ABOVE_MAXIMUM
- * check applies the identical `>= 1` reading.
+ * The stay-length rule lives in `stay-limits`, which is where both booking modes and the
+ * shared availability decision read it from. Re-exported here so the widget's own
+ * importers keep one import for "everything the booking selection needs".
  */
-export function stayLengthCap(
-  maxNights: number | null | undefined,
-): number | null {
-  return typeof maxNights === "number" && maxNights >= 1 ? maxNights : null;
-}
+import { exceedsMaxNights, stayLengthCap } from "@/lib/utils/stay-limits";
 
-/** Whether `nights` is over the host's cap, if they set one. */
-export function exceedsMaxNights(
-  nights: number,
-  maxNights: number | null | undefined,
-): boolean {
-  const cap = stayLengthCap(maxNights);
-  return cap !== null && nights > cap;
-}
+export { exceedsMaxNights, stayLengthCap };
 
 export interface BookingSelectionValidation {
   status: BookingSelectionStatus;

@@ -31,6 +31,7 @@ async function main() {
     `Popularity recomputed in ${Date.now() - startedAt}ms — ` +
       `${result.listingsScored} listings scored, ` +
       `${result.listingsUpdated} updated, ` +
+      `${result.listingsCleared} cleared after leaving APPROVED, ` +
       `${result.viewsPruned} expired view rows pruned.`
   );
 }

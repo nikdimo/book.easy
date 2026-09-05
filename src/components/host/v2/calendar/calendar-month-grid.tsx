@@ -304,10 +304,17 @@ function CalendarMonthGridImpl({
               formatLongDate(date, formats),
               stateLabel.text,
               priceText,
+              // Through the catalog like every other word this grid says. It was two
+              // English literals with an English plural rule, sitting in the one place
+              // the lint cannot see — an expression rather than JSX text or an attribute
+              // literal — so it shipped as the only untranslated sentence on the screen.
               promotionCount > 0
-                ? promotionCount === 1
-                  ? "1 promotion"
-                  : `${promotionCount} promotions`
+                ? i18n.plural(
+                    "host.v2.calendar.day.promotions",
+                    promotionCount,
+                    "{n} promotion",
+                    "{n} promotions",
+                  ).text
                 : null,
               day.guestName,
             ]

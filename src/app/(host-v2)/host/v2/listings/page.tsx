@@ -10,6 +10,7 @@ import { LISTING_STEPS, resumeListingStep } from "@/lib/constants/listing-steps"
 import { LISTING_STATUSES } from "@/lib/constants";
 import { resolveListingStatus } from "@/lib/i18n/status-labels";
 import { getT } from "@/lib/i18n/t";
+import { buildCalendarFormats } from "@/lib/host/v2/calendar-format";
 
 export const metadata = { title: "Your listings" };
 
@@ -47,6 +48,11 @@ export default async function HostV2ListingsPage() {
   );
 
   return (
-    <ListingOverview listings={listings} drafts={drafts} statusLabels={statusLabels} />
+    <ListingOverview
+      listings={listings}
+      drafts={drafts}
+      statusLabels={statusLabels}
+      dateFormats={buildCalendarFormats(t.locale, [])}
+    />
   );
 }

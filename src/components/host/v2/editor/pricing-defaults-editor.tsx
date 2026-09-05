@@ -153,14 +153,13 @@ function FirstPriceForm({ context }: { context: HostCalendarListingContext }) {
   function save() {
     if (!valid || base === null || fee === null) return;
     startTransition(async () => {
+      // Two amounts, and no stay rule. The new rule needs *some* minimum in the
+      // column, but the server supplies the neutral one; sending it from here would
+      // make this form a second editable home for a booking rule that belongs under
+      // Availability → Booking rules.
       const result = await createListingPricing(context.listing.id, {
         baseNightlyRate: base,
         cleaningFee: fee,
-        // The rule has to be created with *some* minimum, and the one that constrains
-        // nothing is the honest default for a form that does not ask. How long a guest
-        // may stay is a booking rule, set under Availability → Booking rules; asking
-        // for it here would be a second editable home for it on the money screen.
-        minNights: 1,
       });
       if (result.error) {
         toast.error(result.error);

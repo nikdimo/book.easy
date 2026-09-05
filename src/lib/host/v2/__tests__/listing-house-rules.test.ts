@@ -28,6 +28,7 @@ import {
 /** A fully answered rule set — what a listing published through the create flow holds. */
 const VALID: ListingHouseRulesInput = {
   checkInTime: "15:00",
+  checkInEndTime: "",
   checkOutTime: "11:00",
   maxGuests: 4,
   petPolicy: "NOT_ALLOWED",
@@ -369,6 +370,9 @@ describe("additional rules", () => {
 describe("rows and snapshots", () => {
   const ROW = {
     checkInTime: "15:00",
+    // NULL, not a time: an arrival window with no end is what every row held before the
+    // column existed, and the round trip has to preserve that rather than invent one.
+    checkInEndTime: null,
     checkOutTime: "11:00",
     maxGuests: 4,
     petPolicy: "ASK_HOST",
@@ -393,6 +397,7 @@ describe("rows and snapshots", () => {
       }),
     ).toEqual({
       checkInTime: null,
+      checkInEndTime: null,
       checkOutTime: null,
       maxGuests: UNANSWERED.maxGuests,
       petPolicy: null,

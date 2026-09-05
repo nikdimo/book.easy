@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useI18n } from "@/lib/i18n/client";
 import type { ListingMediaTypeValue } from "@/lib/types/listing-media";
 
 /**
@@ -102,6 +103,18 @@ export function usePhotoUpload({
 }) {
   const [tasks, setTasks] = useState<UploadTask[]>([]);
   const previewUrls = useRef(new Set<string>());
+  const { resolve } = useI18n();
+  const uploadFailed = resolve(
+    "host.editor.photos.upload_failed",
+    "Upload failed. Try again.",
+  ).text;
+  // Held in a ref for the same reason `onUploaded` is, and written in an effect for the
+  // same reason too: `runTask` is a stable callback, and a queue halfway through a batch
+  // must not be rebuilt because the catalog rendered again.
+  const uploadFailedRef = useRef(uploadFailed);
+  useEffect(() => {
+    uploadFailedRef.current = uploadFailed;
+  }, [uploadFailed]);
   // Held in a ref so a re-render of the workspace does not tear down and restart an
   // upload queue that is halfway through a fifty-file batch. Written in an effect rather
   // than during render, which React treats as a side effect on a value it does not track.
@@ -146,8 +159,13 @@ export function usePhotoUpload({
         setTasks((current) => current.filter((row) => row.id !== task.id));
         release(task.previewUrl);
       } catch (error) {
+        // `putFile` raises the server's own refusal ("That file is too large") as an
+        // `Error`, and that sentence is written for the host. A transport fault is not,
+        // so it is reported with a catalog line rather than as "Failed to fetch".
         const message =
-          error instanceof Error ? error.message : "Upload failed. Try again.";
+          error instanceof Error && error.message
+            ? error.message
+            : uploadFailedRef.current;
         update(task.id, { status: "error", error: message });
         toast.error(`${task.name}: ${message}`);
       }

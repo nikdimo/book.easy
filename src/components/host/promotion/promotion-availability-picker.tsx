@@ -72,6 +72,24 @@ export function useRangeRejectionMessage() {
             ),
             { nights: detail?.maxNights ?? 1 },
           ).text;
+        // A weekly listing sells whole weeks that start and end on one weekday. The
+        // range check now applies that rule, so the host hears about it here instead of
+        // publishing a range no guest can book.
+        case "WRONG_CHECK_IN_DAY":
+          return resolve(
+            "host.promote.range_error.wrong_check_in_day",
+            "You book by the week, so the range must start on your changeover day. Pick another range.",
+          ).text;
+        case "WRONG_CHECK_OUT_DAY":
+          return resolve(
+            "host.promote.range_error.wrong_check_out_day",
+            "You book by the week, so the range must be whole weeks ending on your changeover day. Pick another range.",
+          ).text;
+        case "NO_CHANGEOVER_DAY":
+          return resolve(
+            "host.promote.range_error.no_changeover_day",
+            "You book by the week but have not chosen a changeover day yet. Set one on your calendar first.",
+          ).text;
         case "IN_THE_PAST":
           return resolve(
             "host.promote.range_error.past",

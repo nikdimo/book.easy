@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { BASE_CURRENCY } from "@/lib/currency/currency-preference";
 import { createAuditLog } from "@/lib/services/audit.service";
 import type { ManagedAvailabilityListing } from "@/lib/services/availability-mutation.service";
+import { stayLengthCap } from "@/lib/utils/booking-selection";
 import { compareYmd, ymdToDbDate } from "@/lib/utils/date-only";
 import { revalidatePublicListingCaches } from "@/lib/utils/revalidate-public-listing-caches";
 
@@ -20,11 +21,28 @@ export type ListingPromotionInput = {
   endDate?: string;
 };
 
+/**
+ * What a pricing write is allowed to contain: two amounts.
+ *
+ * `minNights` used to be part of this schema, which made every price save a stay-rule
+ * save as well — a Pricing screen rendered before the host changed their minimum stay
+ * elsewhere would write its stale copy back on the next save. Stay limits are owned by
+ * `setListingStayLimits` (Availability → Booking rules); nothing in this file writes
+ * `minNights` or `maxNights` on an existing rule.
+ */
 const pricingSchema = z.object({
   baseNightlyRate: z.coerce.number().min(1, "Nightly rate must be at least 1."),
   cleaningFee: z.coerce.number().min(0, "Cleaning fee cannot be negative."),
-  minNights: z.coerce.number().int().min(1).max(365),
 });
+
+/**
+ * The minimum stay a brand-new rule is created with.
+ *
+ * A neutral database default rather than a product decision: 1 constrains nothing, so
+ * a listing priced for the first time behaves exactly as it did before it had a rule.
+ * Set on the server precisely so no pricing form has to ask for it or carry it.
+ */
+const NEUTRAL_MIN_NIGHTS = 1;
 
 const promotionInputSchema = z
   .object({
@@ -108,9 +126,9 @@ function revalidatePromotionPaths(listing: ManagedAvailabilityListing) {
  * given a price from the page that is supposed to own its price.
  *
  * No schema change was needed for it. `PricingRule` already defaults the currency, the
- * maximum stay and the service fee, so the three numbers a host actually chooses are
- * the three the form asks for, and the rest are the same defaults every other listing
- * was created with.
+ * maximum stay and the service fee, so the two amounts a host actually chooses are the
+ * two the form asks for, the minimum stay is the neutral default below, and the rest
+ * are the same defaults every other listing was created with.
  *
  * Deliberately refuses when a rule already exists rather than overwriting one: this is
  * "there is nothing here yet", and `saveDefaultPricingForManagedListing` is the path
@@ -120,7 +138,7 @@ function revalidatePromotionPaths(listing: ManagedAvailabilityListing) {
 export async function createDefaultPricingForManagedListing(
   listing: ManagedAvailabilityListing,
   actorId: string,
-  input: { baseNightlyRate: number; cleaningFee: number; minNights: number },
+  input: { baseNightlyRate: number; cleaningFee: number },
 ) {
   const parsed = pricingSchema.safeParse(input);
   if (!parsed.success) {
@@ -132,6 +150,7 @@ export async function createDefaultPricingForManagedListing(
   });
   if (existing) return { error: "This listing already has pricing." };
 
+  const created = { ...parsed.data, minNights: NEUTRAL_MIN_NIGHTS };
   await db.pricingRule.create({
     data: {
       listingId: listing.id,
@@ -139,7 +158,7 @@ export async function createDefaultPricingForManagedListing(
       // created with and what the schema itself defaults to. Nothing here changes the
       // currency of a listing that already has one.
       currency: BASE_CURRENCY,
-      ...parsed.data,
+      ...created,
     },
   });
   await createAuditLog({
@@ -147,16 +166,24 @@ export async function createDefaultPricingForManagedListing(
     action: "listing.pricing_created",
     entityType: "Listing",
     entityId: listing.id,
-    metadata: parsed.data,
+    metadata: created,
   });
   revalidatePricingPaths(listing);
   return { success: "Pricing saved." };
 }
 
+/**
+ * Change an existing rule's amounts.
+ *
+ * The update is narrowed to exactly the parsed amounts, so a caller that passes extra
+ * fields — an older client, a stale form — cannot reach the stay-limit columns through
+ * this path. That is why there is no maximum-stay comparison left here either: this
+ * function no longer writes a minimum for one to constrain.
+ */
 export async function saveDefaultPricingForManagedListing(
   listing: ManagedAvailabilityListing,
   actorId: string,
-  input: { baseNightlyRate: number; cleaningFee: number; minNights: number },
+  input: { baseNightlyRate: number; cleaningFee: number },
 ) {
   const parsed = pricingSchema.safeParse(input);
   if (!parsed.success) {
@@ -164,19 +191,42 @@ export async function saveDefaultPricingForManagedListing(
   }
   const pricingRule = await db.pricingRule.findUnique({
     where: { listingId: listing.id },
-    select: { id: true, maxNights: true },
+    select: { id: true },
   });
   if (!pricingRule) return { error: "Listing pricing is not configured." };
-  if (parsed.data.minNights > pricingRule.maxNights) {
-    return { error: `Minimum stay cannot exceed ${pricingRule.maxNights} nights.` };
-  }
-  const removedFreeCleaningBenefits = await db.$transaction(async (tx) => {
+  const cascade = await db.$transaction(async (tx) => {
     await tx.pricingRule.update({
       where: { id: pricingRule.id },
-      data: parsed.data,
+      data: {
+        baseNightlyRate: parsed.data.baseNightlyRate,
+        cleaningFee: parsed.data.cleaningFee,
+      },
     });
-    if (parsed.data.cleaningFee !== 0) return 0;
-    const result = await tx.listingPromotion.updateMany({
+    if (parsed.data.cleaningFee !== 0) return { cleared: 0, disabled: 0 };
+
+    // Two different promotions are affected, and they must not be treated the same way.
+    //
+    // An offer that also carries a percentage discount survives without its cleaning
+    // benefit: clearing the flag leaves a smaller but real offer. An offer whose *only*
+    // benefit was the free cleaning has nothing left, and the database says so — the
+    // `ListingPromotion_benefit_check` constraint requires
+    // `discountPercent > 0 OR freeCleaning = true`, so clearing the flag on one of those
+    // rows raises a check violation that rolls back this whole transaction. A host with
+    // a free-cleaning-only offer therefore could not set their cleaning fee to zero at
+    // all; they got a raw Postgres error and an unsaved price.
+    //
+    // So the worthless offer is disabled rather than emptied. That is also what the host
+    // means: the benefit they were advertising no longer exists.
+    const disabled = await tx.listingPromotion.updateMany({
+      where: {
+        listingId: listing.id,
+        disabledAt: null,
+        freeCleaning: true,
+        discountPercent: { lte: 0 },
+      },
+      data: { disabledAt: new Date() },
+    });
+    const cleared = await tx.listingPromotion.updateMany({
       where: {
         listingId: listing.id,
         disabledAt: null,
@@ -184,7 +234,7 @@ export async function saveDefaultPricingForManagedListing(
       },
       data: { freeCleaning: false },
     });
-    return result.count;
+    return { cleared: cleared.count, disabled: disabled.count };
   });
   await createAuditLog({
     userId: actorId,
@@ -194,12 +244,21 @@ export async function saveDefaultPricingForManagedListing(
     metadata: parsed.data,
   });
   revalidatePricingPaths(listing);
-  return {
-    success:
-      removedFreeCleaningBenefits > 0
-        ? "Pricing saved. Free-cleaning benefits were removed from active promotions."
-        : "Pricing saved.",
-  };
+  return { success: pricingSavedMessage(cascade) };
+}
+
+/** What the cleaning-fee cascade actually did, said plainly enough to act on. */
+function pricingSavedMessage(cascade: { cleared: number; disabled: number }) {
+  if (cascade.disabled > 0 && cascade.cleared > 0) {
+    return "Pricing saved. Free-cleaning benefits were removed from active promotions, and offers left with nothing to give were switched off.";
+  }
+  if (cascade.disabled > 0) {
+    return "Pricing saved. Offers whose only benefit was free cleaning were switched off.";
+  }
+  if (cascade.cleared > 0) {
+    return "Pricing saved. Free-cleaning benefits were removed from active promotions.";
+  }
+  return "Pricing saved.";
 }
 
 function promotionTypeFor(input: ListingPromotionInput): PromotionType {
@@ -244,8 +303,13 @@ export async function savePromotionForManagedListing(
   if (data.freeCleaning && Number(pricingRule.cleaningFee) <= 0) {
     return { error: "Add a cleaning fee before offering free cleaning." };
   }
-  if (data.minimumNights > pricingRule.maxNights) {
-    return { error: `The offer minimum cannot exceed ${pricingRule.maxNights} nights.` };
+  // A stored `maxNights` of zero is the product-wide spelling of "no maximum", so the
+  // column is read through `stayLengthCap` here exactly as booking, search and the host
+  // calendar read it. Comparing against the raw column made every promotion on an
+  // uncapped listing fail with "cannot exceed 0 nights."
+  const stayCap = stayLengthCap(pricingRule.maxNights);
+  if (stayCap !== null && data.minimumNights > stayCap) {
+    return { error: `The offer minimum cannot exceed ${stayCap} nights.` };
   }
   const startDate = data.startDate ? ymdToDbDate(data.startDate) : null;
   const endDate = data.endDate ? ymdToDbDate(data.endDate) : null;

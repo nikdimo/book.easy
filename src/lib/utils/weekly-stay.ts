@@ -6,6 +6,13 @@ import {
   weekdayOfYmd,
   type Weekday,
 } from "@/lib/utils/date-only";
+import {
+  stayLengthCap,
+  stayLimitIssue,
+  type StayLimits,
+} from "@/lib/utils/stay-limits";
+
+export type { StayLimits };
 
 /**
  * Weekly stays — the whole rule, in one place.
@@ -88,16 +95,13 @@ export function isChangeoverDay(
 }
 
 /**
- * The listing's stay-length rule, as the two numbers it is actually made of.
+ * The listing's stay-length rule.
  *
- * `maxNights` follows the reading the rest of the product already applies: the column is
- * non-nullable and defaults to 365, so a stored zero means "no maximum" rather than "no
- * stay is ever bookable". Null and undefined mean the same.
+ * @deprecated Use `StayLimits`. These limits are listing-wide and apply in both booking
+ * modes; the weekly name is what let the flexible branch of `decideStayAvailability`
+ * look complete without them. Kept as an alias so existing call sites keep compiling.
  */
-export interface WeeklyStayLimits {
-  minNights: number;
-  maxNights?: number | null;
-}
+export type WeeklyStayLimits = StayLimits;
 
 export type WeeklyStayIssue =
   /** Not two calendar dates, or the stay does not run forwards. */
@@ -116,12 +120,10 @@ export type WeeklyStayIssue =
 /**
  * The stay-length cap, or null when the host has not set one.
  *
- * Kept identical to `stayLengthCap` in `booking-selection`, which the flexible path and
- * the search filter already read: a cap counts only from one night up.
+ * @deprecated Use `stayLengthCap`. This was a second copy of that rule kept "identical"
+ * by hand; it is now the same function, so the two can no longer drift.
  */
-export function weeklyStayCap(maxNights: number | null | undefined): number | null {
-  return typeof maxNights === "number" && maxNights >= 1 ? maxNights : null;
-}
+export const weeklyStayCap = stayLengthCap;
 
 /**
  * What is wrong with this stay on this listing, or null when nothing is.
@@ -149,11 +151,9 @@ export function weeklyStayIssue(input: {
   // modulo test to get out of step with this one.
   if (!isChangeoverDay(checkOut, changeoverWeekday)) return "WRONG_CHECK_OUT_DAY";
 
-  const nights = nightsBetweenYmd(checkIn, checkOut);
-  if (nights < limits.minNights) return "BELOW_MINIMUM";
-  const cap = weeklyStayCap(limits.maxNights);
-  if (cap !== null && nights > cap) return "ABOVE_MAXIMUM";
-  return null;
+  // Length last, and only after the shape: the listing-wide limit rule, shared with the
+  // flexible branch of `decideStayAvailability` and with the search filter.
+  return stayLimitIssue(nightsBetweenYmd(checkIn, checkOut), limits);
 }
 
 export function isWeeklyStay(input: {

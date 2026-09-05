@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { requireHost } from "@/lib/auth-helpers";
 import { revalidatePublicListingCaches } from "@/lib/utils/revalidate-public-listing-caches";
 import { listingPropertyDetailsComplete, listingPropertyDetailsIssues, type ListingPropertyDetailsInput, type ListingPropertyDetailsSaveResult } from "@/lib/host/v2/listing-property-details";
+import { actionText } from "@/lib/actions/action-text";
 
 function refresh(listingId: string, slug: string, status: string) {
   revalidatePath(`/host/listings/${listingId}/rooms`);
@@ -21,7 +22,7 @@ export async function updateListingPropertyDetails(listingId: string, input: Lis
     where: { id: listingId, hostId: user.id },
     select: { id: true, slug: true, status: true, spaceType: true, bedrooms: true, beds: true, bathrooms: true, propertyId: true, property: { select: { propertyType: true } } },
   });
-  if (!listing) return { error: "Listing not found." };
+  if (!listing) return { error: await actionText("action.error.listing_not_found_sentence", "Listing not found.") };
   const issues = listingPropertyDetailsIssues(input);
   if (Object.keys(issues).length > 0) return { issues };
   const propertyType = input.propertyType.trim();

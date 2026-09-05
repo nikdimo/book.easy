@@ -10,6 +10,7 @@ import {
   PanelLeftOpen,
   TriangleAlert,
 } from "lucide-react";
+import { readStoredValue, writeStoredValue } from "@/lib/browser-storage";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n/client";
 import {
@@ -325,16 +326,13 @@ export function useRailPreference(storageKey: string, defaultCompact = false) {
     [eventName],
   );
 
+  // A browser refusing storage is not a reason to fail the rail — and this runs during
+  // render, so it must not throw. See `lib/browser-storage.ts`.
   const read = useCallback(() => {
-    try {
-      const stored = window.localStorage.getItem(storageKey);
-      if (stored === "compact") return true;
-      if (stored === "expanded") return false;
-      return defaultCompact;
-    } catch {
-      // A browser refusing storage is not a reason to fail the rail.
-      return defaultCompact;
-    }
+    const stored = readStoredValue(storageKey);
+    if (stored === "compact") return true;
+    if (stored === "expanded") return false;
+    return defaultCompact;
   }, [defaultCompact, storageKey]);
 
   const serverSnapshot = useCallback(() => defaultCompact, [defaultCompact]);
@@ -343,11 +341,8 @@ export function useRailPreference(storageKey: string, defaultCompact = false) {
 
   const setCompact = useCallback(
     (next: boolean) => {
-      try {
-        window.localStorage.setItem(storageKey, next ? "compact" : "expanded");
-      } catch {
-        // Losing the preference must not break the toggle itself.
-      }
+      // Losing the preference must not break the toggle itself.
+      writeStoredValue(storageKey, next ? "compact" : "expanded");
       window.dispatchEvent(new Event(eventName));
     },
     [eventName, storageKey],

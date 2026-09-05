@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { actionText } from "@/lib/actions/action-text";
 import {
   createDefaultPricingForManagedListing,
   saveDefaultPricingForManagedListing,
@@ -15,16 +16,25 @@ export type PricingActionState = {
 async function requireOwnedListing(listingId: string) {
   const session = await auth();
   if (!session?.user?.id || !session.user.isHost) {
-    return { error: "Not authorized." as const };
+    return { error: await actionText("action.error.not_authorized_sentence", "Not authorized.") };
   }
   const listing = await db.listing.findFirst({
     where: { id: listingId, hostId: session.user.id },
     select: { id: true, slug: true, availabilityMode: true },
   });
-  if (!listing) return { error: "Listing not found." as const };
+  if (!listing) return { error: await actionText("action.error.listing_not_found_sentence", "Listing not found.") };
   return { listing, actorId: session.user.id };
 }
 
+/**
+ * Change what a listing charges: the nightly rate and the cleaning fee.
+ *
+ * Money only, and deliberately so. A `minNights` field used to be read off this form
+ * and written with the amounts, so a Pricing page rendered before a booking-rule edit
+ * could save its stale minimum back over the new one. Stay limits are written by
+ * `setListingStayLimits` from Availability → Booking rules and by nothing else; any
+ * `minNights` or `maxNights` in this form data is ignored.
+ */
 export async function saveListingPricing(
   listingId: string,
   _previousState: PricingActionState,
@@ -35,7 +45,6 @@ export async function saveListingPricing(
   return saveDefaultPricingForManagedListing(owned.listing, owned.actorId, {
     baseNightlyRate: Number(formData.get("baseNightlyRate")),
     cleaningFee: Number(formData.get("cleaningFee")),
-    minNights: Number(formData.get("minNights")),
   });
 }
 
@@ -49,10 +58,15 @@ export async function saveListingPricing(
  *
  * The same session and ownership check as every other pricing write; the service does
  * the validation, the audit log and the revalidation.
+ *
+ * Two amounts, like every other pricing write. The new rule needs *some* minimum stay
+ * in the column, but that is a database default the service supplies; it is not asked
+ * for here and the Pricing UI never sends it. The host chooses it, if they ever want
+ * something other than "any length", under Availability → Booking rules.
  */
 export async function createListingPricing(
   listingId: string,
-  input: { baseNightlyRate: number; cleaningFee: number; minNights: number },
+  input: { baseNightlyRate: number; cleaningFee: number },
 ): Promise<PricingActionState> {
   const owned = await requireOwnedListing(listingId);
   if ("error" in owned) return { error: owned.error };

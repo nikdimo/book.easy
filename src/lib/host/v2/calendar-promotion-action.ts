@@ -1,10 +1,10 @@
 import { addDaysToYmd } from "@/lib/utils/date-only";
 import {
+  computeStayQuote,
   parseLocalYmd,
-  selectApplicablePromotion,
-  selectApplicablePromotionForNight,
   type StayPromotion,
 } from "@/lib/utils/stay-pricing";
+import { stayLengthCap } from "@/lib/utils/stay-limits";
 import type { CalendarSelection } from "./calendar-selection";
 import type { ProposedPromotion } from "./calendar-quote";
 import type {
@@ -19,9 +19,17 @@ import type {
  * and a dated offer on one week in August. One promotion wins per night, and different
  * nights in the same booking may have different winners.
  *
- * So nothing here reimplements the rules. It asks `selectApplicablePromotion` — the same
- * function the booking transaction prices with — once per stay length, and groups the
- * answers into bands. If the rules ever change, this follows them.
+ * So nothing here reimplements the rules. It asks `computeStayQuote` — the same quote
+ * engine the booking transaction uses, with this listing's actual nightly overrides and
+ * cleaning fee — once per stay length, and groups the answers into bands. If the pricing
+ * rules change, this follows them.
+ *
+ * It used to ask `selectApplicablePromotion`, whose window test is whole-stay containment
+ * rather than per-night coverage, under a comment claiming it was the same function the
+ * quote uses. It was not. A stay that overran a dated offer's window got a partial
+ * discount from the quote and showed as *no offer at all* on this ladder, so a host was
+ * told their August offer stops applying at eight nights when it goes on discounting
+ * every night inside August.
  *
  * The ladder remains a compact explanation of which minimum-stay offer wins as the stay
  * length changes. Date-range behavior is shown separately in the selected-date preview.
@@ -49,6 +57,12 @@ export interface PromotionBand {
   draft: boolean;
   /** True when the winner runs on every date rather than a range. */
   evergreen: boolean;
+  /**
+   * True when the winner discounts only part of a stay this long — a dated offer the
+   * stay overruns. The band is real (the guest does get the discount on those nights);
+   * saying so keeps it from reading as a whole-stay price.
+   */
+  partial: boolean;
 }
 
 function toStayPromotion(promotion: HostCalendarPromotion): StayPromotion {
@@ -140,6 +154,44 @@ interface Candidate {
   draft: boolean;
 }
 
+interface PromotionQuoteContext {
+  baseNightly: number;
+  cleaningFee: number;
+  overrides: Map<string, number>;
+}
+
+function promotionQuoteContext(
+  listing: HostCalendarListing,
+): PromotionQuoteContext | null {
+  if (!listing.pricing) return null;
+  return {
+    baseNightly: listing.pricing.baseNightlyRate,
+    cleaningFee: listing.pricing.cleaningFee,
+    overrides: new Map(
+      listing.datePrices.map((price) => [price.date, price.nightlyRate]),
+    ),
+  };
+}
+
+function quotePromotionOutcome({
+  context,
+  promotions,
+  startDate,
+  nights,
+}: {
+  context: PromotionQuoteContext;
+  promotions: StayPromotion[];
+  startDate: string;
+  nights: number;
+}) {
+  return computeStayQuote({
+    ...context,
+    checkIn: parseLocalYmd(startDate),
+    checkOut: parseLocalYmd(addDaysToYmd(startDate, nights)),
+    promotions,
+  });
+}
+
 /** The offers in scope, the draft among them, ready to be ranked. */
 function candidates({
   listing,
@@ -195,23 +247,38 @@ function candidates({
 /** Group the winner at each stay length into runs. */
 function bandsOf(
   candidateList: Candidate[],
+  listing: HostCalendarListing,
   startDate: string,
   maxNights: number,
 ): PromotionBand[] {
   if (candidateList.length === 0) return [];
+  const context = promotionQuoteContext(listing);
+  if (!context) return [];
   const stays = candidateList.map((candidate) => candidate.stay);
   const byId = new Map(
     candidateList.map((candidate) => [candidate.stay.id ?? "", candidate]),
   );
-  const checkIn = parseLocalYmd(startDate);
   const bands: PromotionBand[] = [];
 
   for (let nights = 1; nights <= maxNights; nights += 1) {
-    const checkOut = parseLocalYmd(addDaysToYmd(startDate, nights));
-    const winner = selectApplicablePromotion(stays, checkIn, checkOut, nights);
+    const quote = quotePromotionOutcome({
+      context,
+      promotions: stays,
+      startDate,
+      nights,
+    });
+    const winner = quote.appliedPromotion;
     if (!winner?.id) continue;
+    const partial = quote.nightlyBreakdown.some(
+      (night) => night.promotionId === null,
+    );
     const last = bands[bands.length - 1];
-    if (last && last.promotionId === winner.id && last.toNights === nights - 1) {
+    if (
+      last &&
+      last.promotionId === winner.id &&
+      last.partial === partial &&
+      last.toNights === nights - 1
+    ) {
       last.toNights = nights;
       continue;
     }
@@ -224,6 +291,7 @@ function bandsOf(
       freeCleaning: Boolean(winner.freeCleaning),
       draft: winner.id === DRAFT_PROMOTION_ID,
       evergreen: byId.get(winner.id)?.evergreen ?? false,
+      partial,
     });
   }
 
@@ -257,7 +325,8 @@ function ladderOf(
 }
 
 function horizonFor(listing: HostCalendarListing, horizon: number): number {
-  return Math.min(horizon, listing.pricing?.maxNights ?? horizon);
+  const cap = stayLengthCap(listing.pricing?.maxNights);
+  return Math.min(horizon, cap ?? horizon);
 }
 
 /** The offers on the selected dates, each with the stay lengths it wins. */
@@ -274,7 +343,11 @@ export function selectionLadder({
 }): PromotionRow[] {
   const list = candidates({ listing, selection, draft, evergreenOnly: false });
   const maxNights = horizonFor(listing, horizon);
-  return ladderOf(list, bandsOf(list, selection.start, maxNights), maxNights);
+  return ladderOf(
+    list,
+    bandsOf(list, listing, selection.start, maxNights),
+    maxNights,
+  );
 }
 
 /**
@@ -301,19 +374,28 @@ export function selectionDraftCanWin({
   });
   const stays = list.map((candidate) => candidate.stay);
   const maxNights = horizonFor(listing, horizon);
+  const context = promotionQuoteContext(listing);
+  if (!context) return false;
 
   for (
-    let night = selection.start;
-    night <= selection.end;
-    night = addDaysToYmd(night, 1)
+    let startDate = selection.start;
+    startDate <= selection.end;
+    startDate = addDaysToYmd(startDate, 1)
   ) {
     for (let stayNights = 1; stayNights <= maxNights; stayNights += 1) {
-      const winner = selectApplicablePromotionForNight(
-        stays,
-        parseLocalYmd(night),
-        stayNights,
-      );
-      if (winner?.id === DRAFT_PROMOTION_ID) return true;
+      const quote = quotePromotionOutcome({
+        context,
+        promotions: stays,
+        startDate,
+        nights: stayNights,
+      });
+      if (
+        quote.appliedPromotions.some(
+          (promotion) => promotion.id === DRAFT_PROMOTION_ID,
+        )
+      ) {
+        return true;
+      }
     }
   }
   return false;
@@ -338,7 +420,7 @@ export function evergreenLadder({
     evergreenOnly: true,
   });
   const maxNights = horizonFor(listing, horizon);
-  return ladderOf(list, bandsOf(list, today, maxNights), maxNights);
+  return ladderOf(list, bandsOf(list, listing, today, maxNights), maxNights);
 }
 
 

@@ -73,6 +73,7 @@ describe("a step reached from Review", () => {
   it("returns there from House rules, which already ended at Review", () => {
     const answered = houseRulesDraftPatch({
       checkInTime: "15:00",
+      checkInEndTime: "",
       checkOutTime: "11:00",
       maxGuests: 4,
       petPolicy: "NOT_ALLOWED",

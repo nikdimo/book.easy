@@ -1,23 +1,29 @@
 "use client";
 
 import { useActionState } from "react";
-import { Banknote, CalendarDays, Sparkles } from "lucide-react";
+import { Banknote, Sparkles } from "lucide-react";
 import { saveListingPricing } from "@/lib/actions/pricing.actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+/**
+ * The listing's default amounts. Money only — no stay rule.
+ *
+ * A "Minimum stay" field used to sit under the cleaning fee and was submitted with the
+ * two amounts, so saving a price wrote the minimum this form was rendered with. The
+ * minimum and maximum stay are edited under Availability → Booking rules, and
+ * `saveListingPricing` no longer reads either of them off this form.
+ */
 export function ListingPricingForm({
   listingId,
   baseNightlyRate,
   cleaningFee,
-  minNights,
   currency,
 }: {
   listingId: string;
   baseNightlyRate: number;
   cleaningFee: number;
-  minNights: number;
   currency: string;
 }) {
   const action = saveListingPricing.bind(null, listingId);
@@ -42,16 +48,6 @@ export function ListingPricingForm({
       step: "0.01",
       suffix: `${currency} / stay`,
       icon: Sparkles,
-    },
-    {
-      name: "minNights",
-      label: "Minimum stay",
-      description: "The shortest stay guests can book.",
-      defaultValue: minNights,
-      min: 1,
-      step: "1",
-      suffix: "nights",
-      icon: CalendarDays,
     },
   ];
 

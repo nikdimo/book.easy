@@ -127,6 +127,28 @@ enum ListingDepositAmountType {
 
 /// Manual, declarative payment tracking. These values never assert that Linger
 /// Homes processed a transaction.
+/// Manual progress on one money track. Three of the five values are workflow state; two
+/// make a claim about money, and they do not make the same one.
+///
+/// `PAYMENT_REPORTED` is *the sending side's own claim*, unverified by anybody.
+/// `PAYMENT_CONFIRMED` is the *receiving* side confirming it arrived. The platform
+/// neither collects, holds, processes nor verifies any of it.
+///
+/// What that difference means, once and for the whole product:
+///
+///  - An obligation may be **opened** from a report. A guest who paid must not lose a
+///    cancellation refund because their host simply never confirms. So the cancellation
+///    settlement counts `PAYMENT_REPORTED` as received.
+///  - An obligation opened that way is **provisional**, not established. The settlement
+///    snapshot records `refundBasis: CLAIMED` and `confirmedRefundAmount`, and every
+///    surface presents it as claimed rather than owed until it is confirmed.
+///  - A report **discharges the reporter's own prompt** and nothing else. Guest payment
+///    reminders stop at `PAYMENT_REPORTED`; the host's overdue notice continues until
+///    `PAYMENT_CONFIRMED`, because confirming is the thing still outstanding.
+///
+/// `BookingDepositStatus` and `BookingRefundStatus` use the same vocabulary: every
+/// `*_REPORTED` value is one side's claim and every `*_CONFIRMED` value is the other
+/// side's agreement.
 enum BookingPaymentStatus {
   UNTRACKED
   NOT_REQUIRED
@@ -217,6 +239,13 @@ enum BookingStatus {
   COMPLETED
 }
 
+/// One durable outbox entry per (booking, kind), so a retry cannot send twice.
+///
+/// The cancellation kinds are deliberately per *recipient and cause*, not per event: a
+/// host told "the guest cancelled" when support cancelled would be told something untrue,
+/// which is why an admin cancellation needs its own kind rather than reusing
+/// `HOST_CANCELLED_BY_GUEST`. Email is the channel that reaches someone who is not logged
+/// in, so an asymmetry here is the one a party actually notices.
 enum BookingEmailKind {
   GUEST_REQUEST_RECEIVED
   HOST_NEW_REQUEST
@@ -226,6 +255,7 @@ enum BookingEmailKind {
   GUEST_EXPIRED
   GUEST_CANCELLED
   HOST_CANCELLED_BY_GUEST
+  HOST_CANCELLED_BY_ADMIN
 }
 
 enum BookingEmailDeliveryStatus {
@@ -726,6 +756,15 @@ model Listing {
   checkInTime                    String?
   checkOutTime                   String?
   /**
+   * The far end of the arrival window — "arrive between 15:00 and 20:00".
+   * Null is "flexible": the host will let the guest arrive whenever after checkInTime,
+   * which is a different promise from having no window at all and is what every listing
+   * predating this column truthfully says. Stored beside its siblings rather than on
+   * ListingArrivalGuide so all three stay times have one owner; House rules and the
+   * Arrival guide's check-in card both edit them through the same writer.
+   */
+  checkInEndTime                 String?
+  /**
    * Structured house rules the guest agrees to when they book.
    * Every policy is nullable and NULL means "the host has not answered" — deliberately
    * distinct from an explicit NOT_ALLOWED. Defaulting these to a refusal would tell
@@ -914,6 +953,7 @@ model Listing {
   conversations       Conversation[]
   reviews             Review[]
   promotions          ListingPromotion[]
+  arrivalGuide        ListingArrivalGuide?
 
   @@index([hostId])
   @@index([status])
@@ -958,6 +998,115 @@ enum ListingEventPolicy {
 enum ListingQuietHoursPolicy {
   NONE
   SET
+}
+
+/**
+ * How a guest actually gets through the door.
+ *
+ * The six methods hosts really have. OTHER exists because the list cannot be complete —
+ * a neighbour with a key, a gate intercom, a hotel desk in another building — and a host
+ * with an unusual arrangement must be able to describe it rather than pick the nearest
+ * wrong answer. Null means unanswered, the same convention every house-rules policy uses.
+ */
+enum ListingCheckInMethod {
+  SMART_LOCK
+  KEYPAD
+  LOCKBOX
+  BUILDING_STAFF
+  IN_PERSON
+  OTHER
+}
+
+/**
+ * How much of the host the guest should expect during the stay. Purely informational —
+ * it sets an expectation and nothing in the product acts on it.
+ */
+enum ListingInteractionPreference {
+  APP_ONLY
+  SAY_HELLO
+  SOCIABLE
+  NO_PREFERENCE
+}
+
+/**
+ * Everything a listing tells its guest about arriving, and the three access
+ * credentials that go with it.
+ *
+ * A table of its own rather than more columns on Listing, for one reason: three of these
+ * fields are secrets. A door code and a Wi-Fi password let a stranger into a real house,
+ * and the honest way to keep them out of a public payload is to keep them off the row
+ * every public query already selects. `Listing` is read by the search index, the property
+ * page, the sitemap and half a dozen DTO builders; a wide `select` or a stray `include`
+ * on any of them would publish a lockbox code, and no amount of care at those call sites
+ * would stay true forever. Here, leaking one takes a deliberate `include: { arrivalGuide }`
+ * — see `listing-arrival-guide.service.ts`, which is the only module that does it, and
+ * which decides per booking whether the guest has earned each field yet.
+ *
+ * Stay times are deliberately absent: they live on Listing beside checkInTime, because
+ * House rules owns them and two owners for one setting is how they drift.
+ */
+model ListingArrivalGuide {
+  id        String @id @default(cuid())
+  listingId String @unique
+
+  /**
+   * How to reach the front door, in the host's words: the turn off the main road, which
+   * bell, where to park. Not a secret — but not public either, since it usually names the
+   * building. Released to a guest once their booking is confirmed.
+   */
+  directions String? @db.Text
+
+  /// Null is unanswered. The instructions below only mean anything alongside a method.
+  checkInMethod ListingCheckInMethod?
+  /**
+   * SECRET. The keypad code, the lockbox combination, where the key is hidden, the smart
+   * lock's app name. Never include this in a listing DTO, a search document, a public
+   * page, an iCal feed or a log line. Released 48 hours before check-in.
+   */
+  checkInMethodInstructions String? @db.Text
+
+  /// Not a secret on its own — an SSID is broadcast to the street — but pointless without
+  /// the password, so it is released on the same schedule.
+  wifiNetwork String?
+  /**
+   * SECRET, and treated exactly like `checkInMethodInstructions`. Released 48 hours
+   * before check-in.
+   */
+  wifiPassword String?
+
+  /**
+   * How the place works: the boiler, the TV, the bins, the temperamental window.
+   * Long-form, host-authored, released with the rest of the arrival details.
+   */
+  houseManual String? @db.Text
+
+  /**
+   * What the host asks a guest to do before leaving, as an ordered array of
+   * `{ kind, note }` — kind being one of `CHECKOUT_INSTRUCTION_KINDS`, note the host's
+   * own wording or null for the default sentence.
+   * JSON rather than a table because it is at most six bounded rows that are only ever
+   * read and written whole, and a join table would buy nothing but a migration. Validated
+   * on every write by `normalizeCheckoutInstructions`, so nothing unshaped reaches a
+   * reader. Public: a guest can read these before they book, which is exactly Airbnb's
+   * rule and the reason they must never carry a code.
+   */
+  checkoutInstructions Json?
+
+  /// Null is unanswered; the guest is told nothing rather than told the host is hands-off.
+  interactionPreference ListingInteractionPreference?
+
+  /**
+   * When the host last saved this section, which is the only way to tell a host who read
+   * the page and had nothing to add from one who never opened it. Every field here is
+   * optional, so "has values" cannot make that distinction — the same reasoning as
+   * `houseRulesReviewedAt`.
+   */
+  reviewedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 }
 
 enum ListingSpaceType {
@@ -1425,7 +1574,6 @@ model PricingRule {
   listingId         String   @unique
   baseNightlyRate   Decimal  @db.Decimal(14, 3)
   cleaningFee       Decimal  @default(0) @db.Decimal(14, 3)
-  serviceFeePercent Decimal  @default(0) @db.Decimal(5, 2)
   currency          String   @default("EUR")
   minNights         Int      @default(1)
   maxNights         Int      @default(365)
@@ -1692,9 +1840,20 @@ model Booking {
   damageDepositAmount                Decimal?                         @db.Decimal(14, 3)
   acceptedAt                         DateTime?
   cancelledAt                        DateTime?
-  /// Progress on the booking price as a whole. The advance payment below is a part of
-  /// this sum, not a separate debt, and is tracked separately because a host confirms
-  /// receiving it at a different moment.
+  /// Progress on the **accommodation balance**: `totalPrice` minus `advancePaymentAmount`.
+  ///
+  /// Not the whole price. Every path that touches an amount reads it this way -
+  /// `bookingPaymentObligations` creates `ACCOMMODATION_BALANCE = total - advance`, the
+  /// cancellation settlement refunds that balance separately from the advance, and
+  /// `GUEST_REPORT_PAYMENT_SENT` files its private record against the
+  /// `ACCOMMODATION_BALANCE` track. It equals the whole price only on a booking with no
+  /// advance payment, which is why the older "price as a whole" reading survived here so
+  /// long without breaking any arithmetic.
+  ///
+  /// Confirming it means "I received the balance", and says nothing about the advance:
+  /// there is deliberately no cascade from `HOST_CONFIRM_PAYMENT_RECEIVED` into
+  /// `advancePaymentStatus`, because that would assert receipt of money the host never
+  /// confirmed.
   paymentStatus                      BookingPaymentStatus             @default(UNTRACKED)
   paymentInstructionsStatus          BookingPaymentInstructionsStatus @default(NOT_DECIDED)
   paymentInstructionsSentAt          DateTime?

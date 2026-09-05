@@ -62,6 +62,11 @@ const summary: ListingPricingSummary = {
 const defaultsEditor = <div translate="no">Default pricing form</div>;
 const offersEditor = <div translate="no">Ongoing offers form</div>;
 
+/** What the host reads, with markup stripped out. */
+function visibleText(html: string): string {
+  return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
 function render(data: ListingPricingSummary = summary): string {
   return renderToStaticMarkup(
     <PricingOverview
@@ -114,13 +119,46 @@ describe("PricingOverview", () => {
     expect(html).toContain("Set what this listing charges by default here.");
   });
 
-  it("keeps currency and maximum stay as context it does not edit", () => {
+  it("keeps the currency as the one piece of context it does not edit", () => {
     const html = render();
     expect(html).toContain("Currency");
     expect(html).toContain("EUR");
-    expect(html).toContain("Maximum stay");
-    expect(html).toContain("30 nights");
-    expect(html).toContain("Contact support to change either of these.");
+    expect(html).toContain(
+      "Every amount on this listing is set in this currency. Contact support to change it.",
+    );
+    // The note used to promise two fixed things because a maximum stay sat beside the
+    // currency. It says one thing now, and there is only one thing to say.
+    expect(html).not.toContain("either of these");
+  });
+
+  /**
+   * Pricing is money. Stay length is a booking rule with one editable home, under
+   * Availability → Booking rules, and this page must not restate it — a "Maximum stay"
+   * line here is read as a setting that lives here, which is the belief the split
+   * exists to prevent.
+   */
+  it("states no stay limit at all, not even as read-only context", () => {
+    const html = render();
+    const text = visibleText(html);
+    expect(text).not.toContain("Maximum stay");
+    expect(text).not.toContain("Minimum stay");
+    // Not the value either: the rule's 30-night maximum must not surface as "30 nights".
+    expect(text).not.toContain("30 nights");
+    // And no offer to have someone else change one.
+    expect(text).not.toContain("Contact support to change either of these");
+  });
+
+  it("says nothing about stay length whatever the rule's limits are", () => {
+    const text = visibleText(
+      render({
+        ...summary,
+        rule: { ...summary.rule!, minNights: 7, maxNights: 28 },
+      }),
+    );
+    expect(text).not.toContain("28 nights");
+    expect(text).not.toContain("7 nights");
+    expect(text).not.toContain("Maximum stay");
+    expect(text).not.toContain("Minimum stay");
   });
 
   it("keeps date-specific price counts and ranges visible, with a link that says why", () => {
@@ -186,6 +224,7 @@ describe("PricingOverview", () => {
     expect(html).toContain("Default pricing form");
     expect(html).not.toContain("Ongoing offers form");
     // And the fixed-context card has nothing truthful to say without a rule.
+    expect(html).not.toContain("Currency");
     expect(html).not.toContain("Maximum stay");
   });
 });

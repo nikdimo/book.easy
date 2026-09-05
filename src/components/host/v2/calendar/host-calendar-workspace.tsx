@@ -950,6 +950,10 @@ export function HostCalendarWorkspace({
   if (entries.length === 0) {
     return (
       <section className="rounded-2xl border border-slate-200 bg-white p-6 text-center">
+        {/* The empty screen is still the Calendar page, so it still names itself. */}
+        <h1 className="sr-only">
+          {i18n.resolve("host.v2.calendar.heading", "Calendar").text}
+        </h1>
         <House className="mx-auto size-6 text-slate-400" aria-hidden />
         <p className="mt-2 text-sm font-medium text-slate-700">
           {
@@ -1018,6 +1022,14 @@ export function HostCalendarWorkspace({
       {...anchorProps(CALENDAR_ANCHOR.workspace)}
       className="flex flex-col gap-3 md:min-h-0 md:flex-1 md:gap-2.5"
     >
+      {/* The screen has no visible title — the header's underlined tab is the title, and
+          repeating it would cost the first band of a workspace that needs every row. A
+          screen reader has no equivalent of "look at the underlined tab", and without
+          this the page's heading outline started at the month name. */}
+      <h1 className="sr-only">
+        {i18n.resolve("host.v2.calendar.heading", "Calendar").text}
+      </h1>
+
       {/* Below `md` the rail is hidden, so the property — and its status — has to stay
           somewhere. This compact selector is that somewhere; it is also why the
           calendar pane itself no longer repeats the listing title on desktop. */}
@@ -1025,6 +1037,8 @@ export function HostCalendarWorkspace({
         <button
           type="button"
           onClick={() => setChooserOpen(true)}
+          inert={sheetOpen ? true : undefined}
+          aria-hidden={sheetOpen ? true : undefined}
           className="flex shrink-0 items-center gap-2.5 rounded-xl border border-slate-200 bg-white p-2 text-left md:hidden"
         >
           {active.listing.photoUrl ? (
@@ -1063,16 +1077,27 @@ export function HostCalendarWorkspace({
       ) : null}
 
       <div className="flex min-w-0 items-start gap-4 md:min-h-0 md:flex-1 md:items-stretch xl:gap-5">
-        <ListingRail
-          entries={entries}
-          selectedId={selectedId}
-          compact={railCompact}
-          onSelect={selectListing}
-          onToggleCompact={() => setRailCompact(!railCompact)}
-        />
+        <div
+          className="contents"
+          inert={sheetOpen ? true : undefined}
+          aria-hidden={sheetOpen ? true : undefined}
+        >
+          <ListingRail
+            entries={entries}
+            selectedId={selectedId}
+            compact={railCompact}
+            onSelect={selectListing}
+            onToggleCompact={() => setRailCompact(!railCompact)}
+          />
+        </div>
 
-        {active ? (
-          <section className="flex min-w-0 flex-1 flex-col md:min-h-0">
+        <div
+          className="contents"
+          inert={sheetOpen ? true : undefined}
+          aria-hidden={sheetOpen ? true : undefined}
+        >
+          {active ? (
+            <section className="flex min-w-0 flex-1 flex-col md:min-h-0">
             {/* No listing title here: the rail already says which property this is,
                 and repeating it was the loudest thing on the screen. What is left is
                 where in the horizon the host currently is, and how to move. */}
@@ -1264,15 +1289,16 @@ export function HostCalendarWorkspace({
                 </li>
               ) : null}
             </ul>
-          </section>
-        ) : (
-          <AllListingsTimeline
-            entries={entries}
-            today={data.today}
-            formats={data.formats}
-            onSelectListing={selectListing}
-          />
-        )}
+            </section>
+          ) : (
+            <AllListingsTimeline
+              entries={entries}
+              today={data.today}
+              formats={data.formats}
+              onSelectListing={selectListing}
+            />
+          )}
+        </div>
 
         {active ? (
           <aside
@@ -1327,7 +1353,11 @@ export function HostCalendarWorkspace({
           The bottom offset clears the phone's fixed navigation, which only exists
           below `md` — from `md` to `lg` the bar sat four rems above nothing. */}
       {active ? (
-        <div className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 flex shrink-0 items-center rounded-xl border border-slate-200 bg-white/95 p-1 shadow-sm backdrop-blur md:bottom-0 lg:hidden">
+        <div
+          inert={sheetOpen ? true : undefined}
+          aria-hidden={sheetOpen ? true : undefined}
+          className="sticky bottom-[calc(4rem+env(safe-area-inset-bottom))] z-20 flex shrink-0 items-center rounded-xl border border-slate-200 bg-white/95 p-1 shadow-sm backdrop-blur md:bottom-0 lg:hidden"
+        >
           <button
             type="button"
             onClick={() => setSheetOpen(true)}

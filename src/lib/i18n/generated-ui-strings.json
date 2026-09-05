@@ -120,6 +120,66 @@
     "filePath": "src/app/(account)/account/bookings/[id]/after-stay/page.tsx"
   },
   {
+    "key": "account.arrival_guide.checkout",
+    "sourceText": "Before you leave",
+    "filePath": "src/components/booking/booking-arrival-guide.tsx"
+  },
+  {
+    "key": "account.arrival_guide.directions",
+    "sourceText": "Directions",
+    "filePath": "src/components/booking/booking-arrival-guide.tsx"
+  },
+  {
+    "key": "account.arrival_guide.heading",
+    "sourceText": "Getting in",
+    "filePath": "src/components/booking/booking-arrival-guide.tsx"
+  },
+  {
+    "key": "account.arrival_guide.instructions",
+    "sourceText": "How to get in",
+    "filePath": "src/components/booking/booking-arrival-guide.tsx"
+  },
+  {
+    "key": "account.arrival_guide.manual",
+    "sourceText": "House manual",
+    "filePath": "src/components/booking/booking-arrival-guide.tsx"
+  },
+  {
+    "key": "account.arrival_guide.method",
+    "sourceText": "Check-in method",
+    "filePath": "src/components/booking/booking-arrival-guide.tsx"
+  },
+  {
+    "key": "account.arrival_guide.unlock_after_confirmation",
+    "sourceText": "Once the host confirms this booking you will get directions, and the door and Wi-Fi details {hours} hours before check-in.",
+    "filePath": "src/components/booking/booking-arrival-guide.tsx"
+  },
+  {
+    "key": "account.arrival_guide.unlock_date",
+    "sourceText": "Your host has added door and Wi-Fi details. They appear here on {date}, {hours} hours before check-in.",
+    "filePath": "src/components/booking/booking-arrival-guide.tsx"
+  },
+  {
+    "key": "account.arrival_guide.unlock_soon",
+    "sourceText": "Your host has added more arrival details, which appear here shortly before check-in.",
+    "filePath": "src/components/booking/booking-arrival-guide.tsx"
+  },
+  {
+    "key": "account.arrival_guide.wifi",
+    "sourceText": "Wi-Fi",
+    "filePath": "src/components/booking/booking-arrival-guide.tsx"
+  },
+  {
+    "key": "account.arrival_guide.wifi_network",
+    "sourceText": "Network",
+    "filePath": "src/components/booking/booking-arrival-guide.tsx"
+  },
+  {
+    "key": "account.arrival_guide.wifi_password",
+    "sourceText": "Password",
+    "filePath": "src/components/booking/booking-arrival-guide.tsx"
+  },
+  {
     "key": "account.arrival.address",
     "sourceText": "Address",
     "filePath": "src/components/booking/booking-arrival-details.tsx"
@@ -293,6 +353,21 @@
     "key": "account.booking.keep",
     "sourceText": "Keep booking",
     "filePath": "src/components/account/cancel-booking-button.tsx"
+  },
+  {
+    "key": "account.booking.listing.back",
+    "sourceText": "Back to booking",
+    "filePath": "src/app/(account)/account/bookings/[id]/listing/page.tsx"
+  },
+  {
+    "key": "account.booking.listing.capacity",
+    "sourceText": "Sleeps up to {guests}",
+    "filePath": "src/app/(account)/account/bookings/[id]/listing/page.tsx"
+  },
+  {
+    "key": "account.booking.listing.current_note",
+    "sourceText": "This is how the host describes the place today. Photos and the description can change after a booking is made; your booking's own terms are on the booking page.",
+    "filePath": "src/app/(account)/account/bookings/[id]/listing/page.tsx"
   },
   {
     "key": "account.booking.message_host",
@@ -688,6 +763,436 @@
     "key": "account.profile.updated",
     "sourceText": "Profile updated",
     "filePath": "src/components/account/profile-form.tsx"
+  },
+  {
+    "key": "action.error.amenities_too_many",
+    "sourceText": "That is more amenities than we can save at once.",
+    "filePath": "src/lib/actions/listing-amenities.actions.ts"
+  },
+  {
+    "key": "action.error.amenities_unavailable",
+    "sourceText": "Some of those amenities are no longer available. Reload and try again.",
+    "filePath": "src/lib/actions/listing-amenities.actions.ts"
+  },
+  {
+    "key": "action.error.availability_confirm_required",
+    "sourceText": "Confirm availability before publishing. Choose unavailable by default, or set a future availability start date.",
+    "filePath": "src/lib/actions/listing.actions.ts"
+  },
+  {
+    "key": "action.error.availability_start_invalid",
+    "sourceText": "Choose a valid date for when guests can start booking.",
+    "filePath": "src/lib/actions/listing.actions.ts"
+  },
+  {
+    "key": "action.error.availability_start_past",
+    "sourceText": "That availability start date has already passed. Choose today or a later date.",
+    "filePath": "src/lib/actions/listing.actions.ts"
+  },
+  {
+    "key": "action.error.availability_start_required",
+    "sourceText": "Confirm when guests can start booking before publishing.",
+    "filePath": "src/lib/actions/listing.actions.ts"
+  },
+  {
+    "key": "action.error.booking_cancel_failed",
+    "sourceText": "Failed to cancel booking",
+    "filePath": "src/lib/actions/booking.actions.ts"
+  },
+  {
+    "key": "action.error.booking_create_failed",
+    "sourceText": "Failed to create booking",
+    "filePath": "src/lib/actions/booking.actions.ts"
+  },
+  {
+    "key": "action.error.booking_details_unavailable",
+    "sourceText": "Could not load booking details",
+    "filePath": "src/lib/actions/booking.actions.ts"
+  },
+  {
+    "key": "action.error.booking_rate_limited",
+    "sourceText": "Too many booking requests. Please wait a while and try again.",
+    "filePath": "src/lib/actions/booking.actions.ts"
+  },
+  {
+    "key": "action.error.booking_reject_failed",
+    "sourceText": "Failed to reject",
+    "filePath": "src/lib/actions/booking.actions.ts"
+  },
+  {
+    "key": "action.error.calendar_duplicate",
+    "sourceText": "That calendar is already connected.",
+    "filePath": "src/lib/actions/calendar-sync.actions.ts"
+  },
+  {
+    "key": "action.error.calendar_feed_limit",
+    "sourceText": "You can connect up to {max} calendars to one listing.",
+    "filePath": "src/lib/actions/calendar-sync.actions.ts"
+  },
+  {
+    "key": "action.error.calendar_link_https",
+    "sourceText": "A calendar link must start with https://",
+    "filePath": "src/lib/actions/calendar-sync.actions.ts"
+  },
+  {
+    "key": "action.error.calendar_link_required",
+    "sourceText": "Paste the full calendar link, starting with https://",
+    "filePath": "src/lib/actions/calendar-sync.actions.ts"
+  },
+  {
+    "key": "action.error.calendar_not_connected",
+    "sourceText": "That calendar is not connected to this listing.",
+    "filePath": "src/lib/actions/calendar-sync.actions.ts"
+  },
+  {
+    "key": "action.error.calendar_unreadable",
+    "sourceText": "That calendar could not be read.",
+    "filePath": "src/lib/actions/calendar-sync.actions.ts"
+  },
+  {
+    "key": "action.error.cancellation_days_range",
+    "sourceText": "Free-cancellation days must be a whole number from 0 to 3650.",
+    "filePath": "src/lib/actions/listing.actions.ts"
+  },
+  {
+    "key": "action.error.cancellation_deadline_required",
+    "sourceText": "Choose the free-cancellation deadline before publishing.",
+    "filePath": "src/lib/actions/listing.actions.ts"
+  },
+  {
+    "key": "action.error.cancellation_reason_required",
+    "sourceText": "Cancellation reason is required",
+    "filePath": "src/lib/actions/booking.actions.ts"
+  },
+  {
+    "key": "action.error.changeover_day_required",
+    "sourceText": "Choose a changeover day.",
+    "filePath": "src/lib/actions/fixed-stay.actions.ts"
+  },
+  {
+    "key": "action.error.cover_must_be_photo",
+    "sourceText": "A video cannot be the cover.",
+    "filePath": "src/lib/actions/listing-photos.actions.ts"
+  },
+  {
+    "key": "action.error.currency_unavailable",
+    "sourceText": "That currency is not currently available. Choose another currency.",
+    "filePath": "src/lib/actions/listing.actions.ts"
+  },
+  {
+    "key": "action.error.decline_reason_required",
+    "sourceText": "Please provide a brief reason for declining",
+    "filePath": "src/lib/actions/booking.actions.ts"
+  },
+  {
+    "key": "action.error.deposit_currency_review",
+    "sourceText": "Review the advance payment and damage deposit amounts after changing the listing currency.",
+    "filePath": "src/lib/actions/listing.actions.ts"
+  },
+  {
+    "key": "action.error.deposit_invalid",
+    "sourceText": "Check the deposit amounts and timing before publishing.",
+    "filePath": "src/lib/actions/listing.actions.ts"
+  },
+  {
+    "key": "action.error.deposit_settings_review",
+    "sourceText": "Review your advance payment and damage deposit settings.",
+    "filePath": "src/lib/actions/listing.actions.ts"
+  },
+  {
+    "key": "action.error.draft_not_found",
+    "sourceText": "Draft not found",
+    "filePath": "src/lib/actions/listing.actions.ts"
+  },
+  {
+    "key": "action.error.free_cleaning_needs_fee",
+    "sourceText": "Add a cleaning fee before offering free cleaning.",
+    "filePath": "src/lib/actions/listing.actions.ts"
+  },
+  {
+    "key": "action.error.link_no_coordinates",
+    "sourceText": "Couldn't find coordinates in that link",
+    "filePath": "src/lib/actions/listing.actions.ts"
+  },
+  {
+    "key": "action.error.link_unresolved",
+    "sourceText": "Couldn't resolve that link",
+    "filePath": "src/lib/actions/listing.actions.ts"
+  },
+  {
+    "key": "action.error.listing_not_archived",
+    "sourceText": "Listing not found or is not archived",
+    "filePath": "src/lib/actions/listing.actions.ts"
+  },
+  {
+    "key": "action.error.listing_not_found",
+    "sourceText": "Listing not found",
+    "filePath": "src/lib/actions/calendar-sync.actions.ts"
+  },
+  {
+    "key": "action.error.listing_not_found_sentence",
+    "sourceText": "Listing not found.",
+    "filePath": "src/lib/actions/fixed-stay.actions.ts"
+  },
+  {
+    "key": "action.error.login_required",
+    "sourceText": "You must be logged in",
+    "filePath": "src/lib/actions/booking.actions.ts"
+  },
+  {
+    "key": "action.error.login_to_book",
+    "sourceText": "You must be logged in to book",
+    "filePath": "src/lib/actions/booking.actions.ts"
+  },
+  {
+    "key": "action.error.name_too_long",
+    "sourceText": "That name is too long.",
+    "filePath": "src/lib/actions/listing-photos.actions.ts"
+  },
+  {
+    "key": "action.error.not_authorized",
+    "sourceText": "Not authorized",
+    "filePath": "src/lib/actions/booking.actions.ts"
+  },
+  {
+    "key": "action.error.not_authorized_sentence",
+    "sourceText": "Not authorized.",
+    "filePath": "src/lib/actions/fixed-stay.actions.ts"
+  },
+  {
+    "key": "action.error.nothing_to_reorder",
+    "sourceText": "Nothing to reorder.",
+    "filePath": "src/lib/actions/listing-photos.actions.ts"
+  },
+  {
+    "key": "action.error.panorama_photo_only",
+    "sourceText": "Only photos can be shown in 360°.",
+    "filePath": "src/lib/actions/listing-photos.actions.ts"
+  },
+  {
+    "key": "action.error.payment_deadline_range",
+    "sourceText": "Choose a payment deadline between today and check-in.",
+    "filePath": "src/lib/actions/booking.actions.ts"
+  },
+  {
+    "key": "action.error.payment_details_required",
+    "sourceText": "Add the payment details before sending.",
+    "filePath": "src/lib/actions/booking.actions.ts"
+  },
+  {
+    "key": "action.error.payment_details_review",
+    "sourceText": "Review the saved private payment details.",
+    "filePath": "src/lib/actions/listing.actions.ts"
+  },
+  {
+    "key": "action.error.payment_instructions_accepted_only",
+    "sourceText": "Payment instructions can only be sent for an accepted booking.",
+    "filePath": "src/lib/actions/booking.actions.ts"
+  },
+  {
+    "key": "action.error.payment_instructions_review",
+    "sourceText": "Review the saved private payment instructions.",
+    "filePath": "src/lib/actions/listing.actions.ts"
+  },
+  {
+    "key": "action.error.payment_method_required",
+    "sourceText": "Choose the payment method for this booking.",
+    "filePath": "src/lib/actions/booking.actions.ts"
+  },
+  {
+    "key": "action.error.payment_methods_required",
+    "sourceText": "Choose at least one accepted payment method before publishing.",
+    "filePath": "src/lib/actions/listing.actions.ts"
+  },
+  {
+    "key": "action.error.payment_request_failed",
+    "sourceText": "Could not send the payment request",
+    "filePath": "src/lib/actions/booking.actions.ts"
+  },
+  {
+    "key": "action.error.payment_request_pending",
+    "sourceText": "Choose a payment request that still needs to be sent.",
+    "filePath": "src/lib/actions/booking.actions.ts"
+  },
+  {
+    "key": "action.error.photo_missing",
+    "sourceText": "That photo is no longer on this listing.",
+    "filePath": "src/lib/actions/listing-photos.actions.ts"
+  },
+  {
+    "key": "action.error.photo_not_in_room",
+    "sourceText": "That photo is not in this room.",
+    "filePath": "src/lib/actions/listing-photos.actions.ts"
+  },
+  {
+    "key": "action.error.photos_minimum",
+    "sourceText": "Add at least {count} photos before publishing",
+    "filePath": "src/lib/actions/listing.actions.ts"
+  },
+  {
+    "key": "action.error.photos_missing",
+    "sourceText": "Those photos are no longer on this listing.",
+    "filePath": "src/lib/actions/listing-photos.actions.ts"
+  },
+  {
+    "key": "action.error.photos_none_to_add",
+    "sourceText": "No photos to add.",
+    "filePath": "src/lib/actions/listing-photos.actions.ts"
+  },
+  {
+    "key": "action.error.photos_select_one",
+    "sourceText": "Select at least one photo.",
+    "filePath": "src/lib/actions/listing-photos.actions.ts"
+  },
+  {
+    "key": "action.error.photos_too_many",
+    "sourceText": "Too many photos in one go.",
+    "filePath": "src/lib/actions/listing-photos.actions.ts"
+  },
+  {
+    "key": "action.error.pricing_required",
+    "sourceText": "Please set pricing before submitting",
+    "filePath": "src/lib/actions/listing.actions.ts"
+  },
+  {
+    "key": "action.error.pricing_required_changes",
+    "sourceText": "Set pricing before publishing listing changes.",
+    "filePath": "src/lib/actions/listing.actions.ts"
+  },
+  {
+    "key": "action.error.promotion_discount_range",
+    "sourceText": "Choose a discount between 5% and 50%.",
+    "filePath": "src/lib/actions/listing.actions.ts"
+  },
+  {
+    "key": "action.error.promotion_min_stay_range",
+    "sourceText": "Promotion minimum stay must be between 1 and 365 nights.",
+    "filePath": "src/lib/actions/listing.actions.ts"
+  },
+  {
+    "key": "action.error.publish_state_invalid",
+    "sourceText": "Only draft or unpublished listings can be published",
+    "filePath": "src/lib/actions/listing.actions.ts"
+  },
+  {
+    "key": "action.error.room_missing",
+    "sourceText": "That room is no longer on this listing.",
+    "filePath": "src/lib/actions/listing-photos.actions.ts"
+  },
+  {
+    "key": "action.error.room_type_duplicate",
+    "sourceText": "This listing already has a {room}.",
+    "filePath": "src/lib/actions/listing-photos.actions.ts"
+  },
+  {
+    "key": "action.error.room_type_unavailable",
+    "sourceText": "That space is no longer available.",
+    "filePath": "src/lib/actions/listing-photos.actions.ts"
+  },
+  {
+    "key": "action.error.rooms_missing",
+    "sourceText": "Those rooms are no longer on this listing.",
+    "filePath": "src/lib/actions/listing-photos.actions.ts"
+  },
+  {
+    "key": "action.error.stay_limits_invalid",
+    "sourceText": "Check the stay limits.",
+    "filePath": "src/lib/actions/fixed-stay.actions.ts"
+  },
+  {
+    "key": "action.error.stay_mode_required",
+    "sourceText": "Choose either flexible dates or fixed stays.",
+    "filePath": "src/lib/actions/fixed-stay.actions.ts"
+  },
+  {
+    "key": "action.error.suggestion_label_required",
+    "sourceText": "Label is required",
+    "filePath": "src/lib/actions/suggestion.actions.ts"
+  },
+  {
+    "key": "action.error.suggestion_name_required",
+    "sourceText": "Please enter a name for what's missing",
+    "filePath": "src/lib/actions/suggestion.actions.ts"
+  },
+  {
+    "key": "action.error.suggestion_not_found",
+    "sourceText": "Suggestion not found or already reviewed",
+    "filePath": "src/lib/actions/suggestion.actions.ts"
+  },
+  {
+    "key": "action.error.suggestion_type_invalid",
+    "sourceText": "Invalid suggestion type",
+    "filePath": "src/lib/actions/suggestion.actions.ts"
+  },
+  {
+    "key": "action.message.calendar_connected_unread",
+    "sourceText": "Calendar connected, but it could not be read yet. It will be retried automatically.",
+    "filePath": "src/lib/actions/calendar-sync.actions.ts"
+  },
+  {
+    "key": "action.message.calendar_connected.few",
+    "sourceText": "Calendar connected — {n} nights blocked from {events} reservations.",
+    "filePath": "src/lib/actions/calendar-sync.actions.ts"
+  },
+  {
+    "key": "action.message.calendar_connected.many",
+    "sourceText": "Calendar connected — {n} nights blocked from {events} reservations.",
+    "filePath": "src/lib/actions/calendar-sync.actions.ts"
+  },
+  {
+    "key": "action.message.calendar_connected.one",
+    "sourceText": "Calendar connected — {n} night blocked from {events} reservations.",
+    "filePath": "src/lib/actions/calendar-sync.actions.ts"
+  },
+  {
+    "key": "action.message.calendar_connected.other",
+    "sourceText": "Calendar connected — {n} nights blocked from {events} reservations.",
+    "filePath": "src/lib/actions/calendar-sync.actions.ts"
+  },
+  {
+    "key": "action.message.calendar_connected.two",
+    "sourceText": "Calendar connected — {n} nights blocked from {events} reservations.",
+    "filePath": "src/lib/actions/calendar-sync.actions.ts"
+  },
+  {
+    "key": "action.message.calendar_connected.zero",
+    "sourceText": "Calendar connected — {n} nights blocked from {events} reservations.",
+    "filePath": "src/lib/actions/calendar-sync.actions.ts"
+  },
+  {
+    "key": "action.message.calendar_disconnected",
+    "sourceText": "Calendar disconnected. The dates it was holding are open again.",
+    "filePath": "src/lib/actions/calendar-sync.actions.ts"
+  },
+  {
+    "key": "action.message.calendar_refreshed.few",
+    "sourceText": "Updated — {n} nights blocked.",
+    "filePath": "src/lib/actions/calendar-sync.actions.ts"
+  },
+  {
+    "key": "action.message.calendar_refreshed.many",
+    "sourceText": "Updated — {n} nights blocked.",
+    "filePath": "src/lib/actions/calendar-sync.actions.ts"
+  },
+  {
+    "key": "action.message.calendar_refreshed.one",
+    "sourceText": "Updated — {n} night blocked.",
+    "filePath": "src/lib/actions/calendar-sync.actions.ts"
+  },
+  {
+    "key": "action.message.calendar_refreshed.other",
+    "sourceText": "Updated — {n} nights blocked.",
+    "filePath": "src/lib/actions/calendar-sync.actions.ts"
+  },
+  {
+    "key": "action.message.calendar_refreshed.two",
+    "sourceText": "Updated — {n} nights blocked.",
+    "filePath": "src/lib/actions/calendar-sync.actions.ts"
+  },
+  {
+    "key": "action.message.calendar_refreshed.zero",
+    "sourceText": "Updated — {n} nights blocked.",
+    "filePath": "src/lib/actions/calendar-sync.actions.ts"
   },
   {
     "key": "admin.sidebar.audit_log",
@@ -1840,6 +2345,16 @@
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
+    "key": "booking.payment_progress.balance_note",
+    "sourceText": "The payment total above, minus any advance payment.",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.balance_title",
+    "sourceText": "Accommodation balance",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
     "key": "booking.payment_progress.chosen_method",
     "sourceText": "Chosen method",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
@@ -1920,6 +2435,11 @@
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
+    "key": "booking.payment_progress.edit_balance_report",
+    "sourceText": "Edit accommodation-balance report",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
     "key": "booking.payment_progress.edit_damage_report",
     "sourceText": "Edit damage-deposit report",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
@@ -1927,11 +2447,6 @@
   {
     "key": "booking.payment_progress.edit_damage_return",
     "sourceText": "Edit damage-deposit return report",
-    "filePath": "src/components/booking/booking-payment-progress.tsx"
-  },
-  {
-    "key": "booking.payment_progress.edit_payment_report",
-    "sourceText": "Edit payment report",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
@@ -1966,7 +2481,7 @@
   },
   {
     "key": "booking.payment_progress.event.guest_report_payment_sent",
-    "sourceText": "Reported payment sent",
+    "sourceText": "Reported sending the accommodation balance",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
@@ -1981,7 +2496,7 @@
   },
   {
     "key": "booking.payment_progress.event.host_confirm_payment_received",
-    "sourceText": "Confirmed payment received",
+    "sourceText": "Confirmed receiving the accommodation balance",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
@@ -2001,7 +2516,7 @@
   },
   {
     "key": "booking.payment_progress.event.host_mark_payment_due",
-    "sourceText": "Marked payment due",
+    "sourceText": "Marked the accommodation balance due",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
@@ -2090,6 +2605,16 @@
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
+    "key": "booking.payment_progress.mark_balance_due",
+    "sourceText": "Mark accommodation balance due",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.mark_balance_received",
+    "sourceText": "Mark accommodation balance received",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
     "key": "booking.payment_progress.mark_damage_due",
     "sourceText": "Mark damage deposit due",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
@@ -2110,23 +2635,8 @@
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
-    "key": "booking.payment_progress.mark_payment_due",
-    "sourceText": "Mark payment due",
-    "filePath": "src/components/booking/booking-payment-progress.tsx"
-  },
-  {
     "key": "booking.payment_progress.mark_payment_not_required",
     "sourceText": "Mark payment not required",
-    "filePath": "src/components/booking/booking-payment-progress.tsx"
-  },
-  {
-    "key": "booking.payment_progress.mark_payment_received",
-    "sourceText": "Mark payment received",
-    "filePath": "src/components/booking/booking-payment-progress.tsx"
-  },
-  {
-    "key": "booking.payment_progress.payment",
-    "sourceText": "Payment",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
@@ -2141,17 +2651,22 @@
   },
   {
     "key": "booking.payment_progress.payment_status.payment_confirmed",
-    "sourceText": "Payment received",
+    "sourceText": "Host confirmed receiving it",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
     "key": "booking.payment_progress.payment_status.payment_reported",
-    "sourceText": "Payment reported",
+    "sourceText": "Guest reported sending it",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
     "key": "booking.payment_progress.payment_status.untracked",
     "sourceText": "Not tracked",
+    "filePath": "src/components/booking/booking-payment-progress.tsx"
+  },
+  {
+    "key": "booking.payment_progress.refund_claimed",
+    "sourceText": "This amount is based on a payment the guest reported and the host has not confirmed. It is a claim under review, not a confirmed debt. Contact support if the two of you disagree about what was paid.",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
@@ -2190,13 +2705,13 @@
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
-    "key": "booking.payment_progress.report_damage_sent",
-    "sourceText": "Report damage deposit sent",
+    "key": "booking.payment_progress.report_balance_sent",
+    "sourceText": "Report accommodation balance sent",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
-    "key": "booking.payment_progress.report_payment_sent",
-    "sourceText": "Report payment sent",
+    "key": "booking.payment_progress.report_damage_sent",
+    "sourceText": "Report damage deposit sent",
     "filePath": "src/components/booking/booking-payment-progress.tsx"
   },
   {
@@ -3228,6 +3743,41 @@
     "key": "description.show_more",
     "sourceText": "Show more",
     "filePath": "src/components/public/expandable-description.tsx"
+  },
+  {
+    "key": "email.booking.admin_cancelled.body",
+    "sourceText": "Linger Homes support cancelled the booking for \"{listing}\" ({checkIn} – {checkOut}). Those dates are available again.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.admin_cancelled.callout",
+    "sourceText": "Linger Homes does not collect or hold booking payments, so there is nothing for us to refund — settle anything you arranged directly with the guest. Contact support if you need more detail about this cancellation.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.admin_cancelled.eyebrow",
+    "sourceText": "Booking cancelled by support",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.admin_cancelled.headline",
+    "sourceText": "Support cancelled this booking",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.admin_cancelled.intro",
+    "sourceText": "The reserved dates have been released in your calendar.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.admin_cancelled.preheader",
+    "sourceText": "Support cancelled booking {reference}.",
+    "filePath": "src/lib/email/index.ts"
+  },
+  {
+    "key": "email.booking.admin_cancelled.subject",
+    "sourceText": "Cancelled by support",
+    "filePath": "src/lib/email/index.ts"
   },
   {
     "key": "email.booking.approximate_amount",
@@ -5120,11 +5670,6 @@
     "filePath": "src/components/host/calendar-workspace.tsx"
   },
   {
-    "key": "host.calendar.minimum_nights",
-    "sourceText": "Minimum stay",
-    "filePath": "src/components/host/calendar-workspace.tsx"
-  },
-  {
     "key": "host.calendar.needs_pricing",
     "sourceText": "Add pricing on the listing edit page before managing the calendar.",
     "filePath": "src/app/(host)/host/listings/[id]/_calendar/lens-page.tsx"
@@ -5355,41 +5900,6 @@
     "filePath": "src/components/host/calendar-editor-ui.tsx"
   },
   {
-    "key": "host.calendar.standard_pricing.minimum_nights.few",
-    "sourceText": "{n} nights",
-    "filePath": "src/components/host/calendar-editor-ui.tsx"
-  },
-  {
-    "key": "host.calendar.standard_pricing.minimum_nights.many",
-    "sourceText": "{n} nights",
-    "filePath": "src/components/host/calendar-editor-ui.tsx"
-  },
-  {
-    "key": "host.calendar.standard_pricing.minimum_nights.one",
-    "sourceText": "{n} night",
-    "filePath": "src/components/host/calendar-editor-ui.tsx"
-  },
-  {
-    "key": "host.calendar.standard_pricing.minimum_nights.other",
-    "sourceText": "{n} nights",
-    "filePath": "src/components/host/calendar-editor-ui.tsx"
-  },
-  {
-    "key": "host.calendar.standard_pricing.minimum_nights.two",
-    "sourceText": "{n} nights",
-    "filePath": "src/components/host/calendar-editor-ui.tsx"
-  },
-  {
-    "key": "host.calendar.standard_pricing.minimum_nights.zero",
-    "sourceText": "{n} nights",
-    "filePath": "src/components/host/calendar-editor-ui.tsx"
-  },
-  {
-    "key": "host.calendar.standard_pricing.minimum_stay",
-    "sourceText": "Minimum stay",
-    "filePath": "src/components/host/calendar-editor-ui.tsx"
-  },
-  {
     "key": "host.calendar.standard_pricing.per_night",
     "sourceText": "/ night",
     "filePath": "src/components/host/calendar-editor-ui.tsx"
@@ -5537,7 +6047,7 @@
   {
     "key": "host.dashboard.notifications.heading",
     "sourceText": "Latest notifications",
-    "filePath": "src/app/(host)/host/page.tsx"
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
   },
   {
     "key": "host.dashboard.notifications.subheading",
@@ -5547,7 +6057,7 @@
   {
     "key": "host.dashboard.notifications.view_all",
     "sourceText": "View all",
-    "filePath": "src/app/(host)/host/page.tsx"
+    "filePath": "src/app/(host-v2)/host/v2/page.tsx"
   },
   {
     "key": "host.dashboard.pending_requests",
@@ -5675,59 +6185,319 @@
     "filePath": "src/components/host/v2/editor/amenities/amenities-workspace.tsx"
   },
   {
-    "key": "host.editor.arrival_guide.check_in_label",
-    "sourceText": "Check-in from",
-    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-workspace.tsx"
+    "key": "host.editor.arrival.add_details",
+    "sourceText": "Add details",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-cards.tsx"
   },
   {
-    "key": "host.editor.arrival_guide.check_out_label",
-    "sourceText": "Check-out by",
-    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-workspace.tsx"
+    "key": "host.editor.arrival.add_instructions",
+    "sourceText": "Add instructions",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
   },
   {
-    "key": "host.editor.arrival_guide.flexible",
-    "sourceText": "Flexible — agree with the guest",
-    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-workspace.tsx"
+    "key": "host.editor.arrival.back",
+    "sourceText": "Back to listing",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-section.tsx"
   },
   {
-    "key": "host.editor.arrival_guide.heading",
+    "key": "host.editor.arrival.back_to_list",
     "sourceText": "Arrival guide",
-    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-workspace.tsx"
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-section.tsx"
   },
   {
-    "key": "host.editor.arrival_guide.intro",
-    "sourceText": "Help guests understand what they need for arrival. Sensitive access details are shared in booking chat until secure guide storage is available.",
-    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-workspace.tsx"
+    "key": "host.editor.arrival.cancel",
+    "sourceText": "Cancel",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
   },
   {
-    "key": "host.editor.arrival_guide.open_house_rules",
-    "sourceText": "Open House rules",
-    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-workspace.tsx"
+    "key": "host.editor.arrival.change_method",
+    "sourceText": "Choose a different method",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
   },
   {
-    "key": "host.editor.arrival_guide.unavailable_advice",
-    "sourceText": "Send door codes, key instructions and Wi-Fi passwords to a confirmed guest in booking chat. Never put them in the public listing description.",
-    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-workspace.tsx"
+    "key": "host.editor.arrival.check_in_after",
+    "sourceText": "Check-in after {time}",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-cards.tsx"
   },
   {
-    "key": "host.editor.arrival_guide.unavailable_heading",
-    "sourceText": "Not stored on your listing yet",
-    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-workspace.tsx"
+    "key": "host.editor.arrival.check_in_between",
+    "sourceText": "Arrive between {start} and {end}",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-cards.tsx"
   },
   {
-    "key": "host.editor.arrival_guide.unavailable_intro",
-    "sourceText": "These topics need dedicated storage and guest-access rules before they can be edited here:",
-    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-workspace.tsx"
+    "key": "host.editor.arrival.check_in_flexible",
+    "sourceText": "Flexible check-in",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-cards.tsx"
   },
   {
-    "key": "host.editor.arrival_guide.window_heading",
-    "sourceText": "Arrival and departure times",
-    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-workspace.tsx"
+    "key": "host.editor.arrival.check_in_method_heading",
+    "sourceText": "Select a check-in method",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
   },
   {
-    "key": "host.editor.arrival_guide.window_owner",
-    "sourceText": "These times are managed in House rules so there is one place to change them.",
-    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-workspace.tsx"
+    "key": "host.editor.arrival.check_in_window",
+    "sourceText": "Check-in window",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-stay-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.check_in_window_hint",
+    "sourceText": "Flexible means guests can arrive any time after the start of the window.",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-stay-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.checkout_hint",
+    "sourceText": "Explain what's essential for guests to do before they leave. Anyone can read these before they book.",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.choose_instruction",
+    "sourceText": "Choose an instruction",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.code_warning",
+    "sourceText": "This is the only place a door code belongs. Never put one in your listing description, your title or a photo caption — those are public.",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.directions_hint",
+    "sourceText": "Let guests know how to get to your place. Include any tips for parking and public transportation.",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.directions_placeholder",
+    "sourceText": "Turn off the main road at the bakery, then it is the second gate on the left. There is space for one car in front of the house.",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.end_time",
+    "sourceText": "End time",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-stay-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.guests_maximum.few",
+    "sourceText": "{n} guests maximum",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-cards.tsx"
+  },
+  {
+    "key": "host.editor.arrival.guests_maximum.many",
+    "sourceText": "{n} guests maximum",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-cards.tsx"
+  },
+  {
+    "key": "host.editor.arrival.guests_maximum.one",
+    "sourceText": "{n} guest maximum",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-cards.tsx"
+  },
+  {
+    "key": "host.editor.arrival.guests_maximum.other",
+    "sourceText": "{n} guests maximum",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-cards.tsx"
+  },
+  {
+    "key": "host.editor.arrival.guests_maximum.two",
+    "sourceText": "{n} guests maximum",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-cards.tsx"
+  },
+  {
+    "key": "host.editor.arrival.guests_maximum.zero",
+    "sourceText": "{n} guests maximum",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-cards.tsx"
+  },
+  {
+    "key": "host.editor.arrival.guidebooks_card",
+    "sourceText": "Create a guidebook to share your local tips with guests.",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-cards.tsx"
+  },
+  {
+    "key": "host.editor.arrival.guidebooks_heading",
+    "sourceText": "Create a guidebook",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.guidebooks_hint",
+    "sourceText": "Guidebooks let you share the places you would send a friend to — restaurants, beaches, the good bakery.",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.guidebooks_meanwhile",
+    "sourceText": "Until they are, the house manual is the place for local tips — guests get it before they arrive, and it takes as much text as you want to write.",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.guidebooks_soon",
+    "sourceText": "Guidebooks are not available yet",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.halves_label",
+    "sourceText": "Listing editor sections",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-section.tsx"
+  },
+  {
+    "key": "host.editor.arrival.house_manual_hint",
+    "sourceText": "Give guests tips about your space, like how to access the internet and use the TV.",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.house_rules_hint",
+    "sourceText": "Guests agree to these when they book, and they appear on your listing page.",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-stay-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.instruction_count.few",
+    "sourceText": "{n} instructions",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-cards.tsx"
+  },
+  {
+    "key": "host.editor.arrival.instruction_count.many",
+    "sourceText": "{n} instructions",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-cards.tsx"
+  },
+  {
+    "key": "host.editor.arrival.instruction_count.one",
+    "sourceText": "{n} instruction",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-cards.tsx"
+  },
+  {
+    "key": "host.editor.arrival.instruction_count.other",
+    "sourceText": "{n} instructions",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-cards.tsx"
+  },
+  {
+    "key": "host.editor.arrival.instruction_count.two",
+    "sourceText": "{n} instructions",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-cards.tsx"
+  },
+  {
+    "key": "host.editor.arrival.instruction_count.zero",
+    "sourceText": "{n} instructions",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-cards.tsx"
+  },
+  {
+    "key": "host.editor.arrival.interaction_heading",
+    "sourceText": "Interaction with guests",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.interaction_hint",
+    "sourceText": "Let guests know if you enjoy spending time with them or prefer a hands-off approach.",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.open_house_manual",
+    "sourceText": "Open the house manual",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.remove_instruction",
+    "sourceText": "Remove instruction",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.rules_incomplete",
+    "sourceText": "Some of your house rules are incomplete. Check the rows marked below.",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-section.tsx"
+  },
+  {
+    "key": "host.editor.arrival.save",
+    "sourceText": "Save",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.save_failed",
+    "sourceText": "We couldn't save that. Check your connection and try again.",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-section.tsx"
+  },
+  {
+    "key": "host.editor.arrival.save_rejected",
+    "sourceText": "That couldn't be saved. Your listing still shows what it showed before.",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-section.tsx"
+  },
+  {
+    "key": "host.editor.arrival.saving",
+    "sourceText": "Saving…",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.sections_menu",
+    "sourceText": "Listing sections",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-section.tsx"
+  },
+  {
+    "key": "host.editor.arrival.shell_heading",
+    "sourceText": "Listing editor",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-section.tsx"
+  },
+  {
+    "key": "host.editor.arrival.start_time",
+    "sourceText": "Start time",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-stay-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.tab_guide",
+    "sourceText": "Arrival guide",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-section.tsx"
+  },
+  {
+    "key": "host.editor.arrival.tab_space",
+    "sourceText": "Your space",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-section.tsx"
+  },
+  {
+    "key": "host.editor.arrival.time",
+    "sourceText": "Time",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-stay-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.topic.check_in_checkout",
+    "sourceText": "Check-in & checkout",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-stay-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.topic.checkout_instructions",
+    "sourceText": "Checkout instructions",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.topic.directions",
+    "sourceText": "Directions",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.topic.house_manual",
+    "sourceText": "House manual",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.topic.house_rules",
+    "sourceText": "House rules",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-stay-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.topic.wifi",
+    "sourceText": "Wifi details",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.view",
+    "sourceText": "View",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-section.tsx"
+  },
+  {
+    "key": "host.editor.arrival.wifi_network",
+    "sourceText": "Wifi network name",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.wifi_password",
+    "sourceText": "Wifi password",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
+  },
+  {
+    "key": "host.editor.arrival.wifi_saved",
+    "sourceText": "Saved",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-cards.tsx"
   },
   {
     "key": "host.editor.attention_clear",
@@ -6372,7 +7142,7 @@
   {
     "key": "host.editor.house_rules.party_warning",
     "sourceText": "You already have an upcoming request or stay for {party} guests. Lowering the limit does not cancel it — it only stops new requests above {max}.",
-    "filePath": "src/components/host/v2/editor/house-rules/house-rules-workspace.tsx"
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-stay-editors.tsx"
   },
   {
     "key": "host.editor.house_rules.save_failed",
@@ -7630,6 +8400,11 @@
     "filePath": "src/components/host/v2/editor/photos/room-section.tsx"
   },
   {
+    "key": "host.editor.photos.room_add_failed",
+    "sourceText": "That room could not be added.",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
     "key": "host.editor.photos.room_cover_updated",
     "sourceText": "Room cover updated",
     "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
@@ -7657,6 +8432,11 @@
   {
     "key": "host.editor.photos.rooms_heading",
     "sourceText": "Rooms and spaces",
+    "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
+  },
+  {
+    "key": "host.editor.photos.save_failed",
+    "sourceText": "That photo could not be saved.",
     "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
   },
   {
@@ -7705,6 +8485,11 @@
     "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
   },
   {
+    "key": "host.editor.photos.upload_failed",
+    "sourceText": "Upload failed. Try again.",
+    "filePath": "src/components/host/v2/editor/photos/use-photo-upload.ts"
+  },
+  {
     "key": "host.editor.photos.upload_short",
     "sourceText": "Upload",
     "filePath": "src/components/host/v2/editor/photos/photos-workspace.tsx"
@@ -7731,7 +8516,7 @@
   },
   {
     "key": "host.editor.pricing.context_note",
-    "sourceText": "Every amount on this listing is set in this currency. Contact support to change either of these.",
+    "sourceText": "Every amount on this listing is set in this currency. Contact support to change it.",
     "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
   },
   {
@@ -7825,41 +8610,6 @@
     "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
   },
   {
-    "key": "host.editor.pricing.max_stay",
-    "sourceText": "Maximum stay",
-    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
-  },
-  {
-    "key": "host.editor.pricing.nights.few",
-    "sourceText": "{n} nights",
-    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
-  },
-  {
-    "key": "host.editor.pricing.nights.many",
-    "sourceText": "{n} nights",
-    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
-  },
-  {
-    "key": "host.editor.pricing.nights.one",
-    "sourceText": "{n} night",
-    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
-  },
-  {
-    "key": "host.editor.pricing.nights.other",
-    "sourceText": "{n} nights",
-    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
-  },
-  {
-    "key": "host.editor.pricing.nights.two",
-    "sourceText": "{n} nights",
-    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
-  },
-  {
-    "key": "host.editor.pricing.nights.zero",
-    "sourceText": "{n} nights",
-    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
-  },
-  {
     "key": "host.editor.pricing.offers_lead",
     "sourceText": "Discounts that run on every date until you end them. Offers for particular dates are set on the calendar.",
     "filePath": "src/components/host/v2/editor/ongoing-offers-editor.tsx"
@@ -7948,6 +8698,16 @@
     "key": "host.editor.pricing.review_cta",
     "sourceText": "Review and save pricing",
     "filePath": "src/components/host/v2/editor/pricing-defaults-editor.tsx"
+  },
+  {
+    "key": "host.editor.property_details.save_error",
+    "sourceText": "We couldn't save that. Check your connection and try again.",
+    "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
+  },
+  {
+    "key": "host.editor.property_details.save_failed",
+    "sourceText": "Those details couldn't be saved.",
+    "filePath": "src/components/host/v2/editor/rooms/property-details-workspace.tsx"
   },
   {
     "key": "host.editor.rooms.add",
@@ -8087,6 +8847,11 @@
   {
     "key": "host.editor.save_failed",
     "sourceText": "Not saved",
+    "filePath": "src/components/host/v2/editor/editor-header.tsx"
+  },
+  {
+    "key": "host.editor.save_failed_detail",
+    "sourceText": "Your last change was not saved. Check your connection and try again.",
     "filePath": "src/components/host/v2/editor/editor-header.tsx"
   },
   {
@@ -8573,16 +9338,6 @@
     "key": "host.form.pricing.date_prices_title",
     "sourceText": "Charge different prices on certain dates?",
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
-  },
-  {
-    "key": "host.form.pricing.min_nights",
-    "sourceText": "Minimum nights",
-    "filePath": "src/components/host/listing-form.tsx"
-  },
-  {
-    "key": "host.form.pricing.min_nights_hint",
-    "sourceText": "Shortest stay guests can book",
-    "filePath": "src/components/host/listing-form.tsx"
   },
   {
     "key": "host.form.pricing.nightly",
@@ -9736,7 +10491,7 @@
   },
   {
     "key": "host.prepublish.review_fees",
-    "sourceText": "Cleaning fee: {cleaning} · Minimum stay: {nights} nights",
+    "sourceText": "Cleaning fee: {cleaning}",
     "filePath": "src/components/host/listing-prepublish-plan.tsx"
   },
   {
@@ -10395,6 +11150,11 @@
     "filePath": "src/components/host/promotion/promotion-availability-picker.tsx"
   },
   {
+    "key": "host.promote.range_error.no_changeover_day",
+    "sourceText": "You book by the week but have not chosen a changeover day yet. Set one on your calendar first.",
+    "filePath": "src/components/host/promotion/promotion-availability-picker.tsx"
+  },
+  {
     "key": "host.promote.range_error.not_open",
     "sourceText": "Those dates are not open on your calendar. Pick a range inside your available dates.",
     "filePath": "src/components/host/promotion/promotion-availability-picker.tsx"
@@ -10422,6 +11182,16 @@
   {
     "key": "host.promote.range_error.verify",
     "sourceText": "We could not verify those dates. Check your connection and try again.",
+    "filePath": "src/components/host/promotion/promotion-availability-picker.tsx"
+  },
+  {
+    "key": "host.promote.range_error.wrong_check_in_day",
+    "sourceText": "You book by the week, so the range must start on your changeover day. Pick another range.",
+    "filePath": "src/components/host/promotion/promotion-availability-picker.tsx"
+  },
+  {
+    "key": "host.promote.range_error.wrong_check_out_day",
+    "sourceText": "You book by the week, so the range must be whole weeks ending on your changeover day. Pick another range.",
     "filePath": "src/components/host/promotion/promotion-availability-picker.tsx"
   },
   {
@@ -10588,46 +11358,6 @@
     "key": "host.promotion.summary_percent",
     "sourceText": "{percent}% off",
     "filePath": "src/components/host/listing-promotion-form.tsx"
-  },
-  {
-    "key": "host.publish_bar.pending",
-    "sourceText": "Publishing…",
-    "filePath": "src/components/host/listing-publish-bar.tsx"
-  },
-  {
-    "key": "host.publish_bar.publish",
-    "sourceText": "Publish",
-    "filePath": "src/components/host/listing-publish-bar.tsx"
-  },
-  {
-    "key": "host.publish_bar.published",
-    "sourceText": "Published",
-    "filePath": "src/components/host/listing-publish-bar.tsx"
-  },
-  {
-    "key": "host.publish_bar.success",
-    "sourceText": "Listing published",
-    "filePath": "src/components/host/listing-publish-bar.tsx"
-  },
-  {
-    "key": "host.publish.action",
-    "sourceText": "Publish Listing",
-    "filePath": "src/components/host/submit-for-review-button.tsx"
-  },
-  {
-    "key": "host.publish.intro",
-    "sourceText": "Ready to go live? Publishing makes your listing visible to guests immediately.",
-    "filePath": "src/components/host/submit-for-review-button.tsx"
-  },
-  {
-    "key": "host.publish.pending",
-    "sourceText": "Publishing...",
-    "filePath": "src/components/host/submit-for-review-button.tsx"
-  },
-  {
-    "key": "host.publish.success",
-    "sourceText": "Listing published!",
-    "filePath": "src/components/host/submit-for-review-button.tsx"
   },
   {
     "key": "host.section.amenities",
@@ -11118,6 +11848,11 @@
     "key": "host.tabs.promotions",
     "sourceText": "Promotions",
     "filePath": "src/components/host/listing-bottom-nav.tsx"
+  },
+  {
+    "key": "host.v2.account_menu",
+    "sourceText": "Account menu",
+    "filePath": "src/components/host/v2/host-v2-account-menu.tsx"
   },
   {
     "key": "host.v2.address_modal.address_label",
@@ -12095,11 +12830,6 @@
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
-    "key": "host.v2.calendar.consequence.min_nights",
-    "sourceText": "Every date on this listing will require a stay of at least {nights} nights, not only the dates you were looking at.",
-    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
-  },
-  {
     "key": "host.v2.calendar.consequence.mode_closed_losing.few",
     "sourceText": "Saving will make {n} currently bookable dates unavailable until you open them again. The listing will also leave undated search.",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
@@ -12495,6 +13225,36 @@
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
+    "key": "host.v2.calendar.day.promotions.few",
+    "sourceText": "{n} promotions",
+    "filePath": "src/components/host/v2/calendar/calendar-month-grid.tsx"
+  },
+  {
+    "key": "host.v2.calendar.day.promotions.many",
+    "sourceText": "{n} promotions",
+    "filePath": "src/components/host/v2/calendar/calendar-month-grid.tsx"
+  },
+  {
+    "key": "host.v2.calendar.day.promotions.one",
+    "sourceText": "{n} promotion",
+    "filePath": "src/components/host/v2/calendar/calendar-month-grid.tsx"
+  },
+  {
+    "key": "host.v2.calendar.day.promotions.other",
+    "sourceText": "{n} promotions",
+    "filePath": "src/components/host/v2/calendar/calendar-month-grid.tsx"
+  },
+  {
+    "key": "host.v2.calendar.day.promotions.two",
+    "sourceText": "{n} promotions",
+    "filePath": "src/components/host/v2/calendar/calendar-month-grid.tsx"
+  },
+  {
+    "key": "host.v2.calendar.day.promotions.zero",
+    "sourceText": "{n} promotions",
+    "filePath": "src/components/host/v2/calendar/calendar-month-grid.tsx"
+  },
+  {
     "key": "host.v2.calendar.default_availability",
     "sourceText": "Default availability",
     "filePath": "src/components/host/v2/calendar/manage-calendar-panel.tsx"
@@ -12627,6 +13387,11 @@
   {
     "key": "host.v2.calendar.editor.band_open",
     "sourceText": "{from}+ nights",
+    "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
+  },
+  {
+    "key": "host.v2.calendar.editor.band_partial",
+    "sourceText": "{length} (covered nights only)",
     "filePath": "src/components/host/v2/calendar/promotion-help.tsx"
   },
   {
@@ -13370,11 +14135,6 @@
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
-    "key": "host.v2.calendar.error.min_nights",
-    "sourceText": "Enter a minimum stay between 1 and {max} nights.",
-    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
-  },
-  {
     "key": "host.v2.calendar.error.mode_unchanged",
     "sourceText": "That is already the current setting.",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
@@ -13470,11 +14230,6 @@
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
   },
   {
-    "key": "host.v2.calendar.field.min_nights",
-    "sourceText": "Minimum stay",
-    "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
-  },
-  {
     "key": "host.v2.calendar.field.price",
     "sourceText": "Nightly price",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
@@ -13483,6 +14238,11 @@
     "key": "host.v2.calendar.field.promotion",
     "sourceText": "Promotion",
     "filePath": "src/components/host/v2/calendar/calendar-labels.ts"
+  },
+  {
+    "key": "host.v2.calendar.heading",
+    "sourceText": "Calendar",
+    "filePath": "src/components/host/v2/calendar/host-calendar-workspace.tsx"
   },
   {
     "key": "host.v2.calendar.help.dated_fit",
@@ -14955,6 +15715,11 @@
     "filePath": "src/components/host/v2/listings/new-listing-import.tsx"
   },
   {
+    "key": "host.v2.import.failed",
+    "sourceText": "The listing could not be imported.",
+    "filePath": "src/components/host/v2/listings/import-listing-form.tsx"
+  },
+  {
     "key": "host.v2.import.heading",
     "sourceText": "Import your listing",
     "filePath": "src/components/host/v2/listings/new-listing-import.tsx"
@@ -14965,8 +15730,23 @@
     "filePath": "src/components/host/v2/listings/new-listing-import.tsx"
   },
   {
+    "key": "host.v2.import.link_invalid",
+    "sourceText": "Enter a valid public HTTPS listing link.",
+    "filePath": "src/components/host/v2/listings/import-listing-form.tsx"
+  },
+  {
     "key": "host.v2.import.note",
     "sourceText": "Only publicly available information is imported. Review every detail before publishing.",
+    "filePath": "src/components/host/v2/listings/import-listing-form.tsx"
+  },
+  {
+    "key": "host.v2.import.rights_required",
+    "sourceText": "Confirm that you can reuse the listing content first.",
+    "filePath": "src/components/host/v2/listings/import-listing-form.tsx"
+  },
+  {
+    "key": "host.v2.import.succeeded",
+    "sourceText": "Listing imported. Review the details before publishing.",
     "filePath": "src/components/host/v2/listings/import-listing-form.tsx"
   },
   {
@@ -14993,6 +15773,11 @@
     "key": "host.v2.listings.add",
     "sourceText": "Add a listing",
     "filePath": "src/components/host/v2/listings/add-listing-menu.tsx"
+  },
+  {
+    "key": "host.v2.listings.all_archived",
+    "sourceText": "Every listing you have is archived. Show them below to bring one back.",
+    "filePath": "src/components/host/v2/listings/listing-overview.tsx"
   },
   {
     "key": "host.v2.listings.archive_body",
@@ -15072,17 +15857,17 @@
   {
     "key": "host.v2.listings.hide_confirm_action",
     "sourceText": "Take it down",
-    "filePath": "src/components/host/v2/listings/listing-visibility-switch.tsx"
+    "filePath": "src/components/host/v2/listings/listing-visibility.tsx"
   },
   {
     "key": "host.v2.listings.hide_confirm_body",
     "sourceText": "It comes off search straight away and no one can make a new booking. Bookings you already have, your dates, prices and calendar connections all stay exactly as they are — and you can put it back up whenever you want.",
-    "filePath": "src/components/host/v2/listings/listing-visibility-switch.tsx"
+    "filePath": "src/components/host/v2/listings/listing-visibility.tsx"
   },
   {
     "key": "host.v2.listings.hide_confirm_title",
     "sourceText": "Hide {title} from guests?",
-    "filePath": "src/components/host/v2/listings/listing-visibility-switch.tsx"
+    "filePath": "src/components/host/v2/listings/listing-visibility.tsx"
   },
   {
     "key": "host.v2.listings.listed",
@@ -15395,6 +16180,11 @@
     "filePath": "src/components/host/v2/messages/reservation-rail.tsx"
   },
   {
+    "key": "host.v2.messages.load_older_failed",
+    "sourceText": "Could not load earlier messages",
+    "filePath": "src/components/host/v2/messages/inbox-thread.tsx"
+  },
+  {
     "key": "host.v2.messages.manage_reservation",
     "sourceText": "Manage reservation",
     "filePath": "src/components/host/v2/messages/reservation-rail.tsx"
@@ -15450,6 +16240,11 @@
     "filePath": "src/app/(host-v2)/host/v2/messages/page.tsx"
   },
   {
+    "key": "host.v2.messages.send_failed",
+    "sourceText": "Message could not be sent",
+    "filePath": "src/components/host/v2/messages/inbox-thread.tsx"
+  },
+  {
     "key": "host.v2.messages.title",
     "sourceText": "Messages",
     "filePath": "src/components/host/v2/messages/inbox-conversation-list.tsx"
@@ -15476,7 +16271,7 @@
   },
   {
     "key": "host.v2.nav.label",
-    "sourceText": "New host panel",
+    "sourceText": "Host panel",
     "filePath": "src/components/host/v2/host-v2-nav.tsx"
   },
   {
@@ -15785,6 +16580,11 @@
     "filePath": "src/components/host/v2/listings/photos-step.tsx"
   },
   {
+    "key": "host.v2.photos.remove_failed",
+    "sourceText": "That photo could not be removed. Please try again.",
+    "filePath": "src/components/host/v2/listings/photos-step.tsx"
+  },
+  {
     "key": "host.v2.photos.reorder",
     "sourceText": "Drag to reorder photo",
     "filePath": "src/components/host/v2/listings/photos-step.tsx"
@@ -15792,6 +16592,11 @@
   {
     "key": "host.v2.photos.upload",
     "sourceText": "Upload from your device",
+    "filePath": "src/components/host/v2/listings/photos-step.tsx"
+  },
+  {
+    "key": "host.v2.photos.upload_failed",
+    "sourceText": "Your photos could not be uploaded.",
     "filePath": "src/components/host/v2/listings/photos-step.tsx"
   },
   {
@@ -16193,6 +16998,11 @@
     "key": "host.v2.reservations.guests.zero",
     "sourceText": "{n} guests",
     "filePath": "src/components/host/v2/reservations/reservation-labels.ts"
+  },
+  {
+    "key": "host.v2.reservations.heading",
+    "sourceText": "Reservations",
+    "filePath": "src/components/host/v2/reservations/host-reservations-workspace.tsx"
   },
   {
     "key": "host.v2.reservations.leave_rating",
@@ -17000,6 +17810,216 @@
     "filePath": "src/components/public/amenity-list.tsx"
   },
   {
+    "key": "listing.arrival.check_in_instructions.building_staff",
+    "sourceText": "Where to find the desk or porter, and what to ask for.",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.check_in_instructions.in_person",
+    "sourceText": "Where to meet, and how the guest should let you know they have arrived.",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.check_in_instructions.keypad",
+    "sourceText": "The code, where the keypad is, and which button confirms it.",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.check_in_instructions.lockbox",
+    "sourceText": "Where the lockbox is and the code that opens it.",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.check_in_instructions.other",
+    "sourceText": "Describe how your guests get in.",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.check_in_instructions.smart_lock",
+    "sourceText": "Which app or code opens the lock, and what to do if it does not respond.",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.check_in_method.building_staff",
+    "sourceText": "Building staff",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.check_in_method.building_staff_hint",
+    "sourceText": "Someone will be available 24 hours a day to let guests in.",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.check_in_method.in_person",
+    "sourceText": "In-person greeting",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.check_in_method.in_person_hint",
+    "sourceText": "Guests will meet you or your co-host to pick up keys.",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.check_in_method.keypad",
+    "sourceText": "Keypad",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.check_in_method.keypad_hint",
+    "sourceText": "Guests will use the code you provide to open an electronic lock.",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.check_in_method.lockbox",
+    "sourceText": "Lockbox",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.check_in_method.lockbox_hint",
+    "sourceText": "Guests will use a code you provide to open a small safe that has a key inside.",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.check_in_method.other",
+    "sourceText": "Other",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.check_in_method.other_hint",
+    "sourceText": "Guests will use a different method not listed here.",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.check_in_method.smart_lock",
+    "sourceText": "Smart lock",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.check_in_method.smart_lock_hint",
+    "sourceText": "Guests will use a code or app to open a wifi-connected lock.",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.checkout.additional",
+    "sourceText": "Additional requests",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.checkout.additional_placeholder",
+    "sourceText": "Anything else you would like guests to do before they go.",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.checkout.gather_towels",
+    "sourceText": "Gather used towels",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.checkout.gather_towels_default",
+    "sourceText": "Leave used towels in one place, for example in the bathroom.",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.checkout.lock_up",
+    "sourceText": "Lock up",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.checkout.lock_up_default",
+    "sourceText": "Close the windows and lock the door behind you.",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.checkout.note_placeholder",
+    "sourceText": "Add your own wording (optional)",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.checkout.return_keys",
+    "sourceText": "Return keys",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.checkout.return_keys_default",
+    "sourceText": "Leave the keys where the host asked you to leave them.",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.checkout.throw_trash",
+    "sourceText": "Throw trash away",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.checkout.throw_trash_default",
+    "sourceText": "Put rubbish and recycling in the bins the host has shown you.",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.checkout.turn_things_off",
+    "sourceText": "Turn things off",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.checkout.turn_things_off_default",
+    "sourceText": "Switch off the lights, the air conditioning and any appliances.",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.interaction.app_only",
+    "sourceText": "I won't be available in person, and prefer communicating through the app.",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.interaction.no_preference",
+    "sourceText": "No preference — I follow my guests' lead.",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.interaction.say_hello",
+    "sourceText": "I like to say hello in person, but keep to myself otherwise.",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.interaction.sociable",
+    "sourceText": "I like socializing and spending time with guests.",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.public_checkout",
+    "sourceText": "Before you leave",
+    "filePath": "src/components/public/public-arrival-summary.tsx"
+  },
+  {
+    "key": "listing.arrival.public_heading",
+    "sourceText": "Arriving and leaving",
+    "filePath": "src/components/public/public-arrival-summary.tsx"
+  },
+  {
+    "key": "listing.arrival.public_interaction",
+    "sourceText": "During your stay",
+    "filePath": "src/components/public/public-arrival-summary.tsx"
+  },
+  {
+    "key": "listing.arrival.public_method",
+    "sourceText": "Check-in",
+    "filePath": "src/components/public/public-arrival-summary.tsx"
+  },
+  {
+    "key": "listing.arrival.visibility.booked",
+    "sourceText": "Shared once a booking is confirmed",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.visibility.pre_arrival",
+    "sourceText": "Shared 48 hours before check-in",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
+    "key": "listing.arrival.visibility.public",
+    "sourceText": "Anyone can read this before they book",
+    "filePath": "src/lib/i18n/arrival-guide-labels.ts"
+  },
+  {
     "key": "listing.baths.few",
     "sourceText": "{n} baths",
     "filePath": "src/app/(public)/properties/[slug]/page.tsx"
@@ -17472,12 +18492,12 @@
   {
     "key": "listing.house_rules.row.check_in",
     "sourceText": "Check-in",
-    "filePath": "src/lib/i18n/house-rules-labels.ts"
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-cards.tsx"
   },
   {
     "key": "listing.house_rules.row.check_out",
     "sourceText": "Check-out",
-    "filePath": "src/lib/i18n/house-rules-labels.ts"
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-cards.tsx"
   },
   {
     "key": "listing.house_rules.row.events",

@@ -88,19 +88,34 @@ export function PropertyDetailsWorkspace({ listingId, stored, propertyTypes, roo
       const result = await updateListingPropertyDetails(listingId, next);
       if (result.error || result.issues || !result.stored) {
         endSave(true);
-        if (mounted.current) toast.error(result.error ?? "Those details couldn't be saved.");
+        if (mounted.current) {
+          toast.error(
+            result.error ??
+              resolve(
+                "host.editor.property_details.save_failed",
+                "Those details couldn't be saved.",
+              ).text,
+          );
+        }
       } else {
         confirmed.current = result.stored;
         endSave();
       }
     } catch {
       endSave(true);
-      if (mounted.current) toast.error("We couldn't save that. Check your connection and try again.");
+      if (mounted.current) {
+        toast.error(
+          resolve(
+            "host.editor.property_details.save_error",
+            "We couldn't save that. Check your connection and try again.",
+          ).text,
+        );
+      }
     } finally {
       saving.current = false;
       if (queued.current && !same(queued.current, confirmed.current)) void flushRef.current();
     }
-  }, [listingId, stored.bathrooms, stored.bedrooms]);
+  }, [listingId, resolve, stored.bathrooms, stored.bedrooms]);
   useEffect(() => { flushRef.current = flush; }, [flush]);
   useEffect(() => () => { mounted.current = false; if (timer.current) clearTimeout(timer.current); void flushRef.current(); }, []);
 

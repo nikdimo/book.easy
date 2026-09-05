@@ -411,6 +411,7 @@ export function ReservationPanel({
         <BookingPaymentProgress
           actor="HOST"
           compact
+          formats={data.formats}
           progress={{
             bookingId: reservation.id,
             status: reservation.status,

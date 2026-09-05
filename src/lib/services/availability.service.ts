@@ -8,100 +8,24 @@ import {
   todayYmd,
   ymdToDbDate,
 } from "@/lib/utils/date-only";
-import {
-  mergeAvailabilityWindows,
-  windowsOverlappingStay,
-} from "@/lib/utils/availability-windows";
-import { decideStayAvailability } from "@/lib/utils/stay-availability";
+import { mergeAvailabilityWindows } from "@/lib/utils/availability-windows";
 
 /**
- * Whether a listing can take this stay — the shared read behind every "is it free?"
- * question that is not the booking transaction itself.
+ * What the guest calendar shows as unbookable.
  *
- * Two questions in order, and the order matters. First, does the listing *offer* these
- * dates at all: a flexible listing offers whatever its availability windows cover, and a
- * weekly listing adds its changeover-day and whole-week rule. That is answered
- * by `decideStayAvailability`, the same rule `createBooking` and the guest projection go
- * through, so this cannot drift from either. Second, is anything already holding those
- * nights — bookings, holds, manual blocks and imported calendar blocks alike, which is
- * one question in both modes and is unchanged.
+ * This module used to open with `checkAvailability`, documented as "the shared read
+ * behind every 'is it free?' question" — and nothing in `src/app`, `src/components` or
+ * the mobile API ever called it. (The similarly named
+ * `/api/mobile/v1/listings/[id]/availability` is a host-authenticated *calendar
+ * management* route behind `requireMobileHost`, not a guest "can I book these dates?"
+ * endpoint.) It has been removed rather than left as a fourth implementation of a rule
+ * three live paths already share: the public calendar and booking selection, the search
+ * filter, and `createBooking`.
  *
- * `fixedStayPeriodId` is retained only for response compatibility and is always absent
- * for new date-based availability checks.
+ * The blocked-range reads below are live and stay. If a guest-facing availability
+ * endpoint is ever built, it should call `decideStayAvailability` plus a block query —
+ * the shape the deleted function had — and join the agreement suite.
  */
-export async function checkAvailability(
-  listingId: string,
-  checkIn: Date,
-  checkOut: Date
-): Promise<{
-  available: boolean;
-  conflictingDates?: { start: Date; end: Date }[];
-  fixedStayPeriodId?: string | null;
-}> {
-  const checkInYmd = dbDateToYmd(checkIn);
-  const checkOutYmd = dbDateToYmd(checkOut);
-  const listing = await db.listing.findUnique({
-    where: { id: listingId },
-    select: {
-      bookingMode: true,
-      availabilityMode: true,
-      // Every window that touches the stay, not just one that spans it: the shared rule
-      // merges them, so it has to see the neighbour a spanning-window query would drop.
-      // Availability is listing-wide, so both booking modes read these windows.
-      availabilityWindows: {
-        where: windowsOverlappingStay(checkIn, checkOut),
-        select: { startDate: true, endDate: true },
-      },
-      // What a weekly listing needs to answer the question: the day it changes over on,
-      // and how long a stay may run. Two columns rather than a relation — a weekly stay
-      // is a rule, not a row.
-      changeoverWeekday: true,
-      pricingRule: { select: { minNights: true, maxNights: true } },
-    },
-  });
-  if (!listing) return { available: false };
-
-  const decision = decideStayAvailability({
-    bookingMode: listing.bookingMode,
-    availabilityMode: listing.availabilityMode,
-    windows: listing.availabilityWindows.map((window) => ({
-      startDate: dbDateToYmd(window.startDate),
-      endDate: dbDateToYmd(window.endDate),
-    })),
-    changeoverWeekday: listing.changeoverWeekday,
-    limits: {
-      minNights: listing.pricingRule?.minNights ?? 1,
-      maxNights: listing.pricingRule?.maxNights ?? null,
-    },
-    checkIn: checkInYmd,
-    checkOut: checkOutYmd,
-    today: todayYmd(),
-  });
-  if (!decision.offered) return { available: false };
-
-  const overlapping = await db.availabilityBlock.findMany({
-    where: {
-      listingId,
-      startDate: { lt: checkOut },
-      endDate: { gt: checkIn },
-    },
-    select: { startDate: true, endDate: true },
-  });
-
-  if (overlapping.length > 0) {
-    return {
-      available: false,
-      conflictingDates: overlapping.map((b) => ({
-        start: b.startDate,
-        end: b.endDate,
-      })),
-    };
-  }
-
-  return decision.fixedStayPeriodId
-    ? { available: true, fixedStayPeriodId: decision.fixedStayPeriodId }
-    : { available: true };
-}
 
 /**
  * A run of unbookable days, as calendar dates rather than instants.

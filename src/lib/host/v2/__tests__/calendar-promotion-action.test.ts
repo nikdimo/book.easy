@@ -42,9 +42,16 @@ describe("promotionBands", () => {
     ]);
   });
 
-  it("stops a dated offer at the length that outgrows its own range", () => {
-    // A three-night offer cannot reach a stay that runs past its last night, because a
-    // dated offer applies only when the whole stay fits inside it.
+  /**
+   * #9: a stay that overruns a dated offer still gets the covered nights.
+   *
+   * This case used to assert the opposite — "a dated offer applies only when the whole
+   * stay fits inside it" — because the ladder asked `selectApplicablePromotion`, whose
+   * window test is whole-stay containment. `computeStayQuote` has always priced night by
+   * night, so the quote discounted nights 20–22 of a five-night stay while the ladder
+   * told the host their offer stopped applying at three nights.
+   */
+  it("keeps a dated offer on the ladder past its own range, marked partial", () => {
     const listing = makeListing({
       promotions: [
         promotion({
@@ -59,12 +66,27 @@ describe("promotionBands", () => {
     });
     const bands = promotionBands({ listing, selection: SELECTION, draft: null });
 
+    // Nights 1–3 sit wholly inside the window: a full-stay discount.
     expect(bands[0]).toMatchObject({
       promotionId: "dated",
       fromNights: 1,
       toNights: 3,
+      partial: false,
     });
-    expect(bands[1]).toMatchObject({ promotionId: "ten", fromNights: 10 });
+    // Longer stays overrun it. The guest still gets the three covered nights, and the
+    // band says so rather than disappearing.
+    expect(bands[1]).toMatchObject({
+      promotionId: "dated",
+      fromNights: 4,
+      partial: true,
+    });
+    // Once the always-active offer reaches every night, nothing is partial any more.
+    //
+    // It takes the headline at eleven nights rather than ten, because the ladder ranks
+    // by money saved exactly as the quote does: at ten nights the dated offer still takes
+    // more off (3 nights × 25%) than the always-active one (7 × 10%).
+    const ten = bands.find((band) => band.promotionId === "ten");
+    expect(ten).toMatchObject({ fromNights: 11, partial: false });
   });
 
   it("ranks the draft against saved offers instead of assuming it wins", () => {
@@ -222,6 +244,30 @@ describe("promotionDraftProblem", () => {
 });
 
 describe("evergreenBands", () => {
+  it("treats a stored maximum of zero as uncapped", () => {
+    const listing = makeListing({
+      pricing: {
+        currency: "EUR",
+        baseNightlyRate: 120,
+        cleaningFee: 30,
+        minNights: 2,
+        maxNights: 0,
+      },
+      promotions: [
+        promotion({ id: "five", discountPercent: 10, minimumNights: 5 }),
+      ],
+    });
+
+    expect(evergreenBands({ listing, draft: null, today: TODAY })).toEqual([
+      expect.objectContaining({
+        promotionId: "five",
+        fromNights: 5,
+        toNights: 30,
+        openEnded: true,
+      }),
+    ]);
+  });
+
   it("reads several always-active offers as a ladder", () => {
     const listing = makeListing({
       promotions: [

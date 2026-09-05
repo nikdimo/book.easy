@@ -1,0 +1,14 @@
+-- Support-initiated cancellation needs its own host-facing email kind.
+--
+-- `cancelBooking` chose between exactly two kinds: HOST_CANCELLED_BY_GUEST when the guest
+-- cancelled, and GUEST_CANCELLED otherwise. "Otherwise" swallowed both the host case and
+-- the admin case, so a support cancellation emailed the guest and sent the host nothing at
+-- all. In-app notifications already handled the admin case for both parties; email — the
+-- channel that reaches someone who is not logged in — did not.
+--
+-- Reusing HOST_CANCELLED_BY_GUEST was not an option: it tells the host their guest
+-- cancelled, which in this case is false.
+--
+-- Strictly additive. No existing row changes, and the unique (bookingId, kind) key means a
+-- booking that was already cancelled cannot collect a duplicate.
+ALTER TYPE "BookingEmailKind" ADD VALUE 'HOST_CANCELLED_BY_ADMIN';

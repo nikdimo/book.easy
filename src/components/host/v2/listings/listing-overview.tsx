@@ -11,6 +11,7 @@ import {
 import { ListingActionsMenu } from "@/components/host/v2/listings/listing-actions-menu";
 import { FacebookPromoteButton } from "@/components/host/facebook-promote-button";
 import { useTypeToSearch } from "@/lib/hooks/use-type-to-search";
+import { readStoredValue, writeStoredValue } from "@/lib/browser-storage";
 import {
   ListingModerationNotice,
   isModerationBlocked,
@@ -28,6 +29,7 @@ import {
 } from "@/lib/host/listing-state";
 import type { HostListingOverviewItem } from "@/lib/services/host-listing-overview.service";
 import { Tx, interpolate, useI18n } from "@/lib/i18n/client";
+import type { CalendarFormats } from "@/lib/host/v2/calendar-format";
 
 /**
  * The listings overview: a photo, a name, and one sentence about what is true right now.
@@ -70,8 +72,11 @@ function subscribeView(onChange: () => void) {
 }
 
 function getStoredView(): View {
+  // Guarded, because this runs inside a `useSyncExternalStore` snapshot — that is, during
+  // render — and a browser refusing storage throws on the access itself. See
+  // `lib/browser-storage.ts`.
   if (cachedView === null) {
-    cachedView = window.localStorage.getItem(VIEW_KEY) === "grid" ? "grid" : "list";
+    cachedView = readStoredValue(VIEW_KEY) === "grid" ? "grid" : "list";
   }
   return cachedView;
 }
@@ -82,7 +87,9 @@ function getServerView(): View {
 
 function storeView(next: View) {
   cachedView = next;
-  window.localStorage.setItem(VIEW_KEY, next);
+  // The in-memory cache above has already switched, so a browser that refuses the write
+  // still switches view; it simply will not remember the choice next time.
+  writeStoredValue(VIEW_KEY, next);
   viewListeners.forEach((listener) => listener());
 }
 
@@ -102,15 +109,17 @@ export function ListingOverview({
   listings,
   drafts,
   statusLabels,
+  dateFormats,
 }: {
   listings: HostListingOverviewItem[];
   drafts: DraftItem[];
   /** Resolved on the server, where the full catalog lives, and passed down so the row
    *  does not re-resolve the same seven strings for every listing. */
   statusLabels: Record<string, string>;
+  dateFormats?: CalendarFormats;
 }) {
   const { resolve } = useI18n();
-  const label = useListingStateLabel();
+  const label = useListingStateLabel(dateFormats);
   const view = useSyncExternalStore(subscribeView, getStoredView, getServerView);
   const [query, setQuery] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
@@ -194,12 +203,7 @@ export function ListingOverview({
             // page's only tint on the rows, leaving nothing for hover to say.
             <div className="divide-y divide-slate-100 border-y border-slate-100">
               {visible.length === 0 && visibleDrafts.length === 0 ? (
-                <p className="px-2 py-12 text-center text-sm text-slate-500">
-                  <Tx
-                    k="host.v2.listings.no_matches"
-                    source="No listings match your search."
-                  />
-                </p>
+                <NothingToShow searching={searching} archived={archived.length} />
               ) : (
                 <>
                   {visibleDrafts.map((draft) => (
@@ -219,23 +223,13 @@ export function ListingOverview({
             </div>
           ) : (
             visible.length === 0 ? (
-              // The list view has always had this line; the grid rendered an empty block
-              // instead, so a search with no hits looked like a broken page. A host whose
-              // only work in progress is a draft gets told where drafts live rather than
-              // that nothing matched a search they did not run.
-              <p className="px-2 py-12 text-center text-sm text-slate-500">
-                {searching ? (
-                  <Tx
-                    k="host.v2.listings.no_matches"
-                    source="No listings match your search."
-                  />
-                ) : (
-                  <Tx
-                    k="host.v2.listings.drafts_in_list"
-                    source="Your unfinished drafts appear in list view."
-                  />
-                )}
-              </p>
+              <NothingToShow
+                searching={searching}
+                archived={archived.length}
+                // The grid does not draw drafts at all, so when they are the only thing
+                // left the honest answer is where to find them — not that nothing matched.
+                draftsElsewhere={visibleDrafts.length}
+              />
             ) : (
               <div className="grid grid-cols-1 gap-x-5 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
                 {visible.map((listing) => (
@@ -273,6 +267,49 @@ export function ListingOverview({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Why this list came back empty — which is never one answer.
+ *
+ * Both views used to reach for "No listings match your search", and the list view still
+ * did so when no search had been run: a host who archives everything has an empty active
+ * list and an empty search box, and was told their search had failed. Today, meanwhile,
+ * greets the same host with "you haven't listed a home yet", so the two screens
+ * disagreed about what had happened. The cause is knowable here, so it is stated:
+ * a search with no hits, drafts the grid cannot draw, or everything filed under Archived
+ * — which the "Show N archived listings" button below this can immediately undo.
+ */
+function NothingToShow({
+  searching,
+  archived,
+  draftsElsewhere = 0,
+}: {
+  searching: boolean;
+  /** How many archived listings are being held back. */
+  archived: number;
+  /** Drafts that exist but are not drawn in this view. */
+  draftsElsewhere?: number;
+}) {
+  return (
+    <p className="px-2 py-12 text-center text-sm text-slate-500">
+      {searching ? (
+        <Tx k="host.v2.listings.no_matches" source="No listings match your search." />
+      ) : draftsElsewhere > 0 ? (
+        <Tx
+          k="host.v2.listings.drafts_in_list"
+          source="Your unfinished drafts appear in list view."
+        />
+      ) : archived > 0 ? (
+        <Tx
+          k="host.v2.listings.all_archived"
+          source="Every listing you have is archived. Show them below to bring one back."
+        />
+      ) : (
+        <Tx k="host.v2.listings.no_matches" source="No listings match your search." />
+      )}
+    </p>
   );
 }
 
@@ -555,7 +592,7 @@ function ListingTile({
           slug={listing.slug}
           title={listing.title}
           status={listing.status}
-          className="absolute right-2 top-2 bg-white/95 opacity-0 shadow-sm transition-opacity focus-visible:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
+          className="absolute right-2 top-2 bg-white/95 opacity-100 shadow-sm transition-opacity sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
         />
       </div>
       <Link

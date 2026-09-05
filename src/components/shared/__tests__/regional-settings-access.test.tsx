@@ -95,13 +95,10 @@ describe("the shared trigger", () => {
 
 describe("the host panel shell", () => {
   it("mounts the regional-settings dialog once for the whole panel", async () => {
-    const t = await getTForLocale("en");
-
     const html = renderToStaticMarkup(
       <HostV2Shell
         userName="Nikola Dimovski"
         userEmail="host@example.com"
-        t={t}
         regionalSettings={<div data-testid="regional-settings-dialog" />}
       >
         <p>Panel</p>

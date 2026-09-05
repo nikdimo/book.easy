@@ -2,6 +2,7 @@ import "server-only";
 
 import { BookingStatus, ListingStatus, type Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
+import { NO_POPULARITY } from "@/lib/services/popularity.service";
 
 export const UNPUBLISH_PENDING_BOOKINGS_ERROR =
   "Accept or decline pending booking requests before unpublishing this listing.";
@@ -52,7 +53,10 @@ export async function unpublishOwnedListing(
 
     await tx.listing.update({
       where: { id: listingId },
-      data: { status: ListingStatus.UNPUBLISHED },
+      // The score goes with the visibility. `recomputePopularityScores` only scores
+      // APPROVED listings, so a score left behind here would sit untouched until the
+      // listing was republished and then rank it on months-old traffic.
+      data: { status: ListingStatus.UNPUBLISHED, ...NO_POPULARITY },
     });
     return { success: true, listingTitle: listing.title };
   });
@@ -90,7 +94,7 @@ export async function archiveOwnedListing(
 
     await tx.listing.update({
       where: { id: listingId },
-      data: { status: ListingStatus.ARCHIVED },
+      data: { status: ListingStatus.ARCHIVED, ...NO_POPULARITY },
     });
     return { success: true, listingTitle: listing.title };
   });
@@ -122,6 +126,7 @@ export async function suspendListingForAdmin(
         status: ListingStatus.SUSPENDED,
         moderationNote: reason,
         needsReview: false,
+        ...NO_POPULARITY,
       },
     });
     return { success: true, listingTitle: listing.title };

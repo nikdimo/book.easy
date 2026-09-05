@@ -801,7 +801,7 @@ describe("date review — fail closed", () => {
  * where it lives, in listing-publish-readiness.test.ts.
  */
 describe("listing review — what it will no longer do", () => {
-  it("has no listing-wide change that publishes, hides or sets a bare minimum stay", () => {
+  it("has no listing-wide change that publishes, hides or touches a stay limit", () => {
     // A compile-time fact made explicit: `ListingChange` has exactly three kinds, and
     // none of them is a visibility move. If one is ever added back, this list is the
     // place that has to say so out loud.
@@ -811,20 +811,22 @@ describe("listing review — what it will no longer do", () => {
       "EVERGREEN_PROMOTION",
     ];
     expect(kinds).toHaveLength(3);
-    // The minimum stay is still changeable — through the whole-rule pricing edit the
-    // Pricing section stages, which resends the untouched fields from the loaded rule.
+    // And the one that touches the pricing rule is money only. A stay limit forced
+    // into the change is not merged, not reviewed and not saved: the step carries the
+    // two amounts and nothing else, so a Pricing tab rendered before a booking-rule
+    // edit cannot write its stale minimum back over it.
     const plan = listingPlan(makeListing(), {
       kind: "DEFAULT_PRICING",
-      to: { minNights: 5 },
+      to: { baseNightlyRate: 145, minNights: 5, maxNights: 9 } as never,
     });
     expect(plan.steps).toEqual([
       {
         type: "SET_DEFAULT_PRICING",
-        baseNightlyRate: 120,
+        baseNightlyRate: 145,
         cleaningFee: 30,
-        minNights: 5,
       },
     ]);
+    expect(plan.rows.map((row) => row.field)).toEqual(["base_price"]);
   });
 });
 
@@ -884,56 +886,57 @@ describe("listing review — availability mode", () => {
   });
 });
 
-describe("listing review — minimum stay, through default pricing", () => {
-  it("saves it as a listing-wide change, resending the untouched fields", () => {
+/**
+ * Stay limits are not a pricing change and cannot be made into one.
+ *
+ * They are saved from Availability → Booking rules by `setListingStayLimits`, which is
+ * their only writer. The review model used to merge a `minNights` into the whole-rule
+ * pricing mutation, which is what let a stale Pricing tab undo a booking-rule edit.
+ */
+describe("listing review — stay limits are not pricing", () => {
+  it("stages no change at all when only a stay limit is proposed", () => {
     const plan = listingPlan(makeListing(), {
       kind: "DEFAULT_PRICING",
-      to: { minNights: 5 },
+      to: { minNights: 5 } as never,
     });
-    expect(plan.rows).toEqual([
-      {
-        field: "min_nights",
-        before: { code: "NIGHTS", nights: 2 },
-        after: { code: "NIGHTS", nights: 5 },
-      },
+    expect(plan.errors).toEqual([{ code: "NO_CHANGES" }]);
+    expect(plan.steps).toEqual([]);
+    expect(plan.savable).toBe(false);
+  });
+
+  it("never reports a stay limit as a reviewed row or consequence", () => {
+    const plan = listingPlan(makeListing(), {
+      kind: "DEFAULT_PRICING",
+      to: { cleaningFee: 40, minNights: 5, maxNights: 9 } as never,
+    });
+    expect(plan.rows.map((row) => row.field)).toEqual(["cleaning_fee"]);
+    expect(plan.consequences.map((consequence) => consequence.code)).toEqual([
+      "CLEANING_FEE_ALL_STAYS",
     ]);
-    expect(plan.consequences).toEqual([
-      { code: "MIN_NIGHTS_ALL_DATES", minNights: 5 },
-    ]);
+    expect(plan.steps[0]).toEqual({
+      type: "SET_DEFAULT_PRICING",
+      baseNightlyRate: 120,
+      cleaningFee: 40,
+    });
+  });
+
+  it("does not validate a minimum stay it will not write", () => {
+    // The old model refused a minimum over the listing's maximum, because it was about
+    // to save one. With nothing to save there is nothing to refuse — the price change
+    // beside it goes through untouched.
+    const plan = listingPlan(makeListing(), {
+      kind: "DEFAULT_PRICING",
+      to: { baseNightlyRate: 150, minNights: 400 } as never,
+    });
+    expect(plan.savable).toBe(true);
+    expect(plan.errors).toEqual([]);
     expect(plan.steps).toEqual([
       {
         type: "SET_DEFAULT_PRICING",
-        minNights: 5,
-        baseNightlyRate: 120,
+        baseNightlyRate: 150,
         cleaningFee: 30,
       },
     ]);
-  });
-
-  it.each([0, 1.5, -3, 400, Number.NaN])(
-    "rejects the minimum stay %p",
-    (value) => {
-      const plan = listingPlan(makeListing(), {
-        kind: "DEFAULT_PRICING",
-        to: { minNights: value },
-      });
-      expect(plan.steps).toEqual([]);
-      expect(plan.savable).toBe(false);
-    },
-  );
-
-  it("refuses a minimum stay longer than the listing's maximum", () => {
-    // `makeListing` carries the default 365-night maximum, and the review refuses
-    // rather than letting a rule through that the pricing service would reject.
-    const plan = listingPlan(makeListing(), {
-      kind: "DEFAULT_PRICING",
-      to: { minNights: 366 },
-    });
-    expect(plan.errors).toContainEqual({
-      code: "INVALID_MIN_NIGHTS",
-      maxNights: 365,
-    });
-    expect(plan.savable).toBe(false);
   });
 });
 
@@ -961,7 +964,6 @@ describe("listing review — default pricing", () => {
         type: "SET_DEFAULT_PRICING",
         baseNightlyRate: 145,
         cleaningFee: 30,
-        minNights: 2,
       },
     ]);
   });
@@ -969,13 +971,12 @@ describe("listing review — default pricing", () => {
   it("reviews every edited pricing field but still emits one atomic service call", () => {
     const plan = listingPlan(makeListing(), {
       kind: "DEFAULT_PRICING",
-      to: { baseNightlyRate: 150, cleaningFee: 40, minNights: 4 },
+      to: { baseNightlyRate: 150, cleaningFee: 40 },
     });
 
     expect(plan.rows.map((row) => row.field)).toEqual([
       "base_price",
       "cleaning_fee",
-      "min_nights",
     ]);
     expect(plan.consequences).toEqual([
       { code: "BASE_PRICE_FALLBACK", amount: 150 },
@@ -984,7 +985,6 @@ describe("listing review — default pricing", () => {
         amount: 40,
         freeCleaningBenefitsRemoved: 0,
       },
-      { code: "MIN_NIGHTS_ALL_DATES", minNights: 4 },
     ]);
     expect(plan.steps).toHaveLength(1);
   });
@@ -1009,10 +1009,9 @@ describe("listing review — default pricing", () => {
         freeCleaningBenefitsRemoved: 2,
       },
     ]);
-    expect(plan.steps[0]).toMatchObject({
+    expect(plan.steps[0]).toEqual({
       type: "SET_DEFAULT_PRICING",
       baseNightlyRate: 120,
-      minNights: 2,
       cleaningFee: 0,
     });
   });
@@ -1039,13 +1038,11 @@ describe("listing review — default pricing", () => {
       to: {
         baseNightlyRate: 0,
         cleaningFee: -1,
-        minNights: 400,
       },
     });
     expect(plan.errors).toEqual([
       { code: "INVALID_PRICE" },
       { code: "INVALID_CLEANING_FEE" },
-      { code: "INVALID_MIN_NIGHTS", maxNights: 365 },
     ]);
     expect(plan.steps).toEqual([]);
     expect(plan.savable).toBe(false);

@@ -186,7 +186,8 @@ export function InboxConversationList({
             const active = conversation.id === activeId;
             const unread = conversation.unreadCount > 0;
             const stay = conversation.booking
-              ? formatStayRange(
+              ? conversation.display?.stayRange ??
+                formatStayRange(
                   conversation.booking.checkIn,
                   conversation.booking.checkOut,
                   locale
@@ -237,7 +238,8 @@ export function InboxConversationList({
                       </span>
                       {conversation.lastMessageAt ? (
                         <span className="shrink-0 text-xs text-slate-500">
-                          {formatStamp(conversation.lastMessageAt, locale)}
+                          {conversation.display?.lastMessageStamp ??
+                            formatStamp(conversation.lastMessageAt, locale)}
                         </span>
                       ) : null}
                     </span>

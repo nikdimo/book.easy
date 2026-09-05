@@ -200,3 +200,147 @@ describe("checkPromotionRange", () => {
     expect(mocks.blockFindFirst).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * #6: the weekly rule, which this check used to skip entirely.
+ *
+ * The `select` read `availabilityMode`, `minNights`/`maxNights` and the windows — but
+ * neither `bookingMode` nor `changeoverWeekday`. A weekly host could therefore validate
+ * and publish a Tue-to-Fri range to a Facebook group that `createBooking` refuses with
+ * "Check-in must be on a Saturday": exactly the failure the doc above this function says
+ * it exists to prevent.
+ *
+ * 2026-10-03 is a Saturday, and so is every seventh day from it.
+ */
+describe("checkPromotionRange on a weekly listing", () => {
+  const weekly = (overrides: Record<string, unknown> = {}) =>
+    openListing({
+      bookingMode: "FIXED_STAYS",
+      changeoverWeekday: "SATURDAY",
+      pricingRule: { minNights: 7, maxNights: 28 },
+      ...overrides,
+    });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.listingFindFirst.mockResolvedValue(weekly());
+    mocks.blockFindFirst.mockResolvedValue(null);
+  });
+
+  it("reads the two columns the weekly shape is made of", async () => {
+    await checkPromotionRange("host-1", "listing-1", "2026-10-03", "2026-10-10", TODAY);
+    const [{ select }] = mocks.listingFindFirst.mock.calls[0];
+    expect(select).toMatchObject({ bookingMode: true, changeoverWeekday: true });
+  });
+
+  it("accepts a whole week starting on the changeover day", async () => {
+    expect(
+      await checkPromotionRange("host-1", "listing-1", "2026-10-03", "2026-10-10", TODAY),
+    ).toEqual({ ok: true, checkIn: "2026-10-03", checkOut: "2026-10-10", nights: 7 });
+  });
+
+  it("refuses a range starting on the wrong weekday", async () => {
+    // Tuesday to Friday — the audit's example, published to a group before this fix.
+    expect(
+      await checkPromotionRange("host-1", "listing-1", "2026-10-06", "2026-10-09", TODAY),
+    ).toEqual({ ok: false, reason: "WRONG_CHECK_IN_DAY" });
+  });
+
+  it("refuses a range that starts right but is not whole weeks", async () => {
+    expect(
+      await checkPromotionRange("host-1", "listing-1", "2026-10-03", "2026-10-09", TODAY),
+    ).toEqual({ ok: false, reason: "WRONG_CHECK_OUT_DAY" });
+  });
+
+  it("fails closed when the host has not chosen a changeover day", async () => {
+    mocks.listingFindFirst.mockResolvedValue(weekly({ changeoverWeekday: null }));
+
+    expect(
+      await checkPromotionRange("host-1", "listing-1", "2026-10-03", "2026-10-10", TODAY),
+    ).toEqual({ ok: false, reason: "NO_CHANGEOVER_DAY" });
+  });
+
+  it("still enforces the listing's own stay limits", async () => {
+    mocks.listingFindFirst.mockResolvedValue(
+      weekly({ pricingRule: { minNights: 14, maxNights: 21 } }),
+    );
+    expect(
+      await checkPromotionRange("host-1", "listing-1", "2026-10-03", "2026-10-10", TODAY),
+    ).toEqual({ ok: false, reason: "BELOW_MINIMUM", minNights: 14 });
+    expect(
+      await checkPromotionRange("host-1", "listing-1", "2026-10-03", "2026-11-07", TODAY),
+    ).toEqual({ ok: false, reason: "ABOVE_MAXIMUM", maxNights: 21 });
+  });
+
+  /** The weekday is the thing the host can act on, so it is reported ahead of length. */
+  it("reports the weekday before the length when both are wrong", async () => {
+    mocks.listingFindFirst.mockResolvedValue(
+      weekly({ pricingRule: { minNights: 14, maxNights: 21 } }),
+    );
+    expect(
+      await checkPromotionRange("host-1", "listing-1", "2026-10-06", "2026-10-08", TODAY),
+    ).toEqual({ ok: false, reason: "WRONG_CHECK_IN_DAY" });
+  });
+
+  it("still applies the availability windows of a CLOSED weekly calendar", async () => {
+    mocks.listingFindFirst.mockResolvedValue(
+      weekly({ availabilityMode: "CLOSED", availabilityWindows: [] }),
+    );
+    expect(
+      await checkPromotionRange("host-1", "listing-1", "2026-10-03", "2026-10-10", TODAY),
+    ).toEqual({ ok: false, reason: "NOT_OPEN" });
+  });
+});
+
+/**
+ * The regression the audit warned about when centralising on the shared helper: routing
+ * this check through `decideStayAvailability` before finding #4 landed would have
+ * dropped minimum- and maximum-stay enforcement for *flexible* listings entirely,
+ * letting one advertise a 2-night stay under a 5-night minimum.
+ */
+describe("checkPromotionRange keeps flexible stay limits after centralising", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.blockFindFirst.mockResolvedValue(null);
+    mocks.listingFindFirst.mockResolvedValue(
+      openListing({
+        bookingMode: "FLEXIBLE",
+        changeoverWeekday: null,
+        pricingRule: { minNights: 5, maxNights: 14 },
+      }),
+    );
+  });
+
+  it("refuses a range under the flexible minimum", async () => {
+    expect(
+      await checkPromotionRange("host-1", "listing-1", "2026-10-01", "2026-10-03", TODAY),
+    ).toEqual({ ok: false, reason: "BELOW_MINIMUM", minNights: 5 });
+  });
+
+  it("refuses a range over the flexible maximum", async () => {
+    expect(
+      await checkPromotionRange("host-1", "listing-1", "2026-10-01", "2026-10-20", TODAY),
+    ).toEqual({ ok: false, reason: "ABOVE_MAXIMUM", maxNights: 14 });
+  });
+
+  it("accepts a range inside them, on any weekday", async () => {
+    // A Thursday check-in: a flexible listing has no changeover rule to break.
+    expect(
+      await checkPromotionRange("host-1", "listing-1", "2026-10-01", "2026-10-08", TODAY),
+    ).toEqual({ ok: true, checkIn: "2026-10-01", checkOut: "2026-10-08", nights: 7 });
+  });
+
+  it("treats a stored maximum of 0 as no cap", async () => {
+    mocks.listingFindFirst.mockResolvedValue(
+      openListing({
+        bookingMode: "FLEXIBLE",
+        changeoverWeekday: null,
+        pricingRule: { minNights: 1, maxNights: 0 },
+      }),
+    );
+    expect(
+      (await checkPromotionRange("host-1", "listing-1", "2026-10-01", "2027-01-01", TODAY))
+        .ok,
+    ).toBe(true);
+  });
+});

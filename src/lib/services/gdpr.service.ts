@@ -6,6 +6,7 @@ import {
   processPendingUploadDeletions,
   sweepUploads,
 } from '@/lib/storage/upload-cleanup';
+import { parseCancellationSettlementSnapshot } from '@/lib/payments/cancellation-policy';
 import { dbDateToYmd, todayYmd, ymdToDbDate } from '@/lib/utils/date-only';
 import { recordBookingTimelineEvent } from '@/lib/services/booking-timeline.service';
 
@@ -358,6 +359,7 @@ export function erasedEmailFor(userId: string): string {
 
 export type AccountDeletionRefusal =
   | 'ACTIVE_BOOKING'
+  | 'OPEN_OBLIGATION'
   | 'TOKEN_INVALID'
   | 'TOKEN_ALREADY_USED'
   | 'ACCOUNT_NOT_FOUND';
@@ -410,6 +412,121 @@ function describeBlockingBookings(userId: string, rows: BlockingBooking[]): stri
     `Your account still has ${parts.join(' and ')} that ${one ? 'has' : 'have'} not ` +
     `finished yet — the last one ends on ${last}. Cancel or complete ${one ? 'it' : 'them'} ` +
     `first, then request deletion again.`
+  );
+}
+
+/**
+ * Money this account is still in the middle of, on either side of a booking.
+ *
+ * Deletion already refuses a confirmed stay that has not finished. It did not refuse an
+ * open *financial* obligation, so a host holding a guest's damage deposit — or one the
+ * platform had recorded as owing an accommodation refund — could erase themselves. The
+ * refund reminder job then kept targeting a deleted user, and the guest lost the
+ * counterparty to an obligation the platform itself opened and recorded.
+ *
+ * Four properties this guard has to have, and each one is a decision rather than an
+ * accident:
+ *
+ * **Established money only.** A `*_REPORTED` status is one side's own claim (see the
+ * `BookingPaymentStatus` doc in the schema). A claim is enough to open an obligation; it
+ * is not enough to suspend somebody's right to erasure indefinitely, because the person
+ * being blocked has no way to make the other side confirm. So an obligation blocks only
+ * where the money is proven: a `DEPOSIT_CONFIRMED` deposit the host still holds, or a
+ * refund whose settlement snapshot records `refundBasis: CONFIRMED`. An `AWAITING_REFUND`
+ * built on `refundBasis: CLAIMED` — or on a version-1 snapshot, whose basis reads back as
+ * `UNKNOWN` — is not proof that confirmed money moved, and does not block.
+ *
+ * **Symmetry.** `REFUND_REPORTED` and `RETURN_REPORTED` are the same situation on two
+ * tracks: the paying side says they have paid and the other side has not confirmed. A
+ * report discharges the reporter's own prompt, exactly as it does for reminders, so
+ * neither blocks the reporter.
+ *
+ * **Role sensitivity.** What blocks a host is money they are holding or owe. What blocks
+ * a guest is money they owe — an accommodation balance or deposit the host has recorded
+ * as still due on a live booking.
+ *
+ * **A bounded resolution path.** Every refusal names the specific obligation and sends
+ * the person to support, because some of these cannot be cleared by the blocked party
+ * acting alone. Support can settle, write off or record the obligation, after which
+ * erasure proceeds. This guard is deliberately not the place that decides how a
+ * *disputed* obligation ends — that needs privacy and legal review, and until it has one
+ * a disputed (claimed) obligation does not block at all.
+ */
+interface ObligationBooking {
+  id: string;
+  reference: string;
+  guestId: string;
+  status: string;
+  damageDepositAmount: unknown;
+  damageDepositStatus: string;
+  accommodationRefundAmount: unknown;
+  accommodationRefundStatus: string;
+  cancellationSettlementSnapshot: unknown;
+  paymentStatus: string;
+  advancePaymentStatus: string;
+}
+
+/** The deposit statuses that mean the host is holding confirmed guest money. */
+const HOST_HOLDS_CONFIRMED_DEPOSIT = 'DEPOSIT_CONFIRMED';
+
+/** A booking whose stay is still live enough for an unpaid balance to be a real debt. */
+const GUEST_DEBT_STATUSES = ['CONFIRMED', 'COMPLETED'];
+
+function obligationRefusals(
+  userId: string,
+  rows: ObligationBooking[],
+): string[] {
+  const refusals: string[] = [];
+  for (const booking of rows) {
+    const isGuest = booking.guestId === userId;
+    const amount = (value: unknown) => Number(value ?? 0);
+
+    if (!isGuest) {
+      // Host side: money they are holding, or money they owe and it is proven.
+      if (
+        booking.damageDepositStatus === HOST_HOLDS_CONFIRMED_DEPOSIT &&
+        amount(booking.damageDepositAmount) > 0
+      ) {
+        refusals.push(
+          `booking ${booking.reference}: you confirmed receiving a refundable damage deposit that has not been returned`,
+        );
+      }
+      if (
+        booking.accommodationRefundStatus === 'AWAITING_REFUND' &&
+        amount(booking.accommodationRefundAmount) > 0 &&
+        parseCancellationSettlementSnapshot(booking.cancellationSettlementSnapshot)
+          ?.refundBasis === 'CONFIRMED'
+      ) {
+        refusals.push(
+          `booking ${booking.reference}: an accommodation refund you have not reported sending`,
+        );
+      }
+      continue;
+    }
+
+    // Guest side: money they owe on a stay that is still live.
+    if (!GUEST_DEBT_STATUSES.includes(booking.status)) continue;
+    if (booking.paymentStatus === 'AWAITING_PAYMENT') {
+      refusals.push(
+        `booking ${booking.reference}: an accommodation balance the host has recorded as still due`,
+      );
+    }
+    if (booking.advancePaymentStatus === 'AWAITING_PAYMENT') {
+      refusals.push(
+        `booking ${booking.reference}: an advance payment the host has recorded as still due`,
+      );
+    }
+  }
+  return refusals;
+}
+
+function describeOpenObligations(refusals: string[]): string {
+  const one = refusals.length === 1;
+  return (
+    `Your account still has ${one ? 'an open obligation' : 'open obligations'} recorded ` +
+    `against ${one ? 'a booking' : 'bookings'} — ${refusals.join('; ')}. ` +
+    `Settle ${one ? 'it' : 'them'} on the booking, or contact support to have ` +
+    `${one ? 'it' : 'them'} resolved, then request deletion again.`
   );
 }
 
@@ -497,6 +614,36 @@ export async function deleteUserAccount(
         throw new AccountDeletionBlockedError(
           'ACTIVE_BOOKING',
           describeBlockingBookings(userId, blocking)
+        );
+      }
+
+      // Open money, on either side. Same reason it is inside the transaction: an
+      // obligation must not be opened between the check and the erasure.
+      const obligations = await tx.booking.findMany({
+        where: {
+          OR: [{ guestId: userId }, { listing: { hostId: userId } }],
+          // Everything except the states in which no money was ever in play.
+          status: { notIn: ['PENDING', 'REJECTED', 'EXPIRED'] },
+        },
+        select: {
+          id: true,
+          reference: true,
+          guestId: true,
+          status: true,
+          damageDepositAmount: true,
+          damageDepositStatus: true,
+          accommodationRefundAmount: true,
+          accommodationRefundStatus: true,
+          cancellationSettlementSnapshot: true,
+          paymentStatus: true,
+          advancePaymentStatus: true,
+        },
+      });
+      const refusals = obligationRefusals(userId, obligations);
+      if (refusals.length > 0) {
+        throw new AccountDeletionBlockedError(
+          'OPEN_OBLIGATION',
+          describeOpenObligations(refusals)
         );
       }
 

@@ -94,8 +94,172 @@ describe("flexible listings are unchanged", () => {
     }
   });
 
-  it("keeps minimum and maximum night rules in force", () => {
+  it("identifies the internal flexible booking mode", () => {
     expect(isFixedStayBookingMode("FLEXIBLE")).toBe(false);
+  });
+});
+
+/**
+ * #4: the two listing-wide rules the flexible branch used to return above.
+ *
+ * The test that should have caught this was named "keeps minimum and maximum night rules
+ * in force" and asserted only that `"FLEXIBLE"` is not the fixed mode. It tested nothing
+ * about limits, so the gap it named survived every run.
+ *
+ * The consequence was real. `createBooking` re-implemented the limits itself and the
+ * action-layer Zod refinement re-implemented the past-date rule, so the booking path held
+ * — but search built its flexible arm without the past-date rule (past-dated searches
+ * listed flexible listings as bookable), and promotion validation could not be routed
+ * through this helper without losing min/max enforcement entirely.
+ */
+describe("a flexible listing obeys its listing-wide stay limits", () => {
+  const limited = (overrides: Partial<StayAvailabilityInput> = {}) =>
+    ask({ limits: { minNights: 3, maxNights: 14 }, ...overrides });
+
+  it("offers a stay inside the limits", () => {
+    expect(decideStayAvailability(limited()).offered).toBe(true);
+  });
+
+  it("refuses a stay one night under the minimum", () => {
+    expect(
+      decideStayAvailability(
+        limited({ checkIn: "2027-06-05", checkOut: "2027-06-07" }),
+      ),
+    ).toEqual({ offered: false, reason: "BELOW_MINIMUM" });
+  });
+
+  it("refuses a stay one night over the maximum", () => {
+    expect(
+      decideStayAvailability(
+        limited({ checkIn: "2027-06-05", checkOut: "2027-06-20" }),
+      ),
+    ).toEqual({ offered: false, reason: "ABOVE_MAXIMUM" });
+  });
+
+  it("offers a stay exactly at each boundary", () => {
+    expect(
+      decideStayAvailability(
+        limited({ checkIn: "2027-06-05", checkOut: "2027-06-08" }),
+      ).offered,
+    ).toBe(true);
+    expect(
+      decideStayAvailability(
+        limited({ checkIn: "2027-06-05", checkOut: "2027-06-19" }),
+      ).offered,
+    ).toBe(true);
+  });
+
+  /** The product-wide reading of the stored column, now shared by both branches. */
+  it("treats a stored maximum of 0 as no cap", () => {
+    expect(
+      decideStayAvailability(
+        ask({
+          limits: { minNights: 1, maxNights: 0 },
+          checkIn: "2027-06-05",
+          checkOut: "2027-12-05",
+        }),
+      ).offered,
+    ).toBe(true);
+  });
+
+  it("applies no limit at all when the caller supplies none", () => {
+    expect(
+      decideStayAvailability(
+        ask({ checkIn: "2027-06-05", checkOut: "2027-06-06" }),
+      ).offered,
+    ).toBe(true);
+  });
+});
+
+describe("a flexible listing does not offer a stay that has already begun", () => {
+  it("refuses a check-in before today", () => {
+    expect(
+      decideStayAvailability(
+        ask({ checkIn: "2027-05-20", checkOut: "2027-05-27" }),
+      ),
+    ).toEqual({ offered: false, reason: "STAY_IN_PAST" });
+  });
+
+  it("still offers a check-in today", () => {
+    expect(
+      decideStayAvailability(
+        ask({ checkIn: TODAY, checkOut: "2027-06-08" }),
+      ).offered,
+    ).toBe(true);
+  });
+
+  /** The rule is listing-wide, so a CLOSED calendar covering the dates cannot save it. */
+  it("refuses a past stay even inside an open window", () => {
+    expect(
+      decideStayAvailability(
+        ask({
+          availabilityMode: "CLOSED",
+          windows: [{ startDate: "2027-05-01", endDate: "2027-07-01" }],
+          checkIn: "2027-05-20",
+          checkOut: "2027-05-27",
+        }),
+      ),
+    ).toEqual({ offered: false, reason: "STAY_IN_PAST" });
+  });
+});
+
+/**
+ * Precedence, pinned. Adding the limit and past-date rules to the flexible branch must
+ * not reorder the weekly one: a guest who picks the wrong arrival day is told *that*,
+ * not that their week is the wrong length, because the weekday is the thing they can act
+ * on. This is why the two rules were written inside the flexible branch rather than
+ * hoisted above the mode split.
+ */
+describe("weekly shape errors still outrank limit and past-date errors", () => {
+  const weekly = (overrides: Partial<StayAvailabilityInput> = {}) =>
+    ask({
+      bookingMode: "FIXED_STAYS",
+      changeoverWeekday: "SATURDAY",
+      limits: { minNights: 14, maxNights: 21 },
+      ...overrides,
+    });
+
+  it("reports the wrong check-in day rather than the length", () => {
+    // A Tuesday check-in *and* only one night: two rules broken, one answer.
+    expect(
+      decideStayAvailability(
+        weekly({ checkIn: "2027-06-08", checkOut: "2027-06-09" }),
+      ),
+    ).toEqual({ offered: false, reason: "WRONG_CHECK_IN_DAY" });
+  });
+
+  it("reports the wrong check-out day rather than the length", () => {
+    expect(
+      decideStayAvailability(
+        weekly({ checkIn: "2027-06-05", checkOut: "2027-06-07" }),
+      ),
+    ).toEqual({ offered: false, reason: "WRONG_CHECK_OUT_DAY" });
+  });
+
+  it("reports the wrong check-in day rather than the past-date rule", () => {
+    // A past Tuesday: both the shape and the calendar are against it.
+    expect(
+      decideStayAvailability(
+        weekly({ checkIn: "2027-05-18", checkOut: "2027-05-25" }),
+      ),
+    ).toEqual({ offered: false, reason: "WRONG_CHECK_IN_DAY" });
+  });
+
+  it("reports the length rather than the past-date rule", () => {
+    // A past Saturday of the right shape but under the minimum.
+    expect(
+      decideStayAvailability(
+        weekly({ checkIn: "2027-05-22", checkOut: "2027-05-29" }),
+      ),
+    ).toEqual({ offered: false, reason: "BELOW_MINIMUM" });
+  });
+
+  it("still reports the past-date rule when the shape and length are fine", () => {
+    expect(
+      decideStayAvailability(
+        weekly({ checkIn: "2027-05-15", checkOut: "2027-05-29" }),
+      ),
+    ).toEqual({ offered: false, reason: "STAY_IN_PAST" });
   });
 });
 

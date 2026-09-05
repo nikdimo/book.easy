@@ -13,6 +13,7 @@ export const LISTING_HOUSE_RULES_SELECT = {
   slug: true,
   status: true,
   checkInTime: true,
+  checkInEndTime: true,
   checkOutTime: true,
   maxGuests: true,
   petPolicy: true,

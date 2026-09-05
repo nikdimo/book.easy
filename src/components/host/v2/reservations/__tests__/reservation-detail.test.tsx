@@ -159,9 +159,12 @@ describe("ReservationDetail", () => {
 
   it("projects the confirmed booking's manual payment controls", () => {
     expect(html).toContain("Payment progress");
+    expect(html).toContain('data-payment-track="accommodation-balance"');
     expect(html).toContain('data-payment-track="advance-payment"');
     expect(html).toContain('data-payment-track="damage-deposit"');
-    expect(html).toContain("Mark payment received");
+    // Named for the track it moves. "Mark payment received" read as "everything is
+    // settled" on a booking with an advance, when what it confirms is the balance (#1).
+    expect(html).toContain("Mark accommodation balance received");
   });
 });
 

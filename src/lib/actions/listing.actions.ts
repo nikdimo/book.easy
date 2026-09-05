@@ -52,6 +52,7 @@ import {
   validatePaymentMethodDetailsMap,
 } from "@/lib/payments/payment-instruction-templates";
 import { validateCancellationPolicy } from "@/lib/payments/cancellation-policy";
+import { actionText } from "@/lib/actions/action-text";
 import {
   archiveOwnedListing,
   unpublishOwnedListing,
@@ -137,7 +138,7 @@ export async function saveListingDraft(
 ): Promise<{ draftId: string | null } | { error: string }> {
   const session = await auth();
   if (!session?.user?.id || !session.user.isHost) {
-    return { error: "Not authorized" };
+    return { error: await actionText("action.error.not_authorized", "Not authorized") };
   }
 
   const jsonData = draftDataFromForm(formData);
@@ -155,7 +156,7 @@ export async function saveListingDraft(
       where: { id: draftId, hostId: session.user.id },
       select: { id: true },
     });
-    if (!existing) return { error: "Draft not found" };
+    if (!existing) return { error: await actionText("action.error.draft_not_found", "Draft not found") };
     await db.listingDraft.update({ where: { id: draftId }, data: { data: jsonData } });
     return { draftId };
   }
@@ -168,7 +169,7 @@ export async function saveListingDraft(
 
 export async function deleteListingDraft(draftId: string) {
   const session = await auth();
-  if (!session?.user?.id) return { error: "Not authorized" };
+  if (!session?.user?.id) return { error: await actionText("action.error.not_authorized", "Not authorized") };
 
   // Ownership is still the caller's own `hostId` — this is not an admin path and never
   // was. The shared operation adds the part that was missing: the draft's uploaded photos
@@ -194,13 +195,13 @@ export async function resolveMapsLink(
   url: string
 ): Promise<{ lat: number; lng: number } | { error: string }> {
   const session = await auth();
-  if (!session?.user?.id) return { error: "Not authorized" };
+  if (!session?.user?.id) return { error: await actionText("action.error.not_authorized", "Not authorized") };
 
   const direct = parseCoordsFromMapsText(url);
   if (direct) return direct;
 
   if (!isShortMapsLink(url)) {
-    return { error: "Couldn't find coordinates in that link" };
+    return { error: await actionText("action.error.link_no_coordinates", "Couldn't find coordinates in that link") };
   }
 
   try {
@@ -210,9 +211,9 @@ export async function resolveMapsLink(
     clearTimeout(timeout);
     const resolved = parseCoordsFromMapsText(res.url);
     if (resolved) return resolved;
-    return { error: "Couldn't find coordinates in that link" };
+    return { error: await actionText("action.error.link_no_coordinates", "Couldn't find coordinates in that link") };
   } catch {
-    return { error: "Couldn't resolve that link" };
+    return { error: await actionText("action.error.link_unresolved", "Couldn't resolve that link") };
   }
 }
 
@@ -297,7 +298,7 @@ export async function submitNewListing(
 > {
   const session = await auth();
   if (!session?.user?.id || !session.user.isHost) {
-    return { error: "Not authorized" };
+    return { error: await actionText("action.error.not_authorized", "Not authorized") };
   }
 
   const raw = {
@@ -363,7 +364,7 @@ export async function submitNewListing(
       })
     : null;
   if (paymentMethods && !paymentMethods.success) {
-    return { error: "Choose at least one accepted payment method before publishing." };
+    return { error: await actionText("action.error.payment_methods_required", "Choose at least one accepted payment method before publishing.") };
   }
   let validatedTemplates: ReturnType<typeof validatePaymentInstructionTemplates> | null = null;
   let validatedDetails: ReturnType<typeof validatePaymentMethodDetailsMap> | null = null;
@@ -374,21 +375,21 @@ export async function submitNewListing(
         String(formData.get("paymentInstructionTemplates") ?? "{}"),
       );
     } catch {
-      return { error: "Review the saved private payment instructions." };
+      return { error: await actionText("action.error.payment_instructions_review", "Review the saved private payment instructions.") };
     }
     validatedTemplates = validatePaymentInstructionTemplates(
       instructionTemplates,
       paymentMethods.value.methods,
     );
     if (!validatedTemplates.success) {
-      return { error: "Review the saved private payment instructions." };
+      return { error: await actionText("action.error.payment_instructions_review", "Review the saved private payment instructions.") };
     }
 
     let paymentDetails: unknown = {};
     try {
       paymentDetails = JSON.parse(String(formData.get("paymentDetails") ?? "{}"));
     } catch {
-      return { error: "Review the saved private payment details." };
+      return { error: await actionText("action.error.payment_details_review", "Review the saved private payment details.") };
     }
     validatedDetails = validatePaymentMethodDetailsMap(
       paymentDetails,
@@ -397,7 +398,7 @@ export async function submitNewListing(
     if (!validatedDetails.success) {
       // Deliberately generic: this string can be rendered and logged, and the values
       // behind the failure are private financial data.
-      return { error: "Review the saved private payment details." };
+      return { error: await actionText("action.error.payment_details_review", "Review the saved private payment details.") };
     }
   }
   /*
@@ -422,23 +423,23 @@ export async function submitNewListing(
     try {
       parsedDepositPolicies = JSON.parse(rawDepositPolicies);
     } catch {
-      return { error: "Review your advance payment and damage deposit settings." };
+      return { error: await actionText("action.error.deposit_settings_review", "Review your advance payment and damage deposit settings.") };
     }
     const draft = parseDepositPoliciesDraft(parsedDepositPolicies);
     if (!draft) {
-      return { error: "Review your advance payment and damage deposit settings." };
+      return { error: await actionText("action.error.deposit_settings_review", "Review your advance payment and damage deposit settings.") };
     }
     if (!depositPoliciesDraftMatchesCurrency(draft, data.currency)) {
-      return {
-        error:
-          "Review the advance payment and damage deposit amounts after changing the listing currency.",
-      };
+      return { error: await actionText(
+        "action.error.deposit_currency_review",
+        "Review the advance payment and damage deposit amounts after changing the listing currency.",
+      ) };
     }
     const validation = validateDepositPolicies(
       depositPoliciesPayload(draft, data.currency),
     );
     if (!validation.success) {
-      return { error: "Check the deposit amounts and timing before publishing." };
+      return { error: await actionText("action.error.deposit_invalid", "Check the deposit amounts and timing before publishing.") };
     }
     depositPolicies = validation.value;
   }
@@ -447,16 +448,19 @@ export async function submitNewListing(
     formData.get("freeCancellationDaysBeforeCheckIn"),
   );
   if (!cancellationPolicy.success) {
-    return {
-      error:
-        cancellationPolicy.issue === "REQUIRED"
-          ? "Choose the free-cancellation deadline before publishing."
-          : "Free-cancellation days must be a whole number from 0 to 3650.",
-    };
+    return cancellationPolicy.issue === "REQUIRED"
+      ? { error: await actionText(
+          "action.error.cancellation_deadline_required",
+          "Choose the free-cancellation deadline before publishing.",
+        ) }
+      : { error: await actionText(
+          "action.error.cancellation_days_range",
+          "Free-cancellation days must be a whole number from 0 to 3650.",
+        ) };
   }
 
   if (!(await currencyIsCurrentlyQuotable(data.currency))) {
-    return { error: "That currency is not currently available. Choose another currency." };
+    return { error: await actionText("action.error.currency_unavailable", "That currency is not currently available. Choose another currency.") };
   }
   const promotionType =
     raw.promotionType === "PERCENT_DISCOUNT" ||
@@ -476,7 +480,7 @@ export async function submitNewListing(
       promotionPercent < 5 ||
       promotionPercent > 50)
   ) {
-    return { error: "Choose a discount between 5% and 50%." };
+    return { error: await actionText("action.error.promotion_discount_range", "Choose a discount between 5% and 50%.") };
   }
   if (
     promotionType !== "NONE" &&
@@ -484,15 +488,21 @@ export async function submitNewListing(
       promotionMinimumNights < 1 ||
       promotionMinimumNights > 365)
   ) {
-    return { error: "Promotion minimum stay must be between 1 and 365 nights." };
+    return { error: await actionText("action.error.promotion_min_stay_range", "Promotion minimum stay must be between 1 and 365 nights.") };
   }
   if (promotionFreeCleaning && data.cleaningFee <= 0) {
-    return { error: "Add a cleaning fee before offering free cleaning." };
+    return { error: await actionText("action.error.free_cleaning_needs_fee", "Add a cleaning fee before offering free cleaning.") };
   }
   const mediaItems = parseMediaItemsFromForm(formData);
   const primaryImageIndex = firstImageIndex(mediaItems);
   if (mediaItems.filter((item) => item.mediaType === "IMAGE").length < MIN_PUBLISH_PHOTOS) {
-    return { error: `Add at least ${MIN_PUBLISH_PHOTOS} photos before publishing` };
+    return {
+      error: await actionText(
+        "action.error.photos_minimum",
+        "Add at least {count} photos before publishing",
+        { count: MIN_PUBLISH_PHOTOS },
+      ),
+    };
   }
 
   // Everything the host optionally set up on the last screen. Re-parsed rather than
@@ -509,15 +519,15 @@ export async function submitNewListing(
   const availability = validateAvailabilityStartForPublish(plan.availabilityStart);
   if (!availability.ok) {
     if (availability.reason === "past-date") {
-      return {
-        error:
-          "That availability start date has already passed. Choose today or a later date.",
-      };
+      return { error: await actionText(
+        "action.error.availability_start_past",
+        "That availability start date has already passed. Choose today or a later date.",
+      ) };
     }
     if (availability.reason === "invalid-date") {
-      return { error: "Choose a valid date for when guests can start booking." };
+      return { error: await actionText("action.error.availability_start_invalid", "Choose a valid date for when guests can start booking.") };
     }
-    return { error: "Confirm when guests can start booking before publishing." };
+    return { error: await actionText("action.error.availability_start_required", "Confirm when guests can start booking before publishing.") };
   }
 
   // The same rule the launch offer follows: free cleaning on a listing with no cleaning
@@ -754,16 +764,16 @@ export async function submitNewListing(
 export async function updateListing(listingId: string, formData: FormData) {
   const session = await auth();
   if (!session?.user?.id || !session.user.isHost) {
-    return { error: "Not authorized" };
+    return { error: await actionText("action.error.not_authorized", "Not authorized") };
   }
 
   const listing = await db.listing.findFirst({
     where: { id: listingId, hostId: session.user.id },
     include: { property: true, pricingRule: true },
   });
-  if (!listing) return { error: "Listing not found" };
+  if (!listing) return { error: await actionText("action.error.listing_not_found", "Listing not found") };
   if (!listing.pricingRule) {
-    return { error: "Set pricing before publishing listing changes." };
+    return { error: await actionText("action.error.pricing_required_changes", "Set pricing before publishing listing changes.") };
   }
 
   const raw = {
@@ -924,7 +934,7 @@ export async function updateListing(listingId: string, formData: FormData) {
  */
 export async function submitForReview(listingId: string) {
   const session = await auth();
-  if (!session?.user?.id) return { error: "Not authorized" };
+  if (!session?.user?.id) return { error: await actionText("action.error.not_authorized", "Not authorized") };
 
   const listing = await db.listing.findFirst({
     where: { id: listingId, hostId: session.user.id },
@@ -937,24 +947,30 @@ export async function submitForReview(listingId: string) {
     },
   });
 
-  if (!listing) return { error: "Listing not found" };
+  if (!listing) return { error: await actionText("action.error.listing_not_found", "Listing not found") };
 
   if (listing.status !== "DRAFT" && listing.status !== "UNPUBLISHED") {
-    return { error: "Only draft or unpublished listings can be published" };
+    return { error: await actionText("action.error.publish_state_invalid", "Only draft or unpublished listings can be published") };
   }
 
-  if (!listing.pricingRule) return { error: "Please set pricing before submitting" };
+  if (!listing.pricingRule) return { error: await actionText("action.error.pricing_required", "Please set pricing before submitting") };
 
   if (listing.images.filter((item) => item.mediaType === "IMAGE").length < MIN_PUBLISH_PHOTOS) {
-    return { error: `Add at least ${MIN_PUBLISH_PHOTOS} photos before publishing` };
+    return {
+      error: await actionText(
+        "action.error.photos_minimum",
+        "Add at least {count} photos before publishing",
+        { count: MIN_PUBLISH_PHOTOS },
+      ),
+    };
   }
 
   const availability = validateStoredListingAvailabilityForPublish(listing);
   if (!availability.ok) {
-    return {
-      error:
-        "Confirm availability before publishing. Choose unavailable by default, or set a future availability start date.",
-    };
+    return { error: await actionText(
+      "action.error.availability_confirm_required",
+      "Confirm availability before publishing. Choose unavailable by default, or set a future availability start date.",
+    ) };
   }
 
   await db.listing.update({
@@ -975,7 +991,7 @@ export async function submitForReview(listingId: string) {
 
 export async function unpublishListing(listingId: string) {
   const session = await auth();
-  if (!session?.user?.id) return { error: "Not authorized" };
+  if (!session?.user?.id) return { error: await actionText("action.error.not_authorized", "Not authorized") };
 
   const result = await unpublishOwnedListing(listingId, session.user.id);
   if (!result.success) return { error: result.error };
@@ -993,7 +1009,7 @@ export async function unpublishListing(listingId: string) {
  */
 export async function archiveListing(listingId: string) {
   const session = await auth();
-  if (!session?.user?.id) return { error: "Not authorized" };
+  if (!session?.user?.id) return { error: await actionText("action.error.not_authorized", "Not authorized") };
 
   const result = await archiveOwnedListing(listingId, session.user.id);
   if (!result.success) return { error: result.error };
@@ -1008,13 +1024,13 @@ export async function archiveListing(listingId: string) {
  * the host reviews it and hits Unhide deliberately. */
 export async function unarchiveListing(listingId: string) {
   const session = await auth();
-  if (!session?.user?.id) return { error: "Not authorized" };
+  if (!session?.user?.id) return { error: await actionText("action.error.not_authorized", "Not authorized") };
 
   const listing = await db.listing.findFirst({
     where: { id: listingId, hostId: session.user.id, status: "ARCHIVED" },
   });
 
-  if (!listing) return { error: "Listing not found or is not archived" };
+  if (!listing) return { error: await actionText("action.error.listing_not_archived", "Listing not found or is not archived") };
 
   await db.listing.update({
     where: { id: listingId },
@@ -1032,7 +1048,7 @@ export async function deleteListing(
 ): Promise<{ success: true; outcome: "archived" | "deleted" } | { error: string }> {
   const session = await auth();
   if (!session?.user?.id || !session.user.isHost) {
-    return { error: "Not authorized" };
+    return { error: await actionText("action.error.not_authorized", "Not authorized") };
   }
 
   const result = await archiveOrDeleteListing(listingId, session.user.id);

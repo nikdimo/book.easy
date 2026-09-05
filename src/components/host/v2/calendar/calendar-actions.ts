@@ -78,7 +78,6 @@ export async function runMutationStep(
       return saveCalendarDefaultPricing(listingId, {
         baseNightlyRate: step.baseNightlyRate,
         cleaningFee: step.cleaningFee,
-        minNights: step.minNights,
       });
     case "SAVE_EVERGREEN_PROMOTION":
       return saveCalendarPromotion(listingId, {

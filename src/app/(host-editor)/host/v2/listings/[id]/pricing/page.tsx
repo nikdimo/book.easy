@@ -12,9 +12,10 @@ import { OngoingOffersEditor } from "@/components/host/v2/editor/ongoing-offers-
 /**
  * Pricing: the editable home for what this listing charges by default.
  *
- * The base price, the cleaning fee, the minimum stay and the offers that run on every
- * date are set here. Prices for particular nights and offers with a start and an end
- * belong to the calendar, and are reported here with links that name the job.
+ * The base price, the cleaning fee and the offers that run on every date are set here.
+ * Stay limits belong to Availability → Booking rules. Prices for particular nights
+ * and offers with a start and an end belong to the calendar, and are reported here with
+ * links that name the job.
  *
  * Every read is scoped to this host inside its own query, so a listing that is not
  * theirs is `notFound()` rather than a page that tells them it exists. The writes go

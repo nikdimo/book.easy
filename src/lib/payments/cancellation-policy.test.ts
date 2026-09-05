@@ -22,6 +22,11 @@ describe("cancellation policy", () => {
       retainableAdvanceAmount: 0,
       damageDepositReturnRequired: true,
       freeCancellation: true,
+      // No provenance supplied means "all of it was confirmed", which is the honest
+      // reading for a caller that has none to offer.
+      confirmedRefundAmount: 400,
+      refundBasis: "CONFIRMED",
+      depositReturnBasis: "CONFIRMED",
     });
   });
 

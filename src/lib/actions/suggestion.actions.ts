@@ -9,11 +9,12 @@ import { AMENITIES_TAG } from "@/lib/services/amenity.service";
 import { uniquePropertyTypeValue } from "@/lib/utils/property-type";
 import { categoryIdForName, uniqueAmenityKey } from "@/lib/amenities/catalog";
 import { revalidateTag, revalidatePath } from "next/cache";
+import { actionText } from "@/lib/actions/action-text";
 
 export async function createSuggestion(formData: FormData) {
   const session = await auth();
   if (!session?.user?.id || !session.user.isHost) {
-    return { error: "Not authorized" };
+    return { error: await actionText("action.error.not_authorized", "Not authorized") };
   }
 
   const kind = formData.get("kind");
@@ -22,10 +23,10 @@ export async function createSuggestion(formData: FormData) {
   const listingId = String(formData.get("listingId") ?? "").trim() || null;
 
   if (kind !== "PROPERTY_TYPE" && kind !== "AMENITY") {
-    return { error: "Invalid suggestion type" };
+    return { error: await actionText("action.error.suggestion_type_invalid", "Invalid suggestion type") };
   }
   if (label.length < 2) {
-    return { error: "Please enter a name for what's missing" };
+    return { error: await actionText("action.error.suggestion_name_required", "Please enter a name for what's missing") };
   }
 
   if (listingId) {
@@ -33,7 +34,7 @@ export async function createSuggestion(formData: FormData) {
       where: { id: listingId, hostId: session.user.id },
       select: { id: true },
     });
-    if (!owns) return { error: "Listing not found" };
+    if (!owns) return { error: await actionText("action.error.listing_not_found", "Listing not found") };
   }
 
   await db.suggestion.create({
@@ -66,7 +67,7 @@ export async function reviewSuggestion(
     where: { id: suggestionId },
   });
   if (!suggestion || suggestion.status !== "PENDING") {
-    return { error: "Suggestion not found or already reviewed" };
+    return { error: await actionText("action.error.suggestion_not_found", "Suggestion not found or already reviewed") };
   }
 
   if (input.decision === "REJECTED") {
@@ -94,7 +95,7 @@ export async function reviewSuggestion(
 
   const scope = input.scope ?? "LISTING_ONLY";
   const finalLabel = (input.label ?? suggestion.label).trim();
-  if (finalLabel.length < 2) return { error: "Label is required" };
+  if (finalLabel.length < 2) return { error: await actionText("action.error.suggestion_label_required", "Label is required") };
 
   if (suggestion.kind === "PROPERTY_TYPE") {
     const value = await uniquePropertyTypeValue(finalLabel);

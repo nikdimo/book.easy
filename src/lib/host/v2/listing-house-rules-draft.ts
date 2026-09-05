@@ -60,6 +60,11 @@ export function houseRulesFromDraft(
     // `normalizeStayTime` keeps an imported off-grid "14:15" rather than rewriting it,
     // and turns anything that is not a time at all into "flexible".
     checkInTime: normalizeStayTime(data.checkInTime ?? fallback.checkInTime),
+    // Not a draft field: the create flow never asks for the far end of the arrival
+    // window, so a draft carries whatever the fallback says — "flexible" for a new
+    // listing. The Arrival guide's check-in card is where a host narrows it, after
+    // publishing.
+    checkInEndTime: normalizeStayTime(fallback.checkInEndTime),
     checkOutTime: normalizeStayTime(data.checkOutTime ?? fallback.checkOutTime),
     // Through the shared parser, not a bare `Number()`: a classic-wizard draft carries
     // "" here, and `Number("")` is 0 — a guest limit publishing refuses.

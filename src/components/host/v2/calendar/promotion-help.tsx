@@ -288,8 +288,31 @@ export function AllPromotionsOverview({
  * the booking transaction prices with, so neither screen can drift from what is charged.
  */
 
-/** How long a stay has to be for this offer to win. */
+/**
+ * How long a stay has to be for this offer to win.
+ *
+ * A band the stay overruns is still a real discount — the quote prices night by night, so
+ * the nights inside the offer's window are charged less — and it is marked rather than
+ * hidden. Hiding it is what the ladder used to do, and it told the host their offer stops
+ * applying at a length where it goes on discounting (#9).
+ */
 export function bandLabel(
+  i18n: ReturnType<typeof useI18n>,
+  band: PromotionBand,
+): string {
+  const length = bandLengthLabel(i18n, band);
+  return band.partial
+    ? interpolate(
+        i18n.resolve(
+          "host.v2.calendar.editor.band_partial",
+          "{length} (covered nights only)",
+        ),
+        { length },
+      ).text
+    : length;
+}
+
+function bandLengthLabel(
   i18n: ReturnType<typeof useI18n>,
   band: PromotionBand,
 ): string {

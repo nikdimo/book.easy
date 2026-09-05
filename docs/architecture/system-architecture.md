@@ -221,7 +221,6 @@ PricingRule
 ├── listingId: UUID (FK -> Listing, unique in MVP)
 ├── baseNightlyRate: decimal
 ├── cleaningFee: decimal (default 0)
-├── serviceFeePercent: decimal (default 0, platform fee placeholder)
 ├── currency: string (default "EUR")
 ├── minNights: int (default 1)
 ├── maxNights: int (default 365)

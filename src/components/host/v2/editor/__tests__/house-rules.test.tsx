@@ -27,6 +27,7 @@ const t: Translator = {
 /** A listing whose host has answered everything. */
 const ANSWERED: ListingHouseRulesInput = {
   checkInTime: "15:00",
+  checkInEndTime: "",
   checkOutTime: "11:00",
   maxGuests: 4,
   petPolicy: "ASK_HOST",

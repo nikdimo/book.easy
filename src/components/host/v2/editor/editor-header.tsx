@@ -10,6 +10,7 @@ import {
   CircleAlert,
   Ellipsis,
   ExternalLink,
+  EyeOff,
   ImageIcon,
 } from "lucide-react";
 import {
@@ -21,11 +22,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useSaveState } from "@/components/host/v2/editor/save-state";
-import { hostCalendarHref } from "@/lib/host/v2/calendar-href";
 import {
-  EDITOR_OVERVIEW_SLUG,
-  editorSectionHref,
-} from "@/lib/host/v2/editor-sections";
+  isVisibilitySwitchable,
+  ListingHideDialog,
+  useListingVisibility,
+} from "@/components/host/v2/listings/listing-visibility";
+import { hostCalendarHref } from "@/lib/host/v2/calendar-href";
+import { editorSectionFromPathname, editorSectionHref } from "@/lib/host/v2/editor-sections";
 import { listingPreviewable } from "@/lib/host/v2/listing-status";
 import type { EditorListingOption } from "@/lib/services/listing-editor.service";
 import { Tx, useI18n } from "@/lib/i18n/client";
@@ -47,7 +50,9 @@ const DOT: Record<string, string> = {
  *
  * There is no Save button. Everything in the editor autosaves, so the right-hand side
  * reports state rather than asking for an action, and `Publish` appears only when the
- * listing genuinely is not live.
+ * listing genuinely is not live — the one action here that is not about this listing's
+ * *content*, kept because finishing a listing and putting it on the site are the same
+ * errand and the host is already standing in the right place.
  */
 export function EditorHeader({
   listingId,
@@ -72,16 +77,18 @@ export function EditorHeader({
   const { resolve } = useI18n();
   const saveState = useSaveState();
   const pathname = usePathname();
+  const visibility = useListingVisibility({ listingId, title, status });
   const previewLabel = resolve("host.editor.preview", "Preview").text;
   const moreLabel = resolve("host.editor.more", "More actions").text;
 
   // Switching keeps you where you were: a host comparing photos across two properties
   // wants the other one's photos, not its front page. On the base route there is no
-  // fifth segment, and the other listing's Overview is exactly the right landing place.
-  const section = pathname.split("/")[5] ?? EDITOR_OVERVIEW_SLUG;
+  // section segment at all, and the other listing's Overview is the right landing place.
+  const section = editorSectionFromPathname(pathname);
   // The public page exists for approved listings only, so a preview link on a draft
   // would open a 404 and call it a preview.
   const canPreview = listingPreviewable(status);
+  const canChangeVisibility = isVisibilitySwitchable(status);
 
   return (
     <header className="sticky top-0 z-30 shrink-0 border-b border-slate-100 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
@@ -196,6 +203,21 @@ export function EditorHeader({
 
         <SaveIndicator state={saveState} />
 
+        {/* A listing that is not on the site is one action away from being on it, and
+            that action is the reason a host is in the editor at all — so it is a filled
+            button at every width, not a menu item. Taking a live listing back down is
+            the rarer, riskier direction and stays in the overflow menu below. */}
+        {canChangeVisibility && !visibility.isPublished && (
+          <button
+            type="button"
+            onClick={visibility.publish}
+            disabled={visibility.isPending}
+            className="shrink-0 rounded-full bg-[#0f172a] px-3.5 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-[#1e293b] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 disabled:opacity-60"
+          >
+            {visibility.actionLabel}
+          </button>
+        )}
+
         {canPreview && (
           <Link
             href={`/properties/${slug}`}
@@ -230,9 +252,21 @@ export function EditorHeader({
                 <Tx k="host.editor.open_calendar" source="Dates and prices" />
               </Link>
             </DropdownMenuItem>
+            {canChangeVisibility && visibility.isPublished && (
+              <DropdownMenuItem
+                data-testid="editor-visibility-item"
+                onSelect={visibility.requestHide}
+              >
+                <EyeOff className="size-4" aria-hidden />
+                {visibility.actionLabel}
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {/* Outside the menu, which unmounts the moment an item is chosen. */}
+      <ListingHideDialog visibility={visibility} />
     </header>
   );
 }
@@ -241,10 +275,29 @@ function SaveIndicator({ state }: { state: ReturnType<typeof useSaveState> }) {
   if (state === "idle") return null;
   if (state === "error") {
     return (
-      <span className="flex shrink-0 items-center gap-1.5 text-xs text-rose-600">
-        <CircleAlert className="size-3.5" aria-hidden />
-        <span className="hidden sm:inline">
-          <Tx k="host.editor.save_failed" source="Not saved" />
+      /*
+       * The one state in this header a host must not miss, so it says so in words at
+       * every width and interrupts a screen reader rather than waiting its turn.
+       *
+       * It used to hide its label below `sm` and carry no live region at all: on a phone
+       * a failed autosave was a small red dot beside the listing name, and assistive
+       * technology was told nothing about it at any width. The dot is what the header had
+       * room for; being told your work is not saved is what the host needs, so the
+       * listing name truncates a little sooner instead.
+       */
+      <span
+        role="alert"
+        className="flex shrink-0 items-center gap-1.5 text-xs font-medium text-rose-600"
+      >
+        <CircleAlert className="size-3.5 shrink-0" aria-hidden />
+        <Tx k="host.editor.save_failed" source="Not saved" />
+        {/* The visible label is as short as the header allows; the announcement can
+            afford to say what to do about it. */}
+        <span className="sr-only">
+          <Tx
+            k="host.editor.save_failed_detail"
+            source="Your last change was not saved. Check your connection and try again."
+          />
         </span>
       </span>
     );

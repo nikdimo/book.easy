@@ -5,7 +5,7 @@ import {
   LEGACY_PERIOD_REQUEST_ERROR,
   NO_CHANGEOVER_DAY_ERROR,
 } from "@/lib/services/booking.service";
-import { checkAvailability } from "@/lib/services/availability.service";
+import { decideStayAvailability } from "@/lib/utils/stay-availability";
 import { addDaysToYmd, dbDateToYmd, todayYmd, weekdayOfYmd, ymdToDbDate } from "@/lib/utils/date-only";
 import { computeStayQuote, parseLocalYmd } from "@/lib/utils/stay-pricing";
 import {
@@ -459,60 +459,62 @@ describe("flexible listings are unchanged", () => {
 
 // ─── The shared availability read ───────────────────────────────────────────────
 
-describe("checkAvailability follows the same rule", () => {
+/**
+ * These used to go through `checkAvailability`, which had no production callers and has
+ * been removed (#5). They now ask the shared rule directly, against the columns the
+ * seeded listing actually stores — which is what `checkAvailability` did too, minus a
+ * wrapper nothing shipped. Occupancy has its own case below, through `createBooking`,
+ * because that is the live path that enforces blocks.
+ */
+async function offers(listingId: string, checkIn: string, checkOut: string) {
+  const listing = await db.listing.findUniqueOrThrow({
+    where: { id: listingId },
+    select: {
+      bookingMode: true,
+      availabilityMode: true,
+      changeoverWeekday: true,
+      pricingRule: { select: { minNights: true, maxNights: true } },
+    },
+  });
+  return decideStayAvailability({
+    bookingMode: listing.bookingMode,
+    availabilityMode: listing.availabilityMode,
+    windows: [],
+    changeoverWeekday: listing.changeoverWeekday,
+    limits: {
+      minNights: listing.pricingRule?.minNights ?? 1,
+      maxNights: listing.pricingRule?.maxNights ?? null,
+    },
+    checkIn,
+    checkOut,
+    today: todayYmd(),
+  }).offered;
+}
+
+describe("the shared availability rule follows the booking path", () => {
   it("agrees with the booking path on a weekly listing", async () => {
     const { listing } = await seed();
-    expect(
-      (
-        await checkAvailability(
-          listing.id,
-          ymdToDbDate(SAT_1),
-          ymdToDbDate(SAT_2),
-        )
-      ).available,
-    ).toBe(true);
+    expect(await offers(listing.id, SAT_1, SAT_2)).toBe(true);
     // Wrong weekday.
-    expect(
-      (
-        await checkAvailability(
-          listing.id,
-          ymdToDbDate("2029-06-10"),
-          ymdToDbDate("2029-06-17"),
-        )
-      ).available,
-    ).toBe(false);
+    expect(await offers(listing.id, "2029-06-10", "2029-06-17")).toBe(false);
     // Over the maximum.
-    expect(
-      (
-        await checkAvailability(
-          listing.id,
-          ymdToDbDate(SAT_1),
-          ymdToDbDate("2029-07-14"),
-        )
-      ).available,
-    ).toBe(false);
+    expect(await offers(listing.id, SAT_1, "2029-07-14")).toBe(false);
   });
 
-  it("reports a blocked night as unavailable", async () => {
-    const { listing } = await seed();
+  it("leaves a blocked night to the booking transaction, which refuses it", async () => {
+    const { listing, guest } = await seed();
     await addBlock(listing.id, "2029-06-11", "2029-06-12");
-    expect(
-      (await checkAvailability(listing.id, ymdToDbDate(SAT_1), ymdToDbDate(SAT_2)))
-        .available,
-    ).toBe(false);
+    // The rule still *offers* the shape — occupancy is a different question, answered
+    // from `AvailabilityBlock` by the path that writes.
+    expect(await offers(listing.id, SAT_1, SAT_2)).toBe(true);
+    await expect(
+      book(listing.id, guest.id, SAT_1, SAT_2),
+    ).rejects.toThrow(/no longer available/i);
   });
 
   it("still answers a flexible listing exactly as before", async () => {
     const { listing } = await seed({ bookingMode: "FLEXIBLE" });
-    expect(
-      (
-        await checkAvailability(
-          listing.id,
-          ymdToDbDate("2029-06-12"),
-          ymdToDbDate("2029-06-15"),
-        )
-      ).available,
-    ).toBe(true);
+    expect(await offers(listing.id, "2029-06-12", "2029-06-15")).toBe(true);
   });
 });
 

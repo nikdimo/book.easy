@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireHost } from "@/lib/auth-helpers";
 import { revalidatePublicListingCaches } from "@/lib/utils/revalidate-public-listing-caches";
+import { actionText } from "@/lib/actions/action-text";
 
 /** A listing with more amenities than the whole catalog holds is a broken client, not a
  *  very well equipped villa. The cap stops one from asking for an unbounded write. */
@@ -57,11 +58,11 @@ export async function setListingAmenities(
       amenities: { select: { amenityId: true } },
     },
   });
-  if (!listing) return { error: "Listing not found." };
+  if (!listing) return { error: await actionText("action.error.listing_not_found_sentence", "Listing not found.") };
 
   const requested = [...new Set(amenityIds)];
   if (requested.length > MAX_AMENITIES) {
-    return { error: "That is more amenities than we can save at once." };
+    return { error: await actionText("action.error.amenities_too_many", "That is more amenities than we can save at once.") };
   }
 
   const current = new Set(listing.amenities.map((row) => row.amenityId));
@@ -80,7 +81,7 @@ export async function setListingAmenities(
       .map((row) => row.id),
   );
   if (allowed.size !== requested.length) {
-    return { error: "Some of those amenities are no longer available. Reload and try again." };
+    return { error: await actionText("action.error.amenities_unavailable", "Some of those amenities are no longer available. Reload and try again.") };
   }
 
   const toAdd = requested.filter((id) => !current.has(id));

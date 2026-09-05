@@ -242,10 +242,23 @@ function storedDayKey(value: Date | string | null | undefined): string | null {
   }
 }
 
+/**
+ * Whether this offer gives the cleaning fee away — read from the column, and only from
+ * the column.
+ *
+ * The `type` used to be OR-ed in as a fallback, which defeated the one write that turns
+ * the benefit off: clearing a listing's cleaning fee sets `freeCleaning: false` on its
+ * active offers, and an offer created as free-cleaning-only kept winning nights anyway
+ * because its `type` still said `FREE_CLEANING`. `type` remains the offer's *label* for
+ * display and legacy reads; `freeCleaning` is the benefit.
+ *
+ * Nothing is lost by dropping the fallback: the migration that introduced the column
+ * (`20260730090000_promotion_scopes_and_benefits`) backfilled `freeCleaning = true` for
+ * every `FREE_CLEANING` row, and the `ListingPromotion_benefit_check` constraint has kept
+ * the two in step since.
+ */
 function promotionHasFreeCleaning(promotion: StayPromotion): boolean {
-  return Boolean(
-    promotion.freeCleaning || promotion.type === "FREE_CLEANING",
-  );
+  return Boolean(promotion.freeCleaning);
 }
 
 /** Stable ranking after eligibility: the bigger guest benefit wins. */
@@ -280,6 +293,24 @@ function promotionMeetsStayLength(
   return nights >= (promotion.minimumNights ?? 1);
 }
 
+/**
+ * Whether this offer actually gives the guest anything.
+ *
+ * An offer with no percentage and no cleaning benefit is worth nothing, and letting it
+ * win a night is not harmless: `createBooking` stamps the winner's `promotionId` and
+ * `promotionType` onto the booking row and into its frozen `priceBreakdown`, so a
+ * valueless winner becomes a permanent, un-rewritable record of an offer that never
+ * applied — which any future "offers used" reporting would count.
+ *
+ * `ListingPromotion_benefit_check` (`discountPercent > 0 OR freeCleaning = true`) means
+ * the database will not store such a row today, so this is the second lock rather than
+ * the first. It is worth having because the reader is also handed unsaved drafts and
+ * hand-built objects that no constraint has seen.
+ */
+function promotionGrantsBenefit(promotion: StayPromotion): boolean {
+  return (promotion.discountPercent ?? 0) > 0 || promotionHasFreeCleaning(promotion);
+}
+
 /** Date ranges are [startDate, endDate), matching booking nights. */
 export function promotionCoversNight(
   promotion: StayPromotion,
@@ -310,6 +341,7 @@ export function selectApplicablePromotionForNight(
     promotions
       .filter(
         (promotion) =>
+          promotionGrantsBenefit(promotion) &&
           promotionMeetsStayLength(promotion, stayNights) &&
           promotionCoversNight(promotion, night),
       )
@@ -317,6 +349,15 @@ export function selectApplicablePromotionForNight(
   );
 }
 
+/**
+ * The best offer that covers the stay *end to end*.
+ *
+ * @deprecated Whole-stay containment — display only, and never the pricing rule.
+ * `computeStayQuote` prices night by night through `promotionCoversNightKey`, so a stay
+ * that overruns a promotion window still gets a discount on the nights inside it. This
+ * function answers `null` for that same stay, which is why anything that describes what a
+ * guest will actually get must use `computeStayQuote` instead.
+ */
 export function selectApplicablePromotion(
   promotions: StayPromotion[],
   checkIn: Date,
@@ -324,6 +365,7 @@ export function selectApplicablePromotion(
   nights: number,
 ): StayPromotion | null {
   const eligible = promotions.filter((promotion) => {
+    if (!promotionGrantsBenefit(promotion)) return false;
     const minimumNights = promotion.minimumNights ?? 1;
     if (nights < minimumNights) return false;
 
@@ -452,6 +494,9 @@ export function computeStayQuote({
   const candidatesByNight = stay.nightlyBreakdown.map((night) =>
     activePromotions.filter(
       (candidate) =>
+        // An offer with nothing left to give must not win a night: the winner's id is
+        // stamped onto the booking row and frozen into its price breakdown (#8).
+        promotionGrantsBenefit(candidate) &&
         promotionMeetsStayLength(candidate, stay.nights) &&
         promotionCoversNightKey(candidate, night.date),
     ),

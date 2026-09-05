@@ -48,6 +48,8 @@ async function dispatchBookingEmail(
       return email.notifyGuestBookingCancelled(bookingId);
     case BookingEmailKind.HOST_CANCELLED_BY_GUEST:
       return email.notifyHostBookingCancelledByGuest(bookingId);
+    case BookingEmailKind.HOST_CANCELLED_BY_ADMIN:
+      return email.notifyHostBookingCancelledByAdmin(bookingId);
   }
 }
 

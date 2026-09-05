@@ -12,6 +12,7 @@ import {
   verifyAvailabilityManager,
 } from "@/lib/services/availability-mutation.service";
 import { saveListingPricing } from "@/lib/actions/pricing.actions";
+import { actionText } from "@/lib/actions/action-text";
 import {
   disableListingPromotion,
   type ListingPromotionInput,
@@ -44,12 +45,14 @@ function rangeFormData(
 
 async function managedCalendarListing(listingId: string) {
   const session = await auth();
-  if (!session?.user?.id) return { error: "Not authorized" as const };
+  if (!session?.user?.id) return { error: await actionText("action.error.not_authorized", "Not authorized") };
   const listing = await verifyAvailabilityManager(
     { id: session.user.id, role: session.user.role },
     listingId,
   );
-  return listing ? { listing } : { error: "Listing not found" as const };
+  return listing
+    ? { listing }
+    : { error: await actionText("action.error.listing_not_found", "Listing not found") };
 }
 
 export async function setCalendarDatePrice(
@@ -146,18 +149,25 @@ export async function setCalendarAvailabilityMode(
   );
 }
 
+/**
+ * The listing's two default amounts, and nothing else.
+ *
+ * Stay length used to travel with them, which made every price save a silent write of
+ * whatever minimum the calling screen was rendered with — enough to undo a minimum set
+ * from Availability → Booking rules moments earlier in another tab. The minimum and
+ * maximum stay now have exactly one writer, `setListingStayLimits`, and this path
+ * cannot touch them.
+ */
 export async function saveCalendarDefaultPricing(
   listingId: string,
   input: {
     baseNightlyRate: number;
     cleaningFee: number;
-    minNights: number;
   },
 ) {
   const formData = new FormData();
   formData.set("baseNightlyRate", String(input.baseNightlyRate));
   formData.set("cleaningFee", String(input.cleaningFee));
-  formData.set("minNights", String(input.minNights));
   return saveListingPricing(listingId, {}, formData);
 }
 

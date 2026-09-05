@@ -2,6 +2,10 @@
 
 import { interpolate, useI18n } from "@/lib/i18n/client";
 import type { ListingState, ListingStateTone } from "@/lib/host/listing-state";
+import {
+  formatWeekdayShortDate,
+  type CalendarFormats,
+} from "@/lib/host/v2/calendar-format";
 
 /**
  * Turns a resolved listing state into the sentence shown under the title, plus the
@@ -25,19 +29,26 @@ function daysAgo(date: Date) {
   return Math.max(0, Math.round((now.getTime() - then.getTime()) / 86_400_000));
 }
 
-export function useListingStateLabel() {
+export function useListingStateLabel(dateFormats?: CalendarFormats) {
   // `plural` is deliberately called as `i18n.plural(...)` rather than destructured:
   // scripts/extract-ui-strings.ts only picks plural keys up as a property access, so a
   // bare `plural(...)` would ship these two strings untranslatable in every language.
   const i18n = useI18n();
   const { locale, resolve } = i18n;
 
-  const formatDay = (value: Date) =>
-    new Intl.DateTimeFormat(locale, {
+  const formatDay = (value: Date) => {
+    if (dateFormats) {
+      const year = value.getFullYear();
+      const month = String(value.getMonth() + 1).padStart(2, "0");
+      const day = String(value.getDate()).padStart(2, "0");
+      return formatWeekdayShortDate(`${year}-${month}-${day}`, dateFormats);
+    }
+    return new Intl.DateTimeFormat(locale, {
       weekday: "short",
       day: "numeric",
       month: "short",
     }).format(value);
+  };
 
   return function label(state: ListingState): {
     text: string;

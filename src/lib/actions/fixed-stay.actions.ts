@@ -11,6 +11,7 @@ import {
   type ManagedFixedStayListing,
 } from "@/lib/services/fixed-stay-mutation.service";
 import { revalidatePublicListingCaches } from "@/lib/utils/revalidate-public-listing-caches";
+import { actionText } from "@/lib/actions/action-text";
 import {
   CHANGEOVER_WEEKDAY_NAMES,
   type ChangeoverWeekdayName,
@@ -54,7 +55,7 @@ const stayLimitsSchema = z.object({
   maxNights: z.coerce
     .number()
     .int()
-    .min(0, "A maximum stay must be at least 1 night.")
+    .min(0, "A maximum stay cannot be negative.")
     .max(365),
 });
 
@@ -71,10 +72,10 @@ async function managedListing(
   { listing: ManagedFixedStayListing; actorId: string } | { error: string }
 > {
   const parsedId = listingIdSchema.safeParse(listingId);
-  if (!parsedId.success) return { error: "Listing not found." };
+  if (!parsedId.success) return { error: await actionText("action.error.listing_not_found_sentence", "Listing not found.") };
 
   const session = await auth();
-  if (!session?.user?.id) return { error: "Not authorized." };
+  if (!session?.user?.id) return { error: await actionText("action.error.not_authorized_sentence", "Not authorized.") };
 
   const listing = await verifyFixedStayManager(
     { id: session.user.id, role: session.user.role },
@@ -84,7 +85,7 @@ async function managedListing(
   // answer for each would confirm that another host's listing id is real.
   return listing
     ? { listing, actorId: session.user.id }
-    : { error: "Listing not found." };
+    : { error: await actionText("action.error.listing_not_found_sentence", "Listing not found.") };
 }
 
 /**
@@ -129,7 +130,7 @@ export async function setListingBookingMode(
 ) {
   const parsedMode = bookingModeSchema.safeParse(mode);
   if (!parsedMode.success) {
-    return { error: "Choose either flexible dates or fixed stays." };
+    return { error: await actionText("action.error.stay_mode_required", "Choose either flexible dates or fixed stays.") };
   }
 
   const managed = await managedListing(listingId);
@@ -159,7 +160,7 @@ export async function setListingChangeoverWeekday(
 ) {
   const parsed =
     weekday === null ? { success: true as const, data: null } : changeoverSchema.safeParse(weekday);
-  if (!parsed.success) return { error: "Choose a changeover day." };
+  if (!parsed.success) return { error: await actionText("action.error.changeover_day_required", "Choose a changeover day.") };
 
   const managed = await managedListing(listingId);
   if ("error" in managed) return { error: managed.error };
@@ -188,7 +189,12 @@ export async function setListingStayLimits(
 ) {
   const parsed = stayLimitsSchema.safeParse(input);
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Check the stay limits." };
+    // The schema's own message when it wrote one; otherwise a catalog sentence rather
+    // than an English constant.
+    const issue = parsed.error.issues[0]?.message;
+    return issue
+      ? { error: issue }
+      : { error: await actionText("action.error.stay_limits_invalid", "Check the stay limits.") };
   }
 
   const managed = await managedListing(listingId);

@@ -38,6 +38,7 @@ export type DateToken =
   | { type: "day" }
   | { type: "month" }
   | { type: "monthShort" }
+  | { type: "weekdayShort" }
   | { type: "year" }
   | { type: "literal"; value: string };
 
@@ -49,6 +50,7 @@ export interface DateFormat {
   weekdayShort: string[];
   longDate: DateToken[];
   shortDate: DateToken[];
+  weekdayShortDate: DateToken[];
   monthYear: DateToken[];
 }
 
@@ -121,6 +123,7 @@ function tokenize(
     .map((part): DateToken => {
       if (part.type === "day") return { type: "day" };
       if (part.type === "year") return { type: "year" };
+      if (part.type === "weekday") return { type: "weekdayShort" };
       if (part.type === "month") {
         // A numeric month is rendered from the number; a named one has to come from
         // the name table so the client never needs the locale's month data.
@@ -193,6 +196,12 @@ export function buildCalendarFormats(
       shortDate: tokenize(
         locale,
         { day: "numeric", month: "short" },
+        monthLong,
+        monthShort,
+      ),
+      weekdayShortDate: tokenize(
+        locale,
+        { weekday: "short", day: "numeric", month: "short" },
         monthLong,
         monthShort,
       ),
@@ -272,7 +281,12 @@ export function formatMoneyRounded(
 
 function renderTokens(
   tokens: DateToken[],
-  { day, month, year }: { day: number; month: number; year: number },
+  {
+    day,
+    month,
+    year,
+    weekday,
+  }: { day: number; month: number; year: number; weekday?: number },
   date: DateFormat,
 ): string {
   return tokens
@@ -284,6 +298,8 @@ function renderTokens(
           return date.monthLong[month] ?? String(month + 1);
         case "monthShort":
           return date.monthShort[month] ?? String(month + 1);
+        case "weekdayShort":
+          return weekday === undefined ? "" : (date.weekdayShort[weekday] ?? "");
         case "year":
           return String(year);
         default:
@@ -304,6 +320,20 @@ export function formatLongDate(ymd: string, formats: CalendarFormats): string {
 
 export function formatShortDate(ymd: string, formats: CalendarFormats): string {
   return renderTokens(formats.date.shortDate, parts(ymd), formats.date);
+}
+
+export function formatWeekdayShortDate(
+  ymd: string,
+  formats: CalendarFormats,
+): string {
+  const dateParts = parts(ymd);
+  // 0 is Monday in the serialized weekday table; Date uses 0 for Sunday.
+  const weekday = (new Date(`${ymd}T12:00:00Z`).getUTCDay() + 6) % 7;
+  return renderTokens(
+    formats.date.weekdayShortDate,
+    { ...dateParts, weekday },
+    formats.date,
+  );
 }
 
 /** `ym` is any date inside the month; only its month and year are read. */

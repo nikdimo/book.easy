@@ -310,7 +310,7 @@ export function InboxThread({
         `/api/conversations/${conversationId}/messages?cursor=${encodeURIComponent(thread.nextCursor)}`,
         { cache: "no-store" }
       );
-      if (!response.ok) throw new Error("Could not load earlier messages");
+      if (!response.ok) throw new Error("load-older-failed");
       const older = (await response.json()) as InboxThreadPayload;
       setThread((current) => ({
         ...current,
@@ -325,9 +325,14 @@ export function InboxThread({
             scrollRef.current.scrollHeight - previousHeight;
         }
       });
-    } catch (error) {
+    } catch {
+      // Deliberately not `error.message`. Everything reaching here is either this
+      // function's own sentinel or a transport fault ("Failed to fetch", an aborted
+      // request) — neither is a sentence written for a host, and neither is in the
+      // catalog, so both are reported with the one that is.
       toast.error(
-        error instanceof Error ? error.message : "Could not load earlier messages"
+        resolve("host.v2.messages.load_older_failed", "Could not load earlier messages")
+          .text,
       );
     } finally {
       setLoadingOlder(false);
@@ -369,16 +374,17 @@ export function InboxThread({
       };
     });
     stickToBottom.current = true;
-    try {
-      const response = await fetch(`/api/conversations/${conversationId}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body, clientId }),
-      });
-      const result = (await response.json()) as { error?: string };
-      if (!response.ok) throw new Error(result.error || "Message could not be sent");
-      await refresh();
-    } catch (error) {
+
+    /*
+     * Two ways to fail, and only one of them has anything to say.
+     *
+     * A refusal the API wrote is a sentence meant for this host, so it is shown as it
+     * is. A transport fault is not: `error.message` there is "Failed to fetch" or an
+     * abort, which is the browser talking to the developer. It used to be shown to the
+     * host verbatim, untranslated. Handling the refusal without throwing is what keeps
+     * the two apart — `catch` can then say the one thing it is ever right to say.
+     */
+    const markFailed = () =>
       setThread((current) => ({
         ...current,
         messages: current.messages.map((message) =>
@@ -387,9 +393,25 @@ export function InboxThread({
             : message
         ),
       }));
-      toast.error(
-        error instanceof Error ? error.message : "Message could not be sent"
-      );
+    const sendFailed = () =>
+      resolve("host.v2.messages.send_failed", "Message could not be sent").text;
+
+    try {
+      const response = await fetch(`/api/conversations/${conversationId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body, clientId }),
+      });
+      const result = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        markFailed();
+        toast.error(result.error || sendFailed());
+        return;
+      }
+      await refresh();
+    } catch {
+      markFailed();
+      toast.error(sendFailed());
     }
   }
 

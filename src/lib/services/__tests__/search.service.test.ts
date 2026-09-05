@@ -196,11 +196,14 @@ describe("searchListings minimum-stay filter", () => {
       }),
     ]);
 
+    // Dated far enough ahead to stay in the future for the life of this suite. Search
+    // refuses a stay whose check-in has gone by in *both* booking modes, so a fixed past
+    // date would eventually make this filter test assert nothing about minimum stay.
     const fiveNightFilters = {
       city,
       country: "North Macedonia",
-      checkIn: "2026-08-23",
-      checkOut: "2026-08-28",
+      checkIn: "2029-08-23",
+      checkOut: "2029-08-28",
     };
     const fiveNightResults = await searchListings(fiveNightFilters);
 
@@ -211,7 +214,7 @@ describe("searchListings minimum-stay filter", () => {
 
     const sevenNightResults = await searchListings({
       ...fiveNightFilters,
-      checkOut: "2026-08-30",
+      checkOut: "2029-08-30",
     });
 
     expect(sevenNightResults.listings.map((listing) => listing.id)).toEqual(

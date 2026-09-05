@@ -249,9 +249,11 @@ export function DefaultPricingEditor({
   const [percentDraft, setPercentDraft] = useState<string | null>(null);
   const [cleaningFee, setCleaningFee] = useState(saved?.cleaningFee ?? 0);
   const [cleaningDraft, setCleaningDraft] = useState<string | null>(null);
-  // Read, never written, and never shown: the minimum stay is a booking rule and is
-  // edited on Availability. It is still carried in the staged change so the review
-  // states the same rule it is saving alongside the price and the fee.
+  // Read, never written, and never shown: the minimum stay is a booking rule, edited
+  // under Availability → Booking rules. It is used only to price the worked example at
+  // a length this listing would really accept, and is deliberately kept out of the
+  // staged change — a Pricing screen that carried it would write whatever value it was
+  // rendered with back over a minimum changed since.
   const minNights = saved?.minNights ?? 1;
 
   // The example is priced for the shortest stay this listing would actually accept,
@@ -271,18 +273,19 @@ export function DefaultPricingEditor({
         {
           baseNightlyRate: String(baseRate),
           cleaningFee: String(cleaningFee),
-          minNights: String(minNights),
         },
         listing,
       ),
-    [baseRate, cleaningFee, minNights, listing],
+    [baseRate, cleaningFee, listing],
   );
   useListingDraft(draft, onDraftChange);
 
   // Priced from the drafted rule so the example moves as the host types, using the
   // same engine the booking transaction uses. Nothing is recomputed here.
+  // The saved stay limits ride along untouched: the example is quoted under the rules
+  // the listing actually has, and only the two amounts differ from what is stored.
   const draftedPricing = saved
-    ? { ...saved, baseNightlyRate: baseRate, cleaningFee, minNights }
+    ? { ...saved, baseNightlyRate: baseRate, cleaningFee }
     : null;
   const quote = useDefaultStayQuote({
     listing,

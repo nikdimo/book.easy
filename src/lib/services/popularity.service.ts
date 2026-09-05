@@ -66,8 +66,27 @@ function addDaily(map: Map<string, DailyCount[]>, listingId: string, day: Date, 
 export interface PopularityRecomputeResult {
   listingsScored: number;
   listingsUpdated: number;
+  /** Listings that left APPROVED and had a score left over from when they had not. */
+  listingsCleared: number;
   viewsPruned: number;
 }
+
+/**
+ * The columns that say "this listing has no popularity", written as the absence they are.
+ *
+ * A score is a statement about a listing people can currently see. Scoring only APPROVED
+ * listings was right; leaving the *last* score behind on the ones that dropped out was
+ * not. Harmless while search filters them away — and then not harmless at all the moment
+ * one is republished, because it comes back ranked on a months-old number that describes
+ * a different market and no traffic anyone can point at.
+ *
+ * Zero and null rather than a stale figure with a fresh timestamp: `popularityUpdatedAt`
+ * means "when this score was measured", and there is no measurement to date.
+ */
+export const NO_POPULARITY = {
+  popularityScore: 0,
+  popularityUpdatedAt: null,
+} as const;
 
 /**
  * Recomputes `Listing.popularityScore` for every publicly visible listing from the last
@@ -83,10 +102,21 @@ export async function recomputePopularityScores(
   const cutoff = new Date(now.getTime() - POPULARITY_WINDOW_DAYS * 24 * 60 * 60 * 1000);
   const cutoffDay = startOfUtcDay(cutoff);
 
-  const [listings, viewGroups, bookings] = await Promise.all([
+  const [listings, staleListings, viewGroups, bookings] = await Promise.all([
     db.listing.findMany({
       where: { status: ListingStatus.APPROVED },
       select: { id: true, popularityScore: true },
+    }),
+    // Listings that are no longer publicly visible but still carry a score from when
+    // they were. The lifecycle writers clear this at the moment of the transition; this
+    // is the sweep that catches everything already in that state, and anything that
+    // leaves APPROVED by some other route.
+    db.listing.findMany({
+      where: {
+        status: { not: ListingStatus.APPROVED },
+        OR: [{ popularityScore: { not: 0 } }, { popularityUpdatedAt: { not: null } }],
+      },
+      select: { id: true },
     }),
     db.listingView.groupBy({
       by: ["listingId", "viewedOn"],
@@ -128,12 +158,15 @@ export async function recomputePopularityScores(
     if (score !== listing.popularityScore) updates.push({ id: listing.id, score });
   }
 
+  let listingsUpdated = 0;
   for (let i = 0; i < updates.length; i += WRITE_CHUNK_SIZE) {
     const chunk = updates.slice(i, i + WRITE_CHUNK_SIZE);
     // Raw UPDATE rather than db.listing.update: `Listing.updatedAt` is `@updatedAt` and
     // means "last edited by a human" — it orders the host's listings page and the admin
-    // review queue. A nightly scoring job must not touch it.
-    await db.$executeRaw`
+    // review queue. A nightly scoring job must not touch it. Re-check APPROVED in the
+    // write itself: a lifecycle transition can happen after the read above, and a stale
+    // scoring pass must not restore a score to a listing that just left the market.
+    listingsUpdated += await db.$executeRaw`
       UPDATE "Listing" AS l
       SET "popularityScore" = v.score, "popularityUpdatedAt" = ${now}
       FROM (
@@ -141,6 +174,21 @@ export async function recomputePopularityScores(
                unnest(${chunk.map((u) => u.score)}::double precision[]) AS score
       ) AS v
       WHERE l.id = v.id
+        AND l.status = ${ListingStatus.APPROVED}::"ListingStatus"
+    `;
+  }
+
+  let listingsCleared = 0;
+  for (let i = 0; i < staleListings.length; i += WRITE_CHUNK_SIZE) {
+    const chunk = staleListings.slice(i, i + WRITE_CHUNK_SIZE);
+    // There is one value for every row, so there is nothing to unnest. The status guard
+    // is still essential: if a host republishes after the stale-row scan, this sweep
+    // must not erase the approved listing's newly valid score.
+    listingsCleared += await db.$executeRaw`
+      UPDATE "Listing"
+      SET "popularityScore" = 0, "popularityUpdatedAt" = NULL
+      WHERE id = ANY(${chunk.map((listing) => listing.id)}::text[])
+        AND status <> ${ListingStatus.APPROVED}::"ListingStatus"
     `;
   }
 
@@ -148,7 +196,8 @@ export async function recomputePopularityScores(
 
   return {
     listingsScored: listings.length,
-    listingsUpdated: updates.length,
+    listingsUpdated,
+    listingsCleared,
     viewsPruned: pruned.count,
   };
 }

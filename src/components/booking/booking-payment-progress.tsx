@@ -36,6 +36,11 @@ import type {
   CancellationPolicySnapshotV1,
   CancellationSettlementSnapshotV1,
 } from "@/lib/payments/cancellation-policy";
+import {
+  formatLongDate,
+  formatMoney as formatCalendarMoney,
+  type CalendarFormats,
+} from "@/lib/host/v2/calendar-format";
 
 type PaymentEvent =
   | "HOST_MARK_PAYMENT_DUE"
@@ -146,10 +151,15 @@ function requestDisplayState(
 }
 
 /** The sent deadline as a plain date, or null when none was recorded. */
-function formatDueDate(value: string | null | undefined, locale: string) {
+function formatDueDate(
+  value: string | null | undefined,
+  locale: string,
+  formats?: CalendarFormats,
+) {
   if (!value) return null;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
+  if (formats) return formatLongDate(value.slice(0, 10), formats);
   try {
     return new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(date);
   } catch {
@@ -157,7 +167,13 @@ function formatDueDate(value: string | null | undefined, locale: string) {
   }
 }
 
-function money(value: number, currency: string, locale: string) {
+function money(
+  value: number,
+  currency: string,
+  locale: string,
+  formats?: CalendarFormats,
+) {
+  if (formats) return formatCalendarMoney(value, currency, formats);
   try {
     return new Intl.NumberFormat(locale, { style: "currency", currency }).format(value);
   } catch {
@@ -219,8 +235,10 @@ function paymentStatusCopy(
     case "UNTRACKED": return resolve("booking.payment_progress.payment_status.untracked", "Not tracked").text;
     case "NOT_REQUIRED": return resolve("booking.payment_progress.payment_status.not_required", "Not required").text;
     case "AWAITING_PAYMENT": return resolve("booking.payment_progress.payment_status.awaiting_payment", "Awaiting payment").text;
-    case "PAYMENT_REPORTED": return resolve("booking.payment_progress.payment_status.payment_reported", "Payment reported").text;
-    case "PAYMENT_CONFIRMED": return resolve("booking.payment_progress.payment_status.payment_confirmed", "Payment received").text;
+    // Worded like the advance and damage tracks, so who said what is legible on all
+    // three: a report is the sender's claim, a confirmation is the receiver agreeing.
+    case "PAYMENT_REPORTED": return resolve("booking.payment_progress.payment_status.payment_reported", "Guest reported sending it").text;
+    case "PAYMENT_CONFIRMED": return resolve("booking.payment_progress.payment_status.payment_confirmed", "Host confirmed receiving it").text;
     default: return value;
   }
 }
@@ -292,9 +310,9 @@ function eventCopy(
   eventType: string,
 ) {
   switch (eventType) {
-    case "HOST_MARK_PAYMENT_DUE": return resolve("booking.payment_progress.event.host_mark_payment_due", "Marked payment due").text;
-    case "GUEST_REPORT_PAYMENT_SENT": return resolve("booking.payment_progress.event.guest_report_payment_sent", "Reported payment sent").text;
-    case "HOST_CONFIRM_PAYMENT_RECEIVED": return resolve("booking.payment_progress.event.host_confirm_payment_received", "Confirmed payment received").text;
+    case "HOST_MARK_PAYMENT_DUE": return resolve("booking.payment_progress.event.host_mark_payment_due", "Marked the accommodation balance due").text;
+    case "GUEST_REPORT_PAYMENT_SENT": return resolve("booking.payment_progress.event.guest_report_payment_sent", "Reported sending the accommodation balance").text;
+    case "HOST_CONFIRM_PAYMENT_RECEIVED": return resolve("booking.payment_progress.event.host_confirm_payment_received", "Confirmed receiving the accommodation balance").text;
     case "HOST_MARK_PAYMENT_NOT_REQUIRED": return resolve("booking.payment_progress.event.host_mark_payment_not_required", "Marked payment not required").text;
     case "HOST_MARK_ADVANCE_PAYMENT_DUE": return resolve("booking.payment_progress.event.host_mark_advance_due", "Marked the advance payment due").text;
     case "GUEST_REPORT_ADVANCE_PAYMENT_SENT": return resolve("booking.payment_progress.event.guest_report_advance_sent", "Reported sending the advance payment").text;
@@ -390,9 +408,11 @@ function ProgressControls({
 
   const payment = progress.paymentStatus;
   const hostControls: Array<{ event: PaymentEvent; label: string; allowed: boolean }> = [
-    { event: "HOST_MARK_PAYMENT_DUE", label: resolve("booking.payment_progress.mark_payment_due", "Mark payment due").text, allowed: payment === "UNTRACKED" },
+    // Named for the track they move. "Mark payment received" read as "everything is
+    // settled" on a booking with an advance, when what it confirms is the balance alone.
+    { event: "HOST_MARK_PAYMENT_DUE", label: resolve("booking.payment_progress.mark_balance_due", "Mark accommodation balance due").text, allowed: payment === "UNTRACKED" },
     { event: "HOST_MARK_PAYMENT_NOT_REQUIRED", label: resolve("booking.payment_progress.mark_payment_not_required", "Mark payment not required").text, allowed: PAYMENT_UNREPORTED.includes(payment) },
-    { event: "HOST_CONFIRM_PAYMENT_RECEIVED", label: resolve("booking.payment_progress.mark_payment_received", "Mark payment received").text, allowed: PAYMENT_OPEN.includes(payment) },
+    { event: "HOST_CONFIRM_PAYMENT_RECEIVED", label: resolve("booking.payment_progress.mark_balance_received", "Mark accommodation balance received").text, allowed: PAYMENT_OPEN.includes(payment) },
     { event: "HOST_MARK_ADVANCE_PAYMENT_DUE", label: resolve("booking.payment_progress.mark_advance_due", "Mark advance payment due").text, allowed: frozen.advancePayment && advance === "UNTRACKED" },
     { event: "HOST_CONFIRM_ADVANCE_PAYMENT_RECEIVED", label: resolve("booking.payment_progress.mark_advance_received", "Mark advance payment received").text, allowed: frozen.advancePayment && PAYMENT_OPEN.includes(advance) },
     { event: "HOST_MARK_DAMAGE_DEPOSIT_DUE", label: resolve("booking.payment_progress.mark_damage_due", "Mark damage deposit due").text, allowed: frozen.damageDeposit && damage === "UNTRACKED" },
@@ -404,7 +424,7 @@ function ProgressControls({
   // guest has not already said this. While a report is awaiting confirmation, the same
   // control becomes an edit action and pre-fills the participant's latest private row.
   const guestControls: Array<{ event: PaymentEvent; label: string; allowed: boolean }> = [
-    { event: "GUEST_REPORT_PAYMENT_SENT", label: payment === "PAYMENT_REPORTED" ? resolve("booking.payment_progress.edit_payment_report", "Edit payment report").text : resolve("booking.payment_progress.report_payment_sent", "Report payment sent").text, allowed: PAYMENT_OPEN.includes(payment) && payment !== "PAYMENT_CONFIRMED" },
+    { event: "GUEST_REPORT_PAYMENT_SENT", label: payment === "PAYMENT_REPORTED" ? resolve("booking.payment_progress.edit_balance_report", "Edit accommodation-balance report").text : resolve("booking.payment_progress.report_balance_sent", "Report accommodation balance sent").text, allowed: PAYMENT_OPEN.includes(payment) && payment !== "PAYMENT_CONFIRMED" },
     { event: "GUEST_REPORT_ADVANCE_PAYMENT_SENT", label: advance === "PAYMENT_REPORTED" ? resolve("booking.payment_progress.edit_advance_report", "Edit advance-payment report").text : resolve("booking.payment_progress.report_advance_sent", "Report advance payment sent").text, allowed: frozen.advancePayment && PAYMENT_OPEN.includes(advance) && advance !== "PAYMENT_CONFIRMED" },
     { event: "GUEST_REPORT_DAMAGE_DEPOSIT_SENT", label: damage === "DEPOSIT_REPORTED" ? resolve("booking.payment_progress.edit_damage_report", "Edit damage-deposit report").text : resolve("booking.payment_progress.report_damage_sent", "Report damage deposit sent").text, allowed: frozen.damageDeposit && DAMAGE_OPEN.includes(damage) && damage !== "DEPOSIT_CONFIRMED" },
     { event: "GUEST_CONFIRM_DAMAGE_DEPOSIT_RETURNED", label: resolve("booking.payment_progress.confirm_damage_return", "Confirm damage deposit return").text, allowed: frozen.damageDeposit && damage === "RETURN_REPORTED" },
@@ -745,14 +765,23 @@ function TrackRow({
   status,
   currency,
   locale,
+  formats,
+  caveat,
 }: {
-  kind: "advance-payment" | "damage-deposit" | "accommodation-refund";
+  kind:
+    | "accommodation-balance"
+    | "advance-payment"
+    | "damage-deposit"
+    | "accommodation-refund";
   title: string;
   note: string;
   amount: number | null;
   status: string;
   currency: string;
   locale: string;
+  formats?: CalendarFormats;
+  /** An extra line under the status — used to say an obligation is only claimed. */
+  caveat?: string | null;
 }) {
   const { resolve } = useI18n();
   return (
@@ -769,7 +798,7 @@ function TrackRow({
               {resolve("booking.payment_progress.frozen_amount", "Agreed amount").text}:
             </dt>
             <dd className="font-medium" data-payment-track-amount={kind}>
-              {money(amount, currency, locale)}
+              {money(amount, currency, locale, formats)}
             </dd>
           </div>
         ) : null}
@@ -782,6 +811,14 @@ function TrackRow({
           </dd>
         </div>
       </dl>
+      {caveat ? (
+        <p
+          className="mt-2 text-xs leading-5 text-muted-foreground"
+          data-payment-track-caveat={kind}
+        >
+          {caveat}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -791,18 +828,38 @@ export function BookingPaymentProgress({
   progress,
   actor,
   compact = false,
+  formats,
 }: {
   progress: BookingPaymentProgressView;
   actor: "HOST" | "GUEST";
   compact?: boolean;
+  /** Server-resolved patterns prevent ICU differences from breaking hydration. */
+  formats?: CalendarFormats;
 }) {
   const i18n = useI18n();
   const confirmed = progress.status === "CONFIRMED";
   const frozen = frozenPolicies(progress);
+  // `total - advance`, never a stored column: the balance has no column of its own, and
+  // `bookingPaymentObligations` derives it exactly this way on the server.
+  const accommodationBalance = Math.max(
+    0,
+    progress.total - (progress.advancePaymentAmount ?? 0),
+  );
+  // A refund built on a payment the guest reported and the host never confirmed is a
+  // claim, not an established debt — and a settlement written before provenance was
+  // recorded (`UNKNOWN`) is not evidence of confirmation either.
+  const refundIsClaimed =
+    (progress.accommodationRefundAmount ?? 0) > 0 &&
+    progress.cancellationSettlement != null &&
+    progress.cancellationSettlement.refundBasis !== "CONFIRMED";
   const typedRequests = progress.paymentRequests ?? [];
   const draftRequests = typedRequests.filter((request) => request.status === "DRAFT");
   const sentRequests = typedRequests.filter((request) => request.status === "SENT");
   const hasTypedRequests = typedRequests.length > 0;
+  const moneyText = (value: number, currency: string) =>
+    money(value, currency, i18n.locale, formats);
+  const dueDateText = (value: string | null | undefined) =>
+    formatDueDate(value, i18n.locale, formats);
 
   return (
     <Card size={compact ? "sm" : "default"} data-payment-progress={actor.toLowerCase()}>
@@ -820,9 +877,29 @@ export function BookingPaymentProgress({
               <span className="font-medium"><PaymentMethodName t={i18n} code={progress.selectedPaymentMethod} otherLabel={progress.paymentMethodOtherLabel ?? null} /></span>
             </p>
           ) : null}
-          <p><span className="text-muted-foreground">{i18n.resolve("booking.payment_progress.total", "Payment total").text}: </span><span className="font-medium">{money(progress.total, progress.currency, i18n.locale)}</span></p>
-          <p><span className="text-muted-foreground">{i18n.resolve("booking.payment_progress.payment", "Payment").text}: </span><span className="font-medium">{paymentStatusCopy(i18n.resolve, progress.paymentStatus)}</span></p>
+          <p><span className="text-muted-foreground">{i18n.resolve("booking.payment_progress.total", "Payment total").text}: </span><span className="font-medium">{moneyText(progress.total, progress.currency)}</span></p>
         </div>
+
+        {/*
+          The track that `paymentStatus` actually governs, named and priced.
+
+          It used to render as a bare "Payment: <status>" line with no figure beside it,
+          while the advance and damage tracks each showed theirs. A host looking at a
+          booking with a 200 EUR advance had no way to tell that "payment" meant the
+          other 800 EUR — and the control under it said "Mark payment received", which
+          invites the reading "everything is settled". The arithmetic was always the
+          balance; only the label was not.
+        */}
+        <TrackRow
+          kind="accommodation-balance"
+          title={i18n.resolve("booking.payment_progress.balance_title", "Accommodation balance").text}
+          note={i18n.resolve("booking.payment_progress.balance_note", "The payment total above, minus any advance payment.").text}
+          amount={accommodationBalance}
+          status={paymentStatusCopy(i18n.resolve, progress.paymentStatus)}
+          currency={progress.currency}
+          locale={i18n.locale}
+          formats={formats}
+        />
 
         {frozen.advancePayment ? (
           <TrackRow
@@ -833,6 +910,7 @@ export function BookingPaymentProgress({
             status={advanceStatusCopy(i18n.resolve, progress.advancePaymentStatus)}
             currency={progress.currency}
             locale={i18n.locale}
+            formats={formats}
           />
         ) : null}
 
@@ -845,6 +923,7 @@ export function BookingPaymentProgress({
             status={damageStatusCopy(i18n.resolve, progress.damageDepositStatus)}
             currency={progress.currency}
             locale={i18n.locale}
+            formats={formats}
           />
         ) : null}
 
@@ -868,6 +947,15 @@ export function BookingPaymentProgress({
             )}
             currency={progress.currency}
             locale={i18n.locale}
+            formats={formats}
+            caveat={
+              refundIsClaimed
+                ? i18n.resolve(
+                    "booking.payment_progress.refund_claimed",
+                    "This amount is based on a payment the guest reported and the host has not confirmed. It is a claim under review, not a confirmed debt. Contact support if the two of you disagree about what was paid.",
+                  ).text
+                : null
+            }
           />
         ) : null}
 
@@ -880,10 +968,9 @@ export function BookingPaymentProgress({
               )
               .text.replace(
                 "{amount}",
-                money(
+                moneyText(
                   progress.cancellationSettlement?.retainableAdvanceAmount ?? 0,
                   progress.currency,
-                  i18n.locale,
                 ),
               )}
           </p>
@@ -904,8 +991,8 @@ export function BookingPaymentProgress({
           progress.sentPaymentDetails ? (
             <GuestPaymentCard
               details={progress.sentPaymentDetails}
-              amount={money(progress.total, progress.currency, i18n.locale)}
-              dueDate={formatDueDate(progress.paymentInstructionsDueAt, i18n.locale)}
+              amount={moneyText(progress.total, progress.currency)}
+              dueDate={dueDateText(progress.paymentInstructionsDueAt)}
               reference={progress.reference ?? ""}
             />
           ) : (
@@ -922,7 +1009,7 @@ export function BookingPaymentProgress({
             {sentRequests.map((request) => (
               <section key={request.id} className="space-y-2">
                 <p className="text-sm font-semibold">
-                  {paymentRequestTitle(i18n.resolve, request.type)} · {money(request.amount, request.currency, i18n.locale)}
+                  {paymentRequestTitle(i18n.resolve, request.type)} · {moneyText(request.amount, request.currency)}
                 </p>
                 <p className="text-xs capitalize text-muted-foreground">
                   {requestDisplayState(request)}
@@ -933,8 +1020,8 @@ export function BookingPaymentProgress({
                 {request.sentPaymentDetails ? (
                   <GuestPaymentCard
                     details={request.sentPaymentDetails}
-                    amount={money(request.amount, request.currency, i18n.locale)}
-                    dueDate={formatDueDate(request.dueAt, i18n.locale)}
+                    amount={moneyText(request.amount, request.currency)}
+                    dueDate={dueDateText(request.dueAt)}
                     reference={progress.reference ?? ""}
                   />
                 ) : request.instructionsNotRequired ? (
@@ -982,7 +1069,7 @@ export function BookingPaymentProgress({
             {progress.transactionReports.map((report) => (
               <div key={report.id} className="rounded-lg border border-border p-3 text-sm">
                 <p className="font-medium">
-                  {report.track.replaceAll("_", " ")} · {money(report.amount, report.currency, i18n.locale)}
+                  {report.track.replaceAll("_", " ")} · {moneyText(report.amount, report.currency)}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {i18n.resolve("booking.transaction.reported_by", "Reported by").text}{" "}

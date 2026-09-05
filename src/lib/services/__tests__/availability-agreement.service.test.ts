@@ -1,13 +1,11 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { db } from "@/lib/db";
 import { randomUUID } from "node:crypto";
-import {
-  checkAvailability,
-  getBlockedDateRangesForListing,
-} from "@/lib/services/availability.service";
+import { getBlockedDateRangesForListing } from "@/lib/services/availability.service";
 import { createBooking } from "@/lib/services/booking.service";
 import { searchListings } from "@/lib/services/search.service";
 import { validateBookingSelection } from "@/lib/utils/booking-selection";
+import { todayYmd, ymdToDbDate } from "@/lib/utils/date-only";
 import {
   createTestHostAndListing,
   createTestGuest,
@@ -16,9 +14,13 @@ import {
 } from "./test-helpers";
 
 /**
- * C3: the calendar, search, `checkAvailability` and `createBooking` must answer the same
- * question the same way. Each case below asks all four about one stay and asserts they
- * agree — that being the property that was broken, rather than any single path's answer.
+ * C3: the calendar, search and `createBooking` must answer the same question the same
+ * way. Each case below asks all three about one stay and asserts they agree — that being
+ * the property that was broken, rather than any single path's answer.
+ *
+ * There used to be a fourth leg, `checkAvailability`, which had no production callers at
+ * all (#5) and has been deleted. Asking it here made the suite look broader than it was:
+ * three of the four answers were live and one was a function nothing shipped.
  *
  * The audit filed C3 as a critical guest-facing flow. That overstates today's exposure:
  * `submitNewListing` runs `mergeInclusiveBlockRanges` over the host's open ranges, so
@@ -30,12 +32,9 @@ import {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** UTC midnight today, the convention the `@db.Date` columns round-trip. */
+/** Marketplace today, stored as the UTC-midnight spelling used by `@db.Date`. */
 function utcToday(): Date {
-  const now = new Date();
-  return new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-  );
+  return ymdToDbDate(todayYmd());
 }
 
 const plusDays = (base: Date, days: number) =>
@@ -73,18 +72,18 @@ async function createClosedListing(windows: { start: Date; end: Date }[]) {
   return { host, property, listing, city };
 }
 
-/** What all four paths say about one stay on one listing. */
+/** What all three live paths say about one stay on one listing. */
 async function askEveryPath(input: {
   listingId: string;
   city: string;
   guestId: string;
   checkIn: Date;
   checkOut: Date;
+  /** The listing's own limits, so the calendar leg is asked the same question. */
+  minNights?: number;
+  maxNights?: number;
 }) {
   const { listingId, city, guestId, checkIn, checkOut } = input;
-
-  const available = (await checkAvailability(listingId, checkIn, checkOut))
-    .available;
 
   const searchIds = (
     await searchListings({
@@ -99,8 +98,9 @@ async function askEveryPath(input: {
   const calendarStatus = validateBookingSelection(
     checkIn,
     checkOut,
-    1,
+    input.minNights ?? 1,
     blockedRanges,
+    input.maxNights,
   ).status;
 
   let booked = false;
@@ -121,7 +121,6 @@ async function askEveryPath(input: {
   }
 
   return {
-    available,
     inSearch: searchIds.includes(listingId),
     calendarOffersIt: calendarStatus === "valid",
     booked,
@@ -163,7 +162,6 @@ describe("availability rule agreement across calendar, search, check and booking
 
     expect(answers.bookingError).toBeUndefined();
     expect(answers).toMatchObject({
-      available: true,
       inSearch: true,
       calendarOffersIt: true,
       booked: true,
@@ -194,7 +192,6 @@ describe("availability rule agreement across calendar, search, check and booking
     });
 
     expect(answers).toMatchObject({
-      available: false,
       inSearch: false,
       calendarOffersIt: false,
       booked: false,
@@ -225,7 +222,6 @@ describe("availability rule agreement across calendar, search, check and booking
     });
 
     expect(answers).toMatchObject({
-      available: true,
       inSearch: true,
       calendarOffersIt: true,
       booked: true,
@@ -255,7 +251,6 @@ describe("availability rule agreement across calendar, search, check and booking
     });
 
     expect(answers).toMatchObject({
-      available: true,
       inSearch: true,
       calendarOffersIt: true,
       booked: true,
@@ -285,7 +280,6 @@ describe("availability rule agreement across calendar, search, check and booking
     });
 
     expect(answers).toMatchObject({
-      available: false,
       inSearch: false,
       calendarOffersIt: false,
       booked: false,
@@ -315,11 +309,182 @@ describe("availability rule agreement across calendar, search, check and booking
     });
 
     expect(answers).toMatchObject({
-      available: false,
       inSearch: false,
       calendarOffersIt: false,
       booked: false,
     });
+  });
+});
+
+/**
+ * #4: the two cells this suite never asked, which is how the gap stayed invisible.
+ *
+ * `decideStayAvailability` returned from its flexible branch before consulting `limits`
+ * and before the past-date check, and the suite only ever exercised windows. The booking
+ * path happened to hold — `createBooking` re-implemented the limits and the action-layer
+ * Zod refinement re-implemented the past-date rule — but search built its flexible arm
+ * without the past-date rule at all.
+ *
+ * A listing with an OPEN calendar here on purpose: these are listing-wide rules, and
+ * they must refuse a stay that no window is standing in the way of.
+ */
+describe("flexible listings agree on stay limits and past dates", () => {
+  let fixtures: TestFixtures | undefined;
+
+  afterEach(async () => {
+    if (fixtures) await cleanupTestFixtures(fixtures);
+    fixtures = undefined;
+  });
+
+  async function createOpenListing(limits: { minNights: number; maxNights: number }) {
+    const { host, property, listing } = await createTestHostAndListing();
+    const city = `Availability Agreement ${randomUUID()}`;
+    await db.property.update({ where: { id: property.id }, data: { city } });
+    await db.pricingRule.update({
+      where: { listingId: listing.id },
+      data: limits,
+    });
+    const guest = await createTestGuest();
+    fixtures = {
+      hostId: host.id,
+      propertyId: property.id,
+      listingId: listing.id,
+      extraUserIds: [guest.id],
+    };
+    return { listing, city, guest };
+  }
+
+  it("offers a stay inside the limits, everywhere", async () => {
+    const { listing, city, guest } = await createOpenListing({
+      minNights: 3,
+      maxNights: 14,
+    });
+    const base = plusDays(utcToday(), BASE_OFFSET_DAYS);
+    const answers = await askEveryPath({
+      listingId: listing.id,
+      city,
+      guestId: guest.id,
+      checkIn: base,
+      checkOut: plusDays(base, 7),
+      minNights: 3,
+      maxNights: 14,
+    });
+    expect(answers.bookingError).toBeUndefined();
+    expect(answers).toMatchObject({
+      inSearch: true,
+      calendarOffersIt: true,
+      booked: true,
+    });
+  });
+
+  it("refuses a stay under the minimum, everywhere", async () => {
+    const { listing, city, guest } = await createOpenListing({
+      minNights: 5,
+      maxNights: 14,
+    });
+    const base = plusDays(utcToday(), BASE_OFFSET_DAYS);
+    const answers = await askEveryPath({
+      listingId: listing.id,
+      city,
+      guestId: guest.id,
+      checkIn: base,
+      checkOut: plusDays(base, 2),
+      minNights: 5,
+      maxNights: 14,
+    });
+    expect(answers).toMatchObject({
+      inSearch: false,
+      calendarOffersIt: false,
+      booked: false,
+    });
+    expect(answers.bookingError).toMatch(/minimum stay is 5 nights/i);
+  });
+
+  it("refuses a stay over the maximum, everywhere", async () => {
+    const { listing, city, guest } = await createOpenListing({
+      minNights: 1,
+      maxNights: 7,
+    });
+    const base = plusDays(utcToday(), BASE_OFFSET_DAYS);
+    const answers = await askEveryPath({
+      listingId: listing.id,
+      city,
+      guestId: guest.id,
+      checkIn: base,
+      checkOut: plusDays(base, 10),
+      minNights: 1,
+      maxNights: 7,
+    });
+    expect(answers).toMatchObject({
+      inSearch: false,
+      calendarOffersIt: false,
+      booked: false,
+    });
+    expect(answers.bookingError).toMatch(/maximum stay is 7 nights/i);
+  });
+
+  it("treats a stored maximum of 0 as no cap, everywhere", async () => {
+    const { listing, city, guest } = await createOpenListing({
+      minNights: 1,
+      maxNights: 0,
+    });
+    const base = plusDays(utcToday(), BASE_OFFSET_DAYS);
+    const answers = await askEveryPath({
+      listingId: listing.id,
+      city,
+      guestId: guest.id,
+      checkIn: base,
+      checkOut: plusDays(base, 60),
+      minNights: 1,
+      maxNights: 0,
+    });
+    expect(answers.bookingError).toBeUndefined();
+    expect(answers).toMatchObject({
+      inSearch: true,
+      calendarOffersIt: true,
+      booked: true,
+    });
+  });
+
+  /**
+   * The past-date cell. Asked of the three *server* paths only: the guest calendar's
+   * blocked ranges start at today by construction, so past-ness is expressed there by
+   * the picker's own floor rather than by this data, and asking `validateBookingSelection`
+   * about it would be asking a question it is not the answer to.
+   */
+  it("refuses a stay whose check-in has gone by, on every server path", async () => {
+    const { listing, city, guest } = await createOpenListing({
+      minNights: 1,
+      maxNights: 30,
+    });
+    const base = plusDays(utcToday(), -5);
+    const answers = await askEveryPath({
+      listingId: listing.id,
+      city,
+      guestId: guest.id,
+      checkIn: base,
+      checkOut: plusDays(base, 3),
+    });
+    expect(answers.inSearch).toBe(false);
+    expect(answers.booked).toBe(false);
+    expect(answers.bookingError).toMatch(/check-in date cannot be in the past/i);
+  });
+
+  /** Today is not the past, and a same-day stay stays bookable. */
+  it("still offers a stay beginning today", async () => {
+    const { listing, city, guest } = await createOpenListing({
+      minNights: 1,
+      maxNights: 30,
+    });
+    const base = utcToday();
+    const answers = await askEveryPath({
+      listingId: listing.id,
+      city,
+      guestId: guest.id,
+      checkIn: base,
+      checkOut: plusDays(base, 3),
+    });
+    expect(answers.inSearch).toBe(true);
   });
 });
 

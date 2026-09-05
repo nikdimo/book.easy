@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { actionText } from "@/lib/actions/action-text";
 import {
   disableAllPromotionsForManagedListing,
   removePromotionForManagedListing,
@@ -19,13 +20,13 @@ export type PromotionActionState = {
 async function requireWebPromotionListing(listingId: string) {
   const session = await auth();
   if (!session?.user?.id || !session.user.isHost) {
-    return { error: "Not authorized." as const };
+    return { error: await actionText("action.error.not_authorized_sentence", "Not authorized.") };
   }
   const listing = await db.listing.findFirst({
     where: { id: listingId, hostId: session.user.id },
     select: { id: true, slug: true, availabilityMode: true },
   });
-  if (!listing) return { error: "Listing not found." as const };
+  if (!listing) return { error: await actionText("action.error.listing_not_found_sentence", "Listing not found.") };
   return { listing, actorId: session.user.id };
 }
 

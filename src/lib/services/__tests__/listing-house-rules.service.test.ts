@@ -67,6 +67,7 @@ describe("getListingHouseRulesEditorData shape", () => {
       listing: { id: "listing-1", slug: "seaside-apartment", status: "APPROVED" },
       rules: {
         checkInTime: "15:00",
+        checkInEndTime: "",
         checkOutTime: "11:00",
         maxGuests: 4,
         petPolicy: "ASK_HOST",

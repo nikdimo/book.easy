@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { readStoredValue, writeStoredValue } from "@/lib/browser-storage";
 
 /**
  * How large the thumbnails are, remembered across sessions.
@@ -24,8 +25,12 @@ function subscribe(onChange: () => void) {
 }
 
 function getSnapshot(): Density {
+  // Guarded, because this runs inside a `useSyncExternalStore` snapshot — that is,
+  // during render — and a browser that refuses storage throws on the access itself,
+  // which would take the whole photos workspace down over a thumbnail size. See
+  // `lib/browser-storage.ts`.
   if (cached === null) {
-    const stored = window.localStorage.getItem(KEY);
+    const stored = readStoredValue(KEY);
     cached = stored === "small" || stored === "large" ? stored : "medium";
   }
   return cached;
@@ -41,7 +46,9 @@ export function useDensity(): Density {
 
 export function setDensity(next: Density) {
   cached = next;
-  window.localStorage.setItem(KEY, next);
+  // The grid resizes from the in-memory cache either way; only the memory of the choice
+  // depends on the write landing.
+  writeStoredValue(KEY, next);
   listeners.forEach((listener) => listener());
 }
 

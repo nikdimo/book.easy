@@ -119,6 +119,17 @@ export const REQUIRED_POLICY_COUNT = HOUSE_RULE_POLICY_FIELDS.length;
 export interface ListingHouseRulesInput {
   /** "HH:MM", or `FLEXIBLE_STAY_TIME` for a host who agrees arrival with the guest. */
   checkInTime: string;
+  /**
+   * The far end of the arrival window — "arrive between 15:00 and 20:00".
+   *
+   * `FLEXIBLE_STAY_TIME` means the window has no end: arrive any time after `checkInTime`,
+   * which is what every listing that predates this field truthfully says and why it is not
+   * something the create flow asks for. Never compared against `checkInTime`: a window that
+   * runs past midnight (17:00–01:00) is an ordinary thing for a host near an airport to
+   * offer, so there is no start-before-end rule to enforce here any more than there is for
+   * quiet hours.
+   */
+  checkInEndTime: string;
   checkOutTime: string;
   maxGuests: number;
   /** null everywhere below means the host has not answered — never "not allowed". */
@@ -143,6 +154,7 @@ export type AdditionalRulesIssue = "TOO_LONG";
 
 export interface ListingHouseRulesIssues {
   checkInTime?: StayTimeIssue;
+  checkInEndTime?: StayTimeIssue;
   checkOutTime?: StayTimeIssue;
   maxGuests?: MaxGuestsIssue;
   petPolicy?: PolicyIssue;
@@ -227,6 +239,7 @@ export function normalizeListingHouseRules(
   const keepTimes = quietHoursPolicy === "SET";
   return {
     checkInTime: normalizeStayTime(input.checkInTime),
+    checkInEndTime: normalizeStayTime(input.checkInEndTime),
     checkOutTime: normalizeStayTime(input.checkOutTime),
     maxGuests: input.maxGuests,
     petPolicy: normalizePetPolicy(input.petPolicy),
@@ -282,6 +295,8 @@ export function listingHouseRulesIssues(
   const issues: ListingHouseRulesIssues = {};
   const checkIn = stayTimeIssue(value.checkInTime);
   if (checkIn) issues.checkInTime = checkIn;
+  const checkInEnd = stayTimeIssue(value.checkInEndTime);
+  if (checkInEnd) issues.checkInEndTime = checkInEnd;
   const checkOut = stayTimeIssue(value.checkOutTime);
   if (checkOut) issues.checkOutTime = checkOut;
   const guests = maxGuestsIssue(value.maxGuests);
@@ -417,6 +432,9 @@ export function listingHouseRulesValid(
 export function emptyListingHouseRules(): ListingHouseRulesInput {
   return {
     checkInTime: "15:00",
+    // No default window end. "Arrive after 15:00" is what a new listing honestly offers
+    // until its host decides they want the door shut by a particular hour.
+    checkInEndTime: FLEXIBLE_STAY_TIME,
     checkOutTime: "11:00",
     maxGuests: 2,
     petPolicy: null,
@@ -509,6 +527,13 @@ export interface HouseRulesSnapshot {
  *  a `select` can be handed straight in. */
 export interface ListingHouseRulesRow {
   checkInTime: string | null;
+  /**
+   * Optional because most readers of a listing row have no reason to select it. The
+   * booking snapshot, the review window and the public rules list all care when a guest
+   * may arrive, not by when they must — so absent reads as "no window end", which is
+   * the same thing every listing said before this column existed.
+   */
+  checkInEndTime?: string | null;
   checkOutTime: string | null;
   maxGuests: number;
   petPolicy: string | null;
@@ -576,6 +601,7 @@ export function parseHouseRulesSnapshot(value: unknown): HouseRulesSnapshot | nu
 export function houseRulesFromRow(listing: ListingHouseRulesRow): ListingHouseRulesInput {
   return normalizeListingHouseRules({
     checkInTime: normalizeStayTime(listing.checkInTime),
+    checkInEndTime: normalizeStayTime(listing.checkInEndTime),
     checkOutTime: normalizeStayTime(listing.checkOutTime),
     maxGuests: listing.maxGuests,
     petPolicy: normalizePetPolicy(listing.petPolicy),
@@ -595,6 +621,8 @@ export function houseRulesRowData(rules: ListingHouseRulesInput) {
   const value = normalizeListingHouseRules(rules);
   return {
     checkInTime: value.checkInTime === FLEXIBLE_STAY_TIME ? null : value.checkInTime,
+    checkInEndTime:
+      value.checkInEndTime === FLEXIBLE_STAY_TIME ? null : value.checkInEndTime,
     checkOutTime: value.checkOutTime === FLEXIBLE_STAY_TIME ? null : value.checkOutTime,
     maxGuests: value.maxGuests,
     petPolicy: value.petPolicy,
@@ -617,6 +645,7 @@ export function sameListingHouseRules(
   const right = normalizeListingHouseRules(b);
   return (
     left.checkInTime === right.checkInTime &&
+    left.checkInEndTime === right.checkInEndTime &&
     left.checkOutTime === right.checkOutTime &&
     left.maxGuests === right.maxGuests &&
     left.petPolicy === right.petPolicy &&

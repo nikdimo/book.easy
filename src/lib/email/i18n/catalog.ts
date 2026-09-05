@@ -329,6 +329,39 @@ export const EMAIL_CATALOG: Record<string, EmailCatalogEntry> = {
     mk: "Од вас не се бара никакво дејство.",
   },
 
+  // ------------------------------------- booking cancelled by support (host)
+  //
+  // Its own set rather than a reuse of the guest-cancelled copy: a host told "your
+  // guest cancelled" when support cancelled has been told something untrue.
+  "email.booking.admin_cancelled.subject": {
+    en: "Cancelled by support",
+    mk: "Откажано од поддршка",
+  },
+  "email.booking.admin_cancelled.body": {
+    en: 'Linger Homes support cancelled the booking for "{listing}" ({checkIn} – {checkOut}). Those dates are available again.',
+    mk: "Поддршката на Linger Homes ја откажа резервацијата за „{listing}“ ({checkIn} – {checkOut}). Овие датуми се повторно достапни.",
+  },
+  "email.booking.admin_cancelled.preheader": {
+    en: "Support cancelled booking {reference}.",
+    mk: "Поддршката ја откажа резервацијата {reference}.",
+  },
+  "email.booking.admin_cancelled.eyebrow": {
+    en: "Booking cancelled by support",
+    mk: "Резервација откажана од поддршка",
+  },
+  "email.booking.admin_cancelled.headline": {
+    en: "Support cancelled this booking",
+    mk: "Поддршката ја откажа оваа резервација",
+  },
+  "email.booking.admin_cancelled.intro": {
+    en: "The reserved dates have been released in your calendar.",
+    mk: "Резервираните датуми се ослободени во вашиот календар.",
+  },
+  "email.booking.admin_cancelled.callout": {
+    en: "Linger Homes does not collect or hold booking payments, so there is nothing for us to refund — settle anything you arranged directly with the guest. Contact support if you need more detail about this cancellation.",
+    mk: "Linger Homes не собира или чува плаќања за резервации, така што нема ништо за нас да вратиме — средете сè што сте договориле директно со гостинот. Контактирајте ја поддршката ако ви требаат повеќе детали за ова откажување.",
+  },
+
   // ------------------------------------------------------------- messages
   "email.message.subject": {
     en: "New message about {listing}",

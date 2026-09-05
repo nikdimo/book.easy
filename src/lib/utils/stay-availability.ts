@@ -1,9 +1,14 @@
 import { windowsCoverStay } from "@/lib/utils/availability-windows";
-import { compareYmd, isValidYmd, ymdToDbDate } from "@/lib/utils/date-only";
+import {
+  compareYmd,
+  isValidYmd,
+  nightsBetweenYmd,
+  ymdToDbDate,
+} from "@/lib/utils/date-only";
+import { stayLimitIssue, type StayLimits } from "@/lib/utils/stay-limits";
 import {
   weeklyStayIssue,
   type ChangeoverWeekdayName,
-  type WeeklyStayLimits,
 } from "@/lib/utils/weekly-stay";
 
 /**
@@ -28,10 +33,14 @@ import {
  * already goes through.
  *
  * This is the shared rule, and it has three callers: `createBooking`, which decides
- * whether a request may become a booking; `checkAvailability`, which every other "is it
- * free?" read goes through; and the search filter, which expresses the same two branches
- * in SQL rather than calling in — see `buildListingWhere`. They agree because they are
- * the same rule, not because three implementations happen to line up.
+ * whether a request may become a booking; the public calendar and booking selection; and
+ * the search filter, which expresses the same two branches in SQL rather than calling in
+ * — see `buildListingWhere`. They agree because they are the same rule, not because
+ * three implementations happen to line up.
+ *
+ * Everything that is listing-*wide* — availability windows, stay-length limits, and the
+ * rule that a stay which has already begun is nobody's to take — applies in **both**
+ * booking modes. Only the weekday shape is weekly-only.
  */
 
 /** The two ways a listing can sell its dates, as `Listing.bookingMode` stores them. */
@@ -52,14 +61,22 @@ export interface StayAvailabilityInput {
   /** The listing's open windows. Applies in both booking modes when CLOSED. */
   windows: readonly StayAvailabilityWindowYmd[];
   /**
-   * The weekday a weekly listing changes over on, and how long a stay may run.
+   * The weekday a weekly listing changes over on. Only consulted in the weekly branch.
    *
-   * Both are only consulted in the weekly branch. `changeoverWeekday` null is a real
-   * state and it fails closed: a weekly listing whose host has not picked a day offers
-   * nothing at all.
+   * Null is a real state and it fails closed: a weekly listing whose host has not picked
+   * a day offers nothing at all.
    */
   changeoverWeekday?: ChangeoverWeekdayName | null;
-  limits?: WeeklyStayLimits;
+  /**
+   * How long a stay may run — `PricingRule.minNights`/`maxNights`.
+   *
+   * **Listing-wide, and applied in both booking modes.** This used to be documented as
+   * weekly-only, and the flexible branch really did return before consulting it: a
+   * caller could hand these numbers over and have them silently ignored. Search and
+   * `createBooking` applied them anyway, each in its own code, so the "shared" rule was
+   * the one surface that disagreed. Omitted means unconstrained.
+   */
+  limits?: StayLimits;
   /** The stay being asked about, `[checkIn, checkOut)`. */
   checkIn: string;
   checkOut: string;
@@ -78,9 +95,9 @@ export type StayNotOfferedReason =
   | "WRONG_CHECK_IN_DAY"
   /** WEEKLY: checkout is not on it either, so the stay is not whole weeks. */
   | "WRONG_CHECK_OUT_DAY"
-  /** WEEKLY: shorter than the listing's minimum stay. */
+  /** Shorter than the listing's minimum stay. Both booking modes. */
   | "BELOW_MINIMUM"
-  /** WEEKLY: longer than the listing's maximum stay. */
+  /** Longer than the listing's maximum stay. Both booking modes. */
   | "ABOVE_MAXIMUM"
   /** The stay has already begun. */
   | "STAY_IN_PAST";
@@ -101,8 +118,9 @@ export function isFixedStayBookingMode(bookingMode: string): boolean {
 /**
  * Whether the listing offers these dates.
  *
- * The reasons are ordered so the caller learns the most specific true thing: a stay that
- * Invalid ranges are refused first, then listing-wide availability, then weekly shape.
+ * The reasons are ordered so the caller learns the most specific true thing. Invalid
+ * ranges are refused first, then listing-wide availability windows, then — per mode —
+ * the weekly shape before stay length, and stay length before the past-date rule.
  */
 export function decideStayAvailability(
   input: StayAvailabilityInput,
@@ -131,6 +149,24 @@ export function decideStayAvailability(
   }
 
   if (!isFixedStayBookingMode(input.bookingMode)) {
+    // Two listing-wide rules the flexible branch used to return above.
+    //
+    // They are spelled out here rather than hoisted above the weekly branch on purpose.
+    // `weeklyStayIssue` deliberately reports WRONG_CHECK_IN_DAY / WRONG_CHECK_OUT_DAY
+    // ahead of BELOW_MINIMUM / ABOVE_MAXIMUM — telling a guest their fortnight is too
+    // short is no help when the real problem is that they picked a Tuesday — and a
+    // common check run first would invert that. Same for the past-date rule: moving it
+    // ahead of the weekly shape would change which message a weekly guest sees.
+    if (input.limits) {
+      const issue = stayLimitIssue(
+        nightsBetweenYmd(input.checkIn, input.checkOut),
+        input.limits,
+      );
+      if (issue) return { offered: false, reason: issue };
+    }
+    if (compareYmd(input.checkIn, input.today) < 0) {
+      return { offered: false, reason: "STAY_IN_PAST" };
+    }
     return { offered: true, fixedStayPeriodId: null };
   }
 
@@ -146,7 +182,9 @@ export function decideStayAvailability(
   });
   if (issue) return { offered: false, reason: issue };
 
-  // A stay that has already begun is nobody's to take, whatever its shape.
+  // A stay that has already begun is nobody's to take, whatever its shape. Kept *after*
+  // `weeklyStayIssue` so a weekly guest who also picked the wrong weekday still hears
+  // about the weekday first, which is the message that tells them what to do next.
   if (compareYmd(input.checkIn, input.today) < 0) {
     return { offered: false, reason: "STAY_IN_PAST" };
   }

@@ -294,13 +294,24 @@ export function PhotosStep({
           });
           if (response.ok) return;
           const result = (await response.json().catch(() => ({}))) as { error?: string };
-          toast.error(result.error ?? "That photo could not be removed. Please try again.");
+          toast.error(
+            result.error ??
+              resolve(
+                "host.v2.photos.remove_failed",
+                "That photo could not be removed. Please try again.",
+              ).text,
+          );
         } catch {
-          toast.error("That photo could not be removed. Please try again.");
+          toast.error(
+            resolve(
+              "host.v2.photos.remove_failed",
+              "That photo could not be removed. Please try again.",
+            ).text,
+          );
         }
       })();
     },
-    [applyPhotos, releasePreview],
+    [applyPhotos, releasePreview, resolve],
   );
 
   // Local previews exist before the upload endpoint can inspect their bytes. Recognize
@@ -587,9 +598,14 @@ export function PhotosStep({
           guardNext(async () => {
             try {
               await savePhotos();
-            } catch (error) {
+            } catch {
+              // Not `error.message`: what lands here is an upload transport
+              // fault, and "Failed to fetch" is the browser talking to a developer.
               toast.error(
-                error instanceof Error ? error.message : "Your photos could not be uploaded.",
+                resolve(
+                  "host.v2.photos.upload_failed",
+                  "Your photos could not be uploaded.",
+                ).text,
               );
             }
           })

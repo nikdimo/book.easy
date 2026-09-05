@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -34,6 +35,12 @@ export const FOCUS_RING =
  * Deliberately a plain `img`: avatars arrive from whichever provider the account signed
  * in with, and those hosts are not in `next.config.ts`'s `remotePatterns` — the
  * optimizer would refuse them. At 28–48px there is nothing for it to optimize anyway.
+ *
+ * The initial is the fallback for a picture that does not arrive, not only for one that
+ * was never stored. `img-src` in the Content-Security-Policy allows Google's avatar host
+ * and no other, so a picture from anywhere else is blocked before it paints — silently,
+ * with no error the page can see other than the load failing. Treating that the same as
+ * "no picture" is what keeps an empty grey circle from being the answer.
  */
 export function Avatar({
   name,
@@ -45,6 +52,12 @@ export function Avatar({
   className?: string;
 }) {
   const initial = (name || "?").trim().charAt(0).toUpperCase();
+  // The URL that failed, rather than a boolean: a different person arriving in the same
+  // slot deserves a fresh attempt at their own picture, and remembering *which* image
+  // gave up derives that from the props instead of resetting a flag in an effect.
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const failed = image != null && failedUrl === image;
+
   return (
     <span
       className={cn(
@@ -53,9 +66,14 @@ export function Avatar({
       )}
       aria-hidden
     >
-      {image ? (
+      {image && !failed ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={image} alt="" className="size-full object-cover" />
+        <img
+          src={image}
+          alt=""
+          className="size-full object-cover"
+          onError={() => setFailedUrl(image)}
+        />
       ) : (
         initial
       )}

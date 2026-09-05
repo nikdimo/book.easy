@@ -1,120 +1,120 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import type { HostListingOverviewItem } from "@/lib/services/host-listing-overview.service";
 
-// The row's controls are server actions, which drag next-auth in through a module graph
-// that vitest's node environment cannot resolve. The overview under test only needs them
-// to render, so they are stubbed the same way listing-actions-menu.test.tsx stubs them.
-vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
-vi.mock("@/lib/actions/listing.actions", () => ({
+const mocks = vi.hoisted(() => ({
+  refresh: vi.fn(),
   archiveListing: vi.fn(),
   unarchiveListing: vi.fn(),
   deleteListing: vi.fn(),
-  deleteListingDraft: vi.fn(),
   submitForReview: vi.fn(),
   unpublishListing: vi.fn(),
 }));
 
-import { ListingOverview } from "@/components/host/v2/listings/listing-overview";
-import { HOST_START_IMPORT_HREF } from "@/components/host/v2/listings/add-listing-menu";
-import type { HostListingOverviewItem } from "@/lib/services/host-listing-overview.service";
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }));
+vi.mock("@/lib/actions/listing.actions", () => ({
+  archiveListing: mocks.archiveListing,
+  unarchiveListing: mocks.unarchiveListing,
+  deleteListing: mocks.deleteListing,
+  submitForReview: mocks.submitForReview,
+  unpublishListing: mocks.unpublishListing,
+}));
 
-/**
- * `useSyncExternalStore` falls back to the server snapshot here, which is the list view —
- * the grid's half of the same behaviour is covered directly in
- * listing-moderation-notice.test.tsx and add-listing-menu.test.tsx.
- */
+import { ListingOverview } from "@/components/host/v2/listings/listing-overview";
+
 function listing(
-  overrides: Partial<HostListingOverviewItem> = {}
+  overrides: Partial<HostListingOverviewItem> = {},
 ): HostListingOverviewItem {
   return {
-    id: "l1",
-    slug: "l1",
-    title: "Apartment",
+    id: "listing-1",
+    title: "Seaside apartment",
+    slug: "seaside-apartment",
     status: "APPROVED",
-    updatedAt: new Date(),
-    createdAt: new Date(),
-    needsReview: false,
-    moderationNote: null,
     city: "Ohrid",
     imageUrl: null,
-    photoCount: 8,
+    moderationNote: null,
+    needsReview: false,
+    baseNightlyRate: 120,
+    outOfBookableDates: false,
+    photoCount: 5,
     photoTarget: 5,
-    bookingCount: 3,
-    baseNightlyRate: 45,
-    currency: "EUR",
+    nextCheckIn: null,
+    nightsBookedThisMonth: 0,
     failingFeedName: null,
     failingFeedSyncedAt: null,
-    outOfBookableDates: false,
-    nextCheckIn: null,
-    upcomingNights: 0,
-    upcomingWindowDays: 30,
     ...overrides,
-  };
+  } as HostListingOverviewItem;
 }
 
-const labels = { APPROVED: "Approved", SUSPENDED: "Suspended" };
-
-function render(listings: HostListingOverviewItem[]) {
+function render(listings: HostListingOverviewItem[], drafts: never[] = []) {
   return renderToStaticMarkup(
-    <ListingOverview listings={listings} drafts={[]} statusLabels={labels} />
+    <ListingOverview listings={listings} drafts={drafts} statusLabels={{}} />
   );
 }
 
-describe("ListingOverview add-listing entry point", () => {
-  it("offers the import route from the empty state", () => {
-    const html = render([]);
-    expect(html).toContain("Start your first listing");
-    expect(html).toContain(HOST_START_IMPORT_HREF);
+/**
+ * A host who archives everything has an empty active list and an empty search box. The
+ * list view answered that with "No listings match your search", a search they never ran
+ * — while Today, reading the same data, greeted them with "you haven't listed a home
+ * yet". The grid view had already been given the guard; the list view had not.
+ *
+ * `renderToStaticMarkup` takes the server snapshot of the remembered view, which is
+ * always the list — so this renders exactly the branch that was wrong.
+ */
+describe("an overview with nothing left to show", () => {
+  it("says the listings are archived rather than blaming a search", () => {
+    const html = render([listing({ status: "ARCHIVED" })]);
+
+    expect(html).toContain("Every listing you have is archived");
+    expect(html).not.toContain("No listings match your search");
   });
 
-  // The toolbar is rendered above the rows, so the same menu is present whether the host
-  // is in list or grid view — the trigger is what the test can see without a DOM.
-  it("keeps the add-listing menu in the toolbar once listings exist", () => {
-    const html = render([listing()]);
-    expect(html).toContain("Add a listing");
+  it("still offers the way to see them", () => {
+    const html = render([listing({ status: "ARCHIVED" })]);
+    expect(html).toContain("Show 1 archived listings");
+  });
+
+  it("keeps the first-listing screen for a host who has nothing at all", () => {
+    const html = render([]);
+    expect(html).toContain("Start your first listing");
+    expect(html).not.toContain("Every listing you have is archived");
+    expect(html).not.toContain("No listings match your search");
   });
 });
 
-describe("ListingOverview suspended listings", () => {
-  it("shows the moderator's note on the suspended row instead of sending the host away", () => {
-    const html = render([
-      listing({ status: "SUSPENDED", moderationNote: "Photos show another property." }),
-    ]);
-    expect(html).toContain("Suspended by our team");
-    expect(html).toContain("Photos show another property.");
-    // The old line told the host to go and look; the note is now right here.
-    expect(html).not.toContain("check your email for details");
+/**
+ * Publishing had one home in the entire panel: this switch, wrapped in `hidden sm:block`
+ * and absent from the grid. On a phone there was no way to take a listing off the site.
+ * The switch stays where there is room for it; the overflow menu — present at every
+ * width and in both views — now names the same action.
+ */
+describe("where a host can change whether a listing is on the site", () => {
+  it("keeps the grid action visible on touch-sized screens", () => {
+    const source = readFileSync(
+      path.join(process.cwd(), "src/components/host/v2/listings/listing-overview.tsx"),
+      "utf8",
+    );
+    expect(source).toContain("opacity-100 shadow-sm transition-opacity sm:opacity-0");
   });
 
-  it("falls back to guidance when the note is blank", () => {
-    const html = render([listing({ status: "SUSPENDED", moderationNote: "  " })]);
-    expect(html).toContain("Suspended by our team");
-    expect(html).toContain("Contact support");
-  });
-
-  it("keeps a broken calendar visible on a suspended listing", () => {
-    const html = render([
-      listing({
-        status: "SUSPENDED",
-        moderationNote: "Photos show another property.",
-        failingFeedName: "Airbnb",
-      }),
-    ]);
-    expect(html).toContain("Airbnb");
-    expect(html).toContain("Photos show another property.");
-  });
-
-  it("shows no moderation note on a healthy listing", () => {
+  it("keeps the switch on the row for widths that have room for it", () => {
     const html = render([listing()]);
-    expect(html).not.toContain("Suspended by our team");
+    // The Switch renders its state as `aria-checked`, and APPROVED means listed.
+    expect(html).toContain('aria-checked="true"');
+    expect(html).toContain("Take Seaside apartment off the site");
   });
 
-  // L4: a listing waiting on an admin is live and flagged, not blocked — it gets the
-  // review line, never a moderation box.
-  it("shows the review line rather than a moderation box while needsReview is set", () => {
-    const html = render([listing({ needsReview: true })]);
-    expect(html).toContain("waiting for review");
-    expect(html).not.toContain("Suspended by our team");
-    expect(html).not.toContain("Rejected by our team");
+  it("shows an unlisted listing as unlisted", () => {
+    const html = render([listing({ status: "UNPUBLISHED" })]);
+    expect(html).toContain('aria-checked="false"');
+    expect(html).toContain("Put Seaside apartment on the site");
+  });
+
+  it("offers no control at all for a status the host does not own", () => {
+    // `submitForReview` and `unpublishListing` both refuse a suspended listing.
+    const html = render([listing({ status: "SUSPENDED" })]);
+    expect(html).not.toContain("aria-checked");
   });
 });

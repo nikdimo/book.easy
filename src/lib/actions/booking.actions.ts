@@ -36,16 +36,17 @@ import {
   shareBookingPaymentInstructions,
 } from "@/lib/services/chat.service";
 import { assertSafePaymentInstructions } from "@/lib/services/payment-instructions";
+import { actionText } from "@/lib/actions/action-text";
 
 export async function createBookingAction(formData: FormData) {
   const session = await auth();
   if (!session?.user?.id) {
-    return { error: "You must be logged in to book" };
+    return { error: await actionText("action.error.login_to_book", "You must be logged in to book") };
   }
 
   const limit = rateLimit(`create-booking:${session.user.id}`, 20, 60 * 60 * 1000);
   if (!limit.success) {
-    return { error: "Too many booking requests. Please wait a while and try again." };
+    return { error: await actionText("action.error.booking_rate_limited", "Too many booking requests. Please wait a while and try again.") };
   }
 
   const raw = {
@@ -119,8 +120,13 @@ export async function createBookingAction(formData: FormData) {
     });
     bookingId = booking.id;
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Failed to create booking";
-    return { error: message };
+    // The booking service raises its refusals as plain `Error`s whose message is
+    // written for the person reading it ("This host does not accept pets"), so that
+    // message is passed through. Anything that is not an `Error` is not a sentence
+    // anybody wrote — it is a driver or runtime fault — so it never reaches the host as
+    // itself; it gets this catalog line instead.
+    if (error instanceof Error) return { error: error.message };
+    return { error: await actionText("action.error.booking_create_failed", "Failed to create booking") };
   }
   redirect(`/bookings/confirm?id=${bookingId}`);
 }
@@ -128,7 +134,7 @@ export async function createBookingAction(formData: FormData) {
 export async function cancelBookingAction(bookingId: string) {
   const session = await auth();
   if (!session?.user?.id) {
-    return { error: "You must be logged in" };
+    return { error: await actionText("action.error.login_required", "You must be logged in") };
   }
 
   try {
@@ -141,24 +147,26 @@ export async function cancelBookingAction(bookingId: string) {
     });
     return { success: true };
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Failed to cancel booking";
-    return { error: message };
+    if (error instanceof Error) return { error: error.message };
+    return { error: await actionText("action.error.booking_cancel_failed", "Failed to cancel booking") };
   }
 }
 
 export async function getBookingAcceptancePaymentDataAction(bookingId: string) {
   const session = await auth();
   if (!session?.user?.id || !session.user.isHost) {
-    return { error: "Not authorized" } as const;
+    return { error: await actionText("action.error.not_authorized", "Not authorized") };
   }
   try {
     return {
       data: await getBookingAcceptancePaymentData(bookingId, session.user.id),
     } as const;
   } catch (error) {
-    return {
-      error: error instanceof Error ? error.message : "Could not load booking details",
-    } as const;
+    if (error instanceof Error) return { error: error.message } as const;
+    return { error: await actionText(
+      "action.error.booking_details_unavailable",
+      "Could not load booking details",
+    ) };
   }
 }
 
@@ -182,7 +190,7 @@ function revalidateAcceptedBooking(bookingId: string) {
 export async function acceptBookingWithPaymentAction(input: unknown) {
   const session = await auth();
   if (!session?.user?.id || !session.user.isHost) {
-    return { error: "Not authorized" } as const;
+    return { error: await actionText("action.error.not_authorized", "Not authorized") };
   }
   const parsed = acceptBookingWithPaymentSchema.safeParse(input);
   if (!parsed.success) {
@@ -207,7 +215,7 @@ export async function acceptBookingWithPaymentAction(input: unknown) {
 export async function sendBookingPaymentRequestAction(input: unknown) {
   const session = await auth();
   if (!session?.user?.id || !session.user.isHost) {
-    return { error: "Not authorized" } as const;
+    return { error: await actionText("action.error.not_authorized", "Not authorized") };
   }
   const parsed = sendBookingPaymentRequestSchema.safeParse(input);
   if (!parsed.success) {
@@ -219,15 +227,17 @@ export async function sendBookingPaymentRequestAction(input: unknown) {
       session.user.id,
     );
     if (payment.status !== "CONFIRMED") {
-      return {
-        error: "Payment instructions can only be sent for an accepted booking.",
-      } as const;
+      return { error: await actionText(
+        "action.error.payment_instructions_accepted_only",
+        "Payment instructions can only be sent for an accepted booking.",
+      ) };
     }
     const method = resolveRequestMethod(payment, parsed.data.method);
     if (!method) {
-      return {
-        error: "Choose the payment method for this booking.",
-      } as const;
+      return { error: await actionText(
+        "action.error.payment_method_required",
+        "Choose the payment method for this booking.",
+      ) };
     }
     const paymentRequest = parsed.data.paymentRequestId
       ? payment.requests.find(
@@ -235,16 +245,17 @@ export async function sendBookingPaymentRequestAction(input: unknown) {
         )
       : payment.requests.find((request) => request.status === "DRAFT");
     if (!paymentRequest || paymentRequest.status !== "DRAFT") {
-      return { error: "Choose a payment request that still needs to be sent." } as const;
+      return { error: await actionText("action.error.payment_request_pending", "Choose a payment request that still needs to be sent.") };
     }
     // The same day the acceptance dialog floors its picker at — read in the
     // marketplace zone rather than in UTC, which put the floor a day early for the
     // first two hours of every local morning (M6).
     const today = todayYmd();
     if (parsed.data.dueDate < today || parsed.data.dueDate > payment.checkIn) {
-      return {
-        error: "Choose a payment deadline between today and check-in.",
-      } as const;
+      return { error: await actionText(
+        "action.error.payment_deadline_range",
+        "Choose a payment deadline between today and check-in.",
+      ) };
     }
     const structured = resolveStructuredDetails(method, parsed.data.detailFields);
     if (structured && "error" in structured) {
@@ -252,7 +263,7 @@ export async function sendBookingPaymentRequestAction(input: unknown) {
     }
     const instructions = parsed.data.instructions?.trim() ?? "";
     if (!structured && !instructions) {
-      return { error: "Add the payment details before sending." } as const;
+      return { error: await actionText("action.error.payment_details_required", "Add the payment details before sending.") };
     }
     if (!structured) assertSafePaymentInstructions(instructions);
 
@@ -322,17 +333,17 @@ export async function sendBookingPaymentRequestAction(input: unknown) {
     revalidatePath(`/messages/${message.conversationId}`);
     return { success: true, messageId: message.id, warning } as const;
   } catch {
-    return { error: "Could not send the payment request" } as const;
+    return { error: await actionText("action.error.payment_request_failed", "Could not send the payment request") };
   }
 }
 
 export async function rejectBookingAction(bookingId: string, reason?: string) {
   const session = await auth();
   if (!session?.user?.id || !session.user.isHost) {
-    return { error: "Not authorized" };
+    return { error: await actionText("action.error.not_authorized", "Not authorized") };
   }
   if (!reason?.trim()) {
-    return { error: "Please provide a brief reason for declining" };
+    return { error: await actionText("action.error.decline_reason_required", "Please provide a brief reason for declining") };
   }
 
   try {
@@ -351,18 +362,18 @@ export async function rejectBookingAction(bookingId: string, reason?: string) {
     revalidatePath(`/account/bookings/${bookingId}`);
     return { success: true };
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Failed to reject";
-    return { error: message };
+    if (error instanceof Error) return { error: error.message };
+    return { error: await actionText("action.error.booking_reject_failed", "Failed to reject") };
   }
 }
 
 export async function hostCancelBookingAction(bookingId: string, reason: string) {
   const session = await auth();
   if (!session?.user?.id || !session.user.isHost) {
-    return { error: "Not authorized" };
+    return { error: await actionText("action.error.not_authorized", "Not authorized") };
   }
   if (!reason.trim()) {
-    return { error: "Cancellation reason is required" };
+    return { error: await actionText("action.error.cancellation_reason_required", "Cancellation reason is required") };
   }
 
   try {
@@ -381,7 +392,7 @@ export async function hostCancelBookingAction(bookingId: string, reason: string)
     revalidatePath(`/account/bookings/${bookingId}`);
     return { success: true };
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Failed to cancel booking";
-    return { error: message };
+    if (error instanceof Error) return { error: error.message };
+    return { error: await actionText("action.error.booking_cancel_failed", "Failed to cancel booking") };
   }
 }

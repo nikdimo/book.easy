@@ -203,7 +203,11 @@ export function PhotosWorkspace({
     }) => {
       const result = await withSaveState(() => addListingPhotos(listingId, [item]));
       if (result.error || !result.ids?.length) {
-        toast.error(result.error ?? "That photo could not be saved.");
+        toast.error(
+          result.error ??
+            resolve("host.editor.photos.save_failed", "That photo could not be saved.")
+              .text,
+        );
         return;
       }
       const id = result.ids[0];
@@ -222,7 +226,7 @@ export function PhotosWorkspace({
         },
       ]);
     },
-    [listingId],
+    [listingId, resolve],
   );
 
   // ── Selection ──────────────────────────────────────────────────────────────
@@ -413,7 +417,11 @@ export function PhotosWorkspace({
       setAddingRoom(false);
       const result = await withSaveState(() => addListingRoom(listingId, roomType.id));
       if (result.error || !result.roomId) {
-        toast.error(result.error ?? "That room could not be added.");
+        toast.error(
+          result.error ??
+            resolve("host.editor.photos.room_add_failed", "That room could not be added.")
+              .text,
+        );
         return null;
       }
       const sameType = rooms.filter((room) => room.roomTypeId === roomType.id);

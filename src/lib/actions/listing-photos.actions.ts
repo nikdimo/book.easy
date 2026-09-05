@@ -8,6 +8,7 @@ import { nextOrdinal } from "@/lib/rooms/room-name";
 import { syncListingCountsFromRooms } from "@/lib/rooms/counted-rooms";
 import { enqueueUploadDeletions, sweepUploads } from "@/lib/storage/upload-cleanup";
 import type { ListingMediaTypeValue } from "@/lib/types/listing-media";
+import { actionText } from "@/lib/actions/action-text";
 
 const ORDER_STEP = 1;
 /** A library this size already needs a different tool than a grid; the cap is here so a
@@ -65,9 +66,9 @@ export async function addListingPhotos(
   items: { url: string; mediaType: ListingMediaTypeValue; isPanorama?: boolean }[],
 ): Promise<Result<{ ids: string[] }>> {
   const listing = await ownedListing(listingId);
-  if (!listing) return { error: "Listing not found." };
-  if (items.length === 0) return { error: "No photos to add." };
-  if (items.length > MAX_BULK) return { error: "Too many photos in one go." };
+  if (!listing) return { error: await actionText("action.error.listing_not_found_sentence", "Listing not found.") };
+  if (items.length === 0) return { error: await actionText("action.error.photos_none_to_add", "No photos to add.") };
+  if (items.length > MAX_BULK) return { error: await actionText("action.error.photos_too_many", "Too many photos in one go.") };
 
   const [last, existing] = await Promise.all([
     db.listingImage.findFirst({
@@ -108,16 +109,16 @@ export async function assignPhotosToRoom(
   roomId: string | null,
 ): Promise<Result<{ moved: number }>> {
   const listing = await ownedListing(listingId);
-  if (!listing) return { error: "Listing not found." };
-  if (photoIds.length === 0) return { error: "Select at least one photo." };
-  if (photoIds.length > MAX_BULK) return { error: "Too many photos in one go." };
+  if (!listing) return { error: await actionText("action.error.listing_not_found_sentence", "Listing not found.") };
+  if (photoIds.length === 0) return { error: await actionText("action.error.photos_select_one", "Select at least one photo.") };
+  if (photoIds.length > MAX_BULK) return { error: await actionText("action.error.photos_too_many", "Too many photos in one go.") };
 
   if (roomId) {
     const room = await db.listingRoom.findFirst({
       where: { id: roomId, listingId },
       select: { id: true },
     });
-    if (!room) return { error: "That room is no longer on this listing." };
+    if (!room) return { error: await actionText("action.error.room_missing", "That room is no longer on this listing.") };
   }
 
   const last = roomId
@@ -135,7 +136,7 @@ export async function assignPhotosToRoom(
     where: { id: { in: photoIds }, listingId },
     select: { id: true },
   });
-  if (owned.length === 0) return { error: "Those photos are no longer on this listing." };
+  if (owned.length === 0) return { error: await actionText("action.error.photos_missing", "Those photos are no longer on this listing.") };
 
   await db.$transaction(
     owned.map((photo, index) =>
@@ -161,9 +162,9 @@ export async function reorderListingPhotos(
   orderedIds: string[],
 ): Promise<Result<{ success: true }>> {
   const listing = await ownedListing(listingId);
-  if (!listing) return { error: "Listing not found." };
-  if (orderedIds.length === 0) return { error: "Nothing to reorder." };
-  if (orderedIds.length > MAX_BULK) return { error: "Too many photos in one go." };
+  if (!listing) return { error: await actionText("action.error.listing_not_found_sentence", "Listing not found.") };
+  if (orderedIds.length === 0) return { error: await actionText("action.error.nothing_to_reorder", "Nothing to reorder.") };
+  if (orderedIds.length > MAX_BULK) return { error: await actionText("action.error.photos_too_many", "Too many photos in one go.") };
 
   const owned = await db.listingImage.findMany({
     where: { id: { in: orderedIds }, listingId },
@@ -171,7 +172,7 @@ export async function reorderListingPhotos(
   });
   const ownedIds = new Set(owned.map((row) => row.id));
   const applicable = orderedIds.filter((id) => ownedIds.has(id));
-  if (applicable.length === 0) return { error: "Those photos are no longer on this listing." };
+  if (applicable.length === 0) return { error: await actionText("action.error.photos_missing", "Those photos are no longer on this listing.") };
 
   await db.$transaction(
     applicable.map((id, index) =>
@@ -191,15 +192,15 @@ export async function reorderRoomPhotos(
   orderedIds: string[],
 ): Promise<Result<{ success: true }>> {
   const listing = await ownedListing(listingId);
-  if (!listing) return { error: "Listing not found." };
-  if (orderedIds.length === 0) return { error: "Nothing to reorder." };
-  if (orderedIds.length > MAX_BULK) return { error: "Too many photos in one go." };
+  if (!listing) return { error: await actionText("action.error.listing_not_found_sentence", "Listing not found.") };
+  if (orderedIds.length === 0) return { error: await actionText("action.error.nothing_to_reorder", "Nothing to reorder.") };
+  if (orderedIds.length > MAX_BULK) return { error: await actionText("action.error.photos_too_many", "Too many photos in one go.") };
 
   const room = await db.listingRoom.findFirst({
     where: { id: roomId, listingId },
     select: { id: true },
   });
-  if (!room) return { error: "That room is no longer on this listing." };
+  if (!room) return { error: await actionText("action.error.room_missing", "That room is no longer on this listing.") };
 
   const owned = await db.listingImage.findMany({
     where: { id: { in: orderedIds }, listingId },
@@ -207,7 +208,7 @@ export async function reorderRoomPhotos(
   });
   const ownedIds = new Set(owned.map((row) => row.id));
   const applicable = orderedIds.filter((id) => ownedIds.has(id));
-  if (applicable.length === 0) return { error: "Those photos are no longer on this listing." };
+  if (applicable.length === 0) return { error: await actionText("action.error.photos_missing", "Those photos are no longer on this listing.") };
 
   await db.$transaction(
     applicable.map((id, index) =>
@@ -229,14 +230,14 @@ export async function setListingCoverPhoto(
   photoId: string,
 ): Promise<Result<{ success: true }>> {
   const listing = await ownedListing(listingId);
-  if (!listing) return { error: "Listing not found." };
+  if (!listing) return { error: await actionText("action.error.listing_not_found_sentence", "Listing not found.") };
 
   const photo = await db.listingImage.findFirst({
     where: { id: photoId, listingId },
     select: { id: true, mediaType: true },
   });
-  if (!photo) return { error: "That photo is no longer on this listing." };
-  if (photo.mediaType !== "IMAGE") return { error: "A video cannot be the cover." };
+  if (!photo) return { error: await actionText("action.error.photo_missing", "That photo is no longer on this listing.") };
+  if (photo.mediaType !== "IMAGE") return { error: await actionText("action.error.cover_must_be_photo", "A video cannot be the cover.") };
 
   await db.$transaction([
     db.listingImage.updateMany({
@@ -258,7 +259,7 @@ export async function setRoomCoverPhoto(
   photoId: string,
 ): Promise<Result<{ success: true }>> {
   const listing = await ownedListing(listingId);
-  if (!listing) return { error: "Listing not found." };
+  if (!listing) return { error: await actionText("action.error.listing_not_found_sentence", "Listing not found.") };
 
   const [room, photo] = await Promise.all([
     db.listingRoom.findFirst({ where: { id: roomId, listingId }, select: { id: true } }),
@@ -267,8 +268,8 @@ export async function setRoomCoverPhoto(
       select: { id: true },
     }),
   ]);
-  if (!room) return { error: "That room is no longer on this listing." };
-  if (!photo) return { error: "That photo is not in this room." };
+  if (!room) return { error: await actionText("action.error.room_missing", "That room is no longer on this listing.") };
+  if (!photo) return { error: await actionText("action.error.photo_not_in_room", "That photo is not in this room.") };
 
   const others = await db.listingImage.findMany({
     where: { listingId, roomId, id: { not: photoId } },
@@ -298,15 +299,15 @@ export async function deleteListingPhotos(
   photoIds: string[],
 ): Promise<Result<{ deleted: number }>> {
   const listing = await ownedListing(listingId);
-  if (!listing) return { error: "Listing not found." };
-  if (photoIds.length === 0) return { error: "Select at least one photo." };
-  if (photoIds.length > MAX_BULK) return { error: "Too many photos in one go." };
+  if (!listing) return { error: await actionText("action.error.listing_not_found_sentence", "Listing not found.") };
+  if (photoIds.length === 0) return { error: await actionText("action.error.photos_select_one", "Select at least one photo.") };
+  if (photoIds.length > MAX_BULK) return { error: await actionText("action.error.photos_too_many", "Too many photos in one go.") };
 
   const doomed = await db.listingImage.findMany({
     where: { id: { in: photoIds }, listingId },
     select: { id: true, isPrimary: true, url: true },
   });
-  if (doomed.length === 0) return { error: "Those photos are no longer on this listing." };
+  if (doomed.length === 0) return { error: await actionText("action.error.photos_missing", "Those photos are no longer on this listing.") };
 
   const losingCover = doomed.some((photo) => photo.isPrimary);
   // The rows and the intent to unlink their files commit together. Deleting the rows
@@ -350,13 +351,13 @@ export async function addListingRoom(
   roomTypeId: string,
 ): Promise<Result<{ roomId: string }>> {
   const listing = await ownedListing(listingId);
-  if (!listing) return { error: "Listing not found." };
+  if (!listing) return { error: await actionText("action.error.listing_not_found_sentence", "Listing not found.") };
 
   const roomType = await db.roomType.findUnique({
     where: { id: roomTypeId },
     select: { id: true, isRepeatable: true, name: true },
   });
-  if (!roomType) return { error: "That space is no longer available." };
+  if (!roomType) return { error: await actionText("action.error.room_type_unavailable", "That space is no longer available.") };
 
   const [sameType, last] = await Promise.all([
     db.listingRoom.findMany({
@@ -371,7 +372,11 @@ export async function addListingRoom(
   ]);
 
   if (!roomType.isRepeatable && sameType.length > 0) {
-    return { error: `This listing already has a ${roomType.name}.` };
+    return { error: await actionText(
+      "action.error.room_type_duplicate",
+      "This listing already has a {room}.",
+      { room: roomType.name },
+    ) };
   }
 
   const room = await db.listingRoom.create({
@@ -398,16 +403,16 @@ export async function renameListingRoom(
   displayName: string,
 ): Promise<Result<{ success: true }>> {
   const listing = await ownedListing(listingId);
-  if (!listing) return { error: "Listing not found." };
+  if (!listing) return { error: await actionText("action.error.listing_not_found_sentence", "Listing not found.") };
 
   const value = displayName.trim();
-  if (value.length > 60) return { error: "That name is too long." };
+  if (value.length > 60) return { error: await actionText("action.error.name_too_long", "That name is too long.") };
 
   const room = await db.listingRoom.findFirst({
     where: { id: roomId, listingId },
     select: { id: true },
   });
-  if (!room) return { error: "That room is no longer on this listing." };
+  if (!room) return { error: await actionText("action.error.room_missing", "That room is no longer on this listing.") };
 
   await db.listingRoom.update({
     where: { id: roomId },
@@ -424,8 +429,8 @@ export async function reorderListingRooms(
   orderedIds: string[],
 ): Promise<Result<{ success: true }>> {
   const listing = await ownedListing(listingId);
-  if (!listing) return { error: "Listing not found." };
-  if (orderedIds.length === 0) return { error: "Nothing to reorder." };
+  if (!listing) return { error: await actionText("action.error.listing_not_found_sentence", "Listing not found.") };
+  if (orderedIds.length === 0) return { error: await actionText("action.error.nothing_to_reorder", "Nothing to reorder.") };
 
   const owned = await db.listingRoom.findMany({
     where: { id: { in: orderedIds }, listingId },
@@ -433,7 +438,7 @@ export async function reorderListingRooms(
   });
   const ownedIds = new Set(owned.map((row) => row.id));
   const applicable = orderedIds.filter((id) => ownedIds.has(id));
-  if (applicable.length === 0) return { error: "Those rooms are no longer on this listing." };
+  if (applicable.length === 0) return { error: await actionText("action.error.rooms_missing", "Those rooms are no longer on this listing.") };
 
   await db.$transaction(
     applicable.map((id, index) =>
@@ -458,13 +463,13 @@ export async function deleteListingRoom(
   roomId: string,
 ): Promise<Result<{ releasedPhotos: number }>> {
   const listing = await ownedListing(listingId);
-  if (!listing) return { error: "Listing not found." };
+  if (!listing) return { error: await actionText("action.error.listing_not_found_sentence", "Listing not found.") };
 
   const room = await db.listingRoom.findFirst({
     where: { id: roomId, listingId },
     select: { id: true, _count: { select: { images: true } } },
   });
-  if (!room) return { error: "That room is no longer on this listing." };
+  if (!room) return { error: await actionText("action.error.room_missing", "That room is no longer on this listing.") };
 
   await db.listingRoom.delete({ where: { id: roomId } });
 
@@ -482,14 +487,14 @@ export async function setListingPhotoPanorama(
   isPanorama: boolean,
 ): Promise<Result> {
   const listing = await ownedListing(listingId);
-  if (!listing) return { error: "Listing not found." };
+  if (!listing) return { error: await actionText("action.error.listing_not_found_sentence", "Listing not found.") };
 
   const photo = await db.listingImage.findFirst({
     where: { id: photoId, listingId },
     select: { id: true, mediaType: true },
   });
-  if (!photo) return { error: "That photo is no longer on this listing." };
-  if (photo.mediaType !== "IMAGE") return { error: "Only photos can be shown in 360°." };
+  if (!photo) return { error: await actionText("action.error.photo_missing", "That photo is no longer on this listing.") };
+  if (photo.mediaType !== "IMAGE") return { error: await actionText("action.error.panorama_photo_only", "Only photos can be shown in 360°.") };
 
   await db.listingImage.update({ where: { id: photoId }, data: { isPanorama } });
   refresh(listingId, listing.slug, listing.status);

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireHost } from "@/lib/auth-helpers";
 import { revalidatePublicListingCaches } from "@/lib/utils/revalidate-public-listing-caches";
+import { actionText } from "@/lib/actions/action-text";
 import {
   listingLocationComplete,
   planListingLocationSave,
@@ -65,7 +66,7 @@ export async function updateListingLocation(
     },
   });
   if (!listing || listing.property.ownerId !== user.id) {
-    return { error: "Listing not found." };
+    return { error: await actionText("action.error.listing_not_found_sentence", "Listing not found.") };
   }
 
   const stored: StoredListingLocation = {

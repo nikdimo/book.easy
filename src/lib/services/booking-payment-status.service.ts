@@ -13,20 +13,39 @@ import { isValidYmd, todayYmd } from "@/lib/utils/date-only";
 /**
  * Manual, participant-reported payment progress across three independent tracks:
  *
- *   1. the booking price as a whole (`paymentStatus`),
+ *   1. the accommodation balance — `totalPrice` minus the advance (`paymentStatus`),
  *   2. the advance payment toward that price (`advancePaymentStatus`),
  *   3. the refundable damage deposit held as security (`damageDepositStatus`).
  *
+ * Track 1 is the *balance*, not the whole price. It equals the whole price only when
+ * there is no advance, which is how the older "price as a whole" description survived
+ * here without breaking any arithmetic: `bookingPaymentObligations` has always created
+ * `ACCOMMODATION_BALANCE = total - advance`, `PRIVATE_REPORT_TRACK` below files
+ * `GUEST_REPORT_PAYMENT_SENT` against that same track, and the cancellation settlement
+ * refunds the balance and the advance as two separate figures.
+ *
  * They are separate because they settle at different moments and mean different things.
  * A guest who sends the damage deposit has said nothing about the advance payment, and a
- * host who returns the damage deposit has not refunded any part of the stay.
+ * host who returns the damage deposit has not refunded any part of the stay. In the same
+ * way, confirming track 1 says nothing about track 2 — which is why there is deliberately
+ * no cascade on `HOST_CONFIRM_PAYMENT_RECEIVED`.
  *
  * Every value here is one side's own report. None of it asserts that Linger Homes
  * collected, held, processed, verified or refunded anything — it never does.
+ *
+ * **`*_REPORTED` versus `*_CONFIRMED`.** A `*_REPORTED` value is the sending side's own
+ * claim; a `*_CONFIRMED` value is the receiving side agreeing. A claim is enough to
+ * *open* an obligation — a guest must not lose a refund because their host stays silent
+ * — but the obligation it opens is provisional: the cancellation settlement records
+ * `refundBasis: CLAIMED` and every surface says "claimed" rather than "owed" until it is
+ * confirmed. A report also discharges only the reporter's own prompt: guest payment
+ * reminders stop at `*_REPORTED`, while the host's overdue notice runs on to
+ * `*_CONFIRMED`. See the `BookingPaymentStatus` doc in `schema.prisma` for the same rule
+ * stated once at the column.
  */
 
 export const BOOKING_PAYMENT_EVENTS = [
-  // The booking price as a whole.
+  // The accommodation balance: the price minus the advance payment below.
   "HOST_MARK_PAYMENT_DUE",
   "GUEST_REPORT_PAYMENT_SENT",
   "HOST_CONFIRM_PAYMENT_RECEIVED",
@@ -325,11 +344,21 @@ const TRANSITIONS = {
     from: ["UNTRACKED", "AWAITING_PAYMENT", "NOT_REQUIRED"],
     to: "NOT_REQUIRED",
     blocked: "A reported or confirmed payment cannot be marked not required",
-    // The advance payment is documented as *part of* `totalPrice`. Waiving the price
-    // while leaving the advance `AWAITING_PAYMENT` asked the guest to send money toward
-    // a price the host had just given up on. Settle it in the same move — but only where
-    // it is still open, because a guest who already reported sending the advance, or a
-    // host who already confirmed receiving it, said something this event does not unsay.
+    // This control waives everything still outstanding, not just the balance track.
+    //
+    // Worth stating in the balance vocabulary the rest of this file uses, because the
+    // original justification was written in the stale whole-price one ("the advance is
+    // part of `totalPrice`, so waiving the price waives it"). Under the balance reading
+    // that argument does not hold: waiving the balance says nothing about the advance.
+    // The cascade survives on product grounds instead — a host who marks payment not
+    // required means they are not collecting, and leaving the advance `AWAITING_PAYMENT`
+    // would keep asking the guest for money toward a stay the host has stopped charging
+    // for. The label the host reads is what has to match, and it does.
+    //
+    // Only where the advance is still open: a guest who already reported sending it, or
+    // a host who already confirmed receiving it, said something this event does not
+    // unsay. There is no matching cascade on `HOST_CONFIRM_PAYMENT_RECEIVED`, and there
+    // must not be — confirming the balance is not evidence the advance arrived.
     cascade: (current) =>
       current.advancePaymentStatus === "UNTRACKED" ||
       current.advancePaymentStatus === "AWAITING_PAYMENT"

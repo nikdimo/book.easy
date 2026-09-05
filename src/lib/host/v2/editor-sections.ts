@@ -52,9 +52,14 @@ export const EDITOR_SECTIONS: EditorSection[] = [
   { slug: "payment-arrangements", key: "host.editor.section.payment_arrangements", source: "Payment arrangements", completion: true, group: "details" },
   // House rules counts because it has a persisted "reviewed" state of its own
   // (`Listing.houseRulesReviewedAt`): "unanswered" is a fact the database holds rather
-  // than an inference from fields that always have values. Arrival guide still has no
-  // such column, so it could never be cleared and is never flagged.
+  // than an inference from fields that always have values.
   { slug: "house-rules", key: "host.editor.section.house_rules", source: "House rules", completion: true, group: "details" },
+  // Arrival guide does now have a reviewed marker of its own
+  // (`ListingArrivalGuide.reviewedAt`), so it *could* be counted — and is deliberately
+  // not. Nothing in it is required to publish or to take a booking: a host who lets guests
+  // in personally has no door code, no Wi-Fi to share and no manual to write, and has
+  // finished the section by not filling it in. Counting it would put a permanent warning
+  // flag on their listing for a question they have already answered by living there.
   { slug: "arrival-guide", key: "host.editor.section.arrival_guide", source: "Arrival guide", completion: false, group: "details" },
 ];
 
@@ -94,6 +99,30 @@ export function findEditorSection(slug: string): EditorSection | undefined {
 export function editorSectionHref(listingId: string, slug: string): string {
   const base = `/host/listings/${listingId}`;
   return slug === EDITOR_OVERVIEW_SLUG ? base : `${base}/${slug}`;
+}
+
+/**
+ * Which section a URL is on, read from the path rather than from a fixed segment index.
+ *
+ * The header's listing switcher needs this so that changing property keeps the host on
+ * the page they were reading. Counting segments got it wrong: the public route is
+ * `/host/listings/<id>/<slug>`, so the slug is the *fourth* segment, but the route files
+ * still live under `/host/v2/listings/...` and `next.config.ts` rewrites between the two
+ * — which means the segment index depends on whether the pathname being read is the
+ * browser's or the rewrite's destination. Anchoring on `listings/<id>/` instead is true
+ * of both, so the answer cannot depend on which one `usePathname` happened to hand back.
+ *
+ * An unrecognised slug is Overview rather than itself: the switcher builds an href from
+ * whatever comes out of here, and a slug no section claims would send the host to the
+ * catch-all's 404 on a listing they can perfectly well edit.
+ */
+export function editorSectionFromPathname(pathname: string): string {
+  const segments = pathname.split("/").filter(Boolean);
+  const listingsIndex = segments.lastIndexOf("listings");
+  if (listingsIndex === -1) return EDITOR_OVERVIEW_SLUG;
+  // listings / <id> / <slug>
+  const slug = segments[listingsIndex + 2];
+  return slug && findEditorSection(slug) ? slug : EDITOR_OVERVIEW_SLUG;
 }
 
 /**

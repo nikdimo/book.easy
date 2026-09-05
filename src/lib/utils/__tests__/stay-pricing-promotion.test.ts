@@ -54,7 +54,10 @@ describe("computeStayQuote promotions", () => {
       checkOut,
       overrides: new Map(),
       promotion: {
+        // As a stored row actually holds it. The `type` is the offer's label; the
+        // benefit is the `freeCleaning` column, and only the column decides (#8).
         type: "FREE_CLEANING",
+        freeCleaning: true,
         minimumNights: null,
       },
     });
@@ -63,6 +66,38 @@ describe("computeStayQuote promotions", () => {
     expect(quote.cleaningDiscount).toBe(37.45);
     expect(quote.cleaningFee).toBe(0);
     expect(quote.total).toBe(240);
+  });
+
+  /**
+   * #8: the benefit is the column, not the label.
+   *
+   * Clearing a listing's cleaning fee clears `freeCleaning` on its active offers. While
+   * the reader OR-ed the `type` back in, an offer created as free-cleaning-only kept
+   * winning nights after that write and kept stamping `promotionId` onto bookings
+   * against a discount of zero.
+   */
+  it("gives nothing away once the free-cleaning benefit is cleared", () => {
+    const quote = computeStayQuote({
+      baseNightly: 80,
+      cleaningFee: 37.45,
+      checkIn,
+      checkOut,
+      overrides: new Map(),
+      promotions: [
+        {
+          id: "cleared",
+          type: "FREE_CLEANING",
+          discountPercent: 0,
+          freeCleaning: false,
+          minimumNights: null,
+        },
+      ],
+    });
+
+    expect(quote.cleaningDiscount).toBe(0);
+    expect(quote.cleaningFee).toBe(37.45);
+    expect(quote.promotionEligible).toBe(false);
+    expect(quote.appliedPromotion).toBeNull();
   });
 
   it("rounds each discounted night to the nearest cent", () => {

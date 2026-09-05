@@ -322,17 +322,22 @@ async function buildListingWhere(
         { availabilityMode: "CLOSED", id: { in: closedListingIds } },
       ],
     };
-    const flexibleArm: Prisma.ListingWhereInput = {
-      bookingMode: { not: FIXED_STAYS_MODE },
-      ...(stayLengthRule ?? {}),
-      AND: [availabilityRule],
-    };
-
     // A stay whose check-in has already gone by is not one anybody can take, whatever
-    // the host stored — the same rule `decideStayAvailability` and `createBooking` apply.
-    // The requested date *is* the period's date under exact matching, so this is decided
-    // once here rather than asked of every row.
+    // the host stored — the same rule `decideStayAvailability` and `createBooking` apply,
+    // in **both** booking modes. The requested date is the same for every row, so this is
+    // decided once here rather than asked of each one.
+    //
+    // It used to gate the weekly arm only, under a comment already claiming it was the
+    // shared rule; a past-dated search therefore listed every flexible listing as
+    // bookable for dates the booking server refuses.
     const staysInThePast = compareYmd(filters.checkIn!, todayYmd()) < 0;
+    const flexibleArm: Prisma.ListingWhereInput = staysInThePast
+      ? { bookingMode: { not: FIXED_STAYS_MODE }, ...MATCHES_NOTHING }
+      : {
+          bookingMode: { not: FIXED_STAYS_MODE },
+          ...(stayLengthRule ?? {}),
+          AND: [availabilityRule],
+        };
     // The weekly rule, entirely in SQL and with no per-listing work.
     //
     // The requested range already fixes three of the four conditions for every listing at

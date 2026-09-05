@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import {
   ArrowLeftRight,
+  Bell,
   CalendarDays,
   Globe,
   Heart,
@@ -86,12 +87,16 @@ export function HostV2AccountMenu({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
+          // The initials are a picture of the account, not a name for the control: on
+          // their own a screen reader announced this as "ND, button", which says who is
+          // signed in and nothing about what pressing it does.
+          aria-label={i18n.resolve("host.v2.account_menu", "Account menu").text}
           className={cn(
             "grid size-9 shrink-0 cursor-pointer place-items-center rounded-full bg-slate-100 text-[0.8125rem] font-semibold text-slate-800 transition-colors hover:bg-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400",
             className
           )}
         >
-          {initials}
+          <span aria-hidden>{initials}</span>
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-60">
@@ -123,6 +128,15 @@ export function HostV2AccountMenu({
           <Link href="/account/messages">
             <MessageCircle className="mr-2 h-4 w-4" />
             <Tx k="nav.messages" source="Messages" />
+          </Link>
+        </DropdownMenuItem>
+        {/* The panel has no bell of its own, and Today reports only the work a host can
+            act on. Without this row the notification history had no door into it from
+            anywhere inside the host panel at all. */}
+        <DropdownMenuItem asChild>
+          <Link href="/account/notifications">
+            <Bell className="mr-2 h-4 w-4" />
+            <Tx k="host.sidebar.notifications" source="Notifications" />
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>

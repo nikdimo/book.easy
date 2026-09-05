@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { requireHost } from "@/lib/auth-helpers";
 import { revalidatePublicListingCaches } from "@/lib/utils/revalidate-public-listing-caches";
 import { LISTING_HOUSE_RULES_SELECT } from "@/lib/services/listing-house-rules.service";
+import { actionText } from "@/lib/actions/action-text";
 import {
   houseRulesFromRow,
   houseRulesRowData,
@@ -64,7 +65,7 @@ export async function updateListingHouseRules(
     where: { id: listingId, hostId: user.id },
     select: LISTING_HOUSE_RULES_SELECT,
   });
-  if (!listing) return { error: "Listing not found." };
+  if (!listing) return { error: await actionText("action.error.listing_not_found_sentence", "Listing not found.") };
 
   // The payload check, not the normalising one: a policy this build does not recognise
   // is a bad request, and reading it as "unanswered" would store a change the host's

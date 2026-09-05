@@ -5,6 +5,7 @@ import {
   formatMonthYear,
   formatMoney,
   formatShortDate,
+  formatWeekdayShortDate,
   weekdayLabels,
 } from "@/lib/host/v2/calendar-format";
 
@@ -72,6 +73,18 @@ describe("buildCalendarFormats", () => {
     const formats = buildCalendarFormats("en", ["EUR"]);
     expect(formatShortDate("2026-08-03", formats)).toBe(
       joinParts("en", { day: "numeric", month: "short" }, new Date(2026, 7, 3)),
+    );
+  });
+
+  it("reproduces weekday-and-date labels without using browser ICU", () => {
+    const formats = buildCalendarFormats("mk", ["EUR"]);
+    const date = new Date(2026, 8, 11);
+    expect(formatWeekdayShortDate("2026-09-11", formats)).toBe(
+      joinParts(
+        "mk",
+        { weekday: "short", day: "numeric", month: "short" },
+        date,
+      ),
     );
   });
 

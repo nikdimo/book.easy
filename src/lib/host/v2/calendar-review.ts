@@ -74,13 +74,17 @@ export type ListingChange =
       kind: "DEFAULT_PRICING";
       /**
        * Only the fields the host actually edited need to be supplied. The review
-       * model fills every omitted field from the current rule before it creates the
-       * one whole-rule mutation required by `saveCalendarDefaultPricing`.
+       * model fills the other one from the current rule before it creates the single
+       * mutation `saveCalendarDefaultPricing` performs.
+       *
+       * Money only. The minimum and maximum stay are not carried here and cannot be
+       * written by this change: a Pricing tab left open while the host edits the
+       * booking rules elsewhere would otherwise save the stay limits it was rendered
+       * with and quietly undo them.
        */
       to: {
         baseNightlyRate?: number;
         cleaningFee?: number;
-        minNights?: number;
       };
     }
   | {
@@ -126,7 +130,6 @@ export type MutationStep =
       type: "SET_DEFAULT_PRICING";
       baseNightlyRate: number;
       cleaningFee: number;
-      minNights: number;
     }
   | {
       type: "SAVE_EVERGREEN_PROMOTION";
@@ -179,8 +182,7 @@ export type ReviewField =
   | "promotion"
   | "availability_mode"
   | "base_price"
-  | "cleaning_fee"
-  | "min_nights";
+  | "cleaning_fee";
 
 export interface ReviewRow {
   field: ReviewField;
@@ -243,7 +245,6 @@ export type Consequence =
       amount: number;
       freeCleaningBenefitsRemoved: number;
     }
-  | { code: "MIN_NIGHTS_ALL_DATES"; minNights: number }
   | { code: "EVERGREEN_PROMOTION_SAVED"; mode: "CREATE" | "EDIT" }
   | { code: "EVERGREEN_PROMOTION_REMOVED" }
   | {
@@ -275,7 +276,6 @@ export type ReviewError =
   | { code: "FREE_CLEANING_WITHOUT_FEE" }
   | { code: "PROMOTION_REQUIRES_LIVE" }
   | { code: "NOTHING_TO_OPEN" }
-  | { code: "NOTHING_TO_BLOCK" }
   /**
    * The host changed the note on a range that is already entirely blocked.
    *
@@ -286,7 +286,7 @@ export type ReviewError =
    * the canonical service an explicit "update this block's note" operation — not
    * reaching around it from here.
    */
-  | { code: "INVALID_MIN_NIGHTS"; maxNights: number }
+  | { code: "NOTHING_TO_BLOCK" }
   | { code: "MODE_UNCHANGED" }
   | { code: "PROMOTION_NOT_FOUND" }
   | { code: "PROMOTION_NOT_EVERGREEN" }
@@ -415,8 +415,10 @@ function buildDefaultPricingReviewPlan(
     });
   }
 
-  // The canonical action writes the whole rule. Resolve omitted values only from the
-  // rule we actually loaded; never substitute zeroes or UI defaults for untouched data.
+  // The canonical action writes both amounts at once. Resolve the omitted one only
+  // from the rule we actually loaded; never substitute zeroes or UI defaults for
+  // untouched data. The stay limits are not resolved here at all — they are not part
+  // of this mutation, so this screen cannot resend a stale copy of them.
   const next = {
     baseNightlyRate:
       change.to.baseNightlyRate === undefined
@@ -426,15 +428,10 @@ function buildDefaultPricingReviewPlan(
       change.to.cleaningFee === undefined
         ? pricing.cleaningFee
         : change.to.cleaningFee,
-    minNights:
-      change.to.minNights === undefined
-        ? pricing.minNights
-        : change.to.minNights,
   };
   const changed = {
     baseNightlyRate: next.baseNightlyRate !== pricing.baseNightlyRate,
     cleaningFee: next.cleaningFee !== pricing.cleaningFee,
-    minNights: next.minNights !== pricing.minNights,
   };
   const errors: ReviewError[] = [];
   if (!Number.isFinite(next.baseNightlyRate) || next.baseNightlyRate < 1) {
@@ -442,9 +439,6 @@ function buildDefaultPricingReviewPlan(
   }
   if (!Number.isFinite(next.cleaningFee) || next.cleaningFee < 0) {
     errors.push({ code: "INVALID_CLEANING_FEE" });
-  }
-  if (!isPositiveInteger(next.minNights, pricing.maxNights)) {
-    errors.push({ code: "INVALID_MIN_NIGHTS", maxNights: pricing.maxNights });
   }
   if (!Object.values(changed).some(Boolean)) {
     errors.push({ code: "NO_CHANGES" });
@@ -478,17 +472,6 @@ function buildDefaultPricingReviewPlan(
         next.cleaningFee === 0
           ? listing.promotions.filter((promotion) => promotion.freeCleaning).length
           : 0,
-    });
-  }
-  if (changed.minNights) {
-    rows.push({
-      field: "min_nights",
-      before: { code: "NIGHTS", nights: pricing.minNights },
-      after: { code: "NIGHTS", nights: next.minNights },
-    });
-    consequences.push({
-      code: "MIN_NIGHTS_ALL_DATES",
-      minNights: next.minNights,
     });
   }
 

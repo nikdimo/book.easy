@@ -6,12 +6,11 @@ import {
 } from "@/components/host/calendar-editor-ui";
 
 describe("StandardPricingSummary", () => {
-  it("makes every standard pricing setting visible with one edit action", () => {
+  it("shows only money settings with one edit action", () => {
     const html = renderToStaticMarkup(
       <StandardPricingSummary
         baseNightlyRate={125}
         cleaningFee={30}
-        minNights={3}
         currency="EUR"
         locale="en"
         onEdit={() => undefined}
@@ -21,7 +20,8 @@ describe("StandardPricingSummary", () => {
     expect(html).toContain("Standard pricing");
     expect(html).toContain("Base price");
     expect(html).toContain("Cleaning fee");
-    expect(html).toContain("Minimum stay");
+    expect(html).not.toContain("Minimum stay");
+    expect(html).not.toContain("Maximum stay");
     expect(html).toContain("€125.00");
     expect(html).toContain("€30.00");
     expect(html.match(/>Edit</g)).toHaveLength(1);

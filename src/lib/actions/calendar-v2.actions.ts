@@ -1,6 +1,7 @@
 "use server";
 
 import { auth } from "@/lib/auth";
+import { actionText } from "@/lib/actions/action-text";
 import {
   blockRangeForManagedListing,
   openWindowForManagedListing,
@@ -43,12 +44,14 @@ function normalizedResult(
 
 async function managedCalendarListing(listingId: string) {
   const session = await auth();
-  if (!session?.user?.id) return { error: "Not authorized" as const };
+  if (!session?.user?.id) return { error: await actionText("action.error.not_authorized", "Not authorized") };
   const listing = await verifyAvailabilityManager(
     { id: session.user.id, role: session.user.role },
     listingId,
   );
-  return listing ? { listing } : { error: "Listing not found" as const };
+  return listing
+    ? { listing }
+    : { error: await actionText("action.error.listing_not_found", "Listing not found") };
 }
 
 /** Blocking is one operation in both modes: write the block, keep the note. */

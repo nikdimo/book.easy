@@ -12,6 +12,7 @@ import type { ListingDraftData } from "@/lib/types/listing-draft";
 
 const ANSWERED: ListingHouseRulesInput = {
   checkInTime: "16:00",
+  checkInEndTime: "",
   checkOutTime: "10:00",
   maxGuests: 6,
   petPolicy: "ASK_HOST",

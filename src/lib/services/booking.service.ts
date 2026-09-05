@@ -17,7 +17,6 @@ import {
   isStayWithinAvailabilityWindows,
   windowsOverlappingStay,
 } from "@/lib/utils/availability-windows";
-import { exceedsMaxNights } from "@/lib/utils/booking-selection";
 import {
   bookingStayRequestIssueMessage,
   classifyBookingStayRequest,
@@ -88,6 +87,11 @@ import {
 } from "@/lib/services/booking-payment-status.service";
 import { reviewWindowOpensAt } from "@/lib/services/review-window";
 import {
+  BOOKING_RESPONSE_WINDOW_HOURS,
+  bookingResponseDueAt,
+  bookingResponseWindowIsOpen,
+} from "@/lib/services/booking-response-window";
+import {
   dbDateToLocalDate,
   dbDateToYmd,
   nightsBetweenYmd,
@@ -95,7 +99,7 @@ import {
   ymdToDbDate,
 } from "@/lib/utils/date-only";
 
-export const BOOKING_RESPONSE_WINDOW_HOURS = 24;
+export { BOOKING_RESPONSE_WINDOW_HOURS };
 
 /** Fire a notification without letting failures — including a failed dynamic import of
  * the email module — propagate to the caller. A successfully committed booking
@@ -481,6 +485,31 @@ export function weeklyStayRefusal(
   }
 }
 
+/**
+ * The same decision, said the way a flexible listing's guest has always heard it.
+ *
+ * Both modes now go through `decideStayAvailability`, but they do not share a
+ * vocabulary: a weekly guest is told about weeks and changeover days, a flexible guest
+ * about nights. These three sentences are the ones `createBooking` already produced from
+ * its own duplicated checks, kept verbatim so routing through the shared rule changes
+ * what is *enforced* without changing what anyone reads.
+ */
+export function flexibleStayRefusal(
+  reason: string,
+  pricingRule: { minNights: number; maxNights: number } | null,
+): string {
+  switch (reason) {
+    case "BELOW_MINIMUM":
+      return `Minimum stay is ${pricingRule?.minNights ?? 1} nights`;
+    case "ABOVE_MAXIMUM":
+      return `Maximum stay is ${pricingRule?.maxNights ?? 0} nights`;
+    case "STAY_IN_PAST":
+      return "Check-in date cannot be in the past";
+    default:
+      return "Those dates are not available. Please choose different dates.";
+  }
+}
+
 const WEEKDAY_LABELS: Record<ChangeoverWeekdayName, string> = {
   MONDAY: "Monday",
   TUESDAY: "Tuesday",
@@ -555,28 +584,35 @@ async function resolveBookingStay(
   const checkOutYmd = dbDateToYmd(checkOut);
   const sellsWeeklyStays = listing.bookingMode === "FIXED_STAYS";
 
-  if (sellsWeeklyStays) {
-    // The shared rule, so this path, the search filter, `checkAvailability` and the guest
-    // calendar cannot come to four different answers about the same pair of dates. It
-    // fails closed on a listing whose host has not chosen a changeover day.
-    const decision = decideStayAvailability({
-      bookingMode: "FIXED_STAYS",
-      // Availability windows are checked once below for both booking modes. This call
-      // decides only whether the dates satisfy the weekly shape and stay limits.
-      availabilityMode: "OPEN",
-      windows: [],
-      changeoverWeekday: listing.changeoverWeekday,
-      limits: {
-        minNights: listing.pricingRule?.minNights ?? 1,
-        maxNights: listing.pricingRule?.maxNights ?? null,
-      },
-      checkIn: checkInYmd,
-      checkOut: checkOutYmd,
-      today: todayYmd(),
-    });
-    if (!decision.offered) {
-      throw new Error(weeklyStayRefusal(decision.reason, listing.changeoverWeekday));
-    }
+  // The shared rule, for **both** booking modes, so this path, the search filter and the
+  // guest calendar cannot come to three different answers about the same pair of dates.
+  // It used to be consulted only for weekly listings, and the flexible half of the rule
+  // was re-implemented further down this file — which is how the past-date check came to
+  // be missing from the booking transaction for flexible listings entirely.
+  //
+  // It fails closed on a weekly listing whose host has not chosen a changeover day.
+  const decision = decideStayAvailability({
+    bookingMode: sellsWeeklyStays ? "FIXED_STAYS" : "FLEXIBLE",
+    // Availability windows are checked once inside the transaction for both booking
+    // modes, against windows read under the listing lock. This call decides the shape,
+    // the stay limits and the past-date rule.
+    availabilityMode: "OPEN",
+    windows: [],
+    changeoverWeekday: listing.changeoverWeekday,
+    limits: {
+      minNights: listing.pricingRule?.minNights ?? 1,
+      maxNights: listing.pricingRule?.maxNights ?? null,
+    },
+    checkIn: checkInYmd,
+    checkOut: checkOutYmd,
+    today: todayYmd(),
+  });
+  if (!decision.offered) {
+    throw new Error(
+      sellsWeeklyStays
+        ? weeklyStayRefusal(decision.reason, listing.changeoverWeekday)
+        : flexibleStayRefusal(decision.reason, listing.pricingRule),
+    );
   }
 
   return {
@@ -634,11 +670,6 @@ export async function createBooking(input: CreateBookingInput) {
     throw new Error(bookingStayRequestIssueMessage(requested.issue));
   }
 
-  const createdAt = new Date();
-  const responseDueAt = new Date(
-    createdAt.getTime() + BOOKING_RESPONSE_WINDOW_HOURS * 60 * 60 * 1000,
-  );
-  const reference = newBookingReference(createdAt);
   let booking;
   try {
     booking = await db.$transaction(async (tx) => {
@@ -783,35 +814,18 @@ export async function createBooking(input: CreateBookingInput) {
         throw new Error(`Maximum ${listing.maxGuests} guests allowed`);
       }
 
-      // 3. Validate minimum and maximum nights
+      // 3. Stay length is no longer re-checked here.
       //
-      // `numberOfNights` is counted off the stored calendar dates rather than with
+      // `resolveBookingStay` above runs `decideStayAvailability` for both booking modes,
+      // and that is where the listing's minimum and maximum now live — one rule, one
+      // reading of a stored `maxNights` of zero, one place for a future caller to find.
+      // This block used to be a second flexible-only copy, which is exactly the drift
+      // the shared helper exists to prevent.
+      //
+      // `numberOfNights` is still counted off the stored calendar dates rather than with
       // `differenceInDays`, which counts *local* calendar days: over the UTC-midnight
       // values these are, an autumn DST change makes the last day look short and drops a
-      // night, so a 24-27 October stay would be measured as two nights against the
-      // host's minimum and maximum (M6). `resolveBookingStay` does that counting.
-      //
-      // Both rules are flexible-calendar rules and are skipped for a fixed stay. The
-      // host chose that stay's length themselves when they put it on sale; measuring it
-      // against a minimum they set for selling by the night — very often one left over
-      // from before they switched — would refuse the very stay they are offering. The
-      // settings stay stored and untouched, so switching back restores them.
-      if (stay.kind === "FLEXIBLE") {
-        if (numberOfNights < listing.pricingRule.minNights) {
-          throw new Error(
-            `Minimum stay is ${listing.pricingRule.minNights} nights`,
-          );
-        }
-
-        // Still the last word on stay length — the widget and the search filter now say
-        // the same thing earlier, but they say it by calling this same rule, and the
-        // guest-facing checks are a courtesy rather than the enforcement.
-        if (exceedsMaxNights(numberOfNights, listing.pricingRule.maxNights)) {
-          throw new Error(
-            `Maximum stay is ${listing.pricingRule.maxNights} nights`,
-          );
-        }
-      }
+      // night, so a 24-27 October stay would be measured as two nights (M6).
 
       // 4. Check for overlapping availability blocks (atomic within transaction)
       const overlapping = await tx.availabilityBlock.findFirst({
@@ -870,7 +884,13 @@ export async function createBooking(input: CreateBookingInput) {
       // the only supported way to read either one back.
       const nightlyRate = quote.effectiveAverageNightly;
       const cleaningFee = quote.cleaningFee;
-      const serviceFee = 0; // Placeholder for future platform fee
+      // Zero, always, and not read from anywhere.
+      //
+      // There is no configurable percentage behind this. The old, unread
+      // `PricingRule.serviceFeePercent` placeholder was removed with a guarded migration;
+      // introducing a platform fee remains a product project with display, snapshot,
+      // reconciliation and rollout work of its own.
+      const serviceFee = 0;
       const totalPrice = quote.total + Number(serviceFee);
       // Two amounts, each resolved on its own against the same booking total and never
       // added together: the advance payment is a part of `totalPrice`, while the damage
@@ -936,10 +956,39 @@ export async function createBooking(input: CreateBookingInput) {
         ? conversionRate(listing.pricingRule.currency, display)
         : null;
 
-      // 6. Create booking
+      // 6. Create booking. Open the response window only after every awaited check has
+      // completed under the listing lock. Capturing this before the transaction (or
+      // before waiting for the lock) allowed a request to be inserted after check-in
+      // with a deadline that was already in the past.
+      //
+      // Built from the snapshot this row will actually *store*, not from the listing:
+      // the snapshot is only written alongside `houseRulesAcceptedAt`, so a request
+      // taken without one must be measured against the same default that
+      // `confirmBooking` will read back, or the two would disagree about when the
+      // window closed.
+      const createdAt = new Date();
+      const reference = newBookingReference(createdAt);
+      const storedHouseRulesSnapshot = houseRulesAcceptedAt
+        ? currentHouseRules
+        : null;
+      const responseDueAt = bookingResponseDueAt({
+        createdAt,
+        checkIn,
+        houseRulesSnapshot: storedHouseRulesSnapshot,
+      });
+      // Same-day requests are allowed; a request nobody could answer is not. When the
+      // stay's arrival time has already passed there is no window left to open, so the
+      // request is refused at creation rather than created dead and swept a moment later.
+      if (responseDueAt.getTime() <= createdAt.getTime()) {
+        throw new Error(
+          "Check-in for these dates has already passed, so this request could not be answered. Please choose different dates.",
+        );
+      }
+
       const created = await tx.booking.create({
         data: {
           reference,
+          createdAt,
           listingId,
           guestId,
           guestLocale: guestLocale ?? null,
@@ -1171,23 +1220,36 @@ export async function cancelBooking(
           booking.cancellationPolicySnapshot,
         );
         const advanceAmount = Number(booking.advancePaymentAmount ?? 0);
-        const advanceReceived =
-          ["PAYMENT_REPORTED", "PAYMENT_CONFIRMED"].includes(
-            booking.advancePaymentStatus,
-          )
-            ? advanceAmount
-            : 0;
+        // Two readings of the same three columns, and the difference between them is the
+        // whole of what "reported" means.
+        //
+        // *Received* counts a guest's own `*_REPORTED` claim, because a host who simply
+        // never confirms must not be able to make a refund obligation disappear by
+        // staying silent. *Confirmed* counts only what the receiving side actually
+        // confirmed. The settlement is built from the first and records the second, so
+        // the obligation is opened either way but is marked provisional when it rests on
+        // a claim nobody has verified.
+        const advanceReceived = [
+          "PAYMENT_REPORTED",
+          "PAYMENT_CONFIRMED",
+        ].includes(booking.advancePaymentStatus)
+          ? advanceAmount
+          : 0;
+        const advanceConfirmed =
+          booking.advancePaymentStatus === "PAYMENT_CONFIRMED" ? advanceAmount : 0;
         // In the split request model paymentStatus tracks the accommodation balance.
         // Legacy rows without an advance still use it for the full accommodation sum.
         const balanceAmount = Math.max(0, Number(booking.totalPrice) - advanceAmount);
-        const accommodationBalanceReceived =
-          ["PAYMENT_REPORTED", "PAYMENT_CONFIRMED"].includes(
-            booking.paymentStatus,
-          )
-            ? advanceAmount > 0
-              ? balanceAmount
-              : Number(booking.totalPrice)
-            : 0;
+        const balanceWhenReceived =
+          advanceAmount > 0 ? balanceAmount : Number(booking.totalPrice);
+        const accommodationBalanceReceived = [
+          "PAYMENT_REPORTED",
+          "PAYMENT_CONFIRMED",
+        ].includes(booking.paymentStatus)
+          ? balanceWhenReceived
+          : 0;
+        const accommodationBalanceConfirmed =
+          booking.paymentStatus === "PAYMENT_CONFIRMED" ? balanceWhenReceived : 0;
         settlement = calculateCancellationSettlement({
           cancelledBy,
           checkIn: booking.checkIn,
@@ -1199,9 +1261,13 @@ export async function cancelBooking(
               ? policy.freeCancellationDaysBeforeCheckIn ?? 0
               : 3650,
           advanceReceived,
+          advanceConfirmed,
           accommodationBalanceReceived,
+          accommodationBalanceConfirmed,
           damageDepositReceived:
             booking.damageDepositStatus === "DEPOSIT_REPORTED" ||
+            booking.damageDepositStatus === "DEPOSIT_CONFIRMED",
+          damageDepositConfirmed:
             booking.damageDepositStatus === "DEPOSIT_CONFIRMED",
         });
       }
@@ -1250,13 +1316,18 @@ export async function cancelBooking(
                 accommodationRefundStatusUpdatedAt:
                   settlement.accommodationRefundAmount > 0 ? now : null,
                 cancellationSettlementSnapshot: {
-                  version: 1,
+                  // Version 2 carries the provenance of the amounts. Version-1 rows are
+                  // still read back, as UNKNOWN, and nothing rewrites them.
+                  version: 2,
                   calculatedAt: now.toISOString(),
                   freeCancellation: settlement.freeCancellation,
                   accommodationRefundAmount: settlement.accommodationRefundAmount,
                   retainableAdvanceAmount: settlement.retainableAdvanceAmount,
                   damageDepositReturnRequired:
                     settlement.damageDepositReturnRequired,
+                  confirmedRefundAmount: settlement.confirmedRefundAmount,
+                  refundBasis: settlement.refundBasis,
+                  depositReturnBasis: settlement.depositReturnBasis,
                 },
               }
             : {}),
@@ -1303,11 +1374,27 @@ export async function cancelBooking(
           blockType: BlockType.BOOKING_HOLD,
         },
       });
-      await enqueueBookingEmails(tx, bookingId, [
-        cancelledBy === "guest"
-          ? BookingEmailKind.HOST_CANCELLED_BY_GUEST
-          : BookingEmailKind.GUEST_CANCELLED,
-      ]);
+      // Both parties, every time, and worded for who actually cancelled.
+      //
+      // This used to be a single ternary over three cases, so "admin" fell into the
+      // else-branch: a support cancellation emailed the guest and sent the host nothing.
+      // A guest who cancelled their own booking also got no email — no written record of
+      // a settlement they may owe or be owed — because the guest-cancelled branch only
+      // ever mailed the host.
+      //
+      // In-app notifications already covered all three cases for both sides. Email is
+      // the channel that reaches someone who is not logged in, which is why the gap here
+      // was the one a party actually noticed.
+      const cancellationEmails: BookingEmailKind[] = [
+        BookingEmailKind.GUEST_CANCELLED,
+      ];
+      if (cancelledBy === "guest") {
+        cancellationEmails.push(BookingEmailKind.HOST_CANCELLED_BY_GUEST);
+      } else if (cancelledBy === "admin") {
+        cancellationEmails.push(BookingEmailKind.HOST_CANCELLED_BY_ADMIN);
+      }
+      // A host who cancelled it themselves needs no email about their own action.
+      await enqueueBookingEmails(tx, bookingId, cancellationEmails);
 
       return tx.booking.findUniqueOrThrow({ where: { id: bookingId } });
     })
@@ -1658,7 +1745,6 @@ export async function confirmBooking(
     method?: PaymentMethodCode;
   },
 ) {
-  const now = new Date();
   const result = await db.$transaction(async (tx) => {
     const bookingListing = await tx.booking.findUnique({
       where: { id: bookingId },
@@ -1690,12 +1776,25 @@ export async function confirmBooking(
       throw new Error("Only pending bookings can be confirmed");
     }
 
-    if (booking.responseDueAt <= now) {
+    // Capture the decision time after the advisory-lock wait and the authoritative
+    // re-read. A timestamp taken before either could let a host through after the
+    // response deadline or the frozen check-in cutoff passed while this call waited.
+    const now = new Date();
+
+    // The window closes at the stored deadline *or* at the stay's own arrival instant,
+    // whichever came first. The second half is what stops a host confirming a guest into
+    // a stay that has already begun — a state `cancelBooking` then refuses to let that
+    // guest out of, so they would never have had a moment in which self-service
+    // cancellation existed. Rows created before the deadline was clamped still carry an
+    // unclamped `responseDueAt`, and the cutoff catches them without a backfill.
+    if (!bookingResponseWindowIsOpen(booking, now)) {
       const expired = await tx.booking.updateMany({
+        // Guarded on status alone: for a legacy row the stored deadline has *not*
+        // passed, so repeating it here would match nothing and report a phantom
+        // concurrent change. PENDING is the invariant this compare-and-set protects.
         where: {
           id: bookingId,
           status: BookingStatus.PENDING,
-          responseDueAt: { lte: now },
         },
         data: { status: BookingStatus.EXPIRED, respondedAt: now },
       });
@@ -1892,7 +1991,6 @@ export async function rejectBooking(
   if (!cleanReason)
     throw new Error("A reason is required when declining a booking request");
 
-  const now = new Date();
   const result = await db.$transaction(async (tx) => {
     const booking = await tx.booking.findUnique({
       where: { id: bookingId },
@@ -1907,12 +2005,24 @@ export async function rejectBooking(
       throw new Error("Only pending bookings can be rejected");
     }
 
-    if (booking.responseDueAt <= now) {
+    // The database read can wait. Measure the response at the point the current row is
+    // actually in hand, rather than at function entry with a potentially stale clock.
+    const now = new Date();
+
+    // The window closes at the stored deadline *or* at the stay's own arrival instant,
+    // whichever came first. The second half is what stops a host confirming a guest into
+    // a stay that has already begun — a state `cancelBooking` then refuses to let that
+    // guest out of, so they would never have had a moment in which self-service
+    // cancellation existed. Rows created before the deadline was clamped still carry an
+    // unclamped `responseDueAt`, and the cutoff catches them without a backfill.
+    if (!bookingResponseWindowIsOpen(booking, now)) {
       const expired = await tx.booking.updateMany({
+        // Guarded on status alone: for a legacy row the stored deadline has *not*
+        // passed, so repeating it here would match nothing and report a phantom
+        // concurrent change. PENDING is the invariant this compare-and-set protects.
         where: {
           id: bookingId,
           status: BookingStatus.PENDING,
-          responseDueAt: { lte: now },
         },
         data: { status: BookingStatus.EXPIRED, respondedAt: now },
       });

@@ -2,19 +2,16 @@ import "server-only";
 import { db } from "@/lib/db";
 import {
   compareYmd,
+  dbDateToYmd,
   nightsBetweenYmd,
   todayYmd,
   ymdToDbDate,
   isValidYmd,
 } from "@/lib/utils/date-only";
-import {
-  exceedsMaxNights,
-  stayLengthCap,
-} from "@/lib/utils/booking-selection";
-import {
-  isStayWithinAvailabilityWindows,
-  windowsOverlappingStay,
-} from "@/lib/utils/availability-windows";
+import type { ChangeoverWeekdayName } from "@/lib/utils/weekly-stay";
+import { stayLengthCap } from "@/lib/utils/booking-selection";
+import { windowsOverlappingStay } from "@/lib/utils/availability-windows";
+import { decideStayAvailability } from "@/lib/utils/stay-availability";
 import {
   getBlockedDateRangesForListing,
   type BlockedDateRange,
@@ -161,6 +158,12 @@ export type PromotionRangeRejection =
   | "ABOVE_MAXIMUM"
   | "NOT_OPEN"
   | "ALREADY_BOOKED"
+  /** Weekly listing: check-in is not on the host's changeover weekday. */
+  | "WRONG_CHECK_IN_DAY"
+  /** Weekly listing: checkout is not either, so the range is not whole weeks. */
+  | "WRONG_CHECK_OUT_DAY"
+  /** Weekly listing whose host has not chosen a changeover day yet. */
+  | "NO_CHANGEOVER_DAY"
   | "LISTING_NOT_PROMOTABLE";
 
 export type PromotionRangeCheck =
@@ -206,6 +209,12 @@ export async function checkPromotionRange(
     select: {
       id: true,
       availabilityMode: true,
+      // The two columns a weekly listing's shape is made of. They were missing, which
+      // is precisely how a weekly host could validate and publish a Tue-to-Fri range
+      // that `createBooking` refuses with "Check-in must be on a Saturday" — the exact
+      // failure mode the doc above says this check exists to prevent.
+      bookingMode: true,
+      changeoverWeekday: true,
       pricingRule: { select: { minNights: true, maxNights: true } },
       availabilityWindows: {
         where: windowsOverlappingStay(
@@ -218,28 +227,56 @@ export async function checkPromotionRange(
   });
   if (!listing) return { ok: false, reason: "LISTING_NOT_PROMOTABLE" };
 
-  if (
-    !isStayWithinAvailabilityWindows({
-      availabilityMode: listing.availabilityMode,
-      windows: listing.availabilityWindows,
-      checkIn: ymdToDbDate(checkIn),
-      checkOut: ymdToDbDate(checkOut),
-    })
-  ) {
-    return { ok: false, reason: "NOT_OPEN" };
-  }
-
+  // The booking rule itself, not a second implementation of it. Availability windows,
+  // the weekly shape and the listing's stay limits are one decision in one place, so a
+  // range this call blesses is a range `createBooking` accepts.
+  //
+  // `today` is passed as `checkIn` rather than as `now` because the past-date rule has
+  // already been applied above, with its own IN_THE_PAST reason: a host needs to be told
+  // their range has started, not that it is "not offered".
+  const decision = decideStayAvailability({
+    bookingMode: listing.bookingMode,
+    availabilityMode: listing.availabilityMode,
+    windows: listing.availabilityWindows.map((window) => ({
+      startDate: dbDateToYmd(window.startDate),
+      endDate: dbDateToYmd(window.endDate),
+    })),
+    changeoverWeekday: listing.changeoverWeekday as ChangeoverWeekdayName | null,
+    limits: {
+      minNights: listing.pricingRule?.minNights ?? 1,
+      maxNights: listing.pricingRule?.maxNights ?? null,
+    },
+    checkIn,
+    checkOut,
+    today: checkIn,
+  });
   // Counted off calendar dates, never with a local-day difference: over the
   // UTC-midnight values these are, a daylight-saving change drops a night and would
   // measure a legitimate stay as short of the host's own minimum (M6).
   const nights = nightsBetweenYmd(checkIn, checkOut);
-  const minNights = listing.pricingRule?.minNights ?? 1;
-  if (nights < minNights) {
-    return { ok: false, reason: "BELOW_MINIMUM", minNights };
-  }
-  const cap = stayLengthCap(listing.pricingRule?.maxNights);
-  if (exceedsMaxNights(nights, listing.pricingRule?.maxNights)) {
-    return { ok: false, reason: "ABOVE_MAXIMUM", maxNights: cap ?? nights };
+  if (!decision.offered) {
+    switch (decision.reason) {
+      case "OUTSIDE_AVAILABILITY_WINDOWS":
+        return { ok: false, reason: "NOT_OPEN" };
+      case "BELOW_MINIMUM":
+        return {
+          ok: false,
+          reason: "BELOW_MINIMUM",
+          minNights: listing.pricingRule?.minNights ?? 1,
+        };
+      case "ABOVE_MAXIMUM":
+        return {
+          ok: false,
+          reason: "ABOVE_MAXIMUM",
+          maxNights: stayLengthCap(listing.pricingRule?.maxNights) ?? nights,
+        };
+      case "WRONG_CHECK_IN_DAY":
+      case "WRONG_CHECK_OUT_DAY":
+      case "NO_CHANGEOVER_DAY":
+        return { ok: false, reason: decision.reason };
+      default:
+        return { ok: false, reason: "INVALID_DATES" };
+    }
   }
 
   // Confirmed bookings become BOOKING_HOLD blocks, so this one query covers both a

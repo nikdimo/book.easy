@@ -3,7 +3,7 @@
 import { useActionState, useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Bath, Bed, BedDouble, CalendarDays, CalendarRange, Check, ChevronLeft, ChevronRight, CircleAlert, CircleDollarSign, Eye, GripVertical, ListChecks, Loader2, MapPin, Minus, Pencil, Plus, ShieldCheck, Sparkles, Users } from "lucide-react";
+import { Bath, Bed, BedDouble, CalendarRange, Check, ChevronLeft, ChevronRight, CircleAlert, CircleDollarSign, Eye, GripVertical, ListChecks, Loader2, MapPin, Minus, Pencil, Plus, ShieldCheck, Sparkles, Users } from "lucide-react";
 import {
   saveListingDraft,
   submitNewListing,
@@ -1939,7 +1939,6 @@ export function ListingForm({
                   onEditPromotion={() => goToStep(LISTING_STEP.specialOffer)}
                   baseNightlyRate={values.baseNightlyRate}
                   cleaningFee={values.cleaningFee}
-                  minimumNights={values.minNights}
                   promotionType={values.promotionType}
                   promotionPercent={values.promotionPercent}
                   promotionMinimumNights={values.promotionMinimumNights}
@@ -2578,26 +2577,6 @@ export function ListingForm({
                     step={String(10 ** -currencyDecimals(values.currency))}
                     suffix={`${values.currency || "EUR"} / stay`}
                     onChange={(value) => setField("cleaningFee", value)}
-                    onBlur={() => void autosaveDraft()}
-                  />
-                  <CapacityCounter
-                    id="minNights"
-                    label={
-                      resolve(
-                        "host.form.pricing.min_nights",
-                        "Minimum nights",
-                      ).text
-                    }
-                    description={
-                      resolve(
-                        "host.form.pricing.min_nights_hint",
-                        "Shortest stay guests can book",
-                      ).text
-                    }
-                    icon={CalendarDays}
-                    value={values.minNights}
-                    min={1}
-                    onChange={(value) => setField("minNights", value)}
                     onBlur={() => void autosaveDraft()}
                   />
               </>

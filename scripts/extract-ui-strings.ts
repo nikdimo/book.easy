@@ -27,7 +27,15 @@ const UI_SCOPES = [
   // The host panel is catalog-covered so hosts get server-rendered copy rather than
   // Google's post-paint DOM translation. The admin migration is tracked separately:
   // its legacy operational screens contain a large body of hard-coded copy.
+  //
+  // All four host route groups, not just the retired one. `src/components/host/` alone
+  // covered the components but left every `page.tsx` and `layout.tsx` under the live
+  // groups unlinted, so nothing but review stopped a bare English sentence from being
+  // rendered by a route file. They are clean today; these entries are what keeps them so.
   "src/app/(host)/",
+  "src/app/(host-v2)/",
+  "src/app/(host-editor)/",
+  "src/app/(host-start)/",
   "src/components/host/",
   "src/components/communication/",
   "src/components/account/",
@@ -217,7 +225,30 @@ function extract(): ExtractedUiString[] {
           }
         } else if (ts.isIdentifier(expression)) {
           const name = expression.text;
-          if (name === "resolve") {
+          if (
+            (name === "actionText" || name === "actionPlural") &&
+            filePath.includes("__tests__")
+          ) {
+            // A test may exercise the helper with a key of its own; that is not product
+            // copy and must not reach the catalog.
+          } else if (name === "actionText") {
+            // Server actions resolve their user-facing sentences through these helpers
+            // (see src/lib/actions/action-text.ts). Same literal key/source contract as
+            // `resolve`, so the copy a host reads on a failed save is catalog copy
+            // rather than the only English left on a translated screen.
+            const key = sourceString(args[0]);
+            const sourceText = sourceString(args[1]);
+            if (key !== null && sourceText !== null) add(key, sourceText, filePath);
+          } else if (name === "actionPlural") {
+            const keyBase = sourceString(args[0]);
+            const singular = sourceString(args[2]);
+            const plural = sourceString(args[3]);
+            if (keyBase !== null && singular !== null && plural !== null) {
+              for (const category of ["zero", "one", "two", "few", "many", "other"] as const) {
+                add(`${keyBase}.${category}`, category === "one" ? singular : plural, filePath);
+              }
+            }
+          } else if (name === "resolve") {
             // Client components commonly destructure `resolve` from `useI18n()`.
             // It has the same literal key/source contract as `translator.resolve`,
             // so include it rather than silently leaving that UI in English.

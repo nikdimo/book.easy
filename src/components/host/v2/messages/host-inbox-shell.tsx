@@ -36,9 +36,13 @@ export function HostInboxShell({
       className={cn(
         // Below `md` the panel is an ordinary scrolling document, so the inbox has to
         // claim a height of its own or its panes would have nothing to scroll inside.
-        // `6rem` is the shell's own mobile bottom padding, which is what keeps the
-        // fixed bottom navigation clear of the composer.
-        "flex h-[calc(100dvh-6rem)] w-full gap-3 md:h-auto md:min-h-0 md:flex-1 xl:gap-4"
+        // It has to subtract *everything* the shell puts around page content on a phone
+        // — the account row above as well as the bottom padding that keeps the fixed
+        // navigation clear of the composer. Subtracting only the padding left the
+        // document 48px taller than the viewport, so a chat screen scrolled and bounced
+        // for the height of a row nobody was reading. The shell publishes the total as
+        // `--host-panel-mobile-chrome`, so the two cannot drift apart again.
+        "flex h-[calc(100dvh-var(--host-panel-mobile-chrome))] w-full gap-3 md:h-auto md:min-h-0 md:flex-1 xl:gap-4"
       )}
     >
       <aside

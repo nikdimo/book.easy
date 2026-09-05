@@ -20,6 +20,7 @@ import { BOOKING_STATUSES } from "@/lib/constants";
 import { StartConversationButton } from "@/components/communication/start-conversation-button";
 import { BookingStatusHero } from "@/components/booking/booking-status-hero";
 import { BookingArrivalDetails } from "@/components/booking/booking-arrival-details";
+import { BookingArrivalGuide } from "@/components/booking/booking-arrival-guide";
 import {
   AcceptedPaymentMethods,
   acceptedPaymentMethodsFromSnapshot,
@@ -108,7 +109,20 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
 
       <Card className="mt-6 overflow-hidden">
         {booking.listing.images[0]?.url ? (
-          <Link href={`/properties/${booking.listing.slug}`} className="relative block h-56 sm:h-72">
+          /*
+            The public property route only serves APPROVED listings, so this photo was a
+            404 for a guest whose host had unpublished — or whose listing support had
+            suspended — after the booking was made. The booking-scoped page authorises on
+            membership of this booking instead, and is reachable in every state.
+          */
+          <Link
+            href={
+              booking.listing.status === "APPROVED"
+                ? `/properties/${booking.listing.slug}`
+                : `/account/bookings/${booking.id}/listing`
+            }
+            className="relative block h-56 sm:h-72"
+          >
             <Image
               src={booking.listing.images[0].url}
               alt={booking.listing.images[0].alt || booking.listing.title}
@@ -384,6 +398,14 @@ export default async function BookingDetailPage({ params }: BookingDetailProps) 
       <BookingArrivalDetails
         booking={{ status: booking.status, checkIn: booking.checkIn }}
         property={booking.listing.property}
+      />
+
+      {/* Where the place is, then how to get into it. Two cards rather than one because
+          they unlock on different schedules: the address follows the exact-location rule,
+          the door code follows the host's arrival guide. */}
+      <BookingArrivalGuide
+        listingId={booking.listing.id}
+        booking={{ status: booking.status, checkIn: booking.checkIn }}
       />
     </div>
   );

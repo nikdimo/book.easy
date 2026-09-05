@@ -70,9 +70,17 @@ describe("default pricing", () => {
     expect(stored).toEqual({
       baseNightlyRate: "120",
       cleaningFee: "30",
-      minNights: "2",
     });
     expect(defaultsDraft(stored, listing)).toBeNull();
+  });
+
+  it("reads back money only, so no stay rule can be staged from Pricing", () => {
+    // The form is the whole vocabulary of this screen. A `minNights` field here is what
+    // let a Pricing tab resend the minimum it was rendered with over one changed since
+    // under Availability → Booking rules.
+    expect(Object.keys(stored).sort()).toEqual(["baseNightlyRate", "cleaningFee"]);
+    expect(stored).not.toHaveProperty("minNights");
+    expect(stored).not.toHaveProperty("maxNights");
   });
 
   it("carries only the field the host actually edited", () => {
@@ -87,25 +95,39 @@ describe("default pricing", () => {
       kind: "DEFAULT_PRICING",
       to: { cleaningFee: 0 },
     });
-    expect(defaultsDraft({ ...stored, minNights: "4" }, listing)).toEqual({
+  });
+
+  it("cannot stage a stay limit even when one is forced into the form", () => {
+    const smuggled = { ...stored, minNights: "4", maxNights: "9" } as never;
+    // Unchanged amounts plus a stay limit is still no change at all: there is nothing
+    // on this screen for a minimum stay to ride out on.
+    expect(defaultsDraft(smuggled, listing)).toBeNull();
+
+    const withPrice = {
+      ...stored,
+      baseNightlyRate: "150",
+      minNights: "4",
+      maxNights: "9",
+    } as never;
+    expect(defaultsDraft(withPrice, listing)).toEqual({
       kind: "DEFAULT_PRICING",
-      to: { minNights: 4 },
+      to: { baseNightlyRate: 150 },
     });
   });
 
   it("carries several fields when several were edited, and no others", () => {
     const draft = defaultsDraft(
-      { baseNightlyRate: "150", cleaningFee: "45", minNights: "2" },
+      { baseNightlyRate: "150", cleaningFee: "45" },
       listing,
     );
     expect(draft).toEqual({
       kind: "DEFAULT_PRICING",
       to: { baseNightlyRate: 150, cleaningFee: 45 },
     });
-    // `minNights` was untouched, so it is absent rather than resent.
-    expect(
-      Object.keys((draft as { to: Record<string, number> }).to),
-    ).not.toContain("minNights");
+    // Two amounts, and no stay rule riding along with them.
+    const keys = Object.keys((draft as { to: Record<string, number> }).to);
+    expect(keys).not.toContain("minNights");
+    expect(keys).not.toContain("maxNights");
   });
 
   it("stages nothing for an invalid or half-typed value", () => {
@@ -115,10 +137,6 @@ describe("default pricing", () => {
       { ...stored, baseNightlyRate: "abc" },
       { ...stored, cleaningFee: "" },
       { ...stored, cleaningFee: "-5" },
-      { ...stored, minNights: "" },
-      { ...stored, minNights: "0" },
-      { ...stored, minNights: "2.5" },
-      { ...stored, minNights: "400" },
     ];
     for (const form of invalid) expect(defaultsDraft(form, listing)).toBeNull();
   });
@@ -126,10 +144,7 @@ describe("default pricing", () => {
   it("stages nothing without a loaded rule to merge the untouched fields with", () => {
     const unpriced = makeListing({ pricing: null });
     expect(
-      defaultsDraft(
-        { baseNightlyRate: "150", cleaningFee: "20", minNights: "2" },
-        unpriced,
-      ),
+      defaultsDraft({ baseNightlyRate: "150", cleaningFee: "20" }, unpriced),
     ).toBeNull();
   });
 });
@@ -344,7 +359,7 @@ describe("draft to review plan", () => {
     expect(availabilityDefaultDraft("OPEN", listing)).toBeNull();
     expect(defaultsDraft(stored, listing)).toBeNull();
     expect(defaultsDraft({ ...stored, baseNightlyRate: "0" }, listing)).toBeNull();
-    expect(defaultsDraft({ ...stored, minNights: "400" }, listing)).toBeNull();
+    expect(defaultsDraft({ ...stored, cleaningFee: "-1" }, listing)).toBeNull();
     expect(
       ongoingPromotionDraft(ongoingPromotionFormOf(listing), listing),
     ).toBeNull();
@@ -367,7 +382,6 @@ describe("draft to review plan", () => {
         type: "SET_DEFAULT_PRICING",
         baseNightlyRate: 150,
         cleaningFee: 30,
-        minNights: 2,
       },
     ]);
   });

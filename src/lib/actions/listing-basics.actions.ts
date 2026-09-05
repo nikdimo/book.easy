@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { requireHost } from "@/lib/auth-helpers";
 import { revalidatePublicListingCaches } from "@/lib/utils/revalidate-public-listing-caches";
+import { actionText } from "@/lib/actions/action-text";
 import {
   listingBasicsComplete,
   listingBasicsIssues,
@@ -50,7 +51,7 @@ export async function updateListingBasics(
     where: { id: listingId, hostId: user.id },
     select: { id: true, slug: true, status: true, title: true, description: true },
   });
-  if (!listing) return { error: "Listing not found." };
+  if (!listing) return { error: await actionText("action.error.listing_not_found_sentence", "Listing not found.") };
 
   // The client validates too, so this is the case where it was bypassed or is stale.
   // Rejecting rather than truncating: a description cut at 5000 characters mid-sentence

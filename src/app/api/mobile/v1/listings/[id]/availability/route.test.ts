@@ -211,6 +211,9 @@ describe("mobile availability API", () => {
       endDate: "2026-09-13",
     });
 
+    // A `minNights` in the body is ignored rather than forwarded: an older build of
+    // the app still sends one, and a price save must never write a stay rule the host
+    // set under Availability → Booking rules.
     expect((await post({
       action: "saveDefaultPricing",
       baseNightlyRate: 120,
@@ -220,7 +223,6 @@ describe("mobile availability API", () => {
     expect(mocks.saveDefaultPricing).toHaveBeenCalledWith(listing, "host-1", {
       baseNightlyRate: 120,
       cleaningFee: 25,
-      minNights: 2,
     });
   });
 

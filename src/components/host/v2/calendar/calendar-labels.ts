@@ -665,8 +665,6 @@ export function reviewFieldLabel(
         "host.v2.calendar.field.cleaning_fee",
         "Cleaning fee",
       );
-    case "min_nights":
-      return i18n.resolve("host.v2.calendar.field.min_nights", "Minimum stay");
   }
 }
 
@@ -1210,14 +1208,6 @@ export function consequenceText(
             "host.v2.calendar.consequence.date_promotion_removed",
             "This offer stops running on these dates and guests pay the full price for them. Existing bookings do not change.",
           );
-    case "MIN_NIGHTS_ALL_DATES":
-      return interpolate(
-        i18n.resolve(
-          "host.v2.calendar.consequence.min_nights",
-          "Every date on this listing will require a stay of at least {nights} nights, not only the dates you were looking at.",
-        ),
-        { nights: consequence.minNights },
-      );
   }
 }
 
@@ -1410,14 +1400,6 @@ export function reviewErrorText(
       return i18n.resolve(
         "host.v2.calendar.error.nothing_to_block",
         "None of these dates are open to block.",
-      );
-    case "INVALID_MIN_NIGHTS":
-      return interpolate(
-        i18n.resolve(
-          "host.v2.calendar.error.min_nights",
-          "Enter a minimum stay between 1 and {max} nights.",
-        ),
-        { max: error.maxNights },
       );
     case "MODE_UNCHANGED":
       return i18n.resolve(

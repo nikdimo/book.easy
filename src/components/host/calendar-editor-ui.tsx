@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { Pencil, Sparkles } from "lucide-react";
-import { Tx, translatedClass, useI18n } from "@/lib/i18n/client";
+import { Tx } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -67,29 +67,20 @@ export const OFFER_PREVIEW_NOTE = "mt-0.5 text-sm text-muted-foreground md:text-
 export function StandardPricingSummary({
   baseNightlyRate,
   cleaningFee,
-  minNights,
   currency,
   locale,
   onEdit,
 }: {
   baseNightlyRate: number;
   cleaningFee: number;
-  minNights: number;
   currency: string;
   locale: string;
   onEdit: () => void;
 }) {
-  const i18n = useI18n();
   const money = new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
   });
-  const minimumStay = i18n.plural(
-    "host.calendar.standard_pricing.minimum_nights",
-    minNights,
-    "{n} night",
-    "{n} nights",
-  );
 
   return (
     <section
@@ -116,7 +107,7 @@ export function StandardPricingSummary({
           <Tx k="host.calendar.standard_pricing.edit" source="Edit" />
         </Button>
       </div>
-      <dl className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+      <dl className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
         <div className="rounded-xl bg-muted/35 px-3 py-2.5">
           <dt className="text-xs text-muted-foreground">
             <Tx
@@ -152,19 +143,6 @@ export function StandardPricingSummary({
                 k="host.calendar.standard_pricing.per_stay"
                 source="/ stay"
               />
-            </span>
-          </dd>
-        </div>
-        <div className="rounded-xl bg-muted/35 px-3 py-2.5">
-          <dt className="text-xs text-muted-foreground">
-            <Tx
-              k="host.calendar.standard_pricing.minimum_stay"
-              source="Minimum stay"
-            />
-          </dt>
-          <dd className="mt-0.5 text-sm font-semibold">
-            <span className={translatedClass(minimumStay)}>
-              {minimumStay.text}
             </span>
           </dd>
         </div>

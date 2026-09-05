@@ -352,8 +352,168 @@ describe("BookingPaymentProgress", () => {
       />,
     );
 
-    expect(html).not.toContain("data-payment-track=");
+    // Neither *policy* track. The accommodation-balance row is not a policy track — it
+    // is the price itself, and it renders on every booking so that `paymentStatus` is
+    // never shown as a bare "Payment" with no figure beside it (#1).
+    expect(html).not.toContain('data-payment-track="advance-payment"');
+    expect(html).not.toContain('data-payment-track="damage-deposit"');
+    expect(html).toContain('data-payment-track="accommodation-balance"');
     expect(html).toContain("does not ask for an advance payment or a refundable damage deposit");
+  });
+
+  /**
+   * #1: `paymentStatus` is the accommodation *balance*, and now says so.
+   *
+   * It used to render as a bare "Payment: <status>" line with no figure beside it, while
+   * the advance and damage tracks each showed theirs. A host looking at a booking with a
+   * 65 EUR advance against a 325 EUR total had no way to tell that "payment" meant the
+   * other 260 — and the control under it read "Mark payment received", which invites
+   * "everything is settled". The arithmetic was always the balance; only the label was
+   * not.
+   */
+  describe("the accommodation-balance track", () => {
+    it("renders total minus advance as its own priced track", () => {
+      const html = renderToStaticMarkup(
+        <BookingPaymentProgress progress={confirmed} actor="HOST" />,
+      );
+
+      expect(html).toContain('data-payment-track="accommodation-balance"');
+      expect(html).toContain("Accommodation balance");
+      // 325 total - 65 advance. Never the total, and never their sum.
+      expect(html).toContain(
+        '<dd class="font-medium" data-payment-track-amount="accommodation-balance">\u20ac260.00</dd>',
+      );
+    });
+
+    it("equals the whole price when there is no advance payment", () => {
+      const html = renderToStaticMarkup(
+        <BookingPaymentProgress
+          progress={{
+            ...confirmed,
+            advancePaymentAmount: null,
+            advancePaymentStatus: "NOT_REQUIRED",
+            depositPolicies: {
+              version: 2,
+              status: "REVIEWED",
+              advancePayment: null,
+              damageDeposit: DAMAGE,
+            },
+          }}
+          actor="HOST"
+        />,
+      );
+
+      expect(html).toContain(
+        '<dd class="font-medium" data-payment-track-amount="accommodation-balance">\u20ac325.00</dd>',
+      );
+    });
+
+    it("names the balance in the controls that move it", () => {
+      const html = renderToStaticMarkup(
+        <BookingPaymentProgress progress={confirmed} actor="HOST" />,
+      );
+      expect(html).toContain("Mark accommodation balance received");
+      expect(html).not.toContain(">Mark payment received<");
+    });
+
+    it("says who reported and who confirmed, like the other two tracks", () => {
+      const html = renderToStaticMarkup(
+        <BookingPaymentProgress
+          progress={{ ...confirmed, paymentStatus: "PAYMENT_REPORTED" }}
+          actor="HOST"
+        />,
+      );
+      expect(html).toContain(
+        '<dd class="font-medium" data-payment-track-status="accommodation-balance">Guest reported sending it</dd>',
+      );
+    });
+  });
+
+  /**
+   * #2: a refund built on an unconfirmed report is a claim, and the page says so.
+   */
+  describe("a refund whose basis is only claimed", () => {
+    const cancelled = {
+      ...confirmed,
+      status: "CANCELLED_BY_GUEST",
+      accommodationRefundAmount: 260,
+      accommodationRefundStatus: "AWAITING_REFUND",
+    } satisfies BookingPaymentProgressView;
+
+    it("marks the refund as claimed when the settlement says CLAIMED", () => {
+      const html = renderToStaticMarkup(
+        <BookingPaymentProgress
+          progress={{
+            ...cancelled,
+            cancellationSettlement: {
+              version: 2,
+              calculatedAt: "2026-12-01T10:00:00.000Z",
+              freeCancellation: true,
+              accommodationRefundAmount: 260,
+              retainableAdvanceAmount: 0,
+              damageDepositReturnRequired: false,
+              confirmedRefundAmount: 0,
+              refundBasis: "CLAIMED",
+              depositReturnBasis: "CONFIRMED",
+            },
+          }}
+          actor="HOST"
+        />,
+      );
+
+      expect(html).toContain('data-payment-track-caveat="accommodation-refund"');
+      expect(html).toContain("the host has not confirmed");
+    });
+
+    it("says nothing extra when every amount was confirmed", () => {
+      const html = renderToStaticMarkup(
+        <BookingPaymentProgress
+          progress={{
+            ...cancelled,
+            cancellationSettlement: {
+              version: 2,
+              calculatedAt: "2026-12-01T10:00:00.000Z",
+              freeCancellation: true,
+              accommodationRefundAmount: 260,
+              retainableAdvanceAmount: 0,
+              damageDepositReturnRequired: false,
+              confirmedRefundAmount: 260,
+              refundBasis: "CONFIRMED",
+              depositReturnBasis: "CONFIRMED",
+            },
+          }}
+          actor="HOST"
+        />,
+      );
+
+      expect(html).toContain('data-payment-track="accommodation-refund"');
+      expect(html).not.toContain('data-payment-track-caveat="accommodation-refund"');
+    });
+
+    /** A settlement written before provenance was recorded proves nothing either way. */
+    it("treats an UNKNOWN basis as not confirmed", () => {
+      const html = renderToStaticMarkup(
+        <BookingPaymentProgress
+          progress={{
+            ...cancelled,
+            cancellationSettlement: {
+              version: 1,
+              calculatedAt: "2026-05-01T10:00:00.000Z",
+              freeCancellation: true,
+              accommodationRefundAmount: 260,
+              retainableAdvanceAmount: 0,
+              damageDepositReturnRequired: false,
+              confirmedRefundAmount: 0,
+              refundBasis: "UNKNOWN",
+              depositReturnBasis: "UNKNOWN",
+            },
+          }}
+          actor="GUEST"
+        />,
+      );
+
+      expect(html).toContain('data-payment-track-caveat="accommodation-refund"');
+    });
   });
 
   // ---- After checkout ----------------------------------------------------------

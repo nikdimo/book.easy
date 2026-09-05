@@ -110,6 +110,13 @@ export const hostCanonicalRewrites: RewriteRule[] = [
     source: "/host/listings/:id/:section",
     destination: "/host/v2/listings/:id/:section",
   },
+  // A section may have pages of its own — the Arrival guide's nine cards are each their
+  // own URL, the way Airbnb's are. Without this a deep link or a refresh on one of them
+  // would miss the rewrite entirely and 404 on a page the host can plainly see.
+  {
+    source: "/host/listings/:id/:section/:rest*",
+    destination: "/host/v2/listings/:id/:section/:rest*",
+  },
   { source: "/host/reservations", destination: "/host/v2/reservations" },
   { source: "/host/reservations/:id", destination: "/host/v2/reservations/:id" },
   { source: "/host/messages", destination: "/host/v2/messages" },

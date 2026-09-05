@@ -534,3 +534,255 @@ font.goog-text-highlight,
     min-width: 0;
   }
 }
+
+/* ────────────────────────────────────────────────────────────────────────────────────
+   Arrival guide — Airbnb's design system, measured rather than remembered.
+   ────────────────────────────────────────────────────────────────────────────────────
+   Every value below was read off airbnb.com's own custom properties on 2026-09-05, the
+   same way the marketplace search bar was specced (see `marketplace-search-bar.tsx`).
+   Their token names are kept in the comments so any of this can be re-checked in a
+   console rather than argued about:
+
+     --palette-hof #222222   --palette-foggy #6A6A6A   --palette-bobo #B0B0B0
+     --palette-deco #DDDDDD  --palette-bebe #EBEBEB    --palette-faint #F7F7F7
+     --corner-radius-small8px / medium12px / large16px
+     --elevation-elevation0-box-shadow: 0 0 0 1px #DDDDDD inset
+     --elevation-elevation2-box-shadow: 0 0 0 1px rgba(0,0,0,.02), 0 2px 6px rgba(0,0,0,.04), 0 4px 8px rgba(0,0,0,.10)
+     --motion-standard-curve: cubic-bezier(0.2, 0, 0, 1)
+
+   The typeface is the one thing that cannot be matched: Airbnb Cereal is licensed to
+   Airbnb. Inter is what this site already loads and is the closest widely available
+   grotesque — same 400/500/600 ladder, near-identical x-height — so the type *scale*
+   below is Airbnb's exactly and only the letterforms differ. Their scale is stated as
+   size/line-height pairs (titles-semibold_32_36, body-text_14_18 and so on), which is why
+   these are absolute rem values rather than Tailwind steps: `text-sm` is 14/20 and
+   Airbnb's 14 is 14/18, and that four-pixel difference is visible in a stack of cards. */
+.arrival-guide {
+  --ag-hof: #222222;
+  --ag-foggy: #6a6a6a;
+  --ag-bobo: #b0b0b0;
+  --ag-deco: #dddddd;
+  --ag-bebe: #ebebeb;
+  --ag-faint: #f7f7f7;
+  --ag-arches: #c13515;
+  --ag-curve: cubic-bezier(0.2, 0, 0, 1);
+  /* The exact five-property transition every interactive surface on airbnb.com carries.
+     Durations differ per property on purpose: shadow and transform lead, colour follows,
+     which is what makes their hovers feel like one movement rather than five. */
+  --ag-transition:
+    box-shadow 0.2s var(--ag-curve), transform 0.25s var(--ag-curve),
+    background-color 0.3s var(--ag-curve), border-color 0.3s var(--ag-curve),
+    color 0.3s var(--ag-curve);
+  color: var(--ag-hof);
+}
+
+/* A card in the left column, and every option tile in the right pane. The border is an
+   inset ring rather than a `border`, exactly as elevation0 is: it keeps the box model
+   unchanged when the ring thickens to 2px on selection, so a selected card does not shift
+   its own text by a pixel. */
+.ag-card {
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 0 0 1px var(--ag-deco) inset;
+  transition: var(--ag-transition);
+}
+
+.ag-card:hover {
+  box-shadow: 0 0 0 1px var(--ag-hof) inset;
+}
+
+/* Airbnb's press feedback: a small scale-down on the element itself, never a colour
+   flash. `:active` only, so it cannot be left stuck by a cancelled gesture. */
+.ag-card:active {
+  transform: scale(0.985);
+}
+
+.ag-card[data-selected="true"] {
+  box-shadow: 0 0 0 2px var(--ag-hof) inset;
+}
+
+/* The selected card is only marked where a detail pane is actually beside it. Below the
+   split, opening a card replaces the list entirely, so a ring on the list would be
+   pointing at a pane that is not on screen — and on the section's own root it would claim
+   a card is open when none is. */
+@media (min-width: 1024px) {
+  .ag-card[aria-current="page"] {
+    box-shadow: 0 0 0 2px var(--ag-hof) inset;
+  }
+}
+
+/* The floating "View" pill, and the same treatment for any elevated control. */
+.ag-elevated {
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.02),
+    0 2px 6px 0 rgba(0, 0, 0, 0.04),
+    0 4px 8px 0 rgba(0, 0, 0, 0.1);
+}
+
+/* The segmented "Your space / Arrival guide" control. The moving part is the white pill,
+   which is a real element rather than a background-position trick so it can carry the
+   shadow Airbnb gives it. */
+.ag-segment {
+  background: var(--ag-faint);
+  border-radius: 999px;
+  padding: 3px;
+}
+
+.ag-segment-option {
+  border-radius: 999px;
+  padding: 7px 16px;
+  font-size: 0.875rem;
+  line-height: 1.125rem;
+  font-weight: 500;
+  color: var(--ag-hof);
+  transition: var(--ag-transition);
+}
+
+.ag-segment-option[aria-current="page"],
+.ag-segment-option[aria-selected="true"] {
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.04),
+    0 2px 4px 0 rgba(0, 0, 0, 0.16);
+}
+
+/* The bordered field group. Airbnb stacks a check-in window's two selects into one box
+   with a hairline between them, and the group — not the field — owns the outer radius. */
+.ag-field-group {
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px var(--ag-deco) inset;
+  transition: var(--ag-transition);
+}
+
+.ag-field-group:focus-within {
+  box-shadow: 0 0 0 2px var(--ag-hof) inset;
+}
+
+.ag-field-group > * + * {
+  border-top: 1px solid var(--ag-deco);
+}
+
+/* One labelled control: an 11px label riding above a 16px value, in a 56px box. */
+.ag-field {
+  position: relative;
+  padding: 8px 12px 10px;
+  text-align: start;
+}
+
+.ag-field-label {
+  display: block;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--ag-foggy);
+}
+
+.ag-field-value {
+  display: block;
+  width: 100%;
+  font-size: 1rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+  color: var(--ag-hof);
+  background: transparent;
+}
+
+.ag-field-value::placeholder {
+  font-weight: 400;
+  color: var(--ag-bobo);
+}
+
+/* The primary action. Black when there is something to save, #DDDDDD when there is not —
+   Airbnb keeps the disabled button in place rather than hiding it, so the host can see
+   that saving is a thing that happens here before they have typed anything. */
+.ag-save {
+  border-radius: 8px;
+  padding: 13px 24px;
+  font-size: 0.875rem;
+  line-height: 1.125rem;
+  font-weight: 600;
+  background: var(--ag-hof);
+  color: #fff;
+  transition: var(--ag-transition);
+}
+
+.ag-save:hover:not(:disabled) {
+  background: #000;
+}
+
+.ag-save:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.ag-save:disabled {
+  background: var(--ag-deco);
+  color: #fff;
+  cursor: not-allowed;
+}
+
+/* A borderless growing textarea. Airbnb's long-form fields have no box at all: the pane
+   is the field, which is what makes a house manual feel like a document rather than a
+   form. */
+.ag-prose-input {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  resize: none;
+  font-size: 1rem;
+  line-height: 1.5rem;
+  color: var(--ag-hof);
+}
+
+.ag-prose-input::placeholder {
+  color: var(--ag-bobo);
+}
+
+.ag-prose-input:focus {
+  outline: none;
+}
+
+/* Every focus ring in the section, in one place. Airbnb rings the whole control in
+   #222222 rather than tinting it, which stays visible on both white and #F7F7F7. */
+.arrival-guide :focus-visible {
+  outline: 2px solid var(--ag-hof);
+  outline-offset: 2px;
+}
+
+/* The detail pane sliding in over the list on a phone. On desktop the two panes are
+   side by side and nothing slides — the animation belongs to the navigation, not the
+   content, so it is only applied where the navigation actually replaces the screen. */
+@keyframes ag-detail-enter {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.ag-detail-enter {
+  animation: ag-detail-enter 300ms var(--ag-curve) both;
+}
+
+@media (min-width: 768px) {
+  .ag-detail-enter {
+    animation: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arrival-guide,
+  .arrival-guide * {
+    --ag-transition: none;
+  }
+
+  .ag-detail-enter {
+    animation-duration: 1ms !important;
+  }
+
+  .ag-card:active,
+  .ag-save:active:not(:disabled) {
+    transform: none;
+  }
+}

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   ArrowRight,
+  Bell,
   CalendarCheck,
   ChevronRight,
   CircleAlert,
@@ -18,7 +19,9 @@ import { hostCalendarHref } from "@/lib/host/v2/calendar-href";
 import { hostMessagesHref } from "@/lib/host/v2/messages-href";
 import { getT, T } from "@/lib/i18n/t";
 
-export const metadata = { title: "New Host Panel Preview" };
+// The tab title matches the section's own navigation label. It read "New Host Panel
+// Preview" long after the preview became the only panel there is.
+export const metadata = { title: "Today" };
 
 /*
  * One card style for the whole screen: white, a hairline of shadow for depth, and no
@@ -314,6 +317,59 @@ export default async function HostV2TodayPage() {
           </>
         )}
       </section>
+
+      {/*
+       * What has happened, under what needs doing.
+       *
+       * `getHostAttentionSummary` has always read the six newest unread notifications;
+       * this screen simply never drew them, so the query ran on every visit and the
+       * history it returned had no door into it from anywhere in the panel. The rows
+       * above are the host's work — a count they can act on — and these are the record
+       * of everything else, which is why they sit below and are quieter.
+       */}
+      {attention.recentNotifications.length > 0 ? (
+        <section className="mt-10">
+          <div className="mb-3 flex items-end justify-between gap-3">
+            <h2 className="text-sm font-semibold text-slate-900">
+              <T
+                t={t}
+                k="host.dashboard.notifications.heading"
+                source="Latest notifications"
+              />
+            </h2>
+            <Link
+              href="/account/notifications"
+              className="shrink-0 text-sm font-medium text-slate-500 underline-offset-4 transition-colors hover:text-slate-900 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+            >
+              <T t={t} k="host.dashboard.notifications.view_all" source="View all" />
+            </Link>
+          </div>
+          <ul className={`divide-y divide-slate-100 overflow-hidden ${CARD}`}>
+            {attention.recentNotifications.map((item) => (
+              <li key={item.id}>
+                <Link
+                  href={item.route ?? "/account/notifications"}
+                  className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-slate-900 md:px-5"
+                >
+                  <Bell
+                    className="mt-0.5 size-4 shrink-0 text-slate-400"
+                    strokeWidth={1.5}
+                    aria-hidden
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-medium text-slate-900">
+                      {item.title}
+                    </span>
+                    <span className="mt-0.5 block text-sm leading-6 text-slate-500">
+                      {item.body}
+                    </span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </div>
   );
 }

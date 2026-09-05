@@ -26,7 +26,17 @@ export function ImportListingForm() {
 
   function runImport() {
     if (!provider || !rightsConfirmed) {
-      toast.error(!provider ? "Enter a valid public HTTPS listing link." : "Confirm that you can reuse the listing content first.");
+      toast.error(
+        !provider
+          ? resolve(
+              "host.v2.import.link_invalid",
+              "Enter a valid public HTTPS listing link.",
+            ).text
+          : resolve(
+              "host.v2.import.rights_required",
+              "Confirm that you can reuse the listing content first.",
+            ).text,
+      );
       return;
     }
     startTransition(async () => {
@@ -38,11 +48,26 @@ export function ImportListingForm() {
           body: JSON.stringify({ url: trimmed, rightsConfirmed }),
         });
         const result = (await response.json()) as { draftId?: string; error?: string };
-        if (!response.ok || !result.draftId) throw new Error(result.error ?? "The listing could not be imported.");
-        toast.success("Listing imported. Review the details before publishing.");
+        const failed = resolve(
+          "host.v2.import.failed",
+          "The listing could not be imported.",
+        ).text;
+        // The API's own refusal is written for the host; a transport fault is not, so
+        // the `catch` below reports this same sentence rather than "Failed to fetch".
+        if (!response.ok || !result.draftId) throw new Error(result.error ?? failed);
+        toast.success(
+          resolve(
+            "host.v2.import.succeeded",
+            "Listing imported. Review the details before publishing.",
+          ).text,
+        );
         router.replace(`/host/start/resume?draft=${encodeURIComponent(result.draftId)}`);
       } catch (error) {
-        toast.error(error instanceof Error ? error.message : "The listing could not be imported.");
+        toast.error(
+          error instanceof Error && error.message
+            ? error.message
+            : resolve("host.v2.import.failed", "The listing could not be imported.").text,
+        );
       }
     });
   }

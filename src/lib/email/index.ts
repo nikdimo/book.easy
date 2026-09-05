@@ -1046,6 +1046,89 @@ export async function notifyHostBookingCancelledByGuest(bookingId: string): Prom
   });
 }
 
+/**
+ * Booking cancelled by support — tell the host, who otherwise heard nothing.
+ *
+ * `cancelBooking` chose between exactly two email kinds, and "admin" fell into the
+ * else-branch that emails the guest. In-app notifications already handled the admin case
+ * for both parties; the durable email outbox did not — and email is the channel that
+ * reaches someone who is not logged in.
+ *
+ * Deliberately not worded as a guest cancellation. The dates are free either way, but a
+ * host told "your guest cancelled" when support cancelled has been told something untrue,
+ * and the reason they need is the one recorded on the booking.
+ */
+export async function notifyHostBookingCancelledByAdmin(bookingId: string): Promise<void> {
+  const booking = await loadBookingEmailContext(bookingId);
+  if (!booking) return;
+  const links = bookingEmailLinks(booking);
+
+  const t = getEmailT(booking.listing.host.locale);
+  const content = await bookingUserContent(booking, t, { reason: true });
+  const lines = [
+    greetingFormal(booking.listing.host.name, t),
+    ``,
+    t.ti(
+      "email.booking.admin_cancelled.body",
+      'Linger Homes support cancelled the booking for "{listing}" ({checkIn} – {checkOut}). Those dates are available again.',
+      {
+        listing: content.title.text,
+        checkIn: formatCalendarDate(booking.checkIn, t.locale),
+        checkOut: formatCalendarDate(booking.checkOut, t.locale),
+      }
+    ),
+    ...(booking.cancellationReason
+      ? [
+          ``,
+          t.ti("email.booking.reason", "Reason: {reason}", {
+            reason: content.reason.text,
+          }),
+        ]
+      : []),
+    ``,
+    `— ${COMMUNICATION_BRAND.name}`,
+    ...content.notice.lines,
+  ];
+
+  await sendTransactionalEmail({
+    to: booking.listing.host.email,
+    subject: `${t.t("email.booking.admin_cancelled.subject", "Cancelled by support")} · ${booking.reference} · ${booking.listing.title}`,
+    text: lines.join("\n"),
+    html: renderBookingEmail({
+      preheader: t.ti(
+        "email.booking.admin_cancelled.preheader",
+        "Support cancelled booking {reference}.",
+        { reference: booking.reference }
+      ),
+      eyebrow: t.t("email.booking.admin_cancelled.eyebrow", "Booking cancelled by support"),
+      headline: t.t(
+        "email.booking.admin_cancelled.headline",
+        "Support cancelled this booking"
+      ),
+      intro: booking.cancellationReason
+        ? t.ti("email.booking.reason", "Reason: {reason}", {
+            reason: content.reason.text,
+          })
+        : t.t(
+            "email.booking.admin_cancelled.intro",
+            "The reserved dates have been released in your calendar."
+          ),
+      reference: booking.reference,
+      listingTitle: content.title.text,
+      translationNote: content.notice.note,
+      listingHref: links.listing,
+      imageUrl: booking.listing.images[0]?.url,
+      location: bookingLocation(booking),
+      details: bookingEmailDetails(booking, t),
+      callout: t.t(
+        "email.booking.admin_cancelled.callout",
+        "Linger Homes does not collect or hold booking payments, so there is nothing for us to refund — settle anything you arranged directly with the guest. Contact support if you need more detail about this cancellation."
+      ),
+      buttons: [{ label: t.t("email.booking.view_booking", "View booking"), href: links.host }],
+    }),
+  });
+}
+
 export async function notifyReviewReminder(input: {
   invitationId: string;
   waitingForYourReview: boolean;

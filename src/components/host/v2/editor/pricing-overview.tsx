@@ -11,11 +11,15 @@ import { addDaysToYmd, ymdToDbDate } from "@/lib/utils/date-only";
 /**
  * The editor's Pricing section: the listing's own prices, and a way to the rest.
  *
- * This page owns everything that applies to the listing as a whole — the base nightly
- * price, the cleaning fee, the minimum stay and the offers that run on every date. Those
- * live in the client editors passed in as `defaultsEditor` and `offersEditor`; what is
- * written here is the part that is only ever reported, because it belongs to particular
- * dates and the calendar owns those.
+ * This page owns the money that applies to the listing as a whole — the base nightly
+ * price, the cleaning fee and the offers that run on every date. Those live in the
+ * client editors passed in as `defaultsEditor` and `offersEditor`; what is written here
+ * is the part that is only ever reported, because it belongs to particular dates and the
+ * calendar owns those.
+ *
+ * Money is all it owns. How long a guest may stay is a booking rule rather than an
+ * amount, so the minimum and the maximum stay are set — and shown — under
+ * Availability → Booking rules, and nothing on this page edits or restates them.
  *
  * The split is what stops one number having two answers. Nothing on this page edits a
  * date-specific price or a dated offer, and nothing in the calendar edits what is above.
@@ -174,7 +178,7 @@ export function PricingOverview({
   t,
 }: {
   summary: ListingPricingSummary;
-  /** The editable base price, cleaning fee and minimum stay. */
+  /** The editable base price and cleaning fee. Nothing about stay length. */
   defaultsEditor: React.ReactNode;
   /**
    * The editable always-active offers.
@@ -211,10 +215,11 @@ export function PricingOverview({
       {defaultsEditor}
       {rule ? offersEditor : null}
 
-      {/* Context the host cannot change from here, and never could: the currency every
-          amount is authored in, and the longest stay the listing accepts. Stated
-          because the numbers above are read against them — a minimum stay is only
-          meaningful next to the maximum it cannot exceed. */}
+      {/* The one piece of context the host cannot change from here: the currency every
+          amount above is authored in. Stay length is deliberately not stated beside it
+          — how long a guest may stay is a booking rule, it is read and edited under
+          Availability → Booking rules, and repeating it on the money screen is how a
+          host ends up believing Pricing is where it is changed. */}
       {rule && (
         <section
           aria-labelledby="pricing-context-heading"
@@ -236,23 +241,12 @@ export function PricingOverview({
                 {rule.currency}
               </span>
             </Row>
-            <Row label={t.resolve("host.editor.pricing.max_stay", "Maximum stay")}>
-              {
-                tPlural(
-                  t,
-                  "host.editor.pricing.nights",
-                  rule.maxNights,
-                  "{n} night",
-                  "{n} nights",
-                ).text
-              }
-            </Row>
           </dl>
           <p className="mt-3 text-sm leading-6 text-slate-600">
             <T
               t={t}
               k="host.editor.pricing.context_note"
-              source="Every amount on this listing is set in this currency. Contact support to change either of these."
+              source="Every amount on this listing is set in this currency. Contact support to change it."
             />
           </p>
         </section>
