@@ -59,6 +59,18 @@ import { MarketplaceSearchBar } from "@/components/marketplace/marketplace-searc
 import { MobileBottomNav } from "@/components/shared/mobile-bottom-nav";
 import type { PlaceOption } from "@/lib/utils/place";
 
+/* Airbnb's quick-filter pill, measured off their own row rather than assumed: 30px tall,
+   a 1px #DDDDDD hairline, 12px of horizontal padding, and small-text 12/16 at regular
+   weight. The type step is the easy one to get wrong — body-text 14/18 is what the rest
+   of their search page uses, but these pills are a step down from it, and at 14px every
+   label comes out 10-14px wider than theirs, which is what makes our row look inflated
+   beside it. Their palette tokens (#DDDDDD deco, #222222 hof, #F7F7F7 faint) are the
+   ones recorded in the `globals.css` block.
+
+   This is the one control in the app that gives up the 44px touch floor the button sizes
+   carry: Airbnb's row is 30px on phones too, and matching that row is the whole point of
+   this component. The hairline still darkens to #222222 on hover and press, so the target
+   reads as a target. */
 function QuickFilterButton({
   active = false,
   className,
@@ -72,9 +84,11 @@ function QuickFilterButton({
       type="button"
       variant="outline"
       className={cn(
-        "h-11 shrink-0 rounded-full border-border/80 bg-background px-4 text-sm font-medium shadow-none",
-        "hover:border-foreground/20 hover:bg-muted/25",
-        active && "border-foreground bg-muted/35 shadow-sm",
+        "h-[1.875rem] shrink-0 gap-1.5 rounded-full border-[#dddddd] bg-background px-3 text-xs font-normal text-[#222222] shadow-none md:h-[1.875rem] md:px-3",
+        "hover:border-[#222222] hover:bg-background hover:text-[#222222]",
+        active && "border-[#222222] bg-[#f7f7f7]",
+        "dark:border-border dark:text-foreground dark:hover:border-foreground dark:hover:bg-background",
+        active && "dark:border-foreground dark:bg-muted/35",
         className
       )}
       {...props}
@@ -591,7 +605,7 @@ export function PropertiesExplorerClient({
               so the row never offers a dead end. Justification is left, not centred:
               the grid column around it is what centres the row, and a centred flex
               row puts its own overflow out of reach when the chips run long. */}
-          <div className="flex min-w-0 items-center gap-3 overflow-x-auto no-scrollbar">
+          <div className="flex min-w-0 items-center gap-2 overflow-x-auto no-scrollbar">
             <QuickFilterButton
               active={hasActiveFilters}
               onClick={() => openFilters()}
@@ -600,13 +614,13 @@ export function PropertiesExplorerClient({
               <SlidersHorizontal className="h-4 w-4" />
               <span><Tx k="filters.title" source="Filters" /></span>
               {quickFilterCount > 0 ? (
-                <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-foreground px-1.5 text-xs font-semibold text-background">
+                <span className="inline-flex h-[1.125rem] min-w-[1.125rem] items-center justify-center rounded-full bg-[#222222] px-1.5 text-[0.625rem] leading-none font-semibold text-white dark:bg-foreground dark:text-background">
                   {quickFilterCount}
                 </span>
               ) : null}
             </QuickFilterButton>
 
-            <span aria-hidden className="h-7 w-px shrink-0 bg-border max-lg:hidden" />
+            <span aria-hidden className="h-5 w-px shrink-0 bg-[#dddddd] dark:bg-border max-lg:hidden" />
 
             <PriceFilterPopover
               key={`${params.minPrice ?? ""}:${params.maxPrice ?? ""}`}
@@ -651,7 +665,7 @@ export function PropertiesExplorerClient({
               <button
                 type="button"
                 onClick={clearAllFilters}
-                className="shrink-0 text-sm font-medium text-foreground underline underline-offset-4 transition-colors hover:text-foreground/70"
+                className="shrink-0 text-xs font-medium text-foreground underline underline-offset-4 transition-colors hover:text-foreground/70"
               >
                 <Tx k="filters.clear_all" source="Clear all" />
               </button>

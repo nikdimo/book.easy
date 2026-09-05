@@ -904,6 +904,7 @@ describe("HouseRulesStep", () => {
     smokingPolicy: "OUTDOORS_ONLY",
     eventPolicy: "NOT_ALLOWED",
     quietHoursPolicy: "SET",
+    quietHoursPeriods: JSON.stringify([{ start: "22:00", end: "08:00" }]),
     quietHoursStart: "22:00",
     quietHoursEnd: "08:00",
     additionalRules: "No shoes indoors.",

@@ -6195,11 +6195,6 @@
     "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
   },
   {
-    "key": "host.editor.arrival.back",
-    "sourceText": "Back to listing",
-    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-section.tsx"
-  },
-  {
     "key": "host.editor.arrival.back_to_list",
     "sourceText": "Arrival guide",
     "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-section.tsx"
@@ -6330,11 +6325,6 @@
     "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
   },
   {
-    "key": "host.editor.arrival.halves_label",
-    "sourceText": "Listing editor sections",
-    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-section.tsx"
-  },
-  {
     "key": "host.editor.arrival.house_manual_hint",
     "sourceText": "Give guests tips about your space, like how to access the internet and use the TV.",
     "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
@@ -6420,29 +6410,24 @@
     "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-editors.tsx"
   },
   {
-    "key": "host.editor.arrival.sections_menu",
-    "sourceText": "Listing sections",
-    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-section.tsx"
-  },
-  {
-    "key": "host.editor.arrival.shell_heading",
-    "sourceText": "Listing editor",
-    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-section.tsx"
-  },
-  {
     "key": "host.editor.arrival.start_time",
     "sourceText": "Start time",
     "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-stay-editors.tsx"
   },
   {
+    "key": "host.editor.arrival.stay_times_row",
+    "sourceText": "Check-in and checkout times",
+    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-stay-editors.tsx"
+  },
+  {
     "key": "host.editor.arrival.tab_guide",
     "sourceText": "Arrival guide",
-    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-section.tsx"
+    "filePath": "src/components/host/v2/editor/editor-halves.tsx"
   },
   {
     "key": "host.editor.arrival.tab_space",
     "sourceText": "Your space",
-    "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-section.tsx"
+    "filePath": "src/components/host/v2/editor/editor-halves.tsx"
   },
   {
     "key": "host.editor.arrival.time",
@@ -6500,39 +6485,34 @@
     "filePath": "src/components/host/v2/editor/arrival-guide/arrival-guide-cards.tsx"
   },
   {
-    "key": "host.editor.attention_clear",
-    "sourceText": "Nothing needs attention",
-    "filePath": "src/components/host/v2/editor/editor-nav.tsx"
-  },
-  {
     "key": "host.editor.attention_count.few",
     "sourceText": "{n} things need your attention",
-    "filePath": "src/components/host/v2/editor/editor-nav.tsx"
+    "filePath": "src/components/host/v2/editor/editor-space-cards.tsx"
   },
   {
     "key": "host.editor.attention_count.many",
     "sourceText": "{n} things need your attention",
-    "filePath": "src/components/host/v2/editor/editor-nav.tsx"
+    "filePath": "src/components/host/v2/editor/editor-space-cards.tsx"
   },
   {
     "key": "host.editor.attention_count.one",
     "sourceText": "{n} thing needs your attention",
-    "filePath": "src/components/host/v2/editor/editor-nav.tsx"
+    "filePath": "src/components/host/v2/editor/editor-space-cards.tsx"
   },
   {
     "key": "host.editor.attention_count.other",
     "sourceText": "{n} things need your attention",
-    "filePath": "src/components/host/v2/editor/editor-nav.tsx"
+    "filePath": "src/components/host/v2/editor/editor-space-cards.tsx"
   },
   {
     "key": "host.editor.attention_count.two",
     "sourceText": "{n} things need your attention",
-    "filePath": "src/components/host/v2/editor/editor-nav.tsx"
+    "filePath": "src/components/host/v2/editor/editor-space-cards.tsx"
   },
   {
     "key": "host.editor.attention_count.zero",
     "sourceText": "{n} things need your attention",
-    "filePath": "src/components/host/v2/editor/editor-nav.tsx"
+    "filePath": "src/components/host/v2/editor/editor-space-cards.tsx"
   },
   {
     "key": "host.editor.availability.blocked_empty",
@@ -7083,6 +7063,11 @@
     "key": "host.editor.deposit.saved",
     "sourceText": "Deposit settings saved",
     "filePath": "src/components/host/v2/editor/payment-arrangements/deposit-policies-editor.tsx"
+  },
+  {
+    "key": "host.editor.halves_label",
+    "sourceText": "Listing editor sections",
+    "filePath": "src/components/host/v2/editor/editor-halves.tsx"
   },
   {
     "key": "host.editor.house_rules.elsewhere_heading",
@@ -8510,33 +8495,13 @@
     "filePath": "src/components/host/v2/editor/editor-header.tsx"
   },
   {
-    "key": "host.editor.pricing.context_heading",
-    "sourceText": "Fixed for this listing",
-    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
-  },
-  {
-    "key": "host.editor.pricing.context_note",
-    "sourceText": "Every amount on this listing is set in this currency. Contact support to change it.",
-    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
-  },
-  {
     "key": "host.editor.pricing.currency",
     "sourceText": "Currency",
     "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
   },
   {
-    "key": "host.editor.pricing.date_prices_label",
-    "sourceText": "Date-specific prices",
-    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
-  },
-  {
-    "key": "host.editor.pricing.date_prices_none",
-    "sourceText": "No dates are priced differently. Every night is charged at the base rate.",
-    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
-  },
-  {
-    "key": "host.editor.pricing.date_prices_set",
-    "sourceText": "{count} upcoming nights carry a price of their own, between {from} and {to}.",
+    "key": "host.editor.pricing.date_prices_count",
+    "sourceText": "{count} dates already have a price of their own, {from} – {to}.",
     "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
   },
   {
@@ -8545,49 +8510,14 @@
     "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
   },
   {
-    "key": "host.editor.pricing.dated_promotions_label",
-    "sourceText": "Date-based offers",
-    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
-  },
-  {
-    "key": "host.editor.pricing.dated_promotions_none",
-    "sourceText": "No offer is running for particular dates.",
-    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
-  },
-  {
-    "key": "host.editor.pricing.dated_promotions_some",
-    "sourceText": "These run only on the dates they were created for. Open one to change it on the calendar.",
-    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
-  },
-  {
     "key": "host.editor.pricing.dates_cta",
     "sourceText": "Set prices for specific dates",
     "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
   },
   {
-    "key": "host.editor.pricing.dates_heading",
-    "sourceText": "Particular dates",
-    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
-  },
-  {
-    "key": "host.editor.pricing.defaults_current",
-    "sourceText": "These are the current values.",
-    "filePath": "src/components/host/v2/editor/pricing-defaults-editor.tsx"
-  },
-  {
     "key": "host.editor.pricing.defaults_lead",
     "sourceText": "What a night costs and what cleaning costs, unless a particular date says otherwise.",
-    "filePath": "src/components/host/v2/editor/pricing-defaults-editor.tsx"
-  },
-  {
-    "key": "host.editor.pricing.defaults_pending",
-    "sourceText": "Nothing changes until you confirm.",
-    "filePath": "src/components/host/v2/editor/pricing-defaults-editor.tsx"
-  },
-  {
-    "key": "host.editor.pricing.defaults_title",
-    "sourceText": "Default pricing",
-    "filePath": "src/components/host/v2/editor/pricing-defaults-editor.tsx"
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
   },
   {
     "key": "host.editor.pricing.first_body",
@@ -8605,19 +8535,9 @@
     "filePath": "src/components/host/v2/editor/pricing-defaults-editor.tsx"
   },
   {
-    "key": "host.editor.pricing.intro",
-    "sourceText": "Set what this listing charges by default here. Prices for particular dates are set on the calendar.",
+    "key": "host.editor.pricing.offers_lead_short",
+    "sourceText": "Discounts that run on every date until you end them.",
     "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
-  },
-  {
-    "key": "host.editor.pricing.offers_lead",
-    "sourceText": "Discounts that run on every date until you end them. Offers for particular dates are set on the calendar.",
-    "filePath": "src/components/host/v2/editor/ongoing-offers-editor.tsx"
-  },
-  {
-    "key": "host.editor.pricing.offers_title",
-    "sourceText": "Ongoing offers",
-    "filePath": "src/components/host/v2/editor/ongoing-offers-editor.tsx"
   },
   {
     "key": "host.editor.pricing.promo.all_dates",
@@ -8698,6 +8618,21 @@
     "key": "host.editor.pricing.review_cta",
     "sourceText": "Review and save pricing",
     "filePath": "src/components/host/v2/editor/pricing-defaults-editor.tsx"
+  },
+  {
+    "key": "host.editor.pricing.tab_price",
+    "sourceText": "Price",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.tab_promotions",
+    "sourceText": "Promotions",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
+  },
+  {
+    "key": "host.editor.pricing.tabs_label",
+    "sourceText": "Pricing sections",
+    "filePath": "src/components/host/v2/editor/pricing-overview.tsx"
   },
   {
     "key": "host.editor.property_details.save_error",
@@ -14385,6 +14320,11 @@
     "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
   },
   {
+    "key": "host.v2.calendar.listing.change_cleaning_percent",
+    "sourceText": "Percent against your saved cleaning fee",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
     "key": "host.v2.calendar.listing.change_percent",
     "sourceText": "Percent against your saved base price",
     "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
@@ -14392,6 +14332,11 @@
   {
     "key": "host.v2.calendar.listing.cleaning_fee",
     "sourceText": "Cleaning fee",
+    "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
+  },
+  {
+    "key": "host.v2.calendar.listing.cleaning_slider",
+    "sourceText": "Change against your saved cleaning fee",
     "filePath": "src/components/host/v2/calendar/listing-editors.tsx"
   },
   {
@@ -18440,9 +18385,39 @@
     "filePath": "src/lib/i18n/house-rules-labels.ts"
   },
   {
+    "key": "listing.house_rules.quiet_hours.add_period",
+    "sourceText": "Add another quiet period",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
     "key": "listing.house_rules.quiet_hours.end",
     "sourceText": "Until",
     "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "listing.house_rules.quiet_hours.error_duplicate",
+    "sourceText": "You have already added these hours.",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.quiet_hours.error_incomplete",
+    "sourceText": "Set a start and an end time for every quiet period.",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.quiet_hours.error_overlap",
+    "sourceText": "These hours overlap another quiet period. Change them so the periods do not cross.",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.quiet_hours.error_same_time",
+    "sourceText": "Choose an end time different from the start time.",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
+  },
+  {
+    "key": "listing.house_rules.quiet_hours.error_too_many",
+    "sourceText": "You can add up to {max} quiet periods.",
+    "filePath": "src/lib/i18n/house-rules-labels.ts"
   },
   {
     "key": "listing.house_rules.quiet_hours.incomplete",
@@ -18462,6 +18437,16 @@
   {
     "key": "listing.house_rules.quiet_hours.overnight_note",
     "sourceText": "Quiet hours usually run overnight, so an end time earlier than the start is normal.",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "listing.house_rules.quiet_hours.remove",
+    "sourceText": "Remove",
+    "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
+  },
+  {
+    "key": "listing.house_rules.quiet_hours.remove_period",
+    "sourceText": "Remove quiet period {number}",
     "filePath": "src/components/host/v2/house-rules/house-rules-rows.tsx"
   },
   {

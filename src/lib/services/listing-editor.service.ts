@@ -272,90 +272,18 @@ export async function getSwitchableListings(
   }));
 }
 
-/** The header needs the listing identity on every editor section, including the ones
- *  that are still placeholders — cheaper than loading the whole workspace for them. */
+/**
+ * Everything every editor page needs before it renders its own section: who the listing
+ * is, what still needs attention, and a summary line for each section.
+ *
+ * It is `getListingEditorOverview` with a different name, and deliberately so. The two
+ * used to be near-identical queries that had drifted a little — the header knew the photo
+ * count, the overview also knew the room and amenity counts — which meant a section card
+ * could say one thing in the left column and another on the overview page. Now the left
+ * column and the overview index read the same row, because they are the same read.
+ */
 export async function getListingEditorHeader(listingId: string, hostId: string) {
-  const listing = await db.listing.findFirst({
-    where: { id: listingId, hostId },
-    select: {
-      id: true,
-      title: true,
-      description: true,
-      status: true,
-      slug: true,
-      spaceType: true,
-      bedrooms: true,
-      beds: true,
-      bathrooms: true,
-      bookingMode: true,
-      changeoverWeekday: true,
-      houseRulesReviewedAt: true,
-      paymentMethodsReviewedAt: true,
-      depositPoliciesReviewedAt: true,
-      cancellationPolicyReviewedAt: true,
-      property: {
-        select: {
-          propertyType: true,
-          address: true,
-          city: true,
-          country: true,
-          latitude: true,
-          longitude: true,
-          streetViewHeading: true,
-          streetViewPitch: true,
-          streetViewPanoId: true,
-        },
-      },
-      images: {
-        where: { mediaType: "IMAGE" },
-        select: { url: true },
-        orderBy: [{ isPrimary: "desc" }, { displayOrder: "asc" }],
-        take: 1,
-      },
-      pricingRule: { select: { id: true, minNights: true, maxNights: true } },
-      _count: {
-        select: { images: { where: { mediaType: "IMAGE" } } },
-      },
-    },
-  });
-  if (!listing) return null;
-  const completeSections = editorCompletedSections({
-    photoCount: listing._count.images,
-    basicsComplete: listingBasicsComplete({
-      title: listing.title,
-      description: listing.description,
-    }),
-    propertyDetailsComplete: listingPropertyDetailsComplete({
-      propertyType: listing.property.propertyType,
-      spaceType: listing.spaceType,
-      bedrooms: listing.bedrooms,
-      beds: listing.beds,
-      bathrooms: listing.bathrooms,
-    }),
-    locationComplete: listingLocationComplete(listing.property),
-    paymentMethodsReviewed:
-      listing.paymentMethodsReviewedAt !== null &&
-      listing.depositPoliciesReviewedAt !== null &&
-      listing.cancellationPolicyReviewedAt !== null,
-    houseRulesReviewed: listing.houseRulesReviewedAt !== null,
-  });
-const attention = editorAttentionSlugs({
-  completeSections,
-  hasPricing: listing.pricingRule !== null,
-  bookingRulesReady: listingBookingRulesReady(listing),
-  streetViewSet: listingStreetViewComplete(listing.property),
-  });
-
-  return {
-    id: listing.id,
-    title: listing.title,
-    status: listing.status,
-    slug: listing.slug,
-    coverUrl: listing.images[0]?.url ?? null,
-    photoCount: listing._count.images,
-    completeSections,
-    attention,
-  };
+  return getListingEditorOverview(listingId, hostId);
 }
 
 export interface ListingEditorOverview {

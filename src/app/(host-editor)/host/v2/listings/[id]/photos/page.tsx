@@ -1,6 +1,9 @@
 import { notFound } from "next/navigation";
 import { requireHostPage } from "@/lib/auth-helpers";
-import { getListingEditorData } from "@/lib/services/listing-editor.service";
+import {
+  getListingEditorData,
+  getListingEditorHeader,
+} from "@/lib/services/listing-editor.service";
 import { EditorFrame } from "@/components/host/v2/editor/editor-frame";
 import { PhotosWorkspace } from "@/components/host/v2/editor/photos/photos-workspace";
 
@@ -13,7 +16,13 @@ export default async function ListingPhotosPage({
 }) {
   const { id } = await params;
   const user = await requireHostPage();
-  const data = await getListingEditorData(id, user.id);
+  // Two reads because they answer different questions: the workspace needs the photos and
+  // their rooms, the left column needs a summary line per section. Nothing else on this
+  // page wants the second one, so it is fetched beside the first rather than folded in.
+  const [data, header] = await Promise.all([
+    getListingEditorData(id, user.id),
+    getListingEditorHeader(id, user.id),
+  ]);
   if (!data) notFound();
 
   return (
@@ -21,6 +30,7 @@ export default async function ListingPhotosPage({
       listingId={id}
       section="photos"
       attention={data.listing.attention}
+      overview={header}
       previewSlug={data.listing.slug}
       previewStatus={data.listing.status}
     >

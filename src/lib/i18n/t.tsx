@@ -135,7 +135,17 @@ export function pluralForms(
 /** Plain-string variant for non-JSX contexts (aria-label, placeholder, alt) where
  *  wrapping in `notranslate` isn't relevant since Google Translate doesn't touch
  *  attribute text. Prefer `<T>` for visible JSX text. */
-export function t(translator: Translator, key: string, source: string): string {
+/**
+ * The two fields a text helper actually needs.
+ *
+ * Declared so the same helpers can take the server's `Translator` and the client's
+ * `useI18n()` result, which resolve keys identically but carry different extras. Without
+ * it a component that wants a plural has to be a server component purely because of the
+ * type it was asked for.
+ */
+export type TextTranslator = Pick<Translator, "locale" | "resolve">;
+
+export function t(translator: TextTranslator, key: string, source: string): string {
   return translator.resolve(key, source).text;
 }
 
@@ -144,7 +154,7 @@ export function t(translator: Translator, key: string, source: string): string {
  *  still a literal, so the extraction scanner sees it fine — placeholders survive
  *  translation because the AI system prompt is told to preserve them verbatim. */
 export function ti(
-  translator: Translator,
+  translator: TextTranslator,
   key: string,
   source: string,
   vars: Record<string, string | number>
@@ -159,7 +169,7 @@ export function ti(
 /** Resolves a pluralized count+noun string (e.g. "1 guest" / "{n} guests") by
  *  picking the singular/plural literal source and substituting the count via `ti`. */
 export function tPlural(
-  translator: Translator,
+  translator: TextTranslator,
   keyBase: string,
   count: number,
   singular: string,

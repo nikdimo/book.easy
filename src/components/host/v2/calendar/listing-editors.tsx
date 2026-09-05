@@ -33,8 +33,9 @@ import {
   ToggleRow,
 } from "./workbench-ui";
 import { PanelSlider } from "./panel-slider";
-import { AllPromotionsOverview, HowOffersWork } from "./promotion-help";
+import { AllPromotionsOverview } from "./promotion-help";
 import {
+  feeFromPercent,
   percentFromPrice,
   priceFromPercent,
   PRICE_PERCENT_PRESETS,
@@ -249,6 +250,9 @@ export function DefaultPricingEditor({
   const [percentDraft, setPercentDraft] = useState<string | null>(null);
   const [cleaningFee, setCleaningFee] = useState(saved?.cleaningFee ?? 0);
   const [cleaningDraft, setCleaningDraft] = useState<string | null>(null);
+  const [cleaningPercentDraft, setCleaningPercentDraft] = useState<string | null>(
+    null,
+  );
   // Read, never written, and never shown: the minimum stay is a booking rule, edited
   // under Availability → Booking rules. It is used only to price the worked example at
   // a length this listing would really accept, and is deliberately kept out of the
@@ -313,6 +317,12 @@ export function DefaultPricingEditor({
   const symbol = currencySymbol(currency, formats);
   const percent = percentFromPrice(saved.baseNightlyRate, baseRate);
   const difference = Math.abs(baseRate - saved.baseNightlyRate);
+  const cleaningPercent = percentFromPrice(saved.cleaningFee, cleaningFee);
+  const cleaningDifference = Math.abs(cleaningFee - saved.cleaningFee);
+  // Zero is a real fee, not an unset one, and a percentage against it can only ever be
+  // zero — so the pair of percentage controls waits until there is something to be a
+  // percentage of.
+  const cleaningAdjustable = saved.cleaningFee > 0;
 
   return (
     <div
@@ -397,7 +407,17 @@ export function DefaultPricingEditor({
         }
       />
 
-      <div className="border-t border-slate-100 pt-4">
+      {/* The cleaning fee gets the same three controls as the base price above it —
+          amount, percentage, slider — because it is the same kind of decision: a host
+          raising their nightly rate by a tenth is usually weighing the same move on the
+          fee, and there is no reason the two should be typed in two different ways.
+
+          The percentage and the slider appear only once a fee is actually saved. A
+          percentage of nothing is nothing at every position, so on a listing that
+          charges no cleaning the pair would be a control that visibly does not work;
+          there the amount field alone is the honest UI, and the moment a fee is saved
+          the rest appears. */}
+      <div className="flex flex-col gap-4 border-t border-slate-100 pt-4">
         <ColumnPair>
           <NumberColumn
             id="host-v2-cleaning-fee"
@@ -421,7 +441,69 @@ export function DefaultPricingEditor({
             }}
             onBlur={() => setCleaningDraft(null)}
           />
+          {cleaningAdjustable ? (
+            <NumberColumn
+              label={i18n.resolve("host.v2.calendar.listing.change", "Change").text}
+              ariaLabel={
+                i18n.resolve(
+                  "host.v2.calendar.listing.change_cleaning_percent",
+                  "Percent against your saved cleaning fee",
+                ).text
+              }
+              caption={
+                cleaningDifference === 0
+                  ? interpolate(
+                      i18n.resolve(
+                        "host.v2.calendar.listing.unchanged_from",
+                        "of {amount}",
+                      ),
+                      { amount: format(saved.cleaningFee) },
+                    ).text
+                  : interpolate(
+                      i18n.resolve("host.v2.calendar.listing.was", "was {amount}"),
+                      { amount: format(saved.cleaningFee) },
+                    ).text
+              }
+              value={cleaningPercentDraft ?? formatSignedPercent(cleaningPercent)}
+              suffix="%"
+              accent={cleaningPercent !== 0}
+              onChange={(next) => {
+                setCleaningPercentDraft(next);
+                const raw = next.replace(/[−–]/g, "-").replace(/[^0-9.+-]/g, "");
+                if (!/\d/.test(raw)) return;
+                const parsed = Number(raw);
+                if (Number.isFinite(parsed)) {
+                  setCleaningFee(feeFromPercent(saved.cleaningFee, parsed));
+                }
+              }}
+              onBlur={() => setCleaningPercentDraft(null)}
+            />
+          ) : null}
         </ColumnPair>
+
+        {cleaningAdjustable ? (
+          <PanelSlider
+            value={cleaningPercent}
+            min={PRICE_PERCENT_RANGE * -1}
+            max={PRICE_PERCENT_RANGE}
+            origin="center"
+            presets={PRICE_PERCENT_PRESETS}
+            label={
+              i18n.resolve(
+                "host.v2.calendar.listing.cleaning_slider",
+                "Change against your saved cleaning fee",
+              ).text
+            }
+            onChange={(next) =>
+              setCleaningFee(feeFromPercent(saved.cleaningFee, next))
+            }
+            formatPreset={(value) =>
+              value === 0
+                ? i18n.resolve("host.v2.calendar.listing.preset_now", "Now").text
+                : `${formatSignedPercent(value)}%`
+            }
+          />
+        ) : null}
       </div>
 
       {exampleNights === null ? (
@@ -894,10 +976,6 @@ export function OngoingPromotionEditor({
         ) : null}
         </div>
       ) : null}
-
-      <div className="border-t border-slate-100 pt-3">
-        <HowOffersWork />
-      </div>
     </div>
   );
 }

@@ -51,6 +51,24 @@ describe("HouseRulesList", () => {
     expect(html).toContain("22:00–08:00");
   });
 
+  it("shows every quiet period, not only the first", () => {
+    // A guest told about the overnight rule and not the afternoon one has been told
+    // something true and incomplete — and the afternoon one is what they would be
+    // knocked on the door about.
+    const html = render({
+      quietHoursPeriods: [
+        { start: "22:00", end: "08:00" },
+        { start: "15:00", end: "17:00" },
+      ],
+    });
+
+    expect(html).toContain("Quiet hours");
+    expect(html).toContain("22:00–08:00, 15:00–17:00");
+    // Still one row: it is one rule, and two rows both labelled "Quiet hours" read as
+    // two rules that might contradict each other.
+    expect((html.match(/data-rule="quiet-hours"/g) ?? []).length).toBe(1);
+  });
+
   it("prints the host's own written rules exactly as stored", () => {
     // Never a machine translation of them: what the host typed is what a guest agrees to.
     const written = "Молиме извадете ги чевлите.";

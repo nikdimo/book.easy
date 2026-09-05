@@ -103,6 +103,18 @@ export function priceFromPercent(base: number, percent: number): number {
   return Math.max(1, Math.round(base * (1 + percent / 100)));
 }
 
+/**
+ * The same arithmetic for a fee rather than a nightly rate.
+ *
+ * It floors at zero, not at one. A night that costs nothing is a night nobody is
+ * charged for and `priceFromPercent` is right to refuse it; a cleaning fee of nothing is
+ * an ordinary listing that does not charge for cleaning, and −100% has to be able to
+ * reach it.
+ */
+export function feeFromPercent(base: number, percent: number): number {
+  return Math.max(0, Math.round(base * (1 + percent / 100)));
+}
+
 /** A price, as a percentage of the base price. Rounded, like everything else here. */
 export function percentFromPrice(base: number, price: number): number {
   if (base <= 0) return 0;

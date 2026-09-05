@@ -94,6 +94,7 @@ export async function getListingArrivalGuideEditorData(
       smokingPolicy: true,
       eventPolicy: true,
       quietHoursPolicy: true,
+      quietHoursPeriods: true,
       quietHoursStart: true,
       quietHoursEnd: true,
       additionalRules: true,

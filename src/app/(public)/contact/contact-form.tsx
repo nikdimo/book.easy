@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useI18n } from "@/lib/i18n/client";
+import { SelectField } from "@/components/shared/select-field";
 
 const fields = "mt-2 w-full rounded-lg border bg-background px-4 py-3";
 
@@ -10,6 +11,7 @@ export function ContactForm() {
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [category, setCategory] = useState("GENERAL");
 
   async function submit(formData: FormData) {
     setPending(true);
@@ -77,18 +79,28 @@ export function ContactForm() {
         </span>
         <input required type="email" name="email" autoComplete="email" maxLength={320} className={fields} />
       </label>
-      <label className="block">
-        <span className="text-sm font-medium">
+      <div className="block">
+        <label className="text-sm font-medium" htmlFor="contact-category">
           {t.resolve("contact.category", "What can we help with?").text}
-        </span>
-        <select name="category" className={fields} defaultValue="GENERAL">
-          <option value="GENERAL">{general}</option>
-          <option value="BOOKING">{booking}</option>
-          <option value="HOSTING">{hosting}</option>
-          <option value="TECHNICAL">{technical}</option>
-          <option value="OTHER">{other}</option>
-        </select>
-      </label>
+        </label>
+        {/* The application Select instead of the browser's. The value still reaches the
+            API through the form, via the hidden field below — the payload is the same
+            `category` string it always was. */}
+        <SelectField
+          id="contact-category"
+          value={category}
+          onValueChange={setCategory}
+          options={[
+            { value: "GENERAL", label: general },
+            { value: "BOOKING", label: booking },
+            { value: "HOSTING", label: hosting },
+            { value: "TECHNICAL", label: technical },
+            { value: "OTHER", label: other },
+          ]}
+          className={`${fields} h-auto bg-background data-[size=default]:h-auto md:data-[size=default]:h-auto`}
+        />
+        <input type="hidden" name="category" value={category} />
+      </div>
       <label className="block">
         <span className="text-sm font-medium">
           {t.resolve("contact.subject", "Subject").text}

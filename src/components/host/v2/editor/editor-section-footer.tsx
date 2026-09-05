@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowLeft, CircleAlert, ExternalLink } from "lucide-react";
-import { EDITOR_SECTIONS } from "@/lib/host/v2/editor-sections";
+import { EDITOR_SPACE_SECTIONS } from "@/lib/host/v2/editor-sections";
 import { resolveEditorLabel } from "@/lib/i18n/editor-label";
 import { useI18n } from "@/lib/i18n/client";
 
@@ -29,17 +29,26 @@ export function EditorSectionFooter({
 }) {
   const { resolve } = useI18n();
   const open = new Set(attention);
-  const rest = EDITOR_SECTIONS.filter((section) => section.slug !== current);
+  // The space half only. The Arrival guide is not one of the things a host picks
+  // "next" from here any more — it is the other half of the editor, and the toggle
+  // above is where it is reached from.
+  const rest = EDITOR_SPACE_SECTIONS.filter((section) => section.slug !== current);
 
   return (
     <section className="mt-12 border-t border-slate-100 pt-6">
-      <h2 className="text-sm font-medium text-slate-900">
+      {/* The list is hidden from `lg` up: the left column carries the same sections and is
+          always on screen there, so this would be a second copy of it below the fold. On a
+          phone the column is a three-chip window, and this is where the whole list becomes
+          visible at once — a host who has just finished their photos is at the exact moment
+          they want to see what else a listing needs. The actions underneath stay at every
+          width. */}
+      <h2 className="text-sm font-medium text-slate-900 lg:hidden">
         {resolve("host.editor.next_heading", "What would you like to edit next?").text}
       </h2>
 
       {/* A wrapping grid rather than a row: every section stays on screen, which is the
           whole point of repeating them down here. */}
-      <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+      <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:hidden">
         {rest.map((section) => {
           const label = resolveEditorLabel({ resolve }, section.key, section.source);
           return (

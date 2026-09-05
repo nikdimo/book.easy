@@ -53,6 +53,7 @@ import {
 import { MIN_PUBLISH_PHOTOS } from "@/lib/host/v2/photo-draft";
 import {
   HOUSE_RULE_POLICY_FIELDS,
+  QUIET_HOURS_PERIODS_MAX,
   listingHouseRulesIssues,
   type HouseRulePolicyField,
 } from "@/lib/host/v2/listing-house-rules";
@@ -422,6 +423,19 @@ export function publishBlockers(
   }
   if (ruleIssues.quietHoursStart || ruleIssues.quietHoursEnd) {
     add("house-rules", "Set both a start and an end time for quiet hours.");
+  }
+  // A second quiet period that is unfinished, duplicated or crossing another one. One
+  // blocker for all of them: the fix is in the same sheet either way, and naming which
+  // of six periods it is here would say less than opening the sheet does.
+  if (ruleIssues.quietHoursPeriods) {
+    add(
+      "house-rules",
+      ruleIssues.quietHoursPeriods === "TOO_MANY"
+        ? "Remove some quiet periods — a listing can declare " +
+            QUIET_HOURS_PERIODS_MAX +
+            " at most."
+        : "Fix your quiet periods: each one needs a start and an end, and no two may overlap.",
+    );
   }
   if (ruleIssues.additionalRules) {
     add("house-rules", "Your additional house rules are too long.");

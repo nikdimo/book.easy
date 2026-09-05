@@ -36,6 +36,7 @@ import {
 } from "@/lib/types/listing-availability-start";
 import { getExchangeRates } from "@/lib/currency/rates";
 import { MIN_PUBLISH_PHOTOS } from "@/lib/host/v2/photo-draft";
+import { normalizeQuietHoursPeriods } from "@/lib/host/v2/listing-house-rules";
 import { validateListingPaymentMethods } from "@/lib/payments/payment-methods";
 import {
   validateDepositPolicies,
@@ -268,14 +269,29 @@ function firstImageIndex(mediaItems: ListingMediaItem[]): number {
  * Quiet-hours times are dropped unless the policy is SET, so a draft that once had
  * times and was later switched to "no quiet hours" cannot publish a rule its host
  * turned off.
+ *
+ * `storedPeriods` is the listing's existing `quietHoursPeriods`, and only an edit has
+ * one. This form has a single pair of controls and no idea a listing may declare several
+ * quiet periods, so it must never *narrow* one down to the range it happens to know
+ * about: on an edit the stored list is carried through untouched, and on a create there
+ * is nothing to carry and the pair it posted is the whole rule.
  */
-function houseRulesCreateData(data: ListingFormInput) {
+function houseRulesCreateData(data: ListingFormInput, storedPeriods?: unknown) {
   const quietHours = data.quietHoursPolicy === "SET";
   return {
     petPolicy: data.petPolicy,
     smokingPolicy: data.smokingPolicy,
     eventPolicy: data.eventPolicy,
     quietHoursPolicy: data.quietHoursPolicy,
+    // What the submission carried, then what the listing already had, then the pair.
+    // A create posts the list the host built in the flow; an edit posts none, and the
+    // stored list is what must survive a form that cannot show it.
+    quietHoursPeriods: quietHours
+      ? normalizeQuietHoursPeriods(data.quietHoursPeriods ?? storedPeriods, {
+          start: data.quietHoursStart,
+          end: data.quietHoursEnd,
+        })
+      : [],
     quietHoursStart: quietHours ? data.quietHoursStart || null : null,
     quietHoursEnd: quietHours ? data.quietHoursEnd || null : null,
     additionalRules: data.additionalRules || null,
@@ -335,6 +351,7 @@ export async function submitNewListing(
     smokingPolicy: formData.get("smokingPolicy") || undefined,
     eventPolicy: formData.get("eventPolicy") || undefined,
     quietHoursPolicy: formData.get("quietHoursPolicy") || undefined,
+    quietHoursPeriods: formData.get("quietHoursPeriods") || undefined,
     quietHoursStart: formData.get("quietHoursStart") || undefined,
     quietHoursEnd: formData.get("quietHoursEnd") || undefined,
     additionalRules: formData.get("additionalRules") || undefined,
@@ -868,7 +885,7 @@ export async function updateListing(listingId: string, formData: FormData) {
       beds: data.beds,
       checkInTime: data.checkInTime || null,
       checkOutTime: data.checkOutTime || null,
-      ...houseRulesCreateData(data),
+      ...houseRulesCreateData(data, listing.quietHoursPeriods),
       // Editing a live listing stays live (listings publish immediately), but flags it
       // for admin re-review since the content just changed post-approval.
       ...(listing.status === "APPROVED" ? { needsReview: true } : {}),

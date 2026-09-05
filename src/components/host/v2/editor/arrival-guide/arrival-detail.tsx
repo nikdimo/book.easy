@@ -1,6 +1,7 @@
 "use client";
 
 import { Info, Lock } from "lucide-react";
+import { SelectField } from "@/components/shared/select-field";
 import { cn } from "@/lib/utils";
 import { arrivalVisibilityNote } from "@/lib/i18n/arrival-guide-labels";
 import { useI18n } from "@/lib/i18n/client";
@@ -122,13 +123,18 @@ export function ArrivalFieldGroup({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * A native `<select>` wearing Airbnb's field.
+ * A dropdown wearing Airbnb's field.
  *
- * Native rather than a custom listbox on purpose. This is a list of 48 half-hours, and a
- * phone's own wheel picker beats anything reimplementable — it is searchable by keyboard,
- * it scrolls to the current value, and it cannot trap focus. The appearance is stripped
- * and a chevron drawn in its place, which is all Airbnb's own control is once the popup
- * belongs to the platform.
+ * The box, the 12px label and the 16px value are Airbnb's; the list that drops out of it
+ * is the application's own `SelectField`, not the browser's. A native `<select>` used to
+ * be the whole control, and on a desktop browser that meant the operating system drew a
+ * forty-nine row list in its own font, unbounded by the window — the one control on this
+ * screen that belonged to a different product. Everything else stays as it was: the
+ * options, the values and what `onChange` reports are untouched.
+ *
+ * The trigger keeps the field's own chrome rather than the Select's box, because the box
+ * here belongs to `ArrivalFieldGroup` — it is what joins the check-in window's two ends
+ * into one setting.
  */
 export function ArrivalSelect({
   id,
@@ -145,34 +151,20 @@ export function ArrivalSelect({
 }) {
   return (
     <ArrivalField id={id} label={label}>
-      <div className="relative">
-        <select
-          id={id}
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          className="ag-field-value cursor-pointer appearance-none pr-6 focus:outline-none"
-        >
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-        <svg
-          aria-hidden
-          viewBox="0 0 16 16"
-          className="pointer-events-none absolute right-0 top-1/2 size-4 -translate-y-1/2 text-[var(--ag-hof)]"
-        >
-          <path
-            d="M4 6l4 4 4-4"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </div>
+      <SelectField
+        id={id}
+        value={value}
+        onValueChange={onChange}
+        options={options}
+        // Strips the Select's own border, height and background so the control reads as
+        // the field it sits in; the menu it opens is the shared one, unchanged.
+        className={cn(
+          "h-auto cursor-pointer rounded-none border-0 bg-transparent p-0 shadow-none",
+          "text-base font-medium leading-5 text-[var(--ag-hof)]",
+          "data-[size=default]:h-auto md:data-[size=default]:h-auto",
+          "focus-visible:ring-0 [&>svg]:text-[var(--ag-hof)]",
+        )}
+      />
     </ArrivalField>
   );
 }

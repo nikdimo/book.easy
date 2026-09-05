@@ -3,6 +3,7 @@ import { requireHostPage } from "@/lib/auth-helpers";
 import { getListingEditorHeader } from "@/lib/services/listing-editor.service";
 import { getListingArrivalGuideEditorData } from "@/lib/services/listing-arrival-guide.service";
 import { findArrivalGuideTopic } from "@/lib/host/v2/listing-arrival-guide";
+import { EditorHalves } from "@/components/host/v2/editor/editor-halves";
 import { ArrivalGuideSection } from "@/components/host/v2/editor/arrival-guide/arrival-guide-section";
 
 export const metadata = { title: "Arrival guide" };
@@ -16,9 +17,10 @@ export const metadata = { title: "Arrival guide" };
  * half-typed on the last one. The segment still exists so every card has a real URL that
  * can be refreshed, bookmarked and shared.
  *
- * This route deliberately does not render `EditorFrame`. Its left column *is* the section's
- * navigation, the way Airbnb's is; see `ArrivalGuideSection` for where the rail's contents
- * went.
+ * This route deliberately does not render `EditorFrame`: its left column *is* this half's
+ * navigation, the way Airbnb's is. It shares `EditorHalves` with the other half, which is
+ * what puts the same toggle above both — the switch has to exist on both sides or it is not
+ * a switch.
  */
 export default async function ArrivalGuidePage({
   params,
@@ -44,14 +46,16 @@ export default async function ArrivalGuidePage({
   if (!header || !arrival) notFound();
 
   return (
-    <ArrivalGuideSection
-      listingId={id}
-      slug={header.slug}
-      status={header.status}
-      topic={slug}
-      guide={arrival.guide}
-      rules={arrival.rules}
-      largestUpcomingParty={arrival.largestUpcomingParty}
-    />
+    <EditorHalves listingId={id} half="arrival">
+      <ArrivalGuideSection
+        listingId={id}
+        slug={header.slug}
+        status={header.status}
+        topic={slug}
+        guide={arrival.guide}
+        rules={arrival.rules}
+        largestUpcomingParty={arrival.largestUpcomingParty}
+      />
+    </EditorHalves>
   );
 }

@@ -8,6 +8,7 @@ import { updateSafetyCaseAdminAction } from "@/lib/actions/communication.actions
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { SelectField } from "@/components/shared/select-field";
 import { Textarea } from "@/components/ui/textarea";
 
 const statuses: SafetyCaseStatus[] = [
@@ -60,28 +61,29 @@ export function SafetyCaseControls({
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="case-status">Status</Label>
-          <select
+          <SelectField
             id="case-status"
             value={status}
-            onChange={(event) => setStatus(event.target.value as SafetyCaseStatus)}
-            className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
-          >
-            {statuses.map((value) => (
-              <option key={value} value={value}>{value.replaceAll("_", " ")}</option>
-            ))}
-          </select>
+            onValueChange={(value) => setStatus(value as SafetyCaseStatus)}
+            options={statuses.map((value) => ({
+              value,
+              label: value.replaceAll("_", " "),
+            }))}
+            className="h-10 bg-background data-[size=default]:h-10 md:data-[size=default]:h-10"
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="case-priority">Priority</Label>
-          <select
+          <SelectField
             id="case-priority"
             value={priority}
-            onChange={(event) => setPriority(event.target.value as SafetyCasePriority)}
-            className="h-10 w-full rounded-lg border bg-background px-3 text-sm"
-          >
-            <option value="NORMAL">NORMAL</option>
-            <option value="URGENT">URGENT</option>
-          </select>
+            onValueChange={(value) => setPriority(value as SafetyCasePriority)}
+            options={[
+              { value: "NORMAL", label: "NORMAL" },
+              { value: "URGENT", label: "URGENT" },
+            ]}
+            className="h-10 bg-background data-[size=default]:h-10 md:data-[size=default]:h-10"
+          />
         </div>
       </div>
       <div className="space-y-2">

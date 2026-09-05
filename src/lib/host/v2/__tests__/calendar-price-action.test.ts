@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildListingCalendarIndex } from "@/lib/host/v2/calendar-model";
 import {
   buildPriceAction,
+  feeFromPercent,
   percentFromPrice,
   priceFromPercent,
   stepsForBasePrice,
@@ -50,6 +51,29 @@ describe("priceFromPercent", () => {
 
   it("never resolves below the lowest price the service accepts", () => {
     expect(priceFromPercent(1, -30)).toBe(1);
+  });
+});
+
+describe("feeFromPercent", () => {
+  it("rounds the same way a nightly price does", () => {
+    expect(feeFromPercent(50, -30)).toBe(35);
+    expect(feeFromPercent(50, 0)).toBe(50);
+    // 15% of 50 is an exact half, and the float behind `1 + 15/100` lands a hair under
+    // it — so the half goes down. That is `priceFromPercent`'s behaviour too, and both
+    // controls agreeing matters more than which way a half-unit tie falls.
+    expect(feeFromPercent(50, 15)).toBe(57);
+    expect(priceFromPercent(50, 15)).toBe(57);
+  });
+
+  /**
+   * Where it deliberately parts company with `priceFromPercent`. A night that costs
+   * nothing is a night nobody is charged for; a cleaning fee of nothing is an ordinary
+   * listing that does not charge for cleaning, and −100% has to be able to reach it.
+   */
+  it("floors at nothing rather than at one", () => {
+    expect(feeFromPercent(50, -100)).toBe(0);
+    expect(feeFromPercent(1, -100)).toBe(0);
+    expect(priceFromPercent(1, -100)).toBe(1);
   });
 });
 

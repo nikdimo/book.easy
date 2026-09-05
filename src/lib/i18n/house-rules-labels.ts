@@ -22,6 +22,7 @@ import type {
   HouseRuleRow,
   HouseRulesSnapshot,
   PetPolicy,
+  QuietHoursPeriodsIssue,
   SmokingPolicy,
 } from "@/lib/host/v2/listing-house-rules";
 
@@ -273,6 +274,78 @@ export function quietHoursRangeLabel(start: string, end: string): string {
   return `${start}–${end}`;
 }
 
+/**
+ * Every period on one line — "22:00–08:00, 15:00–17:00".
+ *
+ * One line rather than one row each, on the row and in the guest's list alike: the rule
+ * is "when to be quiet", and splitting it into two labelled rows both saying "Quiet
+ * hours" makes a guest read it as two rules that might contradict each other. Comma
+ * separated in every language, because the parts are clock times, not words.
+ */
+export function quietHoursPeriodsLabel(
+  periods: readonly { start: string; end: string }[],
+): string {
+  return periods
+    .map((period) => quietHoursRangeLabel(period.start, period.end))
+    .join(", ");
+}
+
+/**
+ * Why a quiet period cannot be saved, in the host's language.
+ *
+ * Every message names the fix rather than the rule: a host looking at "These hours
+ * overlap another period" knows what to change, where "Invalid range" only tells them
+ * the screen disagrees with them.
+ */
+export function quietHoursPeriodError(
+  t: RuleLabelResolver,
+  issue: QuietHoursPeriodsIssue,
+  max: number,
+): string {
+  switch (issue) {
+    case "REQUIRED":
+      return t.resolve(
+        "listing.house_rules.quiet_hours.error_incomplete",
+        "Set a start and an end time for every quiet period.",
+      ).text;
+    case "NOT_A_TIME":
+      return t.resolve(
+        "listing.house_rules.error_stay_time",
+        "That is not a valid time of day.",
+      ).text;
+    case "EMPTY_RANGE":
+      return t.resolve(
+        "listing.house_rules.quiet_hours.error_same_time",
+        "Choose an end time different from the start time.",
+      ).text;
+    case "DUPLICATE":
+      return t.resolve(
+        "listing.house_rules.quiet_hours.error_duplicate",
+        "You have already added these hours.",
+      ).text;
+    case "OVERLAP":
+      return t.resolve(
+        "listing.house_rules.quiet_hours.error_overlap",
+        "These hours overlap another quiet period. Change them so the periods do not cross.",
+      ).text;
+    case "TOO_MANY":
+      return interpolateCount(
+        t.resolve(
+          "listing.house_rules.quiet_hours.error_too_many",
+          "You can add up to {max} quiet periods.",
+        ).text,
+        max,
+      );
+  }
+}
+
+/** The one placeholder these messages use. Kept local so this module stays a table of
+ *  strings rather than a dependency on the client's interpolator, which the server side
+ *  of this file cannot import. */
+function interpolateCount(text: string, max: number): string {
+  return text.replace("{max}", String(max));
+}
+
 // ─── One rule, as a guest reads it ───────────────────────────────────────────────
 
 export interface HouseRuleLine {
@@ -330,11 +403,14 @@ export function houseRuleLines(
       value: eventPolicyLabel(t, rules.eventPolicy),
     });
   }
-  if (rules.quietHoursPolicy === "SET" && rules.quietHoursStart && rules.quietHoursEnd) {
+  // Every period, not just the first. A guest who is told about the overnight rule and
+  // not the afternoon one has been told something that is true and incomplete, which is
+  // worse than either — and it is the one they would be woken up for.
+  if (rules.quietHoursPolicy === "SET" && rules.quietHoursPeriods.length > 0) {
     lines.push({
       id: "quiet-hours",
       label: titles.quietHours,
-      value: quietHoursRangeLabel(rules.quietHoursStart, rules.quietHoursEnd),
+      value: quietHoursPeriodsLabel(rules.quietHoursPeriods),
     });
   } else if (rules.quietHoursPolicy === "NONE") {
     lines.push({

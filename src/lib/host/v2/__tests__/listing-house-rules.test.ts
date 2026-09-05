@@ -5,6 +5,7 @@ import {
   HOUSE_RULE_ROW_ORDER,
   MAX_GUESTS_MAX,
   MAX_GUESTS_MIN,
+  QUIET_HOURS_PERIODS_MAX,
   REQUIRED_POLICY_COUNT,
   STAY_TIME_OPTIONS,
   answeredPolicyCount,
@@ -20,6 +21,7 @@ import {
   normalizeListingHouseRules,
   normalizeStayTime,
   parseHouseRulesSnapshot,
+  quietHoursPeriodIssues,
   sameListingHouseRules,
   stayTimeChoices,
   type ListingHouseRulesInput,
@@ -35,6 +37,7 @@ const VALID: ListingHouseRulesInput = {
   smokingPolicy: "OUTDOORS_ONLY",
   eventPolicy: "NOT_ALLOWED",
   quietHoursPolicy: "SET",
+  quietHoursPeriods: [{ start: "22:00", end: "08:00" }],
   quietHoursStart: "22:00",
   quietHoursEnd: "08:00",
   additionalRules: "Please take your shoes off indoors.",
@@ -286,14 +289,18 @@ describe("quiet hours", () => {
       listingHouseRulesIssues({
         ...VALID,
         quietHoursPolicy: "SET",
+        quietHoursPeriods: [{ start: "22:00", end: "" }],
         quietHoursStart: "22:00",
         quietHoursEnd: "",
       }),
     ).toEqual({ quietHoursEnd: "REQUIRED" });
+    // "Quiet hours apply" with nothing in the list is the same half-answered rule an
+    // empty pair has always been, and reports through the same two fields.
     expect(
       listingHouseRulesIssues({
         ...VALID,
         quietHoursPolicy: "SET",
+        quietHoursPeriods: [],
         quietHoursStart: "",
         quietHoursEnd: "",
       }),
@@ -305,6 +312,7 @@ describe("quiet hours", () => {
       listingHouseRulesIssues({
         ...VALID,
         quietHoursPolicy: "SET",
+        quietHoursPeriods: [{ start: "25:00", end: "08:00" }],
         quietHoursStart: "25:00",
         quietHoursEnd: "08:00",
       }),
@@ -331,6 +339,257 @@ describe("quiet hours", () => {
       .quietHoursPolicy).toBe("NONE");
     expect(normalizeListingHouseRules({ ...VALID, quietHoursPolicy: null })
       .quietHoursPolicy).toBeNull();
+  });
+});
+
+describe("more than one quiet-hours period", () => {
+  const OVERNIGHT = { start: "22:00", end: "08:00" };
+  const AFTERNOON = { start: "15:00", end: "17:00" };
+
+  /** A rule set with exactly these periods, and the mirrored pair kept honest. */
+  function withPeriods(periods: { start: string; end: string }[]) {
+    return normalizeListingHouseRules({
+      ...VALID,
+      quietHoursPolicy: "SET" as const,
+      quietHoursPeriods: periods,
+    });
+  }
+
+  it("accepts an overnight period, a same-day one, and both at once", () => {
+    expect(listingHouseRulesIssues(withPeriods([OVERNIGHT]))).toEqual({});
+    expect(listingHouseRulesIssues(withPeriods([AFTERNOON]))).toEqual({});
+    expect(listingHouseRulesIssues(withPeriods([OVERNIGHT, AFTERNOON]))).toEqual({});
+  });
+
+  it("mirrors the first period onto the pair the older readers use", () => {
+    const rules = withPeriods([OVERNIGHT, AFTERNOON]);
+
+    expect(rules.quietHoursStart).toBe("22:00");
+    expect(rules.quietHoursEnd).toBe("08:00");
+  });
+
+  it("keeps every period through a write and a read back", () => {
+    // Save, reload, reopen: the round trip the host actually performs.
+    const saved = houseRulesRowData(withPeriods([OVERNIGHT, AFTERNOON]));
+
+    expect(saved.quietHoursPeriods).toEqual([OVERNIGHT, AFTERNOON]);
+    expect(houseRulesFromRow({ ...saved, checkInEndTime: null }).quietHoursPeriods)
+      .toEqual([OVERNIGHT, AFTERNOON]);
+  });
+
+  it("edits one period without disturbing the other", () => {
+    const rules = withPeriods([OVERNIGHT, { start: "15:00", end: "16:00" }]);
+    const edited = normalizeListingHouseRules({
+      ...rules,
+      quietHoursPeriods: [rules.quietHoursPeriods[0], AFTERNOON],
+    });
+
+    expect(edited.quietHoursPeriods).toEqual([OVERNIGHT, AFTERNOON]);
+    expect(listingHouseRulesIssues(edited)).toEqual({});
+  });
+
+  it("removes one of two and leaves the other whole", () => {
+    const rules = withPeriods([OVERNIGHT, AFTERNOON]);
+    const remaining = normalizeListingHouseRules({
+      ...rules,
+      quietHoursPeriods: rules.quietHoursPeriods.filter(
+        (period) => period.start !== "22:00",
+      ),
+    });
+
+    expect(remaining.quietHoursPeriods).toEqual([AFTERNOON]);
+    // The mirror follows the list rather than keeping the removed period alive.
+    expect(remaining.quietHoursStart).toBe("15:00");
+    expect(listingHouseRulesIssues(remaining)).toEqual({});
+  });
+
+  it("clears every period when the host says there are none", () => {
+    const cleared = normalizeListingHouseRules({
+      ...withPeriods([OVERNIGHT, AFTERNOON]),
+      quietHoursPolicy: "NONE",
+    });
+
+    expect(cleared.quietHoursPeriods).toEqual([]);
+    expect(cleared.quietHoursStart).toBe("");
+    expect(listingHouseRulesIssues(cleared)).toEqual({});
+  });
+
+  it("reads a listing stored before periods existed as the one period it has", () => {
+    // The backward-compatibility claim: nothing was backfilled, so this is the path
+    // every existing listing takes when its host opens the sheet.
+    const legacy = houseRulesFromRow({
+      checkInTime: "15:00",
+      checkOutTime: "11:00",
+      maxGuests: 4,
+      petPolicy: null,
+      smokingPolicy: null,
+      eventPolicy: null,
+      quietHoursPolicy: "SET",
+      quietHoursStart: "22:00",
+      quietHoursEnd: "08:00",
+      additionalRules: null,
+    });
+
+    expect(legacy.quietHoursPeriods).toEqual([OVERNIGHT]);
+    expect(listingHouseRulesIssues(legacy)).toEqual({});
+  });
+
+  it("reads a row whose JSON column is empty or unusable through the same fallback", () => {
+    for (const stored of [null, [], "nonsense", [{ start: 5 }]]) {
+      const rules = houseRulesFromRow({
+        checkInTime: "15:00",
+        checkOutTime: "11:00",
+        maxGuests: 4,
+        petPolicy: null,
+        smokingPolicy: null,
+        eventPolicy: null,
+        quietHoursPolicy: "SET",
+        quietHoursPeriods: stored,
+        quietHoursStart: "22:00",
+        quietHoursEnd: "08:00",
+        additionalRules: null,
+      });
+
+      expect(rules.quietHoursPeriods).toEqual([OVERNIGHT]);
+    }
+  });
+
+  it("refuses two periods that name the same hours", () => {
+    expect(quietHoursPeriodIssues([OVERNIGHT, OVERNIGHT])).toEqual([
+      undefined,
+      "DUPLICATE",
+    ]);
+    expect(listingHouseRulesIssues(withPeriods([OVERNIGHT, OVERNIGHT]))).toEqual({
+      quietHoursPeriods: "DUPLICATE",
+    });
+  });
+
+  it("refuses two periods that overlap, on the clock face rather than the numbers", () => {
+    // Same-day pair, plainly crossing.
+    expect(quietHoursPeriodIssues([AFTERNOON, { start: "16:00", end: "18:00" }])).toEqual(
+      [undefined, "OVERLAP"],
+    );
+    // The case four ordered numbers get wrong: 07:00–09:00 sits inside the *morning*
+    // half of an overnight period, even though 07:00 is nowhere between 22:00 and 08:00.
+    expect(quietHoursPeriodIssues([OVERNIGHT, { start: "07:00", end: "09:00" }])).toEqual(
+      [undefined, "OVERLAP"],
+    );
+    // And the evening half.
+    expect(quietHoursPeriodIssues([OVERNIGHT, { start: "21:00", end: "23:00" }])).toEqual(
+      [undefined, "OVERLAP"],
+    );
+    // Two overnight periods always share the small hours.
+    expect(quietHoursPeriodIssues([OVERNIGHT, { start: "23:00", end: "06:00" }])).toEqual(
+      [undefined, "OVERLAP"],
+    );
+  });
+
+  it("allows two periods that merely touch", () => {
+    // Half-open ranges: no minute belongs to both, so a host may say "quiet until 08:00,
+    // and quiet again from 08:00" — pointless, but not contradictory.
+    expect(
+      quietHoursPeriodIssues([OVERNIGHT, { start: "08:00", end: "09:00" }]),
+    ).toEqual([undefined, undefined]);
+  });
+
+  it("refuses a period that starts and ends at the same time", () => {
+    // Nothing, or the whole day — nobody should have to guess which.
+    expect(quietHoursPeriodIssues([{ start: "22:00", end: "22:00" }])).toEqual([
+      "EMPTY_RANGE",
+    ]);
+    expect(
+      listingHouseRulesIssues(withPeriods([{ start: "22:00", end: "22:00" }])),
+    ).toEqual({ quietHoursPeriods: "EMPTY_RANGE" });
+  });
+
+  it("names an unfinished second period without repeating the first one's fault", () => {
+    // The pair reports the first period; anything below it has only this field.
+    expect(
+      listingHouseRulesIssues(withPeriods([OVERNIGHT, { start: "15:00", end: "" }])),
+    ).toEqual({ quietHoursPeriods: "REQUIRED" });
+    // A row blank at both ends is the residue of a removed period rather than a
+    // period, so it is dropped and the one below it becomes the rule.
+    const dropped = withPeriods([{ start: "", end: "" }, AFTERNOON]);
+    expect(dropped.quietHoursPeriods).toEqual([AFTERNOON]);
+    expect(listingHouseRulesIssues(dropped)).toEqual({});
+  });
+
+  it("refuses more periods than a guest would read", () => {
+    const many = Array.from({ length: QUIET_HOURS_PERIODS_MAX + 1 }, (_, index) => ({
+      start: `0${index}:00`.slice(-5),
+      end: `0${index}:30`.slice(-5),
+    }));
+
+    expect(listingHouseRulesIssues(withPeriods(many))).toEqual({
+      quietHoursPeriods: "TOO_MANY",
+    });
+  });
+
+  it("sends every period fault to the one row that edits them", () => {
+    expect(
+      houseRuleRowsWithIssues({ quietHoursPeriods: "OVERLAP" }),
+    ).toEqual(["quietHoursPolicy"]);
+  });
+
+  it("counts 'set quiet hours' as answered only when every period is whole", () => {
+    expect(answeredPolicyCount(withPeriods([OVERNIGHT, AFTERNOON]))).toBe(4);
+    expect(
+      answeredPolicyCount(withPeriods([OVERNIGHT, { start: "15:00", end: "" }])),
+    ).toBe(3);
+  });
+
+  it("treats a changed second period as a change worth writing", () => {
+    expect(
+      sameListingHouseRules(
+        withPeriods([OVERNIGHT, AFTERNOON]),
+        withPeriods([OVERNIGHT]),
+      ),
+    ).toBe(false);
+    expect(
+      sameListingHouseRules(
+        withPeriods([OVERNIGHT, AFTERNOON]),
+        withPeriods([OVERNIGHT, AFTERNOON]),
+      ),
+    ).toBe(true);
+  });
+
+  it("freezes every period onto a booking, and drops the half-written ones", () => {
+    const snapshot = houseRulesSnapshot({
+      checkInTime: "15:00",
+      checkOutTime: "11:00",
+      maxGuests: 4,
+      petPolicy: null,
+      smokingPolicy: null,
+      eventPolicy: null,
+      quietHoursPolicy: "SET",
+      quietHoursPeriods: [OVERNIGHT, AFTERNOON, { start: "12:00", end: "" }],
+      quietHoursStart: "22:00",
+      quietHoursEnd: "08:00",
+      additionalRules: null,
+    });
+
+    expect(snapshot.quietHoursPeriods).toEqual([OVERNIGHT, AFTERNOON]);
+    expect(parseHouseRulesSnapshot(JSON.parse(JSON.stringify(snapshot)))).toEqual(
+      snapshot,
+    );
+  });
+
+  it("reads a booking frozen before periods existed as the one period it agreed to", () => {
+    const older = parseHouseRulesSnapshot({
+      version: 1,
+      checkInTime: "15:00",
+      checkOutTime: "11:00",
+      maxGuests: 4,
+      petPolicy: null,
+      smokingPolicy: null,
+      eventPolicy: null,
+      quietHoursPolicy: "SET",
+      quietHoursStart: "22:00",
+      quietHoursEnd: "08:00",
+      additionalRules: null,
+    });
+
+    expect(older?.quietHoursPeriods).toEqual([OVERNIGHT]);
   });
 });
 
@@ -385,7 +644,13 @@ describe("rows and snapshots", () => {
   };
 
   it("round-trips a listing row through the controls and back", () => {
-    expect(houseRulesRowData(houseRulesFromRow(ROW))).toEqual(ROW);
+    // The row predates `quietHoursPeriods`, so the write back adds the one period that
+    // pair has always described. Nothing else about the row changes, which is the whole
+    // backward-compatibility claim in one assertion.
+    expect(houseRulesRowData(houseRulesFromRow(ROW))).toEqual({
+      ...ROW,
+      quietHoursPeriods: [{ start: "22:00", end: "08:00" }],
+    });
   });
 
   it("writes NULL, not an empty string, for everything unanswered", () => {
@@ -404,6 +669,9 @@ describe("rows and snapshots", () => {
       smokingPolicy: null,
       eventPolicy: null,
       quietHoursPolicy: null,
+      // An empty array rather than NULL: the column is a list, and a list of no periods
+      // is what "the host has not set any" looks like. Reads back the same either way.
+      quietHoursPeriods: [],
       quietHoursStart: null,
       quietHoursEnd: null,
       additionalRules: null,
@@ -433,6 +701,7 @@ describe("rows and snapshots", () => {
       smokingPolicy: null,
       eventPolicy: null,
       quietHoursPolicy: null,
+      quietHoursPeriods: [],
       quietHoursStart: null,
       quietHoursEnd: null,
       additionalRules: null,

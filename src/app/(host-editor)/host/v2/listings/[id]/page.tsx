@@ -34,6 +34,7 @@ export default async function ListingEditorOverviewPage({
       listingId={id}
       section={EDITOR_OVERVIEW_SLUG}
       attention={overview.attention}
+      overview={overview}
       previewSlug={overview.slug}
       previewStatus={overview.status}
       // "All sections" below is the same list the footer would repeat, with real

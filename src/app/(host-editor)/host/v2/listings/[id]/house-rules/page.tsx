@@ -36,7 +36,7 @@ export default async function ListingHouseRulesPage({
   if (!header || !rules) notFound();
 
   return (
-    <EditorFrame listingId={id} section="house-rules" attention={header.attention} previewSlug={header.slug} previewStatus={header.status}>
+    <EditorFrame listingId={id} section="house-rules" attention={header.attention} overview={header} previewSlug={header.slug} previewStatus={header.status}>
       <div className="mx-auto w-full max-w-2xl py-6 pb-12 md:py-10 md:pb-14">
         <HouseRulesWorkspace
           listingId={id}

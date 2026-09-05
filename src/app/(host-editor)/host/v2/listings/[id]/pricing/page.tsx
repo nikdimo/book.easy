@@ -52,6 +52,7 @@ export default async function PricingPage({
       listingId={id}
       section="pricing"
       attention={listing.attention}
+      overview={listing}
       previewSlug={listing.slug}
       previewStatus={listing.status}
     >

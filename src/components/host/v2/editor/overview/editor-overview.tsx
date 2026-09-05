@@ -20,7 +20,14 @@ import {
 import { listingVisibility } from "@/lib/host/v2/listing-status";
 import { resolveEditorLabel } from "@/lib/i18n/editor-label";
 import { resolveListingStatus } from "@/lib/i18n/status-labels";
-import { T, t as text, ti, tPlural, type Translator } from "@/lib/i18n/t";
+import {
+  T,
+  t as text,
+  ti,
+  tPlural,
+  type TextTranslator,
+  type Translator,
+} from "@/lib/i18n/t";
 import type { ListingEditorOverview } from "@/lib/services/listing-editor.service";
 
 /**
@@ -58,10 +65,12 @@ function SummaryLine({
 
 /** The short fact under a section's name. Absent where there is no honest fact to give
  *  — an arrival guide has no count and no state, so it gets no invented one. */
-function sectionSummary(
+/** Exported so the editor's left column can label its cards with the same line the
+ *  overview's cards use — one summary per section, not two that could disagree. */
+export function sectionSummary(
   slug: string,
   overview: ListingEditorOverview,
-  t: Translator,
+  t: TextTranslator,
 ): string | null {
   switch (slug) {
     case "photos":
@@ -320,8 +329,12 @@ export function EditorOverview({
         )}
       </section>
 
-      {/* All sections, in the same order and the same groups as the rail. */}
-      <section aria-labelledby="overview-sections" className="mt-10">
+      {/* All sections, in the same order and the same groups as the left column — and
+          hidden from `lg` up for exactly that reason. Above the split the column is always
+          on screen beside this page, so repeating it here would show the same nine cards
+          twice at once. Below the split there is no column, only a chip row, and this is
+          the only place a host can see the whole listing at a glance. */}
+      <section aria-labelledby="overview-sections" className="mt-10 lg:hidden">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
           <h3 id="overview-sections" className="text-base font-semibold text-slate-900">
             <T t={t} k="host.editor.overview.sections_title" source="All sections" />

@@ -32,6 +32,7 @@ const VALID: ListingHouseRulesInput = {
   smokingPolicy: "OUTDOORS_ONLY",
   eventPolicy: "NOT_ALLOWED",
   quietHoursPolicy: "SET",
+  quietHoursPeriods: [{ start: "22:00", end: "08:00" }],
   quietHoursStart: "22:00",
   quietHoursEnd: "08:00",
   additionalRules: "No shoes indoors.",
@@ -150,6 +151,7 @@ describe("updateListingHouseRules validation", () => {
   it("refuses quiet hours with only one end set", async () => {
     const result = await updateListingHouseRules("listing-1", {
       ...VALID,
+      quietHoursPeriods: [{ start: "22:00", end: "" }],
       quietHoursEnd: "",
     });
 

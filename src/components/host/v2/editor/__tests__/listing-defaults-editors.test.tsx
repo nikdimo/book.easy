@@ -123,11 +123,50 @@ describe("PricingDefaultsEditor", () => {
       <PricingDefaultsEditor context={context()} />,
     );
 
-    expect(html).toContain("Default pricing");
     expect(html).toContain("Base price");
     expect(html).toContain("Cleaning fee");
     expect(html).toContain('value="120"');
     expect(html).toContain('value="30"');
+    // No heading and no card of its own. The Price tab above names it and the panel's
+    // one sentence describes it; a bordered box around the only thing on the panel is a
+    // container drawn around a container.
+    expect(html).not.toContain("Default pricing");
+    expect(html).not.toContain("rounded-2xl border");
+  });
+
+  /**
+   * The fee is the same kind of decision as the rate above it — a host raising their
+   * nightly price by a tenth is usually weighing the same move on cleaning — so it gets
+   * the same three controls rather than a lone number field.
+   */
+  it("gives the cleaning fee the same percentage and slider as the base price", () => {
+    const html = renderToStaticMarkup(
+      <PricingDefaultsEditor context={context()} />,
+    );
+
+    expect(html).toContain("Percent against your saved base price");
+    expect(html).toContain("Percent against your saved cleaning fee");
+    expect(html).toContain("Change against your saved base price");
+    expect(html).toContain("Change against your saved cleaning fee");
+  });
+
+  /**
+   * A percentage of nothing is nothing at every position on the slider. On a listing
+   * that charges no cleaning those two controls would visibly not work, so they wait
+   * until there is a fee to be a percentage of.
+   */
+  it("withholds the cleaning percentage and slider while the fee is zero", () => {
+    const html = renderToStaticMarkup(
+      <PricingDefaultsEditor
+        context={context({ pricing: pricingWith({ cleaningFee: 0 }) })}
+      />,
+    );
+
+    expect(html).toContain("Cleaning fee");
+    expect(html).not.toContain("Percent against your saved cleaning fee");
+    expect(html).not.toContain("Change against your saved cleaning fee");
+    // The base price keeps both, so this is the fee's own rule and not a broken render.
+    expect(html).toContain("Change against your saved base price");
   });
 
   it("is only about money: no stay length, editable or otherwise", () => {
@@ -154,10 +193,10 @@ describe("PricingDefaultsEditor", () => {
     const html = renderToStaticMarkup(
       <PricingDefaultsEditor context={context()} />,
     );
-    expect(html).toContain(
-      "What a night costs and what cleaning costs, unless a particular date says otherwise.",
-    );
-    expect(html).not.toContain("the least a guest can book");
+    // The sentence itself belongs to the Price tab now, in `PricingOverview`; what is
+    // asserted here is that this editor still says nothing about stay length.
+    expect(visibleText(html)).not.toContain("the least a guest can book");
+    expect(visibleText(html)).not.toContain("night minimum");
   });
 
   it("prices its example at the shortest stay a flexible listing accepts", () => {
@@ -225,9 +264,14 @@ describe("PricingDefaultsEditor", () => {
     );
 
     expect(html).toContain("Review and save pricing");
-    expect(html).toContain("These are the current values.");
-    // Disabled until something differs from the stored rule.
+    // Disabled until something differs from the stored rule. `ag-save` keeps the button
+    // in place and grey rather than hiding it, so a host can see that saving is a thing
+    // that happens here before they have typed anything — which is also why the
+    // sentence that used to sit beside it explaining as much is gone.
     expect(html).toContain("disabled");
+    expect(html).toContain("ag-save");
+    expect(html).not.toContain("These are the current values.");
+    expect(html).not.toContain("Nothing changes until you confirm.");
   });
 
   it("states that hand-priced dates keep their own price", () => {
@@ -283,11 +327,14 @@ describe("OngoingOffersEditor", () => {
       <OngoingOffersEditor context={context()} />,
     );
 
-    expect(html).toContain("Ongoing offers");
-    expect(html).toContain(
-      "Discounts that run on every date until you end them.",
-    );
     expect(html).toContain("New promotion");
+    // The heading, the lead sentence and the card are the Promotions tab's, in
+    // `PricingOverview`. This is the form and nothing else.
+    expect(html).not.toContain("Ongoing offers");
+    expect(html).not.toContain("rounded-2xl border");
+    // "How offers work" is a "?" popup on that tab now, not six bullets under here.
+    expect(html).not.toContain("How offers work");
+    expect(html).not.toContain("Promotions apply night by night.");
   });
 
   it("lists ongoing offers only; dated offers are reported in Particular dates", () => {

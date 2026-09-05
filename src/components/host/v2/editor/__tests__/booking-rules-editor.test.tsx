@@ -45,6 +45,13 @@ function limits(minNights: number, maxNights: number) {
   return { ...makeListing().pricing!, minNights, maxNights };
 }
 
+/** The visible text of every Select trigger on the page, in document order. */
+function triggerLabels(html: string): string[] {
+  return [
+    ...html.matchAll(/<span data-slot="select-value"[^>]*>([^<]*)<\/span>/g),
+  ].map((match) => match[1]);
+}
+
 /** What the host actually reads, with markup and SVG path data stripped out. */
 function visibleText(html: string): string {
   return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
@@ -97,21 +104,42 @@ describe("the Booking rules section", () => {
       changeoverWeekday: "SATURDAY",
     });
     expect(weekly).toContain('id="host-v2-changeover-day"');
-    expect(weekly).toContain(
-      '<option value="SATURDAY" selected="">Saturday</option>',
-    );
+    // The dropdown is the application Select, so the chosen day is the trigger's own
+    // text rather than a `selected` attribute on a native option.
+    expect(triggerLabels(weekly)).toEqual(["Saturday"]);
   });
 
   it("offers all seven days and no stay-length choice at all", () => {
+    // The menu is portalled and only mounts once it is opened, so what a server render
+    // can show is the chosen day. Setting each of the seven in turn proves all seven are
+    // reachable and correctly labelled; `weekly-stay.test.ts` holds the list itself.
+    for (const [day, label] of [
+      ["MONDAY", "Monday"],
+      ["TUESDAY", "Tuesday"],
+      ["WEDNESDAY", "Wednesday"],
+      ["THURSDAY", "Thursday"],
+      ["FRIDAY", "Friday"],
+      ["SATURDAY", "Saturday"],
+      ["SUNDAY", "Sunday"],
+    ] as const) {
+      const each = render({
+        bookingMode: "FIXED_STAYS",
+        changeoverWeekday: day,
+        pricing: limits(7, 28),
+      });
+      expect(triggerLabels(each)).toEqual([label]);
+    }
+
     const html = render({
       bookingMode: "FIXED_STAYS",
       changeoverWeekday: "SATURDAY",
       pricing: limits(7, 28),
     });
-    expect(html.match(/<option /g)).toHaveLength(8); // seven days plus "Choose a day…"
-    // No week-count checkboxes, and no second select offering lengths.
+    // No week-count checkboxes, and no second dropdown offering lengths.
     expect(html).not.toContain('type="checkbox"');
-    expect(html.match(/<select/g)).toHaveLength(1);
+    expect(html.match(/data-slot="select-trigger"/g)).toHaveLength(1);
+    // And nothing here falls back to a browser-drawn dropdown.
+    expect(html).not.toMatch(/<option[\s>]/);
   });
 
   it("states the rule as a sentence built from the day and the maximum", () => {

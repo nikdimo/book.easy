@@ -2,15 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Eye, Settings2 } from "lucide-react";
+import { ArrowLeft, Eye } from "lucide-react";
 import { toast } from "sonner";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { ArrivalGuideCards } from "@/components/host/v2/editor/arrival-guide/arrival-guide-cards";
 import {
   CheckInMethodEditor,
@@ -39,19 +32,18 @@ import {
   sameListingHouseRules,
   type ListingHouseRulesInput,
 } from "@/lib/host/v2/listing-house-rules";
-import { EDITOR_NAV_GROUPS, editorSectionHref } from "@/lib/host/v2/editor-sections";
+import { EDITOR_LEFT_COLUMN_CLASS } from "@/lib/host/v2/editor-layout";
 import { listingPreviewable } from "@/lib/host/v2/listing-status";
-import { resolveEditorLabel } from "@/lib/i18n/editor-label";
 import { useI18n } from "@/lib/i18n/client";
 
 /**
  * The Arrival guide section, in Airbnb's two-pane shape.
  *
- * This route is the one place in the editor that does not render `EditorFrame`. The
- * section rail is replaced by the card list, because on Airbnb the card list *is* the left
- * column here and a third column of section links beside it would leave the detail pane
- * about 700px wide on a laptop. What the rail provided is not lost: "Your space" returns to
- * the editor's index, and the gear beside it holds every section the rail listed.
+ * This route is the one place in the editor that does not render `EditorFrame`. The section
+ * rail is replaced by the card list, because on Airbnb the card list *is* the left column
+ * here and a third column of section links beside it would leave the detail pane about
+ * 700px wide on a laptop. The way back to the rest of the editor is the halves toggle above
+ * this component — see `EditorHalves`, which wraps both halves so the switch is on both.
  *
  * All nine cards share one piece of state and one save. That is what makes switching cards
  * free — a half-typed door code survives a look at the house manual — and it is why the
@@ -334,7 +326,11 @@ export function ArrivalGuideSection({
         return <GuidebooksEditor listingId={listingId} />;
       case "house-rules":
         return (
-          <HouseRulesPane {...stayProps} largestUpcomingParty={largestUpcomingParty} />
+          <HouseRulesPane
+            {...stayProps}
+            largestUpcomingParty={largestUpcomingParty}
+            onOpenStayTimes={() => select("check-in-checkout")}
+          />
         );
       default:
         return <CheckInCheckoutEditor {...stayProps} />;
@@ -348,88 +344,12 @@ export function ArrivalGuideSection({
       {/* Left column. Below `lg` it is the whole screen until a card is opened, which is
           how Airbnb behaves on a phone: a list, then the thing you tapped. */}
       <div
-        className={`relative min-w-0 flex-col border-[var(--ag-bebe)] lg:flex lg:w-[38%] lg:min-w-[380px] lg:max-w-[520px] lg:flex-none lg:border-r ${
+        className={`relative min-w-0 flex-col lg:flex lg:min-h-0 ${EDITOR_LEFT_COLUMN_CLASS} ${
           topic === null ? "flex flex-1" : "hidden"
         }`}
       >
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-28 pt-8 lg:px-10 lg:pb-32">
-          <div className="mx-auto w-full max-w-[420px]">
-            <div className="mb-7 flex items-center gap-3">
-              <Link
-                href={editorSectionHref(listingId, "overview")}
-                aria-label={resolve("host.editor.arrival.back", "Back to listing").text}
-                className="ag-card flex size-8 shrink-0 items-center justify-center rounded-full"
-              >
-                <ArrowLeft className="size-4" aria-hidden />
-              </Link>
-              <h1 className="text-[1.625rem] font-semibold leading-[1.875rem] tracking-[-0.01em]">
-                {resolve("host.editor.arrival.shell_heading", "Listing editor").text}
-              </h1>
-            </div>
-
-            <div className="mb-6 flex items-center gap-2">
-              {/* Two links, not a tablist. They look like a segmented control and Airbnb
-                  treats them as one, but pressing "Your space" leaves this page for
-                  another — and telling a screen reader it is a tab would promise a panel
-                  that is about to be a different document. */}
-              <nav
-                aria-label={
-                  resolve("host.editor.arrival.halves_label", "Listing editor sections")
-                    .text
-                }
-                className="ag-segment inline-flex"
-              >
-                <Link
-                  href={editorSectionHref(listingId, "overview")}
-                  className="ag-segment-option"
-                >
-                  {resolve("host.editor.arrival.tab_space", "Your space").text}
-                </Link>
-                <span aria-current="page" className="ag-segment-option">
-                  {resolve("host.editor.arrival.tab_guide", "Arrival guide").text}
-                </span>
-              </nav>
-
-              {/* The rail's contents, kept reachable now that the rail is not on this
-                  route. A gear is where a host looks for "the rest of the settings", and
-                  this is literally that list. */}
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  aria-label={
-                    resolve("host.editor.arrival.sections_menu", "Listing sections").text
-                  }
-                  className="ag-card flex size-9 shrink-0 items-center justify-center rounded-full"
-                >
-                  <Settings2 className="size-4" aria-hidden />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="start"
-                  className="max-h-[70dvh] w-56 overflow-y-auto bg-white"
-                >
-                  {EDITOR_NAV_GROUPS.map((group) => (
-                    <div key={group.id}>
-                      <DropdownMenuLabel className="text-[11px] font-medium uppercase tracking-wide text-[var(--ag-bobo)]">
-                        {resolveEditorLabel({ resolve }, group.key, group.source).text}
-                      </DropdownMenuLabel>
-                      {group.items.map((item) => {
-                        const text = resolveEditorLabel({ resolve }, item.key, item.source);
-                        return (
-                          <DropdownMenuItem key={item.slug} asChild>
-                            <Link
-                              href={item.href(listingId)}
-                              translate={text.translated ? "no" : undefined}
-                            >
-                              {text.text}
-                            </Link>
-                          </DropdownMenuItem>
-                        );
-                      })}
-                    </div>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-28 pt-6 lg:pb-32">
+          <div className="mx-auto w-full max-w-[420px] lg:max-w-none">
             <ArrivalGuideCards
               href={href}
               current={shown}

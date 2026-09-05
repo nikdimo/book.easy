@@ -69,7 +69,7 @@ export function ArrivalGuideCards({
                 event.preventDefault();
                 onSelect(topic.slug);
               }}
-              className="ag-card block w-full px-4 py-4 text-start"
+              className="ag-list-card block w-full px-4 py-4 text-start"
             >
               {topic.slug === "check-in-checkout" ? (
                 <StayTimesCard rules={rules} />

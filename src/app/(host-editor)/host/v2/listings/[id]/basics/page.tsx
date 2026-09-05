@@ -26,7 +26,7 @@ export default async function BasicsPage({
     <EditorFrame
       listingId={id}
       section="basics"
-      attention={header.attention} previewSlug={header.slug} previewStatus={header.status}
+      attention={header.attention} overview={header} previewSlug={header.slug} previewStatus={header.status}
     >
       <BasicsWorkspace
         listingId={id}

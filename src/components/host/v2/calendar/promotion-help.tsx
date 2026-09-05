@@ -3,6 +3,13 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { interpolate, useI18n } from "@/lib/i18n/client";
 import type {
   PromotionBand,
@@ -480,6 +487,74 @@ export function PromotionBandList({
  * difference between a price and a discount and the source of nearly every wrong guess
  * about what these screens do.
  */
+/**
+ * The same explanation, asked for rather than sitting under the controls.
+ *
+ * The calendar keeps the disclosure below: there a host is mid-selection, the rules
+ * about which offer wins a night are what they are actively reasoning about, and an
+ * open-on-demand list under the form is where they look. The Pricing editor is not that
+ * screen — a host arrives to change a percentage, and six bullets of ladder semantics
+ * permanently expanded under the button is most of why that panel reads as crowded.
+ *
+ * Three lines, not six. `dated_fit`, `which_wins` and `ladder` all restate the second
+ * line in another set of words; what a host has to know before typing a number is that
+ * the discount is per night, that only one applies to a night, and that the minimum is
+ * measured against the whole booking. The rest is still one press away in the calendar,
+ * where the decisions those lines govern are actually made.
+ */
+export function HowOffersWorkButton() {
+  const i18n = useI18n();
+  const title = i18n.resolve(
+    "host.v2.calendar.editor.how_offers_work",
+    "How offers work",
+  ).text;
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          aria-label={title}
+          className="ms-1.5 inline-flex size-[1.125rem] shrink-0 translate-y-[0.1875rem] items-center justify-center rounded-full text-[0.6875rem] font-semibold text-[var(--ag-foggy)] ring-1 ring-inset ring-[var(--ag-deco)] transition-colors hover:bg-[var(--ag-faint)] hover:text-[var(--ag-hof)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ag-hof)]"
+        >
+          ?
+        </button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <ul className="flex list-disc flex-col gap-2 pl-4 text-[0.8125rem] leading-5 text-slate-600">
+          <li>
+            {
+              i18n.resolve(
+                "host.v2.calendar.help.per_stay",
+                "Promotions apply night by night. Different nights in one booking can use different promotions.",
+              ).text
+            }
+          </li>
+          <li>
+            {
+              i18n.resolve(
+                "host.v2.calendar.help.one_offer",
+                "Promotions never add together on one night. The promotion that saves the guest the most wins that night.",
+              ).text
+            }
+          </li>
+          <li>
+            {
+              i18n.resolve(
+                "host.v2.calendar.help.minimum_meaning",
+                "The promotion minimum checks the guest's whole booking length. It is separate from the listing's normal minimum stay.",
+              ).text
+            }
+          </li>
+        </ul>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function HowOffersWork() {
   const i18n = useI18n();
   return (

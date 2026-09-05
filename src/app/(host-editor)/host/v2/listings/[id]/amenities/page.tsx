@@ -37,7 +37,7 @@ export default async function ListingAmenitiesPage({
     <EditorFrame
       listingId={id}
       section="amenities"
-      attention={header.attention} previewSlug={header.slug} previewStatus={header.status}
+      attention={header.attention} overview={header} previewSlug={header.slug} previewStatus={header.status}
     >
       <AmenitiesWorkspace
         listingId={id}

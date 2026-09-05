@@ -117,6 +117,39 @@ describe("HouseRulesWorkspace rows", () => {
     expect(html).toContain("No quiet hours");
   });
 
+  it("states every quiet period on the row, not only the first", () => {
+    const html = workspace({
+      rules: {
+        quietHoursPeriods: [
+          { start: "22:00", end: "08:00" },
+          { start: "15:00", end: "17:00" },
+        ],
+        quietHoursStart: "22:00",
+        quietHoursEnd: "08:00",
+      },
+    });
+
+    expect(html).toContain("22:00–08:00, 15:00–17:00");
+  });
+
+  it("reads a listing stored with the single legacy range as that one period", () => {
+    // Nothing was backfilled, so this is the row every existing listing renders from.
+    expect(workspace()).toContain("22:00–08:00");
+  });
+
+  it("says a quiet period is unfinished rather than printing half of it", () => {
+    const html = workspace({
+      rules: {
+        quietHoursPeriods: [
+          { start: "22:00", end: "08:00" },
+          { start: "15:00", end: "" },
+        ],
+      },
+    });
+
+    expect(html).toContain("Add times");
+  });
+
   it("prompts for the written rules a host has not added", () => {
     expect(workspace({ rules: { additionalRules: "" } })).toContain(
       "Add any other rules guests should know",

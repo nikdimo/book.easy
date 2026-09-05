@@ -9,41 +9,40 @@ const render = (current: string, attention: string[] = []) =>
     <EditorNav listingId="listing-1" current={current} attention={attention} />,
   );
 
-/** Just the desktop rail. The markup also contains the small-screen chip row, which
- *  shows a moving window of the same list, so ordering has to be read from the one
- *  shape that renders every item exactly once. */
-const rail = (current: string, attention: string[] = []) => {
-  const parts = render(current, attention).split("<nav");
-  return parts[parts.length - 1];
-};
+/**
+ * Only the small-screen chip row now.
+ *
+ * `EditorNav` used to render a desktop rail as well; from `lg` up the left column is
+ * `EditorSpaceCards` — the same column the Arrival guide draws — so what the rail asserted
+ * lives in `editor-space-cards.test.tsx`. What is left here is the phone's window of chips
+ * plus its "More" menu, which is the one shape that does *not* render every item.
+ */
 
-describe("EditorNav rail", () => {
-  it("renders the three groups in the required order", () => {
-    const html = rail("overview");
-    const order = ["Overview", "Rates &amp; availability", "Listing details"];
-    const positions = order.map((heading) => html.indexOf(heading));
-    expect(positions.every((position) => position >= 0)).toBe(true);
-    expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+describe("EditorNav chip row", () => {
+  it("shows a window of chips around the current section", () => {
+    const html = render("photos");
+    // Three chips fit a 360px screen; the current one is always among them.
+    expect(html).toContain('href="/host/listings/listing-1/photos"');
+    expect(html).toContain("More");
   });
 
-  it("renders every item in the required order", () => {
-    const html = rail("photos");
-    const order = [
-      "Listing overview",
-      "Availability",
-      "Pricing",
-      "Photos",
-      "Title &amp; description",
-      "Property details",
-      "Location",
-      "Amenities",
-      "Payment arrangements",
-      "House rules",
-      "Arrival guide",
-    ];
-    const positions = order.map((label) => html.indexOf(label));
-    expect(positions.every((position) => position >= 0)).toBe(true);
-    expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+  it("windows the chips around the current section rather than scrolling them", () => {
+    // Three chips: the current one and its neighbours. The rest are behind "More", whose
+    // menu is a Radix popover and so is not in the server markup at all — which is why
+    // this asserts the window rather than the whole list.
+    const html = render("photos");
+    expect(html).toContain("Pricing");
+    expect(html).toContain("Photos");
+    expect(html).toContain("Title &amp; description");
+    expect(html).not.toContain("Payment arrangements");
+  });
+
+  it("does not carry the Arrival guide, which is the editor's other half", () => {
+    // The guide is reached by the halves toggle, so a chip here would be a second,
+    // differently shaped door to one room.
+    const html = render("photos");
+    expect(html).not.toContain("Arrival guide");
+    expect(html).not.toContain("/arrival-guide");
   });
 
   it("points Overview at the base editor route", () => {
@@ -58,54 +57,23 @@ describe("EditorNav rail", () => {
     expect(html).not.toContain("/host/listings/listing-1/edit");
   });
 
-  it("marks the current item, and only it, as the active page", () => {
+  it("marks the current section, and only it, as the active page", () => {
     const html = render("photos");
-    // Marked in the chip row and in the rail — the same section in both shapes, and
-    // nothing else in either.
-    const active = html.match(/aria-current="page"/g) ?? [];
-    expect(active).toHaveLength(2);
+    expect((html.match(/aria-current="page"/g) ?? []).length).toBe(1);
     expect(html).toContain('href="/host/listings/listing-1/photos"');
   });
 
   it("marks Overview active on the base route", () => {
-    expect(render("overview")).toContain("aria-current=\"page\"");
+    expect(render("overview")).toContain('aria-current="page"');
     // A removed legacy slug cannot mark any current editor page active.
-    expect(render("open-calendar")).not.toContain("aria-current=\"page\"");
+    expect(render("open-calendar")).not.toContain('aria-current="page"');
   });
 
   it("flags the sections the shared attention set reports as open", () => {
-    const html = render("photos", ["basics", "location"]);
-    expect(html).toContain("lucide-circle-alert");
-    expect(html).toContain("2 things need your attention");
+    expect(render("photos", ["basics", "location"])).toContain("lucide-circle-alert");
   });
 
-  it("says so plainly when nothing is outstanding", () => {
-    const html = render("photos", []);
-    expect(html).toContain("Nothing needs attention");
-    expect(html).not.toContain("lucide-circle-alert");
-  });
-
-  it("can flag Pricing, which no checkmark could ever mark", () => {
-    // Pricing is not a completion section — it has no tick — but a listing without a
-    // nightly price cannot be booked, which is the most serious open task there is.
-    const html = render("photos", ["pricing"]);
-    expect(html).toContain("lucide-circle-alert");
-    expect(html).toContain("1 thing needs your attention");
-  });
-
-  it("never marks a section that is merely optional", () => {
-    // Amenities and Arrival guide have no persisted reviewed state, so they are never
-    // in the attention set and an unmarked row means only "nothing to do here".
-    const html = rail("photos", ["basics"]);
-    // Each row's own markup ends at its closing </a>; the footer below carries the
-    // count's icon and is not part of either row.
-    const row = (label: string) => {
-      const start = html.indexOf(label);
-      return html.slice(start, html.indexOf("</a>", start));
-    };
-    expect(row("Amenities")).not.toContain("lucide-circle-alert");
-    expect(row("Arrival guide")).not.toContain("lucide-circle-alert");
-    // The one section that is flagged still is, so the assertion above is not vacuous.
-    expect(row("Title &amp; description")).toContain("lucide-circle-alert");
+  it("shows no flag when nothing is outstanding", () => {
+    expect(render("photos", [])).not.toContain("lucide-circle-alert");
   });
 });

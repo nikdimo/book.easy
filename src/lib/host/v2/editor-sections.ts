@@ -29,7 +29,24 @@ export interface EditorSection {
    *  without a stored answer (Amenities, Arrival guide) is never chased. */
   completion: boolean;
   group: "calendar" | "details";
+  /**
+   * Which half of the editor this section belongs to.
+   *
+   * The editor is two things, not one list: what you are selling ("Your space") and what
+   * happens once somebody has bought it ("Arrival guide"). Airbnb splits them at the top
+   * level and so do we — see `EditorHalves`.
+   *
+   * It matters here rather than only in the components because the split has to be the
+   * same fact everywhere: the rail, the phone chip row, the "what next" footer and the
+   * overview's section list all read this module, and a half declared in one of them
+   * would eventually disagree with the other three.
+   */
+  half: EditorHalf;
 }
+
+/** The two halves of the editor. `space` is the default for everything that describes
+ *  the property itself. */
+export type EditorHalf = "space" | "arrival";
 
 export const EDITOR_SECTIONS: EditorSection[] = [
   // Availability edits one persisted default that every listing already has, so there
@@ -37,34 +54,53 @@ export const EDITOR_SECTIONS: EditorSection[] = [
   // is the same for completion purposes; a listing with no pricing rule at all is
   // flagged separately by `editorAttentionItems`, which is a blocked sale rather than
   // an unfinished form.
-  { slug: "availability", key: "host.editor.section.availability", source: "Availability", completion: false, group: "calendar" },
-  { slug: "pricing", key: "host.editor.section.pricing", source: "Pricing", completion: false, group: "calendar" },
-  { slug: "photos", key: "host.editor.section.photos", source: "Photos", completion: true, group: "details" },
-  { slug: "basics", key: "host.editor.section.basics", source: "Title & description", completion: true, group: "details" },
-  { slug: "rooms", key: "host.editor.section.rooms", source: "Property details", completion: true, group: "details" },
-  { slug: "location", key: "host.editor.section.location", source: "Location", completion: true, group: "details" },
+  { slug: "availability", key: "host.editor.section.availability", source: "Availability", completion: false, group: "calendar", half: "space" },
+  { slug: "pricing", key: "host.editor.section.pricing", source: "Pricing", completion: false, group: "calendar", half: "space" },
+  { slug: "photos", key: "host.editor.section.photos", source: "Photos", completion: true, group: "details", half: "space" },
+  { slug: "basics", key: "host.editor.section.basics", source: "Title & description", completion: true, group: "details", half: "space" },
+  { slug: "rooms", key: "host.editor.section.rooms", source: "Property details", completion: true, group: "details", half: "space" },
+  { slug: "location", key: "host.editor.section.location", source: "Location", completion: true, group: "details", half: "space" },
   // Amenities are optional at publish time. Without a persisted "reviewed" marker,
   // zero selected amenities cannot be distinguished from an unfinished section, so it
   // must not create a false warning the host has no way to clear.
-  { slug: "amenities", key: "host.editor.section.amenities", source: "Amenities", completion: false, group: "details" },
+  { slug: "amenities", key: "host.editor.section.amenities", source: "Amenities", completion: false, group: "details", half: "space" },
   // Payment arrangements has an explicit reviewed marker. It stays in attention until
   // the host deliberately saves either accepted method names or Arrange directly.
-  { slug: "payment-arrangements", key: "host.editor.section.payment_arrangements", source: "Payment arrangements", completion: true, group: "details" },
+  { slug: "payment-arrangements", key: "host.editor.section.payment_arrangements", source: "Payment arrangements", completion: true, group: "details", half: "space" },
   // House rules counts because it has a persisted "reviewed" state of its own
   // (`Listing.houseRulesReviewedAt`): "unanswered" is a fact the database holds rather
   // than an inference from fields that always have values.
-  { slug: "house-rules", key: "host.editor.section.house_rules", source: "House rules", completion: true, group: "details" },
+  { slug: "house-rules", key: "host.editor.section.house_rules", source: "House rules", completion: true, group: "details", half: "space" },
   // Arrival guide does now have a reviewed marker of its own
   // (`ListingArrivalGuide.reviewedAt`), so it *could* be counted — and is deliberately
   // not. Nothing in it is required to publish or to take a booking: a host who lets guests
   // in personally has no door code, no Wi-Fi to share and no manual to write, and has
   // finished the section by not filling it in. Counting it would put a permanent warning
   // flag on their listing for a question they have already answered by living there.
-  { slug: "arrival-guide", key: "host.editor.section.arrival_guide", source: "Arrival guide", completion: false, group: "details" },
+  { slug: "arrival-guide", key: "host.editor.section.arrival_guide", source: "Arrival guide", completion: false, group: "details", half: "arrival" },
 ];
 
 /** The editor's index page. It lives on the base route, not on a slug of its own. */
 export const EDITOR_OVERVIEW_SLUG = "overview";
+
+/** The Arrival guide's own slug, named because three modules need to talk about the
+ *  other half by something other than a bare string. */
+export const ARRIVAL_GUIDE_SLUG = "arrival-guide";
+
+/**
+ * The sections the "Your space" half is made of — everything the rail, the chip row, the
+ * section footer and the overview's list are about.
+ *
+ * The Arrival guide is deliberately absent. It is not a section among sections any more:
+ * it is the editor's other half, reached by the toggle above both columns rather than by
+ * a row at the bottom of a list of nine. It stays in `EDITOR_SECTIONS` because it is still
+ * a real page with a real slug — `findEditorSection` and `editorSectionFromPathname` both
+ * have to keep recognising it, or the header's listing switcher would drop a host onto the
+ * overview every time they changed property from inside it.
+ */
+export const EDITOR_SPACE_SECTIONS = EDITOR_SECTIONS.filter(
+  (section) => section.half === "space",
+);
 
 export const EDITOR_COMPLETION_SECTIONS = EDITOR_SECTIONS.filter((section) => section.completion);
 
@@ -184,7 +220,7 @@ export const EDITOR_NAV_GROUPS: EditorNavGroup[] = [
     id: "calendar",
     key: "host.editor.nav.group_rates",
     source: "Rates & availability",
-    items: EDITOR_SECTIONS.filter((section) => section.group === "calendar").map(
+    items: EDITOR_SPACE_SECTIONS.filter((section) => section.group === "calendar").map(
       sectionNavItem,
     ),
   },
@@ -192,7 +228,7 @@ export const EDITOR_NAV_GROUPS: EditorNavGroup[] = [
     id: "details",
     key: "host.editor.nav.group_details",
     source: "Listing details",
-    items: EDITOR_SECTIONS.filter((section) => section.group === "details").map(sectionNavItem),
+    items: EDITOR_SPACE_SECTIONS.filter((section) => section.group === "details").map(sectionNavItem),
   },
 ];
 

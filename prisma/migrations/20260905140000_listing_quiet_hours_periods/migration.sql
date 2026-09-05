@@ -1,0 +1,18 @@
+-- Quiet hours: from one range to a list of them.
+--
+-- Strictly additive and inert. Nothing is dropped, rewritten or backfilled:
+--   * `Listing.quietHoursPeriods` is a new nullable JSONB column. Every existing row
+--     keeps NULL, which the reader treats exactly as it treats an empty array: fall back
+--     to `quietHoursStart`/`quietHoursEnd`, which is the one period that listing has
+--     always had. A host with a single 22:00–08:00 range opens the editor on that range
+--     and can save without touching it.
+--   * `quietHoursStart` and `quietHoursEnd` stay, stay populated, and keep their meaning
+--     for the first period. Four readers still depend on them — the classic listing form,
+--     the mobile draft contract, booking snapshots frozen before this column existed, and
+--     any query that selects the listing row without asking for the JSON — and dropping
+--     them would break all four to save two nullable text columns.
+--
+-- No backfill. Writing `[{start, end}]` into every row that has a pair would touch every
+-- listing in the table to store something the fallback already derives for free, and a
+-- backfill is the one part of this that could not be undone by dropping the column.
+ALTER TABLE "Listing" ADD COLUMN     "quietHoursPeriods" JSONB;

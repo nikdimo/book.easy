@@ -19,6 +19,7 @@ const ANSWERED: ListingHouseRulesInput = {
   smokingPolicy: "OUTDOORS_ONLY",
   eventPolicy: "NOT_ALLOWED",
   quietHoursPolicy: "SET",
+  quietHoursPeriods: [{ start: "22:00", end: "08:00" }],
   quietHoursStart: "22:00",
   quietHoursEnd: "08:00",
   additionalRules: "No shoes indoors.",
@@ -31,6 +32,47 @@ describe("houseRulesFromDraft", () => {
     const draft = houseRulesDraftPatch(ANSWERED);
 
     expect(houseRulesFromDraft(draft)).toEqual(ANSWERED);
+  });
+
+  it("carries more than one quiet period through the draft and back", () => {
+    const periods = [
+      { start: "22:00", end: "08:00" },
+      { start: "15:00", end: "17:00" },
+    ];
+    const draft = houseRulesDraftPatch({ ...ANSWERED, quietHoursPeriods: periods });
+
+    expect(houseRulesFromDraft(draft).quietHoursPeriods).toEqual(periods);
+  });
+
+  it("reads a draft written before periods existed as the one period it holds", () => {
+    const legacy = houseRulesFromDraft({
+      quietHoursPolicy: "SET",
+      quietHoursStart: "22:00",
+      quietHoursEnd: "08:00",
+    });
+
+    expect(legacy.quietHoursPeriods).toEqual([{ start: "22:00", end: "08:00" }]);
+  });
+
+  it("lets a client that knows only the pair edit the first period", () => {
+    // The mobile app patches `quietHoursStart`/`quietHoursEnd` on their own and never
+    // sends the list. Its edit has to win over the stale first period, or the host's
+    // change would silently do nothing — while the periods below it, which that client
+    // has never seen, are left alone.
+    const rules = houseRulesFromDraft({
+      quietHoursPolicy: "SET",
+      quietHoursPeriods: JSON.stringify([
+        { start: "22:00", end: "08:00" },
+        { start: "15:00", end: "17:00" },
+      ]),
+      quietHoursStart: "23:00",
+      quietHoursEnd: "07:00",
+    });
+
+    expect(rules.quietHoursPeriods).toEqual([
+      { start: "23:00", end: "07:00" },
+      { start: "15:00", end: "17:00" },
+    ]);
   });
 
   it("treats a draft that has not reached this step as unanswered, not as refused", () => {

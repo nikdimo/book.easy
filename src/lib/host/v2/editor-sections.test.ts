@@ -3,10 +3,12 @@ import {
   EDITOR_COMPLETION_SECTIONS,
   EDITOR_NAV_GROUPS,
   EDITOR_NAV_ITEMS,
+  EDITOR_SPACE_SECTIONS,
   EDITOR_OVERVIEW_SLUG,
   EDITOR_SECTIONS,
   editorCompletedSections,
   editorSectionHref,
+  editorSectionFromPathname,
   findEditorSection,
 } from "./editor-sections";
 
@@ -51,9 +53,35 @@ describe("listing editor navigation", () => {
         "Amenities",
         "Payment arrangements",
         "House rules",
-        "Arrival guide",
       ],
     ]);
+  });
+
+  it("keeps the Arrival guide out of the navigation but still a real section", () => {
+    // It is the editor's other half now, reached by the toggle above both columns rather
+    // than by a tenth row at the bottom of the rail. Both halves of that claim matter: a
+    // row would put the switch on only one side, and dropping it from `EDITOR_SECTIONS`
+    // altogether would stop `editorSectionFromPathname` recognising its URL — which is
+    // what the header's listing switcher uses to keep a host on the page they were on.
+    expect(EDITOR_NAV_ITEMS.map((item) => item.slug)).not.toContain("arrival-guide");
+    expect(EDITOR_SPACE_SECTIONS.map((section) => section.slug)).not.toContain(
+      "arrival-guide",
+    );
+    expect(findEditorSection("arrival-guide")).toBeDefined();
+    expect(findEditorSection("arrival-guide")?.half).toBe("arrival");
+    expect(editorSectionFromPathname("/host/listings/listing-1/arrival-guide")).toBe(
+      "arrival-guide",
+    );
+    // A card inside the guide is still the guide, not an unknown section.
+    expect(
+      editorSectionFromPathname("/host/listings/listing-1/arrival-guide/wifi-details"),
+    ).toBe("arrival-guide");
+  });
+
+  it("puts every other section in the space half", () => {
+    expect(
+      EDITOR_SECTIONS.filter((section) => section.half === "arrival").map((s) => s.slug),
+    ).toEqual(["arrival-guide"]);
   });
 
   it("has no placeholder items: every entry is a route that exists", () => {
@@ -80,7 +108,6 @@ describe("listing editor navigation", () => {
       Amenities: "/host/listings/listing-1/amenities",
       "Payment arrangements": "/host/listings/listing-1/payment-arrangements",
       "House rules": "/host/listings/listing-1/house-rules",
-      "Arrival guide": "/host/listings/listing-1/arrival-guide",
     });
   });
 

@@ -111,6 +111,10 @@ describe("house rules on a booking", () => {
       smokingPolicy: "OUTDOORS_ONLY",
       eventPolicy: "NOT_ALLOWED",
       quietHoursPolicy: "SET",
+      // Frozen as a list, even for a listing that stores the single legacy pair — a
+      // booking taken today and one taken after the host adds a second period read
+      // through the same field.
+      quietHoursPeriods: [{ start: "22:00", end: "08:00" }],
       quietHoursStart: "22:00",
       quietHoursEnd: "08:00",
       additionalRules: "No shoes indoors.",

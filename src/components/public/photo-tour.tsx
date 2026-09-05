@@ -219,6 +219,18 @@ export function PhotoTour({ slug, images }: PhotoTourProps) {
     );
   }
 
+  /* Arrows are available at every width — they used to be `hidden md:inline-flex`,
+     which left a phone or a narrow window with no visible way forward. They ride
+     the same fade as the rest of the chrome on touch, stay pinned inside the
+     viewport (inset from the edge, never a negative offset), and keep the 44px
+     hit target. Positioned against the viewer element, which is the usable photo
+     area, so they follow the image rather than drifting off a narrow screen. */
+  const arrowClass = cn(
+    "absolute top-1/2 z-20 inline-flex h-11 w-11 -translate-y-1/2 rounded-full bg-white text-black shadow-md transition-opacity duration-300 hover:bg-white/90 hover:text-black",
+    chromeVisible ? "opacity-100" : "pointer-events-none opacity-0",
+    "md:pointer-events-auto md:opacity-100"
+  );
+
   /* Single photo — full black, edge to edge. Black is chromatically neutral, so
      it neither tints the photo nor lets the letterboxing on a portrait shot read
      as broken layout, and every control floats over it. */
@@ -257,7 +269,7 @@ export function PhotoTour({ slug, images }: PhotoTourProps) {
 
       {/* Never fades: the counter is the whole answer to "is there a photo 2?" */}
       <div className="pointer-events-none absolute top-3 left-1/2 z-20 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-xs font-medium text-white sm:top-4">
-        {activeIndex + 1} / {images.length}
+        <span className="notranslate">{`${activeIndex + 1} / ${images.length}`}</span>
       </div>
 
       <div
@@ -298,7 +310,7 @@ export function PhotoTour({ slug, images }: PhotoTourProps) {
         <>
           <Button
             size="icon"
-            className="absolute top-1/2 left-3 z-10 hidden h-11 w-11 -translate-y-1/2 rounded-full bg-white text-black shadow-md hover:bg-white/90 hover:text-black md:inline-flex"
+            className={cn(arrowClass, "left-2 sm:left-3")}
             onClick={() => step(-1)}
           >
             <ChevronLeft className="h-6 w-6" />
@@ -306,7 +318,7 @@ export function PhotoTour({ slug, images }: PhotoTourProps) {
           </Button>
           <Button
             size="icon"
-            className="absolute top-1/2 right-3 z-10 hidden h-11 w-11 -translate-y-1/2 rounded-full bg-white text-black shadow-md hover:bg-white/90 hover:text-black md:inline-flex"
+            className={cn(arrowClass, "right-2 sm:right-3")}
             onClick={() => step(1)}
           >
             <ChevronRight className="h-6 w-6" />

@@ -46,6 +46,7 @@ export default async function AvailabilityPage({
       listingId={id}
       section="availability"
       attention={listing.attention}
+      overview={listing}
       previewSlug={listing.slug}
       previewStatus={listing.status}
     >

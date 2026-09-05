@@ -118,6 +118,15 @@ export interface ListingDraftData {
   smokingPolicy?: string;
   eventPolicy?: string;
   quietHoursPolicy?: string;
+  /**
+   * Every quiet period, JSON-encoded: `[{"start":"22:00","end":"08:00"}]`.
+   *
+   * A string like every other draft field, so the one code path that turns a draft into
+   * a publish `FormData` keeps working without learning about a second kind of value.
+   * Absent on every draft written before periods existed, and on any client that only
+   * knows the pair below — which is what that pair is still here for.
+   */
+  quietHoursPeriods?: string;
   quietHoursStart?: string;
   quietHoursEnd?: string;
   additionalRules?: string;

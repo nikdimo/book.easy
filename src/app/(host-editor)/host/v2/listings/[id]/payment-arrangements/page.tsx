@@ -30,6 +30,7 @@ export default async function ListingPaymentArrangementsPage({
       listingId={id}
       section="payment-arrangements"
       attention={header.attention}
+      overview={header}
       previewSlug={header.slug}
       previewStatus={header.status}
     >

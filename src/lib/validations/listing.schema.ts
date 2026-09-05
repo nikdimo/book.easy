@@ -89,6 +89,27 @@ export const listingFormSchema = z.object({
   smokingPolicy: policy(SMOKING_POLICIES),
   eventPolicy: policy(EVENT_POLICIES),
   quietHoursPolicy: policy(QUIET_HOURS_POLICIES),
+  /**
+   * Every quiet period, as the JSON the draft carried.
+   *
+   * A string because this schema parses one `FormData` submission, where every value is
+   * a string; the draft holds the same JSON for the same reason. Anything unparseable
+   * becomes `undefined` rather than a refusal — publishing then falls back to the pair
+   * below, which is the rule this listing had before periods existed, and a listing must
+   * never fail to publish over a field no screen showed its host.
+   */
+  quietHoursPeriods: z
+    .string()
+    .optional()
+    .transform((value) => {
+      if (!value) return undefined;
+      try {
+        const parsed: unknown = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed : undefined;
+      } catch {
+        return undefined;
+      }
+    }),
   quietHoursStart: stayTime,
   quietHoursEnd: stayTime,
   additionalRules: z

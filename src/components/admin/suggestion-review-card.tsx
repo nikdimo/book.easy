@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { SelectField } from "@/components/shared/select-field";
 import { reviewSuggestion } from "@/lib/actions/suggestion.actions";
 import { toast } from "sonner";
 import { Check, X } from "lucide-react";
@@ -118,19 +119,22 @@ export function SuggestionReviewCard({
           {suggestion.kind === "AMENITY" && (
             <div className="space-y-1.5">
               <Label htmlFor={`category-${suggestion.id}`}>Category</Label>
-              <select
+              {/* "Decide from the label" is a real choice rather than an empty field,
+                  so it stays an option; `SelectField` carries its empty value through
+                  unchanged. */}
+              <SelectField
                 id={`category-${suggestion.id}`}
                 value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
-                className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 py-1 text-sm shadow-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-              >
-                <option value="">Decide from the label</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
+                onValueChange={setCategoryId}
+                options={[
+                  { value: "", label: "Decide from the label" },
+                  ...categories.map((category) => ({
+                    value: category.id,
+                    label: category.name,
+                  })),
+                ]}
+                className="h-9 bg-transparent data-[size=default]:h-9 md:data-[size=default]:h-9"
+              />
             </div>
           )}
         </div>

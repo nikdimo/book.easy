@@ -1,11 +1,13 @@
 import Link from "next/link";
-import { ArrowRight, CalendarRange, Tag } from "lucide-react";
+import { ArrowRight, ChevronRight } from "lucide-react";
 import { hostCalendarHref, type CalendarIntent } from "@/lib/host/v2/calendar-href";
 import { T, ti, tPlural, type Resolved, type Translator } from "@/lib/i18n/t";
 import type {
   ListingPricingSummary,
   PricingSummaryPromotion,
 } from "@/lib/host/v2/pricing-summary";
+import { HowOffersWorkButton } from "@/components/host/v2/calendar/promotion-help";
+import { PricingTabs } from "@/components/host/v2/editor/pricing-tabs";
 import { addDaysToYmd, ymdToDbDate } from "@/lib/utils/date-only";
 
 /**
@@ -25,6 +27,14 @@ import { addDaysToYmd, ymdToDbDate } from "@/lib/utils/date-only";
  * date-specific price or a dated offer, and nothing in the calendar edits what is above.
  * Each side shows the other's values and links to it, naming the job rather than the
  * screen: "Set prices for specific dates", not "Open calendar".
+ *
+ * The layout is two tabs rather than one scrolling column of bordered cards. Four rings
+ * stacked on one screen made nothing look more important than anything else, and the
+ * offers — a whole half of what this page does — sat in the third of them, below the
+ * fold, where a host could use the page for months without discovering that a promotion
+ * is created here. `PricingTabs` puts both halves at the top and counts the offers in
+ * the tab's own label. Everything that used to be a card is now a section of a panel:
+ * the pane is the container, and it does not need a box drawn around it.
  */
 
 /**
@@ -144,30 +154,51 @@ function promotionDetail(
   };
 }
 
-function Row({ label, children }: { label: Resolved; children: React.ReactNode }) {
-  return (
-    <div className="flex items-baseline justify-between gap-4 border-b border-slate-100 py-3 last:border-b-0">
-      <dt
-        className="text-sm text-slate-600"
-        translate={label.translated ? "no" : undefined}
-      >
-        {label.text}
-      </dt>
-      <dd className="text-sm font-medium text-slate-900">{children}</dd>
-    </div>
-  );
-}
-
-/** A contextual link that says what it will let the host do. */
-function DateWorkLink({ href, children }: { href: string; children: React.ReactNode }) {
+/**
+ * The one line at the foot of a panel that leaves for the calendar.
+ *
+ * This replaces a bordered "Particular dates" section that spent two icons, two
+ * paragraphs and two pill buttons on what is, in both cases, a link and a count. The
+ * link names the job rather than the screen — the whole reason the split between this
+ * page and the calendar is legible — and the count under it is the only part of the old
+ * report a host could not have guessed.
+ */
+function DateWorkRow({
+  href,
+  label,
+  detail,
+}: {
+  href: string;
+  label: React.ReactNode;
+  detail?: Resolved | null;
+}) {
   return (
     <Link
       href={href}
-      className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#f1f5f9] px-5 text-sm font-semibold text-[#0f172a] transition-colors hover:bg-[#e2e8f0] focus-visible:bg-[#e2e8f0] focus-visible:outline-none"
+      className="mt-6 flex min-h-11 items-center justify-between gap-3 border-t border-[var(--ag-deco)] pt-4 text-[var(--ag-hof)] transition-colors hover:text-[var(--ag-foggy)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ag-hof)]"
     >
-      {children}
-      <ArrowRight className="size-4" aria-hidden />
+      <span className="min-w-0">
+        <span className="block text-sm font-medium leading-[1.125rem]">
+          {label}
+        </span>
+        {detail ? (
+          <span
+            className="mt-1 block text-[0.75rem] leading-4 text-[var(--ag-foggy)]"
+            translate={detail.translated ? "no" : undefined}
+          >
+            {detail.text}
+          </span>
+        ) : null}
+      </span>
+      <ArrowRight className="size-4 shrink-0" aria-hidden />
     </Link>
+  );
+}
+
+/** The one sentence a panel gets. */
+function Lead({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-sm leading-[1.25rem] text-[var(--ag-foggy)]">{children}</p>
   );
 }
 
@@ -195,200 +226,173 @@ export function PricingOverview({
     (promotion) => promotion.startDate || promotion.endDate,
   );
 
-  return (
-    <div className="mx-auto w-full max-w-2xl py-6 md:py-10">
-      {/* Named by the rail, the browser tab and the active chip on a phone. Kept in the
-          outline for screen readers, which have no rail to read. */}
-      <header>
-        <h2 className="sr-only">
-          <T t={t} k="host.editor.section.pricing" source="Pricing" />
-        </h2>
-        <p className="text-sm leading-6 text-slate-600">
+  /* Named by the rail, the browser tab and the active chip on a phone. Kept in the
+     outline for screen readers, which have no rail to read. */
+  const heading = (
+    <h2 className="sr-only">
+      <T t={t} k="host.editor.section.pricing" source="Pricing" />
+    </h2>
+  );
+
+  // No price, no tabs. A listing without a pricing rule has no offers to run and
+  // nothing for the calendar to report, so the whole screen is the one form that asks
+  // for a first price — a tab strip over a single empty panel would be furniture.
+  if (!rule) {
+    return (
+      <div className="mx-auto w-full max-w-2xl py-6 md:py-10">
+        {heading}
+        {defaultsEditor}
+      </div>
+    );
+  }
+
+  const pricePanel = (
+    <>
+      <Lead>
+        <T
+          t={t}
+          k="host.editor.pricing.defaults_lead"
+          source="What a night costs and what cleaning costs, unless a particular date says otherwise."
+        />
+      </Lead>
+      {defaultsEditor}
+      <DateWorkRow
+        href={calendarPricingHref(summary.listingId, "pricing")}
+        label={
           <T
             t={t}
-            k="host.editor.pricing.intro"
-            source="Set what this listing charges by default here. Prices for particular dates are set on the calendar."
+            k="host.editor.pricing.dates_cta"
+            source="Set prices for specific dates"
           />
-        </p>
-      </header>
+        }
+        detail={
+          summary.datePriceRange
+            ? ti(
+                t,
+                "host.editor.pricing.date_prices_count",
+                "{count} dates already have a price of their own, {from} – {to}.",
+                {
+                  count: summary.datePriceCount,
+                  from: formatYmd(summary.datePriceRange.from, locale),
+                  to: formatYmd(summary.datePriceRange.to, locale),
+                },
+              )
+            : null
+        }
+      />
+      {/* The one piece of context the host cannot change from here, said in a line
+          rather than in a bordered section with a heading of its own: every input on
+          this panel already prints the symbol, so this only has to name it. Stay length
+          is deliberately not stated beside it — how long a guest may stay is a booking
+          rule, it is read and edited under Availability → Booking rules, and repeating
+          it on the money screen is how a host ends up believing Pricing is where it is
+          changed. */}
+      <p className="mt-4 text-[0.75rem] leading-4 text-[var(--ag-foggy)]">
+        <T t={t} k="host.editor.pricing.currency" source="Currency" />
+        {" · "}
+        <span className="notranslate" translate="no">
+          {rule.currency}
+        </span>
+      </p>
+    </>
+  );
 
-      {defaultsEditor}
-      {rule ? offersEditor : null}
+  const promotionsPanel = (
+    <>
+      {/* The "?" sits on the sentence that raises the question rather than under the
+          controls, and it opens a dialog rather than pushing the form down. The rules
+          about which offer wins a night are worth one press when a host wonders; they
+          are not worth six permanently expanded bullets above the thing they came to
+          change. */}
+      <Lead>
+        <T
+          t={t}
+          k="host.editor.pricing.offers_lead_short"
+          source="Discounts that run on every date until you end them."
+        />
+        <HowOffersWorkButton />
+      </Lead>
+      {offersEditor}
 
-      {/* The one piece of context the host cannot change from here: the currency every
-          amount above is authored in. Stay length is deliberately not stated beside it
-          — how long a guest may stay is a booking rule, it is read and edited under
-          Availability → Booking rules, and repeating it on the money screen is how a
-          host ends up believing Pricing is where it is changed. */}
-      {rule && (
-        <section
-          aria-labelledby="pricing-context-heading"
-          className="mt-4 rounded-2xl border border-slate-200 p-5"
-        >
-          <h3
-            id="pricing-context-heading"
-            className="text-sm font-semibold text-slate-900"
-          >
-            <T
-              t={t}
-              k="host.editor.pricing.context_heading"
-              source="Fixed for this listing"
-            />
-          </h3>
-          <dl className="mt-2">
-            <Row label={t.resolve("host.editor.pricing.currency", "Currency")}>
-              <span className="notranslate" translate="no">
-                {rule.currency}
-              </span>
-            </Row>
-          </dl>
-          <p className="mt-3 text-sm leading-6 text-slate-600">
-            <T
-              t={t}
-              k="host.editor.pricing.context_note"
-              source="Every amount on this listing is set in this currency. Contact support to change it."
-            />
-          </p>
-        </section>
+      {/* Dated offers are the calendar's to edit and this page's to show. They are a
+          list of real offers rather than a paragraph about offers, so nothing is said
+          when there are none — the link below already offers to make one. */}
+      {datedPromotions.length > 0 && (
+        <ul className="mt-5 flex flex-col gap-1">
+          {datedPromotions.map((promotion) => {
+            const headline = promotionHeadline(t, promotion);
+            const detail = promotionDetail(t, promotion);
+            const phase =
+              promotion.phase === "ACTIVE"
+                ? t.resolve("host.editor.pricing.promo.running", "Running now")
+                : t.resolve("host.editor.pricing.promo.scheduled", "Scheduled");
+            return (
+              <li key={promotion.id}>
+                <Link
+                  href={datedPromotionHref(summary.listingId, promotion)}
+                  className="flex min-h-11 items-center gap-3 rounded-lg px-2 py-2 text-[0.8125rem] transition-colors hover:bg-[var(--ag-faint)] focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ag-hof)]"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span
+                      className="font-medium text-[var(--ag-hof)]"
+                      translate={headline.translated ? "no" : undefined}
+                    >
+                      {headline.text}
+                    </span>
+                    <span
+                      className="ml-2 text-[var(--ag-foggy)]"
+                      translate={phase.translated ? "no" : undefined}
+                    >
+                      {phase.text}
+                    </span>
+                    <span
+                      className="mt-0.5 block text-[var(--ag-foggy)]"
+                      translate={detail.translated ? "no" : undefined}
+                    >
+                      {detail.text}
+                    </span>
+                  </span>
+                  <ChevronRight
+                    className="size-4 shrink-0 text-[var(--ag-bobo)]"
+                    aria-hidden
+                  />
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
       )}
 
-      {/* Everything below belongs to particular dates. It is reported here so a host
-          can see the whole picture of what their listing charges, and each block hands
-          off to the calendar naming the job rather than the screen. */}
-      <section
-        aria-labelledby="pricing-dates-heading"
-        className="mt-4 rounded-2xl border border-slate-200 p-5"
-      >
-        <h3
-          id="pricing-dates-heading"
-          className="text-sm font-semibold text-slate-900"
-        >
+      <DateWorkRow
+        href={calendarPricingHref(summary.listingId, "promotion")}
+        label={
           <T
             t={t}
-            k="host.editor.pricing.dates_heading"
-            source="Particular dates"
+            k="host.editor.pricing.dated_offer_cta"
+            source="Create a date-based offer"
           />
-        </h3>
+        }
+      />
+    </>
+  );
 
-        <div className="mt-4 flex gap-3">
-          <CalendarRange className="mt-0.5 size-4 shrink-0 text-slate-400" aria-hidden />
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-slate-900">
-              <T
-                t={t}
-                k="host.editor.pricing.date_prices_label"
-                source="Date-specific prices"
-              />
-            </p>
-            <p className="mt-1 text-sm leading-6 text-slate-600">
-              {summary.datePriceRange
-                ? ti(
-                    t,
-                    "host.editor.pricing.date_prices_set",
-                    "{count} upcoming nights carry a price of their own, between {from} and {to}.",
-                    {
-                      count: summary.datePriceCount,
-                      from: formatYmd(summary.datePriceRange.from, locale),
-                      to: formatYmd(summary.datePriceRange.to, locale),
-                    },
-                  ).text
-                : t.resolve(
-                    "host.editor.pricing.date_prices_none",
-                    "No dates are priced differently. Every night is charged at the base rate.",
-                  ).text}
-            </p>
-            <div className="mt-3">
-              <DateWorkLink href={calendarPricingHref(summary.listingId, "pricing")}>
-                <T
-                  t={t}
-                  k="host.editor.pricing.dates_cta"
-                  source="Set prices for specific dates"
-                />
-              </DateWorkLink>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-6 flex gap-3">
-          <Tag className="mt-0.5 size-4 shrink-0 text-slate-400" aria-hidden />
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-slate-900">
-              <T
-                t={t}
-                k="host.editor.pricing.dated_promotions_label"
-                source="Date-based offers"
-              />
-            </p>
-            <p className="mt-1 text-sm leading-6 text-slate-600">
-              {datedPromotions.length === 0
-                ? t.resolve(
-                    "host.editor.pricing.dated_promotions_none",
-                    "No offer is running for particular dates.",
-                  ).text
-                : t.resolve(
-                    "host.editor.pricing.dated_promotions_some",
-                    "These run only on the dates they were created for. Open one to change it on the calendar.",
-                  ).text}
-            </p>
-            {datedPromotions.length > 0 && (
-              <ul className="mt-3 space-y-2">
-                {datedPromotions.map((promotion) => {
-                  const headline = promotionHeadline(t, promotion);
-                  const detail = promotionDetail(t, promotion);
-                  const phase =
-                    promotion.phase === "ACTIVE"
-                      ? t.resolve("host.editor.pricing.promo.running", "Running now")
-                      : t.resolve("host.editor.pricing.promo.scheduled", "Scheduled");
-                  return (
-                    <li key={promotion.id}>
-                      <Link
-                        href={datedPromotionHref(summary.listingId, promotion)}
-                        className="flex min-h-11 items-center gap-3 rounded-xl bg-slate-50 px-3 py-2 text-sm transition-colors hover:bg-slate-100 focus-visible:bg-slate-100 focus-visible:outline-none"
-                      >
-                        <span className="min-w-0 flex-1">
-                          <span
-                            className="font-medium text-slate-900"
-                            translate={headline.translated ? "no" : undefined}
-                          >
-                            {headline.text}
-                          </span>
-                          <span
-                            className="ml-2 text-slate-600"
-                            translate={phase.translated ? "no" : undefined}
-                          >
-                            {phase.text}
-                          </span>
-                          <span
-                            className="mt-0.5 block text-slate-600"
-                            translate={detail.translated ? "no" : undefined}
-                          >
-                            {detail.text}
-                          </span>
-                        </span>
-                        <ArrowRight
-                          className="size-4 shrink-0 text-slate-400"
-                          aria-hidden
-                        />
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-            <div className="mt-3">
-              <DateWorkLink
-                href={calendarPricingHref(summary.listingId, "promotion")}
-              >
-                <T
-                  t={t}
-                  k="host.editor.pricing.dated_offer_cta"
-                  source="Create a date-based offer"
-                />
-              </DateWorkLink>
-            </div>
-          </div>
-        </div>
-      </section>
+  return (
+    <div className="mx-auto w-full max-w-2xl py-6 md:py-10">
+      {heading}
+      <PricingTabs
+        groupLabel={
+          t.resolve("host.editor.pricing.tabs_label", "Pricing sections").text
+        }
+        priceLabel={t.resolve("host.editor.pricing.tab_price", "Price").text}
+        promotionsLabel={
+          t.resolve("host.editor.pricing.tab_promotions", "Promotions").text
+        }
+        promotionCount={
+          summary.activePromotionCount + summary.upcomingPromotionCount
+        }
+        price={pricePanel}
+        promotions={promotionsPanel}
+      />
     </div>
   );
 }

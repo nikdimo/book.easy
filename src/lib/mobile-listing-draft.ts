@@ -120,6 +120,10 @@ const mobileListingDraftPatchSchema = z
     // rejected by a draft save.
     quietHoursStart: draftString.optional(),
     quietHoursEnd: draftString.optional(),
+    // JSON, and a plain draft string like the rest: `[{"start":"22:00","end":"08:00"}]`.
+    // A client that only knows the pair above sends nothing here, which is exactly how
+    // a listing with one quiet period is expressed and needs no special case anywhere.
+    quietHoursPeriods: draftString.optional(),
     additionalRules: z.string().max(ADDITIONAL_RULES_MAX).optional(),
 
     amenityIds: z.array(z.string().min(1).max(100)).max(250).optional(),

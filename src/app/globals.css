@@ -278,7 +278,10 @@ body:has(.app-zoom-90) [data-radix-popper-content-wrapper] > * {
 @media (width < 64rem) {
   :root {
     --site-header-height: 5.25rem;
-    --search-filters-height: 4rem;
+    /* The chip row is one 30px Airbnb pill plus 9px of air above and below — the same
+       48px band their mobile search page leaves between the search pill and the top of
+       the map. The pill sets this number; it is not padding chosen on its own. */
+    --search-filters-height: 3rem;
   }
 }
 
@@ -557,7 +560,8 @@ font.goog-text-highlight,
    size/line-height pairs (titles-semibold_32_36, body-text_14_18 and so on), which is why
    these are absolute rem values rather than Tailwind steps: `text-sm` is 14/20 and
    Airbnb's 14 is 14/18, and that four-pixel difference is visible in a stack of cards. */
-.arrival-guide {
+.arrival-guide,
+.editor-halves {
   --ag-hof: #222222;
   --ag-foggy: #6a6a6a;
   --ag-bobo: #b0b0b0;
@@ -608,6 +612,41 @@ font.goog-text-highlight,
 @media (min-width: 1024px) {
   .ag-card[aria-current="page"] {
     box-shadow: 0 0 0 2px var(--ag-hof) inset;
+  }
+}
+
+/* A card in the left column's list.
+   Airbnb uses a *different* elevation here from the option tiles in the right pane, and
+   the difference is easy to miss until the two are side by side: a list card is
+   `--elevation-elevation1-box-shadow` — a 2%-opacity ring that reads as nothing plus a
+   soft drop shadow — while an option tile is elevation0's hard 1px #DDDDDD. So the list
+   looks like floating white cards with no frames, and the tiles look like bordered
+   choices. Only the selected list card gets a real edge. */
+.ag-list-card {
+  border-radius: 12px;
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.02),
+    0 2px 4px 0 rgba(0, 0, 0, 0.16);
+  transition: var(--ag-transition);
+}
+
+.ag-list-card:hover {
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.02),
+    0 2px 6px 0 rgba(0, 0, 0, 0.04),
+    0 4px 8px 0 rgba(0, 0, 0, 0.1);
+}
+
+.ag-list-card:active {
+  transform: scale(0.985);
+}
+
+/* Selected is marked only where a detail pane is actually beside it — below the split,
+   opening a card replaces the list, so a ring would point at a pane that is off screen. */
+@media (min-width: 1024px) {
+  .ag-list-card[aria-current="page"] {
+    box-shadow: 0 0 0 1px var(--ag-hof) inset;
   }
 }
 
@@ -742,7 +781,8 @@ font.goog-text-highlight,
 
 /* Every focus ring in the section, in one place. Airbnb rings the whole control in
    #222222 rather than tinting it, which stays visible on both white and #F7F7F7. */
-.arrival-guide :focus-visible {
+.arrival-guide :focus-visible,
+.editor-halves > div > .ag-segment :focus-visible {
   outline: 2px solid var(--ag-hof);
   outline-offset: 2px;
 }
@@ -773,7 +813,9 @@ font.goog-text-highlight,
 
 @media (prefers-reduced-motion: reduce) {
   .arrival-guide,
-  .arrival-guide * {
+  .arrival-guide *,
+  .editor-halves,
+  .editor-halves * {
     --ag-transition: none;
   }
 
@@ -782,6 +824,7 @@ font.goog-text-highlight,
   }
 
   .ag-card:active,
+  .ag-list-card:active,
   .ag-save:active:not(:disabled) {
     transform: none;
   }

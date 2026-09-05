@@ -57,40 +57,25 @@ export function PricingDefaultsEditor({
   }
 
   return (
-    <section
-      aria-labelledby="pricing-defaults-heading"
-      className="mt-6 rounded-2xl border border-slate-200 p-5"
-    >
-      <h3
-        id="pricing-defaults-heading"
-        className="text-sm font-semibold text-slate-900"
-      >
-        {i18n.resolve("host.editor.pricing.defaults_title", "Default pricing").text}
-      </h3>
-      <p className="mt-1 text-sm leading-6 text-slate-600">
-        {
-          i18n.resolve(
-            "host.editor.pricing.defaults_lead",
-            "What a night costs and what cleaning costs, unless a particular date says otherwise.",
-          ).text
-        }
-      </p>
+    // No heading and no card. The tab above says "Price", the panel's one sentence says
+    // what the two numbers are, and a bordered box round the only thing on the panel is
+    // a container drawn around a container. The button is `ag-save`, so it stays grey
+    // and in place until there is something to save rather than appearing on the first
+    // keystroke — Airbnb's rule, and the one the arrival guide already follows.
+    <section className="mt-5">
+      <DefaultPricingEditor
+        listing={context.listing}
+        formats={context.formats}
+        today={context.today}
+        onDraftChange={setDraft}
+      />
 
-      <div className="mt-5">
-        <DefaultPricingEditor
-          listing={context.listing}
-          formats={context.formats}
-          today={context.today}
-          onDraftChange={setDraft}
-        />
-      </div>
-
-      <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4">
+      <div className="mt-5 flex justify-end">
         <button
           type="button"
           disabled={!draft || pending}
           onClick={() => draft && review(draft)}
-          className="inline-flex min-h-11 items-center gap-2 rounded-full bg-slate-900 px-5 text-sm font-medium text-white transition-colors hover:bg-slate-800 focus-visible:bg-slate-800 focus-visible:outline-none disabled:bg-slate-100 disabled:text-slate-400"
+          className="ag-save inline-flex items-center gap-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ag-hof)]"
         >
           {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
           {
@@ -100,17 +85,6 @@ export function PricingDefaultsEditor({
             ).text
           }
         </button>
-        <p className="text-sm leading-6 text-slate-500">
-          {draft
-            ? i18n.resolve(
-                "host.editor.pricing.defaults_pending",
-                "Nothing changes until you confirm.",
-              ).text
-            : i18n.resolve(
-                "host.editor.pricing.defaults_current",
-                "These are the current values.",
-              ).text}
-        </p>
       </div>
 
       <ListingReviewDialog

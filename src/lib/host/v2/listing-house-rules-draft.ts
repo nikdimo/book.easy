@@ -19,10 +19,12 @@ import {
   normalizeEventPolicy,
   normalizeListingHouseRules,
   normalizePetPolicy,
+  normalizeQuietHoursPeriods,
   normalizeQuietHoursPolicy,
   normalizeSmokingPolicy,
   normalizeStayTime,
   type ListingHouseRulesInput,
+  type QuietHoursPeriod,
 } from "@/lib/host/v2/listing-house-rules";
 import type { ListingDraftData } from "@/lib/types/listing-draft";
 
@@ -37,6 +39,9 @@ export const HOUSE_RULES_DRAFT_FIELDS = [
   "smokingPolicy",
   "eventPolicy",
   "quietHoursPolicy",
+  // JSON, but a string like everything else here, so the two places that turn a draft
+  // into a publish `FormData` need no special case for it.
+  "quietHoursPeriods",
   "quietHoursStart",
   "quietHoursEnd",
   "additionalRules",
@@ -73,10 +78,50 @@ export function houseRulesFromDraft(
     smokingPolicy: normalizeSmokingPolicy(data.smokingPolicy),
     eventPolicy: normalizeEventPolicy(data.eventPolicy),
     quietHoursPolicy: normalizeQuietHoursPolicy(data.quietHoursPolicy),
+    quietHoursPeriods: draftQuietHoursPeriods(data),
     quietHoursStart: normalizeStayTime(data.quietHoursStart),
     quietHoursEnd: normalizeStayTime(data.quietHoursEnd),
     additionalRules: normalizeAdditionalRules(data.additionalRules),
   });
+}
+
+/**
+ * The draft's periods, with the legacy pair still able to win.
+ *
+ * Everywhere else the stored list is authoritative, because everywhere else the pair is
+ * derived from it. A draft is the one place two different clients write the same rule:
+ * the web flow stores the whole list, and a client that knows only
+ * `quietHoursStart`/`quietHoursEnd` patches those on their own. When the pair disagrees
+ * with the first stored period, that client is the one that just edited the rule, so its
+ * answer replaces that period — and clearing the pair clears the list, which is what a
+ * client with one pair of fields means by it. The periods below the first are left alone:
+ * they are a list the other client never saw and has no opinion about.
+ */
+function draftQuietHoursPeriods(
+  data: ListingDraftData,
+): QuietHoursPeriod[] | undefined {
+  // Unparseable JSON is read as "no array", which falls back to the pair. A draft is
+  // half-finished work, and refusing to read one over a malformed field the host never
+  // saw would cost them the rest of it.
+  const stored = parseDraftQuietHoursPeriods(data.quietHoursPeriods);
+  if (!stored || stored.length === 0) return undefined;
+  const start = normalizeStayTime(data.quietHoursStart);
+  const end = normalizeStayTime(data.quietHoursEnd);
+  if (stored[0].start === start && stored[0].end === end) return stored;
+  if (start === "" && end === "") return [];
+  return [{ start, end }, ...stored.slice(1)];
+}
+
+function parseDraftQuietHoursPeriods(
+  value: string | undefined,
+): QuietHoursPeriod[] | undefined {
+  if (!value) return undefined;
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed) ? normalizeQuietHoursPeriods(parsed) : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -99,6 +144,10 @@ export function houseRulesDraftPatch(
     smokingPolicy: value.smokingPolicy ?? "",
     eventPolicy: value.eventPolicy ?? "",
     quietHoursPolicy: value.quietHoursPolicy ?? "",
+    // Always written, empty list included, for the reason above: a patch merges, so a
+    // host who removed their second quiet period and resumed the flow later would find
+    // it back if this were omitted when the list is empty.
+    quietHoursPeriods: JSON.stringify(value.quietHoursPeriods),
     quietHoursStart: value.quietHoursStart,
     quietHoursEnd: value.quietHoursEnd,
     additionalRules: value.additionalRules,

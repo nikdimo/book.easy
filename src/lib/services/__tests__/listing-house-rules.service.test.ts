@@ -74,6 +74,9 @@ describe("getListingHouseRulesEditorData shape", () => {
         smokingPolicy: "OUTDOORS_ONLY",
         eventPolicy: "NOT_ALLOWED",
         quietHoursPolicy: "SET",
+        // The stored row predates the column, so the pair it does hold is read as the
+        // one period it has always described.
+        quietHoursPeriods: [{ start: "22:00", end: "08:00" }],
         quietHoursStart: "22:00",
         quietHoursEnd: "08:00",
         additionalRules: "No shoes indoors.",

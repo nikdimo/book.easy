@@ -3,6 +3,7 @@
 import { ArrowLeft, Loader2, Navigation, Search, X } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Tx, useI18n } from "@/lib/i18n/client";
+import { SelectField } from "@/components/shared/select-field";
 import {
   LocationLookupError,
   newSessionToken,
@@ -426,7 +427,27 @@ export function AddressModal({
         ) : (
           <div className="mt-7 flex flex-1 flex-col">
             <div className="overflow-hidden rounded-2xl border border-slate-400">
-              <label className="block border-b border-slate-300 px-4 py-2"><span className="block text-xs text-slate-500"><Tx k="host.v2.address.country" source="Country / region" /></span><select value={country} onChange={(event) => setCountry(event.target.value)} className="w-full rounded-md bg-transparent text-base outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400"><option value="MK"><Tx k="country.mk" source="North Macedonia" /></option><option value="DK"><Tx k="country.dk" source="Denmark" /></option>{country !== "MK" && country !== "DK" ? <option value={country}>{country}</option> : null}</select></label>
+              {/* The application Select rather than a native one, so the country list is
+                  ours on every platform. The trigger is the same borderless line the
+                  ModalInputs below it are; the menu portals to the body above this
+                  overlay, which is why it carries its own z-index. */}
+              <div className="block border-b border-slate-300 px-4 py-2">
+                <label className="block text-xs text-slate-500" htmlFor="address-modal-country"><Tx k="host.v2.address.country" source="Country / region" /></label>
+                <SelectField
+                  id="address-modal-country"
+                  value={country}
+                  onValueChange={setCountry}
+                  options={[
+                    { value: "MK", label: i18n.resolve("country.mk", "North Macedonia").text },
+                    { value: "DK", label: i18n.resolve("country.dk", "Denmark").text },
+                    // An imported listing can hold a country neither choice covers.
+                    // Dropping it from the list would silently rewrite the address.
+                    ...(country !== "MK" && country !== "DK" ? [{ value: country, label: country }] : []),
+                  ]}
+                  className="h-auto rounded-md border-0 bg-transparent p-0 text-base shadow-none data-[size=default]:h-auto md:data-[size=default]:h-auto focus-visible:ring-0"
+                  contentClassName="z-[60]"
+                />
+              </div>
               <ModalInput field="street" label={i18n.resolve("host.v2.address.street", "Street address").text} value={street} onChange={setStreet} invalid={confirmTouched && Boolean(confirmIssues.address)} />
               <ModalInput label={i18n.resolve("host.v2.address.unit", "Apt, suite or unit (optional)").text} value={unit} onChange={setUnit} />
               <ModalInput label={i18n.resolve("host.v2.address.postcode", "Postcode").text} value={postcode} onChange={setPostcode} />

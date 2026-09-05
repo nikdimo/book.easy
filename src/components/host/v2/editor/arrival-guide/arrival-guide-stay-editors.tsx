@@ -1,6 +1,6 @@
 "use client";
 
-import { TriangleAlert } from "lucide-react";
+import { CalendarCheck, ChevronRight, TriangleAlert } from "lucide-react";
 import {
   ArrivalDetail,
   ArrivalFieldGroup,
@@ -132,8 +132,30 @@ export function HouseRulesPane({
   saving,
   onSave,
   largestUpcomingParty,
-}: StayEditorProps & { largestUpcomingParty: number }) {
+  onOpenStayTimes,
+}: StayEditorProps & {
+  largestUpcomingParty: number;
+  /** Opens the check-in card. House rules links to the stay times rather than editing
+   *  them a second time — see `arrivalRows` on `HouseRulesRows`. */
+  onOpenStayTimes: () => void;
+}) {
   const { resolve } = useI18n();
+  const flexible = flexibleTimeLabel({ resolve });
+  const window =
+    rules.checkInTime === FLEXIBLE_STAY_TIME
+      ? flexible
+      : rules.checkInEndTime === FLEXIBLE_STAY_TIME
+        ? interpolate(
+            resolve("host.editor.arrival.check_in_after", "Check-in after {time}"),
+            { time: rules.checkInTime },
+          ).text
+        : interpolate(
+            resolve(
+              "host.editor.arrival.check_in_between",
+              "Arrive between {start} and {end}",
+            ),
+            { start: rules.checkInTime, end: rules.checkInEndTime },
+          ).text;
   // The one thing this screen knows that the host cannot see from it: they have already
   // accepted a party larger than the limit they are about to set. Never a reason to refuse
   // the save — the stay stands either way — so it is said rather than enforced, in the same
@@ -163,6 +185,38 @@ export function HouseRulesPane({
         onChange={(next) => onChange(next)}
         issues={listingHouseRulesIssues(rules)}
         idPrefix="arrival-house-rules"
+        // The pane's own title says "House rules" already.
+        showHeading={false}
+        // One row that goes to the check-in card, instead of a second pair of time
+        // pickers for the times that card is already editing — Airbnb's arrangement, and
+        // the only one where the host cannot be looking at two answers to one question.
+        arrivalRows={
+          <button
+            type="button"
+            onClick={onOpenStayTimes}
+            className="flex w-full items-center justify-between gap-4 py-3.5 text-left transition-colors hover:bg-slate-50/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400"
+          >
+            <span className="flex min-w-0 items-center gap-3">
+              <CalendarCheck className="size-4 shrink-0 text-slate-400" aria-hidden />
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-slate-900">
+                  {
+                    resolve(
+                      "host.editor.arrival.stay_times_row",
+                      "Check-in and checkout times",
+                    ).text
+                  }
+                </span>
+                <span className="mt-0.5 block truncate text-sm text-slate-500">
+                  <span className="notranslate tabular-nums" translate="no">
+                    {window}
+                  </span>
+                </span>
+              </span>
+            </span>
+            <ChevronRight className="size-4 shrink-0 text-slate-400" aria-hidden />
+          </button>
+        }
         guestFooter={
           partyWarning ? (
             <p

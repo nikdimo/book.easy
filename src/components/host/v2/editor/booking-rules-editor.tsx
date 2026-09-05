@@ -7,6 +7,7 @@ import { AlertTriangle, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { interpolate, useI18n } from "@/lib/i18n/client";
 import { Button } from "@/components/ui/button";
+import { SelectField } from "@/components/shared/select-field";
 import {
   setListingBookingMode,
   setListingChangeoverWeekday,
@@ -633,24 +634,24 @@ function ChangeoverDayField({
           ).text
         }
       </p>
-      <select
+      {/* The application Select rather than a native one, so the seven days are drawn
+          by us on every platform instead of by the operating system. The empty value
+          stays out of the options: it is "not chosen yet", which is what the placeholder
+          says, and it was never a day a host could pick. */}
+      <SelectField
         id="host-v2-changeover-day"
         value={chosen ?? ""}
         disabled={pending || !limitsValid}
-        aria-invalid={chosen ? undefined : true}
-        aria-describedby={chosen ? undefined : "host-v2-changeover-missing"}
-        onChange={(event) => choose(event.target.value)}
-        className="mt-2 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-slate-900 disabled:bg-slate-50"
-      >
-        <option value="" disabled>
-          {i18n.resolve("host.v2.calendar.changeover.none", "Choose a day…").text}
-        </option>
-        {CHANGEOVER_WEEKDAY_CHOICES.map((day) => (
-          <option key={day} value={day}>
-            {dayLabels[day]}
-          </option>
-        ))}
-      </select>
+        invalid={!chosen}
+        ariaDescribedBy={chosen ? undefined : "host-v2-changeover-missing"}
+        onValueChange={choose}
+        placeholder={i18n.resolve("host.v2.calendar.changeover.none", "Choose a day…").text}
+        options={CHANGEOVER_WEEKDAY_CHOICES.map((day) => ({
+          value: day,
+          label: dayLabels[day],
+        }))}
+        className="mt-2 min-h-11 border-slate-300 text-sm text-slate-900 shadow-none data-[size=default]:h-auto md:data-[size=default]:h-auto disabled:bg-slate-50"
+      />
 
       {chosen ? (
         <p

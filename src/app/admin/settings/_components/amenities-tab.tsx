@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { SelectField } from "@/components/shared/select-field";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -364,21 +365,18 @@ export function AmenitiesTab({
           it.
         </p>
         <div className="flex items-center gap-2">
-          <select
+          <SelectField
             value={previewLocale}
-            onChange={(event) => setPreviewLocale(event.target.value)}
-            className="flex h-9 rounded-lg border border-input bg-background px-3 text-sm"
-            aria-label="Preview language"
-          >
-            <option value="en">English</option>
-            {languages
-              .filter((language) => !language.isDefault)
-              .map((language) => (
-                <option key={language.code} value={language.code}>
-                  {language.name}
-                </option>
-              ))}
-          </select>
+            onValueChange={setPreviewLocale}
+            ariaLabel="Preview language"
+            options={[
+              { value: "en", label: "English" },
+              ...languages
+                .filter((language) => !language.isDefault)
+                .map((language) => ({ value: language.code, label: language.name })),
+            ]}
+            className="h-9 w-auto min-w-40 bg-background data-[size=default]:h-9 md:data-[size=default]:h-9"
+          />
         </div>
       </div>
 
@@ -574,17 +572,17 @@ export function AmenitiesTab({
               onChange={(event) => setNewName(event.target.value)}
               placeholder="New amenity name"
             />
-            <select
+            <SelectField
               value={newCategoryId}
-              onChange={(event) => setNewCategoryId(event.target.value)}
-              className="flex h-9 rounded-lg border border-input bg-background px-3 text-sm sm:w-[180px]"
-            >
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
+              onValueChange={setNewCategoryId}
+              ariaLabel="Group for the new amenity"
+              placeholder="Choose a group"
+              options={categories.map((category) => ({
+                value: category.id,
+                label: category.name,
+              }))}
+              className="h-9 bg-background data-[size=default]:h-9 md:data-[size=default]:h-9 sm:w-[180px]"
+            />
             <Button
               disabled={isPending || newName.trim().length < 2 || !newCategoryId}
               onClick={() =>
@@ -631,31 +629,33 @@ export function AmenitiesTab({
             </p>
           </div>
           <div className="grid gap-2 sm:grid-cols-[120px_1fr]">
-            <select
+            <SelectField
               value={aliasProvider}
-              onChange={(event) => setAliasProvider(event.target.value)}
-              className="flex h-9 rounded-lg border border-input bg-background px-3 text-sm"
-            >
-              <option value="AIRBNB">Airbnb</option>
-              <option value="BOOKING">Booking.com</option>
-              <option value="VRBO">Vrbo</option>
-            </select>
+              onValueChange={setAliasProvider}
+              ariaLabel="Provider"
+              options={[
+                { value: "AIRBNB", label: "Airbnb" },
+                { value: "BOOKING", label: "Booking.com" },
+                { value: "VRBO", label: "Vrbo" },
+              ]}
+              className="h-9 bg-background data-[size=default]:h-9 md:data-[size=default]:h-9"
+            />
             <Input
               value={aliasName}
               onChange={(event) => setAliasName(event.target.value)}
               placeholder='Provider name, e.g. "Smoke alarm"'
             />
-            <select
+            <SelectField
               value={aliasTargetId}
-              onChange={(event) => setAliasTargetId(event.target.value)}
-              className="flex h-9 rounded-lg border border-input bg-background px-3 text-sm sm:col-span-2"
-            >
-              {amenities.map((amenity) => (
-                <option key={amenity.id} value={amenity.id}>
-                  {amenity.name}
-                </option>
-              ))}
-            </select>
+              onValueChange={setAliasTargetId}
+              ariaLabel="Linger amenity to map onto"
+              placeholder="Choose an amenity"
+              options={amenities.map((amenity) => ({
+                value: amenity.id,
+                label: amenity.name,
+              }))}
+              className="h-9 bg-background data-[size=default]:h-9 md:data-[size=default]:h-9 sm:col-span-2"
+            />
             <Button
               variant="secondary"
               className="sm:col-span-2"

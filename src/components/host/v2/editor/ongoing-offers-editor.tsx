@@ -30,10 +30,10 @@ import {
  * not charge" check are all business rules, and the point of giving each setting one
  * home is defeated if the rules get a second implementation on the way.
  *
- * Dated offers stay the calendar's. They are reported once, in the "Particular dates"
- * section below this editor, with links that carry their range to the calendar. Keeping
- * them out of this list makes "Ongoing offers" a truthful scope instead of a second,
- * duplicate list of every promotion.
+ * Dated offers stay the calendar's. They are listed once, below this editor on the same
+ * Promotions tab, with links that carry their own range to the calendar. Keeping them
+ * out of this editor's list is what makes it a truthful scope — every offer here is one
+ * with no start and no end — rather than a second, duplicate list of every promotion.
  */
 export function OngoingOffersEditor({
   context,
@@ -86,41 +86,40 @@ export function OngoingOffersEditor({
         : i18n.resolve("host.v2.calendar.cta.save_promotion", "Save changes").text;
 
   return (
-    <section
-      aria-labelledby="pricing-offers-heading"
-      className="mt-4 rounded-2xl border border-slate-200 p-5"
-    >
-      <h3 id="pricing-offers-heading" className="text-sm font-semibold text-slate-900">
-        {i18n.resolve("host.editor.pricing.offers_title", "Ongoing offers").text}
-      </h3>
-      <p className="mt-1 text-sm leading-6 text-slate-600">
-        {
-          i18n.resolve(
-            "host.editor.pricing.offers_lead",
-            "Discounts that run on every date until you end them. Offers for particular dates are set on the calendar.",
-          ).text
-        }
-      </p>
+    // No heading and no card, for the same reason the price panel has neither: the tab
+    // above says "Promotions", the panel's one sentence says what an ongoing offer is,
+    // and the "How offers work" popup beside it holds everything that used to be an
+    // expanded six-bullet list under these controls.
+    <section className="mt-5">
+      <OngoingPromotionEditor
+        // Keyed on the offer being edited, so switching rows starts the form from
+        // that offer's own saved values rather than from the previous one's.
+        key={`${mode}:${promotionEditorId ?? ""}`}
+        listing={context.listing}
+        formats={context.formats}
+        today={context.today}
+        promotionEditorId={promotionEditorId}
+        mode={mode}
+        onModeChange={(next) => {
+          if (next === "list") backToList();
+          else setMode(next);
+        }}
+        onDraftChange={setDraft}
+      />
 
-      <div className="mt-5">
-        <OngoingPromotionEditor
-          // Keyed on the offer being edited, so switching rows starts the form from
-          // that offer's own saved values rather than from the previous one's.
-          key={`${mode}:${promotionEditorId ?? ""}`}
-          listing={context.listing}
-          formats={context.formats}
-          today={context.today}
-          promotionEditorId={promotionEditorId}
-          mode={mode}
-          onModeChange={(next) => {
-            if (next === "list") backToList();
-            else setMode(next);
-          }}
-          onDraftChange={setDraft}
-        />
-      </div>
-
-      <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-4">
+      {/* Cancel first, then the action, and both at the trailing edge — the same
+          arrangement the arrival guide uses, so the primary button sits where a host
+          has already learned to look for it. */}
+      <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
+        {!listOpen ? (
+          <button
+            type="button"
+            onClick={backToList}
+            className="min-h-11 rounded-lg px-4 text-sm font-medium text-[var(--ag-foggy)] transition-colors hover:bg-[var(--ag-faint)] hover:text-[var(--ag-hof)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ag-hof)]"
+          >
+            {i18n.resolve("host.v2.calendar.cancel", "Cancel").text}
+          </button>
+        ) : null}
         <button
           type="button"
           disabled={!listOpen && (!draft || pending)}
@@ -132,20 +131,11 @@ export function OngoingOffersEditor({
             }
             if (draft) review(draft);
           }}
-          className="inline-flex min-h-11 items-center gap-2 rounded-full bg-slate-900 px-5 text-sm font-medium text-white transition-colors hover:bg-slate-800 focus-visible:bg-slate-800 focus-visible:outline-none disabled:bg-slate-100 disabled:text-slate-400"
+          className="ag-save inline-flex items-center gap-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ag-hof)]"
         >
           {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
           {ctaText}
         </button>
-        {!listOpen ? (
-          <button
-            type="button"
-            onClick={backToList}
-            className="min-h-11 rounded-full px-4 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:bg-slate-100 focus-visible:outline-none"
-          >
-            {i18n.resolve("host.v2.calendar.cancel", "Cancel").text}
-          </button>
-        ) : null}
       </div>
 
       <ListingReviewDialog

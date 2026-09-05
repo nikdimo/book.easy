@@ -85,6 +85,35 @@ export type EventPolicy = (typeof EVENT_POLICIES)[number];
 export const QUIET_HOURS_POLICIES = ["NONE", "SET"] as const;
 export type QuietHoursPolicy = (typeof QUIET_HOURS_POLICIES)[number];
 
+/**
+ * One stretch of quiet, on the wall clock.
+ *
+ * `end` is never compared against `start`. 22:00–08:00 crosses midnight and is the
+ * ordinary case; 15:00–17:00 is the afternoon rule a host with small children or a
+ * shared wall actually has; and one listing may hold both at once, which is why this is
+ * a period rather than the pair of columns it started as. The only pair refused is
+ * start === end — see `quietHoursPeriodIssues`.
+ *
+ * "" in either end is a row the host is still filling in. It is kept rather than dropped
+ * so validation can say which row is unfinished, exactly as a blank stay time is.
+ */
+/* A type alias rather than an interface on purpose: this is written straight into a
+ * Prisma `Json` column, and only an alias carries the implicit index signature that
+ * `InputJsonValue` asks for. */
+export type QuietHoursPeriod = {
+  start: string;
+  end: string;
+};
+
+/**
+ * How many stretches one listing may declare.
+ *
+ * Six is not a storage limit — it is the point past which a guest stops reading a list
+ * of hours and starts ignoring all of them. A host who needs more is describing
+ * something `additionalRules` says better in a sentence than a table of ranges does.
+ */
+export const QUIET_HOURS_PERIODS_MAX = 6;
+
 /** The policy fields, for callers that need to walk them (rows, snapshots, diffs). */
 export const HOUSE_RULE_POLICY_FIELDS = [
   "petPolicy",
@@ -137,19 +166,64 @@ export interface ListingHouseRulesInput {
   smokingPolicy: SmokingPolicy | null;
   eventPolicy: EventPolicy | null;
   quietHoursPolicy: QuietHoursPolicy | null;
-  /** "HH:MM" when `quietHoursPolicy` is SET, otherwise "". Crossing midnight
-   *  (22:00–08:00) is the normal case, so the two are never compared. */
+  /**
+   * Every stretch of quiet the host declared, in the order they wrote them.
+   *
+   * Optional on the way in and always present on the way out of
+   * `normalizeListingHouseRules`. A caller that predates multiple periods — the classic
+   * listing form, a mobile draft, a listing row written before the column existed —
+   * sends the pair below and nothing else, and normalisation reads that pair as the one
+   * period it has always been. Sending a non-empty array makes the array authoritative.
+   */
+  quietHoursPeriods?: QuietHoursPeriod[];
+  /**
+   * The first period, mirrored, when `quietHoursPolicy` is SET; "" otherwise.
+   *
+   * Kept rather than replaced because four surfaces still read this pair: the classic
+   * listing form, the mobile draft contract, the booking snapshot, and every listing row
+   * written before periods existed. Never set by hand —
+   * `normalizeListingHouseRules` derives it from `quietHoursPeriods[0]`, so the two
+   * cannot drift into saying different things about the same listing.
+   */
   quietHoursStart: string;
   quietHoursEnd: string;
   /** Exactly what the host wrote, or "" for none. */
   additionalRules: string;
 }
 
+/**
+ * The same value once `normalizeListingHouseRules` has been through it.
+ *
+ * The only difference is that `quietHoursPeriods` is no longer optional: normalising is
+ * the step that turns whatever the caller had — an array, a legacy pair, nothing at all
+ * — into the one list every reader downstream can rely on being there.
+ */
+export type NormalizedListingHouseRules = ListingHouseRulesInput & {
+  quietHoursPeriods: QuietHoursPeriod[];
+};
+
 export type StayTimeIssue = "NOT_A_TIME";
 export type MaxGuestsIssue = "NOT_A_NUMBER" | "TOO_LOW" | "TOO_HIGH";
 /** `REQUIRED` is only ever raised with `requireAnswers`, which is the create flow. */
 export type PolicyIssue = "REQUIRED" | "NOT_A_CHOICE";
 export type QuietHoursTimeIssue = "REQUIRED" | "NOT_A_TIME";
+/**
+ * What is wrong with one quiet-hours period.
+ *
+ * `EMPTY_RANGE` is start === end: read one way it is no quiet hours at all, read the
+ * other it is the whole day, and no guest should have to guess which their host meant.
+ * `DUPLICATE` and `OVERLAP` are refused rather than merged — a host who entered
+ * 22:00–08:00 twice has made a mistake worth showing them, and rewriting their answer
+ * into one they never chose is what this module avoids everywhere else.
+ */
+export type QuietHoursPeriodIssue =
+  | "REQUIRED"
+  | "NOT_A_TIME"
+  | "EMPTY_RANGE"
+  | "DUPLICATE"
+  | "OVERLAP";
+/** The list's own fault, on top of anything wrong with a single period. */
+export type QuietHoursPeriodsIssue = QuietHoursPeriodIssue | "TOO_MANY";
 export type AdditionalRulesIssue = "TOO_LONG";
 
 export interface ListingHouseRulesIssues {
@@ -163,6 +237,16 @@ export interface ListingHouseRulesIssues {
   quietHoursPolicy?: PolicyIssue;
   quietHoursStart?: QuietHoursTimeIssue;
   quietHoursEnd?: QuietHoursTimeIssue;
+  /**
+   * Everything the pair above cannot express: a *second* period that is unfinished or
+   * not a time, two periods that collide, more of them than a guest will read.
+   *
+   * The first period keeps reporting through `quietHoursStart`/`quietHoursEnd` so that
+   * every caller written before this field — publish readiness, the create flow's
+   * summary, the row that focuses the sheet — keeps working with no change at all, and
+   * so a single blank field never produces two errors on one screen.
+   */
+  quietHoursPeriods?: QuietHoursPeriodsIssue;
   additionalRules?: AdditionalRulesIssue;
 }
 
@@ -222,6 +306,42 @@ export function normalizeQuietHoursPolicy(value: unknown): QuietHoursPolicy | nu
   return normalizePolicy(QUIET_HOURS_POLICIES, value);
 }
 
+/**
+ * The declared quiet-hour periods, from whatever the caller happened to have.
+ *
+ * A non-empty array wins. Anything else — undefined, `[]`, a JSON column holding
+ * something a hand-edited row put there — falls back to the legacy `start`/`end` pair,
+ * which is exactly one period whenever it holds anything. That order is what makes an
+ * existing single-range listing open with its range intact, and what stops an empty
+ * array written by an older build from erasing one.
+ *
+ * Times are normalised, never repaired. "" survives so `quietHoursPeriodIssues` can call
+ * the row unfinished instead of this dropping it and the host losing a half-typed
+ * period; an off-grid "14:15" from an import survives for the same reason it does in
+ * `normalizeStayTime`. A row blank at both ends is the residue of a removed period
+ * rather than a period, so it is the one thing dropped here.
+ */
+export function normalizeQuietHoursPeriods(
+  periods: unknown,
+  legacy?: { start?: string | null; end?: string | null },
+): QuietHoursPeriod[] {
+  const fromArray = Array.isArray(periods)
+    ? periods
+        .map((entry) => {
+          const raw = (entry ?? {}) as Record<string, unknown>;
+          return {
+            start: normalizeStayTime(typeof raw.start === "string" ? raw.start : ""),
+            end: normalizeStayTime(typeof raw.end === "string" ? raw.end : ""),
+          };
+        })
+        .filter((period) => period.start !== "" || period.end !== "")
+    : [];
+  if (fromArray.length > 0) return fromArray;
+  const start = normalizeStayTime(legacy?.start);
+  const end = normalizeStayTime(legacy?.end);
+  return start === "" && end === "" ? [] : [{ start, end }];
+}
+
 /** Trimmed, truncated nowhere: an over-long value is *reported* by
  *  `additionalRulesIssue` rather than silently cut, because a rule ending mid-sentence
  *  is a rule the host never wrote. */
@@ -231,12 +351,18 @@ export function normalizeAdditionalRules(value: string | null | undefined): stri
 
 export function normalizeListingHouseRules(
   input: ListingHouseRulesInput,
-): ListingHouseRulesInput {
+): NormalizedListingHouseRules {
   const quietHoursPolicy = normalizeQuietHoursPolicy(input.quietHoursPolicy);
-  // A host who turns quiet hours off leaves no half-set pair behind: NONE and a pair of
-  // times cannot both be true of one listing, and a stale pair left in the row is how a
+  // A host who turns quiet hours off leaves nothing behind: NONE and a list of periods
+  // cannot both be true of one listing, and a stale period left in the row is how a
   // later read resurrects a rule the host switched off.
-  const keepTimes = quietHoursPolicy === "SET";
+  const quietHoursPeriods =
+    quietHoursPolicy === "SET"
+      ? normalizeQuietHoursPeriods(input.quietHoursPeriods, {
+          start: input.quietHoursStart,
+          end: input.quietHoursEnd,
+        })
+      : [];
   return {
     checkInTime: normalizeStayTime(input.checkInTime),
     checkInEndTime: normalizeStayTime(input.checkInEndTime),
@@ -246,8 +372,11 @@ export function normalizeListingHouseRules(
     smokingPolicy: normalizeSmokingPolicy(input.smokingPolicy),
     eventPolicy: normalizeEventPolicy(input.eventPolicy),
     quietHoursPolicy,
-    quietHoursStart: keepTimes ? normalizeStayTime(input.quietHoursStart) : "",
-    quietHoursEnd: keepTimes ? normalizeStayTime(input.quietHoursEnd) : "",
+    quietHoursPeriods,
+    // Derived, never carried through: the pair is a view of the first period, and the
+    // only way to keep it from contradicting the list is to never write it separately.
+    quietHoursStart: quietHoursPeriods[0]?.start ?? "",
+    quietHoursEnd: quietHoursPeriods[0]?.end ?? "",
     additionalRules: normalizeAdditionalRules(input.additionalRules),
   };
 }
@@ -262,6 +391,87 @@ function stayTimeIssue(value: string): StayTimeIssue | undefined {
 function quietHoursTimeIssue(value: string): QuietHoursTimeIssue | undefined {
   if (value === FLEXIBLE_STAY_TIME) return "REQUIRED";
   return STAY_TIME_PATTERN.test(value) ? undefined : "NOT_A_TIME";
+}
+
+const MINUTES_IN_DAY = 24 * 60;
+
+/** Wall-clock "HH:MM" as minutes since midnight. Only ever called on a value
+ *  `STAY_TIME_PATTERN` has already accepted. */
+function minutesOfDay(time: string): number {
+  const [hours, minutes] = time.split(":");
+  return Number(hours) * 60 + Number(minutes);
+}
+
+/**
+ * One period as the one or two spans it really occupies on a 24-hour clock.
+ *
+ * 15:00–17:00 is a single span. 22:00–08:00 is two — the end of one day and the start of
+ * the next — which is the whole reason two periods cannot be compared by putting four
+ * numbers in order. Half-open, so a period ending at 08:00 and one starting at 08:00 do
+ * not overlap: no minute belongs to both, and refusing that pair would stop a host from
+ * describing a night rule and a morning one that meet.
+ */
+function quietHoursSpans(period: QuietHoursPeriod): [number, number][] {
+  const start = minutesOfDay(period.start);
+  const end = minutesOfDay(period.end);
+  if (end > start) return [[start, end]];
+  return [
+    [start, MINUTES_IN_DAY],
+    [0, end],
+  ];
+}
+
+function quietHoursOverlap(a: QuietHoursPeriod, b: QuietHoursPeriod): boolean {
+  return quietHoursSpans(a).some(([aStart, aEnd]) =>
+    quietHoursSpans(b).some(([bStart, bEnd]) => aStart < bEnd && bStart < aEnd),
+  );
+}
+
+/**
+ * What is wrong with each period, by index.
+ *
+ * Per index rather than one verdict for the list, because the sheet puts its message
+ * under the row that has to change and a host with three periods should not have to work
+ * out which one a complaint is about.
+ *
+ * A period is only ever compared against the periods *above* it, and only against those
+ * that are themselves usable. Blaming both halves of a collision would put two messages
+ * on the screen for one mistake, and comparing against a row that is still half typed
+ * would report a clash the host cannot act on until they finish that row anyway.
+ */
+export function quietHoursPeriodIssues(
+  periods: readonly QuietHoursPeriod[],
+): (QuietHoursPeriodIssue | undefined)[] {
+  const issues: (QuietHoursPeriodIssue | undefined)[] = [];
+  periods.forEach((period, index) => {
+    if (period.start === FLEXIBLE_STAY_TIME || period.end === FLEXIBLE_STAY_TIME) {
+      issues.push("REQUIRED");
+      return;
+    }
+    if (!STAY_TIME_PATTERN.test(period.start) || !STAY_TIME_PATTERN.test(period.end)) {
+      issues.push("NOT_A_TIME");
+      return;
+    }
+    if (period.start === period.end) {
+      issues.push("EMPTY_RANGE");
+      return;
+    }
+    const earlier = periods.slice(0, index).filter((_, i) => issues[i] === undefined);
+    if (
+      earlier.some(
+        (other) => other.start === period.start && other.end === period.end,
+      )
+    ) {
+      issues.push("DUPLICATE");
+      return;
+    }
+    if (earlier.some((other) => quietHoursOverlap(other, period))) {
+      issues.push("OVERLAP");
+      return;
+    }
+    issues.push(undefined);
+  });
+  return issues;
 }
 
 export function additionalRulesIssue(value: string): AdditionalRulesIssue | undefined {
@@ -313,12 +523,29 @@ export function listingHouseRulesIssues(
   }
 
   // Both ends or neither, always — including in the editor, where a host who says quiet
-  // hours apply and leaves one end blank has written a rule no guest could follow.
+  // hours apply and leaves one end blank has written a rule no guest could follow. An
+  // empty list of periods reports through the same pair, because "quiet hours apply" with
+  // no times in it is the same half-answered rule a blank pair has always been.
   if (value.quietHoursPolicy === "SET") {
     const start = quietHoursTimeIssue(value.quietHoursStart);
     if (start) issues.quietHoursStart = start;
     const end = quietHoursTimeIssue(value.quietHoursEnd);
     if (end) issues.quietHoursEnd = end;
+
+    // Everything the pair cannot say. The first period's blank and malformed times are
+    // already reported above, so they are not repeated here — the rest (its start
+    // meeting its own end, and anything at all wrong with the periods below it) has no
+    // other field to be reported through.
+    if (value.quietHoursPeriods.length > QUIET_HOURS_PERIODS_MAX) {
+      issues.quietHoursPeriods = "TOO_MANY";
+    } else {
+      const periodIssue = quietHoursPeriodIssues(value.quietHoursPeriods).find(
+        (issue, index) =>
+          issue !== undefined &&
+          !(index === 0 && (issue === "REQUIRED" || issue === "NOT_A_TIME")),
+      );
+      if (periodIssue) issues.quietHoursPeriods = periodIssue;
+    }
   }
 
   const additional = additionalRulesIssue(value.additionalRules);
@@ -391,8 +618,9 @@ export function houseRuleRowId(idPrefix: string, row: HouseRuleRow): string {
 /**
  * The rows a set of issues belongs to, in page order and without repeats.
  *
- * Both quiet-hours times are edited in the quiet-hours row, so a half-set pair is one
- * problem to fix rather than two entries in a summary pointing at the same sheet.
+ * Every quiet-hours time is edited in the quiet-hours row, however many periods there
+ * are, so a half-set range is one problem to fix rather than several entries in a
+ * summary all pointing at the same sheet.
  */
 export function houseRuleRowsWithIssues(
   issues: ListingHouseRulesIssues,
@@ -401,7 +629,9 @@ export function houseRuleRowsWithIssues(
   for (const row of HOUSE_RULE_ROW_ORDER) {
     if (issues[row] !== undefined) rows.add(row);
   }
-  if (issues.quietHoursStart || issues.quietHoursEnd) rows.add("quietHoursPolicy");
+  if (issues.quietHoursStart || issues.quietHoursEnd || issues.quietHoursPeriods) {
+    rows.add("quietHoursPolicy");
+  }
   return HOUSE_RULE_ROW_ORDER.filter((row) => rows.has(row));
 }
 
@@ -413,7 +643,9 @@ export function answeredPolicyCount(input: ListingHouseRulesInput): number {
     // "Set quiet hours" with a missing end is not an answered rule: no guest could
     // follow it, and publishing it would print half a sentence on the listing.
     if (field === "quietHoursPolicy" && value.quietHoursPolicy === "SET") {
-      return value.quietHoursStart !== "" && value.quietHoursEnd !== "";
+      return value.quietHoursPeriods.every(
+        (period) => period.start !== "" && period.end !== "",
+      ) && value.quietHoursPeriods.length > 0;
     }
     return true;
   }).length;
@@ -441,6 +673,7 @@ export function emptyListingHouseRules(): ListingHouseRulesInput {
     smokingPolicy: null,
     eventPolicy: null,
     quietHoursPolicy: null,
+    quietHoursPeriods: [],
     quietHoursStart: "",
     quietHoursEnd: "",
     additionalRules: "",
@@ -518,6 +751,16 @@ export interface HouseRulesSnapshot {
   smokingPolicy: SmokingPolicy | null;
   eventPolicy: EventPolicy | null;
   quietHoursPolicy: QuietHoursPolicy | null;
+  /**
+   * Every complete period, frozen as the guest agreed to it.
+   *
+   * Added to v1 rather than starting a v2: a booking written before this field existed
+   * simply has no array, and `parseHouseRulesSnapshot` rebuilds one from the pair below
+   * — which is what that booking's rules always were. Nothing about how an older row
+   * reads changes, so there is no shape for a version number to distinguish.
+   */
+  quietHoursPeriods: QuietHoursPeriod[];
+  /** The first period, mirrored, for the readers that predate the array. */
   quietHoursStart: string | null;
   quietHoursEnd: string | null;
   additionalRules: string | null;
@@ -540,6 +783,15 @@ export interface ListingHouseRulesRow {
   smokingPolicy: string | null;
   eventPolicy: string | null;
   quietHoursPolicy: string | null;
+  /**
+   * The `Listing.quietHoursPeriods` JSON column, straight off the row.
+   *
+   * `unknown` because that is honestly what a JSON column is, and optional because most
+   * readers of a listing row have no reason to select it — absent reads as "no array",
+   * which falls back to the pair below and is exactly what every row written before the
+   * column existed says.
+   */
+  quietHoursPeriods?: unknown;
   quietHoursStart: string | null;
   quietHoursEnd: string | null;
   additionalRules: string | null;
@@ -564,7 +816,16 @@ export function houseRulesSnapshot(listing: ListingHouseRulesRow): HouseRulesSna
     eventPolicy: normalizeEventPolicy(listing.eventPolicy),
     quietHoursPolicy,
     // Times only mean anything alongside SET, and a snapshot that carried them without
-    // it would read as a quiet-hours rule the listing did not have.
+    // it would read as a quiet-hours rule the listing did not have. Half-written periods
+    // are dropped for the same reason: a booking must freeze a rule the guest could
+    // actually follow, not one end of one.
+    quietHoursPeriods:
+      quietHoursPolicy === "SET"
+        ? normalizeQuietHoursPeriods(listing.quietHoursPeriods, {
+            start: listing.quietHoursStart,
+            end: listing.quietHoursEnd,
+          }).filter((period) => period.start !== "" && period.end !== "")
+        : [],
     quietHoursStart: quietHoursPolicy === "SET" ? orNull(listing.quietHoursStart) : null,
     quietHoursEnd: quietHoursPolicy === "SET" ? orNull(listing.quietHoursEnd) : null,
     additionalRules: orNull(listing.additionalRules),
@@ -587,6 +848,9 @@ export function parseHouseRulesSnapshot(value: unknown): HouseRulesSnapshot | nu
     eventPolicy: typeof raw.eventPolicy === "string" ? raw.eventPolicy : null,
     quietHoursPolicy:
       typeof raw.quietHoursPolicy === "string" ? raw.quietHoursPolicy : null,
+    // Absent on every booking written before periods existed, which is exactly the case
+    // the pair below covers.
+    quietHoursPeriods: raw.quietHoursPeriods,
     quietHoursStart:
       typeof raw.quietHoursStart === "string" ? raw.quietHoursStart : null,
     quietHoursEnd: typeof raw.quietHoursEnd === "string" ? raw.quietHoursEnd : null,
@@ -608,6 +872,10 @@ export function houseRulesFromRow(listing: ListingHouseRulesRow): ListingHouseRu
     smokingPolicy: normalizeSmokingPolicy(listing.smokingPolicy),
     eventPolicy: normalizeEventPolicy(listing.eventPolicy),
     quietHoursPolicy: normalizeQuietHoursPolicy(listing.quietHoursPolicy),
+    quietHoursPeriods: normalizeQuietHoursPeriods(listing.quietHoursPeriods, {
+      start: listing.quietHoursStart,
+      end: listing.quietHoursEnd,
+    }),
     quietHoursStart: normalizeStayTime(listing.quietHoursStart),
     quietHoursEnd: normalizeStayTime(listing.quietHoursEnd),
     additionalRules: normalizeAdditionalRules(listing.additionalRules),
@@ -629,10 +897,30 @@ export function houseRulesRowData(rules: ListingHouseRulesInput) {
     smokingPolicy: value.smokingPolicy,
     eventPolicy: value.eventPolicy,
     quietHoursPolicy: value.quietHoursPolicy,
+    // An array, never NULL. `[]` is a perfectly good "no periods", it needs no
+    // `Prisma.DbNull` (which this module could not name without importing Prisma), and
+    // a row holding `[]` reads back through the same legacy fallback a NULL one does.
+    quietHoursPeriods: value.quietHoursPeriods,
     quietHoursStart: value.quietHoursStart === "" ? null : value.quietHoursStart,
     quietHoursEnd: value.quietHoursEnd === "" ? null : value.quietHoursEnd,
     additionalRules: value.additionalRules === "" ? null : value.additionalRules,
   };
+}
+
+/** Whether two lists of periods say the same thing, in the same order. Order matters:
+ *  it is the order the host wrote them in and the order a guest reads them in, so
+ *  reordering them is a change worth saving. */
+export function sameQuietHoursPeriods(
+  a: readonly QuietHoursPeriod[],
+  b: readonly QuietHoursPeriod[],
+): boolean {
+  return (
+    a.length === b.length &&
+    a.every(
+      (period, index) =>
+        period.start === b[index].start && period.end === b[index].end,
+    )
+  );
 }
 
 /** Whether two rule sets differ — the editor's "is this worth a write" test, and the
@@ -652,8 +940,10 @@ export function sameListingHouseRules(
     left.smokingPolicy === right.smokingPolicy &&
     left.eventPolicy === right.eventPolicy &&
     left.quietHoursPolicy === right.quietHoursPolicy &&
-    left.quietHoursStart === right.quietHoursStart &&
-    left.quietHoursEnd === right.quietHoursEnd &&
+    // The whole list, not the mirrored pair: two rule sets that agree about their first
+    // period and differ about a second are different rules, and comparing only the pair
+    // is how the editor would decide a host's new period was not worth writing.
+    sameQuietHoursPeriods(left.quietHoursPeriods, right.quietHoursPeriods) &&
     left.additionalRules === right.additionalRules
   );
 }

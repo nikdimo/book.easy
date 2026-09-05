@@ -783,9 +783,29 @@ model Listing {
    */
   quietHoursPolicy               ListingQuietHoursPolicy?
   /**
+   * Every stretch of quiet the host declared: `[{ "start": "22:00", "end": "08:00" }]`.
+   *
+   * Hosts really do have more than one — the overnight rule and the afternoon one a
+   * shared wall or a sleeping child needs — and a single pair of columns can only ever
+   * hold the first of them. JSON rather than a child table because these are two wall
+   * clock strings with no identity, nothing joins to them, nothing queries across them,
+   * and the only reader that wants them wants all of them at once with the listing.
+   *
+   * NULL on every row written before this column existed, and NULL and `[]` read
+   * identically: both fall back to the pair below, which is the one period that listing
+   * has always had. See `normalizeQuietHoursPeriods`.
+   */
+  quietHoursPeriods              Json?
+  /**
    * Wall-clock "HH:MM", same convention and reasoning as checkInTime. Both set or
    * both NULL, and 22:00–08:00 crosses midnight legitimately, so there is no
    * start-before-end rule to enforce.
+   *
+   * The *first* period, mirrored, since quiet hours became a list. Kept written because
+   * the classic listing form, the mobile draft contract and every booking snapshot taken
+   * before periods existed all read this pair, and because one period is still what
+   * almost every listing has. Derived from `quietHoursPeriods[0]` on every write, never
+   * edited on its own.
    */
   quietHoursStart                String?
   quietHoursEnd                  String?

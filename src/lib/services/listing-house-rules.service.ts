@@ -20,6 +20,7 @@ export const LISTING_HOUSE_RULES_SELECT = {
   smokingPolicy: true,
   eventPolicy: true,
   quietHoursPolicy: true,
+  quietHoursPeriods: true,
   quietHoursStart: true,
   quietHoursEnd: true,
   additionalRules: true,

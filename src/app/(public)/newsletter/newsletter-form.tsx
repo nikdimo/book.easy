@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { Tx, useI18n } from "@/lib/i18n/client";
 import { Checkbox } from "@/components/ui/checkbox";
+import { SelectField } from "@/components/shared/select-field";
 
 export function NewsletterForm() {
   const t = useI18n();
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [audience, setAudience] = useState("GUEST");
 
   async function submit(formData: FormData) {
     setPending(true);
@@ -84,19 +86,30 @@ export function NewsletterForm() {
           className="mt-2 w-full rounded-lg border bg-background px-4 py-3"
         />
       </label>
-      <label className="block">
-        <span className="text-sm font-medium">
+      <div className="block">
+        <label className="text-sm font-medium" htmlFor="newsletter-audience">
           <Tx k="newsletter.interest" source="I am interested in" />
-        </span>
-        <select name="audience" className="mt-2 w-full rounded-lg border bg-background px-4 py-3">
-          <option value="GUEST">
-            <Tx k="newsletter.guest_offers" source="Travel and guest offers" />
-          </option>
-          <option value="HOST">
-            <Tx k="newsletter.host_offers" source="Hosting news and offers" />
-          </option>
-        </select>
-      </label>
+        </label>
+        {/* The application Select instead of the browser's. The hidden field keeps the
+            posted `audience` value exactly what it was. */}
+        <SelectField
+          id="newsletter-audience"
+          value={audience}
+          onValueChange={setAudience}
+          options={[
+            {
+              value: "GUEST",
+              label: t.resolve("newsletter.guest_offers", "Travel and guest offers").text,
+            },
+            {
+              value: "HOST",
+              label: t.resolve("newsletter.host_offers", "Hosting news and offers").text,
+            },
+          ]}
+          className="mt-2 h-auto rounded-lg bg-background px-4 py-3 data-[size=default]:h-auto md:data-[size=default]:h-auto"
+        />
+        <input type="hidden" name="audience" value={audience} />
+      </div>
       <label className="flex items-start gap-3 text-sm">
         <Checkbox required name="consent" className="mt-1" />
         <span>

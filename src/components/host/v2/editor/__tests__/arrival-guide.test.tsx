@@ -139,13 +139,15 @@ describe("ArrivalGuideSection", () => {
     expect(render({ status: "DRAFT" })).not.toContain("/properties/seaside-flat");
   });
 
-  it("keeps the rest of the editor reachable without the rail", () => {
+  it("leaves the way back to the other half to the halves toggle", () => {
     const html = render();
 
-    // "Your space" and the back arrow both return to the editor's index, and the gear
-    // menu carries the sections the rail used to list.
-    expect(html).toContain('href="/host/listings/listing-1"');
-    expect(html).toContain("Your space");
-    expect(html).toContain("Listing sections");
+    // The section used to carry its own "Listing editor" heading, its own copy of the
+    // toggle and a gear holding the rail's sections. All three moved up to
+    // `EditorHalves`, which wraps both halves — so the switch is on both sides instead
+    // of only this one. Nothing here should be a second door to the same room.
+    expect(html).not.toContain("Your space");
+    expect(html).not.toContain("Listing sections");
+    expect(html).not.toContain("Listing editor");
   });
 });

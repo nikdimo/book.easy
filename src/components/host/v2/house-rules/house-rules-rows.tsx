@@ -11,6 +11,7 @@ import {
   PartyPopper,
   PawPrint,
   Plus,
+  Trash2,
   Users,
   VolumeX,
 } from "lucide-react";
@@ -30,12 +31,17 @@ import {
   FLEXIBLE_STAY_TIME,
   MAX_GUESTS_MAX,
   MAX_GUESTS_MIN,
+  QUIET_HOURS_PERIODS_MAX,
   houseRuleRowId,
+  normalizeQuietHoursPeriods,
+  quietHoursPeriodIssues,
   stayTimeChoices,
   type EventPolicy,
   type ListingHouseRulesInput,
   type ListingHouseRulesIssues,
   type PetPolicy,
+  type QuietHoursPeriod,
+  type QuietHoursPeriodIssue,
   type QuietHoursPolicy,
   type SmokingPolicy,
 } from "@/lib/host/v2/listing-house-rules";
@@ -49,7 +55,8 @@ import {
   petPolicyLabel,
   quietHoursChoices,
   quietHoursNoneLabel,
-  quietHoursRangeLabel,
+  quietHoursPeriodError,
+  quietHoursPeriodsLabel,
   requiredBadgeLabel,
   smokingPolicyChoices,
   smokingPolicyLabel,
@@ -86,6 +93,8 @@ export function HouseRulesRows({
   idPrefix,
   requireAnswers = false,
   arrivalHeader,
+  arrivalRows,
+  showHeading = true,
   rulesHeader,
   guestFooter,
 }: {
@@ -121,6 +130,24 @@ export function HouseRulesRows({
   /** Rendered above the arrival rows. The flow says here that these three already
    *  carry usable values, so a host knows they are looking at defaults, not blanks. */
   arrivalHeader?: React.ReactNode;
+  /**
+   * Replaces the two stay-time rows entirely.
+   *
+   * The Arrival guide passes a single row here that links to its own check-in card,
+   * because that card already edits these times a few centimetres up the same screen. Two
+   * editors for one setting on one screen is not a convenience — it is a question about
+   * which one is authoritative that the host should never have to ask. Everywhere else
+   * these rows are the only editor there is, so they stay.
+   */
+  arrivalRows?: React.ReactNode;
+  /**
+   * Whether to draw the "House rules" title and its intro.
+   *
+   * False where the surrounding pane already carries a heading of its own. Two `<h1>`s
+   * saying "House rules" one above the other is what the Arrival guide had before this
+   * existed.
+   */
+  showHeading?: boolean;
   /** Rendered above the four policy rows. The flow puts its progress line and its one
    *  error summary here, which is where a host is looking when they are stuck. */
   rulesHeader?: React.ReactNode;
@@ -149,7 +176,7 @@ export function HouseRulesRows({
 
   return (
     <div>
-      <div className="flex items-start justify-between gap-4">
+      <div className={cn("flex items-start justify-between gap-4", !showHeading && "sr-only")}>
         <div className="min-w-0">
           <h1 className="font-heading text-[1.75rem] font-semibold tracking-[-0.03em] text-slate-950 sm:text-[2rem]">
             <Tx k="listing.house_rules.heading" source="House rules" />
@@ -173,26 +200,30 @@ export function HouseRulesRows({
       </div>
 
       <RuleSection title={sections.arrival} id={`${idPrefix}-arrival`} header={arrivalHeader}>
-        <RuleRow
-          announce={!requireAnswers}
-          id={houseRuleRowId(idPrefix, "checkInTime")}
-          icon={CalendarCheck}
-          title={titles.checkIn}
-          value={rules.checkInTime === FLEXIBLE_STAY_TIME ? flexible : rules.checkInTime}
-          error={showIssues && issues.checkInTime ? stayTimeError(i18n) : null}
-          onOpen={() => setOpenRow("check-in")}
-        />
-        <RuleRow
-          announce={!requireAnswers}
-          id={houseRuleRowId(idPrefix, "checkOutTime")}
-          icon={CalendarClock}
-          title={titles.checkOut}
-          value={
-            rules.checkOutTime === FLEXIBLE_STAY_TIME ? flexible : rules.checkOutTime
-          }
-          error={showIssues && issues.checkOutTime ? stayTimeError(i18n) : null}
-          onOpen={() => setOpenRow("check-out")}
-        />
+        {arrivalRows ?? (
+          <>
+            <RuleRow
+              announce={!requireAnswers}
+              id={houseRuleRowId(idPrefix, "checkInTime")}
+              icon={CalendarCheck}
+              title={titles.checkIn}
+              value={rules.checkInTime === FLEXIBLE_STAY_TIME ? flexible : rules.checkInTime}
+              error={showIssues && issues.checkInTime ? stayTimeError(i18n) : null}
+              onOpen={() => setOpenRow("check-in")}
+            />
+            <RuleRow
+              announce={!requireAnswers}
+              id={houseRuleRowId(idPrefix, "checkOutTime")}
+              icon={CalendarClock}
+              title={titles.checkOut}
+              value={
+                rules.checkOutTime === FLEXIBLE_STAY_TIME ? flexible : rules.checkOutTime
+              }
+              error={showIssues && issues.checkOutTime ? stayTimeError(i18n) : null}
+              onOpen={() => setOpenRow("check-out")}
+            />
+          </>
+        )}
       </RuleSection>
 
       <RuleSection title={sections.guests} id={`${idPrefix}-guests`}>
@@ -308,11 +339,21 @@ export function HouseRulesRows({
           value={quietHoursValue(i18n, rules, unanswered)}
           unanswered={rules.quietHoursPolicy === null}
           error={
-            showIssues &&
-            (issues.quietHoursPolicy || issues.quietHoursStart || issues.quietHoursEnd)
+            showIssues
               ? issues.quietHoursPolicy
                 ? requiredError(i18n)
-                : quietHoursError(i18n)
+                : issues.quietHoursStart || issues.quietHoursEnd
+                  ? quietHoursError(i18n)
+                  : // A collision or a duplicate lower down the list. Named on the row
+                    // too, not only inside the sheet, because the row is what a host is
+                    // sent to from the error summary and it has to say why.
+                    issues.quietHoursPeriods
+                    ? quietHoursPeriodError(
+                        i18n,
+                        issues.quietHoursPeriods,
+                        QUIET_HOURS_PERIODS_MAX,
+                      )
+                    : null
               : null
           }
           onOpen={() => setOpenRow("quiet-hours")}
@@ -735,14 +776,21 @@ function StayTimeSheet({
 }
 
 /**
- * Quiet hours: whether they apply, and when.
+ * Quiet hours: whether they apply, and when — however many stretches "when" takes.
  *
- * Both ends or neither, so this sheet confirms rather than committing on choice — a host
- * who picks "Set quiet hours" has answered half a question, and closing on that would
- * store a rule with no times in it. Save stays disabled until both ends are set.
+ * A list rather than one range, because hosts really have more than one: the overnight
+ * rule everybody has, and the afternoon one a shared wall or a sleeping child needs. Both
+ * are true at once, and a single pair of fields can only ever hold the first.
  *
- * The two times are never compared. 22:00–08:00 is the ordinary case, and a
- * start-before-end rule would reject almost every real answer.
+ * Confirmed rather than committed on change, the way it always was — a host who picks
+ * "Set quiet hours" has answered half a question, and closing on that would store a rule
+ * with no times in it. Save stays disabled until every period reads as a rule a guest
+ * could follow, and says under the offending row why not.
+ *
+ * A period's two times are never compared for direction: 22:00–08:00 crosses midnight and
+ * is the ordinary case. Two *different* periods are compared, on the clock face rather
+ * than on the numbers, which is the only way an overnight one can be told apart from an
+ * afternoon one it does not touch.
  */
 function QuietHoursSheet({
   open,
@@ -761,17 +809,32 @@ function QuietHoursSheet({
 }) {
   const i18n = useI18n();
   const [policy, setPolicy] = useState<QuietHoursPolicy | null>(rules.quietHoursPolicy);
-  const [start, setStart] = useState(rules.quietHoursStart || "22:00");
-  const [end, setEnd] = useState(rules.quietHoursEnd || "08:00");
+  const [periods, setPeriods] = useState<QuietHoursPeriod[]>(() =>
+    editablePeriods(rules),
+  );
   const [seen, setSeen] = useState(rules);
   if (seen !== rules) {
     setSeen(rules);
     setPolicy(rules.quietHoursPolicy);
-    setStart(rules.quietHoursStart || "22:00");
-    setEnd(rules.quietHoursEnd || "08:00");
+    setPeriods(editablePeriods(rules));
   }
 
-  const complete = policy === "NONE" || (policy === "SET" && start !== "" && end !== "");
+  const issues = quietHoursPeriodIssues(periods);
+  const tooMany = periods.length > QUIET_HOURS_PERIODS_MAX;
+  const complete =
+    policy === "NONE" ||
+    (policy === "SET" &&
+      periods.length > 0 &&
+      !tooMany &&
+      issues.every((issue) => issue === undefined));
+
+  const patch = (index: number, part: Partial<QuietHoursPeriod>) =>
+    setPeriods((current) =>
+      current.map((period, i) => (i === index ? { ...period, ...part } : period)),
+    );
+
+  const fromLabel = i18n.resolve("listing.house_rules.quiet_hours.start", "From").text;
+  const untilLabel = i18n.resolve("listing.house_rules.quiet_hours.end", "Until").text;
 
   return (
     <SheetPanel
@@ -787,11 +850,16 @@ function QuietHoursSheet({
               policy === "SET"
                 ? {
                     quietHoursPolicy: "SET",
-                    quietHoursStart: start,
-                    quietHoursEnd: end,
+                    quietHoursPeriods: periods,
+                    // The mirrored pair travels with the list rather than being left for
+                    // normalisation to derive, so the caller's optimistic state already
+                    // matches what will be stored and the row never shows a stale range.
+                    quietHoursStart: periods[0]?.start ?? "",
+                    quietHoursEnd: periods[0]?.end ?? "",
                   }
                 : {
                     quietHoursPolicy: "NONE",
+                    quietHoursPeriods: [],
                     quietHoursStart: "",
                     quietHoursEnd: "",
                   },
@@ -810,7 +878,15 @@ function QuietHoursSheet({
             type="button"
             role="radio"
             aria-checked={policy === choice.value}
-            onClick={() => setPolicy(choice.value)}
+            onClick={() => {
+              setPolicy(choice.value);
+              // Turning quiet hours back on with nothing in the list would show a host an
+              // empty panel and a disabled Save. One period to edit is the answer they
+              // were about to give anyway.
+              if (choice.value === "SET" && periods.length === 0) {
+                setPeriods([DEFAULT_QUIET_HOURS_PERIOD]);
+              }
+            }}
             className={cn(
               "flex w-full flex-col items-start gap-1 rounded-2xl border p-4 text-left transition-colors",
               "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400",
@@ -828,24 +904,93 @@ function QuietHoursSheet({
       </div>
 
       {policy === "SET" ? (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <QuietHoursTimeField
-            id={`${idPrefix}-quiet-hours-start`}
-            label={
-              i18n.resolve("listing.house_rules.quiet_hours.start", "From").text
+        <div className="space-y-3">
+          {periods.map((period, index) => (
+            <div
+              key={index}
+              data-quiet-period={index}
+              className="rounded-2xl border border-slate-200 p-4"
+            >
+              <div className="grid gap-4 sm:grid-cols-2">
+                <QuietHoursTimeField
+                  id={`${idPrefix}-quiet-hours-start-${index}`}
+                  label={fromLabel}
+                  stored={period.start}
+                  value={period.start}
+                  onChange={(start) => patch(index, { start })}
+                />
+                <QuietHoursTimeField
+                  id={`${idPrefix}-quiet-hours-end-${index}`}
+                  label={untilLabel}
+                  stored={period.end}
+                  value={period.end}
+                  onChange={(end) => patch(index, { end })}
+                />
+              </div>
+              {issues[index] ? (
+                <p role="alert" className="mt-3 text-sm leading-6 text-rose-600">
+                  {quietHoursPeriodError(
+                    i18n,
+                    issues[index] as QuietHoursPeriodIssue,
+                    QUIET_HOURS_PERIODS_MAX,
+                  )}
+                </p>
+              ) : null}
+              {/* Never offered on the last one. Removing it would leave "quiet hours
+                  apply" with no hours in it, which is the half-answered rule this sheet
+                  exists to prevent — "No quiet hours" above is how a host clears them. */}
+              {periods.length > 1 ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPeriods((current) => current.filter((_, i) => i !== index))
+                  }
+                  aria-label={
+                    interpolate(
+                      i18n.resolve(
+                        "listing.house_rules.quiet_hours.remove_period",
+                        "Remove quiet period {number}",
+                      ),
+                      { number: index + 1 },
+                    ).text
+                  }
+                  className={cn(
+                    "mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-slate-600",
+                    "underline underline-offset-4 transition-colors hover:text-slate-900",
+                    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400",
+                  )}
+                >
+                  <Trash2 className="size-4" aria-hidden />
+                  <Tx k="listing.house_rules.quiet_hours.remove" source="Remove" />
+                </button>
+              ) : null}
+            </div>
+          ))}
+
+          <button
+            type="button"
+            disabled={periods.length >= QUIET_HOURS_PERIODS_MAX}
+            onClick={() =>
+              // Blank rather than prefilled. Any second range this could invent would
+              // either overlap the first or be a guess about an afternoon whose shape
+              // only the host knows, and both are worse than one empty pair of pickers.
+              setPeriods((current) => [...current, { start: "", end: "" }])
             }
-            stored={rules.quietHoursStart}
-            value={start}
-            onChange={setStart}
-          />
-          <QuietHoursTimeField
-            id={`${idPrefix}-quiet-hours-end`}
-            label={i18n.resolve("listing.house_rules.quiet_hours.end", "Until").text}
-            stored={rules.quietHoursEnd}
-            value={end}
-            onChange={setEnd}
-          />
-          <p className="sm:col-span-2">
+            className={cn(
+              "inline-flex items-center gap-2 rounded-full border border-slate-300 px-4 py-2",
+              "text-sm font-semibold text-slate-900 transition-colors hover:border-slate-400",
+              "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-400",
+              "disabled:cursor-not-allowed disabled:opacity-50",
+            )}
+          >
+            <Plus className="size-4" aria-hidden />
+            <Tx
+              k="listing.house_rules.quiet_hours.add_period"
+              source="Add another quiet period"
+            />
+          </button>
+
+          <p>
             <Tx
               k="listing.house_rules.quiet_hours.overnight_note"
               source="Quiet hours usually run overnight, so an end time earlier than the start is normal."
@@ -855,6 +1000,26 @@ function QuietHoursSheet({
       ) : null}
     </SheetPanel>
   );
+}
+
+/** What a host who has never set quiet hours is shown first: the range almost all of them
+ *  mean. Only ever used to seed an empty list — never written on its own. */
+const DEFAULT_QUIET_HOURS_PERIOD: QuietHoursPeriod = { start: "22:00", end: "08:00" };
+
+/**
+ * The list the sheet opens on.
+ *
+ * A listing that already has periods opens on those; one holding the single stored range
+ * opens on that range, which is what `normalizeQuietHoursPeriods` makes of the legacy
+ * pair; anything else gets the default, so the panel is never an empty box above a
+ * disabled Save.
+ */
+function editablePeriods(rules: ListingHouseRulesInput): QuietHoursPeriod[] {
+  const stored = normalizeQuietHoursPeriods(rules.quietHoursPeriods, {
+    start: rules.quietHoursStart,
+    end: rules.quietHoursEnd,
+  });
+  return stored.length > 0 ? stored : [DEFAULT_QUIET_HOURS_PERIOD];
 }
 
 function QuietHoursTimeField({
@@ -979,6 +1144,9 @@ function AdditionalRulesSheet({
 
 // ─── Small shared bits ───────────────────────────────────────────────────────────
 
+/** The row's own summary: every period on one line, so a host with two of them can see
+ *  both without opening the sheet. "Add times" still covers the half-answered rule, which
+ *  is now any period missing an end rather than only the first one. */
 function quietHoursValue(
   i18n: ReturnType<typeof useI18n>,
   rules: ListingHouseRulesInput,
@@ -986,10 +1154,17 @@ function quietHoursValue(
 ): string {
   if (rules.quietHoursPolicy === null) return unanswered;
   if (rules.quietHoursPolicy === "NONE") return quietHoursNoneLabel(i18n);
-  if (rules.quietHoursStart === "" || rules.quietHoursEnd === "") {
+  const periods = normalizeQuietHoursPeriods(rules.quietHoursPeriods, {
+    start: rules.quietHoursStart,
+    end: rules.quietHoursEnd,
+  });
+  if (
+    periods.length === 0 ||
+    periods.some((period) => period.start === "" || period.end === "")
+  ) {
     return i18n.resolve("listing.house_rules.quiet_hours.incomplete", "Add times").text;
   }
-  return quietHoursRangeLabel(rules.quietHoursStart, rules.quietHoursEnd);
+  return quietHoursPeriodsLabel(periods);
 }
 
 function requiredError(i18n: ReturnType<typeof useI18n>): string {

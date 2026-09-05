@@ -146,10 +146,12 @@ describe("EditorOverview all-sections area", () => {
       "/host/listings/listing-1/amenities",
       "/host/listings/listing-1/payment-arrangements",
       "/host/listings/listing-1/house-rules",
-      "/host/listings/listing-1/arrival-guide",
     ]) {
       expect(html).toContain(`href="${href}"`);
     }
+    // "All sections" is the space half's list. The Arrival guide is the other half and
+    // is reached from the toggle above, not from a card in here.
+    expect(html).not.toContain('href="/host/listings/listing-1/arrival-guide"');
   });
 
   it("never sends an editing action back to the classic host panel", () => {

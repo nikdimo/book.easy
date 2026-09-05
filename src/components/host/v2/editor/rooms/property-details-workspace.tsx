@@ -19,6 +19,7 @@ import {
 } from "@/components/host/v2/editor/editor-group";
 import { beginSave, endSave } from "@/components/host/v2/editor/save-state";
 import { AddRoomDialog } from "@/components/host/v2/editor/photos/add-room-dialog";
+import { SelectField } from "@/components/shared/select-field";
 import { SpaceIcon } from "@/components/shared/space-icon";
 import { updateListingPropertyDetails } from "@/lib/actions/listing-property-details.actions";
 import { addListingRoom, deleteListingRoom, renameListingRoom } from "@/lib/actions/listing-photos.actions";
@@ -292,9 +293,18 @@ export function PropertyDetailsWorkspace({ listingId, stored, propertyTypes, roo
 
       <section aria-labelledby="property-kind-heading">
         <h2 id="property-kind-heading" className={EDITOR_GROUP_HEADING}><Tx k="host.editor.rooms.property_type" source="Property type" /></h2>
-        <select aria-label={resolve("host.editor.rooms.property_type", "Property type").text} value={value.propertyType} onChange={(event) => change({ ...value, propertyType: event.target.value }, true)} className="mt-2 min-h-12 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-base outline-none focus-visible:ring-2 focus-visible:ring-slate-400">
-          {propertyTypes.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
-        </select>
+        {/* The application Select, not a native one: the menu is ours on every platform
+            rather than the OS drawing its own list in its own font. The trigger keeps
+            this screen's field shape — the same rounded-xl slate box the space-type
+            buttons below it use. */}
+        <SelectField
+          ariaLabel={resolve("host.editor.rooms.property_type", "Property type").text}
+          value={value.propertyType}
+          onValueChange={(propertyType) => change({ ...value, propertyType }, true)}
+          options={propertyTypes.map((type) => ({ value: type.value, label: type.label }))}
+          invalid={Boolean(issues.propertyType)}
+          className="mt-2 min-h-12 rounded-xl border-slate-200 bg-slate-50 px-4 text-base shadow-none data-[size=default]:h-auto md:data-[size=default]:h-auto"
+        />
         {issues.propertyType && <p role="alert" className="mt-1 text-sm text-rose-600"><Tx k="host.editor.rooms.property_type_error" source="Choose a property type." /></p>}
       </section>
 
